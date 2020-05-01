@@ -1,0 +1,8 @@
+
+# find and sort the number of open files per process:
+lsof +c 0 | za -e 'foreach l in read_file("/dev/stdin"); fields(l); if !key("totals",F1); totals[F1]=0; endif; totals[F1]=totals[F1]+1; endfor; list=""; foreach t in totals; list=list+format("%v -> %v\n",t,key_t); endfor; print fieldsort(list,1,true,true)' | more
+
+# sort by human readable size
+ls -lh | tr -s ' ' | tail -n+2 | za -e 'print fieldsort(read_file("/dev/stdin"),5,"h",false)'
+
+

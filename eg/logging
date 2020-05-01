@@ -1,0 +1,30 @@
+#!/usr/bin/za -f
+
+#############################
+#  logging test
+#############################
+
+lf="./logfile1"
+if is_file(lf)
+    | rm -f {lf}
+endif
+
+logging on lf
+println "not logged"
+log "logged\n"
+println "still not logged"
+log "definitely logged\n"
+logging off
+
+count =| grep -c "not logged" {lf}
+
+print "count [{count}] should be zero... "
+
+if int(count)==0
+    println "[#4]okay[#-]"
+    exit 0
+endif
+
+println "[#2]not okay[#-]"
+exit 1
+

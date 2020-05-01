@@ -1,0 +1,5 @@
+#!/usr/bin/za
+println "Printing text with newline"
+print "Printing text without newline"
+print "\nRemoving \t backslash \t characters\n"
+

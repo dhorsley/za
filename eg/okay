@@ -1,0 +1,4 @@
+#!$(which env) goat -f
+print "Insert Line 1\n"
+print "Insert Line 2\n"
+print "Insert Line 3\n"

@@ -1,0 +1,16 @@
+#!/usr/bin/za -f
+
+assert(1==1)
+
+print "normal output\n"
+
+test "example1" group "basic_tests" assert fail
+    doc "test 1\n"
+    assert("two"=="two")
+    assert(2==3)
+endtest
+
+print "normal again\n"
+
+
+

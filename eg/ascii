@@ -1,0 +1,14 @@
+#!/usr/bin/za -f
+
+cls
+row=10
+
+for a=32 to 127
+    on (a-32)%16==0 do inc row
+    at row,10+((a-32)%16)
+    print chr(a)
+endfor
+
+at 20,1
+
+

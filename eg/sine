@@ -1,0 +1,43 @@
+#!/usr/bin/za -f
+
+input dur optarg 1
+if dur!=""
+    dur=int(dur)
+else
+    dur=100
+endif
+
+cls
+
+# rough sine wave graphing
+
+period  = term_w()
+dx      = ((pi()*4) / period)
+cy      = term_h()/2
+amp     = 12
+
+theta=0
+
+while true
+
+    x=0
+    cls
+
+    at cy,1
+    print "[#1]",pad("·",-1,term_w()-1,"·"),"[#-]"
+
+    for i=0 to term_w()*4
+        at cy+sin(x+theta)*amp,x*4+7
+        print "🐿"
+        x=x+dx
+    endfor
+
+    theta=(theta+1) % 180
+    pause dur
+
+endwhile
+
+at term_h()-1,0 
+
+
+

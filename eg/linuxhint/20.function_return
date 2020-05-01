@@ -1,0 +1,14 @@
+#!/usr/bin/za
+
+define greeting(name)
+    v="Hello, {name}"
+    return v            # return does not currently interpolate
+enddef
+
+cls
+prompt name "Enter your name : "
+at 3,1
+
+println "Return value of function is ",greeting(name),"\n"
+
+

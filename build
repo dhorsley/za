@@ -1,0 +1,56 @@
+#!/usr/bin/za
+
+module "mod_build/defines"
+
+input do_alpine optarg 1
+input do_upx optarg 2
+
+alpine=false
+on do_alpine=="alpine" do alpine=true
+
+upx_enable=false
+on do_upx=="upx" do upx_enable=true
+
+
+#
+# main
+#
+
+GCLIMIT = "GOGC=420"
+
+bvers =  "1.0.1"
+bdate =| date "+%d-%m-%Y"
+
+ufound=|which upx | wc -l
+ufound=int(ufound)
+
+strip_opts="-s -w"
+
+if alpine
+    ret=buildAlpine(bvers,bdate,strip_opts,upx_enable)
+    if ret!=0
+        print "Failed to build static version.\n"
+        exit 1
+    endif
+else
+    if buildDynamic(bvers,bdate)!=0
+        print "Failed to build dynamic version.\n"
+        exit 2
+    endif
+endif
+
+if ufound==1
+    | strip {strip_opts} za
+    if upx_enable
+        | upx za
+    endif
+else
+    print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
+endif
+
+
+print "[#4]Installing to /usr/bin/[#-]\n"
+| sudo cp -f za /usr/bin
+| sudo chmod 755 /usr/bin/za
+
+

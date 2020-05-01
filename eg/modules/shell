@@ -1,0 +1,50 @@
+#!/usr/bin/za -f
+
+define ll(dir)
+    on dir=="" do dir="."
+    out=|ls -l --color {dir}
+    return out
+enddef
+
+define dir(dir)
+    on dir=="" do dir="."
+    out=| dir --color {dir}
+    return out
+enddef
+
+define cat(file)
+    out=| cat {file}
+    return out
+enddef
+
+# return each filename on a separate line
+define line_ls(dir)
+    on dir=="" do dir="."
+    out=|ls -1 {dir}
+    return out
+enddef
+
+# wc -w
+define wcw(str)
+    wc=0
+    foreach l in str
+        l=tr(l,"s"," \t")
+        fields(l)
+        inc wc NF
+    endfor
+    return wc
+enddef
+
+# return all filenames on the same line, with a specific separator 
+define word_ls(dir,sep)
+    on dir=="" do dir="."
+    on sep=="" do sep=" "
+    strls=|ls -1 {dir}
+    word_out=""
+    foreach w in strls
+        word_out=word_out+w+sep
+    endfor
+    return substr(word_out,0,len(word_out)-len(sep))
+enddef
+ 
+

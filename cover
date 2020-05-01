@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+go test -coverprofile=coverfile.out
+go tool cover -html=coverfile.out
+

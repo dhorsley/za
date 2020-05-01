@@ -1,0 +1,87 @@
+#!/usr/bin/za
+
+#
+# aws tools
+#
+
+# return an iterable file listing from S3
+define s3_ls(bktpath,region,profile)
+    on region  != "" do region="--region {region}"
+    on profile != "" do profile="--profile {profile}"
+    d=|aws s3 ls {profile} {region} s3://{bktpath}
+    out=""
+    foreach r in d
+        on match(r,"PRE ") do continue
+        fields(r)
+        if NF==3 # dir
+            name=F3
+        else # file
+            name=""
+            for e=3 to NF-1
+                name=name+F[e]+" "
+            endfor
+        endif
+        out=out+trim(name,1)+"\n"
+    endfor
+    return out
+enddef
+
+define s3_up(localpath,bktpath,region,profile)
+    on region  != "" do region="--region {region}"
+    on profile != "" do profile="--profile {profile}"
+    nul=|aws s3 cp {profile} {region} {localpath} s3://{bktpath}
+    return last()
+enddef
+
+define s3_down(bktpath,localpath,region,profile)
+    on region  != "" do region="--region {region}"
+    on profile != "" do profile="--profile {profile}"
+    nul=|aws s3 cp {profile} {region} s3://{bktpath} {localpath}
+    return last()
+enddef
+
+define s3_info(bktpath,region,profile)
+
+    on region  != "" do region="--region {region}"
+    on profile != "" do profile="--profile {profile}"
+
+    # separate bktpath components
+
+    on lower(substr(bktpath,0,5))=="s3://" do bktpath=substr(bktpath,5,len(bktpath)-5)
+
+    println "bktpath now : |{bktpath}|"
+
+    slashPos=strpos(bktpath,"/")
+    if slashPos==-1  # bucket only
+        nop
+    else
+        bucket=bktpath[:slashPos]
+        path=bktpath[slashPos+1:]
+    endif
+    println "bucket |{bucket}| path |{path}|"
+
+    # call head
+    nul=| aws s3api {profile} {region} head-object --bucket {bucket} --key {path} 
+
+enddef
+
+
+#
+# TESTS
+#
+
+test "ls" group "s3"
+    foreach fname in s3_ls("/","eu-west-2")
+        println "FILENAME : |{fname}|"
+    endfor
+endtest
+
+test "info" group "s3"
+    print s3_info("za.test/blah","eu-west-2")
+endtest
+
+
+
+
+
+

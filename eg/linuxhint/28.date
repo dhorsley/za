@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+d=date()
+# 2019-11-10T18:59:35Z
+
+fields(d,"T")
+
+date=F1
+time=F2
+
+println "Date : {date}"
+println "Time : {time}"
+
+println "System time : ",d,"\n"
+

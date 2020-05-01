@@ -1,0 +1,33 @@
+#!/usr/bin/za -f
+
+total=10
+user=20
+nice=30
+sys=40
+idle=50
+iowait=40
+irq=30
+softirq=20
+steal=10
+guest=0
+guest_nice=50
+
+indexlist=["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest","guest_nice"]
+
+init prev
+
+name="cpu0"
+
+# foreach i in indexlist
+#     print "i_name-> {i}\n"
+#     print "i_val -> {{i}}\n"
+#     setglob prev[name+"_"+i] {i}
+# endfor
+
+# local
+i="sys"
+j=i
+prev["{name}_{i}"]=int({{j}})
+
+print "Name : {name}\nAppend(i) : {i}\nValue of sys : {sys}\n",prev,"\n"
+

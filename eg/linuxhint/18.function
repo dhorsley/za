@@ -1,0 +1,8 @@
+#!/usr/bin/za
+
+define f1()
+    println "I 💜 Za"
+enddef
+
+f1()
+

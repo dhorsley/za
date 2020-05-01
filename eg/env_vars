@@ -1,0 +1,11 @@
+
+# env output test
+
+foreach e in env()
+    foreach f in e
+        print f
+    endfor
+    print
+endfor
+
+

@@ -1,0 +1,20 @@
+#!/usr/bin/add
+
+filename=|mktemp
+
+egfile="a\nb\nc"
+write_file(filename,egfile)
+
+println "Before:"
+| cat {filename}
+
+egfile=read_file(filename)
+egfile=line_add(egfile,"Learning Laravel 5")
+write_file(filename,egfile)
+
+println "After:"
+| cat {filename}
+
+| rm {filename}
+
+

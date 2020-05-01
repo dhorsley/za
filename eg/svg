@@ -1,0 +1,81 @@
+#!/usr/bin/za
+
+print "execpath : ",execpath(),"\n"
+
+loc=execpath()+"/www/img/out.svg"
+
+default_linestyle   = `stroke='blue' stroke-width='1px' fill='none'`
+redline             = `stroke='red' stroke-width='1px' fill='none'`
+circle_linestyle    = `stroke='green' stroke-width='1px' fill='pink'`
+oddstyle            = `stroke='blue' stroke-width='0px'`
+gridstyle           = `stroke:yellow;`
+
+# create an image file
+h=svg_start(loc,500,500)
+
+# meta tags
+svg_title(h,"svg demo")
+svg_desc(h,"svg description")
+
+# background grid
+svg_grid(h,100,100,400,400,10,gridstyle)
+
+# these 2 loops together draw a moire pattern in the canvas
+for x=0 to 499 step 4 
+    svg_line(h,x,0,0,499,default_linestyle)
+endfor
+
+for y=0 to 499 step 4
+    svg_line(h,0,y,499,0,circle_linestyle)
+endfor
+
+# test group wrapping
+svg_group(h,oddstyle)
+for e=0 to 15 step 2
+    svg_plot(h,250+e,480-e)
+endfor
+svg_group_end(h)
+
+# test of other shape drawing commands
+svg_circle(h,250,250,120,circle_linestyle)
+svg_ellipse(h,250,250,300,60,default_linestyle)
+svg_polygon(h,
+            list_int([200,250,500,250]),
+            list_int([250,500,250,200]),
+            default_linestyle
+)
+lx=list_int([100,150,200,225,250,300])
+ly=list_int([400,410,390,400,350,400])
+svg_polyline(h,lx,ly,redline)
+svg_rect(h,449,449,50,50,circle_linestyle)
+svg_roundrect(h,20,20,40,50,10,10,redline)
+svg_square(h,400,200,40,redline)
+
+# bitmapped text
+svg_text(h,300,300,"Output Text",circle_linestyle)
+
+# draw image and add a href to it:
+svg_link(h,"/img/star.png","star")
+svg_image(h,300,340,40,40,"/img/castle.png")
+svg_link_end(h)
+
+# these two can be tested later when we have gradients done:
+# svg_def()
+# svg_def_end()
+
+## test graph functions
+#g=graph(h,50,50,400,200,"fill:silver;stroke-width:1;stroke:rgb(0,20,80)")
+#print "svgid : ",h,"\n"
+#print "graph : ",g,"\n"
+#graph_limit(g,0,0,400,100)
+## graph_title(g,"Graph Demonstration","")
+#graph_grid(g,`stroke:white;`)
+#graph_output(g)
+#
+
+# write file
+svg_end(h)
+
+# | ls -l {loc}
+
+

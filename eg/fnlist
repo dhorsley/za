@@ -1,0 +1,42 @@
+#!/usr/bin/za
+
+#
+# returns a filtered list of function call examples
+#
+
+input filter optarg 1
+filter=string(filter)
+
+foreach l in funcs(filter)
+
+    front=[]
+    rest=[]
+    
+    if kind(l)=="string" && l!=""
+        if match(l,"Function[ ]*:[ ].*$")
+
+            fields(l)
+            split=false
+            for i=1 to NF-1
+                if head(F)=="="
+                    esplit(F,"front","rest",2)
+                    split=true
+                    break
+                endif
+                F=tail(F)
+            endfor
+
+            on !split do rest=F
+
+            if rest!=nil
+                foreach i in rest
+                    print format("%v ",i)
+                endfor
+            endif
+            print
+
+        endif
+    endif
+
+endfor
+

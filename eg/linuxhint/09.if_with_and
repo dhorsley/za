@@ -1,0 +1,13 @@
+#!/usr/bin/za
+
+cls
+at 1,1; prompt username "Username : "
+at 2,1; prompt password "Password : "
+at 4,1
+
+if username=="admin" && password=="secret"
+    println "Valid user"
+else
+    println "Invalid user"
+endif
+

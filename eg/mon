@@ -1,0 +1,723 @@
+#!/usr/bin/za
+
+#
+# Test script for za.
+# If this is working, the language probably is.
+#
+# This program displays a few pieces of key system 
+# resource information on a single summary view.
+#
+
+#
+# FUNCTIONS
+#
+
+logging on "/tmp/dh"
+
+define clear(start,end,column)
+    for f=start to end
+        clear_line(f,column)
+    endfor
+enddef
+
+define interface_ip(in)
+    addrline =| ip addr show dev {in}
+    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
+    ipaddr=replace(ipaddr,"/","")
+    return ipaddr
+enddef
+
+define negreg(inp,matcher)
+    out=""
+    foreach l in inp
+        if match(l,matcher); continue; endif
+        out=out+l+"\n"
+    endfor
+    return out
+enddef
+
+test "fn_ip" group "mon" assert fail
+    iip=interface_ip("lo:")
+    assert start(iip,"127.0.0.")
+endtest
+
+define showEnv()
+    pane select "envs"
+    pane redraw
+    clear(2,11,1)
+    at  2,3; print "Hostname             : "+hostname()
+    at  3,3; print "Bash Version         : "+bash_version()
+    at  4,3; print "Bash Major Version   : "+bash_versinfo()
+    at  5,3; print "User                 : "+user()
+    at  6,3; print "OS                   : "+os()
+    at  7,3; print "Home                 : "+home()
+    at  8,3; print "Locale               : "+lang()
+    at  9,3; print "Distribution         : "+release_name()
+    at 10,3; print "Distribution ID      : "+release_id() 
+    at 11,3; print "Distribution Version : "+release_version()
+enddef
+
+
+define showFiles()
+
+    if !winterm()
+
+        open_fd     = read_file("/proc/sys/fs/file-nr")
+        open_inode  = read_file("/proc/sys/fs/inode-nr")
+
+        pane select "files"
+        pane redraw
+
+        clear(1,4,1)
+
+        ofd=field(open_fd,1,"\t")
+        mfd=tr(open_fd,"d","\n")
+        mfd=tr(mfd,"s","\t ")
+        mfd=float(field(mfd,3,"\t "))
+        at 2,2 ; print "Open Descriptors : {ofd}"
+        at 3,2 ; print "Max Descriptors  : ",format("%.7g",mfd)
+        fin=field(open_inode,2," \t\n")
+        tin=float(field(open_inode,1," \t"))
+        at 4,2 ; print "Free Inodes      : {fin}"
+        at 5,2 ; print "Total Inodes     : ",format("%.7g",tin)
+
+    endif
+
+enddef
+
+
+define showMem()
+
+    pane select "mem"
+    pane redraw
+
+    # gather
+    
+    opt_sudo=" "
+    on release_id()!="alpine" do opt_sudo="sudo "
+
+    slabs=|{opt_sudo}cat /proc/slabinfo | awk '{printf "%32s %d\n",$1,($3*$4)/1024/1024}' | sort -nrk2 
+
+    foreach line in read_file("/proc/meminfo")
+        fields(line)
+        if F2!=""
+            when F1
+                is "MemTotal:";     mem_total=F2
+                is "MemFree:";      mem_free=F2
+                is "MemAvailable:"; mem_avail=F2
+                is "Cached:";       mem_cached=F2
+                is "Active:";       mem_active=F2
+                is "SwapFree:";     mem_swap_free=F2
+                is "SwapTotal:";    mem_swap_total=F2
+            endwhen
+        endif
+    endfor
+
+    # display mem
+
+    clear(2,9,1)
+    at 2,2; print "Free Mem  : {mem_free}/{mem_total} KB"
+    at 3,2; print "Avail Mem : {mem_avail} KB"
+    at 4,2; print "Cached    : {mem_cached} KB"
+    at 5,2; print "Active    : {mem_active} KB"
+    at 6,2; print "Free Swap : {mem_swap_free}/{mem_swap_total} KB"
+
+    # display slab info
+
+    cs=8
+    on count(slabs)<8 do cs=count(slabs)
+
+    comwidth=10
+    at 1,38; print format("[#b2][#7][#bold]%24s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    for p = 0 to cs-1
+        fields(lines(slabs,"{p}:{p}"))
+        at 2+p,38; print format("%24s  %-{comwidth}d\n",F1,int(F2))
+    endfor
+
+enddef
+
+
+define showProcs(ct,uptime)
+
+    pane select "procs"
+    pane redraw
+
+    # get filenames
+    procs =| ls -1 /proc/*/stat
+    procs = line_filter(procs,"/[0-9]+/")
+
+    foreach p in procs
+        on !is_file(p) do break
+        ps = read_file(p)
+
+        comm=tr(filter(ps,`\(.*?\)`),"d","()")
+        ps=replace(ps,`\(.*?\)`,`"comm"`)
+
+        # split up
+        fields(ps)
+        pid=int(F1)
+
+        state=F3; ppid=F4
+        utime=float(F14); stime=float(F15); cutime=float(F16); cstime=float(F17)
+        priority=F18; nice=F19; threads=F20; procstarttime=float(F22)
+
+        on kind(procstarttime)!="float64" || kind(utime)!="float64" || kind(stime)!="float64" do continue
+        on kind(cstime)!="float64" || kind(cutime)!="float64" do continue
+
+        on procstarttime==0 do continue
+
+        # @todo: we should deduct this program's usage from the totals and have a toggle to add it back in and also
+        # to display this process in the list.
+
+        # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
+        if pid!=pid()
+            putime=float(uptime-(procstarttime/ct))
+            on putime==0 do continue
+            proc_list[pid]=[state, ppid, 100*float(utime/ct/putime), 100*float(stime/ct/putime), 
+                            100*float(cutime/ct/putime), 100*float(cstime/ct/putime), threads, procstarttime, gsub(comm," ","_")
+            ]
+        endif
+    endfor
+
+    if length(proc_list)>0
+
+        # sort, reverse, by user time
+        shellout=""
+        foreach p in proc_list
+            nextline = format ("%v %v %v %v %v %v %v %v %v %v\n", p[0], p[1], key_p, p[2], p[3], p[4], p[5], p[6], p[7], p[8] )
+            shellout = shellout + nextline
+        endfor
+
+        sorted = uniq(lines(fieldsort(shellout,4,"n",true),":11"))
+
+        # final list display
+        count=8
+        comwidth=27
+        cmdwidth=comwidth-1
+
+        at 1,1; print format (  "[#b2][#7][#bold]%2s %5s %5s %5s %5s %7s %-{comwidth}s[##][#-]",
+                                "st","ppid","pid","user","sys","threads","command" )
+
+        clear(2,10,1)
+
+        foreach p in sorted
+            at 10-count,1
+            fields(p," ")
+            # skip low activity processes
+            if float(F4)>0.2 || float(F5)>0.2
+                on length(F10)>=40 do F10=substr(F10,0,39)
+                print format("%2s %5d %5d %5.0f %5.0f %7.0f %-"+cmdwidth+"s",F1,int(F2),int(F3),float(F4),float(F5),float(F8),F10)
+                dec count
+                on count==0 do break
+            endif
+        endfor
+
+    endif
+enddef
+
+
+define humansize(i)
+    unit="B"
+    if i>=1e9; unit="GB"; i=float(i/1e9); endif
+    if i>=1e6; unit="MB"; i=float(i/1e6); endif
+    if i>=1e3; unit="KB"; i=float(i/1e3); endif
+    return format("%.3f %s/sec",i,unit)
+enddef
+
+
+define showCpu(key_timeout,sample_start_in)
+
+    pane select "cpu"
+    pane redraw
+
+    activity_indicator="·"
+    on utf8supported()==false do activity_indicator="-"
+
+    row=1
+
+    proc_file=read_file("/proc/stat")
+
+    mult            = float(key_timeout)/10.0
+    indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest","guest_nice"]
+    partindexlist   = tail(indexlist)
+
+    # init previous values for cpu stats
+
+    on length(proc_file)==0 do return sample_start_in
+
+    foreach line in proc_file
+
+        fields(line)
+        on length(F)==0 do continue
+
+        name=F1
+        on kind(name)!="string" do continue
+        on name=="cpu" do continue
+
+        if match(name,"^cpu")
+
+            # split up row
+            f=tail(F)
+            # convert string values to floats
+            f=list_float(f)
+
+            # read values from row
+            _total = sum(f)
+            foreach i in partindexlist
+                _{i}    = head(f)
+                on length(f)>0 do f = tail(f)
+            endfor
+
+            # set initial value for the global store
+            if !globkey("prev",string(name)+"_total")
+                foreach i in indexlist
+                    setglob prev["{name}_{i}"] _{i}
+                endfor
+            endif
+
+
+            # now populate local prev from global prev
+            foreach i in indexlist
+                prev_{i}=getglob(`prev["{name}_{i}"]`)
+                on prev_{i}==nil do prev_{i}=0
+            endfor
+
+            # calc difference from last sample. -- units are USER_HZ, 1/100 sec
+            if prev_total!=nil
+                diff_total = float(_total-prev_total)
+                foreach i in partindexlist
+                    if diff_total==0
+                        diff_{i}=0
+                    else
+                        diff_{i} = ((_{i}-prev_{i}) / diff_total ) * mult
+                    endif
+                endfor
+
+                # figure display total
+                disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest+diff_guest_nice
+
+            else
+                # at 2,2; print "[#invert]Checking previous CPU values.[#-]"
+                # break
+            endif
+
+            # record for next iter
+            foreach i in indexlist
+                setglob prev["{name}_{i}"] _{i}
+            endfor
+
+            # ensure positive and bounded
+            foreach i in partindexlist
+                on diff_{i}<0   do diff_{i}=0
+                on diff_{i}>100 do diff_{i}=100
+            endfor
+            
+            # display
+
+            if sample_start_in>0
+                sample_start_in=sample_start_in-1
+            else
+
+                clear_line(row,1)
+                at row,1; print format(
+                                    "%5s [#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
+                                    name,diff_user,diff_sys,diff_softirq,diff_irq,diff_guest,diff_steal,diff_iowait
+                                )
+                col_sys     = "[#b5]"; w_sys      = diff_sys/2
+                col_user    = "[#b4]"; w_user     = diff_user/2
+                col_idle    = "[#b0]"; w_idle     = diff_idle/2
+                col_softirq = "[#b1]"; w_softirq  = diff_softirq/2
+                col_irq     = "[#b7]"; w_irq      = diff_irq/2
+                col_guest   = "[#b3]"; w_guest    = diff_guest/2
+                col_steal   = "[#b2]"; w_steal    = diff_steal/2
+                col_iowait  = "[#b6]"; w_iowait   = diff_iowait/2
+
+                # fill cpu row background
+                at row,60
+                print pad(activity_indicator,-1,48,activity_indicator)
+
+                # populate with values
+                # at row,60
+                cursorx(60)
+                print col_sys;      print pad(activity_indicator,1,w_sys,activity_indicator)
+                print col_user;     print pad(activity_indicator,1,w_user,activity_indicator)
+                print col_softirq;  print pad(activity_indicator,1,w_softirq,activity_indicator)
+                print col_irq;      print pad(activity_indicator,1,w_irq,activity_indicator)
+                print col_guest;    print pad(activity_indicator,1,w_guest,activity_indicator)
+                print col_steal;    print pad(activity_indicator,1,w_steal,activity_indicator)
+                print col_iowait;   print pad(activity_indicator,1,w_iowait,activity_indicator)
+                print "[##]"
+
+                # at row,109
+                cursorx(109)
+                print format("❙ %4.2f",disp_total)
+                inc row
+
+            endif
+
+        endif
+    endfor
+
+    return sample_start_in
+
+enddef
+
+
+define showHdd()
+    
+    pane select "hdd"
+    pane redraw
+
+    when release_id()
+    is "alpine"
+        disks=| df -h | tail -n+2 | egrep '^overlay' | sort -grk5
+    or
+        disks=| df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
+    endwhen
+
+    comwidth=23
+    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-{comwidth}s[#-][##]","path","size","used","avail","use%")
+    row=2
+
+    foreach d in disks
+        if d!=""
+            fields(d)
+            on kind(F1)!="string" do continue
+            if !key("devices",F1)
+                devices[F1]=F6
+                at row,1; print format("%20s %5s %5s %5s %-{comwidth}s",F1,F2,F3,F4,F5)
+                inc row
+            endif
+        endif
+    endfor
+
+enddef
+
+
+define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_timeout)
+
+    pane select "net"
+    pane redraw
+
+    at 1,2
+    print "Interface Address : {ipaddr}        "
+
+    at pane_h()-3,2
+    print "Legend [#6]", load[0], "[#-] 64B-4KiB [#6]", load[1], "[#-] 4KiB-256KiB [#6]"
+    print load[2], "[#-] 256KiB-16MiB [#6]", load[3], "[#-] 16MiB-1GiB [#6]", load[4],"[#-] 1GiB-64GiB"
+
+    foreach int_name in net_interfaces()
+
+        int_filter=filter(read_file("/proc/net/dev"),"[ ]*"+int_name+":.*")
+        on int_filter=="" do continue
+
+        fields(int_filter)
+
+        if start(int_name,interface)
+
+            # current counters 
+            rbytes  = float(F2)
+            rerr    = float(F4)
+            tbytes  = float(F10)
+            terr    = float(F12)
+
+            # diff from previous
+            if net_sample_start_in>0
+                setglob prev_rbytes rbytes
+                setglob prev_rerr rerr
+                setglob prev_tbytes tbytes
+                setglob prev_terr terr
+            endif
+
+            drb=float(rbytes-getglob("prev_rbytes"))
+            dre=float(rerr-getglob("prev_rerr"))
+            dtb=float(tbytes-getglob("prev_tbytes"))
+            dte=float(terr-getglob("prev_terr"))
+
+            # shift left and append new to end
+            rblist=append(tail(getglob("rblist")),drb)
+            relist=append(tail(getglob("relist")),dre)
+            tblist=append(tail(getglob("tblist")),dtb)
+            telist=append(tail(getglob("telist")),dte)
+
+            # display using log scale up to log64(5).
+            # using key_timeout as a rough scaler for the sampling period.
+            # skip displaying errors. just show in/out bytes
+
+            full_magnitude=5
+            midline=7
+           
+            # traffic plots
+
+            clear(3,6,1)
+            clear(8,11,1)
+
+            for f=1 to net_sample_count
+                
+                # recv plot
+                print "[#invert][#4]"
+                rsz=0
+                sample=int(rblist[f])
+                if sample!=0
+                    rsz=int(log(sample,64))
+                    on rsz>full_magnitude do rsz=full_magnitude
+                    if rsz>0 ; at midline-(rsz),1+f ; print load[rsz-1] ; endif
+                endif
+                print "[#-]"
+
+                # transmit plot
+                print "[#invert][#1]"
+                tsz=0
+                sample=int(tblist[f])
+                if sample!=0
+                    tsz=int(log(sample,64))
+                    on tsz>full_magnitude do tsz=full_magnitude
+                    if tsz>0 ; at midline+(tsz),1+f ; print load[tsz-1] ; endif
+                endif
+
+                print "[#-]"
+
+            endfor
+
+            # write history
+            setglob rblist rblist
+            setglob relist relist
+            setglob tblist tblist
+            setglob telist telist
+
+            setglob prev_rbytes rbytes
+            setglob prev_tbytes tbytes
+            setglob prev_rerr rerr
+            setglob prev_terr terr
+
+            # avg over a second:
+            drb=humansize((1000/float(key_timeout))*drb)
+            dtb=humansize((1000/float(key_timeout))*dtb)
+
+            clear_line(pane_h()-1,2)
+            at pane_h()-1,2
+            print format("[#bbred][#7] %v [#-][##]  [#b4][#1] rx avg [#-][##] %v  [#b1][#3] tx avg [#-][##] %v", int_name, drb, dtb)
+
+        endif
+
+    endfor
+
+    return net_sample_start_in-1
+
+enddef
+
+
+define redef_layout(cpu_count)
+
+    #            name    row            col             h        w             title                      border
+    pane define "cpu",    1,            1,         cpu_count+1,  term_w(),     "[#b1] Internal [##]",    "none"
+    pane define "hdd",    cpu_count+3,  2,              6,       64,           "[#b1] Disks [##]",       "round"
+    pane define "procs",  cpu_count+10, 2,              11,      64,           "[#b1] Processes [##]",   "round"
+    pane define "net",    cpu_count+3,  66,             18,      term_w()-67,  "[#b1] Network [##]",     "none"
+    pane define "envs",   cpu_count+22, 1,              13,      50,           "[#b1] Environment [##]", "topline"
+    pane define "mem",    cpu_count+22, 51,             13,      80,           "[#b1] Memory [##]",      "topline"
+    pane define "files",  cpu_count+22, 131,            13,      term_w()-130, "[#b1] Files [##]",       "topline"
+    pane define "status", cpu_count+36, 1,              4,       term_w(),     "[#b1] Status [##]",      "none"
+
+    setglob net_sample_count term_w()-71
+
+    setglob rblist push(0); setglob relist push(0); setglob tblist push(0); setglob telist push(0)
+
+    for f=1 to getglob("net_sample_count")
+        setglob rblist append(getglob("rblist"),0)
+        setglob relist append(getglob("relist"),0)
+        setglob tblist append(getglob("tblist"),0)
+        setglob telist append(getglob("telist"),0)
+    endfor
+
+    showEnv()
+            
+    # origin line
+    pane select "net"
+    graph_line="-"
+    on utf8supported() do graph_line="┈"
+    midline=7
+    print "[#6]"
+    at midline,2
+        # at midline,1+f; print graph_line
+    for f=1 to getglob("net_sample_count")
+        print graph_line
+    endfor
+    print "[#-]"
+
+enddef
+
+
+#
+# MAIN
+# 
+
+# in milliseconds
+key_timeout=1000
+sample_start_in=4
+net_sample_start_in=1
+
+interface="enp0s3"
+name_unresolved=true
+
+# quick check for eth0 default
+when release_id()
+
+is "ubuntu"
+
+    # little bodge for ubuntu under wsl
+    if winterm()
+        name_unresolved=false
+        interface="eth0"
+        break
+    else
+        if vcmp(release_version(),"16.4")>=0
+	        interface=collapse(negreg(net_interfaces(),"^lo$"))
+            if interface!=""
+                name_unresolved=false
+                # println(interface); exit
+                break
+            endif
+            ifstate=""
+            if is_file("/etc/network/run/ifstate")
+                ifstate=read_file("/etc/network/run/ifstate")
+            else
+                ifstate=| cat /var/lib/NetworkManager/dhclient-*.conf
+            endif
+
+            if ifstate!=""
+                if get_value(ifstate,"eth0")=="eth0"        ; interface="eth0"   ; name_unresolved=false; endif
+                if get_value(ifstate,"enp0s3")=="enp0s3"    ; interface="enp0s3" ; name_unresolved=false; endif
+            endif
+
+            if name_unresolved
+                running=|ls /run/dhclient-*.pid
+                if length(running)>0
+                    interface=replace(field(field(running,2,"/"),1,"."),"^dhclient-","")
+                    name_unresolved=false
+                endif
+            endif
+        endif
+    endif
+    break
+
+contains "(amzn|rhce|redhat)"
+    interface=read_file("/etc/sysconfig/network-scripts/ifcfg-eth0")
+    interface=get_value(interface,"DEVICE")
+    break
+
+is "alpine"
+    dhcpfile=read_file("/etc/udhcpd.conf")
+    foreach l in dhcpfile
+        if match(l,"^interface[ \t]+")
+            interface=field(tr(l,"s"," \t"),2)
+            break
+        endif
+    endfor
+    on interface=="enp0s3" do name_unresolved=true
+
+endwhen
+
+if name_unresolved
+    cls
+    println "Error : could not determine the network interface name."
+    exit 1
+endif
+
+
+ct=clktck()
+if ct==0
+    println "Could not find clock ticks."
+    exit 1
+endif
+
+cls
+
+# @todo: figure max cpu count automatically
+cpu_count=5
+
+# set up panes
+w=term_w()
+redef_layout(cpu_count)
+
+
+# cpu history setup
+init prev assoc 1
+
+# net graph setup
+prev_rbytes=0
+prev_tbytes=0
+prev_rerr=0
+prev_terr=0
+
+# network load icons
+load = [ "1", "2", "3", "4", "5" ]
+
+# main loop
+ipaddr=interface_ip(interface)
+quit=false
+
+iter=0
+
+while !quit
+
+    inc iter
+
+    # in case of window change (sigwinch)
+    if w!=term_w()
+        cls
+        w=term_w()
+        redef_layout(cpu_count)
+    endif
+
+    # capture system uptime
+    uptime=float(field(read_file("/proc/uptime"),1))
+
+    # show panes
+    sample_start_in=showCpu(key_timeout,sample_start_in)
+    showHdd()
+    net_sample_start_in=showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_timeout)
+    showProcs(ct,uptime)
+    showFiles()
+    showMem()
+
+    # status area
+
+    pane select "status"
+    pane redraw
+
+    print "[#b1]"
+    clear(1,3,1)
+
+    d=|date
+    at 1,2; print "[#bold]",d
+    at 2,2; print "Current Timeout : {key_timeout} ms"
+
+    # get user input
+    k=key_press(key_timeout)
+
+    at 2,1
+    when chr(k)
+    is "i"
+        prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
+        ipaddr=interface_ip(interface)
+    is "t"
+        prompt key_timeout "New Timeout (ms) : " "^[0-9]+$"
+    is "q"
+        quit=true
+    is "h"
+        clear_line(2,1)
+        at 2,1; print "(h) help  (t) timeout  (i) interface  (q) quit"
+        k=key_press(1500)
+        clear_line(2,1)
+    endwhen
+
+    cursoroff()
+    print "[#-][##]"
+
+endwhile
+
+at term_h()-1,1
+cursoron()
+
+

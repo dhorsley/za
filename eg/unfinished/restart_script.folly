@@ -1,0 +1,107 @@
+#!/usr/bin/za -f
+# Forced $process restart
+
+process_id="/usr/sbin/mysqld"
+subfilter=".*"
+service_name="mysqld"
+kill_instance=false
+
+# process_id="^tomcat"
+# subfilter = "java"
+# service_name="tomcat6"
+# kill_instance=true
+
+
+# identify process
+
+c=1 ; delay=3
+tpid =| ps -aef | grep -i "{process_id}" | grep "{subfilter}" | grep -v "grep"
+if count(tpid)>1
+    print "[#2]Error: could not uniquely identify the running service![#-]\n"
+    exit 1
+endif
+
+tpid=field(tpid,2)
+
+
+# stop process
+
+if tpid != ""
+    while c <= 3
+        print "[PID {tpid}] Friendly stop attempt #{c}\n"
+        | service {service_name} stop
+        pause 2000
+        inc c
+        notgone=|ps --pid {tpid} -o pid= | wc -l
+        on int(notgone)==0 do break
+    endwhile
+    notgone=|ps --pid {tpid} -o pid= | wc -l
+    if int(notgone)>0
+        print "[PID {tpid}] Shooting the kitty.\n"
+        | kill -9 {tpid}
+    endif
+else
+    print "[#2]Error: Pid was nil. Quitting.[#-]\n"
+    exit 2
+endif
+
+print "[Pausing {delay} seconds]\n"
+pause delay*1000
+
+
+# start pre-check
+
+print "Pre-start check\n"
+
+rootuse =| df
+foreach d in rootuse
+    pc_use  = field(d,5)
+    part    = field(d,6)
+    if part=="/"
+        rootuse=int(substr(pc_use,1,length(pc_use)-1))
+        break
+    endif
+endfor
+
+if rootuse < 95
+    print "Root partition use below 95% : continuing...\n"
+else
+    if kill_instance
+        | export AWS_DEFAULT_REGION="eu-west-1"
+        instance_id=| /opt/aws/bin/ec2-metadata | grep "^instance-id"
+        instance_id=field(instance_id,2)
+        print "omgtheykilledkenny [ DISK USAGE {rootuse} : instance_id {instance_id} ]\n"
+        | aws ec2 terminate-instances instance-ids {instance_id}
+    else
+        print "Ending without action!\n"
+        exit 1
+    endif
+endif
+
+
+# start service
+
+print "Service start attempt\n"
+| service {service_name} start
+ex=last()
+if ex != 0
+    print "[PID NULL] {service_name} startup failed with code {ex}.\n"
+    exit ex
+endif
+
+tpid =| ps -aef | grep -i "{process_id}" | grep "{subfilter}" | grep -v "grep"
+tpid = field(tpid,2)
+
+
+# mark success
+
+if tpid != ""
+    print "[PID {tpid}] {service_name} started.\n"
+    ex=0
+else
+    print "[PID NULL] {service_name} start failure.\n"
+    ex=int(-1)
+endif
+
+exit ex
+

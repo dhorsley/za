@@ -1,0 +1,10 @@
+
+
+a[0]="one"
+a[1]="two"
+a[2]="three"
+
+foreach z in a
+println z
+endfor
+
