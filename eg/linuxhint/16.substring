@@ -1,0 +1,4 @@
+#!/usr/bin/za
+str="Learn Linux from LinuxHint"
+println substr(str,6,5)
+

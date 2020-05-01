@@ -1,0 +1,11 @@
+#!/usr/bin/za
+
+filename="book.txt"
+
+egfile="x\ny\nz\n3\n2\n1"
+write_file(filename,egfile)
+
+foreach line in read_file(filename)
+    println format("%5d",1+key_line)," > {line}"
+endfor 
+

@@ -1,0 +1,54 @@
+#!/usr/bin/za
+
+#
+# An obviously bad example of pi calculation.
+# 
+# We just don't have the precision without arbitrary length integers/floats
+# 
+
+
+n=10000
+input str_n optarg 1
+on str_n!="" do n=int(str_n)
+
+i = 0
+k = 0
+acc = 0.0
+den = 1.0
+num = 1.0
+
+buf=""
+
+while i<n
+
+    inc k
+    k2 = k*2.0 + 1
+    acc = acc + num*2
+    acc = k2 * acc
+    den = float(k2 * den)
+    num = float(k * num)
+
+    on num > acc do continue
+
+    tmp = (3.0 * num) + acc
+    d3 = int(tmp / den)
+    tmp = tmp + num
+    d4 = int(tmp / den)
+
+    on d3 != d4 do continue
+
+    buf=format("%v%v",buf,d3)
+    inc i
+    on (i % 10) == 0 do buf=format("%s\t:%v\n",buf,i)
+
+    acc = acc - d3 * den
+    acc = 10 * acc
+    num = 10 * num
+
+endwhile
+
+println buf
+
+println format("Internal pi -> %.99f",pi())
+
+

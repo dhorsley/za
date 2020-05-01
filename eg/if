@@ -1,0 +1,30 @@
+
+debug 0
+
+if false
+
+    if true 
+
+        if false
+
+            println "smeagol!"
+        
+        else
+
+            println "gollum!"
+
+        endif
+    else
+
+        println "gandalf."
+
+    endif
+
+println "monty"
+
+endif
+
+println "Complete."
+
+
+

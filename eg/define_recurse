@@ -1,0 +1,21 @@
+#!/usr/bin/za
+
+println "\n[#fcyan]Za function defining[#default]"
+
+module "modules/math.mod"
+
+showdef factorial
+
+println "\n[#4]factorial test[#-]"
+println "4! = ", factorial(4)
+println "15! = ", factorial(15)
+
+
+test "recurse_1" group "functions" assert fail
+    doc "\nFactorial test\n"
+    assert factorial(4)==24
+    assert factorial(15)==1307674368000
+endtest
+
+
+

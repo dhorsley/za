@@ -1,0 +1,7 @@
+#!/usr/bin/za
+cls
+prompt x "Enter first number : "
+at 2,1
+prompt y "Enter second number : "
+at 3,1
+println "The result of addition=",int(x)+int(y)

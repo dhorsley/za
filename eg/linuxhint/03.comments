@@ -1,0 +1,6 @@
+#!/usr/bin/za
+
+# Add two numeric values
+sum=25+35
+println sum
+

@@ -1,0 +1,28 @@
+#!/usr/bin/za
+
+x=0; y=0
+
+if argc()==2
+    foreach a in argv()
+
+        if a==""; continue; endif
+
+        index=field(a,1,"=")
+        val=field(a,2,"=")
+
+        when upper(index)
+        is "X"
+            x=float(val)
+        is "Y"
+            y=float(val)
+        or
+            println "Unknown index."
+            exit 1
+        endwhen
+
+    endfor
+endif
+
+println "Addition result X+Y=",x+y
+
+

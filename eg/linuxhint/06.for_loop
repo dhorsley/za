@@ -1,0 +1,7 @@
+#!/usr/bin/za
+
+for count=10 to 1 step -1
+    print "{count} "
+endfor
+print
+

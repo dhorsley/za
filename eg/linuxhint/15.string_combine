@@ -1,0 +1,8 @@
+#!/usr/bin/za
+string1="Linux"
+string2="Hint"
+println "{string1}{string2}"
+string3="{string1}{string2}"
+string3=string3+" is a good tutorial blog site."
+println string3
+

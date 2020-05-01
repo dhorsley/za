@@ -1,0 +1,268 @@
+#!/usr/bin/za -f
+
+#
+# Name          : za packager
+# Version       : 1.0
+# Description   : packager for Za applications
+# Maintainer    : Daniel Horsley
+#
+
+
+pkg_version=1
+
+# error codes:
+_err_no_args           = 1
+_err_bad_command       = 2
+_err_badly_packed      = 3
+_err_bad_init          = 4
+_err_no_za          = 5
+_err_za_missing     = 6
+_err_no_packing_name   = 7
+_err_no_overwrite      = 8
+_err_sequence_fail     = 9
+
+
+# 
+# MAIN
+#
+
+module "pkg"
+
+rest=""
+
+input verb param 1
+input rest optarg 2      
+
+
+# get package name
+za_path="."
+if rest != ""
+    za_path=rest
+endif
+
+package_name =| basename {za_path}
+
+
+# process
+
+when verb
+
+    is "init"
+
+        print "cwd  : "
+        | echo $PWD
+        | ls -lh
+        print "Path : {za_path}\n"
+
+        # dir name provided?
+        if za_path != "."
+            | mkdir -p {za_path}
+            | pushd {za_path} 1>&2
+            print "[#1]Package name set to {package_name}\n"
+        else
+            print "[#1]No package name provided on the command line.\n"
+        endif
+
+        if is_dir(za_path+"/.za")
+            error(_err_bad_init,"Error: this directory looks like it has already been initialised.")
+        else
+            | mkdir .za config docs files modules packages sequenced
+            | touch README.md main.fo
+            print "[#4]Structure created.\n"
+            | touch .za/config
+            | echo "package_name={package_name}" > .za/config
+            print "[#4]Config file created with package_name of {package_name}\n"
+        endif
+
+    is "rm"
+
+        # is package_name a za archive?
+        if package_name != ""
+            if ! is_dir(package_name+"/.za")
+                error(_err_no_za,"Error: the provided name is not an archive.")
+            else
+                # remove archive directory
+                | rm -fr {package_name}
+                print "[#4]Archive directory removed.\n"
+            endif
+        endif
+
+    is "pack"
+       
+        if za_path == "."
+
+            package_name=get_config(".","package_name")
+            if package_name == ""
+                error(_err_no_packing_name,"Error: no package name found.")
+            endif
+
+            print "[#1]Package name redefined from config file as [{package_name}]\n"
+
+        endif
+
+        za_file="{package_name}.za"
+
+        tempack =| mktemp
+        | tar -czf {tempack} --exclude={za_file} .
+
+        if ! is_file(tempack)
+            error(_err_badly_packed,"Error: the archive was badly constructed.")
+        else
+            | rm -f {za_file}
+            | mv {tempack} {za_file}
+            r2=last()
+        endif
+        | rm -f {tempack}
+
+        if r2!=0
+            error(_err_badly_packed,"Error: the archive was badly constructed.")
+        endif
+
+        print "[#4]Packaging complete.\n"
+
+    is "unpack"
+        
+        # extract file
+
+        err=0
+
+        if package_name == ""
+            error(_err_no_za,"Error: no archive specified.")
+        endif
+        
+        za_file="{package_name}.za"
+
+        if ! is_file(za_file)
+            error(_err_za_missing,"Error: that archive does not exist.")
+        endif
+
+        if is_dir(package_name)
+            error(_err_no_overwrite,"Error: someone has already built that.")
+        endif
+
+        | mkdir {za_path}
+        | pushd {za_path} 1>&2
+        | tar -xzf ../{za_file}
+        | chmod u+x *.fo
+        | chmod u+x sequenced/* 
+
+        # process executions
+        has_startup     = false
+        has_shutdown    = false
+        has_sequenced   = false
+        has_daemon      = false
+        has_main        = false
+        
+        # .za/config has an optional stop_on_error=no|yes option
+
+        stop_on_error   = false
+        if get_config(za_path,"stop_on_error") == "yes"
+            stop_on_error = true
+        endif
+
+        # 0. startup
+        if is_file(za_path+"/startup.fo")
+            has_startup=true
+        endif
+
+        # 1. main
+        if is_file(za_path+"/main.fo")
+            has_main=true
+        endif
+
+        # 2. daemon
+        if is_file(za_path+"/daemon.fo")
+            has_daemon=true
+        endif
+
+        # 3. shutdown
+        if is_file(za_path+"/shutdown.fo")
+            has_shutdown=true
+        endif
+
+
+        # 4. if no main, startup or daemon then execute sequenced folder
+
+        max_seq =| ls -l sequenced | grep -v "^total " | wc -l
+
+        if max_seq>0
+            has_sequenced=true
+        endif
+
+        title(pkg_version)
+        print "\n[#3][#underline]Unpack Summary[#-]\n"
+        print "startup   {has_startup}\n"
+        print "main      {has_main}\n"
+        print "daemon    {has_daemon}\n"
+        print "shutdown  {has_shutdown}\n"
+        print "sequenced {has_sequenced}\tmax : {max_seq}\n\n"
+
+        
+        # execute 
+   
+        #.. run startup
+        if has_startup
+            | ./startup.fo
+            err=last()
+            print
+        endif
+
+        #.. run main script
+        if has_main
+            | ./main.fo
+            err=last()
+            print
+        endif
+
+        #.. run daemon
+        if ! has_main && has_daemon
+            daemon("./daemon.fo")
+            print
+        endif
+
+        #.. run sequence
+        do_seq=false
+        if ! has_main && ! has_daemon
+            do_seq=true
+        endif
+
+        # do sequenced script list if no main or daemon. if no sequence too, then ignore
+        if do_seq && has_sequenced
+            err,message=sequencer(stop_on_error)
+            if err!=0
+                error(_err_sequence_fail,"Sequence failed\n"+pad("Message",-1,16)+": {message}\n"+pad("Exit code",-1,16)+": {err}")
+            endif
+            print 
+        endif
+
+        #.. run shutdown
+        if err==0
+            if has_shutdown
+                | ./shutdown.fo
+                err=last()
+                print
+            endif
+        endif
+
+    is "show"
+        break
+
+    is "clean"
+        | rm -rf config docs files main.fo modules/ packages README.md sequenced .za
+
+    is "help"
+        title(pkg_version)
+        print "\nUsage:\n"
+        print "\tpkg [#dim]command[#-] [ [#dim]arguments[#-] ]\n\n"
+        print "Commands are: init, pack and unpack.\n\n"
+        print "\tinit [ [#i1]directory_name[#i0] ] : prepare the current directory (or the named sub-directory) as a package.\n"
+        print "\tpack                    : creates a Za archive from the current working directory if a valid structure is present.\n"
+        print "\tunpack [ [#i1]package_name[#i0] ] : unpacks and executes a Za.\n\n"
+
+    or
+        error(_err_bad_command,"Error: invalid command supplied '{verb}'.")
+
+endwhen
+
+exit 0
+

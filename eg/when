@@ -1,0 +1,54 @@
+#!/usr/bin/za
+
+# 
+# when...endwhen test
+# 
+
+input colour param 1
+
+print "\nInput colour : <{colour}>\n\t"
+
+
+when colour
+
+is "yellow"
+    print "yellow\n"
+is "blue"
+    print "blue\n"
+is "black"
+    print "black\n"
+
+contains "red|green"
+
+    when colour
+    is "red"
+        print "red\n "
+        break
+    is "green"
+        print "green\n "
+    endwhen
+
+or
+    print "unknown colour.\n"
+
+endwhen
+
+
+os=release_id()
+
+print "\nOS VALUE : {os}\n\t"
+
+when os
+    contains "ubuntu|debian"
+        print "Debian-variant\n"
+    contains "centos|redhat|ami"
+        print "RedHat-variant\n"
+    contains "opensuse"
+        print "openSUSE-variant"
+    or
+        print "Unknown OS-variant.\n"
+endwhen
+
+print
+
+

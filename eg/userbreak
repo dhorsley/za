@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+define testbreak()
+    println "\nUser break\n"
+    return 42
+enddef
+
+setglob userSigIntHandler "testbreak"
+
+for f=0 to 10e6
+    println f
+endfor
+
+assert false
+

@@ -1,0 +1,24 @@
+#!/usr/bin/za
+
+define ackermann(m,n)
+  if m==0
+    # println "M returning ",n+1
+    return n+1
+  endif
+  if n==0
+    o=ackermann(m-1,1)
+    # println "N returning ",o
+    return o
+  endif
+  o=ackermann(m-1,ackermann(m,n-1))
+  # println "DEF returning ",o
+  return o
+enddef
+
+input a param 1
+input b param 2
+a=int(a)
+b=int(b)
+
+println ackermann(a,b)
+

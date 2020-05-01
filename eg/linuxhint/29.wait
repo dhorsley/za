@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+#
+# not a relevant example
+#
+
+# za processes commands in the foreground of an owned shell process.
+
+# if you wanted to mimic the wait behaviour you could do so in the same way
+# that bash does, using 'wait' 'pidof' etc.
+
+# all that the linuxhints examples does is effectively for something that has more
+# than like already finished.
+
+

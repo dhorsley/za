@@ -1,0 +1,784 @@
+package main
+
+//
+// IMPORTS
+//
+
+import (
+    "flag"
+    "fmt"
+    "path/filepath"
+    "io"
+    "io/ioutil"
+    "os"
+    "os/exec"
+    "os/signal"
+    str "strings"
+    "syscall"
+    "time"
+)
+
+// for profiling:
+import (
+    "log"
+    "net/http"
+    _ "net/http/pprof"
+    "runtime/trace"
+)
+
+//
+// ALIASES
+//
+
+var sf = fmt.Sprintf
+var pln = fmt.Println
+
+//
+// CONSTS AND GLOBALS
+//
+
+// connections
+var MAX_TIO time.Duration = 120000 // two minutes
+
+// build-time
+
+var BuildComment string
+var BuildVersion string
+var BuildDate string
+
+// safety
+
+var lockSafety bool=false       // enable mutices in variable handling functions, for multi-threading.
+
+// run-time
+
+var callstack = make(map[uint64]call_s)             // open function calls
+var panes = make(map[string]Pane)                   // defined console panes.
+var features = make(map[string]Feature)             // list of stdlib categories.
+var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
+
+var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
+var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for each defined function (key: function name)
+var loops = make([][]s_loop, LOOP_CAP)              // counters per function per loop type (keys: function, keyword-token id)
+var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function name)
+var fairydust = make(map[string]string, FAIRY_CAP)  // ANSI colour code mappings (key: colour alias)
+var lastConstruct = make([][]int, SPACE_CAP)        // stores the active construct/loop types outer->inner for the break command
+var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN statements
+var wccount = make([]int, SPACE_CAP)                // count of active WHEN..ENDWHEN statements per function.
+
+var globalaccess uint64                             // number of functionspace which is considered to be "global"
+
+var varcount = make([]int, SPACE_CAP)               // how many local variables are declared in each active function.
+
+var lastfs uint64                                   // last active functionspace.
+var lastbase uint64                                 // last active function (source).
+var lastline int                                    // last processed source line.
+
+// variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
+var ident = make([][]Variable, SPACE_CAP)
+
+// lookup tables for converting between function name and functionspaces[] index.
+var fnlookup = lmcreate(SPACE_CAP)
+var numlookup = nlmcreate(SPACE_CAP)
+
+// interactive mode flag
+var interactive = 0
+
+// interactive mode prompt handling
+var prompt bool                 // interactive mode flag
+var promptTemplate string
+
+// storage for the standard library functions
+var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
+
+// firstInstallRun is used by the package management library calls for flagging an "update".
+var firstInstallRun bool = true
+
+// mysql connection variables - these should really be in the library (and done differently!)
+var dbhost string   //
+var dbengine string // these would normally be provided in ZA_DB_* environmental variables
+var dbport int      // and be initialised during db_init().
+var dbuser string   //
+var dbpass string   //
+
+
+//
+// MAIN
+//
+
+var eval *Evaluator         // declaration for math evaluator
+
+var bgbash *exec.Cmd        // holder for the coprocess
+var pi io.WriteCloser       // process in, out and error streams
+var po io.ReadCloser
+var pe io.ReadCloser
+
+var row, col int            // for pane + terminal use
+var MW, MH int              // for pane + terminal use
+var currentpane string      // for pane use
+
+var cmdargs []string        // cli args
+
+var ansiMode bool           // defaults to true. false disables ansi colour code output
+
+var testMode bool           // is TEST..ENDTEST functionality enabled this run? (this may change later for alternative run types)
+var docGen bool             // is DOC processing enabled this run? (now deprecated?)
+
+// setup getInput() history for interactive mode
+var curHist int
+var lastHist int
+var hist []string // =make([]string)
+var histEmpty bool
+
+// setup logging
+var logFile string
+var loggingEnabled bool
+var log_web bool
+var web_log_file string = "/var/log/za_access.log"
+
+// trap handling (@note: this needs extending to handle user defined traps)
+var sig_int bool       // ctrl-c pressed?
+var coproc_active bool // for resetting co-proc if interrupted
+
+// test related setup
+var under_test bool
+var test_group string
+var test_name string
+var test_assert string
+var test_group_filter string
+var fail_override string
+var inside_test bool
+var test_output_file string
+var testsPassed int
+var testsFailed int
+var testsTotal int
+
+// pane resize indicator
+var winching bool
+
+// 0:off, >0 max displayed level (not currently used too much. maybe eventually be removed).
+var debug_level int
+
+// 0:off, >0 line number to emit (used when producing source line debug output)
+// var slmon, elmon int
+
+// list of keywords for lookups (used in interactive mode TAB completion)
+var keywordset map[string]struct{}
+
+
+func main() {
+
+    // setup winch handler receive channel to indicate a refresh is required, then check it in Call() before enact().
+    sigs := make(chan os.Signal, 1)
+    signal.Notify(sigs, syscall.SIGWINCH)
+
+    go func() {
+        for {
+            <-sigs
+            winching = true
+        }
+    }()
+
+    var err error // generic error flag
+
+    fnlookup.lmset("global",0)
+    fnlookup.lmset("main",1)
+    numlookup.lmset(0,"global")
+    numlookup.lmset(1,"main")
+
+    calllock.Lock()
+    callstack[0] = call_s{} // reset call stacks for global and main
+    callstack[1] = call_s{}
+    calllock.Unlock()
+
+    farglock.Lock()
+    functionArgs[0] = []string{} // initialise empty function argument lists for
+    functionArgs[1] = []string{} // global and main, as they cannot be called by user.
+    farglock.Unlock()
+
+    // setup the funcs in the standard library. this must come before any use of vset()
+    buildStandardLib()
+
+    // create lookup list for keywords - this must come before any use of vset()
+    keywordset = make(map[string]struct{})
+    for keyword := range completions {
+        keywordset[completions[keyword]] = struct{}{}
+    }
+
+    // global namespace
+    vcreatetable(0, VAR_CAP)
+
+    // get terminal dimensions
+    MW, MH, _ = GetSize(1)
+
+    // turn debug mode off
+    debug_level = 0
+
+    // set available build info
+    vset(0, "@language", "Za")
+    vset(0, "@version", BuildVersion)
+    vset(0, "@creation_author", "D Horsley")
+    vset(0, "@creation_date", BuildDate)
+
+    // set interactive prompt
+    vset(0, "prompt", promptStringStartup)
+    vset(0, "startprompt", promptStringStartup)
+    vset(0, "bashprompt", promptBashlike)
+
+    // set default behaviours
+    vset(0, "@silentlog", true)
+    vset(0, "mark_time", false)
+
+    vset(0, "userSigIntHandler", "")// name of Za function that handles ctrl-c.
+
+    // set global loop and nesting counters
+    loops[0] = make([]s_loop, MAX_LOOPS)
+    lastConstruct[globalspace] = []int{}
+
+    // initialise math evaluator for re-use in ev()
+    eval = NewEvaluator()
+
+    // read compile time arch info
+    vset(0, "@glibc", false)
+    if BuildComment == "glibc" {
+        vset(0, "@glibc", true)
+    }
+    vset(0, "@ct_info", BuildComment)
+
+    // arg parsing
+    var a_help          = flag.Bool("h", false, "help page")
+    var a_version       = flag.Bool("v", false, "display the Za version")
+    var a_interactive   = flag.Bool("i", false, "run interactively")
+    var a_debug         = flag.Int("d", 0, "set debug level (0:off)")
+//  var a_dstart        = flag.Int("S", 0, "set line debug start (0:off)")
+//  var a_dend          = flag.Int("E", 0, "set line debug end (0:off)")
+    var a_profile       = flag.Bool("p", false, "enable profiler")
+    var a_trace         = flag.Bool("P", false, "enable trace capture")
+    var a_test          = flag.Bool("t", false, "enable tests")
+    var a_test_file     = flag.String("o", "za_test.out", "set the test output filename")
+    var a_docgen        = flag.Bool("g", false, "enable documentation generator")
+    var a_filename      = flag.String("f", "", "input filename, when present. default is stdin")
+    var a_program       = flag.String("e", "", "program string")
+    var a_program_loop  = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like.")
+    var a_program_fs    = flag.String("F", "", "provides a field separator for -r.")
+    var a_test_override = flag.String("O", "continue", "test override value")
+    var a_test_group    = flag.String("G", "", "test group filter")
+    var a_time_out      = flag.Int("T", 0, "Co-process command time-out (ms)")
+    var a_mark_time     = flag.Bool("m", false, "Mark co-process command progress.")
+    var a_ansi          = flag.Bool("c", false, "disable colour output")
+    var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use.")
+    var a_shell         = flag.String("s", "", "path to coprocess shell")
+
+    flag.Parse()
+    cmdargs = flag.Args() // rest of the cli arguments
+    exec_file_name := ""
+
+    // mono flag
+    ansiMode=true
+    if *a_ansi {
+        ansiMode = false
+    }
+
+    // prepare ANSI colour mappings
+    setupAnsiPalette()
+
+    // safety checks
+    if *a_lock_safety {
+        lockSafety = true
+    }
+
+    // check if interactive mode was desired
+    prompt = false
+    interactive = 0 // offset for loops (stops out of range indices)
+    if *a_interactive {
+        prompt = true
+        interactive = 1
+    }
+
+    // filename
+    if *a_filename != "" {
+        exec_file_name = *a_filename
+    } else {
+        // try first cmdarg
+        if len(cmdargs) > 0 {
+            exec_file_name = cmdargs[0]
+            if !prompt && *a_program=="" { cmdargs = cmdargs[1:] }
+        }
+    }
+
+    fpath,_:=filepath.Abs(exec_file_name)
+    fdir:=fpath
+
+    f, err := os.Stat(fpath)
+    if err == nil {
+        if !f.Mode().IsDir() {
+            fdir=filepath.Dir(fpath)
+        }
+    }
+    vset(0, "@execpath", fdir)
+
+    // help flag
+    if *a_help {
+        help("")
+        os.Exit(0)
+    }
+
+    // version flag
+    if *a_version {
+        version()
+        os.Exit(0)
+    }
+
+    // max timeout
+    if *a_time_out != 0 {
+        MAX_TIO = time.Duration(*a_time_out)
+    }
+
+    if *a_mark_time {
+        vset(0, "mark_time", true)
+    }
+
+    // debug flag
+    if *a_debug != 0 {
+        debug_level = *a_debug
+    }
+
+    /*
+    if *a_dstart != 0 {
+        slmon = *a_dstart
+    }
+
+    if *a_dend != 0 {
+        elmon = *a_dend
+    }
+    */
+
+    // trace capture
+    if *a_trace {
+        tf, err := os.Create("trace.out")
+        if err != nil {
+            panic(err)
+        }
+        err = trace.Start(tf)
+        if err != nil {
+            os.Exit(126)
+        }
+        defer func() {
+            trace.Stop()
+            tf.Close()
+        }()
+    }
+
+    // pprof
+    if *a_profile {
+        go func() {
+            log.Fatalln(http.ListenAndServe("127.0.0.1:6060", http.DefaultServeMux))
+        }()
+    }
+
+    // test mode
+    if *a_test {
+        testMode = true
+    }
+
+    if *a_test_override != "" {
+        fail_override = *a_test_override
+    }
+
+    test_output_file = *a_test_file
+    _ = os.Remove(test_output_file)
+
+    test_group_filter = *a_test_group
+
+    if testMode {
+        testStart(exec_file_name)
+        defer testExit()
+    }
+
+    // set the coprocess command
+    default_shell:=""
+    if *a_shell!="" {
+        default_shell=*a_shell
+    }
+
+    // doc gen (deprecated)
+    if *a_docgen {
+        docGen = true
+    }
+
+
+    // Primary activity below
+
+    var data []byte // input buffering
+
+    // start shell in co-process
+
+    bashLoc:=""
+
+    if default_shell=="" {
+        bashLoc, err = GetBash("/usr/bin/which bash")
+        if err == nil {
+            bashLoc = bashLoc[:len(bashLoc)-1]
+        } else {
+            if fexists("/bin/bash") {
+                bashLoc="/bin/bash"
+            } else {
+                pf("Error: could not locate a Bash shell.\n")
+                pf("Error content:\n%v\n",err)
+                os.Exit(ERR_NOBASH)
+            }
+        }
+    } else {
+        if !fexists(default_shell) {
+            pf("The chosen shell (%v) does not exist.\n",default_shell)
+            os.Exit(ERR_NOBASH)
+        }
+        bashLoc=default_shell
+    }
+
+    vset(0, "@bash_location", bashLoc)
+
+
+    // spawn a bash co-process
+    bgbash, pi, po, pe = NewCoprocess(bashLoc)
+
+
+    // ctrl-c handler
+    breaksig := make(chan os.Signal, 1)
+    signal.Notify(breaksig, syscall.SIGINT)
+
+    go func() {
+        for {
+            <-breaksig
+            pf("\n[#2]User Interrupt![#-] ")
+            if interactive == 0 {
+                pf("\n")
+            }
+
+            caval:=coproc_active
+
+            if caval {
+                // out with the old
+                if bgbash != nil {
+                    pid := bgbash.Process.Pid
+                    debug(13, "\nkilling pid %v\n", pid)
+                    // drain io before killing the process:
+                    pi.Close()
+                    // now kill:
+                    bgbash.Process.Kill()
+                    bgbash.Process.Release()
+                }
+                // in with the new
+                bgbash, pi, po, pe = NewCoprocess(bashLoc)
+                debug(13, "\nnew pid %v\n", bgbash.Process.Pid)
+                siglock.Lock()
+                coproc_active = false
+                siglock.Unlock()
+            }
+
+            // user-trap handling
+
+            userSigIntHandler,usihfound:=vget(globalaccess,"userSigIntHandler")
+            usih:=""
+            if usihfound { usih=userSigIntHandler.(string) }
+
+            if usih!="" {
+
+                argString:=""
+                if brackPos:=str.IndexByte(usih,'('); brackPos!=-1 {
+                    argString=usih[brackPos:]
+                    usih=usih[:brackPos]
+                }
+
+                // calc arguments from string
+
+                var iargs []interface{}
+                if argString!="" {
+                    argString = stripOuter(argString, '(')
+                    argString = stripOuter(argString, ')')
+
+                    // evaluate args
+                    var argnames []string
+
+                    // populate inbound parameters to the za function call, with evaluated versions of each.
+                    if argString != "" {
+                        argnames = str.Split(argString, ",")
+                        for k, a := range argnames {
+                            aval, ef, err := ev(globalaccess, a, false)
+                            if ef || err != nil {
+                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
+                                finish(false, ERR_EVAL)
+                                break
+                            }
+                            iargs = append(iargs, aval)
+                        }
+                    }
+                }
+
+                // build call
+
+                newfnlock.Lock()
+                loc := GetNextFnSpace()
+                lmv,_:=fnlookup.lmget(usih)
+                newfnlock.Unlock()
+                calllock.Lock()
+                callstack[loc] = call_s{fs: usih, base: lmv, caller: globalaccess, retvars: []string{"@temp"}}
+                calllock.Unlock()
+
+                // execute call
+                Call(MODE_CALL, globalaccess, lmv, MODE_NEW, Phrase{}, loc,iargs...)
+
+                if _, ok := VarLookup(globalaccess, "@temp"); ok {
+                    sigintreturn,_ := vget(globalaccess, "@temp")
+                    switch sigintreturn.(type) {
+                    case int:
+                    default:
+                        pf("User interrupt handler must return an int or nothing!\n")
+                        finish(true,124)
+                    }
+                    if sigintreturn.(int)!=0 {
+                        finish(true,sigintreturn.(int))
+                    }
+                }
+            } else {
+                finish(false, 0)
+            }
+        }
+    }()
+
+    var cop string
+
+    // @note:
+    // some explanation is required here...
+    // there are two "global" concepts here. First, there is an internal global space, which is used for storing
+    // run-time state that may be needed by the standard library or the language itself.
+    // This global is always at index 0.
+    // Second, there is a user global. This one can potentially float around. It represents where global variables 
+    // are stored by a running za program. It will generally be at index 1 or 2.
+    // Where it is depends on if we are in interactive mode or not. 
+    // This is not very elegant, but then, nothing about this whole thing is! :)
+    // globals with a '@' sign are considered as nominally constant. The @ sign is not available to users in identifiers.
+    // however, the standard library functions may modify their values if needed.
+
+
+    // static globals from bash
+    cop, _ = Copper("echo -n $ZSH_VERSION", true)
+    vset(0, "@zsh_version", cop)
+    cop, _ = Copper("echo -n $BASH_VERSION", true)
+    vset(0, "@bash_version", cop)
+    cop, _ = Copper("echo -n $BASH_VERSINFO", true)
+    vset(0, "@bash_versinfo", cop)
+    cop, _ = Copper("echo -n $USER", true)
+    vset(0, "@user", cop)
+    cop, _ = Copper("echo -n $OSTYPE", true)
+    vset(0, "@os", cop)
+    cop, _ = Copper("echo -n $HOME", true)
+    vset(0, "@home", cop)
+    cop, _ = Copper("echo -n $LANG", true)
+    vset(0, "@lang", cop)
+    cop, _ = Copper("echo -n $WSL_DISTRO_NAME", true)
+    vset(0, "@wsl", cop)
+
+    tmp, _ := Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
+    vset(0, "@release_name", stripOuterQuotes(tmp, 1))
+
+    tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
+    vset(0, "@release_version", stripOuterQuotes(tmp, 1))
+
+    // special cases for release version:
+
+    // case 1: centos/other non-semantic expansion
+    vtmp, _ := vget(0, "@release_version")
+    if !str.ContainsAny(vtmp.(string), ".") {
+        vtmp = vtmp.(string) + ".0"
+    }
+    vset(0, "@release_version", vtmp)
+
+    tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true) // e.g. "debian"
+
+    // special cases for release id:
+
+    // case 1: opensuse
+    tmp = stripOuterQuotes(tmp, 1)
+    if str.HasPrefix(tmp, "opensuse-") {
+        tmp = "opensuse"
+    }
+
+    // case 2: ubuntu under wsl
+    vset(0, "@winterm", false)
+    wsl, _ := vget(0, "@wsl")
+    if str.HasPrefix(wsl.(string), "Ubuntu-") {
+        vset(0, "@winterm", true)
+        tmp = "ubuntu"
+    }
+
+    vset(0, "@release_id", tmp)
+
+
+    // further globals from bash
+    cop, _ = Copper("hostname", true)
+    vset(0, "@hostname", cop)
+
+
+    // reset counters:
+    depth[globalspace] = 0
+
+    promptTemplate = promptStringStartup
+    panes["global"] = Pane{row: 0, col: 0, w: MW + 1, h: MH}
+    currentpane = "global"
+    orow = 0
+    ocol = 0
+    ow = MW + 1
+    oh = MH // for resetting the terminal to global pane
+
+
+    // reset logging
+    logFile = ""
+    loggingEnabled = false
+
+
+    // interactive mode support
+    if prompt {
+
+        // reset terminal
+        cls()
+
+        // banner
+        title := sparkle(sf("Za Interactive Mode  -  (%v,%v)  ", MH, MW))
+        pf("%s\n\n", sparkle("[#bblue][#7]"+pad(title, -1, MW, "·")+"[#-][##]"))
+
+        // state control
+        endFunc := false
+        // breakOut:=Error
+
+        curHist = 0
+        lastHist = 0
+        histEmpty = true
+        lastfs = globalspace
+
+        // term loop
+        pf("\033[s") // save cursor
+        row = 3
+        col = 1
+        at(row, col)
+        pcol := promptColour
+
+        // simple, inelegant, probably buggy REPL
+        for {
+
+            sig_int = false
+            fspacelock.Lock()
+            functionspaces[globalspace] = []Phrase{}
+            fspacelock.Unlock()
+
+            pr, _ := vget(0, "prompt")
+            sparklePrompt := sparkle(pr.(string))
+            input, eof, broken := getInput(sparklePrompt, "global", row, col, pcol, true, true)
+            if eof || broken {
+                break
+            }
+
+            addrow := 1
+            if row >= MH {
+                row = MH
+                fmt.Printf("\033[%dS", 1) // scroll up 1 line
+                addrow = 0
+            }
+            row += addrow
+            col = 1
+            at(row, col)
+
+            if input == "\n" {
+                continue
+            }
+            input += "\n"
+
+            parse("global", input, 0)
+
+            // throw away break and continue positions in interactive mode
+            endFunc, _ , _ = Call(MODE_CALL, 0, 0, MODE_STATIC, Phrase{}, globalspace)
+            if endFunc {
+                break
+            }
+
+            vset(0, "prompt", interpolate(globalspace, promptTemplate))
+
+        }
+        pln("")
+
+        finish(true, 0)
+    }
+
+
+    // function spaces:
+    //
+    // global space is named 'global'
+    // main (entry point) function space is named 'main'
+    // defined functions are named according to their function name
+
+    // if not in interactive mode, then get input from either file or stdin:
+    if *a_program=="" {
+        if exec_file_name != "" && exec_file_name != "-" {
+            ok := false
+            f, err := os.Stat(exec_file_name)
+            if err == nil {
+                if f.Mode().IsRegular() {
+                    ok = true
+                }
+            }
+            if ok {
+                data, err = ioutil.ReadFile(exec_file_name)
+            } else {
+                pf("Error: source file not found.\n")
+                os.Exit(ERR_EXISTS)
+            }
+        } else {
+            data, err = ioutil.ReadAll(os.Stdin)
+            if err != nil {
+                panic(err)
+            }
+        }
+    }
+
+    if *a_program_loop==true {
+        s:= `NL=0` + "\n" +
+            `foreach _line in read_file("/dev/stdin")` + "\n" +
+            `inc NL` + "\n"
+        if *a_program_fs=="" {
+            s+=`fields(_line); `
+        } else {
+            s+=`fields(_line,"`+*a_program_fs+`"); `
+        }
+        s += "\n" + *a_program + "\nendfor\n"
+        *a_program=s
+    }
+
+
+    // source the program
+    var input string
+    if *a_program!="" {
+        input=*a_program+"\n"
+    } else {
+        input=string(data)
+    }
+
+    // tokenise and parse the input
+    if len(input) > 0 {
+        parse("main", input, 0)
+
+        // initialise the main program
+        cs := call_s{}
+        cs.base = 1
+        cs.fs = "main"
+        cs.caller = 0
+        mainloc := GetNextFnSpace()
+        calllock.Lock()
+        callstack[mainloc] = cs
+        calllock.Unlock()
+        Call(MODE_CALL, 0, 0, MODE_NEW, Phrase{}, mainloc)
+    }
+
+    // webCloseAll()
+
+}
+

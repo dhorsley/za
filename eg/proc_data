@@ -1,0 +1,59 @@
+#!/usr/bin/za
+
+llen = 100000
+sz=9999
+
+define then()
+    return epoch_nano_time()
+enddef
+
+define now(then)
+    print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," ms\n\n"
+enddef
+
+define listOp(list,var,expr)
+    foreach {var} in list
+        newlist=append(newlist,eval(expr))
+    endfor
+    return newlist
+enddef
+
+define reduce(list,var,expr)
+    foreach {var} in list
+        on eval(expr) do newlist=append(newlist,x)
+    endfor
+    return newlist
+enddef
+
+# build list
+
+print "Building list.\n"
+t=then()
+for e=0 to llen-1
+    list=append(list,rand(sz))
+endfor
+now(t)
+
+t=then(); print "List Length : ",numcomma(length(list),0),"\n"; now(t)
+t=then(); print "Min         : ",min(list),"\n"; now(t)
+t=then(); print "Max         : ",max(list),"\n"; now(t)
+t=then(); print "Sum         : ",sum(list),"\n"; now(t)
+t=then(); print "Avg         : ",avg(list),"\n"; now(t)
+
+t=then()
+ listOp(list,"x","x/2")
+ print "Op (x/2)    : \n"
+now(t)
+
+# reduce_expr="x<43"
+reduce_expr="x>9899"
+print "Reduce, all {reduce_expr} :\n"
+t=then()
+ newlist=uniq(list_int(reduce(list,"x",reduce_expr)))
+now(t)
+print "New list,unique numbers :\n"
+print newlist,"\n"
+
+print
+
+

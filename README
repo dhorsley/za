@@ -1,0 +1,168 @@
+
+Contents
+========
+
+    About
+    Install
+    Changelog
+    Examples
+
+
+About
+-----
+
+You may look at this language and, rightfully, think: why?
+
+It's not faster than many of it's alternatives. It is not more readable. It is not more
+succinct. There are more flexible languages.
+
+The reason is this. I was fed up with looking at shell scripts. They cannot grow very 
+large before they become difficult to reason about. They frequently ask other tools to do 
+work on their behalf. Many shell dialects are slow at certain tasks if not used in exactly
+the right way.
+
+You can, if you really want to, do almost anything with a shell script and associated 
+tools. You can build a web server, you can write another language, you can manipulate 
+images, you can process data in bulk. They can be very capable.
+
+However, the amount of work required to maintain such things is not pleasant.
+
+Shell scripts usually have horrible dependencies. They are usually not modular. They are 
+not easily tested. Speed comes with fragility.
+
+So, the way we give them power is generally through other tools. A typical shell script 
+may call programs such as Awk, Perl, Python, cut, sed, grep and many others.
+
+The aim of Za is to give a general construct that supervises a shell while also removing 
+some of the bad aspects of the arrangement. Za is a single binary that provides the language
+interpreter, a standard library and the supervision capability over a single shell.
+
+The shell runs as a co-process which can have commands fed into it and will return standard
+output and error channels as well as error codes from those commands. 
+
+You may still, and are encouraged to, use all the same tools you already do within the
+co-process. What we want to eliminate is the over-abundance of such calls for small tasks
+for which it is overkill. Normally, to avoid these, you either have to write your own 
+alternatives or use some arcane, probably non-portable, in-built operators.
+
+How often do you call Awk just to avoid basic string manipulation? Do you think bc is the 
+ideal way to work with floating point numbers in a shell script? These, and many of the other
+popular tools, are all great programs. We wouldn't be relying on them otherwise. But
+generally there is an overhead in performance in using them. They also obscure readability.
+
+There's always going to be some very specific thing that requires a third-party tool. Json 
+manipulation with jq is a perfect example. It provides a complex facility that is beyond what 
+you could reasonably generate in the script. Doing this in a structured way is no doubt a 
+good thing. We aren't trying to fight the unix philosophy here - we agree with it. 
+
+With Za you get several provisions not generally available to the shell interpreter:
+
+    * the module command - this reads in and executes Za source from either a default or a 
+        specified path. Normally you may use the source command in the shell for a similar 
+        effect. To be honest, this is similar but with a little more structure.
+
+    * variable scope - by default, variables only exist and are available within their local 
+        function. You *can* access global variables but you have to really go out of your way 
+        to do so. This is deliberate in order to discourage it.
+
+    * data types - int, float, bool and string are the primitive types available. Their use is 
+        largely transparent. There is no requirement, for most cases, to declare a type. A 
+        variable receives it's type on assignment. Some other types are available, including 
+        some complex types such as associative arrays, but their use is more selective.
+
+    * co-process shell - rather than constantly spawning processes to run small utilities, the
+        aim is to do more work inside the main process and feed complex tasks requiring other 
+        tools through the co-process. This, in turn, may launch other processes, however, this
+        should generally be restricted to more appropriate cases. The syntax is intended to be
+        easy to use and read.
+
+        To pass a command to the shell, you use the pipe command | .  e.g. '| ls -lh' 
+
+        To store the output of a command instead of passing it to stdout needs the command 
+            assignment operator =| e.g. 'ls_var=|ls -lh'
+
+        There are library functions (last() and last_out()) to read stderr and the command 
+        return code.
+
+    * package and service management - we have included the library functions install() and 
+        service() for managing package installation and service execution over a few known 
+        platforms and versions. The supported platform list may expand over time. Currently 
+        this includes redhat, debian, ubuntu, opensuse, aws and alpine. Package management is 
+        done in the background using yum, zypper, apt and systemctl.
+
+    * left- and right-hand side interpolation of variables. This allows the embedding of 
+        variables into both strings and co-process commands as well as indirect variable access.
+        Interpolation is done using the curly braces, e.g. {varname} 
+
+    * the standard library - the library currently consists of around 200 helper functions for 
+        tasks such as string manipulation, list management, type casting, math, svg manipulation,
+        web client and server tools, os information, file management, etc.
+
+        The library is not meant to be all-inclusive. We have only tried to include the common 
+        tasks we see in typical scripts where either a call is made inefficiently to get the same 
+        effect or where obscurity is introduced in order to perform it. The library may grow a 
+        little more over time, but we want to keep it fairly small.
+
+    * simple syntax - we've tried to eliminate square and curly braces as much as possible! The 
+        syntax is somewhere between BASIC, Pascal and Bash, with some other concepts thrown in.
+        The intention is to generate readable, maintainable code.
+
+    * unit test support - we have added some support for automated testing. The -t flag at startup
+        causes all reachable TEST..ENDTEST sections to be executed during the run. There is an
+        ASSERT keyword and a DOC keyword to aid also. This support is currently quite rudimentary,
+        but should improve over time.
+
+        Tests may be named and grouped and a group's assert failure condition modified. We will 
+        probably extend this model to only execute tests. Nothing is set in stone yet for this.
+
+    * interactive mode - this is currently a fairly simple REPL, but it is useful for testing and 
+        getting contextual help on the library.
+
+    * awk mode? - let's call it that, for want of a better name. You can provide a command as a
+        startup argument, like Awk/Perl, and have it operate on standard input as fed from either a
+        redirection or a piped command. This may act in a loop or not depending on provided options.
+
+        So, this goes against everything we have just stated, but you can use it in that way should
+        the need arise. It can be occasionally useful, but we don't encourage it.
+
+    * ANSI colour support and cursor positioning. There are a set of macros (which can be disabled)
+        which allow for substitution of ANSI codes in their place. For example, including [#1] in a
+        string will cause the following text to be coloured blue on output.
+
+        There are many others for foreground, background and font style. Their use is obviously 
+        dependent on the level of support in your console. There is also the AT keyword for cursor 
+        positioning and several other commands and library calls for layout.
+
+
+A reference document for the language is available in the docs/ directory as well as a Vim syntax 
+file should that be your editor of choice.
+
+We make no claims regarding the execution speed of the language. For some things it is faster for 
+others it is slower. It compares more than favourably against Bash. It processes at a similar rate to
+some implementations of Python and PHP, but it is not going to be anywhere near Awk for manipulating
+large text files. Obviously, you won't be replacing JIT or compiled languages with it either. 
+
+Additionally, you may still end up calling out to the shell on occasion... We are sure there will be 
+missing features that we didn't consider. We'll get around to the common ones.
+
+It is though definitely fast enough for the job envisaged for it - that of improving simple scripting. 
+
+
+Install
+-------
+
+Please see the INSTALL file for details.
+
+
+Changelog
+---------
+
+Please see the CHANGELOG file for details.
+
+
+Examples
+--------
+
+Some examples are available in the eg/ directory. There are also some single line uses in ONELINERS.
+
+

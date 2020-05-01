@@ -1,0 +1,96 @@
+#!/usr/bin/za
+
+# example dynamic page: called from type "f" web server path rule.
+#   this example uses the Pure CSS module: https://purecss.io/
+
+define fwhandle(call)
+    c=web_serve_decode(call)
+
+    region=getglob("region")
+    pageTitle="AWS IP Ranges for {region}"
+
+    linkOptMap["type"]       ="text/css"
+    linkOptMap["rel"]        ="stylesheet"
+    linkOptMap["href"]       ="https://unpkg.com/purecss@1.0.1/build/pure-min.css"
+    linkOptMap["integrity"]  ="sha384-oAOxQR6DkCoMliIh8yFnu25d7Eq/PHS21PClpwjOTeU2jRSq11vu66rf90/cZr47"
+    linkOptMap["crossorigin"]="anonymous"
+
+    imgCentre=`display:block;margin-left:auto;margin-right:auto;border:1px solid #248;padding:1px;`
+
+    imgOptMap["src"]         = "/img/square-pattern.png"
+    imgOptMap["style"]       = "{imgCentre}height:80px;width:60%;"
+
+    headStyles               = (
+        `<style>
+            .container { position:relative; text-align: center; color: white; }
+            .centered { position:absolute; top:50%;    left:50%;   transform:translate(-50%, -50%); }
+        </style>`
+    )
+
+    bodyOptMap["style"]      = "background:url(/img/whirlpool.png);background-repeat:no-repeat;background-size:cover;"
+
+    # example - currently not used.
+    #table = wtable(
+    #            wthead( wtr( wth("Parameter") + wth("Content") ) ) +
+    #            wtbody(
+    #                wtr( wtd("host")+wtd(c.host) ) +
+    #                wtr( wtd("path")+wtd(c.path) ) +
+    #                wtr( wtd("remote")+wtd(c.remote) ) +
+    #                wtr( wtd("method")+wtd(c.method) )
+    #                ),
+    #        `class='pure-table pure-table-striped' style='margin:auto;'`
+    #)
+
+    # convert aws IPs to text
+    iptabhead =wthead(wtr(wth("IP Range")))
+    iptabbody=""
+    ipglob=getglob("thisRegion")
+    if length(ipglob)>0
+        foreach ip in ipglob
+            iptabbody = iptabbody+wtr(wtd(ip))
+        endfor
+    endif
+    iptab = wtable(iptabhead+iptabbody,`class='pure-table pure-table-striped' style='margin:auto;'`)
+
+    # displays the values which were culled from the AWS json file.
+
+    body = wbody(
+            "<br>"+
+            wdiv(
+                wimg(imgOptMap)+
+                 wdiv(
+                    `{pageTitle}`,
+                    `style='color:#358;font-weight:bolder;font-size:24px;' class='centered'`
+                 ),
+                `class='container'`
+            )+
+            "<br>"+
+            wdiv(
+                wdiv("","class='pure-u-1-3'")+
+                 wdiv(wa("Return to main",`href='/'`),"class='pure-u-1-3' style='text-align:center;'") +
+                  wdiv("","class='pure-u-1-3'"),
+                "class='pure-g'"
+            )+"<br><br>"+
+            wdiv(
+                wdiv(""   ,"class='pure-u-1-3'") +
+                 wdiv(iptab,"class='pure-u-1-3'") +
+                  wdiv(""   ,"class='pure-u-1-3'"),
+                "class='pure-g'"
+            ) +  "<br>" +
+            "<br><br>",
+        bodyOptMap
+    )
+
+    ret = wpage(
+        whead(
+            wlink(linkOptMap) +
+            `<meta name='viewport' content='width=device-width, initial-scale=1'>`+"\n"+
+            headStyles+"\n"
+        ) + body
+    )
+
+    return ret
+
+enddef
+
+

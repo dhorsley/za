@@ -1,0 +1,19 @@
+#!/usr/bin/za
+doc `
+ignore me
+please
+(this one has side-effect of being processed during -t test executions)
+`
+nop `
+ignore me
+please
+(this one has side-effect of 100ms delay)
+`
+
+#
+# alternative is only to spread text out 
+# with single-line comments using hashes or double slashes
+#
+//
+// like these
+//

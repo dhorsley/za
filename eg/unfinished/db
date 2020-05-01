@@ -1,0 +1,77 @@
+#!/usr/bin/za -f
+
+#
+# DB TEST SCRIPT
+#
+
+
+# by default, we read db settings from env.
+# if creds file is present, use those instead:
+
+eng=get_env("ZA_DB_ENGINE")
+host=get_env("ZA_DB_HOST")
+user=get_env("ZA_DB_USER")
+pass=get_env("ZA_DB_PASS")
+port=get_env("ZA_DB_PORT")
+
+creds="tests/db.creds"
+if is_file(creds)
+    z=read_file(creds)
+    if eng=="";     set_env("ZA_DB_ENGINE",  get_value(z,"ZA_DB_ENGINE")) ; endif
+    if host=="";    set_env("ZA_DB_HOST",    get_value(z,"ZA_DB_HOST")) ; endif
+    if user=="";    set_env("ZA_DB_USER",    get_value(z,"ZA_DB_USER")) ; endif
+    if pass=="";    set_env("ZA_DB_PASS",    get_value(z,"ZA_DB_PASS")) ; endif
+    if port=="";    set_env("ZA_DB_PORT",    get_value(z,"ZA_DB_PORT")) ; endif
+endif
+
+
+test "select" group "db" assert fail
+    tdb=db_init("mysql")
+    z=db_query(tdb,"select 1 from user")
+    db_close(tdb)
+    foreach l in z
+        assert l=="1"
+        break
+    endfor
+endtest
+
+
+# db_init() reads host, password, username, port from environmental variables
+# it takes a single parameter, indicating the default schema to use.
+
+dbh=db_init("mysql")
+
+# db_query accepts an open DB handle and a query to perform.
+# the results are passed back to the caller as an internal string array, with pipe separated columns.
+# we should maybe add an optional parameter to specify the output field separator.
+
+z=db_query(dbh,"select * from user limit 4000")
+db_close(dbh)
+
+# iterate over the results
+# we are using pipesep and some loops for this.
+# it isn't the fastest, but it is more for testing loops.
+# if you know what your field order is you could run pipesep() then pick out F1..Fx directly.
+# F[0] is the entire line
+
+foreach l in z
+    pipesep(l)
+    pos=0
+    foreach f in F
+        if pos!=0
+            print "{f} "
+        endif
+        pos=pos+1
+    endfor
+    print
+endfor
+
+
+#
+# N.B.: db support in Za is primarily for fetching config from a central repository.
+#       it is not intended for large db support.
+#       it is perfectly possible to perform all DB operations, and the speed is only reasonably terrible,
+#       however, that goes beyond the intended remit.
+#
+
+

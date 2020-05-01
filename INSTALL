@@ -1,0 +1,24 @@
+
+# maintainer as of 31/10/2019
+# dhorsley@gmail.com
+
+
+# first install:
+
+# adjust ./GO to suitable paths, then:
+
+./GO
+go build za
+cp -f za /usr/bin/
+
+
+# rebuild/update/install:
+
+./build
+
+# if rebuild fails, then run go build za for better output.
+
+
+# currently, you may have to run ./build twice on WSL/Ubuntu systems as there seems to be a late file locking issue which disrupts operation.
+
+
