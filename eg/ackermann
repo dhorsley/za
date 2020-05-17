@@ -8,15 +8,15 @@ define ackermann(m,n)
     inc calls
     setglob calls = calls
 
-    if globkey("memoA","{m},{n}")
-        return getglob("memoA[`{m},{n}`]")
+    if globkey("memoA","{m}_{n}")
+        return getglob(`memoA["{m}_{n}"]`)
     endif
 
     on m==0 do return n+1
     on n==0 do return ackermann(m-1,1)
     o=ackermann(m-1,ackermann(m,n-1))
 
-    setglob memoA[`{m},{n}`] = o
+    setglob memoA[`{m}_{n}`] = o
     return o
 
 enddef

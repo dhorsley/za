@@ -4,8 +4,11 @@ cls
 row=10
 
 for a=32 to 127
-    on (a-32)%16==0 do row=row+1
-    at row,6; print row
+    if (a-32)%16==0
+        at 1+row,28; print 63+(row-11)*16
+        inc row
+    endif
+    at row,6; print 32+(row-11)*16
     at row,10+((a-32)%16)
     print chr(a)
 endfor
