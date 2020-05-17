@@ -2,8 +2,13 @@
 user=$USER
 if [[ -n $SUDO_USER ]]; then user=$SUDO_USER; fi
 
+if [[ "$1" != "" ]]; then
+    user="$1"
+fi
+
 pref="/home"
 if [[ $SUDO_USER == "root" ]]; then pref="" ; fi
+
 export GOPATH=${pref}/$user/go
 
 echo "Path : $GOPATH"

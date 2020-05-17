@@ -25,7 +25,7 @@ func finish(hard bool, i int) {
         os.Exit(i)
     }
 
-    if interactive == 0 {
+    if !interactive {
         os.Exit(i)
     }
 
@@ -325,7 +325,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
     retvars = ncs.retvars
 
     if base==0 {
-        if interactive==0 {
+        if !interactive {
             report(ifs, "Possible race condition. Please check. Base->0")
             finish(false,ERR_EVAL)
             return
@@ -344,7 +344,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         // in interactive mode, the current functionspace is 0
         // in normal exec mode, the source is treated as fnspace 1
 
-        if !prompt && base < 2 {
+        if !interactive && base < 2 {
             globalaccess = ifs
             vset(globalaccess, "userSigIntHandler", "")
         }
@@ -2474,7 +2474,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     break
                 }
                 pf(`%v`, sparkle(sf(`%v`, expr.result)))
-                if prompt { pf("\n") }
+                if interactive { pf("\n") }
             } else {
                 pf("\n")
             }
@@ -2753,6 +2753,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             var id string
 
             if tokencount > 1 {
+
                 if inbound.Tokens[1].tokType == Identifier {
                     id = inbound.Tokens[1].tokText
                 } else {
@@ -2818,28 +2819,35 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     var sqPos int
                     var elementComponents string
                     var sqEndPos int
+                    var found bool
 
                     if sqPos=str.IndexByte(id,'['); sqPos!=-1 {
                         sqEndPos=str.IndexByte(id,']')
                         elementComponents=stripOuter(id[sqPos+1:sqEndPos],'"')
                         // pf("parts: %v [ %v ]\n",id[:sqPos],elementComponents)
-                        val, _ = vgetElement(ifs,id[:sqPos],elementComponents)
-                        isArray= true
+                        val, found = vgetElement(ifs,id[:sqPos],elementComponents)
+                        isArray = true
                     } else {
-                        val, _ = vget(ifs, id)
+                        val, found = vget(ifs, id)
                     }
+
+                    if !found { val=0 }
+
                     // pf("id      : %v\n",id)
                     // pf("preval  : %v\n",val)
                     // pf("pretype : %T\n",val)
-                    switch val.(type) {
-                    case int:
-                        val,_=GetAsInt(val)
-                    case int32,int64,uint8:
-                        val,_=GetAsInt(val)
-                    default:
-                        report(ifs,sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
-                        finish(false,ERR_EVAL)
-                        endIncDec=true
+
+                    if found {
+                        switch val.(type) {
+                        case int:
+                            val,_=GetAsInt(val)
+                        case int32,int64,uint8:
+                            val,_=GetAsInt(val)
+                        default:
+                            report(ifs,sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
+                            finish(false,ERR_EVAL)
+                            endIncDec=true
+                        }
                     }
 
                     // pf("id       : %v\n",id)
@@ -2847,6 +2855,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     // pf("posttype : %T\n",val)
                     // pf("ampl     : %v\n",ampl)
                     // pf("eid      : %v\n",endIncDec)
+                    // pf("isarray  : %v\n",isArray)
 
                     // if not found then will init with 0+ampl
                     if !endIncDec {

@@ -1,0 +1,22 @@
+#!/usr/bin/za
+
+cls
+at 7,7; print pad(" [#bold][#underline]-= Colour Test =-[#-] ",0,28," ")
+at 9,10; print " f0 f1 f2 f3 f4 f5 f6 f7"
+
+for p=0 to 7
+
+    at 10+p,7; print "[##][#-]b{p}"
+
+    for i=0 to 7
+        cs=format("[#b%d][#%d] ▧ ",p,i)
+        at 10+p,10+i*3; print cs
+    endfor
+
+endfor
+
+print "[##][#-]"
+
+at 20,1
+
+
