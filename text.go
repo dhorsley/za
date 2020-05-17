@@ -55,12 +55,12 @@ func pad(s string, just int, w int, fill string) string {
 
 func stripOuter(s string, c byte) string {
 	if len(s) > 0 && s[0] == c {
-		s = s[1:]
+        s=s[1:]
 	}
-	if len(s) > 0 && s[len(s)-1] == c {
-		s = s[:len(s)-1]
+	if len(s) > 1 && s[len(s)-1] == c {
+        s=s[:len(s)-1]
 	}
-	return (s)
+	return s
 }
 
 func stripSingleQuotes(s string) string {
@@ -105,8 +105,3 @@ func hasOuterDoubleQuotes(s string) bool {
 	return hasOuter(s, '"')
 }
 
-func processString(s string) string {
-	// escape percents and convert literal backslash-n to newline character
-	return sparkle(s)
-    // return stripSingleQuotes(stripDoubleQuotes(sparkle(s)))
-}

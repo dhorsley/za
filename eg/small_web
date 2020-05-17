@@ -1,90 +1,40 @@
 #!/usr/bin/za
 
-#
-# example web static web server
-#
+# minimal static web server below.
 
-# this script starts two web servers, each on their own TCP port.
-# each server has it's own document root, from which are served
-# html, css, js and image files.
-#
-# directory access without a filename is redirected to the relevant
-# subpath's index.html file.
-#
-# if for some reason one of the server's dies, it should restart after
-# a few seconds.
-#
-
-
-#
-# functions
-#
-
-define interface_ip(in)
-    addrline =| ip addr show dev {in}
-    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
-    ipaddr=replace(ipaddr,"/","")
-    return ipaddr
-enddef
-
-define negreg(inp,matcher)
-    out=""
-    foreach l in inp
-        if match(l,matcher); continue; endif
-        out=out+l+"\n"
-    endfor
-    return out
-enddef
-
-
-#
-# main
-#
-
-locks(true)
-
+HOST="192.168.1.18"
 PORT=61440
 HOME_PATH="/home/daniel/go/src/za/eg/www/exmachina"
 
-PORT_2=61441
-HOME_PATH_2="/home/daniel/go/src/za/eg/www/exmachina"
+userSigIntHandler="cleanup(sid)"
 
-# inter="enp0s3"
-when release_id()
-is "ubuntu"
-    inter=collapse(negreg(net_interfaces(),"^lo$"))
-endwhen
+define cleanup(s)
+    web_serve_stop(s)
+    log "Server [#{s}] Stopped.\n"
+    exit 0
+enddef
 
-HOST=interface_ip(inter)
+locks(true)
 
-logging web enable
-logging accessfile "zaweb.access"
-web_serve_log_throttle(100,10000)
+sid = web_serve_start(HOME_PATH,PORT,HOST)
 
-suid = web_serve_start(HOME_PATH,PORT,HOST)
-println "[#2]Started server on {HOST}/{PORT}"
+log "Server [#{sid}] Started.\n"
 
-suid2 = web_serve_start(HOME_PATH_2,PORT_2,HOST)
-println "[#2]Started server on {HOST}/{PORT_2}"
+web_serve_path(sid, "s",
+    "^/$", "http://{HOST}:{PORT}/index.html"
+)
 
-web_serve_path(suid, "s", "^/$",                                        "http://{HOST}:{PORT}/index.html"       )
-web_serve_path(suid, "s", `/(.*\.(|html?|js|css|php|png|jpg|ico))$`,    `http://{HOST}:{PORT}/$1`               )
-web_serve_path(suid, "s", "^/(.*)/$",                                   "http://{HOST}:{PORT}/$1/index.html"    )
+web_serve_path(sid, "s",
+    `/(.*\.(|html?|js|css|png|jpg|ico))$`, `http://{HOST}:{PORT}/$1`
+)
 
-web_serve_path(suid2, "s", "^/$",                                        "http://{HOST}:{PORT}/index.html"       )
-web_serve_path(suid2, "s", `/(.*\.(|html?|js|css|php|png|jpg|ico))$`,    `http://{HOST}:{PORT}/$1`               )
-web_serve_path(suid2, "s", "^/(.*)/$",                                   "http://{HOST}:{PORT}/$1/index.html"    )
+web_serve_path(sid, "s",
+    "^/(.*)/$", "http://{HOST}:{PORT}/$1/index.html"
+)
 
-while web_serve_up(suid) || web_serve_up(suid2)
-    if !web_serve_up(suid)
-        println "[#2]Restarting {HOST}/{PORT}[#-]"
-        suid  = web_serve_start(HOME_PATH,PORT,HOST)
-    endif
-    if !web_serve_up(suid2)
-        println "[#2]Restarting {HOST}/{PORT_2}[#-]"
-        suid2 = web_serve_start(HOME_PATH_2,PORT_2,HOST)
-    endif
-    pause 2000
+while web_serve_up(sid)
+    # in process tasks go here:
+    pause 200
 endwhile
 
 

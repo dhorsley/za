@@ -28,10 +28,13 @@ func getReportFunctionName(ifs uint64) string {
 	return add
 }
 
-func report(ifs uint64, pos int, s string) {
-	add := getReportFunctionName(ifs)
+func report(ifs uint64, s string) {
+    add := getReportFunctionName(ifs)
+    lastlock.RLock()
+    pos:=lastline
+    lastlock.RUnlock()
 	if pos > 0 {
-		pf(sparkle(sf("\n[#bred][#7]Error in %sline %d[##][#-]\n%s\n", add, pos, s)))
+		pf(sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
 	} else {
 	    nl,_ := numlookup.lmget(ifs)
 		pf(sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
@@ -66,7 +69,7 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]{@language} [-v] [-h] [-i] [-m] [-c] [-l] [-s [#i1]path[#i0]]  \
+[#1]{@language} [-v] [-h] [-i] [-m] [-c] [-l] [-S] [-s [#i1]path[#i0]]  \
     [-t] [-O [#i1]tval[#i0]] [-G [#i1]group_filter[#i0]]        \
     [-o [#i1]output_file[#i0]]                        \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]     \
@@ -84,10 +87,11 @@ func help(hargs string) {
     [#4]-m[#-] : Mark co-process command progress
     [#4]-c[#-] : Ignore za colour code macros
     [#4]-l[#-] : Enable mutex locking for multi-threaded use
-    [#4]-s[#-] : Provide an alternative path for the co-process shell 
-    [#4]-e[#-] : Provide source code in a string for interpretation. Stdin becomes available for data input.
-    [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields.
-    [#4]-F[#-] : Provides a field separator character for -r.
+    [#4]-s[#-] : Provide an alternative path for the co-process shell
+    [#4]-S[#-] : Disable the co-process shell
+    [#4]-e[#-] : Provide source code in a string for interpretation. Stdin becomes available for data input
+    [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields
+    [#4]-F[#-] : Provides a field separator character for -r
 
     Please consult the za-reference document or execute commands() for a command list.
     A list of library functions is available with the funcs(filter_string) call.
@@ -169,7 +173,7 @@ Available commands:
 [#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
 [#2]LOGGING OFF | ON [#i1]name[#i0][#-]                           - disable or enable logging and specify the log file name.
 [#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
-[#2]CLS[#-]                                             - clear console screen.
+[#2]CLS [ [#i1]pane_id[#i0] ][#-]                                 - clear console screen/pane.
 [#2]AT [#i1]row,column[#i0][#-]                                   - move cursor to [#i1]row,column[#i0].
 [#2]PANE DEFINE [#i1]name,row,col,w,h[,title[,border]][#i0][#-]   - Define a new coordinate pane.
 [#2]PANE SELECT [#i1]name[#i0][#-]                                - Select a defined pane as active.
@@ -183,7 +187,7 @@ Available commands:
 [#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit. In test mode, asserts should instead be collected.
 [#3]DOC [ [#i1]function_name[#i0] ] [#i1]comment[#i0][#-]                   - Create an exportable comment, for the documentation generator.
 [#7]UNSET[#-] [#i1]var[#i0]                                       - destroy variable allocation for [#i1]var[#i0].
-[#7]INIT[#-] [#i1]var[#i0] [#i1]type[#i0] [ [#i1]dims[#i0] [ [#i1]size[#i0] ] ]                 - Dimension an array. Type can be bool, int, float, mixed or assoc. Optional [#i1]dims[#i0] is limited to 1.
+[#7]INIT[#-] [#i1]var[#i0] [#i1]type[#i0] [[#i1]size[#i0]]                            - Dimension an array. Type can be bool, int, float, mixed or assoc.
 [#7]ZERO[#-] [#i1]var[#i0]                                        - set [#i1]var[#i0] to zero
 [#7]INC[#-] [#i1]var[#i0] [ [#i1]step[#i0] ]                                - increment [#i1]var[#i0] by 1 (or [#i1]step[#i0])
 [#7]DEC[#-] [#i1]var[#i0] [ [#i1]step[#i0] ]                                - decrement [#i1]var[#i0] by 1 (or [#i1]step[#i0])

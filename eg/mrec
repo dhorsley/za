@@ -8,17 +8,13 @@
 
 
 define F(n)
-    if n == 0
-        return 1
-    endif
-    return n - M(F(n-1))
+    on n == 0 do return 1
+    return n-M(F(n-1))
 enddef
 
 define M(n) 
-    if (n == 0)
-        return 0
-    endif
-    return n - F(M(n-1))
+    on n==0 do return 0
+    return n-F(M(n-1))
 enddef
 
 input c param 1

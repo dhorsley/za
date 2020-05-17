@@ -7,14 +7,13 @@ import (
     "io"
     "io/ioutil"
     "log"
-//    "sync"
     "os"
     "os/exec"
     "bufio"
     "errors"
     "golang.org/x/sys/unix"
     "strconv"
-    "path/filepath"
+    // "path/filepath"
     "regexp"
     "sort"
     str "strings"
@@ -507,8 +506,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpstring string        // final compounded output string including helpColoured components
     var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
-    var unproc_files []string    // raw list of files in the current directory
-    var files []string           // list of file basenames in the current directory
+    // var unproc_files []string    // raw list of files in the current directory
+    // var files []string           // list of file basenames in the current directory
 
     icol := col + dlen + globalPaneShiftLen // input (row,col)
     irow := row
@@ -763,8 +762,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if hintEnable && !startedContextHelp {
 
                     varnames = nil
-                    unproc_files = nil
-                    files = nil
+                    // unproc_files = nil
+                    // files = nil
                     funcnames = nil
 
                     startedContextHelp = true
@@ -779,15 +778,20 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                     sort.Strings(varnames)
 
+                    /*
+                     * this isn't much use current, only shows current pwd not indicated one
+                     * it also has a fault when using interactive and shell-less (parent) mode
+                     * 
                     //.. add cwd files
 
-                    pwd, _ := vget(0, "pwd")
+                    pwd, _ := vget(0, "@pwd")
 
                     unproc_files, _ = filepath.Glob(pwd.(string)+"/*")
                     for _, fn := range unproc_files {
                         files = append(files, filepath.Base(fn))
                     }
                     sort.Strings(files)
+                    */
 
                     //.. add functionnames
                     for k, _ := range slhelp {
@@ -847,12 +851,15 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
             }
 
+            /*
+             * not currently useful
             for _, v := range files {
                 if str.HasPrefix(v, wordUnderCursor) {
                     helpColoured = append(helpColoured, "[#4]"+v+"[#-]")
                     helpList = append(helpList, v)
                 }
             }
+            */
 
             for _, v := range funcnames {
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
@@ -1117,6 +1124,7 @@ func NewCoprocess(loc string) (process *exec.Cmd, pi io.WriteCloser, po io.ReadC
 
 // synchronous execution and capture
 func GetBash(c string) (string, error) {
+    c=str.Trim(c," \t")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)
     var out bytes.Buffer
@@ -1226,7 +1234,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
     close(c)
 
     siglock.Lock()
-    coproc_active = true
+    coproc_active = false
     siglock.Unlock()
 
     return result.S, result.E
@@ -1243,68 +1251,92 @@ func Copper(line string, squashErr bool) (string, int) {
     // remove some bad conditions...
     if str.HasSuffix(str.TrimRight(line," "),"|") {
         return "",-1
-    } 
+    }
     if tr(line,DELETE,"| ") == "" {
         return "",-1
     }
 
-
     var ns string  // output from coprocess
     var errint int // coprocess return code
     var err error  // generic error handle
-    var cop string
+    var commandErr error
 
-    errorFile, err := ioutil.TempFile("", "copper.*.err")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer os.Remove(errorFile.Name())
+    if runInParent {
+        ns,err = GetBash(line)
+        if err != nil {
 
-    read_out := bufio.NewReader(po)
+            vset(0,"@last","0")
+            vset(0,"@lastout",[]byte{0})
 
-    // issue command
-    io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x1e${last}\x1e"`+"\n")
-
-    // get output
-    ns, commandErr := NextCopper(line, read_out)
-
-    // get status code
-    code, err := NextCopper("Status", read_out)
-
-    // get cwd and path
-    io.WriteString(pi, "echo -en $PWD\x1e$PATH\x1e"+"\n")
-
-    cop, _ = NextCopper("pwd", read_out) // write to globalspace
-    vset(0, "pwd", cop)
-    cop, _ = NextCopper("path", read_out)
-    vset(0, "path", cop)
-
-    if commandErr != nil {
-        errint = -3
-    } else {
-        if err == nil {
-            errint, err = strconv.Atoi(code)
-            if err != nil {
-                errint = -2
-            }
             if !squashErr {
-                vset(0, "@last", code)
+
+                if exitError, ok := err.(*exec.ExitError); ok {
+                    vset(0,"@last",sf("%v",exitError.ExitCode()))
+                    vset(0, "@last_out", []byte(err.Error()))
+                } else { // probably a command not found?
+                    vset(0,"@last","1")
+                    vset(0,"@last_out", []byte("Command not found."))
+                }
+
             }
+
         } else {
-            errint = -1
+            vset(0, "@last", "0")
+            vset(0, "@last_out", []byte{0})
         }
-    }
-
-    // get stderr file
-    b, err := ioutil.ReadFile(errorFile.Name())
-
-    if len(b) > 0 {
-        vset(0, "@last_out", b)
     } else {
-        vset(0, "@last_out", []byte{0})
-    }
 
-    os.Remove(errorFile.Name())
+        errorFile, err := ioutil.TempFile("", "copper.*.err")
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer os.Remove(errorFile.Name())
+
+        read_out := bufio.NewReader(po)
+
+        // issue command
+        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x1e${last}\x1e"`+"\n")
+
+        // get output
+        ns, commandErr = NextCopper(line, read_out)
+
+        // get status code - cmd is not important for this, NextCopper just reads
+        //  the output until the next 0x1e
+        code, err := NextCopper("#Status", read_out)
+
+        // pull cwd from /proc
+        childProc,_:=vget(0,"@shellpid")
+        pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
+        vset(0, "@pwd", pwd)
+
+        if commandErr != nil {
+            errint = -3
+        } else {
+            if err == nil {
+                errint, err = strconv.Atoi(code)
+                if err != nil {
+                    errint = -2
+                }
+                if !squashErr {
+                    vset(0, "@last", code)
+                }
+            } else {
+                errint = -1
+            }
+        }
+
+        // get stderr file
+        b, err := ioutil.ReadFile(errorFile.Name())
+
+        if len(b) > 0 {
+            vset(0, "@last_out", b)
+        } else {
+            vset(0, "@last_out", []byte{0})
+        }
+
+        os.Remove(errorFile.Name())
+
+    }
 
     // remove trailing slash-n
     if len(ns) > 0 {
@@ -1316,6 +1348,7 @@ func Copper(line string, squashErr bool) (string, int) {
             }
         }
     }
+
     return ns, errint
 }
 

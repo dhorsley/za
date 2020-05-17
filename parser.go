@@ -80,8 +80,10 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 			phrase.Text = str.TrimRight(strPhrase.String(), " ")
 
 			// -- add original version
+			// if pos>0 { phrase.Original = input[lstart:pos+1] }
 			if pos>0 { phrase.Original = input[lstart:pos] }
-			lstart = pos + 1
+			// lstart = pos + 1
+			lstart = pos
 
             // -- discard empty lines
             if phrase.TokenCount!=0 {

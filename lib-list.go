@@ -161,6 +161,7 @@ func buildListLib() {
             }
 
             list := str.Split(args[0].(string), "\n")
+
             var cols []string
             if len(list) > 0 {
                 switch args[2].(type) {

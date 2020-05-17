@@ -1,0 +1,86 @@
+#!/usr/bin/za
+
+doc : test program for json handling
+doc :   this script will traverse a json file content
+doc :    and colourise the content by depth
+
+
+# FUNCTIONS
+
+define heading(s1,d)
+    spacing=""
+    on d>0 do spacing=format("%"+string((d*4))+"s"," ")
+    println format("%s%29s[][#-]:",spacing,s1)
+enddef
+
+define value(s1,s2,d)
+    spacing=""
+    on d>0 do spacing=format("%"+string((d*4))+"s"," ")
+    println format("%s%30s : %v",spacing,s1,s2)
+enddef
+
+define pp(k,i,d)
+
+    # set colour depth
+    print "[#"+string((d+1)%7)+"]"
+
+    if start(kind(i),"map[")
+        # map
+        heading(k,d)
+        foreach si in i
+            pp(key_si,si,d+1)
+        endfor 
+    endif
+
+    if start(kind(i),"[map")
+        # array of map
+        heading(k,d)
+        foreach si in i[0]
+            pp(key_si,si,d+1)
+        endfor
+    endif
+
+    if start(kind(i),"[]")
+        # array
+        heading("[arr] "+k,d)
+        if len(i)>0
+            foreach si in i[0]
+                pp(key_si,si,d+1)
+            endfor
+        endif
+    endif
+
+    if ! match(kind(i),`\[`)
+        # value
+        value(k,i,d)
+    endif
+
+    # reset colour
+    print "[#-]"
+
+enddef
+
+
+# MAIN
+
+f=read_file("test.json")
+if f==nil
+    println "Error: could not read JSON file."
+    exit 1
+endif
+
+json=json_decode(f)
+
+# drill down to right level
+res=json["Reservations"]
+groups=res["Groups"]
+instances=groups["Instances"]
+
+# deep iteration over pairs
+foreach i in instances[0]
+    pp(key_i,i,0)
+endfor
+
+# you could start higher in the tree, e.g.
+# foreach i in json
+

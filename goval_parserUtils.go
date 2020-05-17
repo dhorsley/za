@@ -640,6 +640,7 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
 			// make Za function call
             newfnlock.Lock()
             loc := GetNextFnSpace()
+            // pf("allocated out %v in callFunction %v\n",loc,name)
             newfnlock.Unlock()
 
             calllock.Lock()

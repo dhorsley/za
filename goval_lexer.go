@@ -37,21 +37,27 @@ var lastsrc string
 
 func NewLexer(src string) *Lexer {
 
+    if lockSafety { lastlock.Lock() }
+
     var fset *token.FileSet
     var lexer *Lexer
-    lexer = &Lexer{}
-
     var file *token.File
 
-    if lockSafety || src!=lastsrc {
+    lexer = &Lexer{}
+
+    if src!=lastsrc {
         fset = token.NewFileSet()
         file = fset.AddFile("", fset.Base(), len(src))
-         lastsrc=src
-         lastfile=file
+        lastsrc=src
+        lastfile=file
     } else {
         file=lastfile
     }
-        lexer.scanner.Init(file, []byte(src), nil, 0)
+
+    lexer.scanner.Init(file, []byte(src), nil, 0)
+
+    if lockSafety { lastlock.Unlock() }
+
     return lexer
 }
 

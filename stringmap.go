@@ -10,36 +10,35 @@ type Lmap struct {
 }
 
 func lmcreate(sz int) *Lmap {
-    newMap:=Lmap{smap:make(map[string]uint64,sz)}
-    return &newMap
+    return &Lmap{smap:make(map[string]uint64,sz)}
 }
 
 func (u *Lmap) lmset(k string,v uint64) {
-	u.Lock()
+	if lockSafety { u.Lock() }
     u.smap[k] = v
-	u.Unlock()
+	if lockSafety { u.Unlock() }
 }
 
 func (u *Lmap) lmget(k string) (uint64,bool) {
     var tmp uint64
     var ok bool
-	u.RLock()
+	if lockSafety { u.RLock() }
     if tmp,ok=u.smap[k]; ok {
-	    u.RUnlock()
+	    if lockSafety { u.RUnlock() }
         return tmp,true
     }
-	u.RUnlock()
+	if lockSafety { u.RUnlock() }
     return 0,false
 }
 
 func (u *Lmap) lmdelete(k string) bool {
-	u.Lock()
+	if lockSafety { u.Lock() }
     if _,ok:=u.smap[k]; ok {
         delete(u.smap,k)
-        u.Unlock()
+        if lockSafety { u.Unlock() }
         return true
     }
-    u.Unlock()
+    if lockSafety { u.Unlock() }
     return false
 }
 

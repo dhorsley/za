@@ -366,7 +366,7 @@ func buildStringLib() {
         j, jbad := GetAsInt(args[1])
         w, wbad := GetAsInt(args[2])
         if jbad || wbad {
-            pf("[j->%#v,w->%#v] ", j, w)
+            pf("[j%v,w%v] ", j, w)
             return "", errors.New("bad args")
         }
         if len(args) == 4 {
@@ -422,7 +422,7 @@ func buildStringLib() {
         lfs:=lastfs
         lastlock.RUnlock()
 
-        // purge previous - allows for 32 fields. this should be changed as part of removing arbitrary limits.
+        // purge previous
         vset(lfs,"F",[]string{})
         vset(lfs,"NF",0)
 
@@ -445,7 +445,6 @@ func buildStringLib() {
         ta := str.FieldsFunc(new, f)
 
         // populate F array and F1..Fx variables
-        // vset(lfs, "F", []string{})
         var c int
         for c = 0; c < len(ta); c++ {
             vset(lfs, "F"+strconv.Itoa(c+1), ta[c])
@@ -705,7 +704,14 @@ func buildStringLib() {
         for _,v:=range str.Split(val, "\n") {
             if m,_:=regexp.MatchString(reg,v); m { ns.WriteString(v+"\n") }
         }
-        return ns.String(),nil
+
+        // trim right-most newline from replacement
+        repl:=ns.String()
+        if repl[len(repl)-1] == '\n' {
+            repl = repl[:len(repl)-1]
+        }
+
+        return repl,nil
 
     }
 

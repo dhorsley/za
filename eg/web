@@ -1,18 +1,42 @@
 #!/usr/bin/za
 
-# enable mutices
 locks(true)
 
 module "web_modules/aws_handler"
 
 # GLOBALS
 
-# HOST="172.16.28.12"
-# HOST="192.168.1.24"
-HOST="localhost"
 PORT=8080
 POLL_TIMEOUT=5000
 HOME_PATH="/home/daniel/go/src/za/eg/www"
+
+# FUNCTIONS
+
+define interface_ip(in)
+    addrline =| ip addr show dev {in}
+    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
+    ipaddr=replace(ipaddr,"/","")
+    return ipaddr
+enddef
+
+define negreg(inp,matcher)
+    out=""
+    foreach l in inp
+        if match(l,matcher); continue; endif
+        out=out+l+"\n"
+    endfor
+    return out
+enddef
+
+# MAIN
+
+when release_id()
+is "ubuntu"
+    inter=collapse(negreg(net_interfaces(),"^(docker|lo).*$"))
+    println "Found interface : {inter}"
+endwhen
+
+HOST=interface_ip(inter)
 
 on get_env("PROXY_HOST")!="" do HOST=get_env("PROXY_HOST")
 on get_env("PROXY_PORT")!="" do PORT=get_env("PROXY_PORT")
@@ -23,14 +47,14 @@ on get_env("PROXY_PATH")!="" do HOME_PATH=get_env("PROXY_PATH")
 logging web enable
 logging accessfile ".access"
 
-
 # Start a web server
 #  HOME_PATH is the document root.
 #  PORT is the TCP port to listen on.
 #  HOST is the IP or DNS name to use as, effectively, a virtual host address of the site.
 
+println "Starting server process [{HOST}:{PORT}]"
 uid = web_serve_start(HOME_PATH,PORT,HOST)
-
+println "Started server process [{uid}]"
 
 # web_serve_path() is for handling traffic routing rules.
 # argument 1 indicates which configured server id to target. argument 2 is the rule type.
@@ -46,15 +70,14 @@ uid = web_serve_start(HOME_PATH,PORT,HOST)
 #     HTTP status code >=300 then the client is sent a temporary redirect to the 
 #     location indicated by argument 4.
 
-web_serve_path(uid,"p"      , `/namelookup(.*)`     , "http://monitoring.costcutter.local/namelookup$1"      )
-web_serve_path(uid,"p"      , `/css/(.*)`           , "http://monitoring.costcutter.local/namelookup/css/$1"      )
-web_serve_path(uid,"p"      , `/(.*\.(js|css))$`    , "http://monitoring.costcutter.local/$1"                )
-web_serve_path(uid,"e"      , `/namelookup`         , "http://"+HOST+":"+string(PORT)+"/errors/error.html"   )
-web_serve_path(uid,"p"      , `/notblah(.*)`        , "http://"+HOST+":"+string(PORT)+"/blah$1"              )
-web_serve_path(uid,"e404"   , `/notblah`            , "http://"+HOST+":"+string(PORT)+"/errors/error.html"   )
+# web_serve_path(uid,"p"      , `/namelookup(.*)`     , "http://{HOST}/namelookup$1"               )
+# web_serve_path(uid,"p"      , `/css/(.*)`           , "http://{HOST}/namelookup/css/$1"          )
+# web_serve_path(uid,"p"      , `/(.*\.(js|css))$`    , "http://{HOST}/$1"                         )
+# web_serve_path(uid,"e"      , `/namelookup`         , "http://{HOST}:{PORT}/errors/error.html"   )
+# web_serve_path(uid,"p"      , `/notblah(.*)`        , "http://{HOST}:{PORT}/blah$1"              )
+# web_serve_path(uid,"e404"   , `/notblah`            , "http://{HOST}:{PORT}/errors/error.html"   )
 # web_serve_path(uid,"e404" , `/notblah`            , "https://www.google.co.uk" )
-web_serve_path(uid,"p"      , `/test(.*)`           , "http://localhost:8081/test$1"                         )
-web_serve_path(uid,"e"      , `/test`               , "http://sorryservicegoeshere.org/index.html"           )
+# web_serve_path(uid,"p"      , `/test(.*)`           , "http://{HOST}:8081/test$1"                )
 
 #   "f" invokes a za function to respond to requests that satisfy the path given by the
 #       regex in argument 3. The function name is given as argument 4.  Any POST data is 
@@ -73,7 +96,7 @@ web_serve_path(uid,"f"      , `/fun/awsip`            , "fwhandle" )
 #      argument 3 to the URL indicated by argument 4.
 #    argument 3 is *not* a regex, it is a straight string match.
 
-web_serve_path(uid,"r","/gone","https://badplace.info")
+# web_serve_path(uid,"r","/gone","https://badplace.info")
 
 
 # local server
@@ -94,18 +117,18 @@ web_serve_path(uid, "s", "/blah",     "")
 web_serve_path(uid, "s", "/docs",     "")
 web_serve_path(uid, "s", "/index.",   "")
 web_serve_path(uid, "s", "/favicon.ico$",   "")
-web_serve_path(uid, "s", "^/$",       "http://localhost:8080/index.html"    )
-web_serve_path(uid, "s", "^/(.*)/$",  "http://localhost:8080/$1/index.html" )
-
+web_serve_path(uid, "s", "^/$",       "http://{HOST}:{PORT}/index.html"    )
+web_serve_path(uid, "s", "^/(.*)/$",  "http://{HOST}:{PORT}/$1/index.html" )
+web_serve_path(uid, "s", "^/(.*)$",   "http://{HOST}:{PORT}/$1" )
 
 # control for throttling repeat access log entries (start,frequency)
 web_serve_log_throttle(100,10000)
 
 # second server on different port...
 suid = web_serve_start(HOME_PATH+"/exmachina",61440,HOST)
-web_serve_path(suid, "s", "^/$", "http://localhost:61440/index.html")
-web_serve_path(suid, "s", `/(.*\.(|html?|js|css|php|png|jpg|ico))$`, `http://localhost:61440/$1`)
-web_serve_path(suid, "s", "^/(.*)/$", "http://localhost:61440/$1/index.html")
+web_serve_path(suid, "s", "^/$", "http://{HOST}:61440/index.html")
+web_serve_path(suid, "s", `/(.*\.(|html?|js|css|php|png|jpg|ico))$`, `http://{HOST}:61440/$1`)
+web_serve_path(suid, "s", "^/(.*)/$", "http://{HOST}:61440/$1/index.html")
 
 
 #
@@ -147,14 +170,16 @@ while web_serve_up(suid)
         # refresh list of AWS IP address ranges
         downloadOkay=web_download("https://ip-ranges.amazonaws.com/ip-ranges.json",tmp)
         if downloadOkay
+            dec ipListRefreshCount
             s=epoch_nano_time()
             thisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
             println "Completed in ",time_diff(epoch_nano_time(),s)," ms"
             | rm -f {tmp}
+        else
+            println "Could not fetch ip ranges from AWS."
         endif
     endif
 
-    dec ipListRefreshCount
     on ipListRefreshCount == 0 do ipListRefreshCount = ipListRefreshMaxCount
 
     pause 5000

@@ -14,7 +14,7 @@ func buildMathLib() {
 
 	features["math"] = Feature{version: 1, category: "math"}
 	categories["math"] = []string{
-		"seed", "rand", "sqr", "sqrt", "pow",
+		"seed", "rand", "sqr", "sqrt", "pow","abs",
 		"sin", "cos", "tan", "asin", "acos", "atan","floor",
 		"ln", "log", "log2", "log10", "round", "rad2deg", "deg2rad",
 		"e", "pi", "phi", "ln2", "ln10",
@@ -356,6 +356,31 @@ func buildMathLib() {
 		return math.NaN, errors.New("invalid data type for sqrt()")
 	}
 
+	slhelp["abs"] = LibHelp{in: "int", out: "positive_int", action: "Calculate absolute value of [#i1]int[#i0]."}
+	stdlib["abs"] = func(args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return 0, errors.New("abs() only takes one argument.")
+		}
+		switch args[0].(type) {
+		case int:
+            n := args[0].(int)
+            y := n >> 63
+            return (n ^ y) - y, nil
+		case int32:
+            n := args[0].(int32)
+            y := n >> 63
+            return (n ^ y) - y, nil
+		case int64:
+            n := args[0].(int64)
+            y := n >> 63
+            return (n ^ y) - y, nil
+        case float64:
+            return math.Abs(args[0].(float64)),nil
+		default:
+			return -1, errors.New("argument to abs() must be an integer.")
+		}
+    }
+
 	slhelp["sqr"] = LibHelp{in: "number", out: "number", action: "Calculate square of [#i1]number[#i0]."}
 	stdlib["sqr"] = func(args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
@@ -616,21 +641,6 @@ func round(x float64) float64 {
 }
 
 /*
-	var rounded float64
-	if x > 0 {
-		rounded = float64(math.Floor(x/unit+0.5)) * unit
-	} else {
-		rounded = float64(math.Floor(x/unit-0.5)) * unit
-	}
-	formatted, err := strconv.ParseFloat(fmt.Sprintf("%."+string(int(unit))+"f", rounded), 64)
-	if err != nil {
-		return rounded
-	}
-	return formatted
-}
-*/
-
-/*
 
 Author: https://github.com/gorhill
 Source: https://gist.github.com/gorhill/5285193
@@ -666,6 +676,10 @@ of code, hence the snippet. Feel free to reuse as you wish.
 
 */
 
+/* Source Modified: 
+*
+*/
+
 var renderFloatPrecisionMultipliers = [10]float64{
     1,
     10,
@@ -693,10 +707,7 @@ var renderFloatPrecisionRounders = [10]float64{
 }
 
 func RenderFloat(format string, n float64) string {
-    // Special cases:
-    //   NaN = "NaN"
-    //   +Inf = "+Infinity"
-    //   -Inf = "-Infinity"
+
     if math.IsNaN(n) {
         return "NaN"
     }
@@ -790,6 +801,8 @@ func RenderFloat(format string, n float64) string {
 
     // generate integer part string
     intStr := strconv.Itoa(int(intf))
+    // some systems may need this instead, x32 compiles on x64, arm?
+    // intStr := strconv.FormatInt(int64(intf),10)
 
     // add thousand separator if required
     if len(thousandStr) > 0 {

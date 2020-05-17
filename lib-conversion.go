@@ -4,8 +4,11 @@ package main
 
 import (
 	"errors"
+    "bytes"
     "math"
     "encoding/base64"
+    "encoding/json"
+    "strings"
 )
 
 func buildConversionLib() {
@@ -13,7 +16,10 @@ func buildConversionLib() {
 	// conversion
 
 	features["conversion"] = Feature{version: 1, category: "os"}
-	categories["conversion"] = []string{"byte","int", "float", "string", "kind", "chr", "ascii", "is_number","base64e","base64d"}
+	categories["conversion"] = []string{
+        "byte","int", "float", "string", "kind", "chr", "ascii",
+        "is_number","base64e","base64d","json_decode","json_format",
+    }
 
 	slhelp["chr"] = LibHelp{in: "number", out: "ascii_char", action: "Return a string representation of ASCII char [#i1]number[#i0]."}
 	stdlib["chr"] = func(args ...interface{}) (ret interface{}, err error) {
@@ -78,6 +84,33 @@ func buildConversionLib() {
         if e!=nil { return "",errors.New(sf("could not convert '%s' in base64d()",args[0].(string))) }
 		return string(dec),nil
 	}
+
+	slhelp["json_decode"] = LibHelp{in: "json_string", out: "mixed", action: "Return a mixed type structure."}
+	stdlib["json_decode"] = func(args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_decode()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_decode()") }
+
+        var v map[string]interface{}
+        dec:=json.NewDecoder(strings.NewReader(args[0].(string)))
+
+        if err := dec.Decode(&v); err!=nil {
+            return "",errors.New(sf("could not convert value '%v' in json_decode()",args[0].(string)))
+        }
+
+		return v,nil
+
+	}
+
+	slhelp["json_format"] = LibHelp{in: "json_string", out: "string", action: "Return a formatted string."}
+	stdlib["json_format"] = func(args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_format()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_format()") }
+        var pj bytes.Buffer
+        if err := json.Indent(&pj,[]byte(args[0].(string)), "", "\t"); err!=nil {
+            return "",errors.New(sf("could not format string in json_format()"))
+        }
+		return string(pj.Bytes()),nil
+    }
 
 	slhelp["float"] = LibHelp{in: "variable", out: "float", action: "Convert to a float."}
 	stdlib["float"] = func(args ...interface{}) (ret interface{}, err error) {

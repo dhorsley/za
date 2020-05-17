@@ -112,12 +112,15 @@ var bgbash *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process in, out and error streams
 var po io.ReadCloser
 var pe io.ReadCloser
+var runInParent bool        // if /bin/false specified for shell, then run commands in parent
 
 var row, col int            // for pane + terminal use
 var MW, MH int              // for pane + terminal use
 var currentpane string      // for pane use
 
 var cmdargs []string        // cli args
+
+var no_interpolation bool   // true: disable string interpolation.
 
 var ansiMode bool           // defaults to true. false disables ansi colour code output
 
@@ -153,6 +156,10 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
+
+// for disabling the coprocess entirely:
+var no_shell bool
+
 // pane resize indicator
 var winching bool
 
@@ -165,6 +172,8 @@ var debug_level int
 // list of keywords for lookups (used in interactive mode TAB completion)
 var keywordset map[string]struct{}
 
+// highest numbered vtable entry created
+var vtable_maxreached uint64
 
 func main() {
 
@@ -206,7 +215,7 @@ func main() {
     }
 
     // global namespace
-    vcreatetable(0, VAR_CAP)
+    vcreatetable(0, &vtable_maxreached, VAR_CAP)
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
@@ -221,9 +230,9 @@ func main() {
     vset(0, "@creation_date", BuildDate)
 
     // set interactive prompt
-    vset(0, "prompt", promptStringStartup)
-    vset(0, "startprompt", promptStringStartup)
-    vset(0, "bashprompt", promptBashlike)
+    vset(0, "@prompt", promptStringStartup)
+    vset(0, "@startprompt", promptStringStartup)
+    vset(0, "@bashprompt", promptBashlike)
 
     // set default behaviours
     vset(0, "@silentlog", true)
@@ -250,8 +259,6 @@ func main() {
     var a_version       = flag.Bool("v", false, "display the Za version")
     var a_interactive   = flag.Bool("i", false, "run interactively")
     var a_debug         = flag.Int("d", 0, "set debug level (0:off)")
-//  var a_dstart        = flag.Int("S", 0, "set line debug start (0:off)")
-//  var a_dend          = flag.Int("E", 0, "set line debug end (0:off)")
     var a_profile       = flag.Bool("p", false, "enable profiler")
     var a_trace         = flag.Bool("P", false, "enable trace capture")
     var a_test          = flag.Bool("t", false, "enable tests")
@@ -259,15 +266,16 @@ func main() {
     var a_docgen        = flag.Bool("g", false, "enable documentation generator")
     var a_filename      = flag.String("f", "", "input filename, when present. default is stdin")
     var a_program       = flag.String("e", "", "program string")
-    var a_program_loop  = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like.")
-    var a_program_fs    = flag.String("F", "", "provides a field separator for -r.")
+    var a_program_loop  = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like")
+    var a_program_fs    = flag.String("F", "", "provides a field separator for -r")
     var a_test_override = flag.String("O", "continue", "test override value")
     var a_test_group    = flag.String("G", "", "test group filter")
     var a_time_out      = flag.Int("T", 0, "Co-process command time-out (ms)")
-    var a_mark_time     = flag.Bool("m", false, "Mark co-process command progress.")
+    var a_mark_time     = flag.Bool("m", false, "Mark co-process command progress")
     var a_ansi          = flag.Bool("c", false, "disable colour output")
-    var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use.")
+    var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use")
     var a_shell         = flag.String("s", "", "path to coprocess shell")
+    var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -343,16 +351,6 @@ func main() {
         debug_level = *a_debug
     }
 
-    /*
-    if *a_dstart != 0 {
-        slmon = *a_dstart
-    }
-
-    if *a_dend != 0 {
-        elmon = *a_dend
-    }
-    */
-
     // trace capture
     if *a_trace {
         tf, err := os.Create("trace.out")
@@ -372,7 +370,7 @@ func main() {
     // pprof
     if *a_profile {
         go func() {
-            log.Fatalln(http.ListenAndServe("127.0.0.1:6060", http.DefaultServeMux))
+            log.Fatalln(http.ListenAndServe("localhost:6060", http.DefaultServeMux))
         }()
     }
 
@@ -394,6 +392,12 @@ func main() {
         testStart(exec_file_name)
         defer testExit()
     }
+
+    // disable the coprocess command
+    if *a_noshell!=false {
+        no_shell=true
+    }
+    vset(0, "@noshell",no_shell)
 
     // set the coprocess command
     default_shell:=""
@@ -438,10 +442,13 @@ func main() {
 
     vset(0, "@bash_location", bashLoc)
 
+    if no_shell || bashLoc=="/bin/false" {
+        runInParent=true
+    }
 
     // spawn a bash co-process
     bgbash, pi, po, pe = NewCoprocess(bashLoc)
-
+    vset(0, "@shellpid",bgbash.Process.Pid)
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
@@ -455,7 +462,9 @@ func main() {
                 pf("\n")
             }
 
+            if lockSafety { lastlock.RLock() }
             caval:=coproc_active
+            if lockSafety { lastlock.RUnlock() }
 
             if caval {
                 // out with the old
@@ -471,6 +480,7 @@ func main() {
                 // in with the new
                 bgbash, pi, po, pe = NewCoprocess(bashLoc)
                 debug(13, "\nnew pid %v\n", bgbash.Process.Pid)
+                vset(0, "@shellpid",bgbash.Process.Pid)
                 siglock.Lock()
                 coproc_active = false
                 siglock.Unlock()
@@ -671,7 +681,7 @@ func main() {
             functionspaces[globalspace] = []Phrase{}
             fspacelock.Unlock()
 
-            pr, _ := vget(0, "prompt")
+            pr, _ := vget(0, "@prompt")
             sparklePrompt := sparkle(pr.(string))
             input, eof, broken := getInput(sparklePrompt, "global", row, col, pcol, true, true)
             if eof || broken {
@@ -701,7 +711,7 @@ func main() {
                 break
             }
 
-            vset(0, "prompt", interpolate(globalspace, promptTemplate))
+            vset(0, "@prompt", interpolate(globalspace, promptTemplate))
 
         }
         pln("")

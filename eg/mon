@@ -96,7 +96,17 @@ define showMem()
     opt_sudo=" "
     on release_id()!="alpine" do opt_sudo="sudo "
 
-    slabs=|{opt_sudo}cat /proc/slabinfo | awk '{printf "%32s %d\n",$1,($3*$4)/1024/1024}' | sort -nrk2 
+    slab_file=|{opt_sudo}cat /proc/slabinfo
+
+    slabs=""
+    foreach l in lines(slab_file,"2:")
+        name=field(l,1," \t")
+        s_sz=field(l,3," \t")
+        s_cn=field(l,4," \t")
+        on s_sz==0 || s_cn==0 do continue
+        slabs=slabs+format("%s %3v\n",name,(float(s_sz)*float(s_cn))/1024/1024)
+    endfor
+    slabs=fieldsort(slabs,2,"n",true) 
 
     foreach line in read_file("/proc/meminfo")
         fields(line)
@@ -128,10 +138,10 @@ define showMem()
     on count(slabs)<8 do cs=count(slabs)
 
     comwidth=10
-    at 1,38; print format("[#b2][#7][#bold]%24s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    at 1,38; print format("[#b2][#7][#bold]%24s  %-"+comwidth+"s[##][#-]","slab allocatee","MB size")
     for p = 0 to cs-1
         fields(lines(slabs,"{p}:{p}"))
-        at 2+p,38; print format("%24s  %-{comwidth}d\n",F1,int(F2))
+        at 2+p,38; print format("%24s  %-"+comwidth+"d\n",F1,int(F2))
     endfor
 
 enddef
@@ -195,7 +205,7 @@ define showProcs(ct,uptime)
         comwidth=27
         cmdwidth=comwidth-1
 
-        at 1,1; print format (  "[#b2][#7][#bold]%2s %5s %5s %5s %5s %7s %-{comwidth}s[##][#-]",
+        at 1,1; print format (  "[#b2][#7][#bold]%2s %5s %5s %5s %5s %7s %-"+comwidth+"s[##][#-]",
                                 "st","ppid","pid","user","sys","threads","command" )
 
         clear(2,10,1)
@@ -271,15 +281,17 @@ define showCpu(key_timeout,sample_start_in)
             # set initial value for the global store
             if !globkey("prev",string(name)+"_total")
                 foreach i in indexlist
-                    setglob prev["{name}_{i}"] _{i}
+                    setglob prev["{name}_{i}"] = _{i}
                 endfor
             endif
 
-
             # now populate local prev from global prev
             foreach i in indexlist
-                prev_{i}=getglob(`prev["{name}_{i}"]`)
-                on prev_{i}==nil do prev_{i}=0
+                if globkey("prev","{name}_{i}")
+                    prev_{i}=getglob(`prev["{name}_{i}"]`)
+                else
+                    prev_{i}=0
+                endif
             endfor
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
@@ -289,7 +301,7 @@ define showCpu(key_timeout,sample_start_in)
                     if diff_total==0
                         diff_{i}=0
                     else
-                        diff_{i} = ((_{i}-prev_{i}) / diff_total ) * mult
+                        diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
                     endif
                 endfor
 
@@ -303,13 +315,13 @@ define showCpu(key_timeout,sample_start_in)
 
             # record for next iter
             foreach i in indexlist
-                setglob prev["{name}_{i}"] _{i}
+                setglob prev["{name}_{i}"] = _{i}
             endfor
 
             # ensure positive and bounded
             foreach i in partindexlist
-                on diff_{i}<0   do diff_{i}=0
-                on diff_{i}>100 do diff_{i}=100
+                on int(diff_{i})<0   do diff_{i}=0
+                on int(diff_{i})>100 do diff_{i}=100
             endfor
             
             # display
@@ -321,7 +333,7 @@ define showCpu(key_timeout,sample_start_in)
                 clear_line(row,1)
                 at row,1; print format(
                                     "%5s [#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
-                                    name,diff_user,diff_sys,diff_softirq,diff_irq,diff_guest,diff_steal,diff_iowait
+                                    name,float(diff_user),float(diff_sys),float(diff_softirq),float(diff_irq),float(diff_guest),float(diff_steal),float(diff_iowait)
                                 )
                 col_sys     = "[#b5]"; w_sys      = diff_sys/2
                 col_user    = "[#b4]"; w_user     = diff_user/2
@@ -376,7 +388,7 @@ define showHdd()
     endwhen
 
     comwidth=23
-    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-{comwidth}s[#-][##]","path","size","used","avail","use%")
+    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-"+comwidth+"s[#-][##]","path","size","used","avail","use%")
     row=2
 
     foreach d in disks
@@ -385,7 +397,7 @@ define showHdd()
             on kind(F1)!="string" do continue
             if !key("devices",F1)
                 devices[F1]=F6
-                at row,1; print format("%20s %5s %5s %5s %-{comwidth}s",F1,F2,F3,F4,F5)
+                at row,1; print format("%20s %5s %5s %5s %-"+comwidth+"s",F1,F2,F3,F4,F5)
                 inc row
             endif
         endif
@@ -423,10 +435,10 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_ti
 
             # diff from previous
             if net_sample_start_in>0
-                setglob prev_rbytes rbytes
-                setglob prev_rerr rerr
-                setglob prev_tbytes tbytes
-                setglob prev_terr terr
+                setglob prev_rbytes = rbytes
+                setglob prev_rerr = rerr
+                setglob prev_tbytes = tbytes
+                setglob prev_terr = terr
             endif
 
             drb=float(rbytes-getglob("prev_rbytes"))
@@ -480,15 +492,15 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_ti
             endfor
 
             # write history
-            setglob rblist rblist
-            setglob relist relist
-            setglob tblist tblist
-            setglob telist telist
+            setglob rblist = rblist
+            setglob relist = relist
+            setglob tblist = tblist
+            setglob telist = telist
 
-            setglob prev_rbytes rbytes
-            setglob prev_tbytes tbytes
-            setglob prev_rerr rerr
-            setglob prev_terr terr
+            setglob prev_rbytes = rbytes
+            setglob prev_tbytes = tbytes
+            setglob prev_rerr = rerr
+            setglob prev_terr = terr
 
             # avg over a second:
             drb=humansize((1000/float(key_timeout))*drb)
@@ -519,15 +531,18 @@ define redef_layout(cpu_count)
     pane define "files",  cpu_count+22, 131,            13,      term_w()-130, "[#b1] Files [##]",       "topline"
     pane define "status", cpu_count+36, 1,              4,       term_w(),     "[#b1] Status [##]",      "none"
 
-    setglob net_sample_count term_w()-71
+    setglob net_sample_count = term_w()-71
 
-    setglob rblist push(0); setglob relist push(0); setglob tblist push(0); setglob telist push(0)
+    setglob rblist = push(0)
+    setglob relist = push(0)
+    setglob tblist = push(0)
+    setglob telist = push(0)
 
     for f=1 to getglob("net_sample_count")
-        setglob rblist append(getglob("rblist"),0)
-        setglob relist append(getglob("relist"),0)
-        setglob tblist append(getglob("tblist"),0)
-        setglob telist append(getglob("telist"),0)
+        setglob rblist = append(getglob("rblist"),0)
+        setglob relist = append(getglob("relist"),0)
+        setglob tblist = append(getglob("tblist"),0)
+        setglob telist = append(getglob("telist"),0)
     endfor
 
     showEnv()
@@ -642,7 +657,7 @@ redef_layout(cpu_count)
 
 
 # cpu history setup
-init prev assoc 1
+init prev assoc
 
 # net graph setup
 prev_rbytes=0
@@ -691,7 +706,8 @@ while !quit
 
     d=|date
     at 1,2; print "[#bold]",d
-    at 2,2; print "Current Timeout : {key_timeout} ms"
+    timo=string(key_timeout)
+    at 2,2; print "Current Timeout : {timo} ms"
 
     # get user input
     k=key_press(key_timeout)

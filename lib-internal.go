@@ -29,7 +29,7 @@ func buildInternalLib() {
 		"release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
 		"funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid",
 		"local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-		"eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks",
+		"eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "interpol", "shellpid", "noshell",
 	}
 
 
@@ -81,6 +81,22 @@ func buildInternalLib() {
 				return ret, err
 			}
 		}
+		return nil, nil
+	}
+
+	slhelp["interpol"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable string interpolation at runtime."}
+	stdlib["interpol"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 {
+            return nil,errors.New("interpol() accepts a boolean value only.")
+        }
+        switch args[0].(type) {
+        case bool:
+            lastlock.Lock()
+            no_interpolation=!args[0].(bool)
+            lastlock.Unlock()
+        default:
+            return nil,errors.New("interpol() accepts a boolean value only.")
+        }
 		return nil, nil
 	}
 
@@ -143,14 +159,15 @@ func buildInternalLib() {
 
                 globlock.RLock()
 
-                res,ef,err:=ev(globalaccess,inp,true)
+                res,_,err:=ev(globalaccess,inp,true)
 
-				if matched, _ := regexp.MatchString("^prev", inp); matched {
+				// if matched, _ := regexp.MatchString("^prev", inp); matched {
                     // pf("gg() (ga:%v) : %v -> %#v\n",globalaccess,inp,res)
-                }
+                // }
 
                 globlock.RUnlock()
-                if ef || err==nil {
+
+                if err==nil {
                     return res,nil
                 } else {
                     return nil,errors.New(sf("Bad evaluation of '%s'",args[0].(string)))
@@ -199,7 +216,10 @@ func buildInternalLib() {
 			return false, nil
 		}
         globlock.RUnlock()
-        key:=args[1].(string)
+
+        if lockSafety { lastlock.RLock() }
+        key:=interpolate(lastfs,args[1].(string))
+        if lockSafety { lastlock.RUnlock() }
 
         switch v.(type) {
         case map[string]interface{}:
@@ -472,16 +492,30 @@ func buildInternalLib() {
             vc:=varcount[lmv]
 			for q := 0; q < vc; q++ {
 				v := ident[lmv][q]
+                if v.iName[0]=='@' { continue }
 				pf("%s = %v\n", v.iName, v.iValue)
 			}
 		}
 		return true, err
 	}
 
+	slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if there is a child co-process has been launched."}
+	stdlib["has_shell"] = func(args ...interface{}) (ret interface{}, err error) {
+        v, _ := vget(0,"@noshell")
+        return !v.(bool), nil
+	}
+
+	slhelp["shellpid"] = LibHelp{in: "", out: "int", action: "Get process ID of the launched child co-process."}
+	stdlib["shellpid"] = func(args ...interface{}) (ret interface{}, err error) {
+        v, _ := vget(0,"@shellpid")
+        return v, nil
+	}
+
 	slhelp["clktck"] = LibHelp{in: "", out: "number", action: "Get clock ticks from aux file."}
 	stdlib["clktck"] = func(args ...interface{}) (ret interface{}, err error) {
 		return getclktck(), nil
 	}
+
 }
 
 func getclktck() int {

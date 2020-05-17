@@ -9,7 +9,7 @@ file="./mandel.pbm"
 
 define renderRow(y0,bytesPerRow,limit,maxIter)
 
-    init row int 1 bytesPerRow
+    init row int bytesPerRow
     ir=getglob("initial_r")
 
     for majorCol=0 to bytesPerRow-1
@@ -48,7 +48,7 @@ define renderRow(y0,bytesPerRow,limit,maxIter)
         row[majorCol] = (255-res)
     endfor
 
-    setglob rows[y0] row
+    setglob rows[y0] = row
 
 enddef
 
@@ -79,7 +79,7 @@ define outputAnsi(rows,size,bytesPerRow)
     block="#"
     on utf8supported() do block="★"
 
-    init cmap string 1 8
+    init cmap string 8
     cmap[0]=" "
     cmap[1]="[#1]{block}[#-]"
     cmap[2]="[#2]{block}[#-]"
@@ -130,10 +130,10 @@ print "Rows  : {size}\n"
 print "Cols  : {bytesPerRow}\n"
 print "Limit : {limit}\n"
 
-# dim name      type    dimensions  extent
-init rows       int     2
-init initial_r  float   1           size
-init initial_i  float   1           size
+# dim name      type    extent
+init rows       int
+init initial_r  float   size
+init initial_i  float   size
 
 # Precompute the initial real and imaginary values for each x and y
 #  coordinate in the image.

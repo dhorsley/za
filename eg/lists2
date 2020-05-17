@@ -1,0 +1,27 @@
+#!/usr/bin/za -f
+
+q=read_file("/etc/passwd")
+
+a=col(q,3,":")
+println "a ( string ) : ",a
+
+b=list_float(a)
+println "b ( float  ) : ",b
+
+c=sort(b,false)
+println "c ( sorted ) : ",c
+println "  (reversed) : ",sort(b,true)
+
+println "foreach:"
+foreach i in sort(b,true)
+    print "{i} "
+endfor
+print
+
+println "\n  (  uniq  ) : ",uniq(b)
+
+shells=col(q,7,":")
+println "\n  ( shells ) : ",shells,"\n"
+println "  (  uniq  ) : ",uniq(shells),"\n"
+
+
