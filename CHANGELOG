@@ -39,8 +39,6 @@ CHANGE LOG
             people_collection_link (string) http://api.launchpad.dev/beta/people
             bugs_collection_link (string) http://api.launchpad.dev/beta/bugs
 
-    * added example file: eg/json. the script shows depth processing and colouring of json content.
-
     * added (test) support for shell-less executions.
         if the -s arg is set to /bin/false, then any | or =| commands are routed through the shell of 
             the za instance parent, rather than a child process.
@@ -58,6 +56,11 @@ CHANGE LOG
             2.3000000000000003
         * int uses a different calc. float is using the Go math.Abs fn.
 
+    * examples changes:
+        * added basic colour test: eg/colours
+        * amended eg/ascii
+        * added eg/json. the script shows depth processing and colouring of json content.
+        * updated za-ref.html->stdlib list
 
     fixes:
 
@@ -87,6 +90,7 @@ CHANGE LOG
         * changed some sys vars to read-only naming
         * added a shellpid() lib call for getting the pid of the co-process.
 
+        * fixed initialisation of var in inc/dec for not existing var names.
 
 1.0.2 fixes:
 

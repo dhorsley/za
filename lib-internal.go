@@ -476,7 +476,7 @@ func buildInternalLib() {
 		return funclist, nil
 	}
 
-	slhelp["dump"] = LibHelp{in: "variable_name", out: "none", action: "Displays variable list, or a specific entry."}
+	slhelp["dump"] = LibHelp{in: "function_name", out: "none", action: "Displays variable list, or a specific entry."}
 	stdlib["dump"] = func(args ...interface{}) (ret interface{}, err error) {
 		s := ""
 		if len(args) == 1 {
@@ -488,13 +488,17 @@ func buildInternalLib() {
 			}
 		}
 		if s != "" {
-            lmv,_:=fnlookup.lmget(s)
+            lmv,found:=fnlookup.lmget(s)
+            if found {
             vc:=varcount[lmv]
 			for q := 0; q < vc; q++ {
 				v := ident[lmv][q]
                 if v.iName[0]=='@' { continue }
-				pf("%s = %v\n", v.iName, v.iValue)
-			}
+                    pf("%s = %v\n", v.iName, v.iValue)
+                }
+            } else {
+                pf("Invalid space name provided '%v'.\n",s)
+            }
 		}
 		return true, err
 	}

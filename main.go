@@ -32,6 +32,7 @@ import (
 
 var sf = fmt.Sprintf
 var pln = fmt.Println
+var fpf = fmt.Fprintln
 
 //
 // CONSTS AND GLOBALS
@@ -81,11 +82,8 @@ var ident = make([][]Variable, SPACE_CAP)
 var fnlookup = lmcreate(SPACE_CAP)
 var numlookup = nlmcreate(SPACE_CAP)
 
-// interactive mode flag
-var interactive = 0
-
-// interactive mode prompt handling
-var prompt bool                 // interactive mode flag
+// interactive mode and prompt handling
+var interactive bool                 // interactive mode flag
 var promptTemplate string
 
 // storage for the standard library functions
@@ -296,11 +294,8 @@ func main() {
     }
 
     // check if interactive mode was desired
-    prompt = false
-    interactive = 0 // offset for loops (stops out of range indices)
     if *a_interactive {
-        prompt = true
-        interactive = 1
+        interactive = true
     }
 
     // filename
@@ -310,7 +305,7 @@ func main() {
         // try first cmdarg
         if len(cmdargs) > 0 {
             exec_file_name = cmdargs[0]
-            if !prompt && *a_program=="" { cmdargs = cmdargs[1:] }
+            if !interactive && *a_program=="" { cmdargs = cmdargs[1:] }
         }
     }
 
@@ -458,7 +453,7 @@ func main() {
         for {
             <-breaksig
             pf("\n[#2]User Interrupt![#-] ")
-            if interactive == 0 {
+            if !interactive {
                 pf("\n")
             }
 
@@ -648,7 +643,7 @@ func main() {
 
 
     // interactive mode support
-    if prompt {
+    if interactive {
 
         // reset terminal
         cls()

@@ -2,7 +2,9 @@
     todo:
 
         * library, to add:
-            * umask, chroot, setuid, setgid, setsid, set priority, getdents
+            * in progress: umask, chroot
+            * setuid, setgid, setsid
+            * setpriority
 
         * if, one day, the evaluator is changed then we can look at tail-call elimination.
 
@@ -19,4 +21,15 @@
                 b) the types of activity which require such optimisation are not exactly the goal of the language.
                 c) memoizing is possible in a lot of cases to work around the worst of this,
                     although that doesn't really help with more complex things.
+
+        * in progress: change more pf calls to report() or debug()
+        * in progress: add usage text to more keyword arguments errors
+        * in progress: review all report texts for better phrasing
+
+        * add an ev() return parameter stating that interpolation caused an error and add handler code throughout?
+
+        * review sigint lock speed: we may need to add more signal types and these could really slow things down.
+
+        * in progress: really fix commas in assoc array element key names.
+
 

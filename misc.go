@@ -33,11 +33,13 @@ func report(ifs uint64, s string) {
     lastlock.RLock()
     pos:=lastline
     lastlock.RUnlock()
+    err_stream:=os.Stderr
+    if interactive { err_stream=os.Stdout }
 	if pos > 0 {
-		pf(sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
+		fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
 	} else {
 	    nl,_ := numlookup.lmget(ifs)
-		pf(sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
+		fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
 	}
 }
 

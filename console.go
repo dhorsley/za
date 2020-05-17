@@ -37,7 +37,7 @@ const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)
 func pf(s string, va ...interface{}) {
 
     s = sf(sparkle(s), va...)
-    if prompt {
+    if interactive {
         c := str.Count(s, "\n")
         row += c
         col = 1
