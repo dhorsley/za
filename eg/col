@@ -20,10 +20,10 @@ if length(q)>0
     foreach a in q
         if a!=""
             s =| echo -n "{a}" | md5sum - | cut -f1 -d' '
-            println pad("{a}",1,32," "), " -> {s}"
+            println format("%32s %s",a,s) 
             continue
         endif
-        // println pad("-- Empty Input --",0,57," ")
+        println pad("-- Empty Input --",0,57," ")
     endfor
 endif
 

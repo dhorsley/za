@@ -400,8 +400,13 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 // check that function exists
                 ifn,found:=fnlookup.lmget(fn)
+
                 if !found {
-                    report(lastfs,lastline,sf("forwarder function '%v' not found.",fn))
+
+                    lastlock.RLock()
+                    report(lastfs,sf("forwarder function '%v' not found.",fn))
+                    lastlock.RUnlock()
+
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -447,15 +452,12 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 lastlastfs:=lastfs
                 lastlock.RUnlock()
 
-                newfnlock.Lock()
+                calllock.Lock()
                 loc := GetNextFnSpace()
                 ifn,_=fnlookup.lmget(fn)
-                newfnlock.Unlock()
-
-                // pf("(web loc->%v) ",loc)
-                calllock.Lock()
                 callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvars: []string{"@temp"}}
                 calllock.Unlock()
+
                 Call(MODE_CALL, lastlastfs, ifn, MODE_NEW, Phrase{}, loc, webcallstruct)
 
                 lastlock.Lock()

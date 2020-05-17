@@ -1,10 +1,6 @@
 
 define factorial(n)
-    if n>1
-        subsol=factorial(n-1)
-        return n*subsol
-    else
-        return 1
-    endif
+    on n>1 do return n*factorial(n-1)
+    return 1
 enddef
 

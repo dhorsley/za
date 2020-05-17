@@ -21,7 +21,7 @@ name="cpu0"
 # foreach i in indexlist
 #     print "i_name-> {i}\n"
 #     print "i_val -> {{i}}\n"
-#     setglob prev[name+"_"+i] {i}
+#     setglob prev[name+"_"+i] = {i}
 # endfor
 
 # local

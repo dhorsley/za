@@ -8,6 +8,8 @@ showdef factorial
 
 println "\n[#4]factorial test[#-]"
 println "4! = ", factorial(4)
+println "7! = {factorial(7)}"
+println "11! = {factorial(11)}"
 println "15! = ", factorial(15)
 
 

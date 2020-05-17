@@ -1,0 +1,36 @@
+#!/usr/bin/za
+
+define fib(n)
+    setglob memo["calls"] = getglob(`memo["calls"]`)+1
+    if globkey("memo",string(n))
+        m=getglob("memo[{n}]")
+    else
+        m=fib(n-2)+fib(n-1)
+        setglob memo[n] = m
+    endif
+    return m
+enddef
+
+define signum(x)
+    if x<0 ; return -1 ; endif
+    if x>0 ; return 1 ; endif
+    return 0
+enddef
+
+# main
+
+memo["calls"]=0
+memo[0]=0
+memo[1]=1
+memo[2]=1
+
+input x param 1
+println fib(x)
+println "Calls : ",memo["calls"]
+
+#for x=0 to 100
+#    on signum(fib(x))==-1 do break
+#    println "fib({x}) -> {fib(x)}"
+#endfor
+
+

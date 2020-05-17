@@ -1,11 +1,15 @@
 
 debug 0
 
-if false
+c1=false; c2=false
+input c1 optarg 1
+input c2 optarg 2
+
+if c1
 
     if true 
 
-        if false
+        if c2
 
             println "smeagol!"
         

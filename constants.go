@@ -6,31 +6,26 @@ package main
 
 const MaxUint64 = ^uint64(0)
 
-// const MAX_RULESETS = 255
-// const MAX_VARIANTS = 7
-// const MAX_DEPTH = 1000
-// const MAX_LINES = 5000
-const MAX_LOOPS = 1000 // 5000
-const DEFAULT_INIT_SIZE = 256
+const MAX_LOOPS = 100
+const DEFAULT_INIT_SIZE = 256   // start size of INIT'ed arrays
 
 // maximum lib-net listener clients for http server
 // should be below LOOP_CAP
 const MAX_CLIENTS = 800
 
-const SPACE_CAP = 4096     // max user function instances
-const FUNC_CAP = 400       // max stdlib functions
-const LOOP_CAP = 2000      // max loops per function
-const VAR_CAP = 18364      // max vars per function
-const CONSTRUCT_CAP = 128  // max break/continue wrappings
-const FAIRY_CAP = 256      // max ansi mappings
-const LIST_SIZE_CAP = 256  // initial list size on construction
+const SPACE_CAP = 64000     // max user function instances 
+const FUNC_CAP = 300        // max stdlib functions
+const LOOP_CAP = 64000      // max loops per function 
+const VAR_CAP = 40          // max vars per function (scales up)
+const CONSTRUCT_CAP = 128   // max break/continue wrappings
+const FAIRY_CAP = 256       // max ansi mappings
+const LIST_SIZE_CAP = 256   // initial list size on construction
 
-// const globalspace = "global"          // global namespace
 const globalspace = uint64(0) // global namespace
 
 const promptStringStartup = "[#bgreen][#0]>[#-][##] "
-const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{pwd}[#-] > "
-const promptStringShort = "[#1]{@user}[#-] : [#invert]{pwd}[#-] : "
+const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@pwd}[#-] > "
+const promptStringShort = "[#1]{@user}[#-] : [#invert]{@pwd}[#-] : "
 const promptColour = "[#6]"
 const recolour = "[#5][#i1]"
 
@@ -51,7 +46,7 @@ const (
 	Opt_LoopIgnore
 )
 
-// used by Call() function. ENACT currently used by interactive mode and the ON..DO command.
+// used by Call() function. ENACT currently used by interactive mode.
 const (
 	MODE_CALL int = iota
 	MODE_ENACT
