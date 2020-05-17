@@ -20,12 +20,14 @@ define fwhandle(call)
     imgOptMap["src"]         = "/img/square-pattern.png"
     imgOptMap["style"]       = "{imgCentre}height:80px;width:60%;"
 
+    interpol(false)
     headStyles               = (
         `<style>
             .container { position:relative; text-align: center; color: white; }
             .centered { position:absolute; top:50%;    left:50%;   transform:translate(-50%, -50%); }
         </style>`
     )
+    interpol(true)
 
     bodyOptMap["style"]      = "background:url(/img/whirlpool.png);background-repeat:no-repeat;background-size:cover;"
 
@@ -46,7 +48,7 @@ define fwhandle(call)
     iptabbody=""
     ipglob=getglob("thisRegion")
     if length(ipglob)>0
-        foreach ip in ipglob
+        foreach ip in ipglob+"\n"
             iptabbody = iptabbody+wtr(wtd(ip))
         endfor
     endif

@@ -16,25 +16,24 @@ on do_upx=="upx" do upx_enable=true
 # main
 #
 
-GCLIMIT = "GOGC=420"
+GCLIMIT = "GOGC=450 GOMAXPROCS=4"
 
-bvers =  "1.0.1"
+bvers =  "1.0.3"
 bdate =| date "+%d-%m-%Y"
 
-ufound=|which upx | wc -l
+ufound=| which upx | wc -l
 ufound=int(ufound)
 
 strip_opts="-s -w"
 
 if alpine
-    ret=buildAlpine(bvers,bdate,strip_opts,upx_enable)
-    if ret!=0
-        print "Failed to build static version.\n"
+    if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
+        print "Failed to build alpine version.\n"
         exit 1
     endif
 else
-    if buildDynamic(bvers,bdate)!=0
-        print "Failed to build dynamic version.\n"
+    if buildLibc(bvers,bdate)!=0
+        print "Failed to build libc version.\n"
         exit 2
     endif
 endif
@@ -49,7 +48,7 @@ else
 endif
 
 
-print "[#4]Installing to /usr/bin/[#-]\n"
+print "[#4]Installing to /usr/bin/[#-]\n\n"
 | sudo cp -f za /usr/bin
 | sudo chmod 755 /usr/bin/za
 

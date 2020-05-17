@@ -1,24 +1,44 @@
 #!/usr/bin/za
 
+zero calls
+
 define ackermann(m,n)
-  if m==0
-    # println "M returning ",n+1
-    return n+1
-  endif
-  if n==0
-    o=ackermann(m-1,1)
-    # println "N returning ",o
+
+    calls=getglob("calls")
+    inc calls
+    setglob calls = calls
+
+    if globkey("memoA","{m},{n}")
+        return getglob("memoA[`{m},{n}`]")
+    endif
+
+    on m==0 do return n+1
+    on n==0 do return ackermann(m-1,1)
+    o=ackermann(m-1,ackermann(m,n-1))
+
+    setglob memoA[`{m},{n}`] = o
     return o
-  endif
-  o=ackermann(m-1,ackermann(m,n-1))
-  # println "DEF returning ",o
-  return o
+
 enddef
+
+
+memoA["0_0"] = 1
+memoA["0_1"] = 2
+memoA["0_2"] = 3
+memoA["1_0"] = 2
+memoA["1_1"] = 3
+
 
 input a param 1
 input b param 2
 a=int(a)
 b=int(b)
+println "A({a},{b}) = {ackermann(a,b)}"
+println "Calls : ",calls
 
-println ackermann(a,b)
+#for a = 0 to 4
+#    for b = 0 to 6
+#        println "A({a},{b}) = {ackermann(a,b)}"
+#    endfor
+#endfor
 

@@ -4,9 +4,9 @@
 # Procedures for alternative binary compilations
 #
 
-define buildAlpine(build_version,build_date,strip_opts,upx_enable)
+define buildMusl(build_version,build_date,strip_opts,upx_enable)
     GCLIMIT=getglob("GCLIMIT")
-    print "[#4]Static build for Alpine[#-]\n"
+    print "[#4]Alpine build[#-]\n"
     | GOOS=linux GOARCH=amd64 {GCLIMIT} go build -ldflags '-d -s -w -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine"' -tags netgo -installsuffix netgo
     r=last()
     if r>0
@@ -15,16 +15,20 @@ define buildAlpine(build_version,build_date,strip_opts,upx_enable)
     endif
     | strip {strip_opts} za
     | cp za za.alpine
-    on upx_enable do on getglob("ufound")==1 do | upx za.alpine
+    if upx_enable
+        getglob("ufound")==1 do | upx za.alpine
+    endif
     | ./za -v
     return r
 enddef
 
-define buildDynamic(build_version,build_date)
+define buildLibc(build_version,build_date)
+    dump("buildLibc"); print
     GCLIMIT=getglob("GCLIMIT")
-    print "[#4]Dynamic build[#-]\n"
+    print "[#4]Libc build[#-]\n"
     | {GCLIMIT} go build -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
     r=last()
+    on r>0 do println last_out()
     | cp za za.dynamic
     | ./za -v
     return r

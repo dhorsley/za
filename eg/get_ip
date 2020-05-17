@@ -1,0 +1,30 @@
+#!/usr/bin/za
+
+ip=web_get("https://api.ipify.org/?format=text")
+
+if len(ip)==0
+    println "Download error."
+    exit 1
+endif
+
+#
+# alternative to above:
+#
+# ip =| curl -s "https://api.ipify.org/?format=text"
+# if last()>0
+#   println "Download error."
+#   exit 1
+# endif
+#
+
+octet=split(ip[0],".")
+println "octets : ",octet
+
+total=sum(list_int(octet))
+println "total : ",total
+
+if total > 100
+  println "The sum of ",ip[0]," is {total}."
+endif
+
+

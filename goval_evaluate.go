@@ -5,6 +5,7 @@ import (
 )
 
 func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error) {
+
 	defer func() {
 		if r := recover(); r != nil {
 			if _, ok := r.(runtime.Error); ok {

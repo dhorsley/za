@@ -3,6 +3,7 @@ package main
 import (
     "reflect"
     "strconv"
+    "bytes"
     "net/http"
     "sync"
     str "strings"
@@ -16,36 +17,40 @@ import (
 // for locking vset/vcreate/vdelete during a variable write
 var vlock = &sync.RWMutex{}
 
-
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
-    // if lockSafety { vclock.RLock() }
-    vc:=varcount[fs]-1
-    // if lockSafety { vclock.RUnlock() }
-
+    // have to use full lock() as varcount may change in background otherwise.
+    if lockSafety { vlock.Lock() }
     // more recent variables created should, on average, be higher numbered.
-    if lockSafety { vlock.RLock() }
-    for k := vc; k>=0 ; k-- {
+    for k := varcount[fs]-1; k>=0 ; k-- {
         if ident[fs][k].iName == name {
-            if lockSafety { vlock.RUnlock() }
+            if lockSafety { vlock.Unlock() }
+            // pf("found in vl: k=%v cap_id=%v len_id=%v varcount=%v\n",k,cap(ident[fs]),len(ident[fs]),varcount[fs])
             return k, true
         }
     }
-    if lockSafety { vlock.RUnlock() }
+    if lockSafety { vlock.Unlock() }
+    // pf("not found in vl: cap_id=%v len_id=%v varcount=%v\n",cap(ident[fs]),len(ident[fs]),varcount[fs])
     return 0, false
 }
 
 
-func vcreatetable(fs uint64, capacity int) {
+func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
     if lockSafety { vlock.Lock() }
-    ident[fs] = make([]Variable, capacity)
-    if lockSafety { vlock.Unlock() }
+    vtmr:=*vtable_maxreached
+    // name,_:=numlookup.lmget(fs)
 
-    // if lockSafety { vclock.Lock() }
-    varcount[fs] = 0
-    // if lockSafety { vclock.Unlock() }
+    if fs>=vtmr {
+        *vtable_maxreached=fs
+        ident[fs] = make([]Variable, capacity, capacity)
+        varcount[fs] = 0
+        // pf("vcreatetable: [for %s] just allocated [%d] cap:%d max:%d\n",name,fs,capacity,*vtable_maxreached)
+    } else {
+        // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
+    }
+    if lockSafety { vlock.Unlock() }
 
 }
 
@@ -53,10 +58,7 @@ func vunset(fs uint64, name string) {
 
     loc, found := VarLookup(fs, name)
 
-    if lockSafety {
-        vclock.Lock()
-        vlock.Lock()
-    }
+    if lockSafety { vlock.Lock() }
 
     vc:=varcount[fs]
     if found {
@@ -67,39 +69,58 @@ func vunset(fs uint64, name string) {
         varcount[fs]--
     }
 
-    if lockSafety {
-        vlock.Unlock()
-        vclock.Unlock()
-    }
+    if lockSafety { vlock.Unlock() }
 }
 
 func vset(fs uint64, name string, value interface{}) bool {
 
+    // pf("**** inside vset of %v ****\n",name)
+
     if vi, ok := VarLookup(fs, name); ok {
-        // set variable - needs to stay fast
+        // set
         if lockSafety { vlock.Lock() }
         ident[fs][vi].iValue = value
+        // pf("vset: just set [%v] %v:%v\n",fs,vi,name)
         if lockSafety { vlock.Unlock() }
     } else {
-        // instantiate variable - can be slower
-        if lockSafety { vclock.Lock() }
-        vcfs:=varcount[fs]
-
+        // instantiate
         if lockSafety { vlock.Lock() }
-        if cap(ident[fs]) == vcfs {
-            ident[fs] = append(ident[fs], Variable{iName: name, iValue: value})
+        // if cap(ident[fs]) == varcount[fs] {
+        if varcount[fs]==len(ident[fs]) {
+
+            // append thread safety workaround
+            newary:=make([]Variable,cap(ident[fs])*2,cap(ident[fs])*2)
+            copy(newary,ident[fs])
+            // pf("capped: new array cap %v\n",cap(newary))
+
+            newary=append(newary,Variable{iName: name, iValue: value})
+
+            ident[fs]=newary
+            // pf("vset: cap increased on [%v] %v to %v\n",fs,name,cap(ident[fs]))
+            // pf("vcfs -> %v\n",varcount[fs])
+
         } else {
-            ident[fs][vcfs] = Variable{iName: name, iValue: value}
+            // pf("on %v -> current cap:%v count:%v\n",name,cap(ident[fs]),varcount[fs])
+            // pf("on %v -> vcfs:%v\n",name,varcount[fs])
+            ident[fs][varcount[fs]] = Variable{iName: name, iValue: value}
         }
-        if lockSafety { vlock.Unlock() }
-
         varcount[fs]++
-        if lockSafety { vclock.Unlock() }
-
+        if lockSafety { vlock.Unlock() }
     }
+    // pf("**** end of vset of %v ****\n",name)
     return true
 
 }
+
+
+/*
+capped: new array cap 400
+crash here? 2
+vset: cap increased on [15] F151 to 400
+vcfs -> 200
+crash here? 0
+*/
+
 
 func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
     var v interface{}
@@ -164,7 +185,9 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
     switch list.(type) {
     case map[string]interface{}:
+        if lockSafety { vlock.Lock() }
         list.(map[string]interface{})[el] = value
+        if lockSafety { vlock.Unlock() }
         vset(fs, name, list)
     }
 
@@ -272,8 +295,11 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
 func vget(fs uint64, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
+        if lockSafety {
+            vlock.RLock()
+            defer vlock.RUnlock()
+        }
         return ident[fs][vi].iValue, true
-
     }
     return nil, false
 }
@@ -298,55 +324,92 @@ func isNumber(expr interface{}) bool {
     return false
 }
 
+
+func escape(str string) string {
+	var buf bytes.Buffer
+	for _, char := range str {
+		switch char {
+		case '\'', '"', '\\', '\t', '\n', '%':
+			buf.WriteRune('\\')
+		}
+		buf.WriteRune(char)
+	}
+	return buf.String()
+}
+
+
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string) string {
+
+    if lockSafety { lastlock.RLock() }
+    if no_interpolation {
+        if lockSafety { lastlock.RUnlock() }
+        return s
+    }
+    if lockSafety { lastlock.RUnlock() }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
         return s
     }
 
-    vc:=varcount[fs]
-
+    // the str.replace section below is mainly here now for reading @system_vars 
+    // that haven't been added to ev() processing capability yet.
     // we need the extra loops to deal with embedded indirection
-
-    // @note: the direct access to ident[fs][k] means we should
-    //  probably have a read lock around this entire loop.
-    //  however, that really slows things down and interpolation has
-    //  not caused any race or wrong index conditions to exhibit 
-    //  during a lot of load testing. 
-    //  only add the lock if we really have to! i.e. make sure it is
-    //  actually this part of the code and not one of the many other
-    //  terrible bits which is the underlying problem.
 
     for {
         os := s
+        if lockSafety { vlock.RLock() }
+        vc:=varcount[fs]
         for k := 0; k < vc; k++ {
+
             v := ident[fs][k]
+            if str.IndexByte(v.iName,'@')==-1 { continue }
+
             if v.iValue != nil {
                 switch v.iValue.(type) {
-                case int:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatInt(int64(v.iValue.(int)), 10), -1)
-                case uint8:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatUint(uint64(v.iValue.(uint8)), 10), -1)
-                case uint:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatUint(uint64(v.iValue.(uint)), 10), -1)
-                case int64:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatInt(v.iValue.(int64), 10), -1)
-                case uint64:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatUint(v.iValue.(uint64), 10), -1)
-                case float32:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatFloat(v.iValue.(float64), 'f', -1, 32), -1)
-                case float64:
-                    s = str.Replace(s, "{"+v.iName+"}", strconv.FormatFloat(v.iValue.(float64), 'f', -1, 64), -1)
+                case uint8, uint64, int64, float32, float64, int, bool:
+                case interface{}:
+                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
                 case string:
-                    s = str.Replace(s, "{"+v.iName+"}", v.iValue.(string), -1)
+                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
+                case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
+                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
                 default:
+                    s = str.Replace(s, "{"+v.iName+"}", sf("!%T!%v",v.iValue,v.iValue),-1)
+
                 }
             }
         }
-        // if nothing was replaced, then it's time to leave this infernal place
+        if lockSafety { vlock.RUnlock() }
+
+        // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         if os == s {
+            redo:=true
+            for ;redo==true; {
+                modified:=false
+                for p:=0;p<len(s);p++ {
+                    if s[p]=='{' {
+                        q:=str.IndexByte(s[p+1:],'}')
+                        if q==-1 { break }
+                        // @todo: need a way to stop double escaping before using this:
+                        // evstr := escape(s[p+1:p+q+1])
+                        evstr := s[p+1:p+q+1]
+                        // pf("working with: |%+v|\n",s)
+                        // pf("will escape : |%#v|\n",s[p+1:p+q+1])
+                        // pf("     became : |%+v|\n",evstr)
+                        aval, ef, _ := ev(fs, evstr, false)
+                        // pf("ev returned : |%+v|\n",aval)
+                        // pf("     and ef : |%+v|\n",ef)
+                        if !ef {
+                            s=s[:p]+sf("%v",aval)+s[p+q+2:]
+                            modified=true
+                            break
+                        }
+                    }
+                }
+                if !modified { redo=false }
+            }
             break
         }
     }
@@ -369,6 +432,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         }
     }
 
+
     // searching for equality, in all the wrong places...
     if splitPoint==-1 {
         callOnly=true
@@ -378,10 +442,10 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         callOnly = false
         if !callOnly && splitPoint!=1 {
             if splitPoint == 0 {
-                report(ifs,lastline,"Left-hand side is missing.\n")
+                report(ifs,"Left-hand side is missing.\n")
             }
             if splitPoint == len(tokens)-1 {
-                report(ifs,lastline,"Right-hand side is missing.\n")
+                report(ifs,"Right-hand side is missing.\n")
             }
             finish(false, ERR_SYNTAX)
             return []Token{},true
@@ -426,7 +490,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
             if indent>0 && endOfList==0 {
                 // something fishy.
-                report(ifs,lastline,"unterminated function call?")
+                report(ifs,"unterminated function call?")
                 finish(false,ERR_SYNTAX)
                 return []Token{},true
             }
@@ -441,7 +505,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
                 for nt:=range termList {
                     if nt>=lfa {
-                        report(ifs,lastline,sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
+                        report(ifs,sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -449,7 +513,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                     if tokens[nt].tokType!=C_Comma {
                         if expectingComma {
                             // syntax error
-                            report(ifs,lastline,"missing comma in parameter list")
+                            report(ifs,"missing comma in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         } else {
@@ -459,7 +523,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                         if expectingComma {
                             expectingComma=false
                         } else {
-                            report(ifs,lastline,"missing a term in parameter list")
+                            report(ifs,"missing a term in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         }
@@ -467,7 +531,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                     // resolve down to list of terms with user functions all evaluated
                     r,e:=userDefEval(ifs,tokens[t+2:t+nt+2])
                     if e {
-                        report(ifs,lastline,"deep error in user function evaluation.")
+                        report(ifs,"deep error in user function evaluation.")
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -566,48 +630,16 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
                     // make Za function call
 
-                    newfnlock.Lock()
-                    loc := GetNextFnSpace()
-                    lmv,_:=fnlookup.lmget(previous.tokText)
-                    newfnlock.Unlock()
-
                     calllock.Lock()
+                    loc := GetNextFnSpace()
+                    // pf("allocated out %v in buildRhs %v\n",previous.tokText)
+                    lmv,_:=fnlookup.lmget(previous.tokText)
                     callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvars: []string{"@temp"}}
                     calllock.Unlock()
 
                     // this Call() should not race. lmv refers to the original source of the function, not the instance. 
 
                     Call(MODE_CALL, ifs, lmv, MODE_NEW, Phrase{}, loc, iargs...)
-
-
-                    // @todo: multiple return values...
-                    // this would mean we have to populate retvars properly by building the list of l.h.s. variables and passing that instead 
-                    // of {"@temp"}. we used to do this, but removed it! :) will have to write it again.
-                    // we can pass in a full retvars to buildrhs() from the caller. 
-                    // don't need to do this in main.go or actor.go.
-                    // we are currently only getting a single lhs value instead of a []lhs list. need to change this too.
-                    // fill in missing lhs or rhs variables/results
-
-                    // .. less rhs than lhs:
-                    // if len(retvars)<len(iargs) {
-                    //     report(ifs,lastline,sf("Syntax error: less RETURN values than expected in call to %v\n",lmv))
-                    //     finish(false,ERR_SYNTAX)
-                    //     return nil,true
-                    // }
-
-                    // .. less lhs than rhs:
-                    // for e:=len(iargs); e<=len(retvars); e++ {
-                    //     iargs=append(iargs,"@throw")
-                    // }
-
-                    // retcount:=0
-
-                    //for kr,vr:=range iargs {
-                        // retcount++
-                        // if kr=="@throw" {
-                        //     pf("Throwing away arg #%v: %v\n",retcount,vr)
-                        //     continue
-                        // }
 
                         // handle the returned result
                         if _, ok := VarLookup(ifs, "@temp"); ok {
@@ -677,6 +709,21 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 var lastreval *[]Token
 var lastws string
 
+type NTResult struct {
+	s   string
+	t   Token
+    p   int
+    eol bool
+    eof bool
+}
+
+// last ev cache
+//  as with lex cache, this won't have much impact at all
+//  may remove at some point.
+
+var lp NTResult
+
+
 // evaluate an expression string using the third-party goval lib
 func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err error) {
 
@@ -693,23 +740,23 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
     var cl int
     var maybeFunc bool
 
-    // retokenise string, while substituting udf results for udf calls.
-
+    //.. retokenise string, while substituting udf results for udf calls.
     var reval []Token
-        var valcount int
+    var valcount int
 
-    if lastws==ws {
-        // reuse previous token string
-        reval=*lastreval
-    } else {
-        // create new token string
         reval = []Token{}
         var t Token
         var eol,eof bool
         lws:=len(ws)
 
         for p := 0; p < lws; p++ {
-            t, eol , eof = nextToken(ws, &cl, p, t.tokType)
+            if !lockSafety && lp.s==ws && lp.p==p {
+                // use cached
+                t=lp.t; eol=lp.eol ; eof=lp.eof
+            } else {
+                t, eol , eof = nextToken(ws, &cl, p, t.tokType)
+                lp.s=ws ; lp.p=p ; lp.t=t ; lp.eol=eol; lp.eof=eof
+            }
             if t.tokPos != -1 {
                 p = t.tokPos
             }
@@ -718,18 +765,13 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
             valcount++
             if eol||eof { break }
         }
-        // update cache
-        lastws=ws
-        lastreval=&reval
-    }
 
-    // eval the user defined functions if it looks like there are any
-
+    //.. eval the user defined functions if it looks like there are any
     if maybeFunc {
         // crush to get an ExpressionCarton. .text holds a string version
         r,e:=userDefEval(fs,reval[:valcount])
         if e {
-            report(fs,lastline,sf("Could not evaluate the call '%v'\n",reval[:valcount]))
+            report(fs,sf("Could not evaluate the call '%v'\n",reval[:valcount]))
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
@@ -737,20 +779,36 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
     } else {
         // normal evaluation
         result, ef, err = Evaluate(ws, fs)
+        var ierr bool
+        if err!=nil {
+            if isNumber(ws) {
+                result,ierr=GetAsInt(ws)
+                if ierr {
+                    result,_=GetAsFloat(ws)
+                }
+            } else {
+                result=stripDoubleQuotes(ws)
+            }
+        }
     }
 
-    if ef || err != nil {
-        lastlock.RLock()
+    /*
+    if maybeFunc && ef && err != nil {
+        if lockSafety { lastlock.RLock() }
         nv,_:=numlookup.lmget(lastbase)
+        if lockSafety { lastlock.RUnlock() }
+
         if nv!="" {
-            pf("Evaluation Error @ Function %v, line %v\n", nv, lastline)
+            report(0,sf("Evaluation Error @ Function %v", nv))
         } else {
-            pf("Evaluation Error, line %v\n", lastline)
+            report(0,"Evaluation Error")
         }
-        lastlock.RUnlock()
-        if err!=nil { pf("[#6]%v[#-]\n", err) }
+        pf("[#6]%v[#-]\n", err)
+
         return nil, ef, err
+
     }
+    */
 
     return result, ef, nil
 
@@ -763,13 +821,15 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
 // This one can be resolved later. It would probably be okay if we locked for the
 // full duration of the function, but that would introduce a lot of slow downs.
 
-// var precrushed ExpressionCarton
+var precrushed ExpressionCarton
 // var precrushedTokens []Token
 
 // var crushlock deadlock.RWMutex
 
 /// convert a token stream into a single expression struct
 func crushEvalTokens(intoks []Token) ExpressionCarton {
+
+    crushFormat:="%v"
 
     // crushlock.Lock()
     // defer crushlock.Unlock()
@@ -781,13 +841,15 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
     }
 
 /*
-    // check for cached repeat
-    if len(intoks)==len(precrushedTokens) {
-        var eq bool=true
-        for i, v := range intoks {
-            if v != precrushedTokens[i] { eq=false;break }
+    if !lockSafety {
+        // check for cached repeat
+        if len(intoks)==len(precrushedTokens) {
+            var eq bool=true
+            for i, v := range intoks {
+                if v != precrushedTokens[i] { eq=false;break }
+            }
+            if eq { return precrushed }
         }
-        if eq { return precrushed }
     }
 */
 
@@ -805,7 +867,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
         if token.tokVal==nil {
             crushedOpcodes.WriteString(token.tokText)
         } else {
-            crushedOpcodes.WriteString(sf("%#v",token.tokVal))
+            crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
         }
 
     case tc == 2:
@@ -815,7 +877,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
             if token.tokVal==nil {
                 crushedOpcodes.WriteString(token.tokText)
             } else {
-                crushedOpcodes.WriteString(sf("%#v",token.tokVal))
+                crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
             }
         }
 
@@ -839,7 +901,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
                 if token.tokVal==nil {
                     crushedOpcodes.WriteString(token.tokText)
                 } else {
-                    crushedOpcodes.WriteString(sf("%#v",token.tokVal))
+                    crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
                 }
             }
         } else {
@@ -848,13 +910,13 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
                 if token.tokVal==nil {
                     crushedOpcodes.WriteString(token.tokText)
                 } else {
-                    crushedOpcodes.WriteString(sf("%#v",token.tokVal))
+                    crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
                 }
             }
         }
     }
 
-//    precrushedTokens=intoks
+    // if !lockSafety { precrushedTokens=intoks }
     precrushed:=ExpressionCarton{text: crushedOpcodes.String(), assign: assign, assignVar: id.String()}
 
     return precrushed
@@ -883,11 +945,15 @@ func tokenise(s string) (toks []Token) {
 /// this function handles boxing/unboxing around the ev() call
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
-    v, ef, err := ev(fs, expr.text, interpol)
+    // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
 
-    if ef || err!=nil {
+    v, _ , err := ev(fs, expr.text, interpol)
+
+    // pf("wrappedEval() : returned from ev() with %v\n",v)
+
+    if err!=nil {
         expr.evalError=true
-        return expr,ef
+        return expr,false
     }
 
     expr.result = v
@@ -905,10 +971,11 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         epos := str.IndexByte(expr.assignVar, ']')
         if pos != -1 && epos != -1 {
             // handle array reference
-            element, ef, err := ev(fs, expr.assignVar[pos+1:epos], true)
-            if ef || err!=nil {
+            element, _, err := ev(fs, expr.assignVar[pos+1:epos], true)
+            if err!=nil {
                 expr.evalError=true
-                return expr, ef
+                // return expr, ef
+                return expr, false
             }
             switch element.(type) {
             case string:
@@ -924,10 +991,13 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         } else {
             // non indexed
             vset(fs, interpolate(fs,expr.assignVar), expr.result)
+            // vset(fs, expr.assignVar, expr.result)
         }
     }
 
-    return expr, ef
+    // pf("returning from wrappedEval of <<%v>> with -> <<%v>>\n",expr.text,expr.result)
+    // return expr, ef
+    return expr, false
 
 }
 
