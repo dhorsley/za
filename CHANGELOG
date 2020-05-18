@@ -56,6 +56,32 @@ CHANGE LOG
             2.3000000000000003
         * int uses a different calc. float is using the Go math.Abs fn.
 
+    * added globlen() to lib-internal.
+        * this returns the length of a variable from global scope or -1 on error.
+            * @bug: if an array or map is expressed as, for example,  "a[]" instead of "a"
+                then the string length (3 in this case) is returned, but without error. don't do this! :)
+                * this will eventually be treated as an error.
+            * @note: the length of an array is the same as it's currently allocated cap, e.g.
+                > init q int 10
+                > print len(q)
+                10
+                > print q
+                [ 0 0 0 0 0 0 0 0 0 0 ]
+                > q[11]=42
+                > print len(q)
+                20
+                > print q
+                [ 0 0 0 0 0 0 0 0 0 0 42 0 0 0 0 0 0 0 0 0 ]
+            * due to the above, should you need a measurable length array, please use an associative array, e.g.
+                > z[11]=42
+                > print globlen(z)
+                1
+            * this applies to both len() and globlen() functions.
+                * currently debating if this should be adjusted. probably not going to though.
+                    it isn't difficult to keep track of what you are using in a pseudo fixed length array.
+                    we only allow the automatic length adjustment to save redimensioning in code.
+                    if it becomes enough of a problem for people, we can adjust it.
+
     * examples changes:
         * added basic colour test: eg/colours
         * amended eg/ascii
