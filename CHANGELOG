@@ -2,6 +2,21 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.4
+
+    fixes:
+        * found another read lock race cond in lib-net. fixed.
+        * updated source comments
+        * updated error reports and help texts
+        * removed more dead code
+        * removed a Call() parameter left over from separate call modes. 
+            * this should speed up recursion considerably. It was passing an empty struct in.
+                * it's still slow, just not as much :)
+        * changed actor.go/inbound to use pointers instead of copying phrase from source.
+            * again, another appreciable speed bump in places due to this.
+        * re-enabled some eval.go/ev() error capture.
+
+
 1.0.3
 
     features:

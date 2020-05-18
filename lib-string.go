@@ -52,35 +52,13 @@ func tr(s string, action int, cases string) string {
 
 }
 
-func ulen(args []interface{}) (int,error) {
-    if len(args) == 1 {
-        switch args[0].(type) {
-        case []int:
-            return len(args[0].([]int)), nil
-        case []bool:
-            return len(args[0].([]bool)), nil
-        case []float64:
-            return len(args[0].([]float64)), nil
-        case []string:
-            return len(args[0].([]string)), nil
-        case map[string]interface{}:
-            return len(args[0].(map[string]interface{})), nil
-        case string:
-            return len(args[0].(string)), nil
-        case []interface{}:
-            return len(args[0].([]interface{})), nil
-        }
-    }
-    return -1, nil
-}
-
 
 func buildStringLib() {
 
     // string handling
 
     features["string"] = Feature{version: 1, category: "text"}
-    categories["string"] = []string{"pad", "len", "length", "field", "fields", "pipesep", "get_value", "start", "end", "match", "filter",
+    categories["string"] = []string{"pad", "field", "fields", "pipesep", "get_value", "start", "end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
         "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format",
@@ -378,15 +356,6 @@ func buildStringLib() {
         return "", err
     }
 
-
-    slhelp["len"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
-    stdlib["len"] = func(args ...interface{}) (ret interface{}, err error) {
-        return ulen(args)
-    }
-    slhelp["length"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
-    stdlib["length"] = func(args ...interface{}) (ret interface{}, err error) {
-        return ulen(args)
-    }
 
 
     slhelp["field"] = LibHelp{in: "input_string,position,optional_separator", out: "", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
