@@ -152,6 +152,8 @@ func GetAsInt(expr interface{}) (int, bool) {
     return 0, true
 }
 
+// EvalCrush* used in C_If, C_Exit, C_For and C_Debug:
+
 // EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
 // if no evalError then returns a "validated" true bool
 func EvalCrush(fs uint64, tok []Token, tstart int, tend int) (interface{}, bool) {
@@ -220,9 +222,7 @@ func searchToken(base uint64, start int, end int, sval string) bool {
 func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int, indenters []int, dedenters []int) (bool, int, bool) {
 
     indent := startlevel
-    // if lockSafety { fspacelock.RLock() }
     range_fs:=functionspaces[fs][startLine:]
-    // if lockSafety { fspacelock.RUnlock() }
 
     for i, v := range range_fs {
 
@@ -254,6 +254,9 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 
 }
 
+
+// find the next available slot for a function or module
+//  definition in the functionspace[] list.
 func GetNextFnSpace() uint64 {
     for q := uint64(1); q < MaxUint64; q++ {
         if _, extant := numlookup.lmget(q); extant {
@@ -265,6 +268,7 @@ func GetNextFnSpace() uint64 {
     finish(true, ERR_FATAL)
     return 0
 }
+
 
 // redraw margins - called after a SIGWINCH
 func pane_redef() {
@@ -279,14 +283,15 @@ var farglock   = &sync.RWMutex{}
 var looplock   = &sync.RWMutex{}
 var newfnlock  = &sync.RWMutex{}
 var globlock   = &sync.RWMutex{}
-// var vclock     = &sync.RWMutex{}
 
 
 // defined function entry point
-// MODE_CALL : csloc is ID in [id][]Phrase function spaces
-func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc uint64, va ...interface{}) (endFunc bool, breakOut int, continueOut int) {
+// csloc is ID in [id][]Phrase function spaces
+func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool, breakOut int, continueOut int) {
 
     // pf("Entered call -> ifs %v : va -> %v\n",ifs,va)
+
+    var inbound *Phrase
 
     defer func() {
         if r := recover(); r != nil {
@@ -313,12 +318,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
     // this is used to return the phrase counter to modify to if a CONTINUE was encountered.
     continueOut = -1
 
-
     // get last call details
-    if lockSafety { calllock.RLock() }
+    // if lockSafety { calllock.RLock() }
     ncs = callstack[csloc]
-    if lockSafety { calllock.RUnlock() }
+    // if lockSafety { calllock.RUnlock() }
 
+    // set up the function space
     fs = ncs.fs
     base = ncs.base
     caller = ncs.caller
@@ -332,23 +337,23 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         }
     }
 
-    if lockSafety { looplock.Lock() }
+    // if lockSafety { looplock.Lock() }
 
     if varmode == MODE_NEW {
 
         ifs = GetNextFnSpace()
-        // pf("allocated out %v in MODE_NEW\n",ifs)
 
         numlookup.lmset(ifs, sf("%s@%v", fs, ifs))
         fnlookup.lmset(sf("%s@%v",fs,ifs),ifs)
         // in interactive mode, the current functionspace is 0
-        // in normal exec mode, the source is treated as fnspace 1
+        // in normal exec mode, the source is treated as functionspace 1
 
         if !interactive && base < 2 {
             globalaccess = ifs
             vset(globalaccess, "userSigIntHandler", "")
         }
 
+        // create the local variable storage for the function
         vcreatetable(ifs, &vtable_maxreached, VAR_CAP)
 
         // nesting levels in this function
@@ -377,7 +382,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         loops[ifs] = make([]s_loop, MAX_LOOPS)
     }
 
-    if lockSafety { looplock.Unlock() }
+    // if lockSafety { looplock.Unlock() }
 
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
@@ -406,12 +411,11 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
     // pre-calculate the len to save the extra overhead during the call loop
     finalline = len(functionspaces[base])
 
+    var defining bool               // are we currently defining a function
+    var definitionName string       // ... if we are, what is it called
 
-    var defining bool
-    var definitionName string
 
     pc = -1 // program counter : increments to zero at start of loop
-
 
     for {
 
@@ -429,7 +433,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         }
 
         // cache the next Phrase: for readability and performance (we read from this slice index often)
-        inbound = functionspaces[base][pc]
+        inbound = &functionspaces[base][pc]
 
         tokencount := inbound.TokenCount // length of phrase
 
@@ -443,7 +447,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         if lockSafety { lastlock.Unlock() }
 
         // .. skip comments and DOC statements
-        if (inbound.Tokens[0].tokType == C_Doc && !testMode) {
+        if inbound.Tokens[0].tokType == C_Doc && !testMode {
             continue
         }
 
@@ -479,7 +483,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             //.. add to functionspace
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
-            functionspaces[lmv] = append(functionspaces[lmv], inbound)
+            functionspaces[lmv] = append(functionspaces[lmv], *inbound)
             fspacelock.Unlock()
             continue
         }
@@ -629,12 +633,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 lhs = inbound.Tokens[1].tokText
             }
 
-            // pf("sg token stream:\n%+v\n",inbound.Tokens)
-            // pf("sg lhs:\n%+v\n",lhs)
-
             var elementComponents string
-
-            // debug(20,"**debug** reached past lhs set with '%v'\n",lhs)
 
             if lockSafety {globlock.Lock() }
 
@@ -643,12 +642,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 // find token pos of "]"
                 sqEndPos:=str.IndexByte(lhs,']')
                 if sqEndPos==-1 { // missing end brace
-                    pf("**debug** setglob missing end brace in '%v'\n",lhs)
+                    report(ifs,sf("SETGLOB missing end brace in '%v'",lhs))
                     finish(false,ERR_SYNTAX)
                     break
                 }
                 if sqEndPos<sqPos { // wrong order
-                    pf("**debug** setglob out-of-order\n")
+                    report(ifs,"SETGLOB braces out-of-order\n")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -660,7 +659,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             cet := crushEvalTokens(inbound.Tokens[eqAt+1:])
             expr,ef := wrappedEval(ifs, cet, true)
             if ef || expr.evalError {
-                pf("bad rhs in setglob : '%s'\n",expr.text)
+                report(ifs,sf("Bad expression in SETGLOB : '%s'",expr.text))
                 finish(false,ERR_EVAL)
                 break
             }
@@ -671,7 +670,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 // array reference
                 element, ef, _ := ev(ifs, elementComponents, true)
                 if ef {
-                    pf("bad element in lhs setglob %v\n",elementComponents)
+                    report(ifs,sf("Bad element in SETGLOB assignment: '%v'",elementComponents))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -688,14 +687,14 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 case int:
                     // error on negative element
                     if element.(int)<0 {
-                        pf("**debug** negative array element found in SETGLOB (%v,%v,%v)\n",ifs,aryName,element.(int))
+                        report(ifs,sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element.(int)))
                         finish(false,ERR_EVAL)
                         break
                     }
                     // otherwise, set global array element
                     vsetElement(globalaccess, aryName, interpolate(ifs,sf("%v",element)), expr.result)
                 default:
-                    pf("unknown type in setglob\n")
+                    report(ifs,"Unknown type in SETGLOB")
                     if lockSafety {globlock.Unlock() }
                     os.Exit(125)
                 }
@@ -958,7 +957,9 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         }
 
                     default:
-                        pf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr,expr)
+                        report(ifs,sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr,expr))
+                        finish(false,ERR_EVAL)
+                        break
                     }
 
                     // figure end position
@@ -989,7 +990,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         case C_For: // loop over an int64 range
 
             if tokencount < 5 || inbound.Tokens[2].tokText != "=" {
-                report(ifs, "malformed FOR statement.\n")
+                report(ifs, "Malformed FOR statement.\n")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1017,12 +1018,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 if validated && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
-                    report(ifs, "could not evaluate start expression")
+                    report(ifs, "Could not evaluate start expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,"missing expression in FOR statement?")
+                report(ifs,"Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1032,12 +1033,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 if validated && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
                 } else {
-                    report(ifs, "could not evaluate end expression\n")
+                    report(ifs, "Could not evaluate end expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,"missing expression in FOR statement?")
+                report(ifs,"Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1048,12 +1049,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     if validated && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
-                        report(ifs, "could not evaluate STEP expression\n")
+                        report(ifs, "Could not evaluate STEP expression")
                         finish(false, ERR_EVAL)
                         break
                     }
                 } else {
-                    report(ifs,"missing expression in FOR statement?")
+                    report(ifs,"Missing expression in FOR statement?")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1064,7 +1065,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 step = fstep
             }
             if step == 0 {
-                report(ifs, "this is a road to nowhere. (STEP==0)\n")
+                report(ifs, "This is a road to nowhere. (STEP==0)")
                 finish(true, ERR_EVAL)
                 break
             }
@@ -1077,7 +1078,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             // figure end position
             endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_For}, []int{C_Endfor})
             if !endfound {
-                report(ifs, "cannot determine the location of a matching ENDFOR.")
+                report(ifs, "Cannot determine the location of a matching ENDFOR.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1117,7 +1118,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
             if lastcon!=C_For && lastcon!=C_Foreach {
                 if lockSafety { looplock.Unlock() }
-                report(ifs,"Error: ENDFOR without a FOR or FOREACH")
+                report(ifs,"ENDFOR without a FOR or FOREACH")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1255,9 +1256,9 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
             // Continue should work with FOR, FOREACH or WHILE.
 
-            if lockSafety { looplock.RLock() }
+            // if lockSafety { looplock.RLock() }
             di:=depth[ifs]
-            if lockSafety { looplock.RUnlock() }
+            // if lockSafety { looplock.RUnlock() }
 
             if di == 0 {
                 report(ifs, "Attempting to CONTINUE without a valid surrounding construct.")
@@ -1483,7 +1484,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
                     report(ifs,"Could not use an argument in PANE DEFINE.")
-                    pf("Toks -> [%+v]\n", inbound.Tokens)
+                    // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1535,7 +1536,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 dur, err := time.ParseDuration(i + "ms")
 
                 if err != nil {
-                    report(ifs, sf("'%s' did not evaluate to a duration.\n", expr.text))
+                    report(ifs, sf("'%s' did not evaluate to a duration.", expr.text))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -1543,7 +1544,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 time.Sleep(dur)
 
             } else {
-                report(ifs, sf("could not evaluate PAUSE expression\n"))
+                report(ifs, sf("Could not evaluate PAUSE expression."))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -1678,7 +1679,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                                 // be consumed. However, @todo: fix this.
 
                                 // action!
-                                inbound=p
+                                inbound=&p
                                 goto ondo_reenter
 
                             }
@@ -1774,19 +1775,10 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             if tokencount>2 {
                 vartype = inbound.Tokens[2].tokText
             }
-            dimensions:=1
-            /*
-            if tokencount>3 {
-                strDim,invalid:=GetAsInt(inbound.Tokens[3].tokText)
-                if ! invalid && strDim!=1 {
-                    report(ifs,"Single dimension arrays only!")
-                    finish(false,ERR_SYNTAX)
-                    break
-                }
-            }
-            */
 
+            dimensions:=1
             size:=DEFAULT_INIT_SIZE
+
             if tokencount>3 {
 
                 cet := crushEvalTokens(inbound.Tokens[3:])
@@ -1807,6 +1799,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 default:
                     report(ifs,"Array width must evaluate to an integer.")
                     finish(false,ERR_EVAL)
+                    break
                 }
 
             }
@@ -1853,7 +1846,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
             if tokencount != 2 {
 
-                report(ifs, "malformed DEBUG statement.\n")
+                report(ifs, "Malformed DEBUG statement.")
                 finish(false, ERR_SYNTAX)
 
             } else {
@@ -1862,7 +1855,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 if validated && isNumber(dval) {
                     debug_level = dval.(int)
                 } else {
-                    report(ifs, "bad debug level value - could not evaluate.\n")
+                    report(ifs, "Bad debug level value - could not evaluate.")
                     finish(false, ERR_EVAL)
                 }
 
@@ -1874,7 +1867,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
             if tokencount < 2 || tokencount > 3 {
-                report(ifs, "malformed REQUIRE statement.\n")
+                report(ifs, "Malformed REQUIRE statement.")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -1926,7 +1919,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             if tokencount > 1 {
 
                 if defining {
-                    report(ifs, "already defining a function. Nesting not permitted.\n")
+                    report(ifs, "Already defining a function. Nesting not permitted.")
                     finish(true, ERR_SYNTAX)
                     break
                 }
@@ -1946,7 +1939,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     }
                 } else {
                     if tokencount != 2 {
-                        report(ifs, "Braced list of parameters not supplied!\n")
+                        report(ifs, "Braced list of parameters not supplied!")
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2004,7 +1997,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 if hasOuterBraces(inbound.Tokens[1].tokText) {
                     if inbound.Tokens[1].tokType == Expression {
                         report(ifs, "Cannot brace a RETURN value.")
-                        finish(false, ERR_SYNTAX)
+                        finish(true, ERR_SYNTAX)
                         break
                     }
                 }
@@ -2029,7 +2022,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         }
                     } else {
                         report(ifs, sf("could not evaluate RETURN parameter: %+v", cet.text))
-                        finish(false, ERR_EVAL)
+                        finish(true, ERR_EVAL)
                         break
                     }
                 }
@@ -2041,7 +2034,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
         case C_Enddef:
 
             if !defining {
-                report(ifs, "not currently defining a function.\n")
+                report(ifs, "Not currently defining a function.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2074,7 +2067,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 d, er := strconv.Atoi(pos)
                 if er == nil {
                     if d<1 {
-                        pf("Error: INPUT position %d too low.\n",d)
+                        report(ifs,sf("INPUT position %d too low.",d))
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2087,11 +2080,11 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                             vset(ifs, id, cmdargs[d-1])
                         }
                     } else {
-                        pf("Error: expected CLI parameter '%s' not provided at startup.\n", id)
+                        report(ifs,sf("Expected CLI parameter '%s' not provided at startup.", id))
                         finish(true, ERR_SYNTAX)
                     }
                 } else {
-                    report(ifs, sf("Error: that '%s' doesn't look like a number.", pos))
+                    report(ifs, sf("That '%s' doesn't look like a number.", pos))
                     finish(true, ERR_SYNTAX)
                 }
 
@@ -2114,7 +2107,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         }
                     }
                 } else {
-                    report(ifs, sf("Error: that '%s' doesn't look like a number.", pos))
+                    report(ifs, sf("That '%s' doesn't look like a number.", pos))
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -2234,7 +2227,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             calllock.Lock()
             callstack[loc] = modcs
             calllock.Unlock()
-            Call(MODE_CALL, ifs, base, MODE_NEW, Phrase{}, loc)
+            Call(ifs, base, MODE_NEW, loc)
 
             // purge the module source as the code has been executed
 
@@ -2266,13 +2259,13 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             // debug(6,"@%d : Endwhen lookahead set to line %d\n",pc+1,pc+1+enddistance)
 
             if er {
-                report(ifs, "Bad thing - lookahead error!")
-                finish(false, ERR_SYNTAX)
+                report(ifs, "Lookahead error!")
+                finish(true, ERR_SYNTAX)
                 break
             }
 
             if !endfound {
-                report(ifs, "Missing ENDWHEN for this WHEN\n")
+                report(ifs, "Missing ENDWHEN for this WHEN")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2312,8 +2305,8 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             if lockSafety { lastlock.RUnlock() }
 
             if d == 0 || (d > 0 && lcifs != C_When) {
-                pf("Not currently in a WHEN block.\n")
                 if lockSafety { looplock.RUnlock() }
+                report(ifs,"Not currently in a WHEN block.")
                 break
             }
 
@@ -2334,7 +2327,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                 }
             }
 
-            fthrough := false // assume we'll need to skip to next when clause
+            ramble_on := false // assume we'll need to skip to next when clause
 
             switch statement.tokType {
 
@@ -2344,7 +2337,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     if lockSafety { looplock.Lock() }
                     wc[wccount[ifs]] = carton
                     if lockSafety { looplock.Unlock() }
-                    fthrough = true
+                    ramble_on = true
                 }
 
             case C_Contains:
@@ -2356,7 +2349,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         if lockSafety { looplock.Lock() }
                         wc[wccount[ifs]] = carton
                         if lockSafety { looplock.Unlock() }
-                        fthrough = true
+                        ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
@@ -2364,7 +2357,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         if lockSafety { looplock.Lock() }
                         wc[wccount[ifs]] = carton
                         if lockSafety { looplock.Unlock() }
-                        fthrough = true
+                        ramble_on = true
                     }
                 }
 
@@ -2372,9 +2365,9 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
                 if carton.dodefault == false {
                     pc = carton.endLine - 1
-                    fthrough = false
+                    ramble_on = false
                 } else {
-                    fthrough = true
+                    ramble_on = true
                 }
 
             }
@@ -2383,7 +2376,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
             // jump to the next clause, continue to next line or skip to end.
 
-            if fthrough { // fall-through to next pc statement
+            if ramble_on { // move on to next pc statement
             } else {
                 // skip to next WHEN clause:
                 isfound, isdistance, _ := lookahead(base, pc+1, 0, 0, C_Is, []int{C_When}, []int{C_Endwhen})
@@ -2429,7 +2422,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             if lockSafety { lastlock.RUnlock() }
 
             if d == 0 || (d > 0 && lcifs != C_When) {
-                pf("Not currently in a WHEN block.\n")
+                report(ifs,"Not currently in a WHEN block.")
                 break
             }
 
@@ -2443,7 +2436,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
             depth[ifs]--
             wccount[ifs]--
             if wccount[ifs] < 0 {
-                report(ifs, "Cannot reduce WHEN stack below zero.\n")
+                report(ifs, "Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
             if lockSafety { looplock.Unlock() }
@@ -2556,12 +2549,12 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
 
                 expr_row, ef, err := ev(ifs, evrow.text, false)
                 if ef || expr_row==nil || err != nil {
-                    report(ifs, sf("evaluation error in %v", expr_row))
+                    report(ifs, sf("Evaluation error in %v", expr_row))
                 }
 
                 expr_col, ef, err := ev(ifs, evcol.text, false)
                 if ef || expr_col==nil || err != nil {
-                    report(ifs, sf("evaluation error in %v", expr_col))
+                    report(ifs, sf("Evaluation error in %v", expr_col))
                 }
 
                 row, _ = GetAsInt(expr_row)
@@ -2601,7 +2594,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                         broken := false
                         expr, ef, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true)
                         if ef || expr==nil {
-                            report(ifs, "Could not evaluate in PROMPT command.\n")
+                            report(ifs, "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -2667,7 +2660,7 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
                     expr,ef := wrappedEval(ifs, cet, false)
                     if ef || expr.evalError { break }
                     web_log_file=expr.result.(string)
-                    pf("accessfile changed to %v\n",web_log_file)
+                    // pf("accessfile changed to %v\n",web_log_file)
                     web_log_handle.Close()
                     var err error
                     web_log_handle, err = os.OpenFile(web_log_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -2971,22 +2964,20 @@ func Call(mode int, ifs uint64, base uint64, varmode int, inbound Phrase, csloc 
     siglock.RUnlock()
 
     if !si {
-        if mode == MODE_CALL {
 
-            // populate return variables in the caller with retvals
-            for qv := range retvals {
-                if qv>len(retvars)-1 { break }
-                lhs_name := interpolate(ifs, retvars[qv])
-                vset(caller, lhs_name, retvals[qv])
-            }
-
-            // clean up
-            fnlookup.lmdelete(fs+"@"+string(ifs))
-            numlookup.lmdelete(ifs)
-
-            if ifs>2 { functionspaces[ifs] = []Phrase{} }
-
+        // populate return variables in the caller with retvals
+        for qv := range retvals {
+            if qv>len(retvars)-1 { break }
+            lhs_name := interpolate(ifs, retvars[qv])
+            vset(caller, lhs_name, retvals[qv])
         }
+
+        // clean up
+        fnlookup.lmdelete(fs+"@"+string(ifs))
+        numlookup.lmdelete(ifs)
+
+        if ifs>2 { functionspaces[ifs] = []Phrase{} }
+
     }
 
     return endFunc, breakIn, continueOut
@@ -3062,3 +3053,5 @@ func findDelim(tokens []Token, delim string, start int) (pos int) {
     }
     return -1
 }
+
+

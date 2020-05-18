@@ -531,7 +531,7 @@ func main() {
                 calllock.Unlock()
 
                 // execute call
-                Call(MODE_CALL, globalaccess, lmv, MODE_NEW, Phrase{}, loc,iargs...)
+                Call(globalaccess, lmv, MODE_NEW, loc,iargs...)
 
                 if _, ok := VarLookup(globalaccess, "@temp"); ok {
                     sigintreturn,_ := vget(globalaccess, "@temp")
@@ -701,7 +701,7 @@ func main() {
             parse("global", input, 0)
 
             // throw away break and continue positions in interactive mode
-            endFunc, _ , _ = Call(MODE_CALL, 0, 0, MODE_STATIC, Phrase{}, globalspace)
+            endFunc, _ , _ = Call(0, 0, MODE_STATIC, globalspace)
             if endFunc {
                 break
             }
@@ -780,7 +780,7 @@ func main() {
         calllock.Lock()
         callstack[mainloc] = cs
         calllock.Unlock()
-        Call(MODE_CALL, 0, 0, MODE_NEW, Phrase{}, mainloc)
+        Call(0, 0, MODE_NEW, mainloc)
     }
 
     // webCloseAll()

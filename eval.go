@@ -639,7 +639,7 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
                     // this Call() should not race. lmv refers to the original source of the function, not the instance. 
 
-                    Call(MODE_CALL, ifs, lmv, MODE_NEW, Phrase{}, loc, iargs...)
+                    Call(ifs, lmv, MODE_NEW, loc, iargs...)
 
                         // handle the returned result
                         if _, ok := VarLookup(ifs, "@temp"); ok {
@@ -792,8 +792,9 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
         }
     }
 
-    /*
-    if maybeFunc && ef && err != nil {
+    // MONKEY
+    // if maybeFunc && ef && err != nil {
+    if maybeFunc && err != nil {
         if lockSafety { lastlock.RLock() }
         nv,_:=numlookup.lmget(lastbase)
         if lockSafety { lastlock.RUnlock() }
@@ -808,50 +809,22 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
         return nil, ef, err
 
     }
-    */
 
-    return result, ef, nil
+    return result, ef, err
 
 }
 
-
-// single cache line for crusher
-
-// currently disabled until all race conditions have been dealt with.
-// This one can be resolved later. It would probably be okay if we locked for the
-// full duration of the function, but that would introduce a lot of slow downs.
-
-var precrushed ExpressionCarton
-// var precrushedTokens []Token
-
-// var crushlock deadlock.RWMutex
 
 /// convert a token stream into a single expression struct
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     crushFormat:="%v"
 
-    // crushlock.Lock()
-    // defer crushlock.Unlock()
-
     token := intoks[0]
 
     if token.tokType == EOL || token.tokType == SingleComment {
         return ExpressionCarton{}
     }
-
-/*
-    if !lockSafety {
-        // check for cached repeat
-        if len(intoks)==len(precrushedTokens) {
-            var eq bool=true
-            for i, v := range intoks {
-                if v != precrushedTokens[i] { eq=false;break }
-            }
-            if eq { return precrushed }
-        }
-    }
-*/
 
     var id str.Builder
     id.Grow(20)
@@ -916,12 +889,10 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
         }
     }
 
-    // if !lockSafety { precrushedTokens=intoks }
-    precrushed:=ExpressionCarton{text: crushedOpcodes.String(), assign: assign, assignVar: id.String()}
-
-    return precrushed
+    return ExpressionCarton{text: crushedOpcodes.String(), assign: assign, assignVar: id.String()}
 
 }
+
 
 // currently unused?
 func tokenise(s string) (toks []Token) {

@@ -243,8 +243,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
     // deal with forced redirects and reverse proxying first
 
+    webrulelock.RLock()
     wr_copy:=web_rules[handle]
-    // for _,rule := range web_rules[handle] {
+    webrulelock.RUnlock()
+
     for _,rule := range wr_copy {
 
         switch rule.code {
@@ -458,7 +460,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvars: []string{"@temp"}}
                 calllock.Unlock()
 
-                Call(MODE_CALL, lastlastfs, ifn, MODE_NEW, Phrase{}, loc, webcallstruct)
+                Call(lastlastfs, ifn, MODE_NEW, loc, webcallstruct)
 
                 lastlock.Lock()
                 lastfs=lastlastfs
@@ -576,7 +578,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 // ZA LIBRARY FUNCTIONS //////////////////////////////////////////////////////////////////////
 
 var    weblock = &sync.Mutex{}
-var    webrulelock = &sync.Mutex{}
+var    webrulelock = &sync.RWMutex{}
 
 func buildNetLib() {
 

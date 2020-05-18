@@ -647,7 +647,7 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
 			callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvars: []string{"@temp"}}
             calllock.Unlock()
 
-			Call(MODE_CALL, evalfs, lmv, MODE_NEW, Phrase{}, loc, args...)
+			Call(evalfs, lmv, MODE_NEW, loc, args...)
 
 			// handle the returned result, if present.
             res, valid = vget(evalfs, "@temp")

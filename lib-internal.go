@@ -20,6 +20,47 @@ const (
     uintSize        uint = 32 << (^uint(0) >> 63)
 )
 
+func ulen(args interface{}) (int,error) {
+    switch args.(type) { // i'm getting fed up of typing these case statements!!
+    case string:
+        return len(args.(string)),nil
+    case []string:
+        return len(args.([]string)),nil
+    case []interface{}:
+        return len(args.([]interface{})),nil
+    case []int:
+        return len(args.([]int)),nil
+    case []int32:
+        return len(args.([]int32)),nil
+    case []int64:
+        return len(args.([]int64)),nil
+    case []uint8:
+        return len(args.([]uint8)),nil
+    case []float64:
+        return len(args.([]float64)),nil
+    case []bool:
+        return len(args.([]bool)),nil
+    case map[string]float64:
+        return len(args.(map[string]float64)),nil
+    case map[string]interface{}:
+        return len(args.(map[string]interface{})),nil
+    case map[string]string:
+        return len(args.(map[string]string)),nil
+    case map[string]int:
+        return len(args.(map[string]int)),nil
+    case map[string]bool:
+        return len(args.(map[string]bool)),nil
+    case map[string]int32:
+        return len(args.(map[string]int32)),nil
+    case map[string]int64:
+        return len(args.(map[string]int64)),nil
+    case map[string]uint8:
+        return len(args.(map[string]uint8)),nil
+    }
+    return -1,errors.New(sf("Unknown type in globlen '%T'",args))
+}
+
+
 func buildInternalLib() {
 
     // language
@@ -30,6 +71,7 @@ func buildInternalLib() {
         "funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "interpol", "shellpid", "noshell",
+        "globlen","len","length",
     }
 
 
@@ -146,6 +188,23 @@ func buildInternalLib() {
         return nil, errors.New(sf("'%v' does not exist!", name))
     }
 
+
+    slhelp["len"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
+    stdlib["len"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args) == 1 {
+            return ulen(args[0])
+        }
+        return -1,errors.New("Bad argument in len()")
+    }
+
+    slhelp["length"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
+    stdlib["length"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args) == 1 {
+            return ulen(args[0])
+        }
+        return -1,errors.New("Bad argument in length()")
+    }
+
     slhelp["globlen"] = LibHelp{in: "name", out: "int", action: "Get the length of a global variable. Returns -1 on not found or error."}
     stdlib["globlen"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
@@ -163,46 +222,7 @@ func buildInternalLib() {
                 globlock.RUnlock()
 
                 if err==nil {
-                    switch res.(type) { // i'm getting fed up of typing these case statements!!
-                    case string:
-                        return len(res.(string)),nil
-                    case []string:
-                        return len(res.([]string)),nil
-                    case []interface{}:
-                        return len(res.([]interface{})),nil
-                    case []int:
-                        return len(res.([]int)),nil
-                    case []int32:
-                        return len(res.([]int32)),nil
-                    case []int64:
-                        return len(res.([]int64)),nil
-                    case []uint8:
-                        return len(res.([]uint8)),nil
-                    case []float64:
-                        return len(res.([]float64)),nil
-                    case []bool:
-                        return len(res.([]bool)),nil
-                    case map[string]float64:
-                        return len(res.(map[string]float64)),nil
-                    case map[string]interface{}:
-                        return len(res.(map[string]interface{})),nil
-                    case map[string]string:
-                        return len(res.(map[string]string)),nil
-                    case map[string]int:
-                        return len(res.(map[string]int)),nil
-                    case map[string]bool:
-                        return len(res.(map[string]bool)),nil
-                    case map[string]int32:
-                        return len(res.(map[string]int32)),nil
-                    case map[string]int64:
-                        return len(res.(map[string]int64)),nil
-                    case map[string]uint8:
-                        return len(res.(map[string]uint8)),nil
-                    default:
-                        return -1,errors.New(sf("Unknown type in globlen '%T'",args[0]))
-                    }
-                } else {
-                    return -1,errors.New(sf("Bad evaluation of '%s'",args[0].(string)))
+                    return ulen(res)
                 }
 
             default:
@@ -211,6 +231,7 @@ func buildInternalLib() {
         }
         return -1, errors.New("Bad args to globlen()")
     }
+
 
     slhelp["getglob"] = LibHelp{in: "name", out: "var", action: "Read a global variable."}
     stdlib["getglob"] = func(args ...interface{}) (ret interface{}, err error) {

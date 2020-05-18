@@ -1,35 +1,5 @@
 
-    todo:
-
-        * library, to add:
-            * in progress: umask, chroot
-            * setuid, setgid, setsid
-            * setpriority
-
-        * if, one day, the evaluator is changed then we can look at tail-call elimination.
-
-            * currently not possible:
-                * as naive recursion implemented using underlying go function handling
-                * would have to figure pre-eval if the functions used in the return args 
-                    (both stdlib+user-defined) contained calls to self.
-                * ... then could replace terms and jump back into higher point of Call()
-
-            * pretty unlikely this is worth the work, as the evaluator needs replacing anyway.
-
-            * probably not going to do this, even though recursion performance is terrible as:
-                a) it does function
-                b) the types of activity which require such optimisation are not exactly the goal of the language.
-                c) memoizing is possible in a lot of cases to work around the worst of this,
-                    although that doesn't really help with more complex things.
-
-        * in progress: change more pf calls to report() or debug()
-        * in progress: add usage text to more keyword arguments errors
-        * in progress: review all report texts for better phrasing
-
-        * add an ev() return parameter stating that interpolation caused an error and add handler code throughout?
-
-        * review sigint lock speed: we may need to add more signal types and these could really slow things down.
+todo:
 
         * in progress: really fix commas in assoc array element key names.
-
 
