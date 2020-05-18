@@ -2,11 +2,11 @@
 
 module "mod_build/defines"
 
-input do_alpine optarg 1
+input target optarg 1
 input do_upx optarg 2
 
-alpine=false
-on do_alpine=="alpine" do alpine=true
+tgt="libc"
+on target!="" do tgt=target
 
 upx_enable=false
 on do_upx=="upx" do upx_enable=true
@@ -26,17 +26,23 @@ ufound=int(ufound)
 
 strip_opts="-s -w"
 
-if alpine
+when lower(tgt)
+is "alpine"
     if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
         print "Failed to build alpine version.\n"
         exit 1
     endif
-else
+is "libc"
     if buildLibc(bvers,bdate)!=0
         print "Failed to build libc version.\n"
-        exit 2
+        exit 1
     endif
-endif
+is "win"
+    if buildWin(bvers,bdate)!=0
+        print "Failed to build windows version.\n"
+        exit 1
+    endif
+endwhen
 
 if ufound==1
     | strip {strip_opts} za

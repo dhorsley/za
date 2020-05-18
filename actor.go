@@ -2566,6 +2566,15 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
         case C_Prompt:
 
+            // if on windows, return an error
+            if runtime.GOOS == "windows" {
+                pf("PROMPT not supported on windows.\n")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            // else continue
+
             if tokencount < 2 {
                 usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ]"
                 report(ifs, "Not enough arguments for PROMPT.\n"+usage)

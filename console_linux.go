@@ -1,3 +1,5 @@
+// +build !windows
+
 package main
 
 import (
@@ -223,18 +225,6 @@ func StripCC(s string) string {
 func displayedLen(s string) int {
     // remove ansi codes
     return len(Strip(sparkle(s)))
-    // s = Strip(sparkle(s))
-    // remove za ansi lookup codes
-    //rs := []string{}
-    //for k, _ := range fairydust {
-    //    rs = append(rs, sf("[#%v]", k))
-    //    rs = append(rs, "")
-    //}
-    //rs = append(rs, "[#-]", "")
-    //rs = append(rs, "[##]", "")
-    //r := str.NewReplacer(rs...)
-    // return length
-    //return len(r.Replace(s))
 }
 
 /// move the console cursor
@@ -272,7 +262,6 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
     }
 
     // numRead can be up to 6 chars for special input stroke.
-    // if numRead==4 { numRead=3 }
 
     if err != nil {
         // treat as timeout.. separate later, but timeout is buried in here

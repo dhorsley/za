@@ -13,6 +13,7 @@ import (
     "os"
     "os/exec"
     "os/signal"
+    "runtime"
     str "strings"
     "syscall"
     "time"
@@ -177,7 +178,10 @@ func main() {
 
     // setup winch handler receive channel to indicate a refresh is required, then check it in Call() before enact().
     sigs := make(chan os.Signal, 1)
-    signal.Notify(sigs, syscall.SIGWINCH)
+
+    if runtime.GOOS!="windows" {
+        setWinchSignal(sigs)
+    }
 
     go func() {
         for {
@@ -281,7 +285,7 @@ func main() {
 
     // mono flag
     ansiMode=true
-    if *a_ansi {
+    if runtime.GOOS=="windows" || *a_ansi {
         ansiMode = false
     }
 
@@ -414,25 +418,31 @@ func main() {
 
     bashLoc:=""
 
-    if default_shell=="" {
-        bashLoc, err = GetBash("/usr/bin/which bash")
-        if err == nil {
-            bashLoc = bashLoc[:len(bashLoc)-1]
-        } else {
-            if fexists("/bin/bash") {
-                bashLoc="/bin/bash"
+    if runtime.GOOS!="windows" {
+
+        if default_shell=="" {
+            bashLoc, err = GetBash("/usr/bin/which bash")
+            if err == nil {
+                bashLoc = bashLoc[:len(bashLoc)-1]
             } else {
-                pf("Error: could not locate a Bash shell.\n")
-                pf("Error content:\n%v\n",err)
+                if fexists("/bin/bash") {
+                    bashLoc="/bin/bash"
+                } else {
+                    pf("Error: could not locate a Bash shell.\n")
+                    pf("Error content:\n%v\n",err)
+                    os.Exit(ERR_NOBASH)
+                }
+            }
+        } else {
+            if !fexists(default_shell) {
+                pf("The chosen shell (%v) does not exist.\n",default_shell)
                 os.Exit(ERR_NOBASH)
             }
+            bashLoc=default_shell
         }
+
     } else {
-        if !fexists(default_shell) {
-            pf("The chosen shell (%v) does not exist.\n",default_shell)
-            os.Exit(ERR_NOBASH)
-        }
-        bashLoc=default_shell
+        vset(0,"@noshell",true)
     }
 
     vset(0, "@bash_location", bashLoc)
@@ -442,8 +452,10 @@ func main() {
     }
 
     // spawn a bash co-process
-    bgbash, pi, po, pe = NewCoprocess(bashLoc)
-    vset(0, "@shellpid",bgbash.Process.Pid)
+    if runtime.GOOS!="windows" {
+        bgbash, pi, po, pe = NewCoprocess(bashLoc)
+        vset(0, "@shellpid",bgbash.Process.Pid)
+    }
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
