@@ -23,15 +23,15 @@ doc EndDescription
 doc Syntax:     tcremote [ <region_name>  [ <account_name> [ command [ filter ] ] ] ]
 
 doc region_name=AWS region name to process
-doc account_name=dev|test|stage|live|itsupport|lemming|steg|seymour
+doc account_name=dev|test|stage|live
 doc command=single line command to execute
 doc filter=specificity filter for the cluster tag
 
 
 # globals
-credpath     = "/home/rundeck/ccawskeys"
+credpath     = "/home/rundeck/keys"
 cmd          = "hostname && ec2-metadata | grep instance-id"
-apptaglist   = "application.*[ \t](multiapp|CAS|General|ActivOC|ActivRM|API|APIInternal|MOCK|SecureServices|SVCStack[13])$"
+apptaglist   = "application.*[ \t](multiapp|CAS|General|API|APIInternal|MOCK)$"
 i_colour     = "[#fbgreen]"
 c_colour     = "[#1]"
 
@@ -100,22 +100,18 @@ foreach i in ilist
         endif
     endif
 
-    # if old world and it has an external ip, then use that
     uip=iip
-    if match(account,"lemming|steg|seymour")
-        on eip!="null" do uip=eip
-    endif
+    on eip!="null" do uip=eip
 
     println "  On {i_colour}{iid} - {clu} - {uip}[#-] - Executing {c_colour}{cmd}[#-]"
 
     op =| ssh -i /home/rundeck/.ssh/id_rsa -o "StrictHostKeyChecking no" ec2-user@{uip} "{cmd}"
-    # op = collapse(op)
 
     println "\n[#invert]",op,"[#-]"
 
     if last()>0
         print "Errored with ",last()
-        on uip==iip do println " - maybe this VPC is unreachable."
+        on uip==iip do println " - maybe this VPC is unreachable?"
         println last_out()
     endif
 

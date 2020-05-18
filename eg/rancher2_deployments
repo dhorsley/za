@@ -5,7 +5,7 @@
 # CONST
 #
 
-adder="projects/c-qc9hb:p-vw99z/deployments"
+adder="projects/c-qblah:p-blahz/deployments"
 
 
 #
@@ -13,8 +13,8 @@ adder="projects/c-qc9hb:p-vw99z/deployments"
 #
 
 # You should probably read these in as env variables or cmd line args instead:
-endpoint="https://rke-dev.costcutter.com/v3"
-abear="token-m8c7l:cvdjnjg8qrfj6k9hr9ptjj9wccgnp5nk4txfb59j7kclnq6cg5vrrh"
+endpoint="https://rke-dev.somewhere.com/v3"
+abear="token-m8c7l:cvdjnnotarealboynp5nk4txfb59j7kclnq6cg5vrrh"
 
 
 #
