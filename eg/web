@@ -8,7 +8,7 @@ module "web_modules/aws_handler"
 
 PORT=8080
 POLL_TIMEOUT=5000
-HOME_PATH="/home/daniel/go/src/za/eg/www"
+HOME_PATH="/home/daniel/www"
 
 # FUNCTIONS
 
