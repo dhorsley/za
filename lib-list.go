@@ -12,6 +12,21 @@ import (
     str "strings"
 )
 
+type sortStructInt struct {
+    k string
+    v int
+}
+
+type sortStructString struct {
+    k string
+    v string
+}
+
+type sortStructFloat struct {
+    k string
+    v float64
+}
+
 func anyDissimilar(list []interface{}) bool {
     knd := sf("%T", list[0])
     for _, v := range list[1:] {
@@ -749,7 +764,9 @@ func buildListLib() {
 
     }
 
+
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
+    // the map[string]... sorts are just here for completeness. they are utterly pointless currently.
     slhelp["sort"] = LibHelp{in: "list [,bool_reverse]", out: "new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order."}
     stdlib["sort"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 || len(args)>2 { return nil,errors.New("Bad args (count) to sort()") }
@@ -763,21 +780,15 @@ func buildListLib() {
         // need to sort?
         switch list.(type) {
         case []int:
-            if len(list.([]int)) < 2 {
-                return list, nil
-            }
+            if len(list.([]int)) < 2        { return list, nil }
         case []uint8:
-            if len(list.([]uint8)) < 2 {
-                return list, nil
-            }
+            if len(list.([]uint8)) < 2      { return list, nil }
         case []float64:
-            if len(list.([]float64)) < 2 {
-                return list, nil
-            }
+            if len(list.([]float64)) < 2    { return list, nil }
         case []string:
-            if len(list.([]string)) < 2 {
-                return list, nil
-            }
+            if len(list.([]string)) < 2     { return list, nil }
+        case map[string]interface{}:
+            if len(list.(map[string]interface{})) < 2 { return list,nil }
         default:
             return nil, errors.New(sf("Can only sort list of type int, float or string. (This is a '%T')", list))
         }
@@ -804,6 +815,34 @@ func buildListLib() {
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] < list.([]string)[j] })
                 return list, nil
 
+            case map[string]interface{}:
+                var iter *reflect.MapIter
+                iter = reflect.ValueOf(list.(map[string]interface{})).MapRange()
+                iter.Next()
+                switch iter.Value().Interface().(type) {
+                case int:
+                    kv:=make([]sortStructInt,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInt{k:k,v:v.(int)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
+                    l:=make(map[string]int); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                case float64:
+                    kv:=make([]sortStructFloat,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructFloat{k:k,v:v.(float64)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
+                    l:=make(map[string]float64); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                case string:
+                    kv:=make([]sortStructString,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructString{k:k,v:v.(string)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
+                    l:=make(map[string]string); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                default:
+                    pf("Error: unknown type '%T' in sort()\n",list)
+                    finish(false,ERR_EVAL)
+                }
+                return args[0], nil
             }
 
         case true: // descending
@@ -826,6 +865,34 @@ func buildListLib() {
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] > list.([]string)[j] })
                 return list, nil
 
+            case map[string]interface{}:
+                var iter *reflect.MapIter
+                iter = reflect.ValueOf(list.(map[string]interface{})).MapRange()
+                iter.Next()
+                switch iter.Value().Interface().(type) {
+                case int:
+                    kv:=make([]sortStructInt,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInt{k:k,v:v.(int)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
+                    l:=make(map[string]int); for _,v:=range kv { l[v.k]=v.v }
+                    return kv,nil
+                case float64:
+                    kv:=make([]sortStructFloat,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructFloat{k:k,v:v.(float64)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
+                    l:=make(map[string]float64); for _,v:=range kv { l[v.k]=v.v }
+                    return kv,nil
+                case string:
+                    kv:=make([]sortStructString,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructString{k:k,v:v.(string)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
+                    l:=make(map[string]string); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                default:
+                    pf("Error: unknown type '%T' in sort()\n",list)
+                    finish(false,ERR_EVAL)
+                }
+                return args[0], nil
             }
 
         }

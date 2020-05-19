@@ -802,6 +802,34 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                             ce = len(finalExprArray.([]string)) - 1
                         }
 
+                    case map[string]float64:
+                        finalExprArray = expr
+                        if len(finalExprArray.(map[string]float64)) > 0 {
+                            // get iterator for this map
+                            iter = reflect.ValueOf(finalExprArray.(map[string]float64)).MapRange()
+
+                            // set initial key and value
+                            if iter.Next() {
+                                vset(ifs, "key_"+fid, iter.Key().String())
+                                vset(ifs, fid, iter.Value().Interface())
+                            }
+                            ce = len(finalExprArray.(map[string]float64)) - 1
+                        }
+
+                    case map[string]int:
+                        finalExprArray = expr
+                        if len(finalExprArray.(map[string]int)) > 0 {
+                            // get iterator for this map
+                            iter = reflect.ValueOf(finalExprArray.(map[string]int)).MapRange()
+
+                            // set initial key and value
+                            if iter.Next() {
+                                vset(ifs, "key_"+fid, iter.Key().String())
+                                vset(ifs, fid, iter.Value().Interface())
+                            }
+                            ce = len(finalExprArray.(map[string]int)) - 1
+                        }
+
                     case map[string]string:
 
                         finalExprArray = expr
@@ -1146,8 +1174,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         switch (*thisLoop).iterType {
                         case IT_LINE:
                             switch (*thisLoop).iterOverArray.(type) {
-                            case map[string]interface{},map[string]string,http.Header,map[string][]string:
-                                // map ranges are randomly ordered!!
+                            // map ranges are randomly ordered!!
+                            case map[string]interface{},map[string]int,map[string]float64,map[string]string,http.Header,map[string][]string:
                                 if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                     vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
                                     vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -1509,7 +1537,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
         case C_LocalCommand:
 
-            bashCall(ifs,inbound.Original)
+            coprocCall(ifs,inbound.Original)
 
 
         case C_Pause:
@@ -2939,7 +2967,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
         default:
 
-            // local command assignment (bash call)
+            // local command assignment (child process call)
 
             if tokencount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
@@ -2993,8 +3021,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
 }
 
-/// execute a command in the bash coprocess
-func bashCall(ifs uint64,s string) {
+/// execute a command in the shell coprocess or parent
+func coprocCall(ifs uint64,s string) {
     cet := ""
     if len(s) > 0 {
         // find index of first pipe, then remove everything upto and including it

@@ -2,4 +2,5 @@
 todo:
 
         * in progress: really fix commas in assoc array element key names.
+        * command support in parent process in windows
 
