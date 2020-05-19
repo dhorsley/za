@@ -275,6 +275,7 @@ func main() {
     var a_time_out      = flag.Int("T", 0, "Co-process command time-out (ms)")
     var a_mark_time     = flag.Bool("m", false, "Mark co-process command progress")
     var a_ansi          = flag.Bool("c", false, "disable colour output")
+    var a_ansiForce     = flag.Bool("C", false, "enable colour output")
     var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use")
     var a_shell         = flag.String("s", "", "path to coprocess shell")
     var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
@@ -285,7 +286,7 @@ func main() {
 
     // mono flag
     ansiMode=true
-    if runtime.GOOS=="windows" || *a_ansi {
+    if !*a_ansiForce && (runtime.GOOS=="windows" || *a_ansi) {
         ansiMode = false
     }
 
