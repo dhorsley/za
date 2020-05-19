@@ -107,7 +107,7 @@ var dbpass string   //
 
 var eval *Evaluator         // declaration for math evaluator
 
-var bgbash *exec.Cmd        // holder for the coprocess
+var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process in, out and error streams
 var po io.ReadCloser
 var pe io.ReadCloser
@@ -417,17 +417,17 @@ func main() {
 
     // start shell in co-process
 
-    bashLoc:=""
+    coprocLoc:=""
 
     if runtime.GOOS!="windows" {
 
         if default_shell=="" {
-            bashLoc, err = GetBash("/usr/bin/which bash")
+            coprocLoc, err = GetCommand("/usr/bin/which bash")
             if err == nil {
-                bashLoc = bashLoc[:len(bashLoc)-1]
+                coprocLoc = coprocLoc[:len(coprocLoc)-1]
             } else {
                 if fexists("/bin/bash") {
-                    bashLoc="/bin/bash"
+                    coprocLoc="/bin/bash"
                 } else {
                     pf("Error: could not locate a Bash shell.\n")
                     pf("Error content:\n%v\n",err)
@@ -439,23 +439,26 @@ func main() {
                 pf("The chosen shell (%v) does not exist.\n",default_shell)
                 os.Exit(ERR_NOBASH)
             }
-            bashLoc=default_shell
+            coprocLoc=default_shell
         }
 
     } else {
-        vset(0,"@noshell",true)
+        coprocLoc="C:/Windows/System32/cmd.exe"
+        // vset(0,"@noshell",true)
+        // vset(0,"@os","windows")
     }
 
-    vset(0, "@bash_location", bashLoc)
+    vset(0, "@shell_location", coprocLoc)
 
-    if no_shell || bashLoc=="/bin/false" {
+    // if no_shell || coprocLoc=="/bin/false" {
+    if runtime.GOOS=="windows" || no_shell || coprocLoc=="/bin/false" {
         runInParent=true
     }
 
     // spawn a bash co-process
     if runtime.GOOS!="windows" {
-        bgbash, pi, po, pe = NewCoprocess(bashLoc)
-        vset(0, "@shellpid",bgbash.Process.Pid)
+        bgproc, pi, po, pe = NewCoprocess(coprocLoc)
+        vset(0, "@shellpid",bgproc.Process.Pid)
     }
 
     // ctrl-c handler
@@ -476,19 +479,19 @@ func main() {
 
             if caval {
                 // out with the old
-                if bgbash != nil {
-                    pid := bgbash.Process.Pid
+                if bgproc != nil {
+                    pid := bgproc.Process.Pid
                     debug(13, "\nkilling pid %v\n", pid)
                     // drain io before killing the process:
                     pi.Close()
                     // now kill:
-                    bgbash.Process.Kill()
-                    bgbash.Process.Release()
+                    bgproc.Process.Kill()
+                    bgproc.Process.Release()
                 }
                 // in with the new
-                bgbash, pi, po, pe = NewCoprocess(bashLoc)
-                debug(13, "\nnew pid %v\n", bgbash.Process.Pid)
-                vset(0, "@shellpid",bgbash.Process.Pid)
+                bgproc, pi, po, pe = NewCoprocess(coprocLoc)
+                debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
+                vset(0, "@shellpid",bgproc.Process.Pid)
                 siglock.Lock()
                 coproc_active = false
                 siglock.Unlock()
@@ -580,62 +583,66 @@ func main() {
 
 
     // static globals from bash
-    cop, _ = Copper("echo -n $ZSH_VERSION", true)
-    vset(0, "@zsh_version", cop)
-    cop, _ = Copper("echo -n $BASH_VERSION", true)
-    vset(0, "@bash_version", cop)
-    cop, _ = Copper("echo -n $BASH_VERSINFO", true)
-    vset(0, "@bash_versinfo", cop)
-    cop, _ = Copper("echo -n $USER", true)
-    vset(0, "@user", cop)
-    cop, _ = Copper("echo -n $OSTYPE", true)
-    vset(0, "@os", cop)
-    cop, _ = Copper("echo -n $HOME", true)
-    vset(0, "@home", cop)
-    cop, _ = Copper("echo -n $LANG", true)
-    vset(0, "@lang", cop)
-    cop, _ = Copper("echo -n $WSL_DISTRO_NAME", true)
-    vset(0, "@wsl", cop)
+    if runtime.GOOS!="windows" {
 
-    tmp, _ := Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
-    vset(0, "@release_name", stripOuterQuotes(tmp, 1))
+        cop, _ = Copper("echo -n $ZSH_VERSION", true)
+        vset(0, "@zsh_version", cop)
+        cop, _ = Copper("echo -n $BASH_VERSION", true)
+        vset(0, "@bash_version", cop)
+        cop, _ = Copper("echo -n $BASH_VERSINFO", true)
+        vset(0, "@bash_versinfo", cop)
+        cop, _ = Copper("echo -n $USER", true)
+        vset(0, "@user", cop)
+        cop, _ = Copper("echo -n $OSTYPE", true)
+        vset(0, "@os", cop)
+        cop, _ = Copper("echo -n $HOME", true)
+        vset(0, "@home", cop)
+        cop, _ = Copper("echo -n $LANG", true)
+        vset(0, "@lang", cop)
+        cop, _ = Copper("echo -n $WSL_DISTRO_NAME", true)
+        vset(0, "@wsl", cop)
 
-    tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
-    vset(0, "@release_version", stripOuterQuotes(tmp, 1))
+        tmp, _ := Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
+        vset(0, "@release_name", stripOuterQuotes(tmp, 1))
 
-    // special cases for release version:
+        tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
+        vset(0, "@release_version", stripOuterQuotes(tmp, 1))
 
-    // case 1: centos/other non-semantic expansion
-    vtmp, _ := vget(0, "@release_version")
-    if !str.ContainsAny(vtmp.(string), ".") {
-        vtmp = vtmp.(string) + ".0"
-    }
-    vset(0, "@release_version", vtmp)
+        // special cases for release version:
 
-    tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true) // e.g. "debian"
+        // case 1: centos/other non-semantic expansion
+        vtmp, _ := vget(0, "@release_version")
+        if !str.ContainsAny(vtmp.(string), ".") {
+            vtmp = vtmp.(string) + ".0"
+        }
+        vset(0, "@release_version", vtmp)
 
-    // special cases for release id:
+        tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true) // e.g. "debian"
 
-    // case 1: opensuse
-    tmp = stripOuterQuotes(tmp, 1)
-    if str.HasPrefix(tmp, "opensuse-") {
-        tmp = "opensuse"
-    }
+        // special cases for release id:
 
-    // case 2: ubuntu under wsl
-    vset(0, "@winterm", false)
-    wsl, _ := vget(0, "@wsl")
-    if str.HasPrefix(wsl.(string), "Ubuntu-") {
-        vset(0, "@winterm", true)
-        tmp = "ubuntu"
-    }
+        // case 1: opensuse
+        tmp = stripOuterQuotes(tmp, 1)
+        if str.HasPrefix(tmp, "opensuse-") {
+            tmp = "opensuse"
+        }
 
-    vset(0, "@release_id", tmp)
+        // case 2: ubuntu under wsl
+        vset(0, "@winterm", false)
+        wsl, _ := vget(0, "@wsl")
+        if str.HasPrefix(wsl.(string), "Ubuntu-") {
+            vset(0, "@winterm", true)
+            tmp = "ubuntu"
+        }
+
+        vset(0, "@release_id", tmp)
 
 
-    // further globals from bash
-    cop, _ = Copper("hostname", true)
-    vset(0, "@hostname", cop)
+        // further globals from bash
+        cop, _ = Copper("hostname", true)
+        vset(0, "@hostname", cop)
+
+    } // if not windows
 
 
     // reset counters:
