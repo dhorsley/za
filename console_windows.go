@@ -604,7 +604,7 @@ func NewCoprocess(loc string) (process *exec.Cmd, pi io.WriteCloser, po io.ReadC
 
 
 // synchronous execution and capture
-func GetBash(c string) (string, error) {
+func GetCommand(c string) (string, error) {
     c=str.Trim(c," \t")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)
@@ -726,8 +726,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 // submit a command for coprocess execution
 func Copper(line string, squashErr bool) (string, int) {
 
-    return "",0
-
     // line         command to execute
     // squashErr    ignore errors in output
 
@@ -745,7 +743,7 @@ func Copper(line string, squashErr bool) (string, int) {
     var commandErr error
 
     if runInParent {
-        ns,err = GetBash(line)
+        ns,err = GetCommand("cmd /c "+line)
         if err != nil {
 
             vset(0,"@last","0")

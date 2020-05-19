@@ -13,8 +13,10 @@ CHANGE LOG
             * this should speed up recursion considerably. It was passing an empty struct in.
                 * it's still slow, just not as much :)
         * changed actor.go/inbound to use pointers instead of copying phrase from source.
-            * again, another appreciable speed bump in places due to this.
+            * again, there's another small speed bump in places due to this.
         * re-enabled some eval.go/ev() error capture.
+        * expanded sort() functionality a little
+        * added a few more of the missing iteration types in FOREACH
 
     features:
 
@@ -32,6 +34,10 @@ CHANGE LOG
             * to build: ./build win (generates za.exe, copy it where you want it).
         * added -C flag (force ANSI colour on)
         * added ansi(bool) to enable/disable ANSI colours support at run-time.
+        * added separate handler for executing windows commands in | and =|
+            * uses "cmd /c {command}" 
+            * may add some support for varying the command interpreter and options later.
+
 
 1.0.3
 
