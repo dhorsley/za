@@ -1,0 +1,10 @@
+
+# test file
+
+for f=1 to 1e7
+endfor
+
+println f
+
+exit 0
+
