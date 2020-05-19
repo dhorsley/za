@@ -70,7 +70,7 @@ func buildInternalLib() {
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "interpol", "shellpid", "noshell",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "noshell",
         "globlen","len","length",
     }
 
@@ -123,6 +123,23 @@ func buildInternalLib() {
                 return ret, err
             }
         }
+        return nil, nil
+    }
+
+    slhelp["ansi"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable ANSI colour support at runtime."}
+    stdlib["ansi"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 {
+            return nil,errors.New("ansi() accepts a boolean value only.")
+        }
+        switch args[0].(type) {
+        case bool:
+            lastlock.Lock()
+            ansiMode=args[0].(bool)
+            lastlock.Unlock()
+        default:
+            return nil,errors.New("ansi() accepts a boolean value only.")
+        }
+        setupAnsiPalette()
         return nil, nil
     }
 

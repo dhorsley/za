@@ -19,7 +19,8 @@ CHANGE LOG
     features:
 
         * modified the build script to produce a cut-down windows version
-            * ansi support is automatically disabled on windows
+            * ansi colour support is automatically disabled on windows
+                * it can be re-enabled with either -C flag or ansi(true) at run-time
             * the interactive mode is disabled
             * the co-process is disabled
             * the prompt keyword is disabled
@@ -29,7 +30,8 @@ CHANGE LOG
                 works given the caveats above. Getting those things working is an incredibly 
                 low priority for me... possibly never.
             * to build: ./build win (generates za.exe, copy it where you want it).
-
+        * added -C flag (force ANSI colour on)
+        * added ansi(bool) to enable/disable ANSI colours support at run-time.
 
 1.0.3
 
