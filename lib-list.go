@@ -7,6 +7,7 @@ import (
     // "os"
     "math"
     "reflect"
+    "runtime"
     "regexp"
     "sort"
     str "strings"
@@ -175,7 +176,12 @@ func buildListLib() {
                 return nil, errors.New("Argument 2 (column) to col() must be a positive integer!")
             }
 
-            list := str.Split(args[0].(string), "\n")
+            var list []string
+            if runtime.GOOS!="windows" {
+                list = str.Split(args[0].(string), "\n")
+            } else {
+                list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            }
 
             var cols []string
             if len(list) > 0 {

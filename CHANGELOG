@@ -37,7 +37,7 @@ CHANGE LOG
         * added separate handler for executing windows commands in | and =|
             * uses "cmd /c {command}" 
             * may add some support for varying the command interpreter and options later.
-
+        * added windows detection in col() for CRLF splits.
 
 1.0.3
 

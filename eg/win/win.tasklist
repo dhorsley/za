@@ -1,0 +1,14 @@
+
+# read in list of executing processes
+# separate out the process name (proglist)
+# dump them back out with some formatting.
+                                                     
+ansi(true)                                           
+                                                     
+a=|tasklist                                          
+proglist=col(lines(a,"3:"),1," ")                    
+foreach p in proglist                                
+  print "** [#2]{p}[#-]\n"                           
+endfor                                               
+                                                     
+

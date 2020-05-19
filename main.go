@@ -444,8 +444,18 @@ func main() {
 
     } else {
         coprocLoc="C:/Windows/System32/cmd.exe"
-        // vset(0,"@noshell",true)
-        // vset(0,"@os","windows")
+        // should figure out how to populate these properly:
+        vset(0,"@noshell",true)
+        vset(0,"@os","windows")
+        vset(0, "@zsh_version", "")
+        vset(0, "@bash_version", "")
+        vset(0, "@bash_versinfo", "")
+        vset(0, "@user", "")
+        vset(0, "@home", "")
+        vset(0, "@lang", "")
+        vset(0, "@wsl", "")
+        vset(0, "@release_name", "")
+        vset(0, "@release_version", "")
     }
 
     vset(0, "@shell_location", coprocLoc)

@@ -1,0 +1,28 @@
+
+ansi(true)
+
+l =| tasklist
+
+if os()!="windows"
+    println "only for windows! (not {release_id()})"
+    exit 1
+endif
+
+foreach e in lines(l,"3:")
+  fields(e)
+  on !key("tasks",F1) do tasks[F1]=0
+  tasks[F1] = tasks[F1] + 1
+endfor
+
+st=""
+foreach t in tasks
+  st=format("%s%s %d\n",st,key_t,t)
+endfor
+
+fs=fieldsort(st,2,"n",true)
+
+println format("%32s : Count","Task Name")
+foreach l in fs
+  println format("%32s : %s",field(l,1),field(l,2))
+endfor
+
