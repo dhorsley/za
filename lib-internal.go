@@ -9,6 +9,7 @@ import (
     "os"
     "reflect"
     "regexp"
+    "runtime"
     "sort"
     str "strings"
 )
@@ -119,7 +120,7 @@ func buildInternalLib() {
             lastlock.RUnlock()
             switch args[0].(type) {
             case string:
-                ret, _, err = ev(lfs, args[0].(string), true)
+                ret, _, err = ev(lfs, args[0].(string), true,true)
                 return ret, err
             }
         }
@@ -232,10 +233,10 @@ func buildInternalLib() {
                 lfs:=lastfs
                 lastlock.RUnlock()
 
-                inp :=interpolate(lfs,args[0].(string))
+                inp,_ :=interpolate(lfs,args[0].(string),true)
 
                 globlock.RLock()
-                res,_,err:=ev(globalaccess,inp,true)
+                res,_,err:=ev(globalaccess,inp,true,true)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -259,11 +260,11 @@ func buildInternalLib() {
                 lastlock.RLock()
                 lfs:=lastfs
                 lastlock.RUnlock()
-                inp :=interpolate(lfs,args[0].(string))
+                inp,_ :=interpolate(lfs,args[0].(string),true)
 
                 globlock.RLock()
 
-                res,_,err:=ev(globalaccess,inp,true)
+                res,_,err:=ev(globalaccess,inp,true,true)
 
                 globlock.RUnlock()
 
@@ -318,7 +319,7 @@ func buildInternalLib() {
         globlock.RUnlock()
 
         if lockSafety { lastlock.RLock() }
-        key:=interpolate(lastfs,args[1].(string))
+        key,_:=interpolate(lastfs,args[1].(string),true)
         if lockSafety { lastlock.RUnlock() }
 
         switch v.(type) {
@@ -530,12 +531,24 @@ func buildInternalLib() {
 
     slhelp["funcs"] = LibHelp{in: "partial_match (optional)", out: "string", action: "Returns a list of standard library functions."}
     stdlib["funcs"] = func(args ...interface{}) (ret interface{}, err error) {
+
         if len(args) == 0 {
             args = append(args, "")
         }
-        if len(args) != 1 {
+        if len(args) > 2 {
             return false, nil
         }
+
+        retstring:=false
+        if len(args)==2 {
+            switch args[1].(type) {
+            case bool:
+                retstring=args[1].(bool)
+            default:
+                return "",errors.New("Argument 2 in funcs() must be a boolean if present.")
+            }
+        }
+
         regex := ""
         funclist := ""
         if args[0].(string) != "" {
@@ -573,7 +586,11 @@ func buildInternalLib() {
                 funclist += sf("Category: %s\n%s\n", c, matchList)
             }
         }
-        return funclist, nil
+        if !retstring {
+            pf(funclist)
+            return nil, nil
+        }
+        return funclist,nil
     }
 
     slhelp["dump"] = LibHelp{in: "function_name", out: "none", action: "Displays variable list, or a specific entry."}
@@ -623,6 +640,10 @@ func buildInternalLib() {
 }
 
 func getclktck() int {
+
+    if runtime.GOOS=="windows" {
+        return -1
+    }
 
     buf, err := ioutil.ReadFile("/proc/self/auxv")
     if err == nil {

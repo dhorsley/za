@@ -18,16 +18,12 @@ init prev
 
 name="cpu0"
 
-# foreach i in indexlist
-#     print "i_name-> {i}\n"
-#     print "i_val -> {{i}}\n"
-#     setglob prev[name+"_"+i] = {i}
-# endfor
-
 # local
 i="sys"
 j=i
-prev["{name}_{i}"]=int({{j}})
+prev["{name}_{i}"]=int({j})
 
-print "Name : {name}\nAppend(i) : {i}\nValue of sys : {sys}\n",prev,"\n"
+println "Name : {name}"
+println "Append(i) : {i}"
+println "prev values list :\n",prev
 

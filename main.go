@@ -535,7 +535,7 @@ func main() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, ef, err := ev(globalaccess, a, false)
+                            aval, ef, err := ev(globalaccess, a, false,true)
                             if ef || err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
                                 finish(false, ERR_EVAL)
@@ -736,7 +736,8 @@ func main() {
                 break
             }
 
-            vset(0, "@prompt", interpolate(globalspace, promptTemplate))
+            inter,_:=interpolate(globalspace, promptTemplate,true)
+            vset(0, "@prompt", inter)
 
         }
         pln("")

@@ -668,7 +668,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if aryRef {
 
                 // array reference
-                element, ef, _ := ev(ifs, elementComponents, true)
+                element, ef, _ := ev(ifs, elementComponents, true,true)
                 if ef {
                     report(ifs,sf("Bad element in SETGLOB assignment: '%v'",elementComponents))
                     finish(false,ERR_EVAL)
@@ -683,7 +683,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                 switch element.(type) {
                 case string:
-                    vsetElement(globalaccess, aryName, interpolate(ifs,element.(string)), expr.result)
+                    inter,_:=interpolate(ifs,element.(string),true)
+                    vsetElement(globalaccess, aryName, inter, expr.result)
                 case int:
                     // error on negative element
                     if element.(int)<0 {
@@ -692,7 +693,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         break
                     }
                     // otherwise, set global array element
-                    vsetElement(globalaccess, aryName, interpolate(ifs,sf("%v",element)), expr.result)
+                    inter,_:=interpolate(ifs,sf("%v",element),true)
+                    vsetElement(globalaccess, aryName, inter, expr.result)
                 default:
                     report(ifs,"Unknown type in SETGLOB")
                     if lockSafety {globlock.Unlock() }
@@ -700,7 +702,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 }
 
             } else {
-                vset(globalaccess, interpolate(ifs,lhs), expr.result)
+                inter,_:=interpolate(ifs,lhs,true)
+                vset(globalaccess, inter, expr.result)
             }
 
             if lockSafety {globlock.Unlock() }
@@ -732,7 +735,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             var iterType int
             var ce int
 
-            fid := interpolate(ifs,inbound.Tokens[1].tokText)
+            fid,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
 
             switch inbound.Tokens[3].tokType {
 
@@ -1114,10 +1117,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // @note: if loop counter is never used between here and C_Endfor, then don't vset the local var
 
             // store loop data
+            inter,_:=interpolate(ifs,inbound.Tokens[1].tokText,true)
+
             if lockSafety { looplock.Lock() }
             depth[ifs]++
             loops[ifs][depth[ifs]] = s_loop{
-                loopVar:  interpolate(ifs,inbound.Tokens[1].tokText),
+                loopVar:  inter,
                 optNoUse: Opt_LoopStart,
                 loopType: C_For, forEndPos: pc + enddistance, repeatFrom: pc + 1,
                 counter: fstart, condEnd: fend,
@@ -1126,7 +1131,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if lockSafety { looplock.Unlock() }
 
             // store loop start condition
-            vset(ifs, interpolate(ifs,inbound.Tokens[1].tokText), fstart)
+            vset(ifs, inter, fstart)
 
             if lockSafety { lastlock.Lock() }
             lastConstruct[ifs] = append(lastConstruct[ifs], C_For)
@@ -1418,7 +1423,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     break
                 }
 
-                cp, _, _ := ev(ifs, inbound.Tokens[2].tokText, true)
+                cp, _, _ := ev(ifs, inbound.Tokens[2].tokText, true,true)
 
                 switch cp.(type) {
                 case string:
@@ -2575,12 +2580,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 evrow := crushEvalTokens(inbound.Tokens[1:commaAt])
                 evcol := crushEvalTokens(inbound.Tokens[commaAt+1:])
 
-                expr_row, ef, err := ev(ifs, evrow.text, false)
+                expr_row, ef, err := ev(ifs, evrow.text, false,true)
                 if ef || expr_row==nil || err != nil {
                     report(ifs, sf("Evaluation error in %v", expr_row))
                 }
 
-                expr_col, ef, err := ev(ifs, evcol.text, false)
+                expr_col, ef, err := ev(ifs, evcol.text, false,true)
                 if ef || expr_col==nil || err != nil {
                     report(ifs, sf("Evaluation error in %v", expr_col))
                 }
@@ -2629,7 +2634,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     } else {
                         validator := ""
                         broken := false
-                        expr, ef, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true)
+                        expr, ef, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true,true)
                         if ef || expr==nil {
                             report(ifs, "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
@@ -2973,9 +2978,9 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
                     if len(inbound.Text) > 0 {
                         startPos := str.IndexByte(inbound.Original, '|') + 1
-                        cmd := interpolate(ifs, inbound.Original[startPos:])
+                        cmd,_ := interpolate(ifs, inbound.Original[startPos:],true)
                         out, _ := Copper(cmd, false)
-                        lhs_name := interpolate(ifs, statement.tokText)
+                        lhs_name,_ := interpolate(ifs, statement.tokText,true)
                         vset(ifs, lhs_name, out)
                     }
                     break
@@ -3005,7 +3010,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         // populate return variables in the caller with retvals
         for qv := range retvals {
             if qv>len(retvars)-1 { break }
-            lhs_name := interpolate(ifs, retvars[qv])
+            lhs_name,_ := interpolate(ifs, retvars[qv],true)
             vset(caller, lhs_name, retvals[qv])
         }
 
@@ -3033,7 +3038,8 @@ func coprocCall(ifs uint64,s string) {
             os.Exit(0)
         }
         cet = s[pipepos+1:]
-        out, ec := Copper(interpolate(ifs, cet), false)
+        inter,_ := interpolate(ifs, cet,true)
+        out, ec := Copper(inter, false)
         if ec==-1 || ec > 0 {
             pf("Error: [%d] in shell command '%s'\n", ec, str.TrimLeft(cet, " \t"))
         } else {
