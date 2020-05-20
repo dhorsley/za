@@ -81,6 +81,18 @@ func buildInternalLib() {
         return str.HasSuffix(str.ToLower(os.Getenv("LANG")),".utf-8") , nil
     }
 
+    slhelp["wininfo"] = LibHelp{in: "", out: "number", action: "(windows) Returns the console geometry."}
+    stdlib["wininfo"] = func(args ...interface{}) (ret interface{}, err error) {
+        hnd:=1
+        if len(args)==1 {
+            switch args[0].(type) {
+            case int:
+                hnd=args[0].(int)
+            }
+        }
+        return GetWinInfo(hnd), nil
+    }
+
     slhelp["term_h"] = LibHelp{in: "", out: "number", action: "Returns the current terminal height."}
     stdlib["term_h"] = func(args ...interface{}) (ret interface{}, err error) {
         return MH, nil

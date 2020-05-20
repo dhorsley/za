@@ -108,6 +108,11 @@ func priScreen() {
     pf("\033[?1049l")
 }
 
+// not on linux:
+func GetWinInfo(fd int) (i int) {
+    return -1
+}
+
 /// setup the za->ansi mappings
 func setupAnsiPalette() {
     if ansiMode {

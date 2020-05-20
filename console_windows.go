@@ -16,6 +16,8 @@ import (
     "strconv"
     // "path/filepath"
     "regexp"
+    "syscall"
+    "unsafe"
     //     "sort"
     str "strings"
     "time"
@@ -45,11 +47,97 @@ func wrappedGetCh(p int) (i int) {
     return -1
 }
 
+type (
+	SHORT int16
+	WORD  uint16
+
+	SMALL_RECT struct {
+		Left   SHORT
+		Top    SHORT
+		Right  SHORT
+		Bottom SHORT
+	}
+
+	COORD struct {
+		X SHORT
+		Y SHORT
+	}
+
+	CONSOLE_SCREEN_BUFFER_INFO struct {
+		Size              COORD
+		CursorPosition    COORD
+		Attributes        WORD
+		Window            SMALL_RECT
+		MaximumWindowSize COORD
+	}
+)
+
+func checkError(r1, r2 uintptr, err error) error {
+	// Windows APIs return non-zero to indicate success
+	if r1 != 0 {
+		return nil
+	}
+
+	// Return the error if provided, otherwise default to EINVAL
+	if err != nil {
+		return err
+	}
+	return syscall.EINVAL
+}
+
+func getStdHandle(stdhandle int) uintptr {
+	handle, err := syscall.GetStdHandle(stdhandle)
+	if err != nil {
+		panic(fmt.Errorf("could not get standard io handle %d", stdhandle))
+	}
+	return uintptr(handle)
+}
+
+func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
+	var info CONSOLE_SCREEN_BUFFER_INFO
+    var kernel32DLL = syscall.NewLazyDLL("kernel32.dll")
+    var getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
+	if err := checkError(getConsoleScreenBufferInfoProc.Call(handle, uintptr(unsafe.Pointer(&info)), 0)); err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+func GetWinInfo(fd int) (info *CONSOLE_SCREEN_BUFFER_INFO) {
+    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
+    info, _ = GetConsoleScreenBufferInfo(stdoutHandle)
+    return info
+}
+
+func GetSize(fd int) (width, height int, err error) {
+
+    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
+    var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
+
+    if e != nil {
+            return 0, 0, e
+    }
+
+    // we should be able to use Size.Y here, but get a nonsense
+    // answer back most of the time. (probably to do with max
+    // history size?)
+
+    // so we calculate height based on the moving window size
+    // in the history window instead.
+
+    y:=int(info.Window.Bottom)-int(info.Window.Top)
+
+    // return int(info.Size.X), int(info.Size.Y), nil
+    return int(info.Size.X), y, nil
+
+}
+
+/*
 // GetSize returns the dimensions of the given terminal.
 func GetSize(fd int) (int, int, error) {
     return 0,0,nil
 }
-
+*/
 
 
 /// END OF PLACE HOLDERS
