@@ -44,6 +44,9 @@ CHANGE LOG
             * uses "cmd /c {command}" 
             * may add some support for varying the command interpreter and options later.
         * added windows detection in col() for CRLF splits.
+        * updated term_h() and term_w() to fetch approximately correct terminal dimensions on windows
+            * possibly depends on the console in use, not tested many yet.
+        * re-enabled CLS, AT and a few other things that were blocked on windows... still no interactive mode though.
 
 
 1.0.3
