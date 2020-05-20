@@ -456,6 +456,7 @@ func main() {
         vset(0, "@wsl", "")
         vset(0, "@release_name", "")
         vset(0, "@release_version", "")
+        vset(0, "@winterm", false)
     }
 
     vset(0, "@shell_location", coprocLoc)
