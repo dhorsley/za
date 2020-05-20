@@ -339,18 +339,18 @@ func escape(str string) string {
 
 
 /// convert variable placeholders in strings to their values
-func interpolate(fs uint64, s string) string {
+func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     if lockSafety { lastlock.RLock() }
     if no_interpolation {
         if lockSafety { lastlock.RUnlock() }
-        return s
+        return s,false
     }
     if lockSafety { lastlock.RUnlock() }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
-        return s
+        return s,false
     }
 
     // the str.replace section below is mainly here now for reading @system_vars 
@@ -392,19 +392,15 @@ func interpolate(fs uint64, s string) string {
                     if s[p]=='{' {
                         q:=str.IndexByte(s[p+1:],'}')
                         if q==-1 { break }
-                        // @todo: need a way to stop double escaping before using this:
-                        // evstr := escape(s[p+1:p+q+1])
                         evstr := s[p+1:p+q+1]
-                        // pf("working with: |%+v|\n",s)
-                        // pf("will escape : |%#v|\n",s[p+1:p+q+1])
-                        // pf("     became : |%+v|\n",evstr)
-                        aval, ef, _ := ev(fs, evstr, false)
-                        // pf("ev returned : |%+v|\n",aval)
-                        // pf("     and ef : |%+v|\n",ef)
+                        aval, ef, _ := ev(fs, evstr, false, false)
                         if !ef {
+                            // pf("no ef in interp\n")
                             s=s[:p]+sf("%v",aval)+s[p+q+2:]
                             modified=true
                             break
+                        } else {
+                            // pf("ef in interp\n")
                         }
                     }
                 }
@@ -413,7 +409,7 @@ func interpolate(fs uint64, s string) string {
             break
         }
     }
-    return s
+    return s,true
 }
 
 /// find user defined functions in a token stream and evaluate them
@@ -618,7 +614,7 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, ef, err := ev(ifs, a, false)
+                            aval, ef, err := ev(ifs, a, false, true)
                             if ef || err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err)
                                 finish(false, ERR_EVAL)
@@ -725,15 +721,20 @@ var lp NTResult
 
 
 // evaluate an expression string using the third-party goval lib
-func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err error) {
+func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
 
     // before tokens are crushed, search for za functions
     // and execute them, replacing the relevant found terms
     // with the result to reduce the expression.
 
+    var didInterp bool
+
+    // pf("Entered ev() with '%v'\n",ws)
+
     // replace interpreted RHS vars with ident[fs] values
     if interpol {
-        ws = interpolate(fs, ws)
+        // pf("About to interp (%v)\n",ws)
+        ws,didInterp = interpolate(fs, ws, true)
     }
 
     // check for potential user-defined functions
@@ -767,30 +768,51 @@ func ev(fs uint64, ws string, interpol bool) (result interface{}, ef bool, err e
         }
 
     //.. eval the user defined functions if it looks like there are any
+
     if maybeFunc {
         // crush to get an ExpressionCarton. .text holds a string version
         r,e:=userDefEval(fs,reval[:valcount])
         if e {
-            report(fs,sf("Could not evaluate the call '%v'\n",reval[:valcount]))
+            report(fs,sf("Could not evaluate the call '%v'",reval[:valcount]))
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
     } else {
+
         // normal evaluation
         result, ef, err = Evaluate(ws, fs)
-        var ierr bool
+
+        /*
+        pf("res ->%v\n",result)
+        pf("err ->%v\n",err)
+        pf("di  ->%v\n",didInterp)
+        */
+
+        if result==nil { // could not eval
+            if didInterp {
+                result=ws
+                err=nil
+                ef=false
+            } else {
+                if shouldError {
+                    report(fs,sf("Error evaluating '%s'",ws))
+                    finish(false,ERR_EVAL)
+                }
+            }
+        }
+
         if err!=nil {
             if isNumber(ws) {
+                var ierr bool
                 result,ierr=GetAsInt(ws)
                 if ierr {
                     result,_=GetAsFloat(ws)
                 }
-            } else {
-                result=stripDoubleQuotes(ws)
             }
         }
     }
+
 
     // MONKEY
     // if maybeFunc && ef && err != nil {
@@ -918,7 +940,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
 
     // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
 
-    v, _ , err := ev(fs, expr.text, interpol)
+    v, _ , err := ev(fs, expr.text, interpol, true)
 
     // pf("wrappedEval() : returned from ev() with %v\n",v)
 
@@ -942,7 +964,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         epos := str.IndexByte(expr.assignVar, ']')
         if pos != -1 && epos != -1 {
             // handle array reference
-            element, _, err := ev(fs, expr.assignVar[pos+1:epos], true)
+            element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
             if err!=nil {
                 expr.evalError=true
                 // return expr, ef
@@ -961,7 +983,8 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
             }
         } else {
             // non indexed
-            vset(fs, interpolate(fs,expr.assignVar), expr.result)
+            inter,_:=interpolate(fs,expr.assignVar,true)
+            vset(fs, inter, expr.result)
             // vset(fs, expr.assignVar, expr.result)
         }
     }

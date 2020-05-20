@@ -76,7 +76,7 @@ func gpf(s string) {
 
 /// sprint with namespace
 func spf(ns uint64, s string) string {
-    s = interpolate(ns, s)
+    s,_ = interpolate(ns, s,true)
     return sf("%v", sparkle(s))
 }
 

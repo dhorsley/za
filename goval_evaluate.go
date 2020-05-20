@@ -18,5 +18,5 @@ func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error
 
     lexer:=NewLexer(str)
 	_,ef=YyNewParser().Parse(lexer, evalfs)
-	return lexer.Result(), ef, nil
+	return lexer.Result(), ef, err
 }

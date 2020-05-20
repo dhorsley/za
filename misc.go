@@ -73,9 +73,9 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]{lower("{@language}")} [-v] [-h] [-i] [-m] [-c] [-l] [-S] [-s [#i1]path[#i0]] \
-    [-t] [-O [#i1]tval[#i0]] [-G [#i1]group_filter[#i0]]            \
-    [-o [#i1]output_file[#i0]]                            \
+[#1]{lower("{@language}")} [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-S]      \
+    [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
+    [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
     [-T [#i1]time-out[#i0]] [[-f] [#i1]input_file[#i0]][#-]
 
@@ -89,7 +89,8 @@ func help(hargs string) {
     [#4]-G[#-] : Test group filter [#i1]group_filter[#i0]
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
     [#4]-m[#-] : Mark co-process command progress
-    [#4]-c[#-] : Ignore za colour code macros
+    [#4]-c[#-] : Ignore colour code macros at startup
+    [#4]-C[#-] : Enable colour code macros at startup
     [#4]-l[#-] : Enable mutex locking for multi-threaded use
     [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-S[#-] : Disable the co-process shell

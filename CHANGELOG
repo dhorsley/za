@@ -17,6 +17,12 @@ CHANGE LOG
         * re-enabled some eval.go/ev() error capture.
         * expanded sort() functionality a little
         * added a few more of the missing iteration types in FOREACH
+        * added argument 2 in funcs() to return (true) or display (false:default) the results.
+        * updated help text
+        * bah, had to tinker more with interpolation. was throwing errors in the background 
+            when it should have been ignoring unevaluable contents of curly braces.
+                * added shouldError param to ev() and interpolate()
+            @note-to-self: don't go back in that code for a few weeks, give yourself a chance to heal.
 
     features:
 
@@ -38,6 +44,7 @@ CHANGE LOG
             * uses "cmd /c {command}" 
             * may add some support for varying the command interpreter and options later.
         * added windows detection in col() for CRLF splits.
+
 
 1.0.3
 
