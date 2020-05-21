@@ -1542,8 +1542,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
         case C_LocalCommand:
 
-            coprocCall(ifs,inbound.Original)
-
+            if tokencount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
+                s:=stripOuter(inbound.Tokens[1].tokText,'`')
+                coprocCall(ifs,"|"+s)
+            } else {
+                coprocCall(ifs,inbound.Original)
+            }
 
         case C_Pause:
 
@@ -2977,29 +2981,30 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if tokencount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
                     if len(inbound.Text) > 0 {
+                        // get text after =|
                         startPos := str.IndexByte(inbound.Original, '|') + 1
                         cmd,_ := interpolate(ifs, inbound.Original[startPos:],true)
-                        out, _ := Copper(cmd, false)
+                        out:=system(cmd,false)
                         lhs_name,_ := interpolate(ifs, statement.tokText,true)
                         vset(ifs, lhs_name, out)
                     }
+                    // skip normal eval below
                     break
                 }
             }
 
             // try to eval and assign
             cet := crushEvalTokens(inbound.Tokens)
-            // tmpres,ef := wrappedEval(ifs, cet, true)
             tmpres,_ := wrappedEval(ifs, cet, true)
             if tmpres.evalError && tmpres.reason != "" {
                 pf("Code %v: [#2]%s[#-]\n", tmpres.evalCode, tmpres.reason)
             }
-            // if ef || tmpres.evalError { break }
             if tmpres.evalError { break }
 
-        } // end-case
+        } // end-statements-case
 
-    }
+    } // end-pc-loop
+
 
     siglock.RLock()
     si:=sig_int
@@ -3024,6 +3029,16 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     return endFunc, breakIn, continueOut
 
+}
+
+func system(cmd string, display bool) (string) {
+    cmd = str.Trim(cmd," \t")
+    if hasOuter(cmd,'`') {
+        cmd=stripOuter(cmd,'`')
+    }
+    out, _ := Copper(cmd, false)
+    if display { pf(out) }
+    return out
 }
 
 /// execute a command in the shell coprocess or parent
