@@ -1,0 +1,27 @@
+#!/usr/bin/za
+
+dn=1
+path="~"
+
+files =| find {path} -maxdepth {dn}
+
+foreach fn in files
+    s=|stat -c'%a %s' {fn}
+    list=append(list,"{fn} {s}")
+    table=table+"{fn} {s}\n"
+endfor
+
+println "Entry count : {len(list)}"
+
+foreach e in list
+    println "List [{key_e}] : {e}"
+endfor
+
+sizes=col(table,3," ")
+t=sum(list_float(sizes))
+
+println "column 3 (sizes) : \n",sizes)
+println format("total size = %10.0f",t)
+
+
+
