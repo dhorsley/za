@@ -69,7 +69,7 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid",
+        "funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid", "system",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "noshell",
         "globlen","len","length",
@@ -111,6 +111,30 @@ func buildInternalLib() {
     slhelp["pane_w"] = LibHelp{in: "", out: "number", action: "Returns the current pane width."}
     stdlib["pane_w"] = func(args ...interface{}) (ret interface{}, err error) {
         return panes[currentpane].w, nil
+    }
+
+    slhelp["system"] = LibHelp{in: "string,bool", out: "string", action: "Executes command [#i1]string[#i0] and returns (bool=false) or displays (bool=true) the output."}
+    stdlib["system"] = func(args ...interface{}) (ret interface{}, err error) {
+
+        cmd:=""
+        display:=false
+
+        if len(args)>0 {
+            switch args[0].(type) {
+            case string:
+                cmd=args[0].(string)
+            }
+        }
+
+        if len(args)>1 {
+            switch args[1].(type) {
+            case bool:
+                display=args[1].(bool)
+            }
+        }
+
+        return system(cmd,display),nil
+
     }
 
     slhelp["argv"] = LibHelp{in: "", out: "arg_list", action: "CLI arguments."}

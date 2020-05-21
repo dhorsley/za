@@ -47,6 +47,8 @@ CHANGE LOG
         * updated term_h() and term_w() to fetch approximately correct terminal dimensions on windows
             * possibly depends on the console in use, not tested many yet.
         * re-enabled CLS, AT and a few other things that were blocked on windows... still no interactive mode though.
+        * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
+        * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
 
 
 1.0.3
