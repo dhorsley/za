@@ -457,7 +457,8 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calllock.Lock()
                 loc := GetNextFnSpace()
                 ifn,_=fnlookup.lmget(fn)
-                callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvars: []string{"@temp"}}
+                // callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvars: []string{"@temp"}}
+                callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvar: "@temp"}
                 calllock.Unlock()
 
                 Call(lastlastfs, ifn, MODE_NEW, loc, webcallstruct)

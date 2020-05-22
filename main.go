@@ -54,7 +54,9 @@ var lockSafety bool=false       // enable mutices in variable handling functions
 
 // run-time
 
-var callstack = make(map[uint64]call_s)             // open function calls
+// var callstack = make(map[uint64]call_s)             // open function calls
+var callstack = make([]call_s,CALL_CAP)
+// make(map[uint64]call_s)             // open function calls
 var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
@@ -549,12 +551,10 @@ func main() {
 
                 // build call
 
-                newfnlock.Lock()
                 loc := GetNextFnSpace()
                 lmv,_:=fnlookup.lmget(usih)
-                newfnlock.Unlock()
                 calllock.Lock()
-                callstack[loc] = call_s{fs: usih, base: lmv, caller: globalaccess, retvars: []string{"@temp"}}
+                callstack[loc] = call_s{fs: usih, base: lmv, caller: globalaccess, retvar: "@temp"}
                 calllock.Unlock()
 
                 // execute call
@@ -732,7 +732,8 @@ func main() {
             parse("global", input, 0)
 
             // throw away break and continue positions in interactive mode
-            endFunc, _ , _ = Call(0, 0, MODE_STATIC, globalspace)
+            // endFunc, _ , _ = Call(0, 0, MODE_STATIC, globalspace)
+            endFunc = Call(0, 0, MODE_STATIC, globalspace)
             if endFunc {
                 break
             }

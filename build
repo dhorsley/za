@@ -44,7 +44,7 @@ is "win"
     endif
 endwhen
 
-if ufound==1
+if ufound==1 && is_file("za")
     | strip {strip_opts} za
     if upx_enable
         | upx za
@@ -54,8 +54,11 @@ else
 endif
 
 
-print "[#4]Installing to /usr/bin/[#-]\n\n"
-| sudo cp -f za /usr/bin
-| sudo chmod 755 /usr/bin/za
+when lower(tgt)
+is "libc"
+    print "[#4]Installing to /usr/bin/[#-]\n\n"
+    | sudo cp -f za /usr/bin
+    | sudo chmod 755 /usr/bin/za
+endwhen
 
 
