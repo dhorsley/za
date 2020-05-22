@@ -15,7 +15,7 @@ const MAX_CLIENTS = 800
 
 const SPACE_CAP = 64000     // max user function instances 
 const FUNC_CAP = 300        // max stdlib functions
-const CALL_CAP = 100
+const CALL_CAP = 20
 const LOOP_CAP = 64000      // max loops per function 
 const VAR_CAP = 40          // max vars per function (scales up)
 const CONSTRUCT_CAP = 128   // max break/continue wrappings

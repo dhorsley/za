@@ -258,17 +258,26 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
 func GetNextFnSpace() uint64 {
-    for q := uint64(1); q < MaxUint64/2; q++ {
+    // for q := uint64(1); q < MaxUint64/10; q++ { 
+    for q := uint64(1); q < 16384; q++ {  // arbitrary limit 16384... that's a lot of recursion.
+
+        /*
+        if q<uint64(cap(callstack))/2 {
+            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(callstack), cap(callstack))
+        }
+        */
+
         if _, extant := numlookup.lmget(q); extant {
             continue
         }
+
         if q>=uint64(cap(callstack)) {
             calllock.Lock()
-            ncs:=make([]call_s,cap(callstack)*2,cap(callstack)*2)
+            ncs:=make([]call_s,len(callstack)*2,cap(callstack)*2)
             copy(ncs,callstack)
             callstack=ncs
             calllock.Unlock()
-            // pf("gn-alloc-ncs cap -> %v\n",cap(callstack))
+            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(callstack), cap(callstack))
         }
         return q
     }
@@ -402,6 +411,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         return
     }
 
+    // missing varargs in call result in empty string assignments:
     if functionArgs[base]!=nil {
         if len(functionArgs[base])>len(va) {
             for e:=0; e<(len(functionArgs[base])-len(va)); e++ {
