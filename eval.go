@@ -415,10 +415,15 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 /// find user defined functions in a token stream and evaluate them
 func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
-    var splitPoint = -1
+    var splitPoint int
     var callOnly bool
     var lhs Token
     var termsActive bool
+
+    // return immediately if malformed with = at start
+    if tokens[0].tokType == C_Assign {
+        return []Token{},true
+    }
 
     // check for assignment
     for t := range tokens {
@@ -428,18 +433,19 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         }
     }
 
-
     // searching for equality, in all the wrong places...
-    if splitPoint==-1 {
+    if splitPoint==0 {
         callOnly=true
+        splitPoint--  // reduce so that all of expr is used in for loop below
     } else {
         lhs = tokens[0]
-        // pf("udf: lhs is '%v'\n",lhs)
         callOnly = false
         if !callOnly && splitPoint!=1 {
+            /*  this should now be handled by check at start of fn
             if splitPoint == 0 {
                 report(ifs,"Left-hand side is missing.\n")
             }
+            */
             if splitPoint == len(tokens)-1 {
                 report(ifs,"Right-hand side is missing.\n")
             }
@@ -452,10 +458,11 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
     var lfa int
     if !callOnly {
         lhsnum, _ := fnlookup.lmget(lhs.tokText)
-        farglock.RLock()
+        // if lockSafety { farglock.RLock() }
         lfa=len(functionArgs[ifs][lhsnum])
-        farglock.RUnlock()
+        // if lockSafety { farglock.RUnlock() }
     }
+
 
     // now work through tokens beyond splitPoint
     // if is ident followed by paramOpen, then look for the paramClose.
@@ -626,71 +633,73 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
                     // make Za function call
 
-                    calllock.Lock()
+                    if lockSafety { calllock.Lock() }
                     loc := GetNextFnSpace()
                     // pf("allocated out %v in buildRhs %v\n",previous.tokText)
                     lmv,_:=fnlookup.lmget(previous.tokText)
-                    // callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvars: []string{"@temp"}}
                     callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvar: "@temp"}
-                    calllock.Unlock()
+                    if lockSafety { calllock.Unlock() }
 
                     // this Call() should not race. lmv refers to the original source of the function, not the instance. 
 
                     Call(ifs, lmv, MODE_NEW, loc, iargs...)
 
-                        // handle the returned result
-                        if _, ok := VarLookup(ifs, "@temp"); ok {
+                    // handle the returned result
+                    if _, ok := VarLookup(ifs, "@temp"); ok {
 
-                            new_tok := Token{}
+                        new_tok := Token{}
 
-                            // replace the expression
-                            temp,_ := vget(ifs, "@temp")
-                            switch temp.(type) {
-                            case map[string]interface{}:
-                                new_tok.tokVal = temp
-                            case string:
-                                new_tok.tokVal = temp
-                            case float32:
-                                new_tok.tokVal = temp
-                            case float64:
-                                new_tok.tokVal = temp
-                            case int64:
-                                new_tok.tokVal = temp
-                            case uint8:
-                                new_tok.tokVal = temp
-                            case []bool:
-                                new_tok.tokVal = temp
-                            case []uint8:
-                                new_tok.tokVal = temp
-                            case []string:
-                                new_tok.tokVal = temp
-                            case []float64:
-                                new_tok.tokVal = temp
-                            case []int:
-                                new_tok.tokVal = temp
-                            case int:
-                                new_tok.tokVal = temp
-                            case webstruct:
-                                new_tok.tokVal = temp
-                            case http.Header:
-                                new_tok.tokVal = temp
-                            case bool:
-                                // true and false are both treated as identifiers.
-                                new_tok.tokType = Identifier
-                                new_tok.tokVal = temp
-                            default:
-                                pf("DEFAULT : Did not handle '%+v' in buildRhs().\n",temp)
-                            }
-
-                            // replace tail with result, don't add expression to end.
-                            rhs_tail--
-                            new_rhs[rhs_tail-1] = new_tok
-
-                        } else {
-                            rhs_tail--
+                        // replace the expression
+                        temp,_ := vget(ifs, "@temp")
+                        switch temp.(type) {
+                        /*
+                        case map[string]interface{}:
+                            new_tok.tokVal = temp
+                        case string:
+                            new_tok.tokVal = temp
+                        case float32:
+                            new_tok.tokVal = temp
+                        case float64:
+                            new_tok.tokVal = temp
+                        case int64:
+                            new_tok.tokVal = temp
+                        case uint8:
+                            new_tok.tokVal = temp
+                        case []bool:
+                            new_tok.tokVal = temp
+                        case []uint8:
+                            new_tok.tokVal = temp
+                        case []string:
+                            new_tok.tokVal = temp
+                        case []float64:
+                            new_tok.tokVal = temp
+                        case []int:
+                            new_tok.tokVal = temp
+                        case int:
+                            new_tok.tokVal = temp
+                        case webstruct:
+                            new_tok.tokVal = temp
+                        case http.Header:
+                            new_tok.tokVal = temp
+                        */
+                        case bool:
+                            // true and false are both treated as identifiers.
+                            new_tok.tokType = Identifier
+//                            new_tok.tokVal = temp
+//                        default:
+                            // pf("DEFAULT : Did not handle '%+v' in buildRhs().\n",temp)
                         }
 
-                    // } // was end of iargs loop for multi-return values. disabled.
+                        new_tok.tokVal = temp
+
+                        // replace tail with result, don't add expression to end.
+                        rhs_tail--
+                        new_rhs[rhs_tail-1] = new_tok
+
+                    } else {
+                        rhs_tail--
+                    }
+
                 }
             }
         }
@@ -703,23 +712,8 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
 }
 
-var lastreval *[]Token
-var lastws string
-
-type NTResult struct {
-	s   string
-	t   Token
-    p   int
-    eol bool
-    eof bool
-}
-
-// last ev cache
-//  as with lex cache, this won't have much impact at all
-//  may remove at some point.
-
-var lp NTResult
-
+// var lastreval *[]Token
+// var lastws string
 
 // evaluate an expression string using the third-party goval lib
 func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
@@ -730,11 +724,8 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
     var didInterp bool
 
-    // pf("Entered ev() with '%v'\n",ws)
-
     // replace interpreted RHS vars with ident[fs] values
     if interpol {
-        // pf("About to interp (%v)\n",ws)
         ws,didInterp = interpolate(fs, ws, true)
     }
 
@@ -743,22 +734,14 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     var maybeFunc bool
 
     //.. retokenise string, while substituting udf results for udf calls.
-    // var reval []Token
     var reval = make([]Token,0,4)
     var valcount int
 
-        // reval = []Token{}
         var t Token
         var eol,eof bool
 
         for p := 0; p < len(ws); p++ {
-            if !lockSafety && lp.s==ws && lp.p==p {
-                // use cached
-                t=lp.t; eol=lp.eol ; eof=lp.eof
-            } else {
-                t, eol , eof = nextToken(ws, &cl, p, t.tokType)
-                lp.s=ws ; lp.p=p ; lp.t=t ; lp.eol=eol; lp.eof=eof
-            }
+            t, eol , eof = nextToken(ws, &cl, p, t.tokType)
             if t.tokPos != -1 {
                 p = t.tokPos
             }
@@ -988,11 +971,13 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                 }
                 vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
             }
+            // DONKEY
+            // return expr,false
         }
-    } 
+    }
 
     // non indexed
-    inter,_:=interpolate(fs,expr.assignVar,true)
+    inter,_:=interpolate(fs,expr.assignVar,true) // for indirection
     vset(fs, inter, expr.result)
     // vset(fs, expr.assignVar, expr.result)
 

@@ -28,6 +28,8 @@ CHANGE LOG
                 * chances are I missed a few :) linux has been tested, but not exhaustively on windows yet.
         * updated build script (cosmetic)
         * changed callstack to scale up dynamically
+        * fixed remaining issue in fields/field calls for CRLF
+        * updated eg/mon.
 
     features:
 

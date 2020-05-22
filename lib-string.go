@@ -406,10 +406,25 @@ func buildStringLib() {
         if len(args) == 3 {
             sep = args[2].(string)
         }
+
+        switch args[0].(type) {
+        case string:
+        default:
+            return "",errors.New("Bad args (type) in field()")
+        }
+
+        // remove trailing (CR)LF
+        // lf:="\n"
+        // if runtime.GOOS=="windows" {
+        //    lf="\r\n"
+        //}
+        lf:="\r\n"
+        fstr:=str.TrimSuffix(args[0].(string),lf)
+
         if len(args) > 0 && len(args) <= 3 {
             // get position
             pos := args[1].(int)
-            fstr := args[0].(string)
+            // fstr := args[0].(string)
             // squeeze separator repeats
             new := tr(fstr, SQUEEZE, sep)
             // find column <position>
@@ -428,9 +443,9 @@ func buildStringLib() {
     slhelp["fields"] = LibHelp{in: "input_string,optional_separator", out: "", action: "Splits up [#i1]input_string[#i0] into variables in the current namespace. Variables are named [#i1]F1[#i0] through to [#i1]Fn[#i0]. Field count is stored in [#i1]NF[#i0]."}
     stdlib["fields"] = func(args ...interface{}) (ret interface{}, err error) {
 
-        lastlock.RLock()
+        if lockSafety { lastlock.RLock() }
         lfs:=lastfs
-        lastlock.RUnlock()
+        if lockSafety { lastlock.RUnlock() }
 
         // purge previous
         vset(lfs,"F",[]string{})
@@ -446,8 +461,23 @@ func buildStringLib() {
             return -1, err
         }
 
+        switch args[0].(type) {
+        case string:
+        default:
+            return "",errors.New("Bad args (type) in fields()")
+        }
+
+        // remove trailing (CR)LF
+        /*
+        lf:="\n"
+        if runtime.GOOS=="windows" {
+            lf="\r\n"
+        }
+        */
+        lf:="\r\n"
+        fstr:=str.TrimRight(args[0].(string),lf)
+
         // perform squeeze and split
-        fstr := args[0].(string)
         new := tr(fstr, SQUEEZE, sep)
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
