@@ -50,7 +50,7 @@ if ufound==1 && is_file("za")
         | upx za
     endif
 else
-    print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
+    on is_file("za") do print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
 endif
 
 
