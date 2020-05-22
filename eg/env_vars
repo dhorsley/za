@@ -3,7 +3,7 @@
 
 foreach e in env()
     foreach f in e
-        print f
+        print "*", f
     endfor
     print
 endfor

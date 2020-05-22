@@ -1,7 +1,11 @@
 
 todo:
 
-        * in progress: really fix commas in assoc array element key names.
-        * command support in parent process in windows
+        * bug in array element parsing.
+            * map keys containing commas bug out during eval when in double quotes
+                however, they are fine in backticks. this may be the third party eval
+                routines doing some thing odd with commas in numeric literals/lists or
+                it could just be the way they are getting passed to it.
+
 
 

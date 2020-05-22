@@ -6,6 +6,7 @@ import (
     "errors"
     "reflect"
     "regexp"
+    "runtime"
     "strconv"
     str "strings"
 )
@@ -89,7 +90,11 @@ func buildStringLib() {
 
         switch args[0].(type) {
         case string:
-            search = str.Split(args[0].(string), "\n")
+            if runtime.GOOS!="windows" {
+                search = str.Split(args[0].(string), "\n")
+            } else {
+                search = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            }
         case []string:
             search = args[0].([]string)
         default:
@@ -234,12 +239,22 @@ func buildStringLib() {
         }
         var s string
         pastFirst := false
-        for _, l := range str.Split(src, "\n") {
+
+        var r []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            r = str.Split(src, "\n")
+        } else {
+            r = str.Split(str.Replace(src, "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+
+        for _, l := range r {
             if match, _ := regexp.MatchString(regex, l); match && !pastFirst {
-                s = s + app + "\n"
+                s = s + app + lsep
                 pastFirst = true
             }
-            s = s + l + "\n"
+            s = s + l + lsep
         }
         if elf {
             s = s[:len(s)-1]
@@ -261,10 +276,20 @@ func buildStringLib() {
         }
         var s string
         pastFirst := false
-        for _, l := range str.Split(src, "\n") {
-            s = s + l + "\n"
+
+        var r []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            r = str.Split(src, "\n")
+        } else {
+            r = str.Split(str.Replace(src, "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+
+        for _, l := range r {
+            s = s + l + lsep
             if match, _ := regexp.MatchString(regex, l); match && !pastFirst {
-                s = s + app + "\n"
+                s = s + app + lsep
                 pastFirst = true
             }
         }
@@ -286,9 +311,17 @@ func buildStringLib() {
             elf = true
         }
         var s string
-        for _, l := range str.Split(src, "\n") {
+        var r []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            r = str.Split(src, "\n")
+        } else {
+            r = str.Split(str.Replace(src, "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+        for _, l := range r {
             if match, _ := regexp.MatchString(regex, l); !match {
-                s = s + l + "\n"
+                s = s + l + lsep
             }
         }
         if elf {
@@ -321,11 +354,19 @@ func buildStringLib() {
         }
 
         var s string
-        for _, l := range str.Split(src, "\n") {
+        var r []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            r = str.Split(src, "\n")
+        } else {
+            r = str.Split(str.Replace(src, "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+        for _, l := range r {
             if match, _ := regexp.MatchString(regex, l); match {
-                s = s + repl + "\n"
+                s = s + repl + lsep
             } else {
-                s = s + l + "\n"
+                s = s + l + lsep
             }
         }
         // if original did not have a trailing newline then remove
@@ -512,7 +553,14 @@ func buildStringLib() {
             if args[0].(string) == "" {
                 return 0, nil
             }
-            ary := str.SplitAfterN(args[0].(string), "\n", -1)
+
+            var ary []string
+            if runtime.GOOS!="windows" {
+                ary = str.SplitAfterN(args[0].(string), "\n",-1)
+            } else {
+                ary = str.SplitAfterN(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n",-1)
+            }
+
             return len(ary), nil
         }
         return nil, err
@@ -525,12 +573,24 @@ func buildStringLib() {
 
             var ary []string
 
+            var lsep="\n"
+            if runtime.GOOS!="windows" {
+                lsep="\r\n"
+            }
+
             switch args[0].(type) {
             case string:
-                ary = str.Split(args[0].(string), "\n")
+
+                if runtime.GOOS!="windows" {
+                    ary = str.Split(args[0].(string), "\n")
+                } else {
+                    ary = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+                }
+
                 if ary[len(ary)-1] == "" {
                     ary = ary[0 : len(ary)-1]
                 }
+
             case []string:
                 ary = args[0].([]string)
             }
@@ -572,7 +632,7 @@ func buildStringLib() {
                 start = 0
             }
 
-            return str.Join(ary[start:end], "\n"), err
+            return str.Join(ary[start:end], lsep), err
         }
 
         return "", err
@@ -586,7 +646,15 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) to line_head()")
         }
 
-        list:=str.Split(args[0].(string),"\n")
+        var list []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            list = str.Split(args[0].(string), "\n")
+        } else {
+            list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+
         llen:=len(list)
         count:=args[1].(int)
         if count>llen { count=llen }
@@ -594,7 +662,7 @@ func buildStringLib() {
         var ns str.Builder
         ns.Grow(100)
         for k:=0; k<count; k++ {
-            ns.WriteString(list[k]+"\n")
+            ns.WriteString(list[k]+lsep)
         }
         return ns.String(),nil
 
@@ -608,7 +676,15 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) to line_tail()")
         }
 
-        list:=str.Split(args[0].(string),"\n")
+        var list []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            list = str.Split(args[0].(string), "\n")
+        } else {
+            list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+
         llen:=len(list)
         count:=args[1].(int)
         start:=llen-count
@@ -617,7 +693,7 @@ func buildStringLib() {
         var ns str.Builder
         ns.Grow(100)
         for k:=start; k<llen; k++ {
-            ns.WriteString(list[k]+"\n")
+            ns.WriteString(list[k]+lsep)
         }
         return ns.String(),nil
 
@@ -642,7 +718,14 @@ func buildStringLib() {
             return false,errors.New("Bad argument #2 (type) in line_match()")
         }
 
-        for _,v:=range str.Split(val, "\n") {
+        var r []string
+        if runtime.GOOS!="windows" {
+            r = str.Split(val, "\n")
+        } else {
+            r = str.Split(str.Replace(val, "\r\n", "\n", -1), "\n")
+        }
+
+        for _,v:=range r {
             if m,_:=regexp.MatchString(reg, v);m { return true,nil }
         }
         return false,nil
@@ -668,10 +751,19 @@ func buildStringLib() {
             return false,errors.New("Bad argument #2 (type) in line_filter()")
         }
 
+        var list []string
+        lsep:="\n"
+        if runtime.GOOS!="windows" {
+            list = str.Split(val, "\n")
+        } else {
+            list = str.Split(str.Replace(val, "\r\n", "\n", -1), "\n")
+            lsep="\r\n"
+        }
+
         var ns str.Builder
         ns.Grow(100)
-        for _,v:=range str.Split(val, "\n") {
-            if m,_:=regexp.MatchString(reg,v); m { ns.WriteString(v+"\n") }
+        for _,v:=range list {
+            if m,_:=regexp.MatchString(reg,v); m { ns.WriteString(v+lsep) }
         }
 
         // trim right-most newline from replacement

@@ -630,7 +630,8 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     loc := GetNextFnSpace()
                     // pf("allocated out %v in buildRhs %v\n",previous.tokText)
                     lmv,_:=fnlookup.lmget(previous.tokText)
-                    callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvars: []string{"@temp"}}
+                    // callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvars: []string{"@temp"}}
+                    callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvar: "@temp"}
                     calllock.Unlock()
 
                     // this Call() should not race. lmv refers to the original source of the function, not the instance. 
@@ -742,15 +743,15 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     var maybeFunc bool
 
     //.. retokenise string, while substituting udf results for udf calls.
-    var reval []Token
+    // var reval []Token
+    var reval = make([]Token,0,4)
     var valcount int
 
-        reval = []Token{}
+        // reval = []Token{}
         var t Token
         var eol,eof bool
-        lws:=len(ws)
 
-        for p := 0; p < lws; p++ {
+        for p := 0; p < len(ws); p++ {
             if !lockSafety && lp.s==ws && lp.p==p {
                 // use cached
                 t=lp.t; eol=lp.eol ; eof=lp.eof
@@ -959,10 +960,16 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     // that ^^ works. you can only read the value through interpolation "{a,b}", but it 
     // should really have errored.
 
-    if expr.assign {
-        pos := str.IndexByte(expr.assignVar, '[')
+    if !expr.assign {
+        // pf("returning from wrappedEval of <<%v>> with -> <<%v>>\n",expr.text,expr.result)
+        return expr, false
+        // return expr, ef
+    }
+
+    pos := str.IndexByte(expr.assignVar, '[')
+    if pos != -1 {
         epos := str.IndexByte(expr.assignVar, ']')
-        if pos != -1 && epos != -1 {
+        if epos != -1 {
             // handle array reference
             element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
             if err!=nil {
@@ -981,17 +988,15 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                 }
                 vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
             }
-        } else {
-            // non indexed
-            inter,_:=interpolate(fs,expr.assignVar,true)
-            vset(fs, inter, expr.result)
-            // vset(fs, expr.assignVar, expr.result)
         }
-    }
+    } 
 
-    // pf("returning from wrappedEval of <<%v>> with -> <<%v>>\n",expr.text,expr.result)
-    // return expr, ef
-    return expr, false
+    // non indexed
+    inter,_:=interpolate(fs,expr.assignVar,true)
+    vset(fs, inter, expr.result)
+    // vset(fs, expr.assignVar, expr.result)
+
+    return expr,false
 
 }
 

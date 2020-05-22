@@ -708,7 +708,15 @@ func buildListLib() {
 
         // convert string to list
         var list [][]string
-        for _,l:= range str.Split(s,"\n") {
+        var r []string
+
+        if runtime.GOOS!="windows" {
+            r = str.Split(s, "\n")
+        } else {
+            r = str.Split(str.Replace(s, "\r\n", "\n", -1), "\n")
+        }
+
+        for _,l:= range r {
             if l=="" { continue }
             list=append(list,str.Split(l," "))
         }
@@ -762,9 +770,13 @@ func buildListLib() {
         sort.SliceStable(list,f)
 
         // build a string
+        lsep:="\n"
+        if runtime.GOOS=="windows" {
+            lsep="\r\n"
+        }
         var ns str.Builder
         ns.Grow(100)
-        for _,l:=range list { ns.WriteString(str.Join(l," ")+"\n") }
+        for _,l:=range list { ns.WriteString(str.Join(l," ")+lsep) }
 
         return ns.String(),nil
 
@@ -1019,15 +1031,24 @@ func buildListLib() {
             var first bool = true
             var prev string
 
-            for _,v:=range str.Split(args[0].(string), "\n") {
+            lsep:="\n"
+            var r []string
+            if runtime.GOOS!="windows" {
+                r = str.Split(args[0].(string), "\n")
+            } else {
+                r = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+                lsep="\r\n"
+            }
+
+            for _,v:=range r {
                 if first {
                     first=false
-                    ns.WriteString(v+"\n")
+                    ns.WriteString(v+lsep)
                     prev=v
                     continue
                 }
                 if v==prev { continue }
-                ns.WriteString(v+"\n")
+                ns.WriteString(v+lsep)
                 prev=v
             }
 
