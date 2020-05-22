@@ -258,9 +258,17 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
 func GetNextFnSpace() uint64 {
-    for q := uint64(1); q < MaxUint64; q++ {
+    for q := uint64(1); q < MaxUint64/2; q++ {
         if _, extant := numlookup.lmget(q); extant {
             continue
+        }
+        if q>=uint64(cap(callstack)) {
+            calllock.Lock()
+            ncs:=make([]call_s,cap(callstack)*2,cap(callstack)*2)
+            copy(ncs,callstack)
+            callstack=ncs
+            calllock.Unlock()
+            // pf("gn-alloc-ncs cap -> %v\n",cap(callstack))
         }
         return q
     }
@@ -284,12 +292,19 @@ var looplock   = &sync.RWMutex{}
 var newfnlock  = &sync.RWMutex{}
 var globlock   = &sync.RWMutex{}
 
+// var cc int
 
 // defined function entry point
 // csloc is ID in [id][]Phrase function spaces
-func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool, breakOut int, continueOut int) {
+// func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool, breakOut int, continueOut int) {
+func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
     // pf("Entered call -> ifs %v : va -> %v\n",ifs,va)
+
+/*
+    cc++
+    if cc%1000 == 0 { pf("*") }
+*/
 
     var inbound *Phrase
 
@@ -308,26 +323,23 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     var breakIn int
     var pc int
-    var retvars []string
-    var retvals []interface{}
+    var retvar string
+    var retval interface{}
     var finalline int
     var fs string
     var caller uint64
-    var ncs call_s
 
     // this is used to return the phrase counter to modify to if a CONTINUE was encountered.
-    continueOut = -1
-
-    // get last call details
-    // if lockSafety { calllock.RLock() }
-    ncs = callstack[csloc]
-    // if lockSafety { calllock.RUnlock() }
+    // continueOut = -1
 
     // set up the function space
-    fs = ncs.fs
-    base = ncs.base
-    caller = ncs.caller
-    retvars = ncs.retvars
+
+    // ..get call details
+    ncs := &callstack[csloc]
+    fs = (*ncs).fs
+    base = (*ncs).base
+    caller = (*ncs).caller
+    retvar = (*ncs).retvar
 
     if base==0 {
         if !interactive {
@@ -337,24 +349,22 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         }
     }
 
-    // if lockSafety { looplock.Lock() }
-
     if varmode == MODE_NEW {
 
         ifs = GetNextFnSpace()
-
         numlookup.lmset(ifs, sf("%s@%v", fs, ifs))
         fnlookup.lmset(sf("%s@%v",fs,ifs),ifs)
         // in interactive mode, the current functionspace is 0
         // in normal exec mode, the source is treated as functionspace 1
 
-        if !interactive && base < 2 {
+        // if !interactive && base < 2 { // interactive always uses MODE_STATIC?
+        if base < 2 {
             globalaccess = ifs
             vset(globalaccess, "userSigIntHandler", "")
         }
 
         // create the local variable storage for the function
-        vcreatetable(ifs, &vtable_maxreached, VAR_CAP)
+        if ifs>=vtable_maxreached { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
 
         // nesting levels in this function
         depth[ifs] = 0
@@ -382,7 +392,6 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         loops[ifs] = make([]s_loop, MAX_LOOPS)
     }
 
-    // if lockSafety { looplock.Unlock() }
 
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
@@ -413,7 +422,6 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
-
 
     pc = -1 // program counter : increments to zero at start of loop
 
@@ -458,19 +466,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             }
         }
 
-        lastIndex := tokencount - 1 // index of final token
-
         // remove trailing C_Semicolon token remnants
         if tokencount > 1 {
-            if inbound.Tokens[lastIndex].tokType == C_Semicolon {
+            if inbound.Tokens[tokencount-1].tokType == C_Semicolon {
                 inbound.TokenCount--
-                tokencount = lastIndex
-                lastIndex--
+                tokencount--
                 inbound.Tokens = inbound.Tokens[:tokencount]
             }
         }
-        // lastIndex not used below here!
-
 
         // finally... start processing the statement.
 
@@ -619,6 +622,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 break
             }
 
+            // @note: naive - doesn't account for inner brace matches:
+
             aryRef:=false
             lhs:=""
             eqAt := findDelim(inbound.Tokens, "=", 2)
@@ -634,8 +639,6 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             }
 
             var elementComponents string
-
-            if lockSafety {globlock.Lock() }
 
             var sqPos int
             if sqPos=str.IndexByte(lhs,'['); sqPos!=-1 {
@@ -657,6 +660,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             // eval rhs
             cet := crushEvalTokens(inbound.Tokens[eqAt+1:])
+
             expr,ef := wrappedEval(ifs, cet, true)
             if ef || expr.evalError {
                 report(ifs,sf("Bad expression in SETGLOB : '%s'",expr.text))
@@ -665,6 +669,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             }
 
             // now process variables in lhs index
+
+            if lockSafety { globlock.Lock() }
+            ga:=globalaccess
+            if lockSafety {globlock.Unlock() }
+
             if aryRef {
 
                 // array reference
@@ -677,14 +686,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                 aryName := lhs[:sqPos]
 
-                if _, found := VarLookup(globalaccess, aryName); !found {
-                    vset(globalaccess, aryName, make(map[string]interface{}, 31))
+                if _, found := VarLookup(ga, aryName); !found {
+                    vset(ga, aryName, make(map[string]interface{}, 31))
                 }
 
                 switch element.(type) {
                 case string:
                     inter,_:=interpolate(ifs,element.(string),true)
-                    vsetElement(globalaccess, aryName, inter, expr.result)
+                    vsetElement(ga, aryName, inter, expr.result)
                 case int:
                     // error on negative element
                     if element.(int)<0 {
@@ -694,19 +703,17 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     }
                     // otherwise, set global array element
                     inter,_:=interpolate(ifs,sf("%v",element),true)
-                    vsetElement(globalaccess, aryName, inter, expr.result)
+                    vsetElement(ga, aryName, inter, expr.result)
                 default:
                     report(ifs,"Unknown type in SETGLOB")
-                    if lockSafety {globlock.Unlock() }
                     os.Exit(125)
                 }
 
             } else {
                 inter,_:=interpolate(ifs,lhs,true)
                 vset(globalaccess, inter, expr.result)
+                if lockSafety {globlock.Unlock() }
             }
-
-            if lockSafety {globlock.Unlock() }
 
 
         case C_Foreach:
@@ -798,7 +805,15 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         }
 
                         // split up string at \n divisions into an array
-                        finalExprArray = str.Split(expr.(string), "\n")
+
+                        // finalExprArray = str.Split(expr.(string), "\n")
+
+                        if runtime.GOOS!="windows" {
+                            finalExprArray = str.Split(expr.(string), "\n")
+                        } else {
+                            finalExprArray = str.Split(str.Replace(expr.(string), "\r\n", "\n", -1), "\n")
+                        }
+
                         if len(finalExprArray.([]string))>0 {
                             vset(ifs, "key_"+fid, 0)
                             vset(ifs, fid, finalExprArray.([]string)[0])
@@ -1309,12 +1324,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 case C_For, C_Foreach:
                     thisLoop = &loops[ifs][di]
                     pc = (*thisLoop).forEndPos - 1
-                    continueOut=pc
+                    // continueOut=pc
 
                 case C_While:
                     thisLoop = &loops[ifs][di]
                     pc = (*thisLoop).whileContinueAt - 1
-                    continueOut=pc
+                    // continueOut=pc
                 }
                 // if lockSafety { lastlock.RUnlock() }
 
@@ -2046,7 +2061,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if str.Trim(cet.text, " \t") != "" { // found something
                     expr,ef := wrappedEval(ifs, cet, true) // evaluate it
                     if !ef && !expr.evalError { // no error?
-                        retvals = append(retvals, expr.result)
+                        // retvals = append(retvals, expr.result)
+                        retval = expr.result
                         if ifs<=2 {
                             if exitCode,not_ok:=GetAsInt(expr.result); not_ok {
                                 report(ifs, sf("could not evaluate RETURN parameter: %+v", cet.text))
@@ -2265,9 +2281,10 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             callstack[loc] = modcs
             calllock.Unlock()
             Call(ifs, base, MODE_NEW, loc)
+            // ^^ ifs -> this function , ^^ base -> where the module source is,
+            /// ^^MODE_NEW to perform setup, ^^ loc -> position of call params in the callstack ary
 
             // purge the module source as the code has been executed
-
             fspacelock.Lock()
             functionspaces[loc]=[]Phrase{}
             fspacelock.Unlock()
@@ -3012,11 +3029,10 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     if !si {
 
-        // populate return variables in the caller with retvals
-        for qv := range retvals {
-            if qv>len(retvars)-1 { break }
-            lhs_name,_ := interpolate(ifs, retvars[qv],true)
-            vset(caller, lhs_name, retvals[qv])
+        // populate return variable in the caller with retvals
+
+        if retval!=nil {
+            vset(caller, retvar, retval)
         }
 
         // clean up
@@ -3027,7 +3043,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     }
 
-    return endFunc, breakIn, continueOut
+    // return endFunc, breakIn, continueOut
+    return endFunc
 
 }
 

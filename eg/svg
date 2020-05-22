@@ -2,7 +2,7 @@
 
 print "execpath : ",execpath(),"\n"
 
-loc=execpath()+"/www/img/out.svg"
+loc=execpath()+"/out.svg"
 
 default_linestyle   = `stroke='blue' stroke-width='1px' fill='none'`
 redline             = `stroke='red' stroke-width='1px' fill='none'`
@@ -12,6 +12,10 @@ gridstyle           = `stroke:yellow;`
 
 # create an image file
 h=svg_start(loc,500,500)
+if h==nil
+    println "Invalid handle."
+    exit 1
+endif
 
 # meta tags
 svg_title(h,"svg demo")

@@ -23,6 +23,11 @@ CHANGE LOG
             when it should have been ignoring unevaluable contents of curly braces.
                 * added shouldError param to ev() and interpolate()
             @note-to-self: don't go back in that code for a few weeks, give yourself a chance to heal.
+        * updated (all?) functions in lib-list and lib-string to check OS and determine correct EOL
+            * this is mainly for splitting and rejoining strings/arrays correctly on both Linux and Windows
+                * chances are I missed a few :) linux has been tested, but not exhaustively on windows yet.
+        * updated build script (cosmetic)
+        * changed callstack to scale up dynamically
 
     features:
 

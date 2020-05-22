@@ -45,11 +45,12 @@ type call_s struct {
 	fs      string   // the text name of the calling party
 	caller  uint64   // the thing which made the call
 	base    uint64   // the original functionspace location of the source
-	retvars []string // the lhs var in the caller to be assigned back to
+	// retvars []string // the lhs var in the caller to be assigned back to
+	retvar  string // the lhs var in the caller to be assigned back to
 }
 
 func (cs call_s) String() string {
-	return sf("~{ fs %v - caller %v - return vars %v }~", cs.fs, cs.caller, cs.retvars)
+	return sf("~{ fs %v - caller %v - return var %v }~", cs.fs, cs.caller, cs.retvar)
 }
 
 

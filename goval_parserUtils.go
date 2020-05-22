@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-    "sync"
+//    "sync"
 )
 
 func init() {
@@ -624,7 +624,7 @@ func arrayContains(arr interface{}, val interface{}) bool {
 	return false
 }
 
-var liblock = &sync.RWMutex{}
+// var liblock = &sync.RWMutex{}
 
 func callFunction(evalfs uint64, name string, args []interface{}) (res interface{}) {
 
@@ -638,14 +638,15 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
             var valid bool
 
 			// make Za function call
-            newfnlock.Lock()
+            // if lockSafety { newfnlock.Lock() }
             loc := GetNextFnSpace()
             // pf("allocated out %v in callFunction %v\n",loc,name)
-            newfnlock.Unlock()
+            // if lockSafety { newfnlock.Unlock() }
 
-            calllock.Lock()
-			callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvars: []string{"@temp"}}
-            calllock.Unlock()
+            if lockSafety { calllock.Lock() }
+			// callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvars: []string{"@temp"}}
+			callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvar: "@temp"}
+            if lockSafety { calllock.Unlock() }
 
 			Call(evalfs, lmv, MODE_NEW, loc, args...)
 

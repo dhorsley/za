@@ -5,37 +5,41 @@
 cls
 
 z=read_file("/etc/group")
+
 z=lines(z,":20")
+
 q=col(z,3,":")
 
 z=read_file("/etc/passwd")
 z=lines(z,":20")
 w=col(z,3,":")
 
-println "\nSet 1     -> ",q
+println "\nSet 1       -> ",q
 
 println "head        -> ",head(q)
 println "sort (alpha)-> ",sort(q,false)
 println "sort (int)  -> ",sort(list_int(q),false),"\n"
 
 tq=tail(q)
-for e=1 to 4; tq=append(tq,e); endfor
+println "tail (of set) (tq)    -> ",tq
 
-println "tail (plus) -> ",tq
-println "uniq (plus) -> ",uniq(tq),"\n"
+for e=1 to 4; tq=append(tq,e); endfor
+println "append 1..4 on tq     -> ",tq
+
+println "uniq (of tail of set) -> ",uniq(tq),"\n"
 
 q=append(q,"new_entry")
 
-println "\nSet 2     -> ",q
+println "\nSet 2 (q)         -> ",q
 
 q=push(q,"new_front")
-println "push        -> ",q,"\n"
+println "push (front of q) -> ",q,"\n"
 
-println "w           -> ",w
-println "concat(q,w) -> ",concat(q,w),"\n"
+println "w                 -> ",w
+println "concat(q,w)       -> ",concat(q,w),"\n"
 
-println "deq(w)      -> ",deq("w")
-println "            &> ",w, "\n"
+println "deq (of w)        -> ",deq("w")
+println "new w             &> ",w, "\n"
 
 println "esplit(q+w)@10   -> ",esplit(concat(q,w),"a","b",10)
 println "            a> ",a
