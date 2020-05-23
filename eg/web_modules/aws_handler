@@ -48,7 +48,7 @@ define fwhandle(call)
     iptabbody=""
     ipglob=getglob("thisRegion")
     if length(ipglob)>0
-        foreach ip in ipglob+"\n"
+        foreach ip in ipglob
             iptabbody = iptabbody+wtr(wtd(ip))
         endfor
     endif

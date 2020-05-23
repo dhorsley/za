@@ -28,11 +28,8 @@ func getReportFunctionName(ifs uint64) string {
 	return add
 }
 
-func report(ifs uint64, s string) {
+func report(ifs uint64, pos int, s string) {
     add := getReportFunctionName(ifs)
-    lastlock.RLock()
-    pos:=lastline
-    lastlock.RUnlock()
     // err_stream:=os.Stderr
     // if interactive { err_stream=os.Stdout }
 	if pos > 0 {

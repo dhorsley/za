@@ -54,9 +54,7 @@ var lockSafety bool=false       // enable mutices in variable handling functions
 
 // run-time
 
-// var callstack = make(map[uint64]call_s)             // open function calls
-var callstack = make([]call_s,CALL_CAP)
-// make(map[uint64]call_s)             // open function calls
+var calltable = make([]call_s,CALL_CAP)             // open function calls
 var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
@@ -75,8 +73,7 @@ var globalaccess uint64                             // number of functionspace w
 var varcount = make([]int, SPACE_CAP)               // how many local variables are declared in each active function.
 
 var lastfs uint64                                   // last active functionspace.
-var lastbase uint64                                 // last active function (source).
-var lastline int                                    // last processed source line.
+// var lastbase uint64                                 // last active function (source).
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
 var ident = make([][]Variable, SPACE_CAP)
@@ -151,7 +148,7 @@ var test_name string
 var test_assert string
 var test_group_filter string
 var fail_override string
-var inside_test bool
+// var inside_test bool
 var test_output_file string
 var testsPassed int
 var testsFailed int
@@ -188,7 +185,9 @@ func main() {
     go func() {
         for {
             <-sigs
+            if lockSafety { globlock.Lock() }
             winching = true
+            if lockSafety { globlock.Unlock() }
         }
     }()
 
@@ -200,8 +199,8 @@ func main() {
     numlookup.lmset(1,"main")
 
     calllock.Lock()
-    callstack[0] = call_s{} // reset call stacks for global and main
-    callstack[1] = call_s{}
+    calltable[0] = call_s{} // reset call stacks for global and main
+    calltable[1] = call_s{}
     calllock.Unlock()
 
     farglock.Lock()
@@ -486,9 +485,9 @@ func main() {
                 pf("\n")
             }
 
-            if lockSafety { lastlock.RLock() }
+            lastlock.RLock()
             caval:=coproc_active
-            if lockSafety { lastlock.RUnlock() }
+            lastlock.RUnlock()
 
             if caval {
                 // out with the old
@@ -551,14 +550,14 @@ func main() {
 
                 // build call
 
-                loc := GetNextFnSpace()
+                loc,id := GetNextFnSpace(usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
-                callstack[loc] = call_s{fs: usih, base: lmv, caller: globalaccess, retvar: "@temp"}
+                calltable[loc] = call_s{fs: id, base: lmv, caller: globalaccess, retvar: "@temp"}
                 calllock.Unlock()
 
                 // execute call
-                Call(globalaccess, lmv, MODE_NEW, loc,iargs...)
+                Call(MODE_NEW, loc, iargs...)
 
                 if _, ok := VarLookup(globalaccess, "@temp"); ok {
                     sigintreturn,_ := vget(globalaccess, "@temp")
@@ -732,8 +731,7 @@ func main() {
             parse("global", input, 0)
 
             // throw away break and continue positions in interactive mode
-            // endFunc, _ , _ = Call(0, 0, MODE_STATIC, globalspace)
-            endFunc = Call(0, 0, MODE_STATIC, globalspace)
+            endFunc = Call(MODE_STATIC, globalspace)
             if endFunc {
                 break
             }
@@ -809,11 +807,12 @@ func main() {
         cs.base = 1
         cs.fs = "main"
         cs.caller = 0
-        mainloc := GetNextFnSpace()
+
+        mainloc,_ := GetNextFnSpace("main")
         calllock.Lock()
-        callstack[mainloc] = cs
+        calltable[mainloc] = cs
         calllock.Unlock()
-        Call(0, 0, MODE_NEW, mainloc)
+        Call(MODE_NEW, mainloc)
     }
 
     // webCloseAll()

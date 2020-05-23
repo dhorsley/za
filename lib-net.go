@@ -85,6 +85,7 @@ func limitNumClients(f http.HandlerFunc, maxClients int) http.HandlerFunc {
 
 // web access logging
 func wlog(s string,va... interface{}) {
+    lastlock.Lock()
     if log_web {
         new_s:=sf(s,va...)
         throttleEnded:=false
@@ -113,14 +114,18 @@ func wlog(s string,va... interface{}) {
             web_logger.Printf(new_s)
         }
     }
+    lastlock.Unlock()
 }
 
 func webLookup(host string) string {
+    weblock.RLock()
     for k,v:=range web_handles {
         if v.addr == host {
+            weblock.RUnlock()
             return k
         }
     }
+    weblock.RUnlock()
     return ""
 }
 
@@ -139,6 +144,7 @@ func webCloseAll() {
 }
 
 func webRoutesAll() {
+    weblock.RLock()
     for uid,entry:=range web_handles {
         host:=entry.addr
         port:=entry.port
@@ -146,6 +152,7 @@ func webRoutesAll() {
         pf("Service Host : %s / %d\n",host,port)
         webRoutes(uid)
     }
+    weblock.RUnlock()
 }
 
 func webRoutes(uid string) {
@@ -406,7 +413,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 if !found {
 
                     lastlock.RLock()
-                    report(lastfs,sf("forwarder function '%v' not found.",fn))
+                    report(lastfs,-1,sf("forwarder function '%v' not found.",fn))
                     lastlock.RUnlock()
 
                     finish(false,ERR_SYNTAX)
@@ -451,25 +458,26 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 // make call
 
                 lastlock.RLock()
-                lastlastfs:=lastfs
+                local_lastfs:=lastfs
                 lastlock.RUnlock()
 
+                // pf("[#3]Lib-net taking space.[#-]\n")
+
+                loc,id := GetNextFnSpace(fn+"@")
                 calllock.Lock()
-                loc := GetNextFnSpace()
                 ifn,_=fnlookup.lmget(fn)
-                // callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvars: []string{"@temp"}}
-                callstack[loc] = call_s{fs: fn, base: ifn, caller: lastlastfs, retvar: "@temp"}
+                calltable[loc] = call_s{fs: id, base: ifn, caller: local_lastfs, retvar: "@temp"}
                 calllock.Unlock()
 
-                Call(lastlastfs, ifn, MODE_NEW, loc, webcallstruct)
+                Call(MODE_NEW, loc, webcallstruct)
 
-                lastlock.Lock()
-                lastfs=lastlastfs
-                lastlock.Unlock()
+                // lastlock.Lock()
+                // lastfs=local_lastfs
+                // lastlock.Unlock()
 
-                _,ok := VarLookup(lastlastfs, "@temp")
+                _,ok := VarLookup(local_lastfs, "@temp")
                 if ok {
-                    tmp,_:=vget(lastlastfs,"@temp")
+                    tmp,_:=vget(local_lastfs,"@temp")
                     w.Write([]byte(sf("%v",tmp)))
                 }
 
@@ -512,7 +520,9 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     }
 
                     // form new file system path
+                    weblock.RLock()
                     docroot:=web_handles[handle].docroot
+                    weblock.RUnlock()
                     fp := filepath.Join(docroot,filepath.Clean(new_path))
 
                     // Return a 404 if the file doesn't exist
@@ -578,7 +588,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
 // ZA LIBRARY FUNCTIONS //////////////////////////////////////////////////////////////////////
 
-var    weblock = &sync.Mutex{}
+var    weblock = &sync.RWMutex{}
 var    webrulelock = &sync.RWMutex{}
 
 func buildNetLib() {
@@ -716,9 +726,12 @@ func buildNetLib() {
                 _, err := rand.Read(b)
                 if err != nil { log.Fatal(err) }
                 uid = sf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+                weblock.RLock()
                 if _,exists:=web_handles[uid]; !exists {
+                    weblock.RUnlock()
                     break
                 }
+                weblock.RUnlock()
             }
             // store in lookup table
             weblock.Lock()
