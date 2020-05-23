@@ -91,12 +91,15 @@ define showMem()
     pane select "mem"
     pane redraw
 
+    if !getglob("access")
+        at 2,1
+        println "[#1]Slab information requires root access.[#-]"
+        return
+    endif
+
     # gather
     
-    opt_sudo=" "
-    on release_id()!="alpine" do opt_sudo="sudo "
-
-    slab_file=|{opt_sudo}cat /proc/slabinfo
+    slab_file=read_file("/proc/slabinfo")
 
     slabs=""
     foreach l in lines(slab_file,"2:")
@@ -139,11 +142,16 @@ define showMem()
 
     comwidth=10
     at 1,38; print format("[#b2][#7][#bold]%24s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    # would normally do with fields(). showing alternative below:
     for p = 0 to cs-1
-        fields(lines(slabs,"{p}:{p}"))
-        at 2+p,38; print format("%24s  %-{comwidth}d\n",F1,int(F2))
+        # fields(lines(slabs,"{p}:{p}")," \t")
+        l=lines(slabs,"{p}:{p}")
+        sa=strpos(l," ",0)
+        c1=substr(l,0,sa)
+        c2=substr(l,sa+1,len(l)-sa-1)
+        # at 2+p,38; print format("%24s  %-"+comwidth+"d",F[0],int(F[1]))
+        at 2+p,38; print format("%24s  %-"+comwidth+"d",c1,int(c2))
     endfor
-
 enddef
 
 
@@ -646,6 +654,15 @@ if ct==0
 endif
 
 cls
+
+user=get_env("USER")
+sudo=get_env("SUDO_USER")
+access=true
+
+if !(user=="root" || sudo!="")
+    access=false
+    println "Needs sudo for some information."
+endif
 
 # @todo: figure max cpu count automatically
 cpu_count=5

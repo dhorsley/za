@@ -638,17 +638,15 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
             var valid bool
 
 			// make Za function call
-            // if lockSafety { newfnlock.Lock() }
-            loc := GetNextFnSpace()
-            // pf("allocated out %v in callFunction %v\n",loc,name)
-            // if lockSafety { newfnlock.Unlock() }
+            // pf("[#3]Eval callFunction taking space.[#-]\n")
+
+            loc,id := GetNextFnSpace(name+"@")
 
             if lockSafety { calllock.Lock() }
-			// callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvars: []string{"@temp"}}
-			callstack[loc] = call_s{fs: name, base: lmv, caller: evalfs, retvar: "@temp"}
+			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, retvar: "@temp"}
             if lockSafety { calllock.Unlock() }
 
-			Call(evalfs, lmv, MODE_NEW, loc, args...)
+			Call(MODE_NEW, loc, args...)
 
 			// handle the returned result, if present.
             res, valid = vget(evalfs, "@temp")

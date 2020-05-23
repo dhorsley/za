@@ -2,7 +2,7 @@
 
 define fib(n)
 #    setglob calls = getglob("calls")+1
-    on n<1 do return 1
+    on n<=1 do return n
     return fib(n-1)+fib(n-2)
 enddef
 

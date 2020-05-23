@@ -20,8 +20,10 @@ var vlock = &sync.RWMutex{}
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
-    // have to use full lock() as varcount may change in background otherwise.
+    // need to use full lock() as varcount may change in background otherwise.
+
     if lockSafety { vlock.Lock() }
+
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if ident[fs][k].iName == name {
@@ -30,7 +32,9 @@ func VarLookup(fs uint64, name string) (int, bool) {
             return k, true
         }
     }
+
     if lockSafety { vlock.Unlock() }
+
     // pf("not found in vl: cap_id=%v len_id=%v varcount=%v\n",cap(ident[fs]),len(ident[fs]),varcount[fs])
     return 0, false
 }
@@ -40,6 +44,7 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
     if lockSafety { vlock.Lock() }
     vtmr:=*vtable_maxreached
+
     // name,_:=numlookup.lmget(fs)
 
     if fs>=vtmr {
@@ -74,52 +79,34 @@ func vunset(fs uint64, name string) {
 
 func vset(fs uint64, name string, value interface{}) bool {
 
-    // pf("**** inside vset of %v ****\n",name)
-
     if vi, ok := VarLookup(fs, name); ok {
         // set
         if lockSafety { vlock.Lock() }
         ident[fs][vi].iValue = value
-        // pf("vset: just set [%v] %v:%v\n",fs,vi,name)
         if lockSafety { vlock.Unlock() }
     } else {
+
         // instantiate
+
         if lockSafety { vlock.Lock() }
-        // if cap(ident[fs]) == varcount[fs] {
         if varcount[fs]==len(ident[fs]) {
 
             // append thread safety workaround
             newary:=make([]Variable,cap(ident[fs])*2,cap(ident[fs])*2)
             copy(newary,ident[fs])
-            // pf("capped: new array cap %v\n",cap(newary))
-
             newary=append(newary,Variable{iName: name, iValue: value})
-
             ident[fs]=newary
-            // pf("vset: cap increased on [%v] %v to %v\n",fs,name,cap(ident[fs]))
-            // pf("vcfs -> %v\n",varcount[fs])
 
         } else {
-            // pf("on %v -> current cap:%v count:%v\n",name,cap(ident[fs]),varcount[fs])
-            // pf("on %v -> vcfs:%v\n",name,varcount[fs])
             ident[fs][varcount[fs]] = Variable{iName: name, iValue: value}
         }
+
         varcount[fs]++
         if lockSafety { vlock.Unlock() }
     }
-    // pf("**** end of vset of %v ****\n",name)
     return true
 
 }
-
-
-/*
-capped: new array cap 400
-crash here? 2
-vset: cap increased on [15] F151 to 400
-vcfs -> 200
-crash here? 0
-*/
 
 
 func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
@@ -295,6 +282,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
 func vget(fs uint64, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
+
         if lockSafety {
             vlock.RLock()
             defer vlock.RUnlock()
@@ -443,11 +431,11 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         if !callOnly && splitPoint!=1 {
             /*  this should now be handled by check at start of fn
             if splitPoint == 0 {
-                report(ifs,"Left-hand side is missing.\n")
+                report(ifs,-1,"Left-hand side is missing.\n")
             }
             */
             if splitPoint == len(tokens)-1 {
-                report(ifs,"Right-hand side is missing.\n")
+                report(ifs,-1,"Right-hand side is missing.\n")
             }
             finish(false, ERR_SYNTAX)
             return []Token{},true
@@ -493,7 +481,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
             if indent>0 && endOfList==0 {
                 // something fishy.
-                report(ifs,"unterminated function call?")
+                report(ifs,-1,"unterminated function call?")
                 finish(false,ERR_SYNTAX)
                 return []Token{},true
             }
@@ -508,7 +496,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
                 for nt:=range termList {
                     if nt>=lfa {
-                        report(ifs,sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
+                        report(ifs,-1,sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -516,7 +504,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                     if tokens[nt].tokType!=C_Comma {
                         if expectingComma {
                             // syntax error
-                            report(ifs,"missing comma in parameter list")
+                            report(ifs,-1,"missing comma in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         } else {
@@ -526,7 +514,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                         if expectingComma {
                             expectingComma=false
                         } else {
-                            report(ifs,"missing a term in parameter list")
+                            report(ifs,-1,"missing a term in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         }
@@ -534,7 +522,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                     // resolve down to list of terms with user functions all evaluated
                     r,e:=userDefEval(ifs,tokens[t+2:t+nt+2])
                     if e {
-                        report(ifs,"deep error in user function evaluation.")
+                        report(ifs,-1,"deep error in user function evaluation.")
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -634,15 +622,12 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     // make Za function call
 
                     if lockSafety { calllock.Lock() }
-                    loc := GetNextFnSpace()
-                    // pf("allocated out %v in buildRhs %v\n",previous.tokText)
+                    loc,id := GetNextFnSpace(previous.tokText+"@")
                     lmv,_:=fnlookup.lmget(previous.tokText)
-                    callstack[loc] = call_s{fs: previous.tokText, base: lmv, caller: ifs, retvar: "@temp"}
+                    calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: "@temp"}
                     if lockSafety { calllock.Unlock() }
 
-                    // this Call() should not race. lmv refers to the original source of the function, not the instance. 
-
-                    Call(ifs, lmv, MODE_NEW, loc, iargs...)
+                    Call(MODE_NEW, loc, iargs...)
 
                     // handle the returned result
                     if _, ok := VarLookup(ifs, "@temp"); ok {
@@ -757,7 +742,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         // crush to get an ExpressionCarton. .text holds a string version
         r,e:=userDefEval(fs,reval[:valcount])
         if e {
-            report(fs,sf("Could not evaluate the call '%v'",reval[:valcount]))
+            report(fs,-1,sf("Could not evaluate the call '%v'",reval[:valcount]))
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
@@ -780,7 +765,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
                 ef=false
             } else {
                 if shouldError {
-                    report(fs,sf("Error evaluating '%s'",ws))
+                    report(fs,-1,sf("Error evaluating '%s'",ws))
                     finish(false,ERR_EVAL)
                 }
             }
@@ -797,18 +782,17 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         }
     }
 
-
-    // MONKEY
-    // if maybeFunc && ef && err != nil {
     if maybeFunc && err != nil {
-        if lockSafety { lastlock.RLock() }
-        nv,_:=numlookup.lmget(lastbase)
-        if lockSafety { lastlock.RUnlock() }
+        // if lockSafety { lastlock.RLock() }
+        // nv,_:=numlookup.lmget(lastbase)
+        // if lockSafety { lastlock.RUnlock() }
+
+        nv,_:=numlookup.lmget(fs)
 
         if nv!="" {
-            report(0,sf("Evaluation Error @ Function %v", nv))
+            report(0,-1,sf("Evaluation Error @ Function %v", nv))
         } else {
-            report(0,"Evaluation Error")
+            report(0,-1,"Evaluation Error")
         }
         pf("[#6]%v[#-]\n", err)
 
