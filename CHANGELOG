@@ -27,9 +27,11 @@ CHANGE LOG
             * this is mainly for splitting and rejoining strings/arrays correctly on both Linux and Windows
                 * chances are I missed a few :) linux has been tested, but not exhaustively on windows yet.
         * updated build script (cosmetic)
-        * changed callstack to scale up dynamically
+        * changed calltable to scale up dynamically
         * fixed remaining issue in fields/field calls for CRLF
         * updated eg/mon.
+        * changed call format and allocation method for new functions then had another disagreement with concurrency.
+            * fixed the leaky dingy and all seems well again when testing web servers.
 
     features:
 

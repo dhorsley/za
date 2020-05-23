@@ -3,6 +3,7 @@ package main
 import (
     "io/ioutil"
     "math"
+    "math/rand"
     "log"
     "net/http"
     "os"
@@ -257,33 +258,59 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
-func GetNextFnSpace() uint64 {
-    // for q := uint64(1); q < MaxUint64/10; q++ { 
+func GetNextFnSpace(requiredName string) (uint64,string) {
+
+    if lockSafety { calllock.Lock() }
+
     for q := uint64(1); q < 16384; q++ {  // arbitrary limit 16384... that's a lot of recursion.
 
         /*
-        if q<uint64(cap(callstack))/2 {
-            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(callstack), cap(callstack))
+        if q<uint64(cap(calltable))/2 {
+            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(calltable), cap(calltable))
         }
         */
 
-        if _, extant := numlookup.lmget(q); extant {
+        if _, found := numlookup.lmget(q); found {
             continue
         }
 
-        if q>=uint64(cap(callstack)) {
-            calllock.Lock()
-            ncs:=make([]call_s,len(callstack)*2,cap(callstack)*2)
-            copy(ncs,callstack)
-            callstack=ncs
-            calllock.Unlock()
-            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(callstack), cap(callstack))
+        if q>=uint64(cap(calltable)) {
+            ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
+            copy(ncs,calltable)
+            calltable=ncs
+            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(calltable), cap(calltable))
         }
-        return q
+
+        var suf string
+
+        // pf("-- entered reserving code--\n")
+        for  ; ; {
+
+            newName := requiredName
+
+            if newName[len(newName)-1]=='@' {
+                suf=sf("%d",rand.Int())
+                newName+=suf
+            }
+
+            // pf("Trying "+newName+"\n")
+
+            if _, found := numlookup.lmget(q); !found { // unreserved
+                numlookup.lmset(q, newName)
+                fnlookup.lmset(newName,q)
+                // pf("-- leaving code with %v,%v --\n\n",q,suf)
+                if lockSafety { calllock.Unlock() }
+                return q,newName
+            }
+
+        }
     }
+
+    if lockSafety { calllock.Unlock() }
+
     pf("Error: no more function space available.\n")
     finish(true, ERR_FATAL)
-    return 0
+    return 0, ""
 }
 
 
@@ -304,16 +331,13 @@ var globlock   = &sync.RWMutex{}
 // var cc int
 
 // defined function entry point
-// csloc is ID in [id][]Phrase function spaces
-// func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool, breakOut int, continueOut int) {
-func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
+// everything about what is to be executed is contained in calltable[csloc]
+func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
-    // pf("Entered call -> ifs %v : va -> %v\n",ifs,va)
-
-/*
-    cc++
-    if cc%1000 == 0 { pf("*") }
-*/
+    // if lockSafety { calllock.RLock() }
+    // pf("Entered call -> %#v : va -> %#v\n",calltable[csloc],va)
+    // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
+    // if lockSafety { calllock.RUnlock() }
 
     var inbound *Phrase
 
@@ -330,6 +354,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         }
     }()
 
+    var lastline int                                    // last processed source line.
     var breakIn int
     var pc int
     var retvar string
@@ -337,22 +362,23 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
     var finalline int
     var fs string
     var caller uint64
-
-    // this is used to return the phrase counter to modify to if a CONTINUE was encountered.
-    // continueOut = -1
+    var base uint64
 
     // set up the function space
 
     // ..get call details
-    ncs := &callstack[csloc]
-    fs = (*ncs).fs
-    base = (*ncs).base
-    caller = (*ncs).caller
-    retvar = (*ncs).retvar
+    if lockSafety { calllock.RLock() }
+    ncs := &calltable[csloc]
+    fs = (*ncs).fs                          // unique name for this execution, pre-generated before call
+    base = (*ncs).base                      // the source code to be read for this function
+    caller = (*ncs).caller                  // which func id called this code
+    retvar = (*ncs).retvar                  // usually @temp, the return variable name
+    if lockSafety { calllock.RUnlock() }
+    ifs,_:=fnlookup.lmget(fs)               // the uint64 id attached to fs name
 
     if base==0 {
         if !interactive {
-            report(ifs, "Possible race condition. Please check. Base->0")
+            report(ifs, -1, "Possible race condition. Please check. Base->0")
             finish(false,ERR_EVAL)
             return
         }
@@ -360,33 +386,36 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     if varmode == MODE_NEW {
 
-        ifs = GetNextFnSpace()
-        numlookup.lmset(ifs, sf("%s@%v", fs, ifs))
-        fnlookup.lmset(sf("%s@%v",fs,ifs),ifs)
         // in interactive mode, the current functionspace is 0
         // in normal exec mode, the source is treated as functionspace 1
 
-        // if !interactive && base < 2 { // interactive always uses MODE_STATIC?
         if base < 2 {
             globalaccess = ifs
             vset(globalaccess, "userSigIntHandler", "")
         }
 
         // create the local variable storage for the function
-        if ifs>=vtable_maxreached { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
+        if lockSafety { vlock.RLock() }
+        vtm:=vtable_maxreached
+        if lockSafety { vlock.RUnlock() }
+        if ifs>=vtm { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
 
         // nesting levels in this function
+        if lockSafety { looplock.Lock() }
         depth[ifs] = 0
+        if lockSafety { looplock.Unlock() }
 
         if lockSafety { vlock.Lock() }
         varcount[ifs] = 0
         if lockSafety { vlock.Unlock() }
 
-        if lockSafety { lastlock.Lock() }
-        inside_test = false
+        if lockSafety { globlock.Lock() }
         test_group = ""
         test_name = ""
         test_assert = ""
+        if lockSafety { globlock.Unlock() }
+
+        if lockSafety { lastlock.Lock() }
         lastConstruct[ifs] = []int{}
         if lockSafety { lastlock.Unlock() }
 
@@ -394,19 +423,33 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
+
+    if lockSafety { looplock.Lock() }
+
     wccount[ifs] = 0
 
     // allocate loop storage space if not a repeat ifs value.
-    if ifs>=vtable_maxreached {
-        loops[ifs] = make([]s_loop, MAX_LOOPS)
-    }
 
+    if lockSafety { vlock.RLock() }
+    // if ifs>=vtable_maxreached {
+        loops[ifs] = make([]s_loop, MAX_LOOPS)
+    // }
+    if lockSafety { vlock.RUnlock() }
+
+    if lockSafety { looplock.Unlock() }
 
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
 
+    /*
+    pf("in %v \n",fs)
+    pf("base  -> %v\n",base)
+    pf("va    -> %#v\n",va)
+    pf("fargs -> %#v\n",functionArgs[base])
+    */
+
     if len(va) > len(functionArgs[base]) {
-        report(ifs,"Syntax error: too many call arguments provided.")
+        report(ifs,-1,"Syntax error: too many call arguments provided.")
         finish(false,ERR_SYNTAX)
         return
     }
@@ -430,6 +473,8 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
     // pre-calculate the len to save the extra overhead during the call loop
     finalline = len(functionspaces[base])
 
+    inside_test := false
+
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
 
@@ -446,7 +491,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         }
 
         // race condition: winching check
-        if winching {
+        if !lockSafety && winching {
             pane_redef()
         }
 
@@ -455,14 +500,16 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
         tokencount := inbound.TokenCount // length of phrase
 
+        // this one is problematic. the fs id is needed in a few places and it's a mess
+        //   carrying it around as a global like this. will definitely cause issues
+        //   at some point.
 
-        // set these for global internal access: 
         if lockSafety { lastlock.Lock() }
         lastfs   = ifs
-        lastbase = base
-        lastline = inbound.Tokens[0].Line
-        llcopy:=lastline
         if lockSafety { lastlock.Unlock() }
+
+        // set these for global internal access: 
+        lastline = inbound.Tokens[0].Line
 
         // .. skip comments and DOC statements
         if inbound.Tokens[0].tokType == C_Doc && !testMode {
@@ -502,14 +549,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         }
 
         // abort this phrase if currently inside a TEST block but the test flag is not set.
-        if lockSafety { lastlock.RLock() }
         if inside_test {
-            if lockSafety { lastlock.RUnlock() }
             if statement.tokType != C_Endtest && !under_test {
                 continue
             }
         }
-        if lockSafety { lastlock.RUnlock() }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -532,7 +576,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endwhile, []int{C_While}, []int{C_Endwhile})
 
             if !endfound {
-                report(ifs, "Could not find an ENDWHILE.")
+                report(ifs, lastline, "Could not find an ENDWHILE.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -555,7 +599,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 case bool:
                     res = expr.result.(bool)
                 default:
-                    report(ifs,"WHILE condition must evaluate to boolean.")
+                    report(ifs,lastline, "WHILE condition must evaluate to boolean.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -585,7 +629,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             cond := loops[ifs][depth[ifs]]
 
             if cond.loopType != C_While {
-                report(ifs, "ENDWHILE outside of WHILE loop.")
+                report(ifs,lastline,  "ENDWHILE outside of WHILE loop.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -593,12 +637,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // time to die?
             if breakIn == C_Endwhile {
 
+                if lockSafety { looplock.Lock() }
+
                 if lockSafety { lastlock.Lock() }
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 if lockSafety { lastlock.Unlock() }
 
-                if lockSafety { looplock.Lock() }
                 depth[ifs]--
+
                 if lockSafety { looplock.Unlock() }
 
                 breakIn = Error
@@ -614,10 +660,10 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 pc = cond.repeatFrom
             } else {
                 // was false, so leave the loop
+                if lockSafety { looplock.Lock() }
                 if lockSafety { lastlock.Lock() }
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Lock() }
                 depth[ifs]--
                 if lockSafety { looplock.Unlock() }
             }
@@ -627,7 +673,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
            if tokencount<3 {
                 // error
-                report(ifs,"missing value in setglob.")
+                report(ifs,lastline, "missing value in setglob.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -655,12 +701,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 // find token pos of "]"
                 sqEndPos:=str.IndexByte(lhs,']')
                 if sqEndPos==-1 { // missing end brace
-                    report(ifs,sf("SETGLOB missing end brace in '%v'",lhs))
+                    report(ifs,lastline, sf("SETGLOB missing end brace in '%v'",lhs))
                     finish(false,ERR_SYNTAX)
                     break
                 }
                 if sqEndPos<sqPos { // wrong order
-                    report(ifs,"SETGLOB braces out-of-order\n")
+                    report(ifs,lastline, "SETGLOB braces out-of-order\n")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -673,7 +719,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             expr,ef := wrappedEval(ifs, cet, true)
             if ef || expr.evalError {
-                report(ifs,sf("Bad expression in SETGLOB : '%s'",expr.text))
+                report(ifs,lastline, sf("Bad expression in SETGLOB : '%s'",expr.text))
                 finish(false,ERR_EVAL)
                 break
             }
@@ -682,14 +728,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if lockSafety { globlock.Lock() }
             ga:=globalaccess
-            if lockSafety {globlock.Unlock() }
+            if lockSafety { globlock.Unlock() }
 
             if aryRef {
 
                 // array reference
                 element, ef, _ := ev(ifs, elementComponents, true,true)
                 if ef {
-                    report(ifs,sf("Bad element in SETGLOB assignment: '%v'",elementComponents))
+                    report(ifs,lastline, sf("Bad element in SETGLOB assignment: '%v'",elementComponents))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -707,7 +753,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 case int:
                     // error on negative element
                     if element.(int)<0 {
-                        report(ifs,sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element.(int)))
+                        report(ifs,lastline, sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element.(int)))
                         finish(false,ERR_EVAL)
                         break
                     }
@@ -715,14 +761,13 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     inter,_:=interpolate(ifs,sf("%v",element),true)
                     vsetElement(ga, aryName, inter, expr.result)
                 default:
-                    report(ifs,"Unknown type in SETGLOB")
+                    report(ifs,lastline, "Unknown type in SETGLOB")
                     os.Exit(125)
                 }
 
             } else {
                 inter,_:=interpolate(ifs,lhs,true)
                 vset(globalaccess, inter, expr.result)
-                if lockSafety {globlock.Unlock() }
             }
 
 
@@ -732,19 +777,19 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // iterates over the result of expression expr as a list
 
             if tokencount<4 {
-                report(ifs,"bad argument length in FOREACH.")
+                report(ifs,lastline, "bad argument length in FOREACH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if str.ToLower(inbound.Tokens[2].tokText) != "in" {
-                report(ifs, "malformed FOREACH statement.")
+                report(ifs,lastline,  "malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             if inbound.Tokens[1].tokType != Identifier {
-                report(ifs, "parameter 2 must be an identifier.")
+                report(ifs,lastline,  "parameter 2 must be an identifier.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -771,7 +816,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                     wrappedEval,ef := wrappedEval(ifs, exp, false)
                     if ef || wrappedEval.evalError {
-                        report(ifs,sf("error evaluating term in FOREACH statement '%v'",exp.text))
+                        report(ifs,lastline, sf("error evaluating term in FOREACH statement '%v'",exp.text))
                         finish(false,ERR_EVAL)
                         break
                     }
@@ -785,7 +830,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     // skip empty expressions
                     endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
                     if !endfound {
-                        report(ifs, "Cannot determine the location of a matching ENDFOR.")
+                        report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else { //skip
@@ -1013,7 +1058,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         }
 
                     default:
-                        report(ifs,sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr,expr))
+                        report(ifs,lastline, sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr,expr))
                         finish(false,ERR_EVAL)
                         break
                     }
@@ -1021,7 +1066,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     // figure end position
                     endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
                     if !endfound {
-                        report(ifs, "Cannot determine the location of a matching ENDFOR.")
+                        report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
                         break
                     }
@@ -1029,6 +1074,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     if lockSafety { looplock.Lock() }
                     depth[ifs]++
                     // pf("ifs:%v depth:%v len_depth:%v len_loops:%v\n",ifs,depth[ifs],len(depth),len(loops))
+                    // pf("loop ifs:\n%#v\n",loops[ifs])
                     loops[ifs][depth[ifs]] = s_loop{loopVar: fid, repeatFrom: pc + 1, iterOverMap: iter,
                         iterOverString: finalExprString, iterOverArray: finalExprArray,
                         ecounter: 0, econdEnd: ce, forEndPos: enddistance + pc,
@@ -1046,14 +1092,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         case C_For: // loop over an int64 range
 
             if tokencount < 5 || inbound.Tokens[2].tokText != "=" {
-                report(ifs, "Malformed FOR statement.\n")
+                report(ifs,lastline,  "Malformed FOR statement.\n")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             toAt := findDelim(inbound.Tokens, "to", 2)
             if toAt == -1 {
-                report(ifs, "TO not found in FOR")
+                report(ifs,lastline,  "TO not found in FOR")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1074,12 +1120,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if validated && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
-                    report(ifs, "Could not evaluate start expression in FOR")
+                    report(ifs,lastline,  "Could not evaluate start expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,"Missing expression in FOR statement?")
+                report(ifs,lastline, "Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1089,12 +1135,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if validated && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
                 } else {
-                    report(ifs, "Could not evaluate end expression in FOR")
+                    report(ifs,lastline,  "Could not evaluate end expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,"Missing expression in FOR statement?")
+                report(ifs,lastline, "Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1105,12 +1151,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     if validated && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
-                        report(ifs, "Could not evaluate STEP expression")
+                        report(ifs,lastline,  "Could not evaluate STEP expression")
                         finish(false, ERR_EVAL)
                         break
                     }
                 } else {
-                    report(ifs,"Missing expression in FOR statement?")
+                    report(ifs,lastline, "Missing expression in FOR statement?")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1121,7 +1167,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 step = fstep
             }
             if step == 0 {
-                report(ifs, "This is a road to nowhere. (STEP==0)")
+                report(ifs,lastline,  "This is a road to nowhere. (STEP==0)")
                 finish(true, ERR_EVAL)
                 break
             }
@@ -1134,7 +1180,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // figure end position
             endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_For}, []int{C_Endfor})
             if !endfound {
-                report(ifs, "Cannot determine the location of a matching ENDFOR.")
+                report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1167,16 +1213,26 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if lockSafety { looplock.Lock() }
 
-            var lastcon int
             if lockSafety { lastlock.RLock() }
+
+            // pf("fs         -> %v\n",fs)
+            // pf("ifs        -> %v\n",ifs)
+            // pf("depth[ifs] -> %#v\n",depth[ifs])
+            // pf("depth[ifs] -> %#v\n",depth[ifs])
+
+            var lastcon int
             if depth[ifs]>0 {
                 lastcon=lastConstruct[ifs][depth[ifs]-1]
+            } else {
+                pf("trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
+                finish(true,ERR_FATAL)
+                break
             }
+
             if lockSafety { lastlock.RUnlock() }
 
             if lastcon!=C_For && lastcon!=C_Foreach {
-                if lockSafety { looplock.Unlock() }
-                report(ifs,"ENDFOR without a FOR or FOREACH")
+                report(ifs,lastline, "ENDFOR without a FOR or FOREACH")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1314,12 +1370,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             // Continue should work with FOR, FOREACH or WHILE.
 
-            // if lockSafety { looplock.RLock() }
+            if lockSafety { looplock.RLock() }
             di:=depth[ifs]
-            // if lockSafety { looplock.RUnlock() }
+            if lockSafety { looplock.RUnlock() }
 
             if di == 0 {
-                report(ifs, "Attempting to CONTINUE without a valid surrounding construct.")
+                report(ifs,lastline,  "Attempting to CONTINUE without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -1328,20 +1384,18 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 // ^^ we use indirect access here (and throughout loop code) for a minor speed bump.
                 // ^^ we should periodically review this as an optimisation in Go could make this unnecessary.
 
-                // if lockSafety { lastlock.RLock() }
+                if lockSafety { lastlock.RLock() }
                 switch lastConstruct[ifs][di-1] {
 
                 case C_For, C_Foreach:
                     thisLoop = &loops[ifs][di]
                     pc = (*thisLoop).forEndPos - 1
-                    // continueOut=pc
 
                 case C_While:
                     thisLoop = &loops[ifs][di]
                     pc = (*thisLoop).whileContinueAt - 1
-                    // continueOut=pc
                 }
-                // if lockSafety { lastlock.RUnlock() }
+                if lockSafety { lastlock.RUnlock() }
 
             }
 
@@ -1354,7 +1408,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // The surrounding construct should set the lastConstruct[fs][depth] on entry.
 
             if depth[ifs] == 0 {
-                report(ifs, "Attempting to BREAK without a valid surrounding construct.")
+                report(ifs,lastline,  "Attempting to BREAK without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -1364,7 +1418,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 thisLoop = &loops[ifs][depth[ifs]]
                 bmess := ""
 
-                // if lockSafety { lastlock.RLock() }
+                if lockSafety { lastlock.RLock() }
                 switch lastConstruct[ifs][depth[ifs]-1] {
 
                 case C_For:
@@ -1387,11 +1441,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     bmess = "out of WHEN:\n"
 
                 default:
-                    report(ifs, "A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
+                    report(ifs,lastline,  "A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
                     break
                 }
-                // if lockSafety { lastlock.RUnlock() }
+                if lockSafety { lastlock.RUnlock() }
 
                 if breakIn != Error {
                     debug(5, "** break %v\n", bmess)
@@ -1403,14 +1457,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         case C_Unset: // remove a variable
 
             if tokencount != 2 {
-                report(ifs, "Incorrect arguments supplied for UNSET.")
+                report(ifs,lastline,  "Incorrect arguments supplied for UNSET.")
                 finish(false, ERR_SYNTAX)
             } else {
                 removee := inbound.Tokens[1].tokText
                 if _, ok := VarLookup(ifs, removee); ok {
                     vunset(ifs, removee)
                 } else {
-                    report(ifs, sf("Variable %s does not exist.", removee))
+                    report(ifs, lastline, sf("Variable %s does not exist.", removee))
                     finish(false, ERR_EVAL)
                 }
             }
@@ -1431,7 +1485,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             switch str.ToLower(inbound.Tokens[1].tokText) {
             case "off":
                 if tokencount != 2 {
-                    report(ifs, "Too many arguments supplied.")
+                    report(ifs,lastline,  "Too many arguments supplied.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1443,7 +1497,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             case "select":
 
                 if tokencount != 3 {
-                    report(ifs, "Invalid pane selection.")
+                    report(ifs,lastline,  "Invalid pane selection.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1456,7 +1510,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     currentpane = cp.(string)
 
                 default:
-                    report(ifs, "Warning: you must provide a string value to PANE SELECT.")
+                    report(ifs, lastline, "Warning: you must provide a string value to PANE SELECT.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1477,7 +1531,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                    TCommaAt := findDelim(inbound.Tokens, ",", WCommaAt+1)
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
-                    report(ifs, "Bad delimiter in PANE DEFINE.")
+                    report(ifs,lastline,  "Bad delimiter in PANE DEFINE.")
                     // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false, ERR_SYNTAX)
                     break
@@ -1526,7 +1580,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 }
 
                 if pname.evalError || py.evalError || px.evalError || ph.evalError || pw.evalError {
-                    report(ifs, "Could not evaluate an argument in PANE DEFINE.")
+                    report(ifs,lastline,  "Could not evaluate an argument in PANE DEFINE.")
                     // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false, ERR_EVAL)
                     break
@@ -1541,14 +1595,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if hasBox   { boxed = sf("%v",pbox.result)   }
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
-                    report(ifs,"Could not use an argument in PANE DEFINE.")
+                    report(ifs,lastline, "Could not use an argument in PANE DEFINE.")
                     // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false,ERR_EVAL)
                     break
                 }
 
                 if pname.result.(string) == "global" {
-                    report(ifs, "Cannot redefine the global PANE.")
+                    report(ifs, lastline, "Cannot redefine the global PANE.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1560,7 +1614,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 paneBox(currentpane)
 
             default:
-                report(ifs, "Unknown PANE command.")
+                report(ifs,lastline,  "Unknown PANE command.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -1579,7 +1633,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             var i string
 
             if tokencount<2 {
-                report(ifs, "Not enough arguments in PAUSE.")
+                report(ifs,lastline,  "Not enough arguments in PAUSE.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1598,7 +1652,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 dur, err := time.ParseDuration(i + "ms")
 
                 if err != nil {
-                    report(ifs, sf("'%s' did not evaluate to a duration.", expr.text))
+                    report(ifs,lastline,  sf("'%s' did not evaluate to a duration.", expr.text))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -1606,7 +1660,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 time.Sleep(dur)
 
             } else {
-                report(ifs, sf("Could not evaluate PAUSE expression."))
+                report(ifs,lastline,  sf("Could not evaluate PAUSE expression."))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -1652,13 +1706,13 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if testMode {
 
                 if !(tokencount == 4 || tokencount == 6) {
-                    report(ifs, "Badly formatted TEST command.")
+                    report(ifs,lastline,  "Badly formatted TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
                 if str.ToLower(inbound.Tokens[2].tokText) != "group" {
-                    report(ifs, "Missing GROUP in TEST command.")
+                    report(ifs,lastline,  "Missing GROUP in TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1666,7 +1720,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 test_assert = "fail"
                 if tokencount == 6 {
                     if str.ToLower(inbound.Tokens[4].tokText) != "assert" {
-                        report(ifs, "Missing ASSERT in TEST command.")
+                        report(ifs,lastline,  "Missing ASSERT in TEST command.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
@@ -1676,7 +1730,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         case "continue":
                             test_assert = "continue"
                         default:
-                            report(ifs, "Bad ASSERT type in TEST command.")
+                            report(ifs,lastline,  "Bad ASSERT type in TEST command.")
                             finish(false, ERR_SYNTAX)
                             break
                         }
@@ -1710,7 +1764,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                 doAt := findDelim(inbound.Tokens, "do", 2)
                 if doAt == -1 {
-                    report(ifs, "DO not found in ON")
+                    report(ifs,lastline,  "DO not found in ON")
                     finish(false, ERR_SYNTAX)
                 } else {
                     // more tokens after the DO to form a command with?
@@ -1720,7 +1774,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                         expr,ef := wrappedEval(ifs, cet, true)
                         if ef || expr.evalError {
-                            report(ifs,"Could not evaluate expression in ON..DO statement.")
+                            report(ifs,lastline, "Could not evaluate expression in ON..DO statement.")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -1747,7 +1801,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                             }
                         default:
                             pf("Result Type -> %T\n", expr.result)
-                            report(ifs, "ON cannot operate without a condition.")
+                            report(ifs, lastline, "ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
                             break
                         }
@@ -1756,7 +1810,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 }
 
             } else {
-                report(ifs, "ON missing arguments.")
+                report(ifs, lastline, "ON missing arguments.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -1765,7 +1819,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if tokencount < 2 {
 
-                report(ifs, "Insufficient arguments supplied to ASSERT")
+                report(ifs,lastline,  "Insufficient arguments supplied to ASSERT")
                 finish(false, ERR_ASSERT)
 
             } else {
@@ -1774,7 +1828,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 expr,ef := wrappedEval(ifs, cet, true)
 
                 if ef || expr.evalError {
-                    report(ifs, "Could not evaluate expression in ASSERT statement.")
+                    report(ifs,lastline,  "Could not evaluate expression in ASSERT statement.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1793,28 +1847,28 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                     if !expr.result.(bool) {
                         if !under_test {
-                            report(ifs, sf("Could not assert! ( %s )", expr.text))
+                            report(ifs,lastline,  sf("Could not assert! ( %s )", expr.text))
                             finish(false, ERR_ASSERT)
                             break
                         }
                         // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), llcopy, expr.text)
+                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), lastline, expr.text)
                         testsFailed++
-                        appendToTestReport(test_output_file,ifs, llcopy, test_report)
+                        appendToTestReport(test_output_file,ifs, lastline, test_report)
                         temp_test_assert := test_assert
                         if fail_override != "" {
                             temp_test_assert = fail_override
                         }
                         switch temp_test_assert {
                         case "fail":
-                            report(ifs, sf("Could not assert! (%s)", expr.text))
+                            report(ifs,lastline,  sf("Could not assert! (%s)", expr.text))
                             finish(false, ERR_ASSERT)
                         case "continue":
-                            report(ifs, sf("Assert failed (%s), but continuing.", expr.text))
+                            report(ifs,lastline,  sf("Assert failed (%s), but continuing.", expr.text))
                         }
                     } else {
                         if under_test {
-                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), llcopy, expr.text)
+                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), lastline, expr.text)
                             testsPassed++
                             appendToTestReport(test_output_file,ifs, pc, test_report)
                         }
@@ -1827,7 +1881,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         case C_Init: // initialise an array
 
             if tokencount<2 {
-                report(ifs,"Not enough arguments in INIT.")
+                report(ifs,lastline, "Not enough arguments in INIT.")
                 finish(false,ERR_EVAL)
                 break
             }
@@ -1847,7 +1901,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                 expr,ef := wrappedEval(ifs, cet, true)
                 if ef || expr.evalError {
-                    report(ifs,"Could not evaluate expression in INIT statement.")
+                    report(ifs,lastline, "Could not evaluate expression in INIT statement.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1859,7 +1913,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         size=strSize
                     }
                 default:
-                    report(ifs,"Array width must evaluate to an integer.")
+                    report(ifs,lastline, "Array width must evaluate to an integer.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1886,7 +1940,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         vset(ifs, varname, make(map[string]interface{},size))
                     }
                 default:
-                    report(ifs,"Too many dimensions!")
+                    report(ifs,lastline, "Too many dimensions!")
                     finish(false,ERR_SYNTAX)
                 }
             }
@@ -1908,7 +1962,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if tokencount != 2 {
 
-                report(ifs, "Malformed DEBUG statement.")
+                report(ifs,lastline,  "Malformed DEBUG statement.")
                 finish(false, ERR_SYNTAX)
 
             } else {
@@ -1917,7 +1971,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if validated && isNumber(dval) {
                     debug_level = dval.(int)
                 } else {
-                    report(ifs, "Bad debug level value - could not evaluate.")
+                    report(ifs,lastline,  "Bad debug level value - could not evaluate.")
                     finish(false, ERR_EVAL)
                 }
 
@@ -1929,7 +1983,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
             if tokencount < 2 || tokencount > 3 {
-                report(ifs, "Malformed REQUIRE statement.")
+                report(ifs,lastline,  "Malformed REQUIRE statement.")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -1968,7 +2022,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if validated && isNumber(ec) {
                     finish(true, ec.(int))
                 } else {
-                    report(ifs,"Could not evaluate your EXIT expression")
+                    report(ifs,lastline, "Could not evaluate your EXIT expression")
                     finish(true,ERR_EVAL)
                 }
             } else {
@@ -1981,7 +2035,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if tokencount > 1 {
 
                 if defining {
-                    report(ifs, "Already defining a function. Nesting not permitted.")
+                    report(ifs, lastline, "Already defining a function. Nesting not permitted.")
                     finish(true, ERR_SYNTAX)
                     break
                 }
@@ -2001,7 +2055,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     }
                 } else {
                     if tokencount != 2 {
-                        report(ifs, "Braced list of parameters not supplied!")
+                        report(ifs,lastline,  "Braced list of parameters not supplied!")
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2013,15 +2067,13 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 // error if it has already been defined
 
                 if _, exists := fnlookup.lmget(definitionName); exists {
-                    report(ifs, "Function "+definitionName+" already exists.")
+                    report(ifs,lastline,  "Function "+definitionName+" already exists.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
-                loc := GetNextFnSpace()
-                // pf("allocated out %v in DEFINE %v\n",loc,definitionName)
-                numlookup.lmset(loc,definitionName)
-                fnlookup.lmset(definitionName,loc)
+                // pf("[#3]DEFINE taking a space[#-]\n")
+                loc, _ := GetNextFnSpace(definitionName)
 
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
@@ -2039,7 +2091,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if _, exists := fnlookup.lmget(fn); exists {
                     ShowDef(fn)
                 } else {
-                    report(ifs, "Function not found.")
+                    report(ifs, lastline, "Function not found.")
                     finish(false, ERR_EVAL)
                 }
             } else {
@@ -2058,7 +2110,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if tokencount == 2 {
                 if hasOuterBraces(inbound.Tokens[1].tokText) {
                     if inbound.Tokens[1].tokType == Expression {
-                        report(ifs, "Cannot brace a RETURN value.")
+                        report(ifs, lastline, "Cannot brace a RETURN value.")
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2075,7 +2127,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         retval = expr.result
                         if ifs<=2 {
                             if exitCode,not_ok:=GetAsInt(expr.result); not_ok {
-                                report(ifs, sf("could not evaluate RETURN parameter: %+v", cet.text))
+                                report(ifs, lastline, sf("could not evaluate RETURN parameter: %+v", cet.text))
                                 finish(true, ERR_EVAL)
                                 break
                             } else {
@@ -2084,7 +2136,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                             }
                         }
                     } else {
-                        report(ifs, sf("could not evaluate RETURN parameter: %+v", cet.text))
+                        report(ifs,lastline,  sf("could not evaluate RETURN parameter: %+v", cet.text))
                         finish(true, ERR_EVAL)
                         break
                     }
@@ -2097,7 +2149,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         case C_Enddef:
 
             if !defining {
-                report(ifs, "Not currently defining a function.")
+                report(ifs,lastline,  "Not currently defining a function.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2114,7 +2166,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if tokencount != 4 {
                 usage := "INPUT [#i1]id[#i0] PARAM | OPTARG | ENV [#i1]field_position[#i0]"
-                report(ifs, "Incorrect arguments supplied to INPUT.\n"+usage)
+                report(ifs, lastline, "Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2130,7 +2182,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 d, er := strconv.Atoi(pos)
                 if er == nil {
                     if d<1 {
-                        report(ifs,sf("INPUT position %d too low.",d))
+                        report(ifs,lastline, sf("INPUT position %d too low.",d))
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2143,11 +2195,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                             vset(ifs, id, cmdargs[d-1])
                         }
                     } else {
-                        report(ifs,sf("Expected CLI parameter '%s' not provided at startup.", id))
+                        report(ifs,lastline, sf("Expected CLI parameter '%s' not provided at startup.", id))
                         finish(true, ERR_SYNTAX)
                     }
                 } else {
-                    report(ifs, sf("That '%s' doesn't look like a number.", pos))
+                    report(ifs, lastline, sf("That '%s' doesn't look like a number.", pos))
                     finish(true, ERR_SYNTAX)
                 }
 
@@ -2170,7 +2222,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         }
                     }
                 } else {
-                    report(ifs, sf("That '%s' doesn't look like a number.", pos))
+                    report(ifs, lastline, sf("That '%s' doesn't look like a number.", pos))
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -2189,12 +2241,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 expr,ef = wrappedEval(ifs, cet, true)
                 if ef || expr.evalError {
-                    report(ifs,"Could not evaluate expression in MODULE statement.")
+                    report(ifs,lastline, "Could not evaluate expression in MODULE statement.")
                     finish(false,ERR_MODULE)
                     break
                 }
             } else {
-                report(ifs, "No module name provided.")
+                report(ifs, lastline, "No module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2202,7 +2254,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             fom := expr.result.(string)
 
             if fom == "" {
-                report(ifs, "Empty module name provided.")
+                report(ifs,lastline,  "Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2238,13 +2290,13 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             f, err := os.Stat(moduleloc)
 
             if err != nil {
-                report(ifs, sf("Module is not accessible. (path:%v)",moduleloc))
+                report(ifs, lastline, sf("Module is not accessible. (path:%v)",moduleloc))
                 finish(false, ERR_MODULE)
                 break
             }
 
             if !f.Mode().IsRegular() {
-                report(ifs, "Module is not a regular file.")
+                report(ifs,lastline,  "Module is not a regular file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2253,7 +2305,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             mod, err := ioutil.ReadFile(moduleloc)
             if err != nil {
-                report(ifs, "Problem reading the module file.")
+                report(ifs,lastline,  "Problem reading the module file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2262,15 +2314,15 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             //.. error if it has already been defined
             if _, exists := fnlookup.lmget("@mod_"+fom); exists {
-                report(ifs, "Function @mod_"+fom+" already exists.")
+                report(ifs,lastline,  "Function @mod_"+fom+" already exists.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            loc := GetNextFnSpace()
-            // pf("allocated out %v in MODULE %v\n",loc,fom)
-            numlookup.lmset(loc,"@mod_" + fom)
-            fnlookup.lmset("@mod_"+fom, loc)
+            // pf("[#3]MODULE taking a space[#-]\n")
+            loc, _ := GetNextFnSpace("@mod_"+fom)
+            // numlookup.lmset(loc,"@mod_" + fom)
+            // fnlookup.lmset("@mod_"+fom, loc)
 
             fspacelock.Lock()
             functionspaces[loc] = []Phrase{}
@@ -2288,11 +2340,9 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             modcs.caller = ifs
             modcs.fs = "@mod_" + fom
             calllock.Lock()
-            callstack[loc] = modcs
+            calltable[loc] = modcs
             calllock.Unlock()
-            Call(ifs, base, MODE_NEW, loc)
-            // ^^ ifs -> this function , ^^ base -> where the module source is,
-            /// ^^MODE_NEW to perform setup, ^^ loc -> position of call params in the callstack ary
+            Call(MODE_NEW, loc)
 
             // purge the module source as the code has been executed
             fspacelock.Lock()
@@ -2300,7 +2350,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             fspacelock.Unlock()
 
             calllock.Lock()
-            callstack[loc]=call_s{}
+            calltable[loc]=call_s{}
             calllock.Unlock()
 
 
@@ -2312,7 +2362,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // after the above setup, we execute next source line as normal
 
             if tokencount==1 {
-                report(ifs,"Missing expression in WHEN statement")
+                report(ifs,lastline, "Missing expression in WHEN statement")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -2323,13 +2373,13 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // debug(6,"@%d : Endwhen lookahead set to line %d\n",pc+1,pc+1+enddistance)
 
             if er {
-                report(ifs, "Lookahead error!")
+                report(ifs,lastline,  "Lookahead error!")
                 finish(true, ERR_SYNTAX)
                 break
             }
 
             if !endfound {
-                report(ifs, "Missing ENDWHEN for this WHEN")
+                report(ifs,lastline,  "Missing ENDWHEN for this WHEN")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2338,7 +2388,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             expr,ef := wrappedEval(ifs, cet, true)
 
             if ef || expr.evalError {
-                report(ifs, "Could not evaluate the WHEN condition")
+                report(ifs,lastline,  "Could not evaluate the WHEN condition")
                 finish(false, ERR_EVAL)
                 break
             }
@@ -2370,7 +2420,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if d == 0 || (d > 0 && lcifs != C_When) {
                 if lockSafety { looplock.RUnlock() }
-                report(ifs,"Not currently in a WHEN block.")
+                report(ifs,lastline, "Not currently in a WHEN block.")
                 break
             }
 
@@ -2385,7 +2435,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 cet = crushEvalTokens(inbound.Tokens[1:])
                 expr,ef = wrappedEval(ifs, cet, true)
                 if ef || expr.evalError {
-                    report(ifs, "Could not evaluate expression in WHEN condition.")
+                    report(ifs,lastline,  "Could not evaluate expression in WHEN condition.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2486,13 +2536,14 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if lockSafety { lastlock.RUnlock() }
 
             if d == 0 || (d > 0 && lcifs != C_When) {
-                report(ifs,"Not currently in a WHEN block.")
+                report(ifs,lastline, "Not currently in a WHEN block.")
                 break
             }
 
             breakIn = Error
 
             if lockSafety { lastlock.Lock() }
+            // lastConstruct[ifs] = lastConstruct[ifs][:d-1]
             lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
             if lockSafety { lastlock.Unlock() }
 
@@ -2500,7 +2551,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             depth[ifs]--
             wccount[ifs]--
             if wccount[ifs] < 0 {
-                report(ifs, "Cannot reduce WHEN stack below zero.")
+                report(ifs,lastline,  "Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
             if lockSafety { looplock.Unlock() }
@@ -2604,7 +2655,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             commaAt := findDelim(inbound.Tokens, ",", 1)
 
             if commaAt == -1 || commaAt == tokencount {
-                report(ifs, "Bad delimiter in AT.")
+                report(ifs,lastline,  "Bad delimiter in AT.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -2613,12 +2664,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
                 expr_row, ef, err := ev(ifs, evrow.text, false,true)
                 if ef || expr_row==nil || err != nil {
-                    report(ifs, sf("Evaluation error in %v", expr_row))
+                    report(ifs, lastline, sf("Evaluation error in %v", expr_row))
                 }
 
                 expr_col, ef, err := ev(ifs, evcol.text, false,true)
                 if ef || expr_col==nil || err != nil {
-                    report(ifs, sf("Evaluation error in %v", expr_col))
+                    report(ifs,lastline,  sf("Evaluation error in %v", expr_col))
                 }
 
                 row, _ = GetAsInt(expr_row)
@@ -2641,7 +2692,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
 
             if tokencount < 2 {
                 usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ]"
-                report(ifs, "Not enough arguments for PROMPT.\n"+usage)
+                report(ifs,lastline,  "Not enough arguments for PROMPT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2659,7 +2710,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 } else {
                     // prompt command:
                     if tokencount < 3 || tokencount > 4 {
-                        report(ifs, "Incorrect arguments for PROMPT command.\n")
+                        report(ifs,lastline,  "Incorrect arguments for PROMPT command.\n")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
@@ -2667,7 +2718,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         broken := false
                         expr, ef, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true,true)
                         if ef || expr==nil {
-                            report(ifs, "Could not evaluate in PROMPT command.")
+                            report(ifs, lastline, "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -2701,7 +2752,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         case C_Logging:
 
             if tokencount < 2 || tokencount > 3 {
-                report(ifs, "LOGGING command malformed.")
+                report(ifs,lastline,  "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2742,7 +2793,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     }
                     web_logger = log.New(web_log_handle, "", log.LstdFlags) // no prepended text
                 } else {
-                    report(ifs,"No access file provided for LOGGING ACCESSFILE command.")
+                    report(ifs,lastline, "No access file provided for LOGGING ACCESSFILE command.")
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -2754,11 +2805,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                     case "off","0","disable":
                         log_web=false
                     default:
-                        report(ifs,"Invalid state set for LOGGING WEB.")
+                        report(ifs,lastline, "Invalid state set for LOGGING WEB.")
                         finish(false, ERR_EVAL)
                     }
                 } else {
-                    report(ifs,"No state provided for LOGGING WEB command.")
+                    report(ifs,lastline, "No state provided for LOGGING WEB command.")
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -2773,7 +2824,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 }
 
             default:
-                report(ifs, "LOGGING command malformed.")
+                report(ifs, lastline, "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -2805,11 +2856,11 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if inbound.Tokens[1].tokType == Identifier {
                     vset(ifs, inbound.Tokens[1].tokText, 0)
                 } else {
-                    report(ifs, "Not an identifier.")
+                    report(ifs,lastline,  "Not an identifier.")
                     finish(false, ERR_SYNTAX)
                 }
             } else {
-                report(ifs, "Missing identifier to reset.")
+                report(ifs,lastline,  "Missing identifier to reset.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -2823,7 +2874,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                 if inbound.Tokens[1].tokType == Identifier {
                     id = inbound.Tokens[1].tokText
                 } else {
-                    report(ifs, "Not an identifier.")
+                    report(ifs,lastline,  "Not an identifier.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2850,7 +2901,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         case int:
                             ampl = v.(int)
                         default:
-                            report(ifs,sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
+                            report(ifs,lastline, sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                             break
@@ -2868,7 +2919,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                             case int:
                                 ampl = expr.result.(int)
                             default:
-                                report(ifs,sf("%s does not result in an integer type.",str.ToUpper(inbound.Tokens[0].tokText)))
+                                report(ifs,lastline, sf("%s does not result in an integer type.",str.ToUpper(inbound.Tokens[0].tokText)))
                                 finish(false,ERR_EVAL)
                             }
                         }
@@ -2910,7 +2961,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
                         case int32,int64,uint8:
                             val,_=GetAsInt(val)
                         default:
-                            report(ifs,sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
+                            report(ifs,lastline, sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                         }
@@ -2944,7 +2995,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             } else {
                 typ:="increment"
                 if statement.tokType==C_Dec { typ="decrement" }
-                report(ifs, "Missing identifier in "+typ+" statement.")
+                report(ifs, lastline, "Missing identifier in "+typ+" statement.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -2956,7 +3007,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endif, []int{C_If}, []int{C_Endif})
 
             if er || !endfound {
-                report(ifs, "Missing ENDIF for this IF")
+                report(ifs,lastline,  "Missing ENDIF for this IF")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2964,7 +3015,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             // eval
             expr, validated := EvalCrushRest(ifs, inbound.Tokens, 1)
             if !validated {
-                report(ifs, "Could not evaluate expression.")
+                report(ifs,lastline,  "Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2991,7 +3042,7 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
             if endfound {
                 pc += enddistance
             } else { // this shouldn't ever occur, as endif checked during C_If, but...
-                report(ifs, "ELSE without an ENDIF\n")
+                report(ifs, lastline, "ELSE without an ENDIF\n")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3046,9 +3097,12 @@ func Call(ifs uint64, base uint64, varmode int, csloc uint64, va ...interface{})
         }
 
         // clean up
-        fnlookup.lmdelete(fs+"@"+string(ifs))
-        numlookup.lmdelete(ifs)
 
+        // pf("[#2]about to delete %v[#-]\n",fs)
+        fnlookup.lmdelete(fs)
+        numlookup.lmdelete(ifs)
+        depth[ifs]=0
+        // loops[ifs] is re-made on entry
         if ifs>2 { functionspaces[ifs] = []Phrase{} }
 
     }
