@@ -7,5 +7,7 @@ todo:
                 routines doing some thing odd with commas in numeric literals/lists or
                 it could just be the way they are getting passed to it.
 
+        * bug in lex'ing or command processing. command ending in double quote sometimes poluting subsequent commands.
+            * probably same source as bug above. can wrap commands in back-ticks to work around it.
 
 
