@@ -6,9 +6,11 @@ import (
     "errors"
     "reflect"
     "regexp"
+    "unicode/utf8"
     "runtime"
     "strconv"
     str "strings"
+//    "bytes"
 )
 
 const ( // tr_actions
@@ -51,6 +53,23 @@ func tr(s string, action int, cases string) string {
     }
     return newStr
 
+}
+
+
+func runesToUTF8(runes []rune) []byte {
+    sz := 0
+    for _, r := range runes {
+        sz += utf8.RuneLen(r)
+    }
+
+    buf := make([]byte, sz)
+
+    count := 0
+    for _, r := range runes {
+        count += utf8.EncodeRune(buf[count:], r)
+    }
+
+    return buf
 }
 
 
@@ -196,19 +215,29 @@ func buildStringLib() {
         return tr(args[0].(string), action, cases), nil
     }
 
-    // lower()
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
     stdlib["lower"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to lower()") }
         return str.ToLower(args[0].(string)), nil
     }
 
-    // upper()
     slhelp["upper"] = LibHelp{in: "string", out: "string", action: "Convert to upper-case."}
     stdlib["upper"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to upper()") }
         return str.ToUpper(args[0].(string)), nil
     }
+
+/*
+    slhelp["utf8e"] = LibHelp{in: "string", out: "string", action: "Converts to utf-8"}
+    stdlib["utf8e"] = func(args ...interface{}) (ret interface{}, err error) {
+
+        if len(args)!=1 { return "",errors.New("Bad arguments (count) to utf8e()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) to utf8e()") }
+
+        return runesToUTF8([]rune(args[0].(string))),nil
+
+    }
+*/
 
     slhelp["line_add"] = LibHelp{in: "var,string", out: "string", action: "Append a line to array string [#i1]var[#i0]."}
     stdlib["line_add"] = func(args ...interface{}) (ret interface{}, err error) {
@@ -401,6 +430,7 @@ func buildStringLib() {
 
     slhelp["field"] = LibHelp{in: "input_string,position,optional_separator", out: "", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
     stdlib["field"] = func(args ...interface{}) (ret interface{}, err error) {
+
         // get sep
         sep := " "
         if len(args) == 3 {
@@ -413,25 +443,19 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) in field()")
         }
 
-        // remove trailing (CR)LF
-        // lf:="\n"
-        // if runtime.GOOS=="windows" {
-        //    lf="\r\n"
-        //}
         lf:="\r\n"
         fstr:=str.TrimSuffix(args[0].(string),lf)
 
         if len(args) > 0 && len(args) <= 3 {
             // get position
             pos := args[1].(int)
-            // fstr := args[0].(string)
-            // squeeze separator repeats
-            new := tr(fstr, SQUEEZE, sep)
+
             // find column <position>
             f := func(c rune) bool {
                 return str.ContainsRune(sep, c)
             }
-            ta := str.FieldsFunc(new, f)
+
+            ta := str.FieldsFunc(fstr, f)
             if pos > 0 && pos <= len(ta) {
                 return ta[pos-1], nil
             }
@@ -467,30 +491,22 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) in fields()")
         }
 
-        // remove trailing (CR)LF
-        /*
-        lf:="\n"
-        if runtime.GOOS=="windows" {
-            lf="\r\n"
-        }
-        */
         lf:="\r\n"
         fstr:=str.TrimRight(args[0].(string),lf)
 
-        // perform squeeze and split
-        new := tr(fstr, SQUEEZE, sep)
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
-        ta := str.FieldsFunc(new, f)
+        ta := str.FieldsFunc(fstr, f)
 
         // populate F array and F1..Fx variables
         var c int
         for c = 0; c < len(ta); c++ {
             vset(lfs, "F"+strconv.Itoa(c+1), ta[c])
-            v, _ := vget(lfs, "F")
-            vset(lfs, "F", append(v.([]string), ta[c]))
+            // v, _ := vget(lfs, "F")
+            // vset(lfs, "F", append(v.([]string), ta[c]))
         }
+        vset(lfs, "F", ta)
         vset(lfs, "NF", c)
 
         return c, err
@@ -882,32 +898,49 @@ func buildStringLib() {
 
     slhelp["trim"] = LibHelp{in: "string,int_type", out: "string", action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0]. -1 ltrim, 0 both, 1 rtrim."}
     stdlib["trim"] = func(args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 2 {
-            switch args[1].(int) {
-            case -1:
-                return str.TrimLeft(args[0].(string), " \t"), err
-            case 0:
-                return str.Trim(args[0].(string), " \t"), err
-            case 1:
-                return str.TrimRight(args[0].(string), " \t"), err
+
+        if len(args) < 2 || len(args)>3 { return "",errors.New("Bad arguments (count) to trim()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) in trim()") }
+
+        removals:=" \t"
+        if len(args)==3 {
+            if sf("%T",args[2])!="string" {
+                 return "",errors.New("Bad arguments (type) in trim()")
             }
+            removals=args[2].(string)
         }
-        return false, err
+
+        switch args[1].(int) {
+        case -1:
+            return str.TrimLeft(args[0].(string), removals), nil
+        case 0:
+            return str.Trim(args[0].(string), removals), nil
+        case 1:
+            return str.TrimRight(args[0].(string), removals), nil
+        }
+
+        return "", err
     }
+
+
     slhelp["start"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] begin with [#i1]string2[#i0]?"}
     stdlib["start"] = func(args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 2 {
-            return str.HasPrefix(args[0].(string), args[1].(string)), err
-        }
-        return false, err
+
+        if len(args) != 2 { return "",errors.New("Bad arguments (count) to start()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in start()") }
+
+        return str.HasPrefix(args[0].(string), args[1].(string)), nil
+
     }
 
     slhelp["end"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] end with [#i1]string2[#i0]?"}
     stdlib["end"] = func(args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 2 {
-            return str.HasSuffix(args[0].(string), args[1].(string)), err
-        }
-        return false, err
+
+        if len(args) != 2 { return "",errors.New("Bad arguments (count) to end()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in end()") }
+
+        return str.HasSuffix(args[0].(string), args[1].(string)), err
+
     }
 
 }

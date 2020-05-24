@@ -1743,6 +1743,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 under_test = false
                 // if filter matches group
                 if matched, _ := regexp.MatchString(test_group_filter, test_group); matched {
+                    vset(ifs,"_test_group",test_group)
+                    vset(ifs,"_test_name",test_name)
                     under_test = true
                 }
 

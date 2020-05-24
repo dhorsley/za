@@ -31,7 +31,9 @@ CHANGE LOG
         * fixed remaining issue in fields/field calls for CRLF
         * updated eg/mon.
         * changed call format and allocation method for new functions then had another disagreement with concurrency.
-            * fixed the leaky dingy and all seems well again when testing web servers.
+            * fixed the leaky dinghy and all seems well again when testing web servers.
+        * added some more error checking in lib-string (trim, start and end)
+        * started eg/tests for string library.
 
     features:
 
