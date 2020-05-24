@@ -17,15 +17,18 @@ func fexists(fp string) bool {
 }
 
 func getReportFunctionName(ifs uint64) string {
-	add := ""
 	nl,_ := numlookup.lmget(ifs)
-	if str.IndexByte(nl, '@') > -1 {
+	/*
+	add := ""
+    if str.IndexByte(nl, '@') > -1 {
 		add = nl[:str.IndexByte(nl, '@')]
 	} else {
 		add = nl
 	}
 	add = add + " @ "
 	return add
+    */
+    return nl
 }
 
 func report(ifs uint64, pos int, s string) {

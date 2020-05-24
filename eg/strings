@@ -44,7 +44,7 @@ test "count" group "string"
     f=|mktemp
     write_file(f,s)
     ac =| awk 'END{print NR}' {f}
-    wc =| wc -l {f} | cut -f1 -d' '
+    wc =| wc -l {f} | cut -f1 -d" "
     | rm -f {f}
 
     println "awk thinks : {ac}"

@@ -48,7 +48,6 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
         if previousToken==SingleComment {
             // at this point we have returned the full comment, pos was backtracked to just before the EOL.
             tempToken.tokType=EOL
-            // debug(15,"turning comment into eol.\n")
         }
 
         if previousToken==C_Semicolon {
@@ -60,7 +59,6 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 		phrase.Tokens = append(phrase.Tokens, tempToken)
 		phrase.TokenCount++
         strPhrase.WriteString(tempToken.tokText+" ")
-        // debug(15,"current phrase text = '%v'\n",phrase.Text)
 
 		if tempToken.tokPos != -1 {
 			pos = tempToken.tokPos
@@ -78,12 +76,14 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 
 			// -- cleanup phrase text
 			phrase.Text = str.TrimRight(strPhrase.String(), " ")
+            // debug(15,"current phrase text = '%v'\n",phrase.Text)
 
 			// -- add original version
 			// if pos>0 { phrase.Original = input[lstart:pos+1] }
 			if pos>0 { phrase.Original = input[lstart:pos] }
 			// lstart = pos + 1
 			lstart = pos
+            // debug(15,"current phrase orig = '%v'\n",phrase.Original)
 
             // -- discard empty lines
             if phrase.TokenCount!=0 {
