@@ -10,7 +10,8 @@ const soloChars = "+-/*^!%;<>~=|,[]&"
 
 var soloBinds = [...]int{C_Plus, C_Minus, C_Divide, C_Multiply, C_Caret, C_Pling, C_Percent, C_Semicolon, SYM_LT, SYM_GT, C_Tilde, C_Assign, C_LocalCommand, C_Comma, LeftSBrace, RightSBrace,SYM_AMP}
 
-const identifier_set = alphanumeric + "_~.{}[\"]"
+// const identifier_set = alphanumeric + "_~.{}[\"]"
+const identifier_set = alphanumeric + "_~.{}[]"
 
 var tokNames = [...]string{"ERROR", "ESCAPE",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
@@ -224,19 +225,19 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         }
 
         if term == "]" {
-            if !matchQuote {
-                if input[i] == '[' {
-                    sbraceNestLevel++
-                }
-                if input[i] == ']' {
-                    sbraceNestLevel--
-                }
+
+            if input[i] == '[' {
+                sbraceNestLevel++
             }
+            if input[i] == ']' {
+                sbraceNestLevel--
+            }
+
             if sbraceNestLevel > 0 {
                 continue
             }
 
-            if !matchQuote && input[i] == ']' {
+            if input[i] == ']' {
                 carton.tokPos = i
                 carton.Line = *curLine
                 carton.tokType = tokType
@@ -244,24 +245,23 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 lt.t=carton; lt.eol=eol; lt.eof=eof
                 goto get_nt_exit_point
             }
+
         }
 
         if term == ")" {
 
-            if !matchQuote {
-                if input[i] == '(' {
-                    braceNestLevel++
-                }
-                if input[i] == ')' {
-                    braceNestLevel--
-                }
+            if input[i] == '(' {
+                braceNestLevel++
+            }
+            if input[i] == ')' {
+                braceNestLevel--
             }
 
             if braceNestLevel > 0 {
                 continue
             }
 
-            if !matchQuote && input[i] == ')' {
+            if input[i] == ')' {
                 carton.tokPos = i
                 carton.Line = *curLine
                 carton.tokType = tokType
@@ -272,17 +272,13 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
 
         }
 
-        if nonterm != "" {
-            if str.IndexByte(nonterm, input[i]) != -1 {
-                // found a non-terminator char
-            } else {
+        if nonterm != "" && str.IndexByte(nonterm, input[i]) == -1 {
                 // didn't find a non-terminator, so get word and finish
                 // but don't increase skip as we need to continue the next
                 // search from immediately after the word.
                 word = input[skip:i]
                 endPos--
                 break
-            }
         }
 
         if term != "" && str.IndexByte(term, input[i]) != -1 {
@@ -303,6 +299,7 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
 
             if matchQuote {
                 // get word and end, include terminal quote
+                // get word and end, don't include quotes
                 carton.tokPos = endPos
                 carton.Line   = *curLine
                 carton.tokType= Expression

@@ -33,12 +33,13 @@ define buildLibc(build_version,build_date)
     return r
 enddef
 
-define buildWin(build_version,build_date)
+define buildWin(build_version,build_date,strip_opts)
     GCLIMIT=getglob("GCLIMIT")
     print "[#4]Windows build[#-] ~ [#i1]experimental![#i0]\n"
     | GOOS="windows" GOARCH="amd64" {GCLIMIT} go build -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows"' za
     r=last()
     on r>0 do println last_out()
+    | strip {strip_opts} za.exe
     | cp za.exe za.win64
     return r
 enddef

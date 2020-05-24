@@ -38,7 +38,7 @@ is "libc"
         exit 1
     endif
 is "win"
-    if buildWin(bvers,bdate)!=0
+    if buildWin(bvers,bdate,strip_opts)!=0
         print "Failed to build windows version.\n"
         exit 1
     endif

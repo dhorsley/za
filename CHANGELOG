@@ -33,7 +33,9 @@ CHANGE LOG
         * changed call format and allocation method for new functions then had another disagreement with concurrency.
             * fixed the leaky dinghy and all seems well again when testing web servers.
         * added some more error checking in lib-string (trim, start and end)
-        * started eg/tests for string library.
+        * started eg/strings tests for string library.
+
+
 
     features:
 
