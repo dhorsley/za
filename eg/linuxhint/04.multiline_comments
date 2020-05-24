@@ -2,7 +2,7 @@
 doc `
 ignore me
 please
-(this one has side-effect of being processed during -t test executions)
+(this one has side-effect of being processed into the test output during -t test executions)
 `
 nop `
 ignore me
