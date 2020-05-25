@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-    "regexp"
 	sc "strconv"
 )
 
@@ -18,41 +17,7 @@ func buildFileLib() {
 	categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "is_soft", "is_pipe", "perms",
-                        "file_create", "file_close","dir",
-    }
-
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "array", action: "Returns a list of files in on a given path."}
-    stdlib["dir"] = func(args ...interface{}) (ret interface{}, err error) {
-        if len(args)>2 { return nil,errors.New("Bad arguments (count) in dir()") }
-        dir:="."; filter:="^.*$"
-        if len(args)>0 {
-            if sf("%T",args[0])!="string" { return nil,errors.New("Bad arguments (type) in dir()") }
-            dir=args[0].(string)
-        }
-        if len(args)>1 {
-            if sf("%T",args[1])!="string" { return nil,errors.New("Bad arguments (type) in dir()") }
-            filter=args[1].(string)
-        }
-        // get file list
-        f, err := os.Open(dir)
-        if err != nil { return nil,errors.New("Path not found in dir()") }
-        files, err := f.Readdir(-1)
-        f.Close()
-        if err != nil { return nil,errors.New("Could not complete directory listing in dir()") }
-
-        var dl []map[string]interface{}
-        for _, file := range files {
-            fs:=make(map[string]interface{})
-            if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
-            fs["name"]=file.Name()
-            fs["size"]=file.Size()
-            fs["mode"]=file.Mode()
-            fs["mtime"]=file.ModTime()
-            fs["isdir"]=file.IsDir()
-            dl=append(dl,fs)
-        }
-
-        return dl,nil
+                        "file_create", "file_close",
     }
 
     slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file."}

@@ -1,0 +1,31 @@
+#!/usr/bin/za -f
+
+#
+# split out a column from a file and process it as a list
+#
+
+# check
+
+input column param 1
+assert( is_number(column)   )
+assert( column>0            )
+
+
+# run
+
+z=read_file("/etc/passwd")
+q=col(z,column,":")
+
+if length(q)>0
+    foreach a in q
+        if a!=""
+            s =| echo -n "{a}" | md5sum - | cut -f1 -d' '
+            println format("%32s %s",a,s) 
+            continue
+        endif
+        println pad("-- Empty Input --",0,57," ")
+    endfor
+endif
+
+print
+

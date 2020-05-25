@@ -1,0 +1,31 @@
+#!/usr/bin/za -f
+
+################################################
+# test script for variable assignment
+################################################
+
+
+print "\n[#fcyan]Unique Tests\n[#default]\n\n"
+
+cls
+print "[#fyellow]Console Positioning Test\n\n"
+for y = 1 to 20 step 2
+    row=y+2
+    at row,y
+    z=1+(y/2)
+    print "[#invert]Test {z} - ({row},{y})\n"
+endfor
+
+print "\n\n[#fcyan]Colour Tests\n"
+print "[#bbcyan][#fbgray][#bold][#blink]Test Font[#default]\n\n"
+
+print "[#fcyan]PAUSE test[#default]\n\n"
+
+for x = 1 to 3
+    print "Pausing {x} seconds\n"
+    print "{x} -- \n"
+    pause x*1000
+endfor
+
+print
+
