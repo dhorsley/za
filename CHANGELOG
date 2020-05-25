@@ -90,6 +90,14 @@ CHANGE LOG
                         wc =| wc -l {file} | cut -f1 -d" "
                     endwith
 
+        * added: umask(int), chroot(string), cwd() and cd(string) lib calls.
+
+            * was going to add some setsid/setuid/setgid variants but it looks like they are not going to
+                play well with either Go's concurrency or future compatibility as they have been left to
+                rot in the syscall package. Probably just as well - think they may have turned ugly later :)
+
+        * added: html_escape(s) and html_unescape(s) lib calls.
+
 
 1.0.3
 

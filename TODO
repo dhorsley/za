@@ -1,18 +1,4 @@
 
-
-* is_string()
-* is_int()
-* is_float()
-* is_bool()
-
-* umask()
-* chroot()
-* setsid()
-* setgid()
-* setuid()
-* strip_* ???
-* urlencode?
-* urldecode?
-
+* finish strings check
 
 

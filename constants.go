@@ -7,7 +7,7 @@ package main
 const MaxUint64 = ^uint64(0)
 
 const MAX_LOOPS = 10
-const DEFAULT_INIT_SIZE = 256   // start size of INIT'ed arrays
+const DEFAULT_INIT_SIZE = 64   // start size of INIT'ed arrays
 
 // maximum lib-net listener clients for http server
 // should be below LOOP_CAP

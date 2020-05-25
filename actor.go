@@ -255,20 +255,15 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 
 }
 
-
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
 func GetNextFnSpace(requiredName string) (uint64,string) {
 
     if lockSafety { calllock.Lock() }
 
-    for q := uint64(1); q < 16384; q++ {  // arbitrary limit 16384... that's a lot of recursion.
+    c:=0
 
-        /*
-        if q<uint64(cap(calltable))/2 {
-            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(calltable), cap(calltable))
-        }
-        */
+    for q := uint64(1); q < 128000; q++ {  // arbitrary limit
 
         if _, found := numlookup.lmget(q); found {
             continue
@@ -278,13 +273,14 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
             ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
             copy(ncs,calltable)
             calltable=ncs
-            // pf("gn-alloc-ncs last q -> %v  len -> %v  cap -> %v\n",q, len(calltable), cap(calltable))
         }
 
         var suf string
 
         // pf("-- entered reserving code--\n")
         for  ; ; {
+
+            c++
 
             newName := requiredName
 
@@ -300,6 +296,12 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
                 fnlookup.lmset(newName,q)
                 // pf("-- leaving code with %v,%v --\n\n",q,suf)
                 if lockSafety { calllock.Unlock() }
+
+                if q%2000.0==0 && q>high_q {
+                    high_q=q
+                    // debug(20,"gnfs-alloc for %s, round %d -> New high : %d with calltable length of %d\n",newName,c,q,len(calltable))
+                }
+
                 return q,newName
             }
 
@@ -503,6 +505,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
         // cache the next Phrase: for readability and performance (we read from this slice index often)
         inbound = &functionspaces[base][pc]
+        // debug(20,sf("Now processing [%d-%d]: %v\n",ifs,pc,inbound.Original))
 
         tokencount := inbound.TokenCount // length of phrase
 
@@ -2096,7 +2099,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                     break
                 }
 
-                // pf("[#3]DEFINE taking a space[#-]\n")
+                // debug(20,"[#3]DEFINE taking a space[#-]\n")
                 loc, _ := GetNextFnSpace(definitionName)
 
                 fspacelock.Lock()
@@ -2344,7 +2347,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 break
             }
 
-            // pf("[#3]MODULE taking a space[#-]\n")
+            // debug(20,"[#3]MODULE taking a space[#-]\n")
             loc, _ := GetNextFnSpace("@mod_"+fom)
             // numlookup.lmset(loc,"@mod_" + fom)
             // fnlookup.lmset("@mod_"+fom, loc)

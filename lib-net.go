@@ -16,6 +16,7 @@ import (
     "net/url"
     "math/rand"
     "log"
+    "html"
     "os"
     "sync"
     "path/filepath"
@@ -461,8 +462,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 local_lastfs:=lastfs
                 lastlock.RUnlock()
 
-                // pf("[#3]Lib-net taking space.[#-]\n")
-
                 loc,id := GetNextFnSpace(fn+"@")
                 calllock.Lock()
                 ifn,_=fnlookup.lmget(fn)
@@ -470,10 +469,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calllock.Unlock()
 
                 Call(MODE_NEW, loc, webcallstruct)
-
-                // lastlock.Lock()
-                // lastfs=local_lastfs
-                // lastlock.Unlock()
 
                 _,ok := VarLookup(local_lastfs, "@temp")
                 if ok {
@@ -599,7 +594,7 @@ func buildNetLib() {
 
 
     features["net"] = Feature{version: 1, category: "net"}
-    categories["net"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", }
+    categories["net"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", }
 
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
@@ -766,6 +761,37 @@ func buildNetLib() {
         weblock.Unlock()
         return true,nil
     }
+
+    slhelp["html_escape"] = LibHelp{in: "string", out: "string", action: "Converts HTML special characters to ampersand values."}
+    stdlib["html_escape"] = func(args ...interface{}) (ret interface{}, err error) {
+        var s string
+        if len(args)==1 {
+            switch args[0].(type) {
+            case string:
+                s=args[0].(string)
+            default:
+                return "",errors.New("html_escape() not provided a string value.")
+            }
+            return html.EscapeString(s),nil
+        }
+        return "",errors.New("html_escape() requires a string value.")
+    }
+
+    slhelp["html_unescape"] = LibHelp{in: "string", out: "string", action: "Converts a string containing ampersand values to include HTML special characters."}
+    stdlib["html_unescape"] = func(args ...interface{}) (ret interface{}, err error) {
+        var s string
+        if len(args)==1 {
+            switch args[0].(type) {
+            case string:
+                s=args[0].(string)
+            default:
+                return "",errors.New("html_unescape() not provided a string value.")
+            }
+            return html.UnescapeString(s),nil
+        }
+        return "",errors.New("html_unescape() requires a string value.")
+    }
+
 
     slhelp["web_serve_up"] = LibHelp{in: "handle", out: "bool", action: "Checks if a web server is still running."}
     stdlib["web_serve_up"] = func(args ...interface{}) (ret interface{}, err error) {

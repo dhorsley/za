@@ -21,7 +21,7 @@ print "[#bbcyan][#fbgray][#bold][#blink]Test Font[#default]\n\n"
 
 print "[#fcyan]PAUSE test[#default]\n\n"
 
-for x = 1 to 5
+for x = 1 to 3
     print "Pausing {x} seconds\n"
     print "{x} -- \n"
     pause x*1000

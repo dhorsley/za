@@ -138,7 +138,7 @@ func buildConversionLib() {
 		return 0, err
 	}
 
-	slhelp["int"] = LibHelp{in: "string_number", out: "integer", action: "Convert to an integer."}
+	slhelp["int"] = LibHelp{in: "number_form", out: "integer", action: "Convert to an integer."}
 	stdlib["int"] = func(args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to int()")
@@ -147,7 +147,7 @@ func buildConversionLib() {
 		if !invalid {
 			return i, nil
 		}
-		return 0, err
+		return 0, errors.New(sf("could not convert [%T] (%v) to integer in int()",args[0],args[0]))
 	}
 
 	slhelp["string"] = LibHelp{in: "some_type", out: "string", action: "Convert to a string."}
@@ -167,6 +167,17 @@ func buildConversionLib() {
 		switch args[0].(type) {
 		case uint, uint8, uint32, uint64, int, int32, int64, float32, float64:
 			return isNumber(args[0]), nil
+		case string:
+		    _, invalid := GetAsFloat(args[0])
+		    if invalid {
+                return false, nil
+            } else {
+		        _, invalid := GetAsInt(args[0])
+		        if invalid {
+                    return false,nil
+                }
+            }
+            return true,nil
 		default:
 			return false, nil
 		}

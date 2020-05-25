@@ -25,7 +25,7 @@ enddef
 # START
 #
 
-max_count=10000000
+max_count=1000000
 input mc optarg 1
 on mc!="" do max_count=int(mc)
 
