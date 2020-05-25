@@ -168,6 +168,8 @@ const (
 	C_In
 	C_Or
 	C_Endwhen
+    C_With
+    C_Endwith
 	C_Pane
 	C_Doc
 	C_Test

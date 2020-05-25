@@ -34,7 +34,7 @@ CHANGE LOG
             * fixed the leaky dinghy and all seems well again when testing web servers.
         * added some more error checking in lib-string (trim, start and end)
         * started eg/strings tests for string library.
-
+        * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
 
 
     features:
@@ -62,6 +62,33 @@ CHANGE LOG
         * re-enabled CLS, AT and a few other things that were blocked on windows... still no interactive mode though.
         * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
+        * added dir() lib function. dir(path[,filter]). returns a list of directory entries as assoc arrays.
+            * each entry consists of these keys: "name", "size", "mode", "mtime", "isdir" 
+
+        * added: WITH id AS f ; ... ; ENDWITH construct
+
+            * !!! may still have some issues !!!
+                * leaking some temp files on exit still
+
+            * this will be the equivalent of:
+                f=|mktemp; write_file(f,id); ... ; rm -f {f}; unset f
+            * on exit (of any type) it has to clean up the temp file(s).
+            * filename should be available inside ... part.
+
+                as an example, it will turn this:
+
+                    f=|mktemp
+                    write_file(f,s)
+                    ac =| awk 'END{print NR}' {f}
+                    wc =| wc -l {f} | cut -f1 -d" "
+                    | rm -f {f}
+
+                into this:
+
+                    with s as file
+                        ac =| awk 'END{print NR}' {file}
+                        wc =| wc -l {file} | cut -f1 -d" "
+                    endwith
 
 
 1.0.3

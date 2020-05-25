@@ -41,11 +41,16 @@ endtest
 test "count" group "string"
     header(_test_name)
 
-    f=|mktemp
-    write_file(f,s)
-    ac =| awk 'END{print NR}' {f}
-    wc =| wc -l {f} | cut -f1 -d" "
-    | rm -f {f}
+    with s as file
+        ac =| awk 'END{print NR}' {file}
+        wc =| wc -l {file} | cut -f1 -d" "
+    endwith
+
+#    f=|mktemp
+#    write_file(f,s)
+#    ac =| awk 'END{print NR}' {f}
+#    wc =| wc -l {f} | cut -f1 -d" "
+#    | rm -f {f}
 
     println "awk thinks : {ac}"
     println "wc thinks  : {wc}"

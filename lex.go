@@ -4,13 +4,12 @@ import (
     str "strings"
 )
 
-const symbols = "<>=!|&.+-"
-const doubleterms = "<>=!|&"
-const soloChars = "+-/*^!%;<>~=|,[]&"
+const symbols     = "<>=!|&.+-"
+const doubleterms = "<>=|&"
+const soloChars   = "+-/*^!%;<>~=|,[]&"
 
 var soloBinds = [...]int{C_Plus, C_Minus, C_Divide, C_Multiply, C_Caret, C_Pling, C_Percent, C_Semicolon, SYM_LT, SYM_GT, C_Tilde, C_Assign, C_LocalCommand, C_Comma, LeftSBrace, RightSBrace,SYM_AMP}
 
-// const identifier_set = alphanumeric + "_~.{}[\"]"
 const identifier_set = alphanumeric + "_~.{}[]"
 
 var tokNames = [...]string{"ERROR", "ESCAPE",
@@ -26,7 +25,7 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
+    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
 }
 
 
@@ -96,6 +95,7 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
     }
     skip = i
 
+    // @note: will this ever be true?
     if skip == -1 {
         carton.tokPos = -1
         carton.Line = *curLine
@@ -175,24 +175,34 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         term = ""
     }
 
-    // symbols
-    if two {
-        // treat double symbol as a keyword
-        c1 := str.IndexByte(symbols, firstChar)
-        c2 := str.IndexByte(doubleterms, secondChar)
-        if c1 != -1 && c2 != -1 {
-            nonterm = doubleterms
-            doublesymbol = true
-        }
-    }
+    if sbraceNestLevel==0 && braceNestLevel==0 {
 
-    // solo symbols
-    if !slashComment && !doublesymbol {
-        c := str.IndexByte(soloChars, firstChar)
-        if c != -1 {
-            tokType = soloBinds[c]
-            nonterm = string(firstChar)
+        // symbols
+        if two {
+            // treat double symbol as a keyword
+            c1 := str.IndexByte(symbols, firstChar)
+            c2 := str.IndexByte(doubleterms, secondChar)
+            if c1 != -1 && c2 != -1 {
+                // nonterm = doubleterms
+                // doublesymbol = true
+                    word = string(firstChar)+string(secondChar)
+                    endPos=skip+1
+                    goto get_nt_eval_point
+            }
         }
+
+        // solo symbols
+        if !slashComment && !doublesymbol {
+            c := str.IndexByte(soloChars, firstChar)
+            if c != -1 {
+                // tokType = soloBinds[c]
+                // nonterm = string(firstChar)
+                    word = string(firstChar)
+                    endPos=skip
+                    goto get_nt_eval_point
+            }
+        }
+
     }
 
     // identifier or statement
@@ -299,7 +309,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
 
             if matchQuote {
                 // get word and end, include terminal quote
-                // get word and end, don't include quotes
                 carton.tokPos = endPos
                 carton.Line   = *curLine
                 carton.tokType= Expression
@@ -358,7 +367,12 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         goto get_nt_exit_point
     }
 
+
+get_nt_eval_point:
+
     // figure token type:
+    //  needs tidying.. some aren't used now.
+
     switch str.ToLower(word) {
     // EscapeSequence
     case "zero":
@@ -387,6 +401,8 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         tokType = LeftSBrace
     case "]":
         tokType = RightSBrace
+    case ",":
+        tokType = C_Comma
     case "=":
         tokType = C_Assign
     case "<":
@@ -507,6 +523,10 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         tokType = C_Or
     case "endwhen":
         tokType = C_Endwhen
+    case "with":
+        tokType = C_With
+    case "endwith":
+        tokType = C_Endwith
     case "pane":
         tokType = C_Pane
     case "doc":

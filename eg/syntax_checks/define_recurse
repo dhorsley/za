@@ -2,7 +2,7 @@
 
 println "\n[#fcyan]Za function defining[#default]"
 
-module "modules/math.mod"
+module "./math.mod"
 
 showdef factorial
 

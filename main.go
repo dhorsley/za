@@ -73,6 +73,7 @@ var globalaccess uint64                             // number of functionspace w
 var varcount = make([]int, SPACE_CAP)               // how many local variables are declared in each active function.
 
 var lastfs uint64                                   // last active functionspace.
+var lastline int                                    // last processed line
 // var lastbase uint64                                 // last active function (source).
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
