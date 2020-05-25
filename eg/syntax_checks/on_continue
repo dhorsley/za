@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+for f=1 to 100
+    println f
+    on f!=20 do continue
+    break 
+endfor
+
+println "Done."
+

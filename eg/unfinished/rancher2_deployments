@@ -1,0 +1,123 @@
+#!/usr/bin/za
+
+
+#
+# CONST
+#
+
+adder="projects/c-qblah:p-blahz/deployments"
+
+
+#
+# GLOBAL
+#
+
+# You should probably read these in as env variables or cmd line args instead:
+endpoint="https://rke-dev.somewhere.com/v3"
+abear="token-m8c7l:cvdjnnotarealboynp5nk4txfb59j7kclnq6cg5vrrh"
+
+
+#
+# PARAMS
+#
+
+filter="^.*$"
+input filterStr optarg 1
+on filterStr!="" do filter=filterStr
+
+
+#
+# FUNCTIONS
+#
+
+define q(endpoint,query)
+    on query!="" do query="/"+query
+    return endpoint+query
+enddef
+
+define printmap(title,m,width)
+    first=true
+    foreach v in m
+        if first
+            cursorx(1)
+            print "[#2]",title,"[#-]"
+            first=false
+        endif
+        cursorx(16)
+        if start(kind(v),"map")
+            printmap("",v,width)
+        else
+            println format("%-"+width+"v : %v",key_v,v)
+        endif
+    endfor
+enddef
+
+
+define jq(s,query)
+    doc param: s=string to process
+    doc param: query=jq query to operate against input string
+    # definition a little convoluted because the result can be a bit
+    # too large to pass efficiently as arguments in and out of the
+    # shell co-process...
+    if length(s)==0
+        return ""
+    endif
+    tfin=|mktemp
+    tfout=|mktemp
+    write_file(tfin,s)
+    | jq -r -M '{query}' {tfin} >{tfout}
+    r=read_file(tfout)
+    | rm -f {tfin} {tfout}
+    return r
+enddef
+
+
+#
+# MAIN
+#
+
+# authenticate with rancher API
+reqheaders["Authorization"]="Basic "+base64e(abear)
+
+# make call to api
+res=web_custom("GET",q(endpoint,adder),reqheaders)
+
+# respheaders=res[1]
+# xapis=respheaders["X-Api-Schemas"]
+# new_endpoint=xapis[0]
+
+if res[2]>399
+    println "Error: could not query the endpoint ({endpoint})."
+    exit 3
+endif
+
+# process
+jqq=`.data[]| "\(.containers[].name)~\(.containers[].ports)~\(.workloadLabels)"`
+proc=jq(res[0],jqq)
+
+if length(proc)>0
+    foreach l in proc
+
+        fields(l,"~")
+
+        on !match(F1,filter) do continue
+
+        println "\n[#invert][#1]", format("%-"+term_w()/3+"v","  Deployment : "+F1), "[##][#-]\n"
+
+        ports=""
+        on F2!="null" do ports=eval(F2)
+        on ports!="" do printmap("   Ports",ports,28)
+
+        if NF==3
+            tags=eval(F3)
+            printmap("    Tags",tags,28)
+        endif
+
+        print
+
+    endfor
+endif
+
+# end
+exit 0
+

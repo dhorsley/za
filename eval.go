@@ -306,7 +306,7 @@ func isBool(expr interface{}) bool {
 func isNumber(expr interface{}) bool {
     typeof := reflect.TypeOf(expr).Kind()
     switch typeof {
-    case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int64:
+    case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint8, reflect.Uint32, reflect.Uint64:
         return true
     }
     return false
@@ -383,12 +383,9 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                         evstr := s[p+1:p+q+1]
                         aval, ef, _ := ev(fs, evstr, false, false)
                         if !ef {
-                            // pf("no ef in interp\n")
                             s=s[:p]+sf("%v",aval)+s[p+q+2:]
                             modified=true
                             break
-                        } else {
-                            // pf("ef in interp\n")
                         }
                     }
                 }
@@ -622,6 +619,7 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     // make Za function call
 
                     if lockSafety { calllock.Lock() }
+                    // debug(20,"gnfs called from buildRhs()\n")
                     loc,id := GetNextFnSpace(previous.tokText+"@")
                     lmv,_:=fnlookup.lmget(previous.tokText)
                     calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: "@temp"}
@@ -746,7 +744,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
-        // pf("ev-func -> %v\n",crushEvalTokens(r).text)
+        // pf("\n                                \nev-func -> %v                                   \n                          \n",crushEvalTokens(r).text)
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
     } else {
 
@@ -793,8 +791,8 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
         if nv!="" {
             report(0,lastline,sf("Evaluation Error @ Function %v", nv))
-        } else {
-            report(0,lastline,"Evaluation Error")
+        // } else {
+        //     report(0,lastline,"Evaluation Error")
         }
         pf("[#6]%v[#-]\n", err)
 
@@ -910,6 +908,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
 
     // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
 
+    // debug(20,"ev called in wrappedeval: "+expr.text+"\n")
     v, _ , err := ev(fs, expr.text, interpol, true)
 
     // pf("wrappedEval() : returned from ev() with %v\n",v)
@@ -940,6 +939,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         epos := str.IndexByte(expr.assignVar, ']')
         if epos != -1 {
             // handle array reference
+            // debug(20,"ev called in wrappedeval(array): "+expr.assignVar[pos+1:epos]+"\n")
             element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
             if err!=nil {
                 expr.evalError=true

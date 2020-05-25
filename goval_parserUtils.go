@@ -638,8 +638,7 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
             var valid bool
 
 			// make Za function call
-            // pf("[#3]Eval callFunction taking space.[#-]\n")
-
+            // debug(20,"gnfs called from callFunction()\n")
             loc,id := GetNextFnSpace(name+"@")
 
             if lockSafety { calllock.Lock() }

@@ -1,0 +1,47 @@
+#!/usr/bin/za
+
+#
+# test for broken if...else...endif nesting
+#
+
+input param_out param 1
+input param_in param 2
+
+z=seed(epoch_nano_time())
+
+println "\n[#fyellow]Dangling ELSE check. Params : {param_out} {param_in}"
+
+if param_out<0 || param_out>1
+	println "Bad outside param."
+	exit 1
+endif
+
+if param_in<0 || param_in>1
+	println "Bad inside param."
+	exit 1
+endif
+
+if param_out==1
+	println "Outside 1."
+    if param_in==1
+		println "Inside 1."
+    else
+		println "Inside 0."
+		if rand(10)>5
+			println ">5"
+		else
+			println "<=5"
+		endif
+	endif
+else
+	println "Outside 0."
+	if param_in==1
+		println "Inside 1."
+	else
+		println "Inside 0."
+	endif
+endif
+
+print
+
+

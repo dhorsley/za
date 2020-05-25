@@ -252,7 +252,7 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
     proc_file=read_file("/proc/stat")
 
     mult            = float(key_timeout)/10.0
-    indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest","guest_nice"]
+    indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
     partindexlist   = tail(indexlist)
 
     # init previous values for cpu stats
@@ -305,12 +305,14 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
                     if diff_total==0
                         diff_{i}=0
                     else
-                        diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
+                        # if is_number(prev_{i})
+                            diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
+                        # endif
                     endif
                 endfor
 
                 # figure display total
-                disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest+diff_guest_nice
+                disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest
 
             else
                 # at 2,2; print "[#invert]Checking previous CPU values.[#-]"
@@ -323,10 +325,12 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
             endfor
 
             # ensure positive and bounded
-            foreach i in partindexlist
-                on int(diff_{i})<0   do diff_{i}=0
-                on int(diff_{i})>100 do diff_{i}=100
-            endfor
+            if prev_total!=nil
+                foreach i in partindexlist
+                    on int(diff_{i})<0   do diff_{i}=0
+                    on int(diff_{i})>100 do diff_{i}=100
+                endfor
+            endif
             
             # display
 

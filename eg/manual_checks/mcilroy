@@ -1,0 +1,45 @@
+#!/usr/bin/za
+
+# small processing test for text: equivalent code for knuth vs mcilroy
+#    tr -cs A-Za-z '\n' | tr A-Z a-z | sort | uniq -c | sort -rn | sed ${1}q
+
+# example usage: collect files, take first 5000 lines, find top 100, resort:
+# zcat /usr/share/man/man5/sa* | head -5000 | ./mcilroy 100 | sort -n
+
+input count param 1
+
+# read file in, lower case, remove non-words, squeeze, stuff words in array
+allwords=split( tr( replace( lower(read_file("/dev/stdin")),"[^a-zA-Z']"," "), "s"," "), " ")
+
+# count word occurrences
+foreach w in allwords
+    on !key("c",w) do c[w]=0
+    c[w]=c[w]+1
+endfor
+
+# build output string
+out=""
+foreach p in c
+    out=format("%v%v %v\n",out,p,key_p)
+endfor
+
+# display 'count' liness
+zero pos
+foreach wc in fieldsort(out,1,"n",true)
+    inc pos
+    on pos>count do break
+    println wc
+endfor
+
+
+#
+# yes, i'm aware its considerably longer than the bash equivalent. :)
+#
+# would have been shorter if i had remembered to permit arrays in inc/dec/zero commands :D
+# but even so, it's nothing like as short as the bash equivalent. 
+#
+# although, saying that, it is only one program and not six. i guess each of those must loop over the input too.
+# but those are somewhat hidden here, as fieldsort() tr() replace(), lower() all do the same in the background.
+#
+
+

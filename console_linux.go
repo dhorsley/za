@@ -1350,9 +1350,9 @@ func debug(level int, s string, va ...interface{}) {
     if debug_level >= level {
         pf(sparkle(s), va...)
     }
-    if debug_level==20 {
-        plog(sparkle(s),va...)
-    }
+    //if debug_level==20 {
+    //    plog(sparkle(s),va...)
+    //}
 }
 
 func restoreScreen() {

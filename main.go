@@ -100,6 +100,9 @@ var dbport int      // and be initialised during db_init().
 var dbuser string   //
 var dbpass string   //
 
+// not thread-safe: used during debug
+var high_q uint64
+
 
 //
 // MAIN
