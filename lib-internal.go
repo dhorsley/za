@@ -528,6 +528,7 @@ func buildInternalLib() {
         }
         tt := Error
         var toks []string
+        var toktypes []string
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
             t, eol, eof := nextToken(args[0].(string), &cl, p, tt)
@@ -536,11 +537,12 @@ func buildInternalLib() {
                 p = t.tokPos
             }
             toks = append(toks, t.tokText)
+            toktypes = append(toktypes, tokNames[tt])
             if eof || eol {
                 break
             }
         }
-        return toks, err
+        return append(toktypes,toks...), err
     }
 
     slhelp["release_version"] = LibHelp{in: "", out: "string", action: "Returns the OS version number."}

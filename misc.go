@@ -18,17 +18,13 @@ func fexists(fp string) bool {
 
 func getReportFunctionName(ifs uint64) string {
 	nl,_ := numlookup.lmget(ifs)
-	/*
-	add := ""
+    var new string
     if str.IndexByte(nl, '@') > -1 {
-		add = nl[:str.IndexByte(nl, '@')]
+		new=nl[:str.IndexByte(nl, '@')]
 	} else {
-		add = nl
-	}
-	add = add + " @ "
-	return add
-    */
-    return nl
+        new=nl
+    }
+    return new
 }
 
 func report(ifs uint64, pos int, s string) {
@@ -37,11 +33,10 @@ func report(ifs uint64, pos int, s string) {
     // if interactive { err_stream=os.Stdout }
 	if pos > 0 {
 		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
+		pf(sparkle(sf("\n[#bred][#7]Error in %s, line %d[##][#-]\n%s\n", add, pos, s)))
 	} else {
-	    nl,_ := numlookup.lmget(ifs)
 		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
+		pf(sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", add, s)))
 	}
 }
 

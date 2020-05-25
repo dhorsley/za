@@ -5,7 +5,7 @@ import (
     "math"
     "math/rand"
     "log"
-    "net/http"
+//    "net/http"
     "os"
     "path/filepath"
     "reflect"
@@ -340,13 +340,17 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // if lockSafety { calllock.RUnlock() }
 
     var inbound *Phrase
+    var openWithFiles []string
 
     defer func() {
         if r := recover(); r != nil {
+            for _,n:=range openWithFiles { os.Remove(n) }
             if _, ok := r.(runtime.Error); ok {
                 pf("Fatal error on (%v\n)\n",inbound.Original)
                 pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
-                if debug_level==0 { os.Exit(127) }
+                if debug_level==0 {
+                    os.Exit(127)
+                }
             }
             err := r.(error)
             pf("error : %v\n",err)
@@ -354,7 +358,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
     }()
 
-    var lastline int                                    // last processed source line.
     var breakIn int
     var pc int
     var retvar string
@@ -475,6 +478,9 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
     inside_test := false
 
+    inside_with := false            // WITH cannot be nested and remains local in scope.
+    current_with_var := ""
+
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
 
@@ -506,10 +512,9 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
         if lockSafety { lastlock.Lock() }
         lastfs   = ifs
+        lastline = inbound.Tokens[0].Line
         if lockSafety { lastlock.Unlock() }
 
-        // set these for global internal access: 
-        lastline = inbound.Tokens[0].Line
 
         // .. skip comments and DOC statements
         if inbound.Tokens[0].tokType == C_Doc && !testMode {
@@ -762,6 +767,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                     vsetElement(ga, aryName, inter, expr.result)
                 default:
                     report(ifs,lastline, "Unknown type in SETGLOB")
+                    for _,n:=range openWithFiles { os.Remove(n) }
                     os.Exit(125)
                 }
 
@@ -939,13 +945,14 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                             ce = len(finalExprArray.(map[string][]string)) - 1
                         }
 
-                    case http.Header:
+/*
+                    case []http.Header:
 
                         finalExprArray = expr
-                        if len(finalExprArray.(http.Header)) > 0 {
+                        if len(finalExprArray.([]http.Header)) > 0 {
 
                             // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(http.Header)).MapRange()
+                            iter = reflect.ValueOf(finalExprArray.([]http.Header)).MapRange()
 
                             // set initial key and value
                             if iter.Next() {
@@ -954,8 +961,9 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                             } else {
                                 // empty
                             }
-                            ce = len(finalExprArray.(http.Header)) - 1
+                            ce = len(finalExprArray.([]http.Header)) - 1
                         }
+*/
 
                     case map[string]interface{}:
 
@@ -973,6 +981,15 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                                 // empty
                             }
                             ce = len(finalExprArray.(map[string]interface{})) - 1
+                        }
+
+                    case []map[string]interface{}:
+
+                        finalExprArray = expr
+                        if len(finalExprArray.([]map[string]interface{})) > 0 {
+                            vset(ifs, "key_"+fid, 0)
+                            vset(ifs, fid, finalExprArray.([]map[string]interface{})[0])
+                            ce = len(finalExprArray.([]map[string]interface{})) - 1
                         }
 
                     case []interface{}:
@@ -1261,11 +1278,15 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                         case IT_LINE:
                             switch (*thisLoop).iterOverArray.(type) {
                             // map ranges are randomly ordered!!
-                            case map[string]interface{},map[string]int,map[string]float64,map[string]string,http.Header,map[string][]string:
+                            // case map[string]interface{},map[string]int,map[string]float64,map[string]string,[]http.Header,map[string][]string:
+                            case map[string]interface{},map[string]int,map[string]float64,map[string]string,map[string][]string:
                                 if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                     vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
                                     vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                                 }
+                            case []map[string]interface{}:
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).ecounter])
                             case []interface{}:
                                 vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
                                 vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).ecounter])
@@ -2019,6 +2040,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
 
         case C_Exit:
+            for _,n:=range openWithFiles { os.Remove(n) }
             if tokencount > 1 {
                 ec, validated := EvalCrush(ifs, inbound.Tokens, 1, tokencount)
                 if validated && isNumber(ec) {
@@ -2145,6 +2167,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 }
 
             }
+            for _,n:=range openWithFiles { os.Remove(n) }
             endFunc = true
 
 
@@ -2553,10 +2576,63 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             depth[ifs]--
             wccount[ifs]--
             if wccount[ifs] < 0 {
-                report(ifs,lastline,  "Cannot reduce WHEN stack below zero.")
+                report(ifs,lastline,"Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
             if lockSafety { looplock.Unlock() }
+
+
+        case C_With:
+            // WITH var AS file
+            // get params
+
+            if tokencount < 4 {
+                report(ifs,lastline,"Malformed FOR statement.")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            asAt := findDelim(inbound.Tokens, "as", 2)
+            if asAt == -1 {
+                report(ifs,lastline,"AS not found in WITH")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            vname:=crushEvalTokens(inbound.Tokens[1:asAt]).text
+            fname:=crushEvalTokens(inbound.Tokens[asAt+1:]).text
+
+            if fname=="" || vname=="" {
+                report(ifs,lastline,"Bad arguments to provided to WITH.")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            tfile, err:= ioutil.TempFile("","za_with_"+sf("%d",os.Getpid())+"_")
+            if err!=nil {
+                report(ifs,lastline,"WITH could not create a temporary file.")
+                finish(true,ERR_SYNTAX)
+            }
+            openWithFiles=append(openWithFiles,tfile.Name())
+            content,_:=vget(ifs,vname)
+		    err = ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
+
+            vset(ifs,fname,tfile.Name())
+            inside_with=true
+            current_with_var=fname
+
+
+        case C_Endwith:
+            if !inside_with {
+                report(ifs,lastline,"ENDWITH without a WITH.")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+            fname,_:=vget(ifs,current_with_var)
+            vunset(ifs,current_with_var)
+            current_with_var=""
+            os.Remove(fname.(string))
+            inside_with=false
 
 
         case C_Print:
@@ -3130,11 +3206,13 @@ func coprocCall(ifs uint64,s string) {
     if len(s) > 0 {
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
+        /*
         if pipepos==-1 {
             pf("syntax error in '%s'\n",s)
             // @todo: handle this type of exit more gracefully, no rush, should be uncommon.
             os.Exit(0)
         }
+        */
         cet = s[pipepos+1:]
         inter,_ := interpolate(ifs, cet,true)
         out, ec := Copper(inter, false)

@@ -1,0 +1,23 @@
+#!/usr/bin/za
+
+input in_mode optarg 1
+mode="display"
+on in_mode!="" do mode=in_mode
+
+
+println "pre"
+
+when mode
+is "csv"
+    println "csv"
+is "import"
+    println "import"
+is "display"
+    println "display"
+or
+    println "not found"
+endwhen
+
+println "post"
+
+

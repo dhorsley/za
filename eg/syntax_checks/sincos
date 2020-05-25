@@ -1,0 +1,43 @@
+#!/usr/bin/za -f
+
+#
+# simple geometry test
+#
+
+define signum(x)
+    if x<0 ; return -1 ; endif
+    if x>0 ; return 1 ; endif
+    return 0
+enddef
+
+cr=term_h()/2
+cw=term_w()/2
+ymag=float(20)
+xmag=float(43)
+
+cls
+
+for r=10 to 2 step -2
+    xmag=xmag*r/10
+    ymag=ymag*r/10
+    for f=0 to 179 step 1
+        at cr+ymag*cos(f),cw+xmag*sin(f)
+        if signum(xmag*sin(f))==-1
+            if signum(ymag*cos(f))==-1
+                print "/"
+            else
+                print `\`
+            endif
+        else
+            if signum(ymag*cos(f))==-1
+                print `\`
+            else
+                print "/"
+            endif
+        endif
+    endfor
+endfor
+
+at term_h()-1,1
+
+

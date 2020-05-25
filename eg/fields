@@ -1,9 +1,0 @@
-#!/usr/bin/za -f
-
-# read username, gid and description from password file for all users
-
-foreach li in read_file("/etc/passwd")
-    fields(gsub(li,":"," "))
-    println "{F1},{F4},{F5}"
-endfor
-

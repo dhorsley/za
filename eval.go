@@ -746,10 +746,12 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
+        // pf("ev-func -> %v\n",crushEvalTokens(r).text)
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
     } else {
 
         // normal evaluation
+        // pf("ev-normal -> %v\n",ws)
         result, ef, err = Evaluate(ws, fs)
 
         /*
@@ -765,7 +767,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
                 ef=false
             } else {
                 if shouldError {
-                    report(fs,-1,sf("Error evaluating '%s'",ws))
+                    report(fs,lastline,sf("Error evaluating '%s'",ws))
                     finish(false,ERR_EVAL)
                 }
             }
@@ -787,12 +789,12 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         // nv,_:=numlookup.lmget(lastbase)
         // if lockSafety { lastlock.RUnlock() }
 
-        nv,_:=numlookup.lmget(fs)
+        nv := getReportFunctionName(fs)
 
         if nv!="" {
-            report(0,-1,sf("Evaluation Error @ Function %v", nv))
+            report(0,lastline,sf("Evaluation Error @ Function %v", nv))
         } else {
-            report(0,-1,"Evaluation Error")
+            report(0,lastline,"Evaluation Error")
         }
         pf("[#6]%v[#-]\n", err)
 
