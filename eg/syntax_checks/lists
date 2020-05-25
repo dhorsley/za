@@ -1,0 +1,62 @@
+#!/usr/bin/za -f
+#
+# generic list test
+
+cls
+
+z=read_file("/etc/group")
+
+z=lines(z,":20")
+
+q=col(z,3,":")
+
+z=read_file("/etc/passwd")
+z=lines(z,":20")
+w=col(z,3,":")
+
+println "\nSet 1       -> ",q
+
+println "head        -> ",head(q)
+println "sort (alpha)-> ",sort(q,false)
+println "sort (int)  -> ",sort(list_int(q),false),"\n"
+
+tq=tail(q)
+println "tail (of set) (tq)    -> ",tq
+
+for e=1 to 4; tq=append(tq,e); endfor
+println "append 1..4 on tq     -> ",tq
+
+println "uniq (of tail of set) -> ",uniq(tq),"\n"
+
+q=append(q,"new_entry")
+
+println "\nSet 2 (q)         -> ",q
+
+q=push(q,"new_front")
+println "push (front of q) -> ",q,"\n"
+
+println "w                 -> ",w
+println "concat(q,w)       -> ",concat(q,w),"\n"
+
+println "deq (of w)        -> ",deq("w")
+println "new w             &> ",w, "\n"
+
+println "esplit(q+w)@10   -> ",esplit(concat(q,w),"a","b",10)
+println "            a> ",a
+println "            b> ",b,"\n"
+
+a=insert(a,1,99)
+println "insert 99@1 a> ",a,"\n"
+
+a=remove(a,2)
+println "remove @2  a> ",a
+a=remove(a,1)
+println "remove @1  a> ",a
+a=remove(a,length(a))
+println "remove @end  a> ",a,"\n"
+
+test "list_generic_1" group "list" assert continue
+endtest
+
+
+

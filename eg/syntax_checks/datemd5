@@ -1,0 +1,17 @@
+#!/usr/bin/za -f
+
+println "\n[#fcyan]FOREACH in var with command.[#default]"
+
+lines =| grep ":[0-9]:" /etc/passwd 
+
+foreach ln in lines
+    z   =| date
+    sum =| echo "{z} {ln}" | md5sum - | awk '{print $1}'
+
+#    println ""
+
+    println "{z} {ln} | {sum}"
+endfor
+
+print
+

@@ -1,0 +1,23 @@
+#!/usr/bin/za
+
+check_path="syntax_checks")
+er=false
+
+files=dir(check_path)
+
+foreach tf in files
+
+    println "[#fbgreen]Check : ",tf["name"], " , Last Change : ",tf["mtime"],"[#-]"
+
+    | za {check_path}/{tf["name"]}
+
+    if last()!=0
+        er=true
+        break
+    endif
+
+endfor
+
+on er do println "[#2]Something bad occurred.[#-]"
+
+

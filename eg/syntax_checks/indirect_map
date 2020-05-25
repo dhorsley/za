@@ -1,0 +1,29 @@
+#!/usr/bin/za -f
+
+total=10
+user=20
+nice=30
+sys=40
+idle=50
+iowait=40
+irq=30
+softirq=20
+steal=10
+guest=0
+guest_nice=50
+
+indexlist=["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest","guest_nice"]
+
+init prev
+
+name="cpu0"
+
+# local
+i="sys"
+j=i
+prev["{name}_{i}"]=int({j})
+
+println "Name : {name}"
+println "Append(i) : {i}"
+println "prev values list :\n",prev
+

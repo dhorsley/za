@@ -1,0 +1,11 @@
+#!/usr/bin/za
+
+seed(epoch_nano_time())
+
+define f(a); return a*10; enddef
+
+for e= 1 to 30
+    print rand(f(rand(f(rand(f(10)))))),"\n"
+endfor
+
+

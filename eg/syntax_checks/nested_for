@@ -1,0 +1,14 @@
+
+# basic nested FOR loop test
+
+for e=1 to 10000
+    for f=500 to 1 step -1
+#        print "{e},{f}\n"
+    endfor
+endfor
+
+print e," ",f," : ",10000*500," iterations.\n"
+
+assert e==10000
+assert f==1
+
