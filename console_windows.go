@@ -3,6 +3,7 @@
 package main
 
 import (
+//     term "github.com/pkg/term"
     "bytes"
     "fmt"
     "io"
@@ -18,7 +19,8 @@ import (
     "regexp"
     "syscall"
     "unsafe"
-    //     "sort"
+    "unicode/utf16"
+    "sort"
     str "strings"
     "time"
 )
@@ -36,112 +38,6 @@ var completions = []string{"ZERO", "INC", "DEC",
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
 
-
-/// PLACE HOLDERS ON WINDOWS
-
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool) (s string, eof bool, broken bool) {
-    return "",true,false
-}
-
-func wrappedGetCh(p int) (i int) {
-    return -1
-}
-
-type (
-	SHORT int16
-	WORD  uint16
-
-	SMALL_RECT struct {
-		Left   SHORT
-		Top    SHORT
-		Right  SHORT
-		Bottom SHORT
-	}
-
-	COORD struct {
-		X SHORT
-		Y SHORT
-	}
-
-	CONSOLE_SCREEN_BUFFER_INFO struct {
-		Size              COORD
-		CursorPosition    COORD
-		Attributes        WORD
-		Window            SMALL_RECT
-		MaximumWindowSize COORD
-	}
-)
-
-func checkError(r1, r2 uintptr, err error) error {
-	// Windows APIs return non-zero to indicate success
-	if r1 != 0 {
-		return nil
-	}
-
-	// Return the error if provided, otherwise default to EINVAL
-	if err != nil {
-		return err
-	}
-	return syscall.EINVAL
-}
-
-func getStdHandle(stdhandle int) uintptr {
-	handle, err := syscall.GetStdHandle(stdhandle)
-	if err != nil {
-		panic(fmt.Errorf("could not get standard io handle %d", stdhandle))
-	}
-	return uintptr(handle)
-}
-
-func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
-	var info CONSOLE_SCREEN_BUFFER_INFO
-    var kernel32DLL = syscall.NewLazyDLL("kernel32.dll")
-    var getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
-	if err := checkError(getConsoleScreenBufferInfoProc.Call(handle, uintptr(unsafe.Pointer(&info)), 0)); err != nil {
-		return nil, err
-	}
-	return &info, nil
-}
-
-func GetWinInfo(fd int) (info *CONSOLE_SCREEN_BUFFER_INFO) {
-    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
-    info, _ = GetConsoleScreenBufferInfo(stdoutHandle)
-    return info
-}
-
-func GetSize(fd int) (width, height int, err error) {
-
-    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
-    var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
-
-    if e != nil {
-            return 0, 0, e
-    }
-
-    // we should be able to use Size.Y here, but get a nonsense
-    // answer back most of the time. (probably to do with max
-    // history size?)
-
-    // so we calculate height based on the moving window size
-    // in the history window instead.
-
-    y:=int(info.Window.Bottom)-int(info.Window.Top)
-
-    // return int(info.Size.X), int(info.Size.Y), nil
-    return int(info.Size.X), y, nil
-
-}
-
-/*
-// GetSize returns the dimensions of the given terminal.
-func GetSize(fd int) (int, int, error) {
-    return 0,0,nil
-}
-*/
-
-
-/// END OF PLACE HOLDERS
-
 /// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
 
@@ -154,66 +50,37 @@ func pf(s string, va ...interface{}) {
     fmt.Print(s)
 }
 
-/// logging output printer
-func plog(s string, va ...interface{}) {
 
-    // print if not silent logging
-    if v, _ := vget(0, "@silentlog"); v.(bool) {
-        pf(s, va...)
-    }
+func getch() []byte {
+    modkernel32 := syscall.NewLazyDLL("kernel32.dll")
+    procReadConsole := modkernel32.NewProc("ReadConsoleW")
+    procGetConsoleMode := modkernel32.NewProc("GetConsoleMode")
+    procSetConsoleMode := modkernel32.NewProc("SetConsoleMode")
 
-    // also write to log file
-    if loggingEnabled {
-        f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-        if err != nil {
-            log.Println(err)
-        }
-        defer f.Close()
-        subj, _ := vget(0, "@logsubject")
-        logger := log.New(f, subj.(string), log.LstdFlags)
-        logger.Printf(s, va...)
-    }
+    var mode uint32
+    pMode := &mode
+    procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
 
+    var vtMode, echoMode, lineMode uint32
+    echoMode = 4
+    lineMode = 2
+    vtMode   = 0x0200
+
+    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode ^ (echoMode | lineMode | vtMode )))
+
+    line := make([]uint16, 3)
+    pLine := &line[0]
+    var n uint16
+    procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+
+    b := []byte(string(utf16.Decode(line[:n])))
+
+    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
+
+    return b
 }
 
-/// special case printing for global var interpolation
-func gpf(s string) {
-    pf("%s\n", spf(globalspace, s))
-}
 
-/// sprint with namespace
-func spf(ns uint64, s string) string {
-    s,_ = interpolate(ns, s,true)
-    return sf("%v", sparkle(s))
-}
-
-/// apply ansi code translation to inbound strings
-func sparkle(a string) string {
-    a = str.Replace(a, "[#-]", "[#fakm]", -1)
-    a = str.Replace(a, "[##]", "[#fakb]", -1)
-    for k, v := range fairydust {
-    a = str.Replace(a, "[#"+k+"]", v, -1)
-    }
-    return (a)
-}
-
-/// clear screen
-func cls() {
-    if v, _ := vget(0, "@winterm"); !v.(bool) {
-        pf("\033c")
-    } else {
-        pf("\033[2J")
-    }
-    at(1, 1)
-}
-
-func secScreen() {
-    pf("\033[?1049h\033[H")
-}
-
-func priScreen() {
-    pf("\033[?1049l")
-}
 
 /// setup the za->ansi mappings
 func setupAnsiPalette() {
@@ -295,6 +162,605 @@ func setupAnsiPalette() {
             fairydust[c]=""
         }
     }
+}
+
+
+/// apply ansi code translation to inbound strings
+func sparkle(a string) string {
+    a = str.Replace(a, "[#-]", "[#fakm]", -1)
+    a = str.Replace(a, "[##]", "[#fakb]", -1)
+    for k, v := range fairydust {
+    a = str.Replace(a, "[#"+k+"]", v, -1)
+    }
+    return (a)
+}
+
+
+/// get an input string from stdin, in raw mode
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool) (s string, eof bool, broken bool) {
+
+    sprompt := sparkle(prompt)
+
+    // calculate real prompt length after ansi codes applied.
+    dlen := displayedLen(prompt)
+
+    globalPaneShiftLen := 0
+
+    // init
+    p := panes[pane]
+    cpos := 0                    // cursor pos as extent of printable chars from start
+    var cx, cy int               // current cursor position (row:cy,col:cx)
+    os := ""                     // original string before history navigation begins
+    navHist := false             // currently navigating history entries?
+    startedContextHelp := false  // currently displaying auto-completion options
+    contextHelpSelected := false // final selection made during auto-completion?
+    selectedStar := 0            // starting word position of the current selection during auto-completion
+    var starMax int              // fluctuating maximum word position for the auto-completion selector
+    wordUnderCursor := ""        // maintains a copy of the word currently under amendment
+    var helpColoured []string    // populated (on TAB) list of auto-completion possibilities as displayed on console
+    var helpList []string        // list of remaining possibilities governed by current input word
+    var helpstring string        // final compounded output string including helpColoured components
+    var varnames []string        // the list of possible variable names from the local context
+    var funcnames []string       // the list of possible standard library functions
+    // var unproc_files []string    // raw list of files in the current directory
+    // var files []string           // list of file basenames in the current directory
+
+    icol := col + dlen + globalPaneShiftLen // input (row,col)
+    irow := row
+
+    endLine := false // input complete?
+
+    // print prompt
+    at(row, col)
+    pf(sprompt)
+
+    at(irow, icol)
+
+    // change input colour
+    pf(sparkle(pcol))
+
+    for {
+
+        // show input
+        at(irow, icol)
+        modinp := str.Replace(s, "\x1f", "\033[E\033[G", -1)
+        dispL := len(modinp)
+        clearToEOPane(irow, icol, 2+dispL+displayedLen(helpstring))
+        fmt.Print(modinp)
+
+        pf(helpstring)
+
+        // print cursor
+        cx = (icol + cpos) % (p.w)
+        cy = row + int(float64(icol+cpos)/float64(p.w))
+        at(cy, cx)
+
+        // get key stroke
+        c := getch()
+
+        // actions
+        switch {
+
+        case bytes.Equal(c, []byte{4}): // ctrl-d
+            eof = true
+            break
+
+        case bytes.Equal(c, []byte{13}): // enter
+
+            if startedContextHelp {
+                contextHelpSelected = true
+                clearToEOPane(irow, icol, dispL)
+                helpstring = ""
+                break
+            }
+
+            endLine = true
+            s = str.Replace(s, "\x1f", "\x0a", -1)
+            if s != "" {
+                hist = append(hist, s)
+                lastHist++
+                histEmpty = false
+            }
+            break
+
+        case bytes.Equal(c, []byte{32}): // space
+
+            if startedContextHelp {
+                contextHelpSelected = false
+                startedContextHelp = false
+                if len(helpList) == 1 {
+                    var newstart int
+                    s,newstart = deleteWord(s, cpos)
+                    add:=""
+                    if newstart==-1 { newstart=0 }
+                    if len(s)>0 { add=" " }
+                    s = insertWord(s, newstart, add+helpList[0]+" ")
+                    cpos = len(s)
+                    helpstring = ""
+                }
+                // break
+            }
+
+            // normal space input
+            s = insertAt(s, cpos, 32) // c[0])
+            cpos++
+            wordUnderCursor = getWord(s, cpos)
+
+        // FINE IN WINDOWS VT MODE
+        case bytes.Equal(c, []byte{27,91,49,126}): // home // from showkey -a
+            cpos = 0
+            wordUnderCursor = getWord(s, cpos)
+
+        // FINE IN WINDOWS VT MODE
+        case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
+            cpos = len(s)
+            wordUnderCursor = getWord(s, cpos)
+
+
+        case bytes.Equal(c, []byte{1}): // ctrl-a
+            cpos = 0
+            wordUnderCursor = getWord(s, cpos)
+
+        case bytes.Equal(c, []byte{5}): // ctrl-e
+            cpos = len(s)
+            wordUnderCursor = getWord(s, cpos)
+
+        case bytes.Equal(c, []byte{21}): // ctrl-u
+            s = removeAllBefore(s, cpos)
+            cpos = 0
+            wordUnderCursor = getWord(s, cpos)
+            clearToEOPane(irow, icol, dispL)
+
+        // BS is 127 in VT MODE
+        case bytes.Equal(c, []byte{127}): // windows backspace
+
+            if startedContextHelp && len(helpstring) == 0 {
+                startedContextHelp = false
+            }
+
+            if cpos > 0 {
+                s = removeBefore(s, cpos)
+                cpos--
+                wordUnderCursor = getWord(s, cpos)
+                clearToEOPane(irow, icol, dispL)
+            }
+
+        // DEL is 126 in VT mode
+        // case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
+        case bytes.Equal(c, []byte{126}): // windows DEL
+            if cpos < len(s) {
+                s = removeBefore(s, cpos+1)
+                wordUnderCursor = getWord(s, cpos)
+                clearToEOPane(irow, icol, displayedLen(s))
+            }
+
+        // CURSOR KEYS ARE FINE IN WIN VT INPUT MODE
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
+
+            // add check for LEFT during auto-completion:
+            if startedContextHelp {
+                if selectedStar > 0 {
+                    selectedStar--
+                }
+                break
+            }
+
+            // normal LEFT:
+            if cpos > 0 {
+                cpos--
+            }
+            wordUnderCursor = getWord(s, cpos)
+
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
+
+            // add check for RIGHT during auto-completion:
+            if startedContextHelp {
+                if selectedStar < starMax {
+                    selectedStar++
+                }
+                break
+            }
+
+            // normal RIGHT:
+            if cpos < len(s) {
+                cpos++
+            }
+            wordUnderCursor = getWord(s, cpos)
+
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+
+            if p.w<displayedLen(s) && cpos>p.w {
+                cpos-=p.w
+                break
+            }
+
+            if histEnable {
+                if !histEmpty {
+                    if !navHist {
+                        navHist = true
+                        curHist = lastHist
+                        os = s
+                    }
+                    if curHist > 0 {
+                        curHist--
+                        s = hist[curHist]
+                    }
+                    cpos = len(s)
+                    wordUnderCursor = getWord(s, cpos)
+                    if curHist != lastHist {
+                        l := displayedLen(s)
+                        clearToEOPane(irow, icol, l)
+                    }
+                }
+            }
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+
+            if displayedLen(s)>p.w && cpos<p.w {
+                cpos+=p.w
+                break
+            }
+
+            if histEnable {
+                if navHist {
+                    if curHist < lastHist-1 {
+                        curHist++
+                        s = hist[curHist]
+                    } else {
+                        s = os
+                        navHist = false
+                    }
+                    cpos = len(s)
+                    wordUnderCursor = getWord(s, cpos)
+                    if curHist != lastHist {
+                        l := displayedLen(s)
+                        clearToEOPane(irow, icol, l)
+                    }
+                }
+            }
+
+
+        // HOME AND END ARE FINE IN WIN VT INPUT MODE
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
+            cpos = 0
+            wordUnderCursor = getWord(s, cpos)
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
+            cpos = len(s)
+            wordUnderCursor = getWord(s, cpos)
+
+        case bytes.Equal(c, []byte{9}): // TAB
+
+            // completion hinting setup
+            if hintEnable && !startedContextHelp {
+
+                varnames = nil
+                funcnames = nil
+
+                startedContextHelp = true
+                helpstring = ""
+                selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+
+                //.. add var names
+                for _, v := range ident[lastfs] {
+                    if v.iName!="" {
+                        varnames = append(varnames, v.iName)
+                    }
+                }
+                sort.Strings(varnames)
+
+                //.. add functionnames
+                for k, _ := range slhelp {
+                    funcnames = append(funcnames, k)
+                }
+                sort.Strings(funcnames)
+
+            }
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
+
+        // ignore list
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
+
+        default:
+            if len(c) == 1 {
+                if c[0] > 32 {
+                    s = insertAt(s, cpos, c[0])
+                    cpos++
+                    wordUnderCursor = getWord(s, cpos)
+                    selectedStar = -1 // also reset the selector position for auto-complete
+                }
+            }
+        }
+
+        // completion hinting population
+
+        helpstring = ""
+
+        if startedContextHelp {
+
+            // populate helpstring
+            helpList = []string{}
+            helpColoured = []string{}
+
+            for _, v := range completions {
+                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
+                    helpColoured = append(helpColoured, "[#6]"+v+"[#-]")
+                    helpList = append(helpList, v)
+                }
+            }
+
+            for _, v := range varnames {
+                if v!="" {
+                    if str.HasPrefix(v, wordUnderCursor) {
+                        helpColoured = append(helpColoured, "[#3]"+v+"[#-]")
+                        helpList = append(helpList, v)
+                    }
+                }
+            }
+
+            for _, v := range funcnames {
+                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
+                    helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
+                    helpList = append(helpList, v+"()")
+                }
+            }
+
+            //.. build display string
+
+            helpstring = "   << [#bgray][#6]"
+
+            for cnt, v := range helpColoured {
+                starMax = cnt
+                l := displayedLen(helpstring) + displayedLen(s) + icol
+                if (l + displayedLen(v) + icol +4 ) > p.w {
+                    if l > 3 {
+                        helpstring += "..."
+                    }
+                    break
+                } else {
+                    if cnt == selectedStar {
+                        helpstring += "[#bblue]*"
+                    }
+                    helpstring += v + " "
+                }
+            }
+
+            helpstring += "[#-][##]"
+
+        }
+
+        if contextHelpSelected {
+            if len(helpList)>0 {
+                if selectedStar > -1 {
+                    helpList = []string{helpList[selectedStar]}
+                }
+                if len(helpList) == 1 {
+                    var newstart int
+                    s,newstart = deleteWord(s, cpos)
+                    add:=""
+                    if len(s)>0 { add=" " }
+                    if newstart==-1 { newstart=0 }
+                    s = insertWord(s, newstart, add+helpList[0]+" ")
+                    cpos = len(s)
+                    l := displayedLen(s)
+                    clearToEOPane(irow, icol, l)
+                    helpstring = ""
+                }
+            }
+            contextHelpSelected = false
+            startedContextHelp = false
+        }
+
+        if eof || broken || endLine {
+            break
+        }
+
+    } // input loop
+
+    at(irow, icol)
+    clearToEOPane(irow, icol, displayedLen(s))
+    pf("%s", sparkle(recolour+StripCC(s)+"[#-]"))
+
+    return s, eof, broken
+}
+
+
+/// get keypresses, filtering out undesired until a valid match found
+func wrappedGetCh(p int) (i int) {
+
+    var keychan chan int
+    keychan = make(chan int, 1)
+
+    go func() {
+        var k int
+        for {
+            c := getch()
+            if c != nil {
+                switch {
+                case bytes.Equal(c, []byte{3}):
+                    k = 3 // ctrl-c
+                case bytes.Equal(c, []byte{4}):
+                    k = 4 // ctrl-d
+                case bytes.Equal(c, []byte{13}):
+                    k = 13 // enter
+                case bytes.Equal(c, []byte{126}):
+                    k = 126 // DEL
+                case bytes.Equal(c, []byte{127}):
+                    k = 127 // backspace
+                default:
+                    if len(c) == 1 {
+                        if c[0] > 31 {
+                            k = int(c[0])
+                        }
+                    }
+                }
+            }
+            if k != 0 {
+                keychan <- k
+                break
+            }
+        }
+        keychan <- 0
+    }()
+
+    select {
+    case i = <-keychan:
+    }
+
+    return i
+}
+
+
+type (
+    SHORT int16
+    WORD  uint16
+
+    SMALL_RECT struct {
+        Left   SHORT
+        Top    SHORT
+        Right  SHORT
+        Bottom SHORT
+    }
+
+    COORD struct {
+        X SHORT
+        Y SHORT
+    }
+
+    CONSOLE_SCREEN_BUFFER_INFO struct {
+        Size              COORD
+        CursorPosition    COORD
+        Attributes        WORD
+        Window            SMALL_RECT
+        MaximumWindowSize COORD
+    }
+)
+
+func checkError(r1, r2 uintptr, err error) error {
+    // Windows APIs return non-zero to indicate success
+    if r1 != 0 {
+        return nil
+    }
+
+    // Return the error if provided, otherwise default to EINVAL
+    if err != nil {
+        return err
+    }
+    return syscall.EINVAL
+}
+
+func getStdHandle(stdhandle int) uintptr {
+    handle, err := syscall.GetStdHandle(stdhandle)
+    if err != nil {
+        panic(fmt.Errorf("could not get standard io handle %d", stdhandle))
+    }
+    return uintptr(handle)
+}
+
+func GetConsoleScreenBufferInfo(handle uintptr) (*CONSOLE_SCREEN_BUFFER_INFO, error) {
+    var info CONSOLE_SCREEN_BUFFER_INFO
+    var kernel32DLL = syscall.NewLazyDLL("kernel32.dll")
+    var getConsoleScreenBufferInfoProc = kernel32DLL.NewProc("GetConsoleScreenBufferInfo")
+    if err := checkError(getConsoleScreenBufferInfoProc.Call(handle, uintptr(unsafe.Pointer(&info)), 0)); err != nil {
+        return nil, err
+    }
+    return &info, nil
+}
+
+func GetWinInfo(fd int) (info *CONSOLE_SCREEN_BUFFER_INFO) {
+    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
+    info, _ = GetConsoleScreenBufferInfo(stdoutHandle)
+    return info
+}
+
+func GetSize(fd int) (width, height int, err error) {
+
+    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
+    var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
+
+    if e != nil {
+            return 0, 0, e
+    }
+
+    // we should be able to use Size.Y here, but get a nonsense
+    // answer back most of the time. (probably to do with max
+    // history size?)
+
+    // so we calculate height based on the moving window size
+    // in the history window instead.
+
+    y:=int(info.Window.Bottom)-int(info.Window.Top)
+
+    // return int(info.Size.X), int(info.Size.Y), nil
+    return int(info.Size.X), y, nil
+
+}
+
+/*
+// GetSize returns the dimensions of the given terminal.
+func GetSize(fd int) (int, int, error) {
+    return 0,0,nil
+}
+*/
+
+
+/// END OF PLACE HOLDERS
+
+/// logging output printer
+func plog(s string, va ...interface{}) {
+
+    // print if not silent logging
+    if v, _ := vget(0, "@silentlog"); v.(bool) {
+        pf(s, va...)
+    }
+
+    // also write to log file
+    if loggingEnabled {
+        f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+        if err != nil {
+            log.Println(err)
+        }
+        defer f.Close()
+        subj, _ := vget(0, "@logsubject")
+        logger := log.New(f, subj.(string), log.LstdFlags)
+        logger.Printf(s, va...)
+    }
+
+}
+
+/// special case printing for global var interpolation
+func gpf(s string) {
+    pf("%s\n", spf(globalspace, s))
+}
+
+/// sprint with namespace
+func spf(ns uint64, s string) string {
+    s,_ = interpolate(ns, s,true)
+    return sf("%v", sparkle(s))
+}
+
+
+/// clear screen
+func cls() {
+    if v, _ := vget(0, "@winterm"); !v.(bool) {
+        pf("\033c")
+    } else {
+        pf("\033[2J")
+    }
+    at(1, 1)
+}
+
+func secScreen() {
+    pf("\033[?1049h\033[H")
+}
+
+func priScreen() {
+    pf("\033[?1049l")
 }
 
 /// search for pane by name and return its dimensions
