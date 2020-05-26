@@ -2,7 +2,7 @@
 
 # test all of the string functions
 
-module "modules/test_string_setup"
+module "../modules/test_string_setup"
 
 define header(n)
     println "\n[#1]{n}[#-]"

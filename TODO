@@ -1,4 +1,10 @@
 
 * finish strings check
 
+* update console_windows/plog in debug(20)
+
+* tidy eg/mon some more
+
+* add a timeout capability to the Windows keypress() version.
+
 

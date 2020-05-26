@@ -40,17 +40,28 @@ CHANGE LOG
     features:
 
         * modified the build script to produce a cut-down windows version
+
             * ansi colour support is automatically disabled on windows
                 * it can be re-enabled with either -C flag or ansi(true) at run-time
-            * the interactive mode is disabled
+
+            * the interactive mode is probably a bit crippled
+                * getch(), wrappedGetch() have been reworked, but interactive mode will only work
+                    if you use a VT-capable terminal, such as ConEmu.
+
+            * additionally, the keypress() library call cannot have a timeout specified currently.
+
             * the co-process is disabled
             * the prompt keyword is disabled
             * window resize signalling (SIGWINCH) is disabled
+
             * ... and probably more things to come will be disabled also.
+
             * i don't have any burning ambition to get this working fully, but the executable
                 works given the caveats above. Getting those things working is an incredibly 
                 low priority for me... possibly never.
+
             * to build: ./build win (generates za.exe, copy it where you want it).
+
         * added -C flag (force ANSI colour on)
         * added ansi(bool) to enable/disable ANSI colours support at run-time.
         * added separate handler for executing windows commands in | and =|

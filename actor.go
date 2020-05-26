@@ -261,7 +261,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
 
     if lockSafety { calllock.Lock() }
 
-    c:=0
+    // c:=0
 
     for q := uint64(1); q < 128000; q++ {  // arbitrary limit
 
@@ -280,7 +280,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
         // pf("-- entered reserving code--\n")
         for  ; ; {
 
-            c++
+            // c++
 
             newName := requiredName
 
@@ -297,10 +297,12 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
                 // pf("-- leaving code with %v,%v --\n\n",q,suf)
                 if lockSafety { calllock.Unlock() }
 
+                /*
                 if q%2000.0==0 && q>high_q {
                     high_q=q
                     // debug(20,"gnfs-alloc for %s, round %d -> New high : %d with calltable length of %d\n",newName,c,q,len(calltable))
                 }
+                */
 
                 return q,newName
             }
@@ -2763,11 +2765,13 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         case C_Prompt:
 
             // if on windows, return an error
+            /*
             if runtime.GOOS == "windows" {
                 pf("PROMPT not supported on windows.\n")
                 finish(false,ERR_SYNTAX)
                 break
             }
+            */
 
             // else continue
 

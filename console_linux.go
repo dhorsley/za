@@ -605,6 +605,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         s,newstart = deleteWord(s, cpos)
                         add:=""
                         if len(s)>0 { add=" " }
+                        if newstart==-1 { newstart=0 }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
                         cpos = len(s)
                         helpstring = ""
@@ -900,6 +901,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     s,newstart = deleteWord(s, cpos)
                     add:=""
                     if len(s)>0 { add=" " }
+                    if newstart==-1 { newstart=0 }
                     s = insertWord(s, newstart, add+helpList[0]+" ")
                     cpos = len(s)
                     l := displayedLen(s)

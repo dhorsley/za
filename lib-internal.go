@@ -427,6 +427,11 @@ func buildInternalLib() {
     stdlib["key_press"] = func(args ...interface{}) (ret interface{}, err error) {
         timeo := int64(0)
         if len(args) == 1 {
+
+            if runtime.GOOS=="windows" {
+                return "",errors.New("Timeout value cannot be specified in Windows.")
+            }
+
             switch args[0].(type) {
             case string, int:
                 ttmp, terr := GetAsInt(args[0])
@@ -636,6 +641,7 @@ func buildInternalLib() {
     slhelp["dump"] = LibHelp{in: "function_name", out: "none", action: "Displays variable list, or a specific entry."}
     stdlib["dump"] = func(args ...interface{}) (ret interface{}, err error) {
         s := ""
+        if len(args) == 0 { s="global" }
         if len(args) == 1 {
             switch args[0].(type) {
             case string:
