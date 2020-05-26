@@ -101,7 +101,7 @@ var dbuser string   //
 var dbpass string   //
 
 // not thread-safe: used during debug
-var high_q uint64
+// var high_q uint64
 
 
 //

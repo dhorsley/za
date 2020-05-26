@@ -368,7 +368,7 @@ func buildMathLib() {
             return (n ^ y) - y, nil
 		case int32:
             n := args[0].(int32)
-            y := n >> 63
+            y := n >> 31
             return (n ^ y) - y, nil
 		case int64:
             n := args[0].(int64)
