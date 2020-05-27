@@ -747,7 +747,7 @@ while !quit
     at 2,2; print "Current Timeout : {timo} ms"
 
     # get user input
-    k=key_press(key_timeout)
+    k=keypress(key_timeout)
 
     at 2,1
     when chr(k)
@@ -768,7 +768,7 @@ while !quit
         clear_line(2,1)
         at 2,1; print "(h) help  (t) timeout  (i) interface  (q) quit"
         at 3,1; print "(D) Cpu Details  (B) Cpu Bars  (T) Cpu Totals"
-        k=key_press(1500)
+        k=keypress(1500)
         clear_line(2,1)
     endwhen
 

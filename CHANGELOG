@@ -35,6 +35,7 @@ CHANGE LOG
         * added some more error checking in lib-string (trim, start and end)
         * started eg/strings tests for string library.
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
+        * updated za.vim
 
 
     features:
@@ -48,13 +49,10 @@ CHANGE LOG
                 * getch(), wrappedGetch() have been reworked, but interactive mode will only work
                     if you use a VT-capable terminal, such as ConEmu.
 
-            * additionally, the keypress() library call cannot have a timeout specified currently.
+            * added a timeout capability to the Windows keypress() version.
 
             * the co-process is disabled
-            * the prompt keyword is disabled
-            * window resize signalling (SIGWINCH) is disabled
-
-            * ... and probably more things to come will be disabled also.
+            * console resize signalling (SIGWINCH) is disabled
 
             * i don't have any burning ambition to get this working fully, but the executable
                 works given the caveats above. Getting those things working is an incredibly 
@@ -70,7 +68,6 @@ CHANGE LOG
         * added windows detection in col() for CRLF splits.
         * updated term_h() and term_w() to fetch approximately correct terminal dimensions on windows
             * possibly depends on the console in use, not tested many yet.
-        * re-enabled CLS, AT and a few other things that were blocked on windows... still no interactive mode though.
         * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
         * added dir() lib function. dir(path[,filter]). returns a list of directory entries as assoc arrays.
@@ -101,13 +98,13 @@ CHANGE LOG
                         wc =| wc -l {file} | cut -f1 -d" "
                     endwith
 
+        * added: html_escape(s) and html_unescape(s) lib calls.
+        * added: delete(f), rename(sf,df) and copy(sf,df) lib calls.
         * added: umask(int), chroot(string), cwd() and cd(string) lib calls.
 
             * was going to add some setsid/setuid/setgid variants but it looks like they are not going to
                 play well with either Go's concurrency or future compatibility as they have been left to
                 rot in the syscall package. Probably just as well - think they may have turned ugly later :)
-
-        * added: html_escape(s) and html_unescape(s) lib calls.
 
 
 1.0.3
