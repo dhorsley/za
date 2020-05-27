@@ -348,7 +348,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     defer func() {
         if r := recover(); r != nil {
             if _, ok := r.(runtime.Error); ok {
-                pf("Fatal error on (%v\n)\n",inbound.Original)
+                pf("Fatal error on ( %v )\n",inbound.Original)
                 pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
                 if debug_level==0 {
                     os.Exit(127)

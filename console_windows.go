@@ -623,7 +623,6 @@ func wrappedGetCh(p int) (i int) {
         var k int
         for {
             c,tout := getch(p)
-            pf("c->%#v\n",c)
 
             if tout {
                 keychan <- 0
@@ -639,7 +638,7 @@ func wrappedGetCh(p int) (i int) {
                 case bytes.Equal(c, []byte{13}):
                     k = 13 // enter
                 case bytes.Equal(c, []byte{0xc2, 0xa3}):
-                    k = 35
+                    k = 163
                 case bytes.Equal(c, []byte{126}):
                     k = 126 // DEL
                 case bytes.Equal(c, []byte{127}):
