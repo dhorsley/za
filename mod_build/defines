@@ -16,7 +16,7 @@ define buildMusl(build_version,build_date,strip_opts,upx_enable)
     | strip {strip_opts} za
     | cp za za.alpine
     if upx_enable
-        getglob("ufound")==1 do | upx za.alpine
+        getglob("upxfound")==1 do | upx za.alpine
     endif
     | ./za -v
     return r

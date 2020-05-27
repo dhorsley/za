@@ -69,9 +69,9 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "key_press", "tokens", "key", "clear_line","pid","ppid", "system",
+        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "noshell",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","length",
     }
 
@@ -423,14 +423,11 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["key_press"] = LibHelp{in: "", out: "int", action: "Returns an integer corresponding with a keypress."}
-    stdlib["key_press"] = func(args ...interface{}) (ret interface{}, err error) {
+    slhelp["keypress"] = LibHelp{in: "", out: "int", action: "Returns an integer corresponding with a keypress."}
+    stdlib["keypress"] = func(args ...interface{}) (ret interface{}, err error) {
+
         timeo := int64(0)
         if len(args) == 1 {
-
-            if runtime.GOOS=="windows" {
-                return "",errors.New("Timeout value cannot be specified in Windows.")
-            }
 
             switch args[0].(type) {
             case string, int:

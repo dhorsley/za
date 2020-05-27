@@ -344,11 +344,9 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // if lockSafety { calllock.RUnlock() }
 
     var inbound *Phrase
-    var openWithFiles []string
 
     defer func() {
         if r := recover(); r != nil {
-            for _,n:=range openWithFiles { os.Remove(n) }
             if _, ok := r.(runtime.Error); ok {
                 pf("Fatal error on (%v\n)\n",inbound.Original)
                 pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
@@ -484,6 +482,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
     inside_with := false            // WITH cannot be nested and remains local in scope.
     current_with_var := ""
+    var current_with_handle *os.File
 
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
@@ -772,7 +771,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                     vsetElement(ga, aryName, inter, expr.result)
                 default:
                     report(ifs,lastline, "Unknown type in SETGLOB")
-                    for _,n:=range openWithFiles { os.Remove(n) }
                     os.Exit(125)
                 }
 
@@ -2045,7 +2043,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
 
         case C_Exit:
-            for _,n:=range openWithFiles { os.Remove(n) }
             if tokencount > 1 {
                 ec, validated := EvalCrush(ifs, inbound.Tokens, 1, tokencount)
                 if validated && isNumber(ec) {
@@ -2172,7 +2169,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 }
 
             }
-            for _,n:=range openWithFiles { os.Remove(n) }
             endFunc = true
 
 
@@ -2592,7 +2588,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             // get params
 
             if tokencount < 4 {
-                report(ifs,lastline,"Malformed FOR statement.")
+                report(ifs,lastline,"Malformed WITH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2613,19 +2609,24 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 break
             }
 
+            if _, found := VarLookup(ifs,vname); !found {
+                report(ifs,lastline,sf("Variable '%s' does not exist.",vname))
+                finish(false,ERR_EVAL)
+                break
+            }
+
             tfile, err:= ioutil.TempFile("","za_with_"+sf("%d",os.Getpid())+"_")
             if err!=nil {
                 report(ifs,lastline,"WITH could not create a temporary file.")
                 finish(true,ERR_SYNTAX)
+                break
             }
-            openWithFiles=append(openWithFiles,tfile.Name())
             content,_:=vget(ifs,vname)
 		    err = ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
-
             vset(ifs,fname,tfile.Name())
             inside_with=true
             current_with_var=fname
-
+            current_with_handle=tfile
 
         case C_Endwith:
             if !inside_with {
@@ -2633,10 +2634,17 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                 finish(false,ERR_SYNTAX)
                 break
             }
-            fname,_:=vget(ifs,current_with_var)
             vunset(ifs,current_with_var)
+            remfile:=current_with_handle.Name()
+            current_with_handle.Close()
+            err:=os.Remove(remfile)
+            if err!=nil {
+                report(ifs,lastline,sf("WITH could not remove temporary file '%s'",remfile))
+                finish(true,ERR_FATAL)
+                break
+            }
+            current_with_handle=nil
             current_with_var=""
-            os.Remove(fname.(string))
             inside_with=false
 
 

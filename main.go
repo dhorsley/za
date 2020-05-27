@@ -34,7 +34,7 @@ import (
 var sf = fmt.Sprintf
 var pln = fmt.Println
 var fpf = fmt.Fprintln
-
+var fef = fmt.Errorf
 //
 // CONSTS AND GLOBALS
 //

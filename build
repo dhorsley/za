@@ -21,8 +21,8 @@ GCLIMIT = "GOGC=450 GOMAXPROCS=4"
 bvers =  "1.0.4"
 bdate =| date "+%d-%m-%Y %H:%M"
 
-ufound=| which upx | wc -l
-ufound=int(ufound)
+upxfound=| which upx | wc -l
+upxfound=int(upxfound)
 
 strip_opts="-s -w"
 
@@ -44,10 +44,10 @@ is "win"
     endif
 endwhen
 
-if ufound==1 && is_file("za")
-    | strip {strip_opts} za
-    if upx_enable
-        | upx za
+if upxfound==1 && is_file("za")
+    if tgt!="win"
+        | strip {strip_opts} za
+        on upx_enable do | upx za
     endif
 else
     on is_file("za") do print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"

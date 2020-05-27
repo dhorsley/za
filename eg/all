@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-check_path="syntax_checks")
+check_path="syntax_checks"
 er=false
 
 files=dir(check_path)
