@@ -6,16 +6,38 @@ package main
 import (
 	"errors"
 	"os"
+    "io"
     "syscall"
     "regexp"
 )
+
+
+func fcopy(s, d string) (int64, error) {
+
+        sfs, err := os.Stat(s)
+        if err != nil { return 0, err }
+        if !sfs.Mode().IsRegular() { return 0, fef("%s is not a regular file", s) }
+
+        src, err := os.Open(s)
+        if err != nil { return 0, err }
+        defer src.Close()
+
+        dst, err := os.Create(d)
+        if err != nil { return 0, err }
+        defer dst.Close()
+
+        n, err := io.Copy(dst, src)
+
+        return n, err
+}
+
 
 func buildOsLib() {
 
 	// os level
 
 	features["os"] = Feature{version: 1, category: "os"}
-	categories["os"] = []string{"env", "get_env", "set_env", "cwd", "cd", "dir", }
+	categories["os"] = []string{"env", "get_env", "set_env", "cwd", "cd", "dir", "delete", "rename", "copy", }
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "array", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir key-value pairs. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(args ...interface{}) (ret interface{}, err error) {
@@ -51,7 +73,6 @@ func buildOsLib() {
         return dl,nil
     }
 
-
 	slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
 	stdlib["cwd"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)!=0               { return -1,errors.New("Bad argument count in cwd()")  }
@@ -65,6 +86,37 @@ func buildOsLib() {
         err=syscall.Chdir(args[0].(string))
 		return nil, err
 	}
+
+    slhelp["delete"] = LibHelp{in: "string", out: "", action: "Delete a file."}
+    stdlib["delete"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1               { return nil,errors.New("Bad argument count in delete()")  }
+        if sf("%T",args[0])!="string" { return nil,errors.New("Bad argument type in delete()")   }
+        err=os.Remove(args[0].(string))
+        suc:=true
+        if err!=nil { suc=false }
+        return suc, err
+    }
+
+    slhelp["rename"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Rename a file."}
+    stdlib["rename"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2               { return nil,errors.New("Bad argument count in rename()")  }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("Bad argument type in rename()")   }
+        err=os.Rename(args[0].(string),args[1].(string))
+        suc:=true
+        if err!=nil { suc=false }
+        return suc, err
+    }
+
+    slhelp["copy"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Copy a single file."}
+    stdlib["copy"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2               { return nil,errors.New("Bad argument count in copy()")  }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("Bad argument type in copy()")   }
+        // var n int64
+        _,err=fcopy(args[0].(string),args[1].(string))
+        suc:=true
+        if err!=nil { suc=false }
+        return suc, err
+    }
 
 	slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
 	stdlib["env"] = func(args ...interface{}) (ret interface{}, err error) {

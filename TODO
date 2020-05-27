@@ -1,10 +1,19 @@
 
 * finish strings check
-
-* update console_windows/plog in debug(20)
-
 * tidy eg/mon some more
 
-* add a timeout capability to the Windows keypress() version.
+* windows keypress() (getch function):
+
+    * working now, but modifier keys (shift, ctrl, etc) all throw a keypress into 
+        the input buffer, effectively triggering the Read. This leaves the go routine
+        hanging pending the second part of the keypress even after the timeout value
+        has been exceeded.
+
+    * it's not a big issue, but could do with a workaround. seems to be part of the 
+        way that ReadConsoleInput and PeekConsoleInput work in Windows. 
+
+    * not doing anything clever with language support on windows keystroke input yet...
+        * for example, £ and # currently are both bodged to present as 35 in keypress().
+
 
 

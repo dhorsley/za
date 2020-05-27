@@ -51,8 +51,13 @@ func pf(s string, va ...interface{}) {
 }
 
 
-func getch() []byte {
+func getch(timeo int) (b []byte,timeout bool) {
+
+    keyRep:=time.Duration(40) *time.Millisecond
+
     modkernel32 := syscall.NewLazyDLL("kernel32.dll")
+    procFlushConsoleInputBuffer := modkernel32.NewProc("FlushConsoleInputBuffer")
+    procPeekConsoleInput := modkernel32.NewProc("PeekConsoleInputW")
     procReadConsole := modkernel32.NewProc("ReadConsoleW")
     procGetConsoleMode := modkernel32.NewProc("GetConsoleMode")
     procSetConsoleMode := modkernel32.NewProc("SetConsoleMode")
@@ -71,13 +76,51 @@ func getch() []byte {
     line := make([]uint16, 3)
     pLine := &line[0]
     var n uint16
-    procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
 
-    b := []byte(string(utf16.Decode(line[:n])))
+    c := make(chan []byte)
+    closed:=false
+
+    go func() {
+        for ; ; {
+            if closed { break }
+            if timeo==0 {
+                procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                if n>0 && !closed {
+                    c <- []byte(string(utf16.Decode(line[:n])))
+                    close(c)
+                    break
+                }
+            } else {
+                procPeekConsoleInput.Call(uintptr(syscall.Stdin),uintptr(unsafe.Pointer(pLine)),uintptr(len(line)),uintptr(unsafe.Pointer(&n)))
+                if n>1 && !closed {
+                    procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                    c <- []byte(string(utf16.Decode(line[:n])))
+                    close(c)
+                    break
+                }
+            }
+            time.Sleep(keyRep)
+        }
+    }()
+
+    if timeo>0 {
+        dur := time.Duration(timeo) * time.Millisecond
+        select {
+        case b,closed = <-c:
+        case <-time.After(dur):
+            procFlushConsoleInputBuffer.Call(uintptr(syscall.Stdin))
+            timeout=true
+            closed=true
+        }
+    } else {
+        select {
+        case b,closed = <-c:
+        }
+    }
 
     procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
 
-    return b
+    return b,timeout
 }
 
 
@@ -236,7 +279,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         at(cy, cx)
 
         // get key stroke
-        c := getch()
+        c,_ := getch(0)
 
         // actions
         switch {
@@ -570,7 +613,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 }
 
 
-/// get keypresses, filtering out undesired until a valid match found
+/// get a keypress
 func wrappedGetCh(p int) (i int) {
 
     var keychan chan int
@@ -579,7 +622,14 @@ func wrappedGetCh(p int) (i int) {
     go func() {
         var k int
         for {
-            c := getch()
+            c,tout := getch(p)
+            pf("c->%#v\n",c)
+
+            if tout {
+                keychan <- 0
+                break
+            }
+
             if c != nil {
                 switch {
                 case bytes.Equal(c, []byte{3}):
@@ -588,6 +638,8 @@ func wrappedGetCh(p int) (i int) {
                     k = 4 // ctrl-d
                 case bytes.Equal(c, []byte{13}):
                     k = 13 // enter
+                case bytes.Equal(c, []byte{0xc2, 0xa3}):
+                    k = 35
                 case bytes.Equal(c, []byte{126}):
                     k = 126 // DEL
                 case bytes.Equal(c, []byte{127}):
@@ -605,7 +657,6 @@ func wrappedGetCh(p int) (i int) {
                 break
             }
         }
-        keychan <- 0
     }()
 
     select {
@@ -1391,9 +1442,11 @@ func debug(level int, s string, va ...interface{}) {
     if debug_level >= level {
         pf(sparkle(s), va...)
     }
+    /*
     if debug_level==20 {
         plog(sparkle(s),va...)
     }
+    */
 }
 
 func restoreScreen() {
