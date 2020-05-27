@@ -15,6 +15,7 @@ import (
     "errors"
     "golang.org/x/sys/unix"
     "strconv"
+    "unicode/utf8"
     // "path/filepath"
     "regexp"
     "sort"
@@ -226,10 +227,15 @@ func StripCC(s string) string {
     return r.Replace(s)
 }
 
+
+func rlen(s string) int {
+    return utf8.RuneCountInString(s)
+}
+
 /// calculate on-console visible string length, allowing for hidden formatting
 func displayedLen(s string) int {
     // remove ansi codes
-    return len(Strip(sparkle(s)))
+    return rlen(Strip(sparkle(s)))
 }
 
 /// move the console cursor
@@ -296,21 +302,20 @@ func cursorX(n int) {
 
 /// remove runes in string s before position pos
 func removeAllBefore(s string, pos int) string {
-    if len(s)<pos { return s }
+    if rlen(s)<pos { return s }
     return s[pos:]
 }
 
 /// remove character at position pos
 func removeBefore(s string, pos int) string {
-    if len(s)<pos { return s }
-    if pos < 1 { return s }
+    if pos == 0 { return s }
     s = s[:pos-1] + s[pos:]
     return s
 }
 
 /// insert a number of characters in string at position pos
 func insertBytesAt(s string, pos int, c []byte) string {
-    if pos == len(s) { // append
+    if pos == rlen(s) { // append
         s += string(c)
         return s
     }
@@ -320,8 +325,8 @@ func insertBytesAt(s string, pos int, c []byte) string {
 
 /// insert a single byte at position pos in string s
 func insertAt(s string, pos int, c byte) string {
-    if pos == len(s) { // append
-        s += string(c)
+    if pos == rlen(s) { // append
+        s = sf("%s%c",s,c) // string(c)
         return s
     }
     s = s[:pos] + string(c) + s[pos:]
@@ -330,7 +335,7 @@ func insertAt(s string, pos int, c byte) string {
 
 /// append a string to end of string or insert it mid-string
 func insertWord(s string, pos int, w string) string {
-    if pos >= len(s) { // append
+    if pos >= rlen(s) { // append
         s += w
         return s
     }
@@ -343,7 +348,7 @@ func deleteWord(s string, pos int) (string,int) {
 
     start := 0
     cpos:=0
-    end := len(s)
+    end := rlen(s)
 
     if end<pos { return s,0 }
 
@@ -354,9 +359,11 @@ func deleteWord(s string, pos int) (string,int) {
             break
         }
     }
-    if cpos==end { cpos-- }
+    if cpos==end {
+        cpos--
+    }
 
-    for p := pos; p < len(s)-1; p++ {
+    for p := pos; p < rlen(s)-1; p++ {
         if s[p] == ' ' {
             end = p + 1
             break
@@ -371,7 +378,7 @@ func deleteWord(s string, pos int) (string,int) {
     }
 
     add:=""
-    if end < len(s)-1 {
+    if end < rlen(s)-1 {
         if start!=0 { add=" " }
         endsub = s[end:]
     }
@@ -407,6 +414,8 @@ func wrappedGetCh(p int) (i int) {
                     k = 4 // ctrl-d
                 case bytes.Equal(c, []byte{13}):
                     k = 13 // enter
+                case bytes.Equal(c, []byte{0xc2, 0xa3}): // 194 163
+                     k = 163
                 case bytes.Equal(c, []byte{127}):
                     k = 127 // backspace
                 default:
@@ -435,13 +444,13 @@ func wrappedGetCh(p int) (i int) {
 /// get the word in string s under the cursor (at position c)
 func getWord(s string, c int) string {
 
-    if len(s)<c {
+    if rlen(s)<c {
         return s
     }
 
     // track back
     var i int
-    i = len(s) - 1
+    i = rlen(s) - 1
     if c < i {
         i = c
     }
@@ -459,7 +468,7 @@ func getWord(s string, c int) string {
 
     // track forwards
     var j int
-    for j = c; j < len(s)-1; j++ {
+    for j = c; j < rlen(s)-1; j++ {
         if s[j] == ' ' {
             break
         }
@@ -500,8 +509,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpstring string        // final compounded output string including helpColoured components
     var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
-    // var unproc_files []string    // raw list of files in the current directory
-    // var files []string           // list of file basenames in the current directory
 
     icol := col + dlen + globalPaneShiftLen // input (row,col)
     irow := row
@@ -521,14 +528,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
         // show input
         at(irow, icol)
-        modinp := str.Replace(s, "\x1f", "\033[E\033[G", -1)
-        dispL := len(modinp)
+        dispL := rlen(s)
         clearToEOPane(irow, icol, 2+dispL+displayedLen(helpstring))
-        fmt.Print(modinp)
-
-        // secScreen()
+        fmt.Print(s)
         pf(helpstring)
-        // priScreen()
 
         // print cursor
         cx = (icol + cpos) % (p.w)
@@ -557,7 +560,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             // strip ansi codes from pbuf then shove it in the input string
             s = insertWord(s, cpos, Strip(pbuf))
-            cpos+=len(pbuf)
+            cpos+=rlen(pbuf)
             wordUnderCursor = getWord(s, cpos)
             selectedStar = -1
 
@@ -565,12 +568,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             switch {
 
-            case bytes.Equal(c, []byte{2}): // ctrl-b
-                s = insertAt(s, cpos, 31) // dec 31 is unit separator - treat this as whitespace
-                cpos++
-                wordUnderCursor = getWord(s, cpos)
-
-                break
             case bytes.Equal(c, []byte{3}): // ctrl-c
                 broken = true
                 break
@@ -587,12 +584,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
 
                 endLine = true
-                s = str.Replace(s, "\x1f", "\x0a", -1)
+
                 if s != "" {
                     hist = append(hist, s)
                     lastHist++
                     histEmpty = false
                 }
+
                 break
 
             case bytes.Equal(c, []byte{32}): // space
@@ -604,13 +602,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         var newstart int
                         s,newstart = deleteWord(s, cpos)
                         add:=""
-                        if len(s)>0 { add=" " }
+                        if rlen(s)>0 { add=" " }
                         if newstart==-1 { newstart=0 }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
-                        cpos = len(s)
+                        cpos = rlen(s)
                         helpstring = ""
                     }
-                    // break
+
                 }
 
                 // normal space input
@@ -623,7 +621,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
-                cpos = len(s)
+                cpos = rlen(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{1}): // ctrl-a
@@ -631,7 +629,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{5}): // ctrl-e
-                cpos = len(s)
+                cpos = rlen(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{21}): // ctrl-u
@@ -642,7 +640,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             case bytes.Equal(c, []byte{127}): // backspace
 
-                if startedContextHelp && len(helpstring) == 0 {
+                if startedContextHelp && rlen(helpstring) == 0 {
                     startedContextHelp = false
                 }
 
@@ -654,7 +652,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
-                if cpos < len(s) {
+                if cpos < rlen(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor = getWord(s, cpos)
                     clearToEOPane(irow, icol, displayedLen(s))
@@ -687,7 +685,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
 
                 // normal RIGHT:
-                if cpos < len(s) {
+                if cpos < rlen(s) {
                     cpos++
                 }
                 wordUnderCursor = getWord(s, cpos)
@@ -710,7 +708,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             curHist--
                             s = hist[curHist]
                         }
-                        cpos = len(s)
+                        cpos = rlen(s)
                         wordUnderCursor = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
@@ -735,7 +733,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             s = os
                             navHist = false
                         }
-                        cpos = len(s)
+                        cpos = rlen(s)
                         wordUnderCursor = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
@@ -748,7 +746,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 cpos = 0
                 wordUnderCursor = getWord(s, cpos)
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
-                cpos = len(s)
+                cpos = rlen(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{9}): // TAB
@@ -757,8 +755,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if hintEnable && !startedContextHelp {
 
                     varnames = nil
-                    // unproc_files = nil
-                    // files = nil
                     funcnames = nil
 
                     startedContextHelp = true
@@ -773,21 +769,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                     sort.Strings(varnames)
 
-                    /*
-                     * this isn't much use current, only shows current pwd not indicated one
-                     * it also has a fault when using interactive and shell-less (parent) mode
-                     * 
-                    //.. add cwd files
-
-                    pwd, _ := vget(0, "@pwd")
-
-                    unproc_files, _ = filepath.Glob(pwd.(string)+"/*")
-                    for _, fn := range unproc_files {
-                        files = append(files, filepath.Base(fn))
-                    }
-                    sort.Strings(files)
-                    */
-
                     //.. add functionnames
                     for k, _ := range slhelp {
                         funcnames = append(funcnames, k)
@@ -801,6 +782,22 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
             case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
 
+
+            // specials over 128 - don't do this.. too messy with runes.
+
+            // interactive mode *really* needs to just use readline lib instead.
+            // supporting utf8 input is not necessary yet. i only wanted it for £ symbol!
+            // utf8 is fine in program code and data, it's just too much effort
+            // to support it on this limited input implementation.
+
+            case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
+                /*
+                s = insertAt(s, cpos, '£')
+                cpos++
+                wordUnderCursor = getWord(s, cpos)
+                selectedStar = -1
+                */
+
             // ignore list
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
@@ -808,7 +805,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             default:
                 if len(c) == 1 {
-                    if c[0] > 32 {
+                    if c[0] > 32 && c[0]<128 {
                         s = insertAt(s, cpos, c[0])
                         cpos++
                         wordUnderCursor = getWord(s, cpos)
@@ -845,16 +842,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                 }
             }
-
-            /*
-             * not currently useful
-            for _, v := range files {
-                if str.HasPrefix(v, wordUnderCursor) {
-                    helpColoured = append(helpColoured, "[#4]"+v+"[#-]")
-                    helpList = append(helpList, v)
-                }
-            }
-            */
 
             for _, v := range funcnames {
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
@@ -900,10 +887,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     var newstart int
                     s,newstart = deleteWord(s, cpos)
                     add:=""
-                    if len(s)>0 { add=" " }
+                    if rlen(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
                     s = insertWord(s, newstart, add+helpList[0]+" ")
-                    cpos = len(s)
+                    cpos = rlen(s)
                     l := displayedLen(s)
                     clearToEOPane(irow, icol, l)
                     helpstring = ""
@@ -912,6 +899,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             contextHelpSelected = false
             startedContextHelp = false
         }
+
 
         if eof || broken || endLine {
             break
@@ -1184,8 +1172,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
                 break
             }
 
-            if len(s) > 0 {
-                if s[len(s)-1] == 0x1e {
+            if rlen(s) > 0 {
+                if s[rlen(s)-1] == 0x1e {
                     break
                 }
                 if !t.Stop() {
@@ -1202,14 +1190,14 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
         }
 
         // remove trailing end marker
-        if len(s) > 0 {
-            if s[len(s)-1] == 0x1e {
-                s = s[:len(s)-1]
+        if rlen(s) > 0 {
+            if s[rlen(s)-1] == 0x1e {
+                s = s[:rlen(s)-1]
             }
         }
 
         // skip null end marker strings
-        if len(s) > 0 {
+        if rlen(s) > 0 {
             if s[0] == 0x1e {
                 s = ""
             }
@@ -1335,8 +1323,8 @@ func Copper(line string, squashErr bool) (string, int) {
     }
 
     // remove trailing slash-n
-    if len(ns) > 0 {
-        for q := len(ns) - 1; q > 0; q-- {
+    if rlen(ns) > 0 {
+        for q := rlen(ns) - 1; q > 0; q-- {
             if ns[q] == '\n' {
                 ns = ns[:q]
             } else {
