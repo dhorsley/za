@@ -11,6 +11,7 @@ import (
     "strings"
 )
 
+
 func buildConversionLib() {
 
 	// conversion
@@ -33,8 +34,12 @@ func buildConversionLib() {
 			if args[0].(int) < 0 || args[0].(int) > 255 {
 				return "", nil
 			}
-			if c, e := GetAsInt(args[0]); e == false {
-				return sf("%c", c), nil
+			if c, e := GetAsInt(args[0]); ! e {
+                if c<128 || c>160 {
+                    return sf("%c",c),nil
+                } else {
+                    return "",nil
+                }
 			} else {
 				return "", errors.New("unspecified error in type conversion")
 			}

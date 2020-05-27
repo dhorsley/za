@@ -12,8 +12,7 @@
     * it's not a big issue, but could do with a workaround. seems to be part of the 
         way that ReadConsoleInput and PeekConsoleInput work in Windows. 
 
-    * not doing anything clever with language support on windows keystroke input yet...
-        * for example, £ and # currently are both bodged to present as 35 in keypress().
-
+* ultimately, change interactive mode to use readline or similar with better utf-8 support.
+    * as usual, really low priority on this. i only wanted it for £ symbols!
 
 

@@ -7,6 +7,7 @@ import (
     "errors"
     "io/ioutil"
     "os"
+    "unicode/utf8"
     "reflect"
     "regexp"
     "runtime"
@@ -24,7 +25,7 @@ const (
 func ulen(args interface{}) (int,error) {
     switch args.(type) { // i'm getting fed up of typing these case statements!!
     case string:
-        return len(args.(string)),nil
+        return utf8.RuneCountInString(args.(string)),nil
     case []string:
         return len(args.([]string)),nil
     case []interface{}:

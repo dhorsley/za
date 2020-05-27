@@ -1,0 +1,45 @@
+#!/usr/bin/za
+
+#
+# example menu proc
+#
+
+ansi(true)
+
+# simple menu, only accepts up to 9 options
+define menu(p,opts)
+    cls
+    cursoroff()
+
+    at 2,10
+    print "[#b1]{p}[##]"
+
+    foreach p in opts
+        at 4+key_p,10
+        print "[#b1][{1+key_p}][##] {p}"
+    endfor
+
+    maxchoice=49+len(opts)
+
+    at 5+len(opts),10
+    print "[#b2][q][##] Quit menu"
+
+    n=-1
+    while n==-1
+        k=keypress()
+        if k>=49 && k<maxchoice
+            n=k-48
+        endif
+        on chr(k)=="q" do break
+    endwhile
+
+    cursoron()
+    return n
+
+enddef
+
+choice=menu( "Example Menu", [ "First", "Second", "Third" ] )
+
+println "\n\nChoice [ {choice} ]\n"
+
+

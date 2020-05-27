@@ -718,8 +718,8 @@ func main() {
             }
 
             addrow := 1
-            if row >= MH {
-                row = MH
+            if row >= MH+1 {
+                row = MH+1
                 fmt.Printf("\033[%dS", 1) // scroll up 1 line
                 addrow = 0
             }

@@ -36,6 +36,8 @@ CHANGE LOG
         * started eg/strings tests for string library.
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
         * updated za.vim
+        * changed keypress() to encode £ symbols as decimal 163. although we don't support utf8 input or extended
+            ascii in any meaningful way, we still needed to distinguish £ from # on key capture.
 
 
     features:
