@@ -756,7 +756,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         pf("res ->%v\n",result)
         pf("err ->%v\n",err)
         pf("di  ->%v\n",didInterp)
-        */
+        */ 
 
         if result==nil { // could not eval
             if didInterp {
@@ -907,10 +907,8 @@ func tokenise(s string) (toks []Token) {
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
     // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
-
-    // debug(20,"ev called in wrappedeval: "+expr.text+"\n")
+    debug(20,"ev called in wrappedeval: "+expr.text+"\n")
     v, _ , err := ev(fs, expr.text, interpol, true)
-
     // pf("wrappedEval() : returned from ev() with %v\n",v)
 
     if err!=nil {

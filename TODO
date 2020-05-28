@@ -15,4 +15,13 @@
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
     * as usual, really low priority on this. i only wanted it for £ symbols!
 
+* more removals to do of temp files from WITH.
+
+    * definite artifacts left over, for example, if you do a mismatch like WITH...; ... ; ENDWHEN.
+        * the with clause closes off without removing the temp.
+
+* demo for CLI arg parsing
+
+
+
 

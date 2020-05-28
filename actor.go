@@ -725,8 +725,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
             // eval rhs
             cet := crushEvalTokens(inbound.Tokens[eqAt+1:])
-
             expr,ef := wrappedEval(ifs, cet, true)
+
             if ef || expr.evalError {
                 report(ifs,lastline, sf("Bad expression in SETGLOB : '%s'",expr.text))
                 finish(false,ERR_EVAL)

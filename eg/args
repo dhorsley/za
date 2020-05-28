@@ -1,0 +1,81 @@
+#!/usr/bin/za
+
+#
+# argument parsing
+#
+
+doc `
+The Za interpreter will first take it's own parameters from the command line before
+handing over any remnant arguments on the right-hand side of the call to user code 
+for processing. Those remnants will be presented as argc() and argv() to Za scripts.
+`
+
+# method 1: ARGV
+println "\n[#7][#b1]1. argv/argc[#b0]"
+println "Argc   : {argc()}"
+println "Argv   : {argv()}"
+
+if argc() > 0
+    foreach a in argv()
+        println "  ",1+key_a," -> ",a
+    endfor
+endif
+
+# method 2: mandatory arguments
+println "\n[#b1]2. mandatory parameters[#b0]"
+println "( not processed in example! )"
+# INPUT colour PARAM 1
+# INPUT number PARAM 2
+println "Colour : {colour}"
+println "Number : {number}"
+
+# method 3: optional arguments
+println "\n[#b1]3. optional parameters[#b0]"
+INPUT colour OPTARG 1
+INPUT number OPTARG 2
+println "Colour : {colour}"
+println "Number : {number}"
+
+
+# method 4: traditional arg parsing
+
+define next()
+    local_av=getglob("av")
+    arg=head(local_av)
+    local_av=tail(local_av)
+    setglob av = local_av
+    return arg
+enddef    
+
+av=argv()
+ac=argc()
+
+println "\n[#b1]4. arg loop parsing[#b0]"
+println "working with these args: [#4][#i1]{av}[#i0][#7]"
+
+while !empty(av)
+    arg=next()
+    if len(arg)>1 && start(arg,"-")
+        opt=substr(arg,0,2)
+        when opt
+        is "-h"
+            println "Help requested."
+        is "-s"
+            println "string"
+            svar=string(next())
+        is "-b"
+            println "bool"
+            bvar=bool(next())
+        is "-n"
+            println "number"
+            nvar=int(next())
+        endwhen
+    else
+        println "unprocessed argument found: {arg}"
+    endif
+endwhile
+
+println format("string option provided : {svar} [%T]",svar)
+println format("bool option provided   : {bvar} [%T]",bvar)
+println format("number option provided : {nvar} [%T]",nvar)
+

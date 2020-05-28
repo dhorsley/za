@@ -234,6 +234,11 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
             (*curLine)++
         }
 
+        // temp rule
+        if matchQuote && input[i]=='\n' {
+            (*curLine)++
+        }
+
         if term == "]" {
 
             if input[i] == '[' {

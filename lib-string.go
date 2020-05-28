@@ -858,7 +858,7 @@ func buildStringLib() {
             if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
                 return "",errors.New("Bad arguments (type) to substr()")
             }
-            if args[1].(int)>=len(args[0].(string)) || args[2].(int)>=len(args[0].(string)) {
+            if args[1].(int)>=len(args[0].(string)) || args[2].(int)>len(args[0].(string)) {
                 return "",errors.New("Bad argument (range) in substr()")
             }
             return args[0].(string)[args[1].(int) : args[1].(int)+args[2].(int)], err
