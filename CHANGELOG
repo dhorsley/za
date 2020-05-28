@@ -103,7 +103,7 @@ CHANGE LOG
 
         * added: html_escape(s) and html_unescape(s) lib calls.
         * added: delete(f), rename(sf,df) and copy(sf,df) lib calls.
-        * added: bool(s) for converting string or interface{} (as string) to bool type.
+        * added: bool(s) for converting string to bool type.
         * added: umask(int), chroot(string), cwd() and cd(string) lib calls.
 
             * was going to add some setsid/setuid/setgid variants but it looks like they are not going to
