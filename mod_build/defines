@@ -39,10 +39,7 @@ define buildWin(build_version,build_date,strip_opts)
     | GOOS="windows" GOARCH="amd64" {GCLIMIT} go build -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows"' za
     r=last()
     on r>0 do println last_out()
-    #
-    #| strip {strip_opts} za.exe
-    # ^^ currently removed as it cause windows security defaults to kick in on execution. ^^
-    #
+    # | strip {strip_opts} za.exe
     | cp za.exe za.win64
     return r
 enddef

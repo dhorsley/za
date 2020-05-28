@@ -83,11 +83,14 @@ func spf(ns uint64, s string) string {
 
 /// apply ansi code translation to inbound strings
 func sparkle(a string) string {
+    a=fairyReplacer.Replace(a)
+    /*
     a = str.Replace(a, "[#-]", "[#fakm]", -1)
     a = str.Replace(a, "[##]", "[#fakb]", -1)
     for k, v := range fairydust {
-    a = str.Replace(a, "[#"+k+"]", v, -1)
+    a = str.Replace(a, sf("[#%s]",k), v, -1)
     }
+    */
     return (a)
 }
 
@@ -114,6 +117,10 @@ func GetWinInfo(fd int) (i int) {
     return -1
 }
 
+
+var ansiReplacables []string
+var fairyReplacer *str.Replacer
+
 /// setup the za->ansi mappings
 func setupAnsiPalette() {
     if ansiMode {
@@ -139,8 +146,8 @@ func setupAnsiPalette() {
         fairydust["underline"] = "\033[4m"
         fairydust["invert"] = "\033[7m"
         fairydust["bold"] = "\033[1m"
-        fairydust["fakm"] = "\033[0m"
-        fairydust["fakb"] = "\033[49m"
+        fairydust["-"] = "\033[0m"
+        fairydust["#"] = "\033[49m"
         fairydust["bdefault"] = "\033[49m"
         fairydust["bblack"] = "\033[40m"
         fairydust["bred"] = "\033[41m"
@@ -181,9 +188,18 @@ func setupAnsiPalette() {
         fairydust["crossed"] = "\033[9m"
         fairydust["framed"] = "\033[51m"
         fairydust["CSI"] = "\033["
+
+
+        for k,v := range fairydust {
+            ansiReplacables=append(ansiReplacables,"[#"+k+"]")
+            ansiReplacables=append(ansiReplacables,v)
+        }
+
+        fairyReplacer=str.NewReplacer(ansiReplacables...)
+
     } else {
         var ansiCodeList=[]string{"b0","b1","b2","b3","b4","b5","b6","b7","0","1","2","3","4","5","6","7","i1","i0",
-                "default","underline","invert","bold","fakm","fakb","bdefault","bblack","bred",
+                "default","underline","invert","bold","-","#","bdefault","bblack","bred",
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
                 "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",

@@ -1,0 +1,40 @@
+#!/usr/bin/za
+
+#
+# something for checking your virtual machine
+# isn't dragging it's heels...
+#
+
+input reps optarg 1
+
+max_reps=1
+on reps!="" do max_reps=int(reps)
+
+cls
+h=term_h()
+w=term_w()
+
+cx=int(w/2)
+cy=int(h/2)
+
+seed(epoch_nano_time())
+
+col=rand(7)
+
+for nr=1 to max_reps
+
+    for e=0 to cy-1
+
+        for r=0 to 359
+            px=cx+2*sin(r)*e
+            py=1.0+cy+cos(r)*e
+            at py,px
+            print "[#b{col}] "
+        endfor
+        col=rand(7)
+
+    endfor
+
+endfor
+
+at h-5,1; print "[#default]"

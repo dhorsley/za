@@ -1,6 +1,5 @@
 
 * finish strings check
-* tidy eg/mon some more
 
 * windows keypress() (getch function):
 
@@ -19,8 +18,6 @@
 
     * definite artifacts left over, for example, if you do a mismatch like WITH...; ... ; ENDWHEN.
         * the with clause closes off without removing the temp.
-
-* demo for CLI arg parsing
 
 
 

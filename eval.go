@@ -744,19 +744,11 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
-        // pf("\n                                \nev-func -> %v                                   \n                          \n",crushEvalTokens(r).text)
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
     } else {
 
         // normal evaluation
-        // pf("ev-normal -> %v\n",ws)
         result, ef, err = Evaluate(ws, fs)
-
-        /*
-        pf("res ->%v\n",result)
-        pf("err ->%v\n",err)
-        pf("di  ->%v\n",didInterp)
-        */ 
 
         if result==nil { // could not eval
             if didInterp {
@@ -783,16 +775,11 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     }
 
     if maybeFunc && err != nil {
-        // if lockSafety { lastlock.RLock() }
-        // nv,_:=numlookup.lmget(lastbase)
-        // if lockSafety { lastlock.RUnlock() }
 
         nv := getReportFunctionName(fs)
 
         if nv!="" {
             report(0,lastline,sf("Evaluation Error @ Function %v", nv))
-        // } else {
-        //     report(0,lastline,"Evaluation Error")
         }
         pf("[#6]%v[#-]\n", err)
 
@@ -817,9 +804,11 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
     }
 
     var id str.Builder
-    id.Grow(20)
+    // id.Grow(32)
+    id.Grow(16)
     var crushedOpcodes str.Builder
-    crushedOpcodes.Grow(256)
+    // crushedOpcodes.Grow(256)
+    crushedOpcodes.Grow(16)
 
     var assign bool
     tc := len(intoks)
@@ -907,7 +896,7 @@ func tokenise(s string) (toks []Token) {
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
     // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
-    debug(20,"ev called in wrappedeval: "+expr.text+"\n")
+    // debug(20,"ev called in wrappedeval: "+expr.text+"\n")
     v, _ , err := ev(fs, expr.text, interpol, true)
     // pf("wrappedEval() : returned from ev() with %v\n",v)
 
