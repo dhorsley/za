@@ -549,32 +549,32 @@ func buildListLib() {
         switch args[0].(type) {
         case []bool:
             if len(args[0].([]bool)) == 0 {
-                return nil, nil
+                return []bool{}, nil
             }
             return args[0].([]bool)[0], nil
         case []uint8:
             if len(args[0].([]uint8)) == 0 {
-                return nil, nil
+                return []uint8{}, nil
             }
             return args[0].([]uint8)[0], nil
         case []int:
             if len(args[0].([]int)) == 0 {
-                return nil, nil
+                return []int{}, nil
             }
             return args[0].([]int)[0], nil
         case []float64:
             if len(args[0].([]float64)) == 0 {
-                return nil, nil
+                return []float64{}, nil
             }
             return args[0].([]float64)[0], nil
         case []string:
             if len(args[0].([]string)) == 0 {
-                return nil, nil
+                return []string{}, nil
             }
             return args[0].([]string)[0], nil
         case []interface{}:
             if len(args[0].([]interface{})) == 0 {
-                return nil, nil
+                return []interface{}{}, nil
             }
             return args[0].([]interface{})[0], nil
         }
@@ -587,33 +587,33 @@ func buildListLib() {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to tail()") }
         switch args[0].(type) {
         case []bool:
-            if len(args[0].([]bool)) < 2 {
-                return nil, nil
+            if len(args[0].([]bool)) == 0 {
+                return []bool{}, nil
             }
             return args[0].([]bool)[1:], nil
         case []uint8:
-            if len(args[0].([]uint8)) < 2 {
-                return nil, nil
+            if len(args[0].([]uint8)) == 0 {
+                return []uint8{}, nil
             }
             return args[0].([]uint8)[1:], nil
         case []int:
-            if len(args[0].([]int)) < 2 {
-                return nil, nil
+            if len(args[0].([]int)) == 0 {
+                return []int{}, nil
             }
             return args[0].([]int)[1:], nil
         case []float64:
-            if len(args[0].([]float64)) < 2 {
-                return nil, nil
+            if len(args[0].([]float64)) == 0 {
+                return []float64{}, nil
             }
             return args[0].([]float64)[1:], nil
         case []string:
-            if len(args[0].([]string)) < 2 {
-                return nil, nil
+            if len(args[0].([]string)) == 0 {
+                return []string{}, nil
             }
             return args[0].([]string)[1:], nil
         case []interface{}:
-            if len(args[0].([]interface{})) < 2 {
-                return nil, nil
+            if len(args[0].([]interface{})) == 0 {
+                return []interface{}{}, nil
             }
             return args[0].([]interface{})[1:], nil
         }

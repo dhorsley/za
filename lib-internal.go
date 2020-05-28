@@ -59,7 +59,7 @@ func ulen(args interface{}) (int,error) {
     case map[string]uint8:
         return len(args.(map[string]uint8)),nil
     }
-    return -1,errors.New(sf("Unknown type in globlen '%T'",args))
+    return -1,errors.New(sf("Unknown type '%T'",args))
 }
 
 
@@ -302,9 +302,7 @@ func buildInternalLib() {
                 inp,_ :=interpolate(lfs,args[0].(string),true)
 
                 globlock.RLock()
-
                 res,_,err:=ev(globalaccess,inp,true,true)
-
                 globlock.RUnlock()
 
                 if err==nil {

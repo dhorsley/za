@@ -34,6 +34,7 @@ CHANGE LOG
             * fixed the leaky dinghy and all seems well again when testing web servers.
         * added some more error checking in lib-string (trim, start and end)
         * started eg/strings tests for string library.
+        * more bug squishing in lib-string.
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
         * updated za.vim
         * changed keypress() to encode £ symbols as decimal 163. although we don't support utf8 input or extended
@@ -102,11 +103,14 @@ CHANGE LOG
 
         * added: html_escape(s) and html_unescape(s) lib calls.
         * added: delete(f), rename(sf,df) and copy(sf,df) lib calls.
+        * added: bool(s) for converting string or interface{} (as string) to bool type.
         * added: umask(int), chroot(string), cwd() and cd(string) lib calls.
 
             * was going to add some setsid/setuid/setgid variants but it looks like they are not going to
                 play well with either Go's concurrency or future compatibility as they have been left to
                 rot in the syscall package. Probably just as well - think they may have turned ugly later :)
+
+        * added: eg/args for processing CLI args.
 
 
 1.0.3
