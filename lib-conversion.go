@@ -6,6 +6,7 @@ import (
 	"errors"
     "bytes"
     "math"
+    "strconv"
     "encoding/base64"
     "encoding/json"
     "strings"
@@ -18,7 +19,7 @@ func buildConversionLib() {
 
 	features["conversion"] = Feature{version: 1, category: "os"}
 	categories["conversion"] = []string{
-        "byte","int", "float", "string", "kind", "chr", "ascii",
+        "byte","int", "float", "bool", "string", "kind", "chr", "ascii",
         "is_number","base64e","base64d","json_decode","json_format",
     }
 
@@ -142,6 +143,30 @@ func buildConversionLib() {
 		}
 		return 0, err
 	}
+
+
+	slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert to an boolean."}
+	stdlib["bool"] = func(args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return -1, errors.New("invalid arguments provided to bool()")
+		}
+        switch args[0].(type) {
+        /*
+        case interface{}:
+            b, err := strconv.ParseBool(string(args[0].(interface{})))
+            if err==nil {
+                return b, nil
+            }
+        */
+        case string:
+            b, err := strconv.ParseBool(args[0].(string))
+            if err==nil {
+                return b, nil
+            }
+        }
+		return false, errors.New(sf("could not convert [%T] (%v) to bool in bool()",args[0],args[0]))
+	}
+
 
 	slhelp["int"] = LibHelp{in: "number_form", out: "integer", action: "Convert to an integer."}
 	stdlib["int"] = func(args ...interface{}) (ret interface{}, err error) {
