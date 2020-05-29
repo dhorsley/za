@@ -389,6 +389,31 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
     }
 
+    if len(va) > len(functionArgs[base]) {
+        report(ifs,-1,"Syntax error: too many call arguments provided.")
+        finish(false,ERR_SYNTAX)
+        return
+    }
+
+    // missing varargs in call result in empty string assignments:
+    if functionArgs[base]!=nil {
+        if len(functionArgs[base])>len(va) {
+            for e:=0; e<(len(functionArgs[base])-len(va)); e++ {
+                va=append(va,"")
+            }
+        }
+    }
+
+
+    tco:=false
+
+    //
+    // re-entry point for recursive tail calls
+    //
+
+tco_reentry:
+
+
     if varmode == MODE_NEW {
 
         // in interactive mode, the current functionspace is 0
@@ -400,10 +425,22 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
 
         // create the local variable storage for the function
-        if lockSafety { vlock.RLock() }
-        vtm:=vtable_maxreached
-        if lockSafety { vlock.RUnlock() }
-        if ifs>=vtm { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
+        var vtm uint64
+        if ! tco {
+
+            lastfs=ifs
+
+            if lockSafety { vlock.RLock() }
+            vtm=vtable_maxreached
+            if lockSafety { vlock.RUnlock() }
+            if ifs>=vtm { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
+            if lockSafety { globlock.Lock() }
+            test_group = ""
+            test_name = ""
+            test_assert = ""
+            if lockSafety { globlock.Unlock() }
+
+        }
 
         // nesting levels in this function
         if lockSafety { looplock.Lock() }
@@ -414,15 +451,11 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         varcount[ifs] = 0
         if lockSafety { vlock.Unlock() }
 
-        if lockSafety { globlock.Lock() }
-        test_group = ""
-        test_name = ""
-        test_assert = ""
-        if lockSafety { globlock.Unlock() }
-
         if lockSafety { lastlock.Lock() }
         lastConstruct[ifs] = []int{}
         if lockSafety { lastlock.Unlock() }
+
+        vset(ifs,"@in_tco",false)
 
     }
 
@@ -430,17 +463,11 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // initialise the loop positions: FOR, FOREACH, WHILE
 
     if lockSafety { looplock.Lock() }
-
     wccount[ifs] = 0
-
     // allocate loop storage space if not a repeat ifs value.
-
     if lockSafety { vlock.RLock() }
-    // if ifs>=vtable_maxreached {
-        loops[ifs] = make([]s_loop, MAX_LOOPS)
-    // }
+    loops[ifs] = make([]s_loop, MAX_LOOPS)
     if lockSafety { vlock.RUnlock() }
-
     if lockSafety { looplock.Unlock() }
 
     // assign value to local vars named in functionArgs (the call parameters) from each 
@@ -452,6 +479,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     pf("va    -> %#v\n",va)
     pf("fargs -> %#v\n",functionArgs[base])
     */
+
+    /* moved above tco start
 
     if len(va) > len(functionArgs[base]) {
         report(ifs,-1,"Syntax error: too many call arguments provided.")
@@ -468,6 +497,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
     }
 
+    */
+
     if len(va) > 0 {
         for q, v := range va {
             fa:=functionArgs[base][q]
@@ -478,7 +509,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // pre-calculate the len to save the extra overhead during the call loop
     finalline = len(functionspaces[base])
 
-    inside_test := false
+    inside_test := false            // are we currently inside a test bock
 
     inside_with := false            // WITH cannot be nested and remains local in scope.
     current_with_var := ""
@@ -487,7 +518,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
 
-    pc = -1 // program counter : increments to zero at start of loop
+    pc = -1                         // program counter : increments to zero at start of loop
 
     for {
 
@@ -504,7 +535,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             pane_redef()
         }
 
-        // cache the next Phrase: for readability and performance (we read from this slice index often)
+        // get the next Phrase
         inbound = &functionspaces[base][pc]
         // debug(20,sf("Now processing [%d-%d]: %v\n",ifs,pc,inbound.Original))
 
@@ -542,7 +573,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
 
         // finally... start processing the statement.
-
         ondo_reenter:
 
         statement := inbound.Tokens[0]
@@ -2147,9 +2177,109 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 if str.Trim(cet.text, " \t") != "" { // found something
+
+                    // tco goes here...
+                    //  this only deals with calls to same function we can do other options
+                    //  later. i think only difference would be recalculating the ifs+base 
+                    //  args from call. may be some other changes needed too.
+
+                    // if tokens had thisFunc in calls, *and*
+                    // no other tokens except the call params
+                    // then....
+
+                    tco_check:=false // disable until we check all is well
+                    bname, _ := numlookup.lmget(base)
+
+                    if tokencount > 2 {
+                        // 0:RETURN 1:fn/var_name 2+:(expression)
+                        // if only a var_name, then tokencount must be 2
+
+                        // pf("This func is  -> <%v>\n",fs)
+                        // pf("Base func is  -> <%v>\n",bname)
+                        // pf("Call token is -> <%v>\n",inbound.Tokens[1].tokText)
+
+                        if bname==inbound.Tokens[1].tokText {
+                            tco_check=true
+                        }
+                    }
+
+                    if tco_check {
+
+                        skip_reentry:=false
+
+                        r,_:=userDefEval(ifs,inbound.Tokens[1:])
+
+                        // until we have more logic in here, also skip if
+                        // there's *anything* left in the expression after
+                        // the initial func call
+                        cet := crushEvalTokens(r[2:])
+                        if cet.text != "" { skip_reentry=true }
+
+                        // this will be re-enabled when we do more complex checking:
+
+                        // check no more calls with same func name:
+                        // if str.Contains(cet.text,bname) {
+                        //     skip_reentry=true
+                        // }
+
+                        // now pick through r, setting each va in turn...
+
+                        if !skip_reentry {
+
+                            // strip paren
+                            ex := stripOuter(r[1].tokText,'(')
+                            ex  = stripOuter(ex, ')')
+
+                            // split by comma
+                            var dargs []string
+
+                            if len(ex)>0 {
+                                dargs = str.Split(ex, ",")
+                                for arg:=range dargs {
+                                    dargs[arg]=str.Trim(dargs[arg]," \t")
+                                }
+                            } else {
+                                skip_reentry=true // no args
+                            }
+
+                            // repopulate va with expression results from the return expressions
+
+                            full_break:=false
+
+                            if len(va) == len(dargs) {
+
+                                for q, _ := range va {
+                                    expr, ef, err := ev(ifs, dargs[q], false, true)
+                                    if ef || expr==nil || err != nil {
+                                        report(ifs,lastline,"Could not evaluate RETURN expression")
+                                        finish(true,ERR_EVAL)
+                                        full_break=true
+                                        break
+                                    }
+                                    va[q]=expr
+                                }
+
+                            } else {
+                                skip_reentry=true
+                            }
+
+                            if full_break { break }
+
+                        }
+
+                        if !skip_reentry {
+                            vset(ifs,"@in_tco",true)
+                            pc=-1
+                            goto tco_reentry
+                        }
+
+                    }
+
+                    // normal return (non tco)
+
                     expr,ef := wrappedEval(ifs, cet, true) // evaluate it
                     if !ef && !expr.evalError { // no error?
-                        // retvals = append(retvals, expr.result)
+
                         retval = expr.result
                         if ifs<=2 {
                             if exitCode,not_ok:=GetAsInt(expr.result); not_ok {
@@ -2422,7 +2552,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             // create a whenCarton and increase the nesting level
             if lockSafety { looplock.Lock() }
             wccount[ifs]++
-            wc[wccount[ifs]] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true, broken: false}
+            // wc[wccount[ifs]] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true, broken: false}
+            wc[wccount[ifs]] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true}
             depth[ifs]++
             if lockSafety { looplock.Unlock() }
 
@@ -2569,7 +2700,6 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             breakIn = Error
 
             if lockSafety { lastlock.Lock() }
-            // lastConstruct[ifs] = lastConstruct[ifs][:d-1]
             lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
             if lockSafety { lastlock.Unlock() }
 
@@ -3167,9 +3297,11 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             // try to eval and assign
             cet := crushEvalTokens(inbound.Tokens)
             tmpres,_ := wrappedEval(ifs, cet, true)
+            /*
             if tmpres.evalError && tmpres.reason != "" {
                 pf("Code %v: [#2]%s[#-]\n", tmpres.evalCode, tmpres.reason)
             }
+            */
             if tmpres.evalError { break }
 
         } // end-statements-case

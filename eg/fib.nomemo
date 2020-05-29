@@ -1,15 +1,14 @@
 #!/usr/bin/za
 
 define fib(n)
-#    setglob calls = getglob("calls")+1
+    setglob calls = getglob("calls")+1
     on n<=1 do return n
     return fib(n-1)+fib(n-2)
 enddef
 
-
-#calls=0
+calls=0
 input x param 1
 println fib(x)
-#println "calls -> {calls}"
+println "calls -> {calls}"
 
 

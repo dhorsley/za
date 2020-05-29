@@ -1,0 +1,19 @@
+#!/usr/bin/za
+
+define fib(n)
+    return fib_tr(n,0,1)
+enddef
+
+define fib_tr(n, a, b) 
+    on !tco() do setglob calls = getglob("calls")+1
+    on n==0 do return a
+    on n==1 do return b
+    return fib_tr(n-1,b,a+b)
+enddef
+
+calls=0
+input x param 1
+println fib(x)
+println "calls -> {calls}"
+
+
