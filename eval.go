@@ -635,42 +635,9 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                         // replace the expression
                         temp,_ := vget(ifs, "@temp")
                         switch temp.(type) {
-                        /*
-                        case map[string]interface{}:
-                            new_tok.tokVal = temp
-                        case string:
-                            new_tok.tokVal = temp
-                        case float32:
-                            new_tok.tokVal = temp
-                        case float64:
-                            new_tok.tokVal = temp
-                        case int64:
-                            new_tok.tokVal = temp
-                        case uint8:
-                            new_tok.tokVal = temp
-                        case []bool:
-                            new_tok.tokVal = temp
-                        case []uint8:
-                            new_tok.tokVal = temp
-                        case []string:
-                            new_tok.tokVal = temp
-                        case []float64:
-                            new_tok.tokVal = temp
-                        case []int:
-                            new_tok.tokVal = temp
-                        case int:
-                            new_tok.tokVal = temp
-                        case webstruct:
-                            new_tok.tokVal = temp
-                        case http.Header:
-                            new_tok.tokVal = temp
-                        */
                         case bool:
                             // true and false are both treated as identifiers.
                             new_tok.tokType = Identifier
-//                            new_tok.tokVal = temp
-//                        default:
-                            // pf("DEFAULT : Did not handle '%+v' in buildRhs().\n",temp)
                         }
 
                         new_tok.tokVal = temp
@@ -795,8 +762,6 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 /// convert a token stream into a single expression struct
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
-    crushFormat:="%v"
-
     token := intoks[0]
 
     if token.tokType == EOL || token.tokType == SingleComment {
@@ -804,10 +769,8 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
     }
 
     var id str.Builder
-    // id.Grow(32)
     id.Grow(16)
     var crushedOpcodes str.Builder
-    // crushedOpcodes.Grow(256)
     crushedOpcodes.Grow(16)
 
     var assign bool
@@ -819,7 +782,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
         if token.tokVal==nil {
             crushedOpcodes.WriteString(token.tokText)
         } else {
-            crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
+            crushedOpcodes.WriteString(sf("%v",token.tokVal))
         }
 
     case tc == 2:
@@ -829,7 +792,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
             if token.tokVal==nil {
                 crushedOpcodes.WriteString(token.tokText)
             } else {
-                crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
+                crushedOpcodes.WriteString(sf("%v",token.tokVal))
             }
         }
 
@@ -853,7 +816,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
                 if token.tokVal==nil {
                     crushedOpcodes.WriteString(token.tokText)
                 } else {
-                    crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
+                    crushedOpcodes.WriteString(sf("%v",token.tokVal))
                 }
             }
         } else {
@@ -862,7 +825,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
                 if token.tokVal==nil {
                     crushedOpcodes.WriteString(token.tokText)
                 } else {
-                    crushedOpcodes.WriteString(sf(crushFormat,token.tokVal))
+                    crushedOpcodes.WriteString(sf("%v",token.tokVal))
                 }
             }
         }
@@ -895,10 +858,7 @@ func tokenise(s string) (toks []Token) {
 /// this function handles boxing/unboxing around the ev() call
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
-    // pf("wrappedEval() : called from fs:{%v} with interpolation:%v -> %v\n",fs,interpol,expr.text)
-    // debug(20,"ev called in wrappedeval: "+expr.text+"\n")
     v, _ , err := ev(fs, expr.text, interpol, true)
-    // pf("wrappedEval() : returned from ev() with %v\n",v)
 
     if err!=nil {
         expr.evalError=true
@@ -918,7 +878,6 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     if !expr.assign {
         // pf("returning from wrappedEval of <<%v>> with -> <<%v>>\n",expr.text,expr.result)
         return expr, false
-        // return expr, ef
     }
 
     pos := str.IndexByte(expr.assignVar, '[')
@@ -926,11 +885,9 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         epos := str.IndexByte(expr.assignVar, ']')
         if epos != -1 {
             // handle array reference
-            // debug(20,"ev called in wrappedeval(array): "+expr.assignVar[pos+1:epos]+"\n")
             element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
             if err!=nil {
                 expr.evalError=true
-                // return expr, ef
                 return expr, false
             }
             switch element.(type) {
@@ -944,15 +901,12 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                 }
                 vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
             }
-            // DONKEY
-            // return expr,false
         }
     }
 
     // non indexed
     inter,_:=interpolate(fs,expr.assignVar,true) // for indirection
     vset(fs, inter, expr.result)
-    // vset(fs, expr.assignVar, expr.result)
 
     return expr,false
 

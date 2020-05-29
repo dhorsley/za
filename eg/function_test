@@ -1,4 +1,4 @@
-#!/usr/bin/za -f
+#!/usr/bin/za
 
 cls
 pane define "envs",2,10,12,50," [#6][#i1]Environment[#-][##] ","double"
@@ -16,4 +16,5 @@ at 10,3; print "Distribution Version : "+release_version()
 
 pane select "global"
 at 17,1
+print "Done"
 

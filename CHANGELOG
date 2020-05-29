@@ -112,6 +112,31 @@ CHANGE LOG
 
         * added: eg/args for processing CLI args.
 
+        * started work on tail call optimization
+
+            * in the first instance (and probably the only one!) we have added some simple tail recursion 
+               elimination on return statements
+
+                Under these conditions the function will be re-used:
+                    1. executing a RETURN statement, and,
+                    2. there is a function call to the same function name already executing, and
+                    3. the function has parameters, and
+                    4. there are no other subsequent parts to the return expression than the function call.
+
+                If these conditions are met, then various counters are reset, and each argument in the return
+                 expressions are evaluated and their results stored in the variables defined as input parameters
+                 for the current function. Subsequently execution jumps back to immediately before the point
+                 at which the first line of code of the function is executed.
+
+                This has had a massive impact on certain forms of recursive function. Please see the examples
+                eg/fib.nomemo and eg/fib.tailrec for comparison.
+
+                Obviously, you still have to write recursive functions in a manner which takes advantage of this.
+                 It's still interpreted, after all!
+
+            * added: tco() library call, to check if the current function is in a TCE loop. This is useful for 
+                keeping counters in benchmarks.
+
 
 1.0.3
 

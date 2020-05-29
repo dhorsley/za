@@ -45,8 +45,7 @@ type call_s struct {
 	fs      string   // the text name of the calling party
 	caller  uint64   // the thing which made the call
 	base    uint64   // the original functionspace location of the source
-	// retvars []string // the lhs var in the caller to be assigned back to
-	retvar  string // the lhs var in the caller to be assigned back to
+	retvar  string   // the lhs var in the caller to be assigned back to
 }
 
 func (cs call_s) String() string {
@@ -67,7 +66,7 @@ type Feature struct {
 type whenCarton struct {
 	endLine   int         // where is the endWhen, so that we can break or skip to it
 	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
-	broken    bool        // might not use this. set when a BREAK has been encountered.
+	// broken    bool        // might not use this. set when a BREAK has been encountered.
 	dodefault bool        // set false when another clause has been active
 }
 
@@ -75,13 +74,12 @@ type whenCarton struct {
 //
 // holds an expression to be evaluated and its result
 type ExpressionCarton struct {
-	//     spaced      string              // for text/cmd processing
 	text      string      // total expression
 	assign    bool        // is this an assignment expression
 	assignVar string      // name of var to assign to
 	evalError bool        // did the evaluation succeed
-	evalCode  int         // error code returned on failure
-	reason    string      // failure reason
+	// evalCode  int         // error code returned on failure
+	// reason    string      // failure reason
 	result    interface{} // result of evaluation
 }
 

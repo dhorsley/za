@@ -19,6 +19,14 @@
     * definite artifacts left over, for example, if you do a mismatch like WITH...; ... ; ENDWHEN.
         * the with clause closes off without removing the temp.
 
+* tail recursion elimination
+    * we are currently blindly copying in arguments from recursive return caller to the entry arguments
+        * this needs some type checking around it (using functionArgs list).
+            Not too bothered if it gets wrong results and continues, but should at least warn when this happens.
+
+* either CLS or AT is interfering with continuity during eg/all tests. Something amiss there in terminal control.
+    probably not a big problem, was working okay previously and those statements haven't been touched for a long time,
+    so it is probably a peculiarity of the terminal. check anyway.
 
 
 
