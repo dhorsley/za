@@ -1,0 +1,12 @@
+#!/usr/bin/za
+
+module "syntax_checks/math.mod"
+
+input x param 1
+x=int(x)
+
+println factorial(x)
+
+
+
+

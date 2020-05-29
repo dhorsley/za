@@ -1,0 +1,20 @@
+#!/usr/bin/za
+
+cls
+pane define "envs",2,10,12,50," [#6][#i1]Environment[#-][##] ","double"
+pane select "envs"
+
+at  2,3; print "Bash Version         : "+bash_version()
+at  3,3; print "Bash Major Version   : "+bash_versinfo()
+at  4,3; print "User                 : "+user()
+at  5,3; print "OS                   : "+os()
+at  6,3; print "Home                 : "+home()
+at  7,3; print "Locale               : "+lang()
+at  8,3; print "Distribution         : "+release_name()
+at  9,3; print "Distribution ID      : "+release_id() 
+at 10,3; print "Distribution Version : "+release_version()
+
+pane select "global"
+at 17,1
+print "Done"
+

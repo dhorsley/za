@@ -73,7 +73,7 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","length",
+        "globlen","len","length","tco",
     }
 
 
@@ -229,6 +229,12 @@ func buildInternalLib() {
     slhelp["thisref"] = LibHelp{in: "", out: "func_ref_num", action: "Find this function's handle."}
     stdlib["thisref"] = func(args ...interface{}) (ret interface{}, err error) {
         return lastfs, nil
+    }
+
+    slhelp["tco"] = LibHelp{in: "", out: "bool", action: "are we currently in a tail call loop?"}
+    stdlib["tco"] = func(args ...interface{}) (ret interface{}, err error) {
+        b,_:=vget(lastfs,"@in_tco")
+        return b.(bool), nil
     }
 
     slhelp["local"] = LibHelp{in: "string", out: "value", action: "Return this local variable's value."}

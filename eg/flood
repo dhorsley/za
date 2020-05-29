@@ -26,10 +26,10 @@ for nr=1 to max_reps
     for e=0 to cy-1
 
         for r=0 to 359
-            px=cx+2*sin(r)*e
-            py=1.0+cy+cos(r)*e
+            px=cx-1+2*e*sin(r)
+            py=1.0+cy+e*cos(r)
             at py,px
-            print "[#b{col}] "
+            print "[#b{col}]   "
         endfor
         col=rand(7)
 
@@ -37,4 +37,5 @@ for nr=1 to max_reps
 
 endfor
 
-at h-5,1; print "[#default]"
+at h-4,1; print "[#default]"
+at h-5,1; println "h,w={h},{w}"
