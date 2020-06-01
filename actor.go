@@ -344,9 +344,11 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // if lockSafety { calllock.RUnlock() }
 
     var inbound *Phrase
+    var current_with_handle *os.File
 
     defer func() {
         if r := recover(); r != nil {
+
             if _, ok := r.(runtime.Error); ok {
                 pf("Fatal error on ( %v )\n",inbound.Original)
                 pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
@@ -354,6 +356,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
                     os.Exit(127)
                 }
             }
+            setEcho(true)
             err := r.(error)
             pf("error : %v\n",err)
             panic(r)
@@ -513,7 +516,6 @@ tco_reentry:
 
     inside_with := false            // WITH cannot be nested and remains local in scope.
     current_with_var := ""
-    var current_with_handle *os.File
 
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
@@ -853,7 +855,7 @@ tco_reentry:
                     validated = true
                 } else {
 
-                    wrappedEval,ef := wrappedEval(ifs, exp, false)
+                    wrappedEval,ef := wrappedEval(ifs, exp, true)
                     if ef || wrappedEval.evalError {
                         report(ifs,lastline, sf("error evaluating term in FOREACH statement '%v'",exp.text))
                         finish(false,ERR_EVAL)
@@ -2578,6 +2580,7 @@ tco_reentry:
             if d == 0 || (d > 0 && lcifs != C_When) {
                 if lockSafety { looplock.RUnlock() }
                 report(ifs,lastline, "Not currently in a WHEN block.")
+                finish(false,ERR_SYNTAX)
                 break
             }
 
@@ -2758,22 +2761,25 @@ tco_reentry:
             current_with_var=fname
             current_with_handle=tfile
 
+            defer func() {
+                remfile:=current_with_handle.Name()
+                current_with_handle.Close()
+                current_with_handle=nil
+                err:=os.Remove(remfile)
+                if err!=nil {
+                    report(ifs,lastline,sf("WITH could not remove temporary file '%s'",remfile))
+                    finish(true,ERR_FATAL)
+                }
+            }()
+
         case C_Endwith:
             if !inside_with {
                 report(ifs,lastline,"ENDWITH without a WITH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
+
             vunset(ifs,current_with_var)
-            remfile:=current_with_handle.Name()
-            current_with_handle.Close()
-            err:=os.Remove(remfile)
-            if err!=nil {
-                report(ifs,lastline,sf("WITH could not remove temporary file '%s'",remfile))
-                finish(true,ERR_FATAL)
-                break
-            }
-            current_with_handle=nil
             current_with_var=""
             inside_with=false
 
@@ -2902,15 +2908,6 @@ tco_reentry:
 
         case C_Prompt:
 
-            // if on windows, return an error
-            /*
-            if runtime.GOOS == "windows" {
-                pf("PROMPT not supported on windows.\n")
-                finish(false,ERR_SYNTAX)
-                break
-            }
-            */
-
             // else continue
 
             if tokencount < 2 {
@@ -2933,14 +2930,14 @@ tco_reentry:
                 } else {
                     // prompt command:
                     if tokencount < 3 || tokencount > 4 {
-                        report(ifs,lastline,  "Incorrect arguments for PROMPT command.\n")
+                        report(ifs,lastline, "Incorrect arguments for PROMPT command.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
                         validator := ""
                         broken := false
-                        expr, ef, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true,true)
-                        if ef || expr==nil {
+                        expr, _, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true, true)
+                        if expr==nil {
                             report(ifs, lastline, "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
                             break
@@ -2948,12 +2945,19 @@ tco_reentry:
                         if prompt_ev_err == nil {
                             // @todo: allow an expression instead of the string literal for validator
                             processedPrompt := expr.(string)
+                            echoMask,_:=vget(0,"@echomask")
                             if tokencount == 4 {
-                                validator = stripOuter(inbound.Tokens[3].tokText, '"')
+                                val_ex,_,val_ex_error := ev(ifs, inbound.Tokens[3].tokText, true, true)
+                                if val_ex_error != nil {
+                                    report(ifs,lastline,"Validator invalid in PROMPT!")
+                                    finish(false,ERR_EVAL)
+                                    break
+                                }
+                                validator = val_ex.(string)
                                 intext := ""
                                 validated := false
                                 for !validated || broken {
-                                    intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false)
+                                    intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                     validated, _ = regexp.MatchString(validator, intext)
                                 }
                                 if !broken {
@@ -2961,7 +2965,7 @@ tco_reentry:
                                 }
                             } else {
                                 var inp string
-                                inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false)
+                                inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                 vset(ifs, inbound.Tokens[1].tokText, inp)
                             }
                             if broken {

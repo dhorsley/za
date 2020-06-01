@@ -2,11 +2,13 @@
 
 package main
 
+
 import (
     "encoding/binary"
     "errors"
     "io/ioutil"
     "os"
+	// "golang.org/x/sys/unix"
     "unicode/utf8"
     "reflect"
     "regexp"
@@ -14,6 +16,7 @@ import (
     "sort"
     str "strings"
 )
+
 
 const (
     _AT_NULL             = 0
@@ -73,7 +76,7 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","length","tco",
+        "globlen","len","length","tco", "echo","getrow","getcol","unmap",
     }
 
 
@@ -150,7 +153,6 @@ func buildInternalLib() {
 
     slhelp["eval"] = LibHelp{in: "string", out: "various", action: "evaluate expression in [#i1]string[#i0]."}
     stdlib["eval"] = func(args ...interface{}) (ret interface{}, err error) {
-
         if len(args) == 1 {
             lastlock.RLock()
             lfs:=lastfs
@@ -162,6 +164,57 @@ func buildInternalLib() {
             }
         }
         return nil, nil
+    }
+
+    slhelp["getrow"] = LibHelp{in: "", out: "number", action: "row position of console text cursor."}
+    stdlib["getrow"] = func(args ...interface{}) (ret interface{}, err error) {
+        r,_:=GetCursorPos()
+        if runtime.GOOS=="windows" { r++ }
+        return r, nil
+    }
+
+    slhelp["getcol"] = LibHelp{in: "", out: "number", action: "column position of console text cursor."}
+    stdlib["getcol"] = func(args ...interface{}) (ret interface{}, err error) {
+        _,c:=GetCursorPos()
+        if runtime.GOOS=="windows" { c++ }
+        return c, nil
+    }
+
+    slhelp["echo"] = LibHelp{in: "bool[,mask]", out: "bool", action: "Enable (default) or disable local echo. Optionally, set the mask character to be used during input. Current visibility state is returned."}
+    stdlib["echo"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args)>2 {
+            return nil,errors.New("incorrect argument count for echo().")
+        }
+
+        se:=true
+        if len(args)>0 {
+            switch args[0].(type) {
+            case bool:
+                if args[0].(bool) {
+                    se=true
+                    vset(0, "@echo", true)
+                } else {
+                    se=false
+                    vset(0, "@echo", false)
+                }
+            default:
+                return nil,errors.New("echo() accepts a boolean value only.")
+            }
+        }
+
+        mask,_:=vget(0,"@echomask")
+        if len(args)>1 {
+            switch args[1].(type) {
+            case string:
+                mask=args[1].(string)
+            default:
+                return nil,errors.New("echo() accepts a string value for mask.")
+            }
+        }
+
+        setEcho(se)
+        vset(0,"@echomask", mask)
+        return se,nil
     }
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable ANSI colour support at runtime."}
@@ -323,6 +376,28 @@ func buildInternalLib() {
         return nil, errors.New("Bad args to getglob()")
     }
 
+    slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key"}
+    stdlib["unmap"] = func(args ...interface{}) (ret interface{}, err error) {
+        if len(args) != 2 {
+            return false, errors.New("bad argument count in unmap()")
+        }
+        if reflect.TypeOf(args[0]).Name() != "string" || reflect.TypeOf(args[1]).Name() != "string" {
+            return false, errors.New("arguments to unmap() must be strings.")
+        }
+
+        var v interface{}
+        var found bool
+
+        if v, found = vget(lastfs, args[0].(string)); !found {
+            return false, nil
+        }
+        if _, found = v.(map[string]interface{})[args[1].(string)].(interface{}); found {
+            vdelete(lastfs,args[0].(string),args[1].(string))
+            return true,nil
+        }
+        return false, nil
+    }
+
     slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]?"}
     stdlib["key"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
@@ -428,7 +503,14 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["keypress"] = LibHelp{in: "", out: "int", action: "Returns an integer corresponding with a keypress."}
+/*
+    slhelp["keypeek"] = LibHelp{in: "", out: "int", action: "Returns an integer corresponding with a currently held down keypress."}
+    stdlib["keypeek"] = func(args ...interface{}) (ret interface{}, err error) {
+        return wrappedGetCh(-1), nil
+    }
+*/
+
+    slhelp["keypress"] = LibHelp{in: "timeout", out: "int", action: "Returns an integer corresponding with a keypress."}
     stdlib["keypress"] = func(args ...interface{}) (ret interface{}, err error) {
 
         timeo := int64(0)

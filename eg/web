@@ -7,7 +7,7 @@ module "web_modules/aws_handler"
 # GLOBALS
 
 PORT=8080
-POLL_TIMEOUT=5000
+POLL_TIMEOUT=5000*1000
 HOME_PATH="/home/daniel/www"
 
 # FUNCTIONS

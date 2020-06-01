@@ -16,7 +16,6 @@ import (
     "golang.org/x/sys/unix"
     "strconv"
     "unicode/utf8"
-    // "path/filepath"
     "regexp"
     "sort"
     str "strings"
@@ -35,6 +34,40 @@ var completions = []string{"ZERO", "INC", "DEC",
 }
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+
+const ioctlReadTermios = unix.TCGETS
+const ioctlWriteTermios = unix.TCSETS
+
+func setEcho(s bool) {
+    if s {
+        enableEcho()
+    } else {
+        disableEcho()
+    }
+}
+
+func disableEcho() {
+    termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
+	if err == nil {
+        newState := *termios
+        newState.Lflag |= unix.ICANON | unix.ISIG
+        newState.Iflag |= unix.ICRNL
+        newState.Lflag &^= unix.ECHO
+	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+    }
+}
+
+
+func enableEcho() {
+    termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
+	if err == nil {
+        newState := *termios
+        newState.Lflag |= unix.ICANON | unix.ISIG
+        newState.Iflag |= unix.ICRNL
+        newState.Lflag |= unix.ECHO
+	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+    }
+}
 
 /// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
@@ -84,13 +117,6 @@ func spf(ns uint64, s string) string {
 /// apply ansi code translation to inbound strings
 func sparkle(a string) string {
     a=fairyReplacer.Replace(a)
-    /*
-    a = str.Replace(a, "[#-]", "[#fakm]", -1)
-    a = str.Replace(a, "[##]", "[#fakb]", -1)
-    for k, v := range fairydust {
-    a = str.Replace(a, sf("[#%s]",k), v, -1)
-    }
-    */
     return (a)
 }
 
@@ -146,6 +172,7 @@ func setupAnsiPalette() {
         fairydust["underline"] = "\033[4m"
         fairydust["invert"] = "\033[7m"
         fairydust["bold"] = "\033[1m"
+        fairydust["boff"] = "\033[22m"
         fairydust["-"] = "\033[0m"
         fairydust["#"] = "\033[49m"
         fairydust["bdefault"] = "\033[49m"
@@ -189,26 +216,36 @@ func setupAnsiPalette() {
         fairydust["framed"] = "\033[51m"
         fairydust["CSI"] = "\033["
 
+        ansiReplacables=[]string{}
 
         for k,v := range fairydust {
             ansiReplacables=append(ansiReplacables,"[#"+k+"]")
             ansiReplacables=append(ansiReplacables,v)
         }
-
         fairyReplacer=str.NewReplacer(ansiReplacables...)
 
     } else {
+
         var ansiCodeList=[]string{"b0","b1","b2","b3","b4","b5","b6","b7","0","1","2","3","4","5","6","7","i1","i0",
-                "default","underline","invert","bold","-","#","bdefault","bblack","bred",
+                "default","underline","invert","bold","boff","-","#","bdefault","bblack","bred",
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
                 "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",
                 "fbblue","fbmagenta","fbcyan","fwhite","dim","blink","hidden","crossed","framed","CSI",
         }
 
+        ansiReplacables=[]string{}
+
         for _,c:= range ansiCodeList {
             fairydust[c]=""
         }
+
+        for k,v := range fairydust {
+            ansiReplacables=append(ansiReplacables,"[#"+k+"]")
+            ansiReplacables=append(ansiReplacables,v)
+        }
+        fairyReplacer=str.NewReplacer(ansiReplacables...)
+
     }
 }
 
@@ -276,7 +313,7 @@ var bigbytelist = make([]byte,3*4096)
 func getch(timeo int) ( []byte, bool, bool, string ) {
     tt, _ := term.Open("/dev/tty")
     term.RawMode(tt)
-    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
+    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Microsecond))
     numRead, err := tt.Read(bigbytelist)
 
     tt.Flush()
@@ -499,8 +536,40 @@ func getWord(s string, c int) string {
 
 }
 
+func GetCursorPos() (int,int) {
+
+    buf:=make([]byte,15,15)
+    var r,c int
+
+    tt, _ := term.Open("/dev/tty")
+
+    term.RawMode(tt)
+    tt.Write([]byte("\033[6n"))
+
+    n,_:=tt.Read(buf)
+
+    if n>0 {
+        endpos:=str.IndexByte(string(buf),'R')
+        if endpos==-1 {
+            r=-1; c=-1
+        } else {
+            op:=string(buf[2:endpos])
+            parts:=str.Split(op,";")
+            r,_=GetAsInt(parts[0])
+            c,_=GetAsInt(parts[1])
+        }
+    }
+
+    tt.Flush()
+    tt.Restore()
+    tt.Close()
+    return r,c
+
+}
+
+
 /// get an input string from stdin, in raw mode
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool) (s string, eof bool, broken bool) {
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     sprompt := sparkle(prompt)
 
@@ -540,13 +609,23 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     // change input colour
     pf(sparkle(pcol))
 
+    // get echo status
+    echo,_:=vget(0,"@echo")
+    if mask=="" { mask="*" }
+
     for {
+
+        dispL := rlen(s)
 
         // show input
         at(irow, icol)
-        dispL := rlen(s)
         clearToEOPane(irow, icol, 2+dispL+displayedLen(helpstring))
-        fmt.Print(s)
+        if echo.(bool) {
+            pf(s)
+        } else {
+            l:=rlen(s)
+            pf(str.Repeat(mask,l))
+        }
         pf(helpstring)
 
         // print cursor
@@ -925,7 +1004,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
     at(irow, icol)
     clearToEOPane(irow, icol, displayedLen(s))
-    pf("%s", sparkle(recolour+StripCC(s)+"[#-]"))
+    if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
 
     return s, eof, broken
 }

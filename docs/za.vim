@@ -22,12 +22,6 @@ set bg&
 
 " Error Codes: {{{1
 " ============
-" if !exists("g:sh_no_error")
-"  syn match   WhenError "\<endwhen\>"
-"  syn match   IfError "\<endif\>"
-"  syn match   InError "\<in\>"
-"  syn match   OK	'\.\(endwhen|endwhile|endfor|endif|endtest\|in\)'
-" endif
 
 
 " Operators: {{{1
@@ -161,8 +155,13 @@ syntax match internal_functions "\s*pane_w\s*("he=e-1
 syntax match internal_functions "\s*utf8supported\s*("he=e-1
 syntax match internal_functions "\s*system\s*("he=e-1
 syntax match internal_functions "\s*locks\s*("he=e-1
+syntax match internal_functions "\s*echo\s*("he=e-1
 syntax match internal_functions "\s*ansi\s*("he=e-1
 syntax match internal_functions "\s*interpol\s*("he=e-1
+syntax match internal_functions "\s*tco\s*("he=e-1
+syntax match internal_functions "\s*echo\s*("he=e-1
+syntax match internal_functions "\s*getrow\s*("he=e-1
+syntax match internal_functions "\s*getcol\s*("he=e-1
 
 syntax match image_functions "\s*svg_start\s*("he=e-1
 syntax match image_functions "\s*svg_end\s*("he=e-1
@@ -329,10 +328,10 @@ syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(for\|nop\|log\|cls\|web\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|when\|hist\|exit\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(pause\|debug\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(version\|require\|println\|setglob\|showdef\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(version\|require\|println\|setglob\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|foreach\|continue\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(accessfile\)\($\|\s\+\)"
 
@@ -393,6 +392,7 @@ syn region Paren start='[^$]\zs(\%(\ze[^(]\|$\)' end=')' contains=@ArithParenLis
 " Unused: {{{1
 " =======
 " syntax region beMatches matchgroup=beMatchFor    start="\<foreach\|for\>" end="\<endfor\>" contains=ALL
+" syntax region beMatches matchgroup=beMatchWith   start="\<with\>" end="\<endwith\>" contains=ALL
 " syntax region beMatches matchgroup=beMatchWhen   start="\<when\>" end="\<endwhen\>" contains=ALL
 " syntax region beMatches matchgroup=beMatchIf     start="\<if\>" end="\<endif\>" contains=ALL
 " syntax region beMatches matchgroup=beMatchDefine start="\<define\>" end="\<enddef\>" contains=ALL

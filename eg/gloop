@@ -1,0 +1,219 @@
+#!/usr/bin/za
+
+doc `
+    really simple game loop
+
+    just wanted to see if the console could manage basic stuff
+
+    it absolutely won't work on windows.
+
+`
+
+module "./gloop.mod"
+
+
+userSigIntHandler="intHandler()"
+
+define intHandler()
+    echo(true)
+    cursoron()
+    at term_h()-1,1; print "[##][#-]"
+    return 127
+enddef
+ 
+
+seed(epoch_nano_time())
+
+ansi(true)
+
+th=term_h()
+tw=term_w()
+
+# player
+px=(tw/2)-2
+py=th-5
+ps=setplayercolour(5)
+pw=7
+pm="       "
+
+
+# ball
+bx=px+3
+by=py-1
+bs=setballcolour(6)
+start_ball_y=by
+box=0
+boy=0
+bm=" "
+
+# life icon
+hx=tw-18
+hy=th-2
+hs=setlivesicons(3)
+
+sprites["player"] =[1,px,py,ps,pm]
+sprites["ball1"]  =[1,bx,by,bs,bm]
+
+# brick
+make_all_layers(5,tw/2)
+
+
+score=0
+lives=3
+quit=false
+
+cls
+cursoroff()
+echo(false)
+
+# frame_rate modulus in nanoseconds (60ms)
+f_rate=60000000
+last_time=epoch_nano_time()
+moving=false
+
+at th-2,tw-60; print "th,tw=({th},{tw})    "
+
+first=true
+
+while !quit
+
+    at th-2,tw-40; print format("Score %5d  Lives ",score)
+
+    if !moving
+        at th-1,20; print "(o) left  (p) right  (space) release  (q) quit"
+    else
+        clear_line(th-1,20)
+    endif
+
+    # print sprites if redraw enabled
+    foreach n in sprites
+        if first || n[0]==1
+            cx=n[1]; cy=n[2]; cs=n[3]
+            at cy,cx; print cs
+        endif
+    endfor
+
+    first=false
+
+    # print info
+    at hy,hx; print hs
+
+    # get input 10ms max wait)
+    k=keypress(10000)
+    when chr(k)
+    is " "
+        if !moving
+            # start ball moving (-3 to +3)
+	        box=0
+            while box==0
+                box=float(rand(7)-4)
+            endwhile
+            boy=-1
+            moving=true
+        endif
+    is "o"
+        if px>3
+            px=px-3
+            on !moving do dec bx 3
+        endif
+    is "p"
+        if px<tw-pw
+            px=px+3
+            on !moving do inc bx 3
+        endif
+    is "q"
+        quit=true
+    endwhen
+
+    # ensure waiting after keypress until time slot is used up
+    last_time=int(epoch_nano_time() / f_rate) * f_rate
+    while epoch_nano_time()<(last_time+f_rate)
+        # delay 1ms
+        pause 1
+    endwhile
+
+    # update sprites
+
+    #.. keep moving
+    if moving
+        bx=bx+box
+        by=by+boy
+    endif
+
+    #.. rebound
+    on bx<2 || bx>tw-1 do box=-box
+    on by<2 do boy=-boy
+
+    #.. collision detection goes here...
+
+    #... ball on brick
+
+    foreach s in sprites
+        on !start(key_s,"brick-") do continue
+        brx=s[1]; bry=s[2]
+        # hit?
+        if bx>=brx && bx<=brx+8 && by==bry
+            unmap("sprites",key_s)
+            # explode
+            at bry,brx; print s[4]
+            # reflect
+            boy=-boy
+            score=score+200
+            break
+        endif
+    endfor
+
+    #... ball on bat
+    bpos=bx-px
+    if moving && ( ( bx>=px-1 && bx<=px+pw ) && (by==py-1) )
+        boy=-boy
+        # extreme edge, reflect acutely
+        on bpos==0 || bpos==6 do box=-box*2
+        # near edge, reflect higher
+        on bpos==1 || bpos==5 do box=box/2
+        # choose angle to reflect depending on middle, left or right side of bat
+        score=score+100
+    endif
+
+    on by>=start_ball_y+1 do ball_lost()
+
+    on lives==0 do break
+
+    # clear old sprites
+    foreach n in sprites
+        if n[0]==1
+            on key_n=="player" && n[1]==px && n[2]==py do continue
+            on key_n=="ball1" && n[1]==bx && n[2]==by do continue
+            at n[2],n[1]; print n[4]
+        endif
+    endfor
+
+    sprites["player"]=[1,px,py,ps,pm]
+    sprites["ball1"]=[1,bx,by,bs,bm]
+
+endwhile
+
+
+# game over
+
+print "[#b1][#6]"
+
+pane define "gameover",th/2-2,tw/2-20,5,40,"","round"
+pane select "gameover"
+
+for e=1 to 4
+    clear_line(e,1)
+endfor
+
+at 2,1; print pad("G A M E   O V E R",0,38," ")
+at 3,1; print pad(format("Score : [#bold]%05d[#boff]",score),0,38," ")
+pause 3000
+pane off
+
+# clean up console a little
+print "[#default]"
+at th-1,1
+cursoron()
+echo(true)
+
+
