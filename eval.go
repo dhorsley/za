@@ -77,6 +77,46 @@ func vunset(fs uint64, name string) {
     if lockSafety { vlock.Unlock() }
 }
 
+
+func vdelete(fs uint64, name string, ename string) {
+    if _, ok := VarLookup(fs, name); ok {
+        m,_:=vget(fs,name)
+        switch m.(type) {
+        case map[string]interface{}:
+            delete(m.(map[string]interface{}),ename)
+            vset(fs,name,m.(map[string]interface{}))
+        case map[string][]string:
+            delete(m.(map[string][]string),ename)
+            vset(fs,name,m.(map[string][]string))
+        case map[string]string:
+            delete(m.(map[string]string),ename)
+            vset(fs,name,m.(map[string]string))
+        case map[string]int:
+            delete(m.(map[string]int),ename)
+            vset(fs,name,m.(map[string]int))
+        case map[string]int32:
+            delete(m.(map[string]int32),ename)
+            vset(fs,name,m.(map[string]int32))
+        case map[string]int64:
+            delete(m.(map[string]int64),ename)
+            vset(fs,name,m.(map[string]int64))
+        case map[string]uint8:
+            delete(m.(map[string]uint8),ename)
+            vset(fs,name,m.(map[string]uint8))
+        case map[string]uint64:
+            delete(m.(map[string]uint64),ename)
+            vset(fs,name,m.(map[string]uint64))
+        case map[string]float64:
+            delete(m.(map[string]float64),ename)
+            vset(fs,name,m.(map[string]float64))
+        case map[string]bool:
+            delete(m.(map[string]bool),ename)
+            vset(fs,name,m.(map[string]bool))
+        }
+    }
+}
+
+
 func vset(fs uint64, name string, value interface{}) bool {
 
     if vi, ok := VarLookup(fs, name); ok {
@@ -665,7 +705,7 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 // var lastreval *[]Token
 // var lastws string
 
-// evaluate an expression string using the third-party goval lib
+// evaluate an expression string using a modified version of the third-party goval lib
 func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
 
     // before tokens are crushed, search for za functions

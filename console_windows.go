@@ -3,7 +3,6 @@
 package main
 
 import (
-//     term "github.com/pkg/term"
     "bytes"
     "fmt"
     "io"
@@ -13,12 +12,11 @@ import (
     "os/exec"
     "bufio"
     "errors"
-    //    "golang.org/x/sys/unix"
     "strconv"
-    // "path/filepath"
     "regexp"
     "syscall"
     "unsafe"
+    "unicode/utf8"
     "unicode/utf16"
     "sort"
     str "strings"
@@ -38,6 +36,24 @@ var completions = []string{"ZERO", "INC", "DEC",
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
 
+func setEcho(s bool) {
+
+    var mode uint32
+    pMode := &mode
+    procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
+
+    var echoMode uint32
+    echoMode = 4
+
+    if s {
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode | echoMode))
+    } else {
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode &^ echoMode))
+    }
+
+}
+
+
 /// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
 
@@ -51,27 +67,43 @@ func pf(s string, va ...interface{}) {
 }
 
 
+/*
+ENABLE_PROCESSED_INPUT          = 0x0001
+ENABLE_LINE_INPUT               = 0x0002
+ENABLE_ECHO_INPUT               = 0x0004
+ENABLE_WINDOW_INPUT             = 0x0008
+ENABLE_MOUSE_INPUT              = 0x0010
+ENABLE_INSERT_MODE              = 0x0020
+ENABLE_QUICK_EDIT_MODE          = 0x0040
+ENABLE_EXTENDED_FLAGS           = 0x0080
+ENABLE_VIRTUAL_TERMINAL_INPUT   = 0x0200
+*/
+
+
 func getch(timeo int) (b []byte,timeout bool) {
-
-    keyRep:=time.Duration(40) *time.Millisecond
-
-    modkernel32 := syscall.NewLazyDLL("kernel32.dll")
-    procFlushConsoleInputBuffer := modkernel32.NewProc("FlushConsoleInputBuffer")
-    procPeekConsoleInput := modkernel32.NewProc("PeekConsoleInputW")
-    procReadConsole := modkernel32.NewProc("ReadConsoleW")
-    procGetConsoleMode := modkernel32.NewProc("GetConsoleMode")
-    procSetConsoleMode := modkernel32.NewProc("SetConsoleMode")
 
     var mode uint32
     pMode := &mode
     procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
 
-    var vtMode, echoMode, lineMode uint32
-    echoMode = 4
-    lineMode = 2
-    vtMode   = 0x0200
+    var vtMode, echoMode uint32
+    echoMode        = 4
+    vtMode          = 0x0200
 
-    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode ^ (echoMode | lineMode | vtMode )))
+    waitInput      := vtMode
+    nowaitInput    := vtMode
+
+    echo, _ := vget(0,"@echo")
+    if echo.(bool) {
+        waitInput += echoMode
+        nowaitInput += echoMode
+    }
+
+    if timeo==0 {
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr( waitInput ) )
+    } else {
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr( nowaitInput ) )
+    }
 
     line := make([]uint16, 3)
     pLine := &line[0]
@@ -81,40 +113,38 @@ func getch(timeo int) (b []byte,timeout bool) {
     closed:=false
 
     go func() {
-        for ; ; {
-            if closed { break }
+        for ; ! closed ; {
             if timeo==0 {
                 procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
                 if n>0 && !closed {
                     c <- []byte(string(utf16.Decode(line[:n])))
-                    close(c)
                     break
                 }
             } else {
+                n=0
                 procPeekConsoleInput.Call(uintptr(syscall.Stdin),uintptr(unsafe.Pointer(pLine)),uintptr(len(line)),uintptr(unsafe.Pointer(&n)))
-                if n>1 && !closed {
+                if n>0 {
                     procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                    closed=true
                     c <- []byte(string(utf16.Decode(line[:n])))
-                    close(c)
                     break
                 }
+                if timeout { break }
             }
-            time.Sleep(keyRep)
         }
     }()
 
     if timeo>0 {
-        dur := time.Duration(timeo) * time.Millisecond
+        dur := time.Duration(timeo) * time.Microsecond
         select {
-        case b,closed = <-c:
-        case <-time.After(dur):
+        case b = <-c:
             procFlushConsoleInputBuffer.Call(uintptr(syscall.Stdin))
+        case <-time.After(dur):
             timeout=true
-            closed=true
         }
     } else {
         select {
-        case b,closed = <-c:
+        case b = <-c:
         }
     }
 
@@ -124,9 +154,26 @@ func getch(timeo int) (b []byte,timeout bool) {
 }
 
 
+var ansiReplacables []string
+var fairyReplacer *str.Replacer
+
+var modkernel32 *syscall.LazyDLL
+var procSetConsoleMode *syscall.LazyProc
+var procFlushConsoleInputBuffer *syscall.LazyProc
+var procPeekConsoleInput *syscall.LazyProc
+var procReadConsole *syscall.LazyProc
+var procGetConsoleMode *syscall.LazyProc
 
 /// setup the za->ansi mappings
 func setupAnsiPalette() {
+
+    modkernel32 = syscall.NewLazyDLL("kernel32.dll")
+    procSetConsoleMode = modkernel32.NewProc("SetConsoleMode")
+    procFlushConsoleInputBuffer = modkernel32.NewProc("FlushConsoleInputBuffer")
+    procPeekConsoleInput = modkernel32.NewProc("PeekConsoleInputW")
+    procReadConsole = modkernel32.NewProc("ReadConsoleW")
+    procGetConsoleMode = modkernel32.NewProc("GetConsoleMode")
+
     if ansiMode {
         fairydust["b0"] = "\033[40m"
         fairydust["b1"] = "\033[44m"
@@ -150,8 +197,9 @@ func setupAnsiPalette() {
         fairydust["underline"] = "\033[4m"
         fairydust["invert"] = "\033[7m"
         fairydust["bold"] = "\033[1m"
-        fairydust["fakm"] = "\033[0m"
-        fairydust["fakb"] = "\033[49m"
+        fairydust["boff"] = "\033[22m"
+        fairydust["-"] = "\033[0m"
+        fairydust["#"] = "\033[49m"
         fairydust["bdefault"] = "\033[49m"
         fairydust["bblack"] = "\033[40m"
         fairydust["bred"] = "\033[41m"
@@ -192,9 +240,19 @@ func setupAnsiPalette() {
         fairydust["crossed"] = "\033[9m"
         fairydust["framed"] = "\033[51m"
         fairydust["CSI"] = "\033["
+
+        ansiReplacables=[]string{}
+
+        for k,v := range fairydust {
+            ansiReplacables=append(ansiReplacables,"[#"+k+"]")
+            ansiReplacables=append(ansiReplacables,v)
+        }
+
+        fairyReplacer=str.NewReplacer(ansiReplacables...)
+
     } else {
         var ansiCodeList=[]string{"b0","b1","b2","b3","b4","b5","b6","b7","0","1","2","3","4","5","6","7","i1","i0",
-                "default","underline","invert","bold","fakm","fakb","bdefault","bblack","bred",
+                "default","underline","invert","bold","boff","-","#","bdefault","bblack","bred",
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
                 "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",
@@ -204,23 +262,37 @@ func setupAnsiPalette() {
         for _,c:= range ansiCodeList {
             fairydust[c]=""
         }
+
+        ansiReplacables=[]string{}
+
+        for k,v := range fairydust {
+            ansiReplacables=append(ansiReplacables,"[#"+k+"]")
+            ansiReplacables=append(ansiReplacables,v)
+        }
+        fairyReplacer=str.NewReplacer(ansiReplacables...)
+
     }
 }
 
 
 /// apply ansi code translation to inbound strings
 func sparkle(a string) string {
-    a = str.Replace(a, "[#-]", "[#fakm]", -1)
-    a = str.Replace(a, "[##]", "[#fakb]", -1)
-    for k, v := range fairydust {
-    a = str.Replace(a, "[#"+k+"]", v, -1)
-    }
+    a=fairyReplacer.Replace(a)
     return (a)
 }
 
+func GetCursorPos() (int,int) {
+
+    tcol,trow,e:=GetRowCol(1)
+    if e==nil {
+        return trow,tcol
+    }
+    return -1,-1
+
+}
 
 /// get an input string from stdin, in raw mode
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool) (s string, eof bool, broken bool) {
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     sprompt := sparkle(prompt)
 
@@ -245,8 +317,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpstring string        // final compounded output string including helpColoured components
     var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
-    // var unproc_files []string    // raw list of files in the current directory
-    // var files []string           // list of file basenames in the current directory
 
     icol := col + dlen + globalPaneShiftLen // input (row,col)
     irow := row
@@ -262,15 +332,23 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     // change input colour
     pf(sparkle(pcol))
 
+    // get echo status
+    echo,_:=vget(0,"@echo")
+    if mask=="" { mask="*" }
+
     for {
+
+        dispL := rlen(s)
 
         // show input
         at(irow, icol)
-        modinp := str.Replace(s, "\x1f", "\033[E\033[G", -1)
-        dispL := len(modinp)
         clearToEOPane(irow, icol, 2+dispL+displayedLen(helpstring))
-        fmt.Print(modinp)
-
+        if echo.(bool) {
+            pf(s)
+        } else {
+            l:=rlen(s)
+            pf(str.Repeat(mask,l))
+        }
         pf(helpstring)
 
         // print cursor
@@ -298,7 +376,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             }
 
             endLine = true
-            s = str.Replace(s, "\x1f", "\x0a", -1)
             if s != "" {
                 hist = append(hist, s)
                 lastHist++
@@ -316,9 +393,9 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     s,newstart = deleteWord(s, cpos)
                     add:=""
                     if newstart==-1 { newstart=0 }
-                    if len(s)>0 { add=" " }
+                    if rlen(s)>0 { add=" " }
                     s = insertWord(s, newstart, add+helpList[0]+" ")
-                    cpos = len(s)
+                    cpos = rlen(s)
                     helpstring = ""
                 }
                 // break
@@ -336,7 +413,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
         // FINE IN WINDOWS VT MODE
         case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
-            cpos = len(s)
+            cpos = rlen(s)
             wordUnderCursor = getWord(s, cpos)
 
 
@@ -345,7 +422,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             wordUnderCursor = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{5}): // ctrl-e
-            cpos = len(s)
+            cpos = rlen(s)
             wordUnderCursor = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{21}): // ctrl-u
@@ -357,7 +434,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         // BS is 127 in VT MODE
         case bytes.Equal(c, []byte{127}): // windows backspace
 
-            if startedContextHelp && len(helpstring) == 0 {
+            if startedContextHelp && rlen(helpstring) == 0 {
                 startedContextHelp = false
             }
 
@@ -371,7 +448,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         // DEL is 126 in VT mode
         // case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
         case bytes.Equal(c, []byte{126}): // windows DEL
-            if cpos < len(s) {
+            if cpos < rlen(s) {
                 s = removeBefore(s, cpos+1)
                 wordUnderCursor = getWord(s, cpos)
                 clearToEOPane(irow, icol, displayedLen(s))
@@ -407,7 +484,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             }
 
             // normal RIGHT:
-            if cpos < len(s) {
+            if cpos < rlen(s) {
                 cpos++
             }
             wordUnderCursor = getWord(s, cpos)
@@ -431,7 +508,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         curHist--
                         s = hist[curHist]
                     }
-                    cpos = len(s)
+                    cpos = rlen(s)
                     wordUnderCursor = getWord(s, cpos)
                     if curHist != lastHist {
                         l := displayedLen(s)
@@ -456,7 +533,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         s = os
                         navHist = false
                     }
-                    cpos = len(s)
+                    cpos = rlen(s)
                     wordUnderCursor = getWord(s, cpos)
                     if curHist != lastHist {
                         l := displayedLen(s)
@@ -471,7 +548,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             cpos = 0
             wordUnderCursor = getWord(s, cpos)
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
-            cpos = len(s)
+            cpos = rlen(s)
             wordUnderCursor = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{9}): // TAB
@@ -586,10 +663,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     var newstart int
                     s,newstart = deleteWord(s, cpos)
                     add:=""
-                    if len(s)>0 { add=" " }
+                    if rlen(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
                     s = insertWord(s, newstart, add+helpList[0]+" ")
-                    cpos = len(s)
+                    cpos = rlen(s)
                     l := displayedLen(s)
                     clearToEOPane(irow, icol, l)
                     helpstring = ""
@@ -607,62 +684,45 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
     at(irow, icol)
     clearToEOPane(irow, icol, displayedLen(s))
-    pf("%s", sparkle(recolour+StripCC(s)+"[#-]"))
+    if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
 
     return s, eof, broken
 }
 
 
 /// get a keypress
-func wrappedGetCh(p int) (i int) {
+func wrappedGetCh(p int) (k int) {
 
-    var keychan chan int
-    keychan = make(chan int, 1)
+    c,tout := getch(p)
 
-    go func() {
-        var k int
-        for {
-            c,tout := getch(p)
+    if !tout {
 
-            if tout {
-                keychan <- 0
-                break
-            }
-
-            if c != nil {
-                switch {
-                case bytes.Equal(c, []byte{3}):
-                    k = 3 // ctrl-c
-                case bytes.Equal(c, []byte{4}):
-                    k = 4 // ctrl-d
-                case bytes.Equal(c, []byte{13}):
-                    k = 13 // enter
-                case bytes.Equal(c, []byte{0xc2, 0xa3}):
-                    k = 163
-                case bytes.Equal(c, []byte{126}):
-                    k = 126 // DEL
-                case bytes.Equal(c, []byte{127}):
-                    k = 127 // backspace
-                default:
-                    if len(c) == 1 {
-                        if c[0] > 31 {
-                            k = int(c[0])
-                        }
+        if c != nil {
+            switch {
+            case bytes.Equal(c, []byte{3}):
+                k = 3 // ctrl-c
+            case bytes.Equal(c, []byte{4}):
+                k = 4 // ctrl-d
+            case bytes.Equal(c, []byte{13}):
+                k = 13 // enter
+            case bytes.Equal(c, []byte{0xc2, 0xa3}):
+                k = 163 // £
+            case bytes.Equal(c, []byte{126}):
+                k = 126 // DEL
+            case bytes.Equal(c, []byte{127}):
+                k = 127 // backspace
+            default:
+                if len(c) == 1 {
+                    if c[0] > 31 {
+                        k = int(c[0])
                     }
                 }
             }
-            if k != 0 {
-                keychan <- k
-                break
-            }
         }
-    }()
 
-    select {
-    case i = <-keychan:
     }
 
-    return i
+    return k
 }
 
 
@@ -751,15 +811,16 @@ func GetSize(fd int) (width, height int, err error) {
 
 }
 
-/*
-// GetSize returns the dimensions of the given terminal.
-func GetSize(fd int) (int, int, error) {
-    return 0,0,nil
+func GetRowCol(fd int) (int, int, error) {
+    stdoutHandle := getStdHandle(syscall.STD_OUTPUT_HANDLE)
+    var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
+
+    if e != nil {
+            return 0, 0, e
+    }
+    return int(info.CursorPosition.X), int(info.CursorPosition.Y), nil
 }
-*/
 
-
-/// END OF PLACE HOLDERS
 
 /// logging output printer
 func plog(s string, va ...interface{}) {
@@ -844,10 +905,14 @@ func StripCC(s string) string {
     return r.Replace(s)
 }
 
+func rlen(s string) int {
+    return utf8.RuneCountInString(s)
+}
+
 /// calculate on-console visible string length, allowing for hidden formatting
 func displayedLen(s string) int {
     // remove ansi codes
-    return len(Strip(sparkle(s)))
+    return rlen(Strip(sparkle(s)))
 }
 
 /// move the console cursor
@@ -887,13 +952,13 @@ func cursorX(n int) {
 
 /// remove runes in string s before position pos
 func removeAllBefore(s string, pos int) string {
-    if len(s)<pos { return s }
+    if rlen(s)<pos { return s }
     return s[pos:]
 }
 
 /// remove character at position pos
 func removeBefore(s string, pos int) string {
-    if len(s)<pos { return s }
+    if rlen(s)<pos { return s }
     if pos < 1 { return s }
     s = s[:pos-1] + s[pos:]
     return s
@@ -901,7 +966,7 @@ func removeBefore(s string, pos int) string {
 
 /// insert a number of characters in string at position pos
 func insertBytesAt(s string, pos int, c []byte) string {
-    if pos == len(s) { // append
+    if pos == rlen(s) { // append
         s += string(c)
         return s
     }
@@ -911,7 +976,7 @@ func insertBytesAt(s string, pos int, c []byte) string {
 
 /// insert a single byte at position pos in string s
 func insertAt(s string, pos int, c byte) string {
-    if pos == len(s) { // append
+    if pos == rlen(s) { // append
         s += string(c)
         return s
     }
@@ -921,7 +986,7 @@ func insertAt(s string, pos int, c byte) string {
 
 /// append a string to end of string or insert it mid-string
 func insertWord(s string, pos int, w string) string {
-    if pos >= len(s) { // append
+    if pos >= rlen(s) { // append
         s += w
         return s
     }
@@ -934,7 +999,7 @@ func deleteWord(s string, pos int) (string,int) {
 
     start := 0
     cpos:=0
-    end := len(s)
+    end := rlen(s)
 
     if end<pos { return s,0 }
 
@@ -947,7 +1012,7 @@ func deleteWord(s string, pos int) (string,int) {
     }
     if cpos==end { cpos-- }
 
-    for p := pos; p < len(s)-1; p++ {
+    for p := pos; p < rlen(s)-1; p++ {
         if s[p] == ' ' {
             end = p + 1
             break
@@ -962,7 +1027,7 @@ func deleteWord(s string, pos int) (string,int) {
     }
 
     add:=""
-    if end < len(s)-1 {
+    if end < rlen(s)-1 {
         if start!=0 { add=" " }
         endsub = s[end:]
     }
@@ -975,13 +1040,13 @@ func deleteWord(s string, pos int) (string,int) {
 /// get the word in string s under the cursor (at position c)
 func getWord(s string, c int) string {
 
-    if len(s)<c {
+    if rlen(s)<c {
         return s
     }
 
     // track back
     var i int
-    i = len(s) - 1
+    i = rlen(s) - 1
     if c < i {
         i = c
     }
@@ -999,7 +1064,7 @@ func getWord(s string, c int) string {
 
     // track forwards
     var j int
-    for j = c; j < len(s)-1; j++ {
+    for j = c; j < rlen(s)-1; j++ {
         if s[j] == ' ' {
             break
         }
@@ -1014,6 +1079,13 @@ func getWord(s string, c int) string {
 
 }
 
+func saveCursor() {
+    fmt.Printf("\033[s")
+}
+
+func restoreCursor() {
+    fmt.Printf("\033[u")
+}
 
 /// clear to end of current window pane
 func clearToEOPane(row int, col int, va ...int) {
@@ -1273,8 +1345,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
                 break
             }
 
-            if len(s) > 0 {
-                if s[len(s)-1] == 0x1e {
+            if rlen(s) > 0 {
+                if s[rlen(s)-1] == 0x1e {
                     break
                 }
                 if !t.Stop() {
@@ -1291,14 +1363,14 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
         }
 
         // remove trailing end marker
-        if len(s) > 0 {
-            if s[len(s)-1] == 0x1e {
-                s = s[:len(s)-1]
+        if rlen(s) > 0 {
+            if s[rlen(s)-1] == 0x1e {
+                s = s[:rlen(s)-1]
             }
         }
 
         // skip null end marker strings
-        if len(s) > 0 {
+        if rlen(s) > 0 {
             if s[0] == 0x1e {
                 s = ""
             }
@@ -1424,8 +1496,8 @@ func Copper(line string, squashErr bool) (string, int) {
     }
 
     // remove trailing slash-n
-    if len(ns) > 0 {
-        for q := len(ns) - 1; q > 0; q-- {
+    if rlen(ns) > 0 {
+        for q := rlen(ns) - 1; q > 0; q-- {
             if ns[q] == '\n' {
                 ns = ns[:q]
             } else {

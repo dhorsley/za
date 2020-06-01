@@ -74,7 +74,6 @@ var varcount = make([]int, SPACE_CAP)               // how many local variables 
 
 var lastfs uint64                                   // last active functionspace.
 var lastline int                                    // last processed line
-// var lastbase uint64                                 // last active function (source).
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
 var ident = make([][]Variable, SPACE_CAP)
@@ -244,8 +243,9 @@ func main() {
     // set default behaviours
     vset(0, "@silentlog", true)
     vset(0, "mark_time", false)
-
+    vset(0, "@echo", true)
     vset(0, "userSigIntHandler", "")// name of Za function that handles ctrl-c.
+    vset(0, "@echomask", "*")
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
@@ -484,10 +484,6 @@ func main() {
     go func() {
         for {
             <-breaksig
-            pf("\n[#2]User Interrupt![#-] ")
-            if !interactive {
-                pf("\n")
-            }
 
             lastlock.RLock()
             caval:=coproc_active
@@ -554,6 +550,7 @@ func main() {
 
                 // build call
 
+                vunset(globalaccess,"@temp")
                 loc,id := GetNextFnSpace(usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
@@ -568,8 +565,8 @@ func main() {
                     switch sigintreturn.(type) {
                     case int:
                     default:
-                        pf("User interrupt handler must return an int or nothing!\n")
-                        finish(true,124)
+                        // pf("User interrupt handler must return an int or nothing!\n")
+                        // finish(true,124)
                     }
                     if sigintreturn.(int)!=0 {
                         finish(true,sigintreturn.(int))
@@ -577,6 +574,8 @@ func main() {
                 }
             } else {
                 finish(false, 0)
+                pf("\n[#2]User Interrupt![#-] ")
+                if !interactive { pf("\n") }
             }
         }
     }()
@@ -712,7 +711,8 @@ func main() {
 
             pr, _ := vget(0, "@prompt")
             sparklePrompt := sparkle(pr.(string))
-            input, eof, broken := getInput(sparklePrompt, "global", row, col, pcol, true, true)
+            echoMask,_:=vget(0,"@echomask")
+            input, eof, broken := getInput(sparklePrompt, "global", row, col, pcol, true, true, echoMask.(string))
             if eof || broken {
                 break
             }
@@ -749,6 +749,8 @@ func main() {
         finish(true, 0)
     }
 
+    row,col=GetCursorPos()
+    if runtime.GOOS=="windows" { row++ ; col++ }
 
     // function spaces:
     //
@@ -819,7 +821,8 @@ func main() {
         Call(MODE_NEW, mainloc)
     }
 
-    // webCloseAll()
+    // a little paranoia to finish things off...
+    setEcho(true)
 
 }
 

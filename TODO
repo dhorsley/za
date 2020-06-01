@@ -11,22 +11,31 @@
     * it's not a big issue, but could do with a workaround. seems to be part of the 
         way that ReadConsoleInput and PeekConsoleInput work in Windows. 
 
+    * still some timing issues to deal with. key debounce seems to be around 50-100ms minimum on windows.
+        this affects keypress use with a timeout specified, as a timeout may occur before key up and debounce complete.
+
+        * we either need to figure a way to make it wait patiently and report lag or put stricter limits in place.
+
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
     * as usual, really low priority on this. i only wanted it for £ symbols!
-
-* more removals to do of temp files from WITH.
-
-    * definite artifacts left over, for example, if you do a mismatch like WITH...; ... ; ENDWHEN.
-        * the with clause closes off without removing the temp.
-
-* tail recursion elimination
-    * we are currently blindly copying in arguments from recursive return caller to the entry arguments
-        * this needs some type checking around it (using functionArgs list).
-            Not too bothered if it gets wrong results and continues, but should at least warn when this happens.
 
 * either CLS or AT is interfering with continuity during eg/all tests. Something amiss there in terminal control.
     probably not a big problem, was working okay previously and those statements haven't been touched for a long time,
     so it is probably a peculiarity of the terminal. check anyway.
+
+* and a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
+
+* key (and globkey?) except with memory errors if the map does not exist before checking.
+
+* we could use some way of dealing with large files, for convenience. it isn't the goal of the language to handle this, 
+    but it seems like an easy win. we can either add access to mmap methods of go libraries and/or some sequential and 
+    random access file operations. (fopen, fclose, fseek, fread, fscanf, fwritef, etc) 
+
+    * might also be useful to have this integrate with FOREACH somehow.
+
+* stdin/stdout/stderr piping.. any need for this? to consider, as most cases will be covered with shell integration.
+
+* check what happens to globalaccess value with multiple modules at global level.
 
 
 

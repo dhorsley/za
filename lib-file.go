@@ -20,6 +20,7 @@ func buildFileLib() {
                         "file_create", "file_close",
     }
 
+    // file_create and file_close need replacing and adding to with append, write, read and seek operations
     slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file."}
     stdlib["file_create"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="string" {
@@ -32,7 +33,7 @@ func buildFileLib() {
     slhelp["file_close"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file handle."}
     stdlib["file_close"] = func(args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="*os.File" {
-            return nil,errors.New("Bad arguments to file_create()")
+            return nil,errors.New("Bad arguments to file_close()")
         }
         args[0].(*os.File).Sync()
         args[0].(*os.File).Close()
