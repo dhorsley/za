@@ -34,12 +34,12 @@ func buildDateLib() {
 
 	slhelp["epoch_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
 	stdlib["epoch_time"] = func(args ...interface{}) (ret interface{}, err error) {
-		return time.Now().Unix(), err
+		return int(time.Now().Unix()), err
 	}
 
 	slhelp["epoch_nano_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
 	stdlib["epoch_nano_time"] = func(args ...interface{}) (ret interface{}, err error) {
-		return time.Now().UnixNano(), err
+		return int(time.Now().UnixNano()), err
 	}
 
 	slhelp["time_diff"] = LibHelp{in: "te,ts", out: "integer", action: "Returns difference in milli-seconds between two nano-epoch dates."}

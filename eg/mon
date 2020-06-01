@@ -239,7 +239,7 @@ define humansize(i)
 enddef
 
 
-define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
+define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     pane select "cpu"
     pane redraw
@@ -251,7 +251,7 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
 
     proc_file=read_file("/proc/stat")
 
-    mult            = float(key_timeout)/10.0
+    mult            = float(timeout)/10.0
     indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
     partindexlist   = tail(indexlist)
 
@@ -278,7 +278,11 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
             # read values from row
             _total = sum(f)
             foreach i in partindexlist
-                _{i}    = head(f)
+                if is_number(head(f))
+                    _{i}    = head(f)
+                else
+                    _{i}    = float(0)
+                endif
                 on length(f)>0 do f = tail(f)
             endfor
 
@@ -292,7 +296,12 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
             # now populate local prev from global prev
             foreach i in indexlist
                 if globkey("prev","{name}_{i}")
-                    prev_{i}=getglob(`prev["{name}_{i}"]`)
+                    g=getglob(`prev["{name}_{i}"]`)
+                    if is_number(g)
+                        prev_{i}=g
+                    else
+                        prev_{i}=0
+                    endif
                 else
                     prev_{i}=0
                 endif
@@ -303,7 +312,7 @@ define showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTot
                 diff_total = float(_total-prev_total)
                 foreach i in partindexlist
                     if diff_total==0
-                        diff_{i}=0
+                        diff_{i}=int(0)
                     else
                         # if is_number(prev_{i})
                             diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
@@ -430,7 +439,7 @@ define showHdd()
 enddef
 
 
-define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_timeout)
+define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
 
     pane select "net"
     pane redraw
@@ -527,8 +536,8 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_ti
             setglob prev_terr = terr
 
             # avg over a second:
-            drb=humansize((1000/float(key_timeout))*drb)
-            dtb=humansize((1000/float(key_timeout))*dtb)
+            drb=humansize((1000/float(timeout))*drb)
+            dtb=humansize((1000/float(timeout))*dtb)
 
             clear_line(pane_h()-1,2)
             at pane_h()-1,2
@@ -591,8 +600,10 @@ enddef
 # MAIN
 # 
 
-# in milliseconds
-key_timeout=1000
+# in microseconds
+key_timeout=1000000
+timeout=key_timeout/1000
+
 sample_start_in=4
 net_sample_start_in=1
 
@@ -726,9 +737,9 @@ while !quit
     uptime=float(field(read_file("/proc/uptime"),1))
 
     # show panes
-    sample_start_in=showCpu(key_timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
+    sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     showHdd()
-    net_sample_start_in=showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,key_timeout)
+    net_sample_start_in=showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
     showProcs(ct,uptime)
     showFiles()
     showMem()
@@ -743,7 +754,7 @@ while !quit
 
     d=|date
     at 1,2; print "[#bold]",d
-    timo=string(key_timeout)
+    timo=string(timeout)
     at 2,2; print "Current Timeout : {timo} ms"
 
     # get user input
@@ -755,7 +766,7 @@ while !quit
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
         ipaddr=interface_ip(interface)
     is "t"
-        prompt key_timeout "New Timeout (ms) : " "^[0-9]+$"
+        prompt timeout "New Timeout (ms) : " "^[0-9]+$"
     is "D"
         showCpuDetails = ! showCpuDetails
     is "B"
@@ -768,7 +779,7 @@ while !quit
         clear_line(2,1)
         at 2,1; print "(h) help  (t) timeout  (i) interface  (q) quit"
         at 3,1; print "(D) Cpu Details  (B) Cpu Bars  (T) Cpu Totals"
-        k=keypress(1500)
+        k=keypress(1500*1000)
         clear_line(2,1)
     endwhen
 

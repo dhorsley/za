@@ -2,6 +2,9 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.0 will be the release version
+
+
 1.0.4
 
     fixes:
@@ -36,10 +39,11 @@ CHANGE LOG
         * started eg/strings tests for string library.
         * more bug squishing in lib-string.
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
-        * updated za.vim
         * changed keypress() to encode £ symbols as decimal 163. although we don't support utf8 input or extended
             ascii in any meaningful way, we still needed to distinguish £ from # on key capture.
-
+        * updated za.vim for WITH...ENDWITH and tco()+echo()
+        * added capture of current text cursor position on startup in non-interactive mode. this was to ensure the PROMPT
+            command uses the last cursor position *or* a position set by AT statement.
 
     features:
 
@@ -73,7 +77,7 @@ CHANGE LOG
             * possibly depends on the console in use, not tested many yet.
         * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
-        * added dir() lib function. dir(path[,filter]). returns a list of directory entries as assoc arrays.
+        * added dir() lib function. dir(path[,filter]). returns a list of directory entries as an assoc array.
             * each entry consists of these keys: "name", "size", "mode", "mtime", "isdir" 
 
         * added: WITH id AS f ; ... ; ENDWITH construct
@@ -136,6 +140,13 @@ CHANGE LOG
 
             * added: tco() library call, to check if the current function is in a TCE loop. This is useful for 
                 keeping counters in benchmarks.
+
+        * added: echo(bool[,string]) lib func. Enable (true), disable (false) or return the status (no arg) of local console echo. 
+            * if second option provided, it sets the character mask for hidden input with PROMPT command.
+
+        * added: getrow() and getcol() call in library to use GetCursorPos() func. 
+        * added: GetCursorPos() equivalent for Windows.
+        * added: unmap(a,k) to remove a map key 'k' from array 'a'
 
 
 1.0.3
@@ -320,7 +331,7 @@ CHANGE LOG
             they are fine for their original purpose of simple counters, but would be best if they
             went away entirely. a faster evaluator would allow for that.
  
-1.0.0 release version - documentation/file structure changes
+1.0.0 pre-release version - documentation/file structure changes
 
 ---------------------------------------------------------------------------------------------
 

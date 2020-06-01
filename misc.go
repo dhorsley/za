@@ -167,6 +167,8 @@ Available commands:
 [#4]OR[#-]                                              - default WHEN case.
 [#4]ENDWHEN[#-]                                         - terminates the WHEN block.
 [#4]BREAK[#-]                                           - exit a loop or WHEN clause immediately.
+[#4]WITH [#i1]var[#i0] AS [#i1]name[#i0][#-]                                - starts a WITH construct.
+[#4]ENDWITH[#-]                                         - ends a WITH construct.
 [#4]CONTINUE[#-]                                        - proceed to next loop iteration immediately.
 [#4]EXIT [#i1]code[#i0][#-]                                       - exit script with status code.
 [#2]PRINT[LN] [#i1]expression [ , expression ][#i0][#-]           - local echo. (PRINTLN adds a trailing newline character.)
@@ -175,7 +177,7 @@ Available commands:
 [#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
 [#2]CLS [ [#i1]pane_id[#i0] ][#-]                                 - clear console screen/pane.
 [#2]AT [#i1]row,column[#i0][#-]                                   - move cursor to [#i1]row,column[#i0].
-[#2]PANE DEFINE [#i1]name,row,col,w,h[,title[,border]][#i0][#-]   - Define a new coordinate pane.
+[#2]PANE DEFINE [#i1]name,row,col,h,w[,title[,border]][#i0][#-]   - Define a new coordinate pane.
 [#2]PANE SELECT [#i1]name[#i0][#-]                                - Select a defined pane as active.
 [#2]PANE OFF[#-]                                        - Disable panes.
 [#6]REQUIRE [#i1]feature[#i0] [ [#i1]num[#i0] ][#-]                         - assert feature availability and optional version level, or exit.

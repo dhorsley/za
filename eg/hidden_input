@@ -1,0 +1,12 @@
+#!/usr/bin/za
+
+validchars="^[a-zA-Z0-9].*"
+
+echo(false,"#")
+
+prompt retvar "Please input something - it must begin with a letter or number! >> " validchars
+
+echo(true)
+
+println "\n\nYou typed in '{retvar}'\n"
+
