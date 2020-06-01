@@ -65,6 +65,36 @@ func GetAsFloat(unk interface{}) (float64, bool) {
     }
 }
 
+// GetAsInt64 : converts a variety of types to int64
+func GetAsInt64(expr interface{}) (int64, bool) {
+    switch i := expr.(type) {
+    case float32:
+        return int64(i), false
+    case float64:
+        return int64(i), false
+    case uint:
+        return int64(i), false
+    case uint8:
+        return int64(i), false
+    case uint32:
+        return int64(i), false
+    case uint64:
+        return int64(i), false
+    case int:
+        return int64(i), false
+    case int32:
+        return int64(i), false
+    case int64:
+        return i, false
+    case string:
+        p, e := strconv.ParseFloat(i, 64)
+        if e == nil {
+            return int64(p), false
+        }
+    }
+    return 0, true
+}
+
 // GetAsInt32 : converts a variety of types to int32
 func GetAsInt32(expr interface{}) (int32, bool) {
     switch i := expr.(type) {
