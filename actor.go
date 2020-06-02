@@ -1764,7 +1764,7 @@ tco_reentry:
                             expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
                             if ef || expr.evalError { badval=true; break }
 
-                            docout += sparkle(sf("%v", expr.result))
+                            docout += sparkle(sf(`%v`, expr.result))
                             previousterm = term + 1
 
                         }
@@ -1776,7 +1776,7 @@ tco_reentry:
                     if ef || expr.evalError { break }
 
                     if !expr.evalError {
-                        docout += sparkle(sf("%v", expr.result))
+                        docout += sparkle(sf(`%v`, expr.result))
                     }
                     appendToTestReport(test_output_file,ifs, pc, docout)
                 }
@@ -1832,6 +1832,7 @@ tco_reentry:
                     vset(ifs,"_test_group",test_group)
                     vset(ifs,"_test_name",test_name)
                     under_test = true
+                    appendToTestReport(test_output_file,ifs, pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
                 }
 
             }

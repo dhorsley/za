@@ -7,9 +7,13 @@ files=dir(check_path)
 
 foreach tf in files
 
-    println "[#fbgreen]Check : ",tf["name"], " , Last Change : ",tf["mtime"],"[#-]"
+    filename=tf["name"]
 
-    | za {check_path}/{tf["name"]}
+    println "[#fbgreen]Check : {filename} , Last Change : ",tf["mtime"],"[#-]"
+
+    println "[#invert][#3]"+format("%-{term_w()}s","{filename} starting.")+"[#-]"
+    | za {check_path}/{filename}
+    println "[#invert][#3]{filename} done.[#-]\n"
 
     if last()!=0
         er=true
