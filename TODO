@@ -1,5 +1,16 @@
 
-* finish strings check
+
+NEXT
+----
+
+
+
+LATER
+-----
+
+* add a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
+
+* add a check in ASSERT to warn if no condition was evaluated. This should catch = vs == errors.
 
 * windows keypress() (getch function):
 
@@ -16,26 +27,29 @@
 
         * we either need to figure a way to make it wait patiently and report lag or put stricter limits in place.
 
-* ultimately, change interactive mode to use readline or similar with better utf-8 support.
-    * as usual, really low priority on this. i only wanted it for £ symbols!
-
-* either CLS or AT is interfering with continuity during eg/all tests. Something amiss there in terminal control.
-    probably not a big problem, was working okay previously and those statements haven't been touched for a long time,
-    so it is probably a peculiarity of the terminal. check anyway.
-
-* and a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
-
-* key (and globkey?) except with memory errors if the map does not exist before checking.
-
 * we could use some way of dealing with large files, for convenience. it isn't the goal of the language to handle this, 
     but it seems like an easy win. we can either add access to mmap methods of go libraries and/or some sequential and 
     random access file operations. (fopen, fclose, fseek, fread, fscanf, fwritef, etc) 
 
     * might also be useful to have this integrate with FOREACH somehow.
 
-* stdin/stdout/stderr piping.. any need for this? to consider, as most cases will be covered with shell integration.
+* CHECK IF NEEDED - console_windows.go/Copper-NextCopper needs update to be like linux version and accumulate bytes then form string after
+    end marker x1e detected. without this, the windows version will break up utf-8 char formation in the string.
 
-* check what happens to globalaccess value with multiple modules at global level.
+    * currently, windows uses the GetCommand() call to execute and populate output from commands as they always execute
+        in "cmd" call from the parent process. The output is already a byte stream, so Copper+NextCopper can probably be removed
+        entirely eventually. However, this may change later, so should probably keep the method in sync with the linux one
+        in case it will be needed.
+
+
+UNDECIDED
+---------
+
+* ultimately, change interactive mode to use readline or similar with better utf-8 support.
+    * as usual, really low priority on this. i only wanted it for £ symbols!
+
+* function piping.. any need for this? to consider, as most cases will be covered with shell integration.
+    * off hand, it seems like it is just syntactic sugar rewriting a | b to b(a). not sure how useful it really would be.
 
 
 

@@ -1,0 +1,186 @@
+
+[93m[4m[1mZa Test[0m
+
+Testing : strings on linux-gnu
+
+
+Test Section : [96m[1mstring/lines[22m[0m
+line : 25 French: Les naïfs ægithales hâtifs pondant à Noël où il gèle sont sûrs d'être déçus en voyant leurs drôles d'œufs abîmés.
+[92mTEST PASSED  (main/line 15) : field(l1,1)=="25"[0m
+line : 00 English: The quick brown fox jumps over the lazy dog.
+[92mTEST PASSED  (main/line 18) : l2=="00 English: The quick brown fox jumps over the lazy dog."[0m
+
+Test Section : [96m[1mstring/field-lower-substr[22m[0m
+[92mTEST PASSED  (main/line 25) : substr(w,0,len(w)-1)=="french"[0m
+word : french:
+
+Test Section : [96m[1mstring/field[22m[0m
+[92mTEST PASSED  (main/line 32) : field(l1,12)=="gèle"[0m
+
+Test Section : [96m[1mstring/pad[22m[0m
+left justify   : *--------
+[92mTEST PASSED  (main/line 39) : pad(t,-1,9,"-")=="*--------"[0m
+centre justify : ----*----
+[92mTEST PASSED  (main/line 41) : pad(t, 0,9,"-")=="----*----"[0m
+right justify  : --------*
+[92mTEST PASSED  (main/line 43) : pad(t, 1,9,"-")=="--------*"[0m
+
+Test Section : [96m[1mstring/count[22m[0m
+[92mTEST PASSED  (main/line 58) : count(s)==33[0m
+
+Test Section : [96m[1mstring/start[22m[0m
+[92mTEST PASSED  (main/line 64) : start("abracadabra","abra")[0m
+[92mTEST PASSED  (main/line 65) : !start("abracadabra","cada")[0m
+
+Test Section : [96m[1mstring/end[22m[0m
+[92mTEST PASSED  (main/line 70) : end("abracadabra","abra")[0m
+[92mTEST PASSED  (main/line 71) : !end("abracadabra","cada")[0m
+
+Test Section : [96m[1mstring/match[22m[0m
+[92mTEST PASSED  (main/line 76) : match("abracadabra","^abra")[0m
+[92mTEST PASSED  (main/line 77) : !match("abracadabra","cada$")[0m
+
+Test Section : [96m[1mstring/filter[22m[0m
+[92mTEST PASSED  (main/line 82) : filter("abracadabra","^abra")=="abra"[0m
+[92mTEST PASSED  (main/line 83) : filter("abracadabra","cada$")!="cada"[0m
+
+Test Section : [96m[1mstring/substr[22m[0m
+test string : marvin, the paranoid android
+[92mTEST PASSED  (main/line 90) : substr(t,0,6)=="marvin"[0m
+[92mTEST PASSED  (main/line 91) : substr(t,1,0)==""[0m
+[92mTEST PASSED  (main/line 92) : substr(t,1,4)=="arvi"[0m
+[92mTEST PASSED  (main/line 93) : substr(t,len(t)-4,4)=="roid"[0m
+
+Test Section : [96m[1mstring/gsub[22m[0m
+test string : marvin, the paranoid android
+[92mTEST PASSED  (main/line 100) : gsub(t,"marvin","hank")=="hank, the paranoid android"[0m
+[92mTEST PASSED  (main/line 101) : gsub(t,"the","a")=="marvin, a paranoid android"[0m
+[92mTEST PASSED  (main/line 102) : gsub(t,"nomatch","a")==t[0m
+
+Test Section : [96m[1mstring/replace[22m[0m
+test string : marvin, the paranoid android
+[92mTEST PASSED  (main/line 109) : replace(t,"^marvin","hank")=="hank, the paranoid android"[0m
+[92mTEST PASSED  (main/line 110) : replace(t,"^carvin","hank")==t[0m
+[92mTEST PASSED  (main/line 111) : replace(t,"^{t}$","allofit")=="allofit"[0m
+
+Test Section : [96m[1mstring/trim[22m[0m
+test string :    marvin   
+[92mTEST PASSED  (main/line 118) : trim(t,-1)=="marvin   "[0m
+[92mTEST PASSED  (main/line 119) : trim(t,1)=="   marvin"[0m
+[92mTEST PASSED  (main/line 120) : trim(t,0)=="marvin"[0m
+
+Test Section : [96m[1mstring/get_value[22m[0m
+found!
+[92mTEST PASSED  (main/line 127) : get_value(t,"here")=="found!"[0m
+
+Test Section : [96m[1mstring/line_add[22m[0m
+[92mTEST PASSED  (main/line 134) : line_add(t,"next")==n[0m
+
+Test Section : [96m[1mstring/line_delete[22m[0m
+[92mTEST PASSED  (main/line 141) : line_delete(t,"^3$")==n[0m
+
+Test Section : [96m[1mstring/line_replace[22m[0m
+[92mTEST PASSED  (main/line 148) : line_replace(t,"^4","spiderpig")==n[0m
+
+Test Section : [96m[1mstring/line_add_before[22m[0m
+t  ->
+<<1
+2
+3
+4
+5>>
+
+[92mTEST PASSED  (main/line 157) : line_add_before(t,"^1","spiderpig")==n1[0m
+[92mTEST PASSED  (main/line 158) : line_add_before(t,"^5","spiderpig")==n2[0m
+<<spiderpig
+1
+2
+3
+4
+5>>
+
+<<1
+2
+3
+4
+spiderpig
+5>>
+
+
+Test Section : [96m[1mstring/line_add_after[22m[0m
+t  ->
+<<1
+2
+3
+4
+5>>
+
+[92mTEST PASSED  (main/line 169) : line_add_after(t,"^1","spiderpig")==n1[0m
+[92mTEST PASSED  (main/line 170) : line_add_after(t,"^5","spiderpig")==n2[0m
+<<1
+spiderpig
+2
+3
+4
+5>>
+
+<<1
+2
+3
+4
+5
+spiderpig>>
+
+
+Test Section : [96m[1mstring/line_match[22m[0m
+[92mTEST PASSED  (main/line 178) : line_match(t,"spiderpig")[0m
+[92mTEST PASSED  (main/line 179) : !line_match(t,"pigspider")[0m
+
+Test Section : [96m[1mstring/line_filter[22m[0m
+[92mTEST PASSED  (main/line 187) : line_filter(t,"^[0-9]+")==n1[0m
+[92mTEST PASSED  (main/line 188) : line_filter(t,"derpi")==n2[0m
+
+Test Section : [96m[1mstring/line_head[22m[0m
+line_head always removes a trailing line separator
+[92mTEST PASSED  (main/line 196) : line_head(t,3)==n[0m
+
+Test Section : [96m[1mstring/line_tail[22m[0m
+line_tail always removes a trailing line separator
+[92mTEST PASSED  (main/line 205) : line_tail(t,3)==n[0m
+
+Test Section : [96m[1mstring/reverse[22m[0m
+test string : 5432 1
+[92mTEST PASSED  (main/line 213) : reverse(t)=="1 2345"[0m
+
+Test Section : [96m[1mstring/lower[22m[0m
+test string : Big dogs, big dogs, landing on my face!
+[92mTEST PASSED  (main/line 220) : lower(t)=="big dogs, big dogs, landing on my face!"[0m
+
+Test Section : [96m[1mstring/upper[22m[0m
+test string : I'm not shouting!!
+[92mTEST PASSED  (main/line 227) : upper(t)=="I'M NOT SHOUTING!!"[0m
+
+Test Section : [96m[1mstring/tr[22m[0m
+test string : I'm  not shouting!!
+[92mTEST PASSED  (main/line 234) : tr(t,"d","'!")=="Im  not shouting"[0m
+[92mTEST PASSED  (main/line 235) : tr(t,"s","! ")=="I'm not shouting!"[0m
+
+Test Section : [96m[1mstring/split[22m[0m
+[92mTEST PASSED  (main/line 246) : len(s)==len(ta)[0m
+[92mTEST PASSED  (main/line 258) : check==true[0m
+
+Test Section : [96m[1mstring/join[22m[0m
+[92mTEST PASSED  (main/line 267) : s==jta[0m
+
+Test Section : [96m[1mstring/collapse[22m[0m
+[92mTEST PASSED  (main/line 275) : s==cta[0m
+
+Test Section : [96m[1mstring/strpos[22m[0m
+[92mTEST PASSED  (main/line 281) : strpos(t,"we ")==0[0m
+[92mTEST PASSED  (main/line 282) : strpos(t,"we ",0)==0[0m
+[92mTEST PASSED  (main/line 283) : strpos(t,"must")==3[0m
+[92mTEST PASSED  (main/line 284) : strpos(t,"g")==len(t)-1[0m
+
+[93mTests Performed 56 -- Tests Failed 0 -- Tests Passed 56[0m
+
+

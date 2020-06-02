@@ -36,7 +36,6 @@ CHANGE LOG
         * changed call format and allocation method for new functions then had another disagreement with concurrency.
             * fixed the leaky dinghy and all seems well again when testing web servers.
         * added some more error checking in lib-string (trim, start and end)
-        * started eg/strings tests for string library.
         * more bug squishing in lib-string.
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
         * changed keypress() to encode £ symbols as decimal 163. although we don't support utf8 input or extended
@@ -44,6 +43,8 @@ CHANGE LOG
         * updated za.vim for WITH...ENDWITH and tco()+echo()
         * added capture of current text cursor position on startup in non-interactive mode. this was to ensure the PROMPT
             command uses the last cursor position *or* a position set by AT statement.
+        * updated key and globkey to avoid a type exception in arguments.
+
 
     features:
 
@@ -115,6 +116,7 @@ CHANGE LOG
                 rot in the syscall package. Probably just as well - think they may have turned ugly later :)
 
         * added: eg/args for processing CLI args.
+        * added: eg/strings tests for string library.
 
         * started work on tail call optimization
 
@@ -145,7 +147,7 @@ CHANGE LOG
             * if second option provided, it sets the character mask for hidden input with PROMPT command.
 
         * added: getrow() and getcol() call in library to use GetCursorPos() func. 
-        * added: GetCursorPos() equivalent for Windows.
+        * added: (internal) GetCursorPos() equivalent for Windows.
         * added: unmap(a,k) to remove a map key 'k' from array 'a'
 
 

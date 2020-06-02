@@ -162,6 +162,7 @@ syntax match internal_functions "\s*tco\s*("he=e-1
 syntax match internal_functions "\s*echo\s*("he=e-1
 syntax match internal_functions "\s*getrow\s*("he=e-1
 syntax match internal_functions "\s*getcol\s*("he=e-1
+syntax match internal_functions "\s*unmap\s*("he=e-1
 
 syntax match image_functions "\s*svg_start\s*("he=e-1
 syntax match image_functions "\s*svg_end\s*("he=e-1

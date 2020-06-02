@@ -1345,8 +1345,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
                 break
             }
 
-            if rlen(s) > 0 {
-                if s[rlen(s)-1] == 0x1e {
+            if len(s) > 0 {
+                if s[len(s)-1] == 0x1e {
                     break
                 }
                 if !t.Stop() {
@@ -1363,14 +1363,14 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
         }
 
         // remove trailing end marker
-        if rlen(s) > 0 {
-            if s[rlen(s)-1] == 0x1e {
-                s = s[:rlen(s)-1]
+        if len(s) > 0 {
+            if s[len(s)-1] == 0x1e {
+                s = s[:len(s)-1]
             }
         }
 
         // skip null end marker strings
-        if rlen(s) > 0 {
+        if len(s) > 0 {
             if s[0] == 0x1e {
                 s = ""
             }
@@ -1496,8 +1496,8 @@ func Copper(line string, squashErr bool) (string, int) {
     }
 
     // remove trailing slash-n
-    if rlen(ns) > 0 {
-        for q := rlen(ns) - 1; q > 0; q-- {
+    if len(ns) > 0 {
+        for q := len(ns) - 1; q > 0; q-- {
             if ns[q] == '\n' {
                 ns = ns[:q]
             } else {
@@ -1526,7 +1526,8 @@ func restoreScreen() {
 }
 
 func testStart(file string) {
-    test_start := sf("\n[#6][#underline][#bold]Za Test[#-]\nTesting : %s\n", file)
+    vos,_:=vget(0,"@os") ; stros:=vos.(string)
+    test_start := sf("\n[#6][#underline][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
     appendToTestReport(test_output_file,0, 0, test_start)
 }
 
