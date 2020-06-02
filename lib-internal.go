@@ -400,10 +400,12 @@ func buildInternalLib() {
 
     slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]?"}
     stdlib["key"] = func(args ...interface{}) (ret interface{}, err error) {
+
         if len(args) != 2 {
             return false, errors.New("bad argument count in key()")
         }
-        if reflect.TypeOf(args[0]).Name() != "string" || reflect.TypeOf(args[1]).Name() != "string" {
+
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
             return false, errors.New("arguments to key() must be strings.")
         }
 
@@ -413,20 +415,43 @@ func buildInternalLib() {
         if v, found = vget(lastfs, args[0].(string)); !found {
             return false, nil
         }
-        if _, found = v.(map[string]interface{})[args[1].(string)].(interface{}); found {
-            return true, nil
+
+        key,_:=interpolate(lastfs,args[1].(string),true)
+
+        switch v.(type) {
+        case map[string]interface{}:
+            if _, found = v.(map[string]interface{})[key];   found { return true, nil }
+        case map[string]float64:
+            if _, found = v.(map[string]float64)[key];       found { return true, nil }
+        case map[string]uint8:
+            if _, found = v.(map[string]uint8) [key];        found { return true, nil }
+        case map[string]int64:
+            if _, found = v.(map[string]int64) [key];        found { return true, nil }
+        case map[string]int32:
+            if _, found = v.(map[string]int32) [key];        found { return true, nil }
+        case map[string]int:
+            if _, found = v.(map[string]int) [key];          found { return true, nil }
+        case map[string]bool:
+            if _, found = v.(map[string]bool)[key];          found { return true, nil }
+        case map[string]string:
+            if _, found = v.(map[string]string)[key];        found { return true, nil }
+        default:
+            pf("unknown type: %T\n",v); os.Exit(0)
         }
         return false, nil
     }
 
     slhelp["globkey"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
     stdlib["globkey"] = func(args ...interface{}) (ret interface{}, err error) {
+
         if len(args) != 2 {
             return false, errors.New("bad argument count in globkey()")
         }
-        if reflect.TypeOf(args[0]).Name() != "string" || reflect.TypeOf(args[1]).Name() != "string" {
+
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
             return false, errors.New("arguments to globkey() must be strings.")
         }
+
         var v interface{}
         var found bool
         globlock.RLock()
@@ -445,6 +470,12 @@ func buildInternalLib() {
             if _, found = v.(map[string]interface{})[key];   found { return true, nil }
         case map[string]float64:
             if _, found = v.(map[string]float64)[key];       found { return true, nil }
+        case map[string]uint8:
+            if _, found = v.(map[string]uint8) [key];        found { return true, nil }
+        case map[string]int64:
+            if _, found = v.(map[string]int64) [key];        found { return true, nil }
+        case map[string]int32:
+            if _, found = v.(map[string]int32) [key];        found { return true, nil }
         case map[string]int:
             if _, found = v.(map[string]int) [key];          found { return true, nil }
         case map[string]bool:

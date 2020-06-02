@@ -254,22 +254,27 @@ func buildStringLib() {
         return src, err
     }
 
-    slhelp["line_add_before"] = LibHelp{in: "var,regex,string", out: "string", action: "Inserts a new line to array string [#i1]var[#i0] ahead of the first matching [#i1]regex[#i0]."}
+    slhelp["line_add_before"] = LibHelp{in: "string,regex_string,string", out: "string", action: "Inserts a new line in string ahead of the first matching [#i1]regex_string[#i0]."}
     stdlib["line_add_before"] = func(args ...interface{}) (ret interface{}, err error) {
+
         if len(args) != 3 {
-            return "", errors.New("Error: invalid argument count.\n")
+            return "", errors.New("invalid argument count in line_add_before()")
         }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" || sf("%T",args[2])!="string" {
+            return "", errors.New("invalid argument types in line_add_before()")
+        }
+
         src := args[0].(string)
         regex := args[1].(string)
         app := args[2].(string)
         elf := false
+
         if src[len(src)-1] == '\n' {
             elf = true
         }
-        var s string
-        pastFirst := false
 
         var r []string
+        pastFirst := false
         lsep:="\n"
         if runtime.GOOS!="windows" {
             r = str.Split(src, "\n")
@@ -278,6 +283,7 @@ func buildStringLib() {
             lsep="\r\n"
         }
 
+        var s string
         for _, l := range r {
             if match, _ := regexp.MatchString(regex, l); match && !pastFirst {
                 s = s + app + lsep
@@ -285,8 +291,8 @@ func buildStringLib() {
             }
             s = s + l + lsep
         }
-        if elf {
-            s = s[:len(s)-1]
+        if !elf {
+            s = s[:len(s)-len(lsep)]
         }
         return s, nil
     }
@@ -300,6 +306,7 @@ func buildStringLib() {
         regex := args[1].(string)
         app := args[2].(string)
         elf := false
+
         if src[len(src)-1] == '\n' {
             elf = true
         }
@@ -322,8 +329,8 @@ func buildStringLib() {
                 pastFirst = true
             }
         }
-        if elf {
-            s = s[:len(s)-1]
+        if !elf {
+            s = s[:len(s)-len(lsep)]
         }
         return s, nil
     }
@@ -336,26 +343,38 @@ func buildStringLib() {
         src := args[0].(string)
         regex := args[1].(string)
         elf := false
+
         if src[len(src)-1] == '\n' {
             elf = true
         }
+
         var s string
         var r []string
+
         lsep:="\n"
+        lseplen:=1
         if runtime.GOOS!="windows" {
             r = str.Split(src, "\n")
         } else {
             r = str.Split(str.Replace(src, "\r\n", "\n", -1), "\n")
             lsep="\r\n"
+            lseplen=2
         }
+
         for _, l := range r {
             if match, _ := regexp.MatchString(regex, l); !match {
                 s = s + l + lsep
             }
         }
+
+        // remove generated last separator
+        s=s[:len(s)-lseplen]
+
+        // add back in from original if it existed
         if elf {
-            s = s[:len(s)-1]
+            s += lsep
         }
+
         return s, nil
     }
 
@@ -692,12 +711,14 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) to line_head()")
         }
 
+        s:=args[0].(string)
         var list []string
+
         lsep:="\n"
         if runtime.GOOS!="windows" {
-            list = str.Split(args[0].(string), "\n")
+            list = str.Split(s,"\n")
         } else {
-            list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            list = str.Split(str.Replace(s, "\r\n", "\n", -1), "\n")
             lsep="\r\n"
         }
 
@@ -710,7 +731,14 @@ func buildStringLib() {
         for k:=0; k<count; k++ {
             ns.WriteString(list[k]+lsep)
         }
-        return ns.String(),nil
+
+        // always remove trailing lsep 
+        s=ns.String()
+        if s[len(s)-1] == '\n' {
+            s = s[:len(s)-len(lsep)]
+        }
+
+        return s,nil
 
     }
 
@@ -722,12 +750,14 @@ func buildStringLib() {
             return "",errors.New("Bad args (type) to line_tail()")
         }
 
+        s:=args[0].(string)
         var list []string
+
         lsep:="\n"
         if runtime.GOOS!="windows" {
-            list = str.Split(args[0].(string), "\n")
+            list = str.Split(s, "\n")
         } else {
-            list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
+            list = str.Split(str.Replace(s, "\r\n", "\n", -1), "\n")
             lsep="\r\n"
         }
 
@@ -741,7 +771,14 @@ func buildStringLib() {
         for k:=start; k<llen; k++ {
             ns.WriteString(list[k]+lsep)
         }
-        return ns.String(),nil
+
+        // always remove trailing lsep 
+        s=ns.String()
+        if s[len(s)-1] == '\n' {
+            s = s[:len(s)-len(lsep)]
+        }
+
+        return s,nil
 
     }
 

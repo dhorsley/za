@@ -393,11 +393,6 @@ func main() {
 
     test_group_filter = *a_test_group
 
-    if testMode {
-        testStart(exec_file_name)
-        defer testExit()
-    }
-
     // disable the coprocess command
     if *a_noshell!=false {
         no_shell=true
@@ -656,6 +651,12 @@ func main() {
         vset(0, "@hostname", cop)
 
     } // if not windows
+
+
+    if testMode {
+        testStart(exec_file_name)
+        defer testExit()
+    }
 
 
     // reset counters:
