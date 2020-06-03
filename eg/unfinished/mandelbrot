@@ -100,7 +100,7 @@ define outputAnsi(rows,size,bytesPerRow)
                 powerval2   = pow(2,minorx-1)
                 masked1     = (v & powerval1) / powerval1
                 masked2     = (v & powerval2) / powerval2
-                rgb=2*masked1+masked2
+                rgb=int(2*masked1+masked2)
                 print cmap[rgb]," "
             endfor
         endfor
@@ -122,8 +122,10 @@ limit = 4
 # Get input, if any...
 input strSz     optarg 1
 input strLim    optarg 2
+input strIter   optarg 3
 on strSz!=""    do size =int(strSz)
 on strLim!=""   do limit=float(strLim)
+on strIter!=""  do maxIter=int(strIter)
 
 bytesPerRow = (size >> 3)
 print "Rows  : {size}\n"
@@ -131,7 +133,7 @@ print "Cols  : {bytesPerRow}\n"
 print "Limit : {limit}\n"
 
 # dim name      type    extent
-init rows       int
+init rows      
 init initial_r  float   size
 init initial_i  float   size
 
@@ -153,6 +155,6 @@ for y = 0 to size-1
 endfor
 print
 
-# outputAnsi(rows,size,bytesPerRow)
-outputTable(rows,size,bytesPerRow,file)
+outputAnsi(rows,size,bytesPerRow)
+# outputTable(rows,size,bytesPerRow,file)
 

@@ -872,14 +872,25 @@ func buildStringLib() {
         return false, err
     }
 
-    slhelp["filter"] = LibHelp{in: "string,regex", out: "string", action: "Returns a string matching the regular expression [#i1]regex[#i0] in [#i1]string[#i0]."}
+    slhelp["filter"] = LibHelp{in: "string,regex,count", out: "string", action: "Returns a string matching the regular expression [#i1]regex[#i0] in [#i1]string[#i0]. count should be -1 for all matches."}
     stdlib["filter"] = func(args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 2 {
+        if len(args) >1 {
+            count:=0
+            if len(args)>2 {
+                if sf("%T",args[2])=="int" {
+                    count=args[2].(int)
+                }
+            }
             if sf("%T",args[0])=="string" && sf("%T",args[1])=="string" {
                 re, err := regexp.Compile(args[1].(string))
                 if err == nil {
-                    m := re.FindString(args[0].(string))
-                    return m, err
+                    if count==0 {
+                        m := re.FindString(args[0].(string))
+                        return m, nil
+                    } else {
+                        m := re.FindAllString(args[0].(string), count)
+                        return m, nil
+                    }
                 }
                 return "", err
             } else {
