@@ -897,9 +897,35 @@ tco_reentry:
 
                 }
 
-                if expr == "" {
+                l:=0
+                switch lv:=expr.(type) {
+                case string:
+                    l=len(lv)
+                case []string:
+                    l=len(lv)
+                case []interface{}:
+                    l=len(lv)
+                case []int:
+                    l=len(lv)
+                case []int32:
+                    l=len(lv)
+                case []int64:
+                    l=len(lv)
+                case []float64:
+                    l=len(lv)
+                case []bool:
+                    l=len(lv)
+                case []uint8:
+                    l=len(lv)
+                case map[string]interface{}:
+                    l=len(lv)
+                case []map[string]interface{}:
+                    l=len(lv)
+                }
+                if l==0 {
                     // skip empty expressions
-                    endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
+                    // endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
+                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
                     if !endfound {
                         report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
@@ -1915,6 +1941,14 @@ tco_reentry:
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 expr,ef := wrappedEval(ifs, cet, true)
+
+                if expr.assign {
+                    // someone typo'ed a condition 99.9999% of the time
+                    report(ifs,lastline,
+                        sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",cet.assignVar,cet.text))
+                    finish(false,ERR_ASSERT)
+                    break
+                }
 
                 if ef || expr.evalError {
                     report(ifs,lastline,  "Could not evaluate expression in ASSERT statement.")
