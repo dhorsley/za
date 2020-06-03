@@ -10,8 +10,6 @@ LATER
 
 * add a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
 
-* add a check in ASSERT to warn if no condition was evaluated. This should catch = vs == errors.
-
 * windows keypress() (getch function):
 
     * working now, but modifier keys (shift, ctrl, etc) all throw a keypress into 

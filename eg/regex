@@ -1,0 +1,48 @@
+#!/usr/bin/za
+
+define perf_regex_dna()
+
+    variants = [
+          "agggtaaa|tttaccct",
+          "[cgt]gggtaaa|tttaccc[acg]",
+          "a[act]ggtaaa|tttacc[agt]t",
+          "ag[act]gtaaa|tttac[agt]ct",
+          "agg[act]taaa|ttta[agt]cct",
+          "aggg[acg]aaa|ttt[cgt]ccct",
+          "agggt[cgt]aa|tt[acg]accct",
+          "agggta[cgt]a|t[acg]taccct",
+          "agggtaa[cgt]|[acg]ttaccct"
+    ]
+
+    subs=append( subs, [ `tHa[Nt]`, `<4>`            ] )
+    subs=append( subs, [ `aND|caN|Ha[DS]|WaS`, `<3>` ] )
+    subs=append( subs, [ `a[NSt]|BY`, `<2>`          ] )
+    subs=append( subs, [ `<[^>]*>`, `|`              ] )
+    subs=append( subs, [ `\|[^|][^|]*\|`, `-`        ] )
+
+    seq = read_file("/dev/stdin")
+    l1 = len(seq)
+
+    seq = replace(seq, ">.*\n|\n", "")
+    l2 = len(seq)
+
+    foreach v in variants
+        f=filter(seq,v,-1)
+        k=len(f)
+        println format("%s %d", v, k)
+    endfor
+
+    foreach v in subs
+        u=v[0]; v=v[1]
+        seq = replace(seq, u, v)
+    endfor
+
+    println
+    println l1
+    println l2
+    println len(seq)
+
+enddef
+
+perf_regex_dna()
+

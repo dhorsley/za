@@ -689,7 +689,7 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["funcs"] = LibHelp{in: "partial_match (optional)", out: "string", action: "Returns a list of standard library functions."}
+    slhelp["funcs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library functions."}
     stdlib["funcs"] = func(args ...interface{}) (ret interface{}, err error) {
 
         if len(args) == 0 {
@@ -727,7 +727,12 @@ func buildInternalLib() {
             matchList := ""
             foundOne := false
             for _, q := range v {
-                if matched, _ := regexp.MatchString(regex, q); matched {
+                show:=false
+
+                if matched, _ := regexp.MatchString(regex, q); matched { show=true }
+                if matched, _ := regexp.MatchString(regex, k); matched { show=true }
+
+                if show {
                     if _, ok := slhelp[q]; ok {
                         lhs := slhelp[q].out
                         colour := "2"

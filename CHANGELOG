@@ -40,11 +40,11 @@ CHANGE LOG
         * some more fiddling with lex.go after changes to eval.go, brace nesting and array assignment.
         * changed keypress() to encode £ symbols as decimal 163. although we don't support utf8 input or extended
             ascii in any meaningful way, we still needed to distinguish £ from # on key capture.
-        * updated za.vim for WITH...ENDWITH and tco()+echo()
+        * updated za.vim for WITH...ENDWITH and tco+echo+unmap+getcol+getrow
         * added capture of current text cursor position on startup in non-interactive mode. this was to ensure the PROMPT
             command uses the last cursor position *or* a position set by AT statement.
         * updated key and globkey to avoid a type exception in arguments.
-
+        * added search-by-category back to the funcs() call. (as well as by function name).
 
     features:
 
@@ -80,6 +80,10 @@ CHANGE LOG
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
         * added dir() lib function. dir(path[,filter]). returns a list of directory entries as an assoc array.
             * each entry consists of these keys: "name", "size", "mode", "mtime", "isdir" 
+
+        * added a check in ASSERT to warn if an assignment is present.  
+            * For example, the following would cause a fatal exit:
+                ASSERT strpos(t,"we ",0)=0
 
         * added: WITH id AS f ; ... ; ENDWITH construct
 
