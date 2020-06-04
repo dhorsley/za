@@ -22,7 +22,7 @@ func buildFileLib() {
 
     // file_create and file_close need replacing and adding to with append, write, read and seek operations
     slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file."}
-    stdlib["file_create"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["file_create"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="string" {
             return nil,errors.New("Bad arguments to file_create()")
         }
@@ -31,7 +31,7 @@ func buildFileLib() {
     }
 
     slhelp["file_close"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file handle."}
-    stdlib["file_close"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["file_close"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="*os.File" {
             return nil,errors.New("Bad arguments to file_close()")
         }
@@ -41,7 +41,7 @@ func buildFileLib() {
     }
 
 	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file."}
-	stdlib["file_mode"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["file_mode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_mode()")
 		}
@@ -56,7 +56,7 @@ func buildFileLib() {
 	}
 
 	slhelp["file_size"] = LibHelp{in: "file_name", out: "integer", action: "Returns the file size, in bytes, of a given file."}
-	stdlib["file_size"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["file_size"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_size()")
 		}
@@ -71,7 +71,7 @@ func buildFileLib() {
 	}
 
 	slhelp["read_file"] = LibHelp{in: "file_name", out: "string", action: "Returns the contents of the named file."}
-	stdlib["read_file"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["read_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return "", errors.New("invalid arguments provided to read_file()")
 		}
@@ -85,7 +85,7 @@ func buildFileLib() {
 	}
 
 	slhelp["write_file"] = LibHelp{in: "filename,variable,mode_string", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files."}
-	stdlib["write_file"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["write_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		var outVar string
 		var filename string
 		var outMode os.FileMode = 0600
@@ -114,7 +114,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a regular file?"}
-	stdlib["is_file"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_file()")
 		}
@@ -131,7 +131,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a directory?"}
-	stdlib["is_dir"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_dir"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_dir()")
 		}
@@ -148,7 +148,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a symbolic link?"}
-	stdlib["is_soft"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_soft"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_soft()")
 		}
@@ -165,7 +165,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a named pipe?"}
-	stdlib["is_pipe"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_pipe"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_pipe()")
 		}
@@ -182,7 +182,7 @@ func buildFileLib() {
 	}
 
 	slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
-	stdlib["perms"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["perms"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to perms()")
 		}

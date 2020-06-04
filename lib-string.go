@@ -86,7 +86,7 @@ func buildStringLib() {
     }
 
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
-    stdlib["replace"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["replace"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return "", errors.New("Error: invalid argument count.\n")
         }
@@ -99,7 +99,7 @@ func buildStringLib() {
     }
 
     slhelp["get_value"] = LibHelp{in: "string_array,key_name", out: "string_value", action: "Returns the value of the key [#i1]key_name[#i0] in [#i1]string_array[#i0]."}
-    stdlib["get_value"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["get_value"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 2 {
             return "", errors.New("Error: invalid argument count.\n")
@@ -136,7 +136,7 @@ func buildStringLib() {
 
     // reverse()
     slhelp["reverse"] = LibHelp{in: "list_or_string", out: "as_input", action: "Reverse the contents of a variable."}
-    stdlib["reverse"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["reverse"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to reverse()") }
         switch args[0].(type) {
         case string:
@@ -180,7 +180,7 @@ func buildStringLib() {
 
     // format() - as sprintf()
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}
-    stdlib["format"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in format()") }
         if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) (arg#1 not string) in format()") }
         if len(args) == 1 {
@@ -197,7 +197,7 @@ func buildStringLib() {
     // @note: we should probably add the character translate to this, needs an argument #3...
 
     slhelp["tr"] = LibHelp{in: "string,action,case_string", out: "string", action: "delete (action 'd') or squeeze (action 's') extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]."}
-    stdlib["tr"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["tr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return "", errors.New("Bad arguments to tr()")
         }
@@ -216,20 +216,20 @@ func buildStringLib() {
     }
 
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
-    stdlib["lower"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["lower"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to lower()") }
         return str.ToLower(args[0].(string)), nil
     }
 
     slhelp["upper"] = LibHelp{in: "string", out: "string", action: "Convert to upper-case."}
-    stdlib["upper"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["upper"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to upper()") }
         return str.ToUpper(args[0].(string)), nil
     }
 
 /*
     slhelp["utf8e"] = LibHelp{in: "string", out: "string", action: "Converts to utf-8"}
-    stdlib["utf8e"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["utf8e"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to utf8e()") }
         if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) to utf8e()") }
@@ -240,7 +240,7 @@ func buildStringLib() {
 */
 
     slhelp["line_add"] = LibHelp{in: "var,string", out: "string", action: "Append a line to array string [#i1]var[#i0]."}
-    stdlib["line_add"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_add"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return "", errors.New("Error: invalid argument count.\n")
         }
@@ -255,7 +255,7 @@ func buildStringLib() {
     }
 
     slhelp["line_add_before"] = LibHelp{in: "string,regex_string,string", out: "string", action: "Inserts a new line in string ahead of the first matching [#i1]regex_string[#i0]."}
-    stdlib["line_add_before"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_add_before"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 3 {
             return "", errors.New("invalid argument count in line_add_before()")
@@ -298,7 +298,7 @@ func buildStringLib() {
     }
 
     slhelp["line_add_after"] = LibHelp{in: "var,regex,string", out: "string", action: "Inserts a new line to array string [#i1]var[#i0] after the first matching [#i1]regex[#i0]."}
-    stdlib["line_add_after"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_add_after"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return "", errors.New("Error: invalid argument count.\n")
         }
@@ -336,7 +336,7 @@ func buildStringLib() {
     }
 
     slhelp["line_delete"] = LibHelp{in: "var,regex", out: "string", action: "Remove lines from array string [#i1]var[#i0] which match [#i1]regex[#i0]."}
-    stdlib["line_delete"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_delete"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return "", errors.New("Error: invalid argument count.\n")
         }
@@ -379,7 +379,7 @@ func buildStringLib() {
     }
 
     slhelp["line_replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces lines in [#i1]var[#i0] that match [#i1]regex[#i0] with [#i1]replacement[#i0]."}
-    stdlib["line_replace"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_replace"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 3 {
             return "", errors.New("Error: invalid argument count.\n")
@@ -426,7 +426,7 @@ func buildStringLib() {
     }
 
     slhelp["pad"] = LibHelp{in: "string,justify,width,character", out: "string", action: "Return left (-1), centred (0) or right (1) justified, padded string."}
-    stdlib["pad"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["pad"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) < 3 || len(args) > 4 {
             return "", errors.New("bad argument count in pad()")
         }
@@ -448,7 +448,7 @@ func buildStringLib() {
 
 
     slhelp["field"] = LibHelp{in: "input_string,position,optional_separator", out: "", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
-    stdlib["field"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["field"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         // get sep
         sep := " "
@@ -484,15 +484,11 @@ func buildStringLib() {
     }
 
     slhelp["fields"] = LibHelp{in: "input_string,optional_separator", out: "", action: "Splits up [#i1]input_string[#i0] into variables in the current namespace. Variables are named [#i1]F1[#i0] through to [#i1]Fn[#i0]. Field count is stored in [#i1]NF[#i0]."}
-    stdlib["fields"] = func(args ...interface{}) (ret interface{}, err error) {
-
-        if lockSafety { lastlock.RLock() }
-        lfs:=lastfs
-        if lockSafety { lastlock.RUnlock() }
+    stdlib["fields"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         // purge previous
-        vset(lfs,"F",[]string{})
-        vset(lfs,"NF",0)
+        vset(evalfs,"F",[]string{})
+        vset(evalfs,"NF",0)
 
         // check arguments
         sep := " "
@@ -521,23 +517,17 @@ func buildStringLib() {
         // populate F array and F1..Fx variables
         var c int
         for c = 0; c < len(ta); c++ {
-            vset(lfs, "F"+strconv.Itoa(c+1), ta[c])
-            // v, _ := vget(lfs, "F")
-            // vset(lfs, "F", append(v.([]string), ta[c]))
+            vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
         }
-        vset(lfs, "F", ta)
-        vset(lfs, "NF", c)
+        vset(evalfs, "F", ta)
+        vset(evalfs, "NF", c)
 
         return c, err
     }
 
     slhelp["pipesep"] = LibHelp{in: "input_string", out: "", action: "deprecated."}
         // Splits [#i1]input_string[#i0] into variables named [#i1]F1[#i0] through to [#i1]Fn[#i0]. The split is performed at pipe (|) symbols. Field count is stored in [#i1]NF[#i0]."}
-    stdlib["pipesep"] = func(args ...interface{}) (ret interface{}, err error) {
-
-        lastlock.RLock()
-        lfs:=lastfs
-        lastlock.RUnlock()
+    stdlib["pipesep"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         fsep := func(c rune) bool { return c == '|' }
         if len(args) == 1 {
@@ -545,18 +535,18 @@ func buildStringLib() {
             ta := str.FieldsFunc(args[0].(string), fsep)
             var c int
             for c = 0; c < len(ta); c++ {
-                vset(lfs, "F"+strconv.Itoa(c+1), ta[c])
-                v, _ := vget(lfs, "F")
-                vset(lfs, "F", append(v.([]string), ta[c]))
+                vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
+                v, _ := vget(evalfs, "F")
+                vset(evalfs, "F", append(v.([]string), ta[c]))
             }
-            vset(lfs, "NF", c)
+            vset(evalfs, "NF", c)
         }
         return nil, err
     }
 
 
     slhelp["split"] = LibHelp{in: "string[,fs]", out: "list", action: "Returns [#i1]string[#i0] as a list, breaking the string on [#i1]fs[#i0]."}
-    stdlib["split"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["split"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var strIn string
         if len(args)>0 {
             strIn=args[0].(string)
@@ -572,7 +562,7 @@ func buildStringLib() {
     }
 
     slhelp["join"] = LibHelp{in: "string_list[,fs]", out: "string", action: "Returns a string with all elements of [#i1]string_list[#i0] concatenated, separated by [#i1]fs[#i0]."}
-    stdlib["join"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["join"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var ary []string
         if len(args)>0 {
             switch args[0].(type) {
@@ -595,7 +585,7 @@ func buildStringLib() {
     }
 
     slhelp["collapse"] = LibHelp{in: "string", out: "string", action: "Turns a newline separated string into a space separated string."}
-    stdlib["collapse"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["collapse"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad args (count) in collapse()") }
         if sf("%T",args[0])!="string" {
             return "",errors.New("Bad args (type) in collapse()")
@@ -605,7 +595,7 @@ func buildStringLib() {
 
 
     slhelp["count"] = LibHelp{in: "string_name", out: "integer", action: "Returns the number of lines in [#i1]string_name[#i0]."}
-    stdlib["count"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["count"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 1 {
             return 0, err
@@ -632,7 +622,7 @@ func buildStringLib() {
     }
 
     slhelp["lines"] = LibHelp{in: "string_name,string_range", out: "string", action: "Returns lines from [#i1]string_name[#i0]. [#i1]string_range[#i0] is specified in the form [#i1]start:end[#i0]. Either optional term can be [#i1]last[#i0] to indicate the last line of the file. Numbering starts from 0."}
-    stdlib["lines"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["lines"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) == 2 {
 
@@ -704,7 +694,7 @@ func buildStringLib() {
     }
 
     slhelp["line_head"] = LibHelp{in: "nl_string,count", out: "nl_string", action: "Returns the top [#i1]count[#i0] lines of [#i1]nl_string[#i0]."}
-    stdlib["line_head"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_head"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)!=2 { return "",errors.New("Bad args (count) to line_head()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" {
@@ -743,7 +733,7 @@ func buildStringLib() {
     }
 
     slhelp["line_tail"] = LibHelp{in: "nl_string,count", out: "nl_string", action: "Returns the last [#i1]count[#i0] lines of [#i1]nl_string[#i0]."}
-    stdlib["line_tail"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_tail"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)!=2 { return "",errors.New("Bad args (count) to line_tail()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" {
@@ -783,7 +773,7 @@ func buildStringLib() {
     }
 
     slhelp["line_match"] = LibHelp{in: "nl_string,regex", out: "bool", action: "Does [#i1]nl_string[#i0] contain a match for regular expression [#i1]regex[#i0] on any line?"}
-    stdlib["line_match"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_match"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)!=2 { return false,errors.New("Bad arguments (count) in line_match()") }
         var val string
@@ -816,7 +806,7 @@ func buildStringLib() {
     }
 
     slhelp["line_filter"] = LibHelp{in: "nl_string,regex", out: "nl_string", action: "Returns lines from [#i1]nl_string[#i0] where regular expression [#i1]regex[#i0] matches."}
-    stdlib["line_filter"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["line_filter"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)!=2 { return false,errors.New("Bad arguments (count) in line_filter()") }
         var val string
@@ -861,7 +851,7 @@ func buildStringLib() {
 
 
     slhelp["match"] = LibHelp{in: "string,regex", out: "bool", action: "Does [#i1]string[#i0] contain a match for regular expression [#i1]regex[#i0]?"}
-    stdlib["match"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["match"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 2 {
             if sf("%T",args[0])=="string" && sf("%T",args[1])=="string" {
                 return regexp.MatchString(args[1].(string), args[0].(string))
@@ -873,7 +863,7 @@ func buildStringLib() {
     }
 
     slhelp["filter"] = LibHelp{in: "string,regex,count", out: "string", action: "Returns a string matching the regular expression [#i1]regex[#i0] in [#i1]string[#i0]. count should be -1 for all matches."}
-    stdlib["filter"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["filter"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) >1 {
             count:=0
             if len(args)>2 {
@@ -901,7 +891,7 @@ func buildStringLib() {
     }
 
     slhelp["substr"] = LibHelp{in: "string,int_s,int_l", out: "string", action: "Returns a sub-string of [#i1]string[#i0], from position [#i1]int_s[#i0] with length [#i1]int_l[#i0]."}
-    stdlib["substr"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["substr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 3 {
             if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
                 return "",errors.New("Bad arguments (type) to substr()")
@@ -916,7 +906,7 @@ func buildStringLib() {
 
     // strpos(s,sub,start)
     slhelp["strpos"] = LibHelp{in: "string,substring[,start_pos]", out: "int_position", action: "Returns the position of the next match of [#i1]substring[#i0] in [#i1]string[#i0]. Returns -1 if no match found."}
-    stdlib["strpos"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["strpos"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)<2 || len(args)>3 { return -1,errors.New("Bad arguments (count) in strpos()") }
         start:=0
         if len(args)==3 {
@@ -936,7 +926,7 @@ func buildStringLib() {
 
 
     slhelp["gsub"] = LibHelp{in: "string,string_m,string_s", out: "string", action: "Returns [#i1]string[#i0] with all matches of [#i1]string_m[#i0] replaced with [#i1]string_s[#i0]."}
-    stdlib["gsub"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["gsub"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=3 { return "",errors.New("Bad arguments (count) to gsub()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" || sf("%T",args[2])!="string" {
             return "",errors.New("Bad arguments (type) to gsub()")
@@ -945,7 +935,7 @@ func buildStringLib() {
     }
 
     slhelp["trim"] = LibHelp{in: "string,int_type", out: "string", action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0]. -1 ltrim, 0 both, 1 rtrim."}
-    stdlib["trim"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["trim"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) < 2 || len(args)>3 { return "",errors.New("Bad arguments (count) to trim()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) in trim()") }
@@ -972,7 +962,7 @@ func buildStringLib() {
 
 
     slhelp["start"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] begin with [#i1]string2[#i0]?"}
-    stdlib["start"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["start"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 2 { return "",errors.New("Bad arguments (count) to start()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in start()") }
@@ -982,7 +972,7 @@ func buildStringLib() {
     }
 
     slhelp["end"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] end with [#i1]string2[#i0]?"}
-    stdlib["end"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["end"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 2 { return "",errors.New("Bad arguments (count) to end()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in end()") }

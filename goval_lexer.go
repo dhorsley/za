@@ -32,31 +32,17 @@ type Lexer struct {
 
 }
 
-var lastfile *token.File
-var lastsrc string
 
 func NewLexer(src string) *Lexer {
-
-    if lockSafety { lastlock.Lock() }
 
     var fset *token.FileSet
     var lexer *Lexer
     var file *token.File
 
     lexer = &Lexer{}
-
-    if src!=lastsrc {
-        fset = token.NewFileSet()
-        file = fset.AddFile("", fset.Base(), len(src))
-        lastsrc=src
-        lastfile=file
-    } else {
-        file=lastfile
-    }
-
+    fset = token.NewFileSet()
+    file = fset.AddFile("", fset.Base(), len(src))
     lexer.scanner.Init(file, []byte(src), nil, 0)
-
-    if lockSafety { lastlock.Unlock() }
 
     return lexer
 }
