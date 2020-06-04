@@ -24,7 +24,7 @@ func buildConversionLib() {
     }
 
 	slhelp["chr"] = LibHelp{in: "number", out: "ascii_char", action: "Return a string representation of ASCII char [#i1]number[#i0]."}
-	stdlib["chr"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["chr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 1 {
 			return "", errors.New("invalid arguments provided to chr()")
@@ -52,7 +52,7 @@ func buildConversionLib() {
 
 	// @todo: fix this up when we support runes better.
 	slhelp["ascii"] = LibHelp{in: "ascii_char", out: "integer", action: "Return a numeric representation of [#i1]ascii_char[#i0]."}
-	stdlib["ascii"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["ascii"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to ascii()")
 		}
@@ -67,7 +67,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["kind"] = LibHelp{in: "variable", out: "type_string", action: "Return a string indicating the type of the variable."}
-	stdlib["kind"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["kind"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to kind()")
 		}
@@ -75,7 +75,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["base64e"] = LibHelp{in: "string", out: "base64_string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
-	stdlib["base64e"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["base64e"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to base64e()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to base64e()") }
         enc:=base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
@@ -83,7 +83,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["base64d"] = LibHelp{in: "base64_string", out: "string", action: "Return a string of the base64 decoding of [#i1]base64_string[#i0]"}
-	stdlib["base64d"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["base64d"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to base64d()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to base64d()") }
         dec,e:=base64.StdEncoding.DecodeString(args[0].(string))
@@ -92,7 +92,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["json_decode"] = LibHelp{in: "json_string", out: "mixed", action: "Return a mixed type structure."}
-	stdlib["json_decode"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["json_decode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_decode()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_decode()") }
 
@@ -108,7 +108,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["json_format"] = LibHelp{in: "json_string", out: "string", action: "Return a formatted string."}
-	stdlib["json_format"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["json_format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_format()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_format()") }
         var pj bytes.Buffer
@@ -119,7 +119,7 @@ func buildConversionLib() {
     }
 
 	slhelp["float"] = LibHelp{in: "variable", out: "float", action: "Convert to a float."}
-	stdlib["float"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["float"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to float()")
 		}
@@ -129,7 +129,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["byte"] = LibHelp{in: "string_number", out: "byte", action: "Convert to a uint8."}
-	stdlib["byte"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["byte"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to byte()")
 		}
@@ -146,7 +146,7 @@ func buildConversionLib() {
 
 
 	slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert to an boolean."}
-	stdlib["bool"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["bool"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to bool()")
 		}
@@ -169,7 +169,7 @@ func buildConversionLib() {
 
 
 	slhelp["int"] = LibHelp{in: "number_form", out: "integer", action: "Convert to an integer."}
-	stdlib["int"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["int"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to int()")
 		}
@@ -181,7 +181,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["string"] = LibHelp{in: "some_type", out: "string", action: "Convert to a string."}
-	stdlib["string"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["string"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to string()")
 		}
@@ -190,7 +190,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "is [#i1]expression[#i0] a number?"}
-	stdlib["is_number"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_number"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to is_number()")
 		}

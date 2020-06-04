@@ -72,8 +72,7 @@ var globalaccess uint64                             // number of functionspace w
 
 var varcount = make([]int, SPACE_CAP)               // how many local variables are declared in each active function.
 
-var lastfs uint64                                   // last active functionspace.
-var lastline int                                    // last processed line
+// var lastline int                                    // last processed line
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
 var ident = make([][]Variable, SPACE_CAP)
@@ -177,6 +176,8 @@ var keywordset map[string]struct{}
 var vtable_maxreached uint64
 
 func main() {
+
+    runtime.GOMAXPROCS(runtime.NumCPU())
 
     // setup winch handler receive channel to indicate a refresh is required, then check it in Call() before enact().
     sigs := make(chan os.Signal, 1)
@@ -545,7 +546,7 @@ func main() {
 
                 // build call
 
-                vunset(globalaccess,"@temp")
+                // vunset(globalaccess,"@temp")
                 loc,id := GetNextFnSpace(usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
@@ -693,7 +694,6 @@ func main() {
         curHist = 0
         lastHist = 0
         histEmpty = true
-        lastfs = globalspace
 
         // term loop
         pf("\033[s") // save cursor
@@ -713,7 +713,7 @@ func main() {
             pr, _ := vget(0, "@prompt")
             sparklePrompt := sparkle(pr.(string))
             echoMask,_:=vget(0,"@echomask")
-            input, eof, broken := getInput(sparklePrompt, "global", row, col, pcol, true, true, echoMask.(string))
+            input, eof, broken := getInput(globalspace, sparklePrompt, "global", row, col, pcol, true, true, echoMask.(string))
             if eof || broken {
                 break
             }

@@ -1,5 +1,11 @@
 #!/usr/bin/za
 
+define runFilter(s,v)
+    f=filter(s,v,-1)
+    return format("%s %d", v, len(f))
+enddef
+
+
 define perf_regex_dna()
 
     variants = [
@@ -27,14 +33,34 @@ define perf_regex_dna()
     l2 = len(seq)
 
     foreach v in variants
-        f=filter(seq,v,-1)
-        k=len(f)
-        println format("%s %d", v, k)
+      # async mapname  function args    new key name
+        async ahandles runFilter(seq,v) key_v
     endfor
 
+    doc `
+    # async without waiting
+    init res assoc
+    while true
+        some_res=await(ahandles,false)
+        res=res+some_res
+        on len(res)==len(variants) do break
+        println "Collecting more results..."
+    endwhile
+    `
+
+    # or wait for completion
+    res=await(ahandles,true)
+
+    # push to screen in same order they were sent for processing
+    for e=0 to len(res)-1
+        println format("%s",res[e])
+    endfor
+
+    println "\n[#3]Running seq subs[#-]\n"
+
     foreach v in subs
-        u=v[0]; v=v[1]
-        seq = replace(seq, u, v)
+        println `Sub for {v[0]},{v[1]}`
+        seq=replace(seq,v[0],v[1])
     endfor
 
     println

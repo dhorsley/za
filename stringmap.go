@@ -14,31 +14,31 @@ func lmcreate(sz int) *Lmap {
 }
 
 func (u *Lmap) lmset(k string,v uint64) {
-	if lockSafety { u.Lock() }
+	u.Lock()
     u.smap[k] = v
-	if lockSafety { u.Unlock() }
+	u.Unlock()
 }
 
 func (u *Lmap) lmget(k string) (uint64,bool) {
     var tmp uint64
     var ok bool
-	if lockSafety { u.RLock() }
+	u.RLock()
     if tmp,ok=u.smap[k]; ok {
-	    if lockSafety { u.RUnlock() }
+	    u.RUnlock()
         return tmp,true
     }
-	if lockSafety { u.RUnlock() }
+	u.RUnlock()
     return 0,false
 }
 
 func (u *Lmap) lmdelete(k string) bool {
-	if lockSafety { u.Lock() }
+	u.Lock()
     if _,ok:=u.smap[k]; ok {
         delete(u.smap,k)
-        if lockSafety { u.Unlock() }
+        u.Unlock()
         return true
     }
-    if lockSafety { u.Unlock() }
+    u.Unlock()
     return false
 }
 

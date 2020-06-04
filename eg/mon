@@ -322,7 +322,6 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
                 # figure display total
                 disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest
-
             else
                 # at 2,2; print "[#invert]Checking previous CPU values.[#-]"
                 # break

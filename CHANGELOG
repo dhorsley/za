@@ -45,6 +45,8 @@ CHANGE LOG
             command uses the last cursor position *or* a position set by AT statement.
         * updated key and globkey to avoid a type exception in arguments.
         * added search-by-category back to the funcs() call. (as well as by function name).
+        * added pass through of the current function id to the expression evaluator to get rid of another
+            global that was always screwing with multi-threading (lastfs var).
 
     features:
 
@@ -153,6 +155,60 @@ CHANGE LOG
         * added: getrow() and getcol() call in library to use GetCursorPos() func. 
         * added: (internal) GetCursorPos() equivalent for Windows.
         * added: unmap(a,k) to remove a map key 'k' from array 'a'
+
+        * asynchronous calls:
+
+            * new statement ASYNC
+                * usage: ASYNC handle_map f(...) [key_name]
+                    * ASYNC will run function f() in the background, with given arguments (...)
+                    * handle_map is the name you wish to give to ASYNC as a storage list into which a handle is placed
+                        for the asynchronous task.
+                    * key_name is an override for the handle id in handle-map.
+
+                * if a handle_id exists in handle_map then you should assume it is still running. 
+                    * it may have completed, but you won't know until you next poll for results with await()
+
+            * new standard library call: await()
+                * usage: results=await(handle_map,wait_flag)
+                    * await will poll for results returned by tasks launched by ASYNC.
+                    * You must provide the handle_map into which the async task was handed-off.
+                    * When the function provides a return value, it is placed into results[handle_id]
+                    * If a wait_flag is provided, then await() will either wait indefinitely for all functions in
+                        handle_map to complete execution (flag:true) or will just poll each in handle_map for completion
+                        whilst populating the results list, but return to the caller immediately upon check completion.
+                    * as a task completes, await() will remove the handle_id from the handle_map.
+                
+            * example case:
+
+                # some background task
+                define f(z)
+                    pause rand(3000)
+                    return z*2
+                enddef
+
+                # launch all in parallel
+                for x=0 to 99
+                    async hndmap f(x) x
+                endfor
+
+                # collect results
+                res=await(hndmap,true)
+                for e=0 to 99
+                    println "{e} -> {res[e]}"
+                    assert res[e]/2 == e
+                endfor
+
+
+            * if you do not care about the order of the returned results, you can skip adding a key_name in the async statement.
+                * a unique key is generated in these circumstances, i.e. "async_f@39495943999" or similar. 
+
+            * if you plan to use async with functions including shell interaction then you should use the -S option at launch.
+                * attempts to run shell commands in parallel may otherwise return interleaved results and assorted other
+                    unpredictable behaviour.
+                * we can probably fix this with a command queue, but there are no plans for that currently.
+
+            * it would probably also be wise to use the -l option (or the locks(true) call at runtime) to ensure that all mutex
+                locking is enabled, for the same reason. this should not be necessary, but this is a new feature after all!
 
 
 1.0.3

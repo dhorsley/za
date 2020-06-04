@@ -292,7 +292,7 @@ func GetCursorPos() (int,int) {
 }
 
 /// get an input string from stdin, in raw mode
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     sprompt := sparkle(prompt)
 
@@ -564,7 +564,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
 
                 //.. add var names
-                for _, v := range ident[lastfs] {
+                for _, v := range ident[evalfs] {
                     if v.iName!="" {
                         varnames = append(varnames, v.iName)
                     }

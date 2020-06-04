@@ -74,14 +74,17 @@ var throttle bool
 var WlogDisplay=true
 
 // Counting semaphore using a buffered channel
-func limitNumClients(f http.HandlerFunc, maxClients int) http.HandlerFunc {
-  sema := make(chan struct{}, maxClients)
+func limitNumClients(f http.HandlerFunc, maxClients int, evalfs uint64) http.HandlerFunc {
+    sema := make(chan struct{}, maxClients)
+    return func(w http.ResponseWriter, req *http.Request) {
+        ctx:=req.Context()
+        ctx=context.WithValue(ctx,"evalfs",evalfs)
+        req=req.WithContext(ctx)
 
-  return func(w http.ResponseWriter, req *http.Request) {
-    sema <- struct{}{}
-    defer func() { <-sema }()
-    f(w, req)
-  }
+        sema <- struct{}{}
+        defer func() { <-sema }()
+            f(w, req)
+    }
 }
 
 // web access logging
@@ -222,6 +225,7 @@ type webstruct struct {
 
 func webRouter(w http.ResponseWriter, r *http.Request) {
 
+    evalfs,_:=r.Context().Value("evalfs").(uint64)
 
     // we do not log by default
     // if globalvar log_web is true, then log to web_log_file (global)
@@ -413,9 +417,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 if !found {
 
-                    lastlock.RLock()
-                    report(lastfs,-1,sf("forwarder function '%v' not found.",fn))
-                    lastlock.RUnlock()
+                    report(evalfs,-1,sf("forwarder function '%v' not found.",fn))
 
                     finish(false,ERR_SYNTAX)
                     break
@@ -458,9 +460,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 // make call
 
-                lastlock.RLock()
-                local_lastfs:=lastfs
-                lastlock.RUnlock()
+                local_lastfs:=evalfs
 
                 loc,id := GetNextFnSpace(fn+"@")
                 calllock.Lock()
@@ -601,7 +601,7 @@ func buildNetLib() {
     // error under all circumstances. We'll have track handles against ip/port here.
 
     slhelp["net_interfaces"] = LibHelp{in: "", out: "device_string", action: "newline separated list of device names."}
-    stdlib["net_interfaces"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["net_interfaces"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         i,_:=net.Interfaces()
         a:=""
         for _,v:=range i {
@@ -611,18 +611,18 @@ func buildNetLib() {
     }
 
     slhelp["web_display"] = LibHelp{in: "", out: "", action: "(debug)"}
-    stdlib["web_display"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_display"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         webRoutesAll()
         return nil,nil
     }
 
     slhelp["web_max_clients"] = LibHelp{in: "", out: "", action: "(read-only) returns the maximum permitted client count for a web server."}
-    stdlib["web_max_clients"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_max_clients"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return int(MAX_CLIENTS),nil
     }
 
     slhelp["web_serve_log"] = LibHelp{in: "args", out: "", action: "Write arguments to the web log file, if available."}
-    stdlib["web_serve_log"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_log"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         switch len(args) {
         case 0:
             return nil,nil
@@ -635,7 +635,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_decode"] = LibHelp{in: "webcallstruct", out: "call_details", action: "(debug)"}
-    stdlib["web_serve_decode"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_decode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==1 {
             switch args[0].(type) {
             case webstruct:
@@ -646,7 +646,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_start"] = LibHelp{in: "docroot,port,vhost", out: "handle", action: "Returns an identifier for a new http server."}
-    stdlib["web_serve_start"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_start"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         // validate args (docroot,port,addr)
 
@@ -705,7 +705,7 @@ func buildNetLib() {
         // setup basic serving and the generic handler
         mux:=http.NewServeMux()
         srv.Handler = mux
-        mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS))
+        mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS, evalfs))
 
         go func() {
             e=srv.ListenAndServe()
@@ -740,7 +740,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_stop"] = LibHelp{in: "handle", out: "success_flag", action: "Stops and discards a running http server."}
-    stdlib["web_serve_stop"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_stop"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         var uid string
         if len(args)==1 {
@@ -763,7 +763,7 @@ func buildNetLib() {
     }
 
     slhelp["html_escape"] = LibHelp{in: "string", out: "string", action: "Converts HTML special characters to ampersand values."}
-    stdlib["html_escape"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["html_escape"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var s string
         if len(args)==1 {
             switch args[0].(type) {
@@ -778,7 +778,7 @@ func buildNetLib() {
     }
 
     slhelp["html_unescape"] = LibHelp{in: "string", out: "string", action: "Converts a string containing ampersand values to include HTML special characters."}
-    stdlib["html_unescape"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["html_unescape"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var s string
         if len(args)==1 {
             switch args[0].(type) {
@@ -794,7 +794,7 @@ func buildNetLib() {
 
 
     slhelp["web_serve_up"] = LibHelp{in: "handle", out: "bool", action: "Checks if a web server is still running."}
-    stdlib["web_serve_up"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_up"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         var uid string
         if len(args)==1 {
@@ -816,7 +816,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_path"] = LibHelp{in: "handle,action_type,request_regex,new_path", out: "string", action: "Provides a traffic routing instruction to a web server."}
-    stdlib["web_serve_path"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_path"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=4 {
             return false,errors.New("bad call args in web_serve_path()")
         }
@@ -870,7 +870,7 @@ func buildNetLib() {
     // @todo: add a call for removing web_rules
 
     slhelp["web_serve_log_throttle"] = LibHelp{in: "start,freq", out: "", action: "Set the throttle controls for web server logging."}
-    stdlib["web_serve_log_throttle"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_log_throttle"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 {
             return nil,errors.New("invalid args to web_serve_log_throttle()")
         }
@@ -884,12 +884,12 @@ func buildNetLib() {
     }
 
     slhelp["web_template"] = LibHelp{in: "handle,template_path", out: "processed_string", action: "Reads from either an absolute path or a docroot relative path (if handle not nil), with template instructions interpolated."}
-    stdlib["web_template"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_template"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
     return nil,errors.New("Not implemented.")
     }
 
     slhelp["web_head"] = LibHelp{in: "loc_string", out: "bool", action: "Makes a HEAD request of the given [#i1]loc_string[#i0]. Returns true if retrieved successfully."}
-    stdlib["web_head"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_head"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return false,errors.New("Bad args (count) to web_head()") }
         _, down_code := head(args[0].(string))
         if down_code>299 {
@@ -899,7 +899,7 @@ func buildNetLib() {
     }
 
     slhelp["web_get"] = LibHelp{in: "loc_string", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
-    stdlib["web_get"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_get"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return false,errors.New("Bad args (count) to web_get()") }
         s, down_code, header := download(args[0].(string))
         if down_code>299 {
@@ -909,7 +909,7 @@ func buildNetLib() {
     }
 
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string,headers_array", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
-    stdlib["web_custom"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_custom"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var method_string, loc_string string
         var headers =make(map[string]string)
 
@@ -952,7 +952,7 @@ func buildNetLib() {
     }
 
     slhelp["web_post"] = LibHelp{in: "loc_string,key_value_list", out: "result_string", action: "Perform a HTTP POST."}
-    stdlib["web_post"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_post"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 {
             return "",errors.New("invalid args to web_post()")
         }
@@ -967,7 +967,7 @@ func buildNetLib() {
     }
 
     slhelp["web_download"] = LibHelp{in: "url_string,local_file", out: "bool_okay", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_file[#i0]."}
-    stdlib["web_download"] = func(args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_download"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 { return false,errors.New("Bad args (count) to web_download()") }
         cont, down_code, header := download(args[0].(string))
         _=header

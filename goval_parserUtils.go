@@ -18,7 +18,7 @@ func init() {
 
 // ExpressionFunction can be called from within expressions.
 // The returned object needs to have one of the following types: `nil`, `bool`, `int`, `float64`, `string`, `[]interface{}` or `map[string]interface{}`.
-// type ExpressionFunction = func(args ...interface{}) (interface{}, error)
+// type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, error)
 
 func typeOf(val interface{}) string {
 	if val == nil {
@@ -661,7 +661,7 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
         }
 	} else {
         // call standard function
-        res, err := f(args...)
+        res, err := f(evalfs,args...)
         if err != nil {
             panic(fmt.Errorf("function error: %s", err))
         }

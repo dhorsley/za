@@ -14,7 +14,7 @@ func buildDateLib() {
 	categories["date"] = []string{"date", "epoch_time", "epoch_nano_time", "time_diff"}
 
 	slhelp["date"] = LibHelp{in: "epoch_time", out: "string", action: "Returns a human-readable date/time. The parsed timestamp is either the current date/time or the optional [#i1]epoch_time[#i0] integer."}
-	stdlib["date"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["date"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
 		var t time.Time
 
@@ -33,17 +33,17 @@ func buildDateLib() {
 	}
 
 	slhelp["epoch_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
-	stdlib["epoch_time"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["epoch_time"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		return int(time.Now().Unix()), err
 	}
 
 	slhelp["epoch_nano_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
-	stdlib["epoch_nano_time"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["epoch_nano_time"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		return int(time.Now().UnixNano()), err
 	}
 
 	slhelp["time_diff"] = LibHelp{in: "te,ts", out: "integer", action: "Returns difference in milli-seconds between two nano-epoch dates."}
-	stdlib["time_diff"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["time_diff"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 2 {
 			return 0, errors.New("Bad args (count) for time_diff()")

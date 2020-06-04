@@ -5,6 +5,7 @@ import (
     "strconv"
     "bytes"
     "net/http"
+//    "fmt"
     "sync"
     str "strings"
 )
@@ -22,18 +23,18 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
     // need to use full lock() as varcount may change in background otherwise.
 
-    if lockSafety { vlock.Lock() }
+    if lockSafety { vlock.RLock() }
 
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if ident[fs][k].iName == name {
-            if lockSafety { vlock.Unlock() }
+            if lockSafety { vlock.RUnlock() }
             // pf("found in vl: k=%v cap_id=%v len_id=%v varcount=%v\n",k,cap(ident[fs]),len(ident[fs]),varcount[fs])
             return k, true
         }
     }
 
-    if lockSafety { vlock.Unlock() }
+    if lockSafety { vlock.RUnlock() }
 
     // pf("not found in vl: cap_id=%v len_id=%v varcount=%v\n",cap(ident[fs]),len(ident[fs]),varcount[fs])
     return 0, false
@@ -42,10 +43,8 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
 func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
-    if lockSafety { vlock.Lock() }
+    vlock.Lock()
     vtmr:=*vtable_maxreached
-
-    // name,_:=numlookup.lmget(fs)
 
     if fs>=vtmr {
         *vtable_maxreached=fs
@@ -55,15 +54,16 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
     } else {
         // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
     }
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 
 }
 
 func vunset(fs uint64, name string) {
+    return
 
     loc, found := VarLookup(fs, name)
 
-    if lockSafety { vlock.Lock() }
+    vlock.Lock()
 
     vc:=varcount[fs]
     if found {
@@ -74,7 +74,7 @@ func vunset(fs uint64, name string) {
         varcount[fs]--
     }
 
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 }
 
 
@@ -132,7 +132,9 @@ func vset(fs uint64, name string, value interface{}) bool {
         if varcount[fs]==len(ident[fs]) {
 
             // append thread safety workaround
-            newary:=make([]Variable,cap(ident[fs])*2,cap(ident[fs])*2)
+            // newary:=make([]Variable,cap(ident[fs])*2,cap(ident[fs])*2)
+            // pf("len to copy -> %v  new cap -> %v\n",len(ident[fs]), cap(ident[fs])*2)
+            newary:=make([]Variable,len(ident[fs]),len(ident[fs])*2)
             copy(newary,ident[fs])
             newary=append(newary,Variable{iName: name, iValue: value})
             ident[fs]=newary
@@ -323,10 +325,16 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 func vget(fs uint64, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
 
-        if lockSafety {
-            vlock.RLock()
-            defer vlock.RUnlock()
-        }
+        // if lockSafety { vlock.RLock() }
+        vlock.RLock()
+        defer vlock.RUnlock()
+
+        // i hate to do this, but defer definitely messes with async access
+        // allocating a temp var instead so the Unlock can be placed sequentially.
+        // t:=ident[fs][vi].iValue
+        // if lockSafety { vlock.RUnlock() }
+
+        // return t, true
         return ident[fs][vi].iValue, true
     }
     return nil, false
@@ -381,10 +389,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         return s,false
     }
 
-    // the str.replace section below is mainly here now for reading @system_vars 
-    // that haven't been added to ev() processing capability yet.
     // we need the extra loops to deal with embedded indirection
-
     for {
         os := s
         if lockSafety { vlock.RLock() }
@@ -434,6 +439,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
             break
         }
     }
+
     return s,true
 }
 
@@ -658,12 +664,12 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
                     // make Za function call
 
-                    if lockSafety { calllock.Lock() }
                     // debug(20,"gnfs called from buildRhs()\n")
                     loc,id := GetNextFnSpace(previous.tokText+"@")
+                    calllock.Lock()
                     lmv,_:=fnlookup.lmget(previous.tokText)
                     calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: "@temp"}
-                    if lockSafety { calllock.Unlock() }
+                    calllock.Unlock()
 
                     Call(MODE_NEW, loc, iargs...)
 
@@ -716,6 +722,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
     // replace interpreted RHS vars with ident[fs] values
     if interpol {
+        // pf("ev [%v] sending '%v' for interpolation.\n",fs,ws)
         ws,didInterp = interpolate(fs, ws, true)
     }
 
@@ -764,7 +771,9 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
                 ef=false
             } else {
                 if shouldError {
-                    report(fs,lastline,sf("Error evaluating '%s'",ws))
+                    lastlock.RLock()
+                    report(fs,-1,sf("Error evaluating '%s'",ws))
+                    lastlock.RUnlock()
                     finish(false,ERR_EVAL)
                 }
             }
@@ -783,10 +792,10 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
     if maybeFunc && err != nil {
 
-        nv := getReportFunctionName(fs)
+        nv := getReportFunctionName(fs,false)
 
         if nv!="" {
-            report(0,lastline,sf("Evaluation Error @ Function %v", nv))
+            report(0,-1,sf("Evaluation Error @ Function %v", nv))
         }
         pf("[#6]%v[#-]\n", err)
 

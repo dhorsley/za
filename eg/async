@@ -1,0 +1,37 @@
+#!/usr/bin/za
+
+define q(val)
+    delay=rand(4)
+    println val
+    # println "[#3][{val}] (funcref:{thisfunc()}) waiting for {delay} seconds[#-]"
+    pause delay*1000
+    # println "[#3][{val}] finished.[#-]"
+    return string(val)
+enddef
+
+# MAIN
+
+locks(true)
+
+println "Spinning async tasks"
+
+for e = 1 to 2000
+    async handles q(e)
+endfor
+
+while true
+
+    println "[#2]Waiting...[#-]"
+    res=await(handles,true)
+    println "await() complete."
+
+    on len(res)==0 do break
+
+    foreach a in res
+        println format("{key_a} -> [%v] %v",kind(a),a)
+    endfor
+
+    println
+    pause 50
+
+endwhile

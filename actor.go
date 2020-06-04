@@ -17,6 +17,17 @@ import (
     "time"
 )
 
+func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
+    r:=make(chan interface{})
+    go func() {
+        defer close(r)
+        Call(MODE_NEW, loc, iargs...)
+        v,_:=vget(caller,sf("@temp@%v",loc))
+        r<-v
+    }()
+    return r
+}
+
 var siglock = &sync.RWMutex{}
 
 // finish : flag the machine state as okay or in error and optionally
@@ -289,7 +300,7 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 //  definition in the functionspace[] list.
 func GetNextFnSpace(requiredName string) (uint64,string) {
 
-    if lockSafety { calllock.Lock() }
+    calllock.Lock()
 
     // c:=0
 
@@ -325,14 +336,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
                 numlookup.lmset(q, newName)
                 fnlookup.lmset(newName,q)
                 // pf("-- leaving code with %v,%v --\n\n",q,suf)
-                if lockSafety { calllock.Unlock() }
-
-                /*
-                if q%2000.0==0 && q>high_q {
-                    high_q=q
-                    // debug(20,"gnfs-alloc for %s, round %d -> New high : %d with calltable length of %d\n",newName,c,q,len(calltable))
-                }
-                */
+                calllock.Unlock()
 
                 return q,newName
             }
@@ -340,7 +344,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
         }
     }
 
-    if lockSafety { calllock.Unlock() }
+    calllock.Unlock()
 
     pf("Error: no more function space available.\n")
     finish(true, ERR_FATAL)
@@ -359,7 +363,6 @@ var lastlock   = &sync.RWMutex{}
 var fspacelock = &sync.RWMutex{}
 var farglock   = &sync.RWMutex{}
 var looplock   = &sync.RWMutex{}
-var newfnlock  = &sync.RWMutex{}
 var globlock   = &sync.RWMutex{}
 
 // var cc int
@@ -369,7 +372,7 @@ var globlock   = &sync.RWMutex{}
 func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
     // if lockSafety { calllock.RLock() }
-    // pf("Entered call -> %#v : va -> %#v\n",calltable[csloc],va)
+    // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
     // if lockSafety { calllock.RUnlock() }
 
@@ -405,13 +408,13 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     // set up the function space
 
     // ..get call details
-    if lockSafety { calllock.RLock() }
+    calllock.RLock()
     ncs := &calltable[csloc]
     fs = (*ncs).fs                          // unique name for this execution, pre-generated before call
     base = (*ncs).base                      // the source code to be read for this function
     caller = (*ncs).caller                  // which func id called this code
     retvar = (*ncs).retvar                  // usually @temp, the return variable name
-    if lockSafety { calllock.RUnlock() }
+    calllock.RUnlock()
     ifs,_:=fnlookup.lmget(fs)               // the uint64 id attached to fs name
 
     if base==0 {
@@ -421,6 +424,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             return
         }
     }
+
+    if lockSafety { farglock.RLock() }
 
     if len(va) > len(functionArgs[base]) {
         report(ifs,-1,"Syntax error: too many call arguments provided.")
@@ -436,6 +441,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
             }
         }
     }
+    if lockSafety { farglock.RUnlock() }
 
 
     tco:=false
@@ -461,32 +467,30 @@ tco_reentry:
         var vtm uint64
         if ! tco {
 
-            lastfs=ifs
-
-            if lockSafety { vlock.RLock() }
+            vlock.RLock()
             vtm=vtable_maxreached
-            if lockSafety { vlock.RUnlock() }
+            vlock.RUnlock()
             if ifs>=vtm { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
-            if lockSafety { globlock.Lock() }
+            globlock.Lock()
             test_group = ""
             test_name = ""
             test_assert = ""
-            if lockSafety { globlock.Unlock() }
+            globlock.Unlock()
 
         }
 
         // nesting levels in this function
-        if lockSafety { looplock.Lock() }
+        looplock.Lock()
         depth[ifs] = 0
-        if lockSafety { looplock.Unlock() }
+        looplock.Unlock()
 
-        if lockSafety { vlock.Lock() }
+        vlock.Lock()
         varcount[ifs] = 0
-        if lockSafety { vlock.Unlock() }
+        vlock.Unlock()
 
-        if lockSafety { lastlock.Lock() }
+        lastlock.Lock()
         lastConstruct[ifs] = []int{}
-        if lockSafety { lastlock.Unlock() }
+        lastlock.Unlock()
 
         vset(ifs,"@in_tco",false)
 
@@ -506,32 +510,15 @@ tco_reentry:
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
 
-    /*
+   /* 
     pf("in %v \n",fs)
     pf("base  -> %v\n",base)
     pf("va    -> %#v\n",va)
     pf("fargs -> %#v\n",functionArgs[base])
-    */
+   */ 
 
-    /* moved above tco start
 
-    if len(va) > len(functionArgs[base]) {
-        report(ifs,-1,"Syntax error: too many call arguments provided.")
-        finish(false,ERR_SYNTAX)
-        return
-    }
-
-    // missing varargs in call result in empty string assignments:
-    if functionArgs[base]!=nil {
-        if len(functionArgs[base])>len(va) {
-            for e:=0; e<(len(functionArgs[base])-len(va)); e++ {
-                va=append(va,"")
-            }
-        }
-    }
-
-    */
-
+    if lockSafety { farglock.RLock() }
     if len(va) > 0 {
         for q, v := range va {
             fa:=functionArgs[base][q]
@@ -541,12 +528,11 @@ tco_reentry:
 
     // pre-calculate the len to save the extra overhead during the call loop
     finalline = len(functionspaces[base])
+    if lockSafety { farglock.RUnlock() }
 
     inside_test := false            // are we currently inside a test bock
-
     inside_with := false            // WITH cannot be nested and remains local in scope.
-    current_with_var := ""
-
+    // current_with_var := ""
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
 
@@ -572,16 +558,7 @@ tco_reentry:
         // debug(20,sf("Now processing [%d-%d]: %v\n",ifs,pc,inbound.Original))
 
         tokencount := inbound.TokenCount // length of phrase
-
-        // this one is problematic. the fs id is needed in a few places and it's a mess
-        //   carrying it around as a global like this. will definitely cause issues
-        //   at some point.
-
-        if lockSafety { lastlock.Lock() }
-        lastfs   = ifs
-        lastline = inbound.Tokens[0].Line
-        if lockSafety { lastlock.Unlock() }
-
+        lastline := inbound.Tokens[0].Line
 
         // .. skip comments and DOC statements
         if inbound.Tokens[0].tokType == C_Doc && !testMode {
@@ -924,7 +901,6 @@ tco_reentry:
                 }
                 if l==0 {
                     // skip empty expressions
-                    // endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
                     endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
                     if !endfound {
                         report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
@@ -957,9 +933,6 @@ tco_reentry:
                         }
 
                         // split up string at \n divisions into an array
-
-                        // finalExprArray = str.Split(expr.(string), "\n")
-
                         if runtime.GOOS!="windows" {
                             finalExprArray = str.Split(expr.(string), "\n")
                         } else {
@@ -1035,26 +1008,6 @@ tco_reentry:
                             }
                             ce = len(finalExprArray.(map[string][]string)) - 1
                         }
-
-/*
-                    case []http.Header:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]http.Header)) > 0 {
-
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.([]http.Header)).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            } else {
-                                // empty
-                            }
-                            ce = len(finalExprArray.([]http.Header)) - 1
-                        }
-*/
 
                     case map[string]interface{}:
 
@@ -1200,7 +1153,7 @@ tco_reentry:
         case C_For: // loop over an int64 range
 
             if tokencount < 5 || inbound.Tokens[2].tokText != "=" {
-                report(ifs,lastline,  "Malformed FOR statement.\n")
+                report(ifs,lastline,  "Malformed FOR statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1325,7 +1278,6 @@ tco_reentry:
 
             // pf("fs         -> %v\n",fs)
             // pf("ifs        -> %v\n",ifs)
-            // pf("depth[ifs] -> %#v\n",depth[ifs])
             // pf("depth[ifs] -> %#v\n",depth[ifs])
 
             var lastcon int
@@ -1574,7 +1526,7 @@ tco_reentry:
             } else {
                 removee := inbound.Tokens[1].tokText
                 if _, ok := VarLookup(ifs, removee); ok {
-                    vunset(ifs, removee)
+                    // vunset(ifs, removee)
                 } else {
                     report(ifs, lastline, sf("Variable %s does not exist.", removee))
                     finish(false, ERR_EVAL)
@@ -1975,7 +1927,7 @@ tco_reentry:
                             break
                         }
                         // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), lastline, expr.text)
+                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), lastline, expr.text)
                         testsFailed++
                         appendToTestReport(test_output_file,ifs, lastline, test_report)
                         temp_test_assert := test_assert
@@ -1991,7 +1943,7 @@ tco_reentry:
                         }
                     } else {
                         if under_test {
-                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs), lastline, expr.text)
+                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), lastline, expr.text)
                             testsPassed++
                             appendToTestReport(test_output_file,ifs, pc, test_report)
                         }
@@ -2080,6 +2032,87 @@ tco_reentry:
         case C_Nop:
             time.Sleep(100 * time.Millisecond)
 
+
+        case C_Async:
+
+            // ASYNC IDENTIFIER IDENTIFIER EXPRESSION N_LITERAL
+
+            if tokencount<4 {
+                usage := "ASYNC [#i1]handle_map function_call([args]) [next_id][#i0]"
+                report(ifs,lastline,"Invalid arguments in ASYNC\n"+usage)
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            handles,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
+            call      := inbound.Tokens[2].tokText
+            args      := inbound.Tokens[3].tokText
+
+            next_id:=""
+            if tokencount==5 {
+                nival,_,err := ev(ifs,inbound.Tokens[4].tokText,false,true)
+                if err!=nil {
+                    report(ifs,lastline,sf("could not evaluate handle key argument '%s' in ASYNC.",inbound.Tokens[4].tokText))
+                    finish(false,ERR_EVAL)
+                    break
+                }
+                next_id=sf("%v",nival)
+            }
+
+            lmv, isfunc := fnlookup.lmget(call)
+
+            if isfunc {
+
+                if !hasOuterBraces(args) {
+                    report(ifs,lastline,"functions must be called with a braced argument set.")
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                argString := stripOuter(args, '(')
+                argString  = stripOuter(argString, ')')
+
+                // evaluate args
+                var iargs []interface{}
+                var argnames []string
+
+                // populate inbound parameters to the za function call, with evaluated versions of each.
+                fullBreak:=false
+                if argString != "" {
+                    argnames = str.Split(argString, ",")
+                    for k, a := range argnames {
+                        aval, _, err := ev(ifs, a, false, true)
+                        if err != nil {
+                            report(ifs,lastline,sf("problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err))
+                            finish(false, ERR_EVAL)
+                            fullBreak=true
+                            break
+                        }
+                        iargs = append(iargs, aval)
+                    }
+                }
+                if fullBreak { break }
+
+                // make Za function call
+                loc,id := GetNextFnSpace(call+"@")
+                calllock.Lock()
+                vset(ifs,sf("@temp@%v",loc),nil)
+                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: sf("@temp@%v",loc)}
+                calllock.Unlock()
+
+                // construct a go call that includes a normal Call
+                h:=task(ifs,loc,iargs...)
+
+                // pf("task returned channel id : %+v\n",h)
+
+                // assign h to handles map
+                if next_id=="" {
+                    vsetElement(ifs,handles,sf("async_%v",id),h)
+                } else {
+                    vsetElement(ifs,handles,next_id,h)
+                }
+
+            }
 
         case C_Debug:
 
@@ -2823,7 +2856,7 @@ tco_reentry:
 		    err = ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
             inside_with=true
-            current_with_var=fname
+            // current_with_var=fname
             current_with_handle=tfile
 
             defer func() {
@@ -2844,8 +2877,8 @@ tco_reentry:
                 break
             }
 
-            vunset(ifs,current_with_var)
-            current_with_var=""
+            // vunset(ifs,current_with_var)
+            // current_with_var=""
             inside_with=false
 
 
@@ -3022,7 +3055,7 @@ tco_reentry:
                                 intext := ""
                                 validated := false
                                 for !validated || broken {
-                                    intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    intext, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                     validated, _ = regexp.MatchString(validator, intext)
                                 }
                                 if !broken {
@@ -3030,7 +3063,7 @@ tco_reentry:
                                 }
                             } else {
                                 var inp string
-                                inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                inp, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                 vset(ifs, inbound.Tokens[1].tokText, inp)
                             }
                             if broken {
@@ -3395,9 +3428,14 @@ tco_reentry:
         // pf("[#2]about to delete %v[#-]\n",fs)
         fnlookup.lmdelete(fs)
         numlookup.lmdelete(ifs)
+        looplock.Lock()
         depth[ifs]=0
+        looplock.Unlock()
         // loops[ifs] is re-made on entry
+
+        fspacelock.Lock()
         if ifs>2 { functionspaces[ifs] = []Phrase{} }
+        fspacelock.Unlock()
 
     }
 
