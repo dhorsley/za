@@ -22,7 +22,7 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "R_COMMAND", "INIT", "INSTALL", "PUSH", "TRIGGER", "DOWNLOAD", "PAUSE",
     "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "DEPENDS", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "INDENT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN",
+    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN","ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
@@ -36,18 +36,6 @@ type TokenCache struct {
     eol bool
     eof bool
 }
-var lasttoken TokenCache
-
-//
-// n.b. this caching will rarely be useful, as nextToken returns
-//  after each token, so start pos will creep through the line
-//  before you get a repeat input usually.
-//  
-// will leave it in place for now, but may return it to sane returns
-//  instead of gotos one day.
-// 
-// caching would be of more use in caller to nextToken()
-//
 
 
 /// get the next available token, as a struct, from a given string and starting position.
@@ -65,18 +53,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
     var secondChar byte
     var two bool
     var firstChar byte
-    var lt TokenCache
-
-    // return cached result if available
-    if !lockSafety {
-        lt=lasttoken
-        if input==lt.s && lt.sp==start {
-            return lt.t, lt.eol, lt.eof
-        }
-    }
-
-    lt.s=input
-    lt.sp=start
 
     // skip past whitespace
     skip := -1
@@ -101,7 +77,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.Line = *curLine
         carton.tokType = EOF
         carton.tokText = ""
-        lt.t=carton; lt.eol=true; lt.eof=true
         goto get_nt_exit_point
     }
 
@@ -111,7 +86,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.Line    = *curLine
         carton.tokType = EOL
         carton.tokText = ""
-        lt.t=carton; lt.eol=true; lt.eof=false
         goto get_nt_exit_point
     }
 
@@ -130,7 +104,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.Line = *curLine
         (*curLine)++
         carton.tokType = EOL
-        lt.t=carton; lt.eol=eol; lt.eof=eof
         goto get_nt_exit_point
     }
 
@@ -256,7 +229,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 carton.Line = *curLine
                 carton.tokType = tokType
                 carton.tokText = input[skip : i+1]
-                lt.t=carton; lt.eol=eol; lt.eof=eof
                 goto get_nt_exit_point
             }
 
@@ -280,7 +252,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 carton.Line = *curLine
                 carton.tokType = tokType
                 carton.tokText = input[skip : i+1]
-                lt.t=carton; lt.eol=eol; lt.eof=eof
                 goto get_nt_exit_point
             }
 
@@ -304,7 +275,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 carton.tokType = SingleComment
                 carton.tokText = ""
                 eol=true
-                lt.t=carton; lt.eol=eol; lt.eof=eof
                 goto get_nt_exit_point
             }
 
@@ -317,7 +287,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 carton.Line   = *curLine
                 carton.tokType= Expression
                 carton.tokText= input[skip:i+1]
-                lt.t=carton; lt.eol=false; lt.eof=false
                 goto get_nt_exit_point
                 // break
             } else {
@@ -338,7 +307,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.Line = *curLine
         carton.tokType = EOL
         carton.tokText = input[skip:endPos]
-        lt.t=carton; lt.eol=eol; lt.eof=eof
         goto get_nt_exit_point
     }
 
@@ -348,7 +316,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.tokType = SingleComment
         carton.tokText = input[skip:i]
         eol=true
-        lt.t=carton; lt.eol=eol; lt.eof=eof
         goto get_nt_exit_point
     }
 
@@ -367,7 +334,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         carton.Line = *curLine
         carton.tokType = tokType
         carton.tokText = word
-        lt.t=carton; lt.eol=eol; lt.eof=eof
         goto get_nt_exit_point
     }
 
@@ -489,6 +455,8 @@ get_nt_eval_point:
         tokType = C_Showdef
     case "return":
         tokType = C_Return
+    case "async":
+        tokType = C_Async
     case "lib":
         tokType = C_Lib
     case "module":
@@ -554,14 +522,8 @@ get_nt_eval_point:
     carton.Line = *curLine
     carton.tokType = tokType
     carton.tokText = word
-    lt.t=carton; lt.eol=eol; lt.eof=eof
 
 get_nt_exit_point:
-
-    // only update cache if not at eol or eof
-    if !lockSafety && eol==false && eof==false {
-        lasttoken=lt
-    }
 
     return carton, eol, eof
 

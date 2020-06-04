@@ -14,9 +14,10 @@ define ackermann(m,n)
 
     on m==0 do return n+1
     on n==0 do return ackermann(m-1,1)
-    o=ackermann(m-1,ackermann(m,n-1))
 
+    o=ackermann(m-1,ackermann(m,n-1))
     setglob memoA[`{m},{n}`] = o
+
     return o
 
 enddef

@@ -16,10 +16,10 @@ func fexists(fp string) bool {
     return false
 }
 
-func getReportFunctionName(ifs uint64) string {
+func getReportFunctionName(ifs uint64, full bool) string {
 	nl,_ := numlookup.lmget(ifs)
     var new string
-    if str.IndexByte(nl, '@') > -1 {
+    if !full && str.IndexByte(nl, '@') > -1 {
 		new=nl[:str.IndexByte(nl, '@')]
 	} else {
         new=nl
@@ -28,15 +28,16 @@ func getReportFunctionName(ifs uint64) string {
 }
 
 func report(ifs uint64, pos int, s string) {
-    add := getReportFunctionName(ifs)
+    add := getReportFunctionName(ifs,true)
     // err_stream:=os.Stderr
     // if interactive { err_stream=os.Stdout }
-	if pos > 0 {
-		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s,line %d[##][#-]\n%s\n", add, pos, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in %s, line %d[##][#-]\n%s\n", add, pos, s)))
+	if pos>0 {
+        if add!="" { add+="," }
+		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s line %d[##][#-]\n%s\n", add, pos, s)))
+		pf(sparkle(sf("\n[#bred][#7]Error in %s line %d[##][#-]\n%s\n", add, pos, s)))
 	} else {
 		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", add, s)))
+		pf(sparkle(sf("\n[#bred][#7]Error in [%v] %s[##][#-]\n%s\n", ifs, add, s)))
 	}
 }
 
@@ -153,6 +154,7 @@ Available commands:
 [#5]ENDDEF[#-]                                          - end a function definition.
 [#5]SHOWDEF [ [#i1]name[#i0] ][#-]                                - display a single function definition, or all functions.
 [#5]RETURN [#i1]retval[#i0][#-]                                   - return from function, with value.
+[#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
 [#4]IF [#i1]condition[#i0][#-]                                    - test condition and start execution block if true.
 [#4]ELSE[#-]                                            - start execution block for false state.

@@ -61,7 +61,7 @@ func buildHtmlLib() {
     }
 
 	slhelp["wpage"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wpage"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wpage"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)==2 { o,err=parseHtmlArgs(args[1]) }
@@ -70,7 +70,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wbody"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wbody"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wbody"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -79,7 +79,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["whead"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["whead"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["whead"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -88,7 +88,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wdiv"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wdiv"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wdiv"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -97,7 +97,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wp"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wp"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -106,7 +106,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wimg"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wimg"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wimg"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var o string
         if len(args)>0 { o,err=parseHtmlArgs(args[0]) }
         if err!=nil { return "",err }
@@ -114,7 +114,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wlink"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wlink"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wlink"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var o string
         if len(args)>0 { o,err=parseHtmlArgs(args[0]) }
         if err!=nil { return "",err }
@@ -122,7 +122,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wa"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wa"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wa"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -131,7 +131,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wtable"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wtable"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtable"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -140,7 +140,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wthead"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wthead"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wthead"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -149,7 +149,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtbody"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wtbody"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtbody"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -158,7 +158,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtr"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wtr"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -167,7 +167,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wth"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wth"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wth"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -176,7 +176,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtd"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wtd"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtd"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -185,7 +185,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh1"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wh1"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh1"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -194,7 +194,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh2"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wh2"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh2"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -203,7 +203,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh3"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wh3"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh3"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -212,7 +212,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh4"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wh4"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh4"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -221,7 +221,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh5"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wh5"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh5"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -230,7 +230,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wol"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wol"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wol"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -239,7 +239,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wul"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wul"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wul"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
@@ -248,7 +248,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wli"] = LibHelp{in: "content[,options]", out: "", action: ""}
-	stdlib["wli"] = func(args ...interface{}) (ret interface{}, err error) {
+	stdlib["wli"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }

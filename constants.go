@@ -149,6 +149,7 @@ const (
 	C_Enddef
 	C_Showdef
 	C_Return
+    C_Async
 	C_Lib
 	C_Module
 	C_Uses

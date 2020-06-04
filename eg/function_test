@@ -16,5 +16,4 @@ at 10,3; print "Distribution Version : "+release_version()
 
 pane select "global"
 at 17,1
-print "Done"
 
