@@ -1,0 +1,115 @@
+#!/usr/bin/za
+
+# library test coverage
+
+# location of tests
+test_path="."
+
+# mash together remnant elements
+define from(ary,n,sep)
+    s=""
+    l=len(ary)
+    for e=n to l-1
+        s=s+ary[e]
+        on e<l-1 do s=s+sep
+    endfor
+    return s
+enddef
+
+define textline(s)
+    println format("\n\n%s\n",pad(s,0,60,"-"))
+enddef
+
+define summary(cat,tests,total)
+    println "\n\nFunction count in {cat} : {total}"
+    pcs=100.0*tests/total
+    setglob sumtot[cat]=total
+    setglob sumcount[cat]=tests
+    println format("  Category has %d tests [%.2f%%]\n",tests,pcs)
+enddef
+
+
+# main
+
+a=stripansi(funcs("",true))
+curcat=""
+first=true
+
+foreach l in a
+
+    on l=="" do continue
+
+    if start(l,"Category:")
+
+        if !first
+            summary(curcat,hastest[curcat],cc[curcat])
+        endif
+
+        curcat=field(l,2)
+        print "\n[#5]{curcat}[#-]   "
+        cc[curcat]=0
+        hastest[curcat]=0
+        cats[curcat]=[]
+        first=false
+        if is_file("{test_path}/{curcat}")
+            tests=read_file("{test_path}/{curcat}")
+            tests=line_filter(tests,"(?i)^[ \t]*test[ \t]*")
+            println
+        else
+            println "[#2][#bold]No tests found for {curcat}![#boff][#-]"
+            tests=""
+        endif
+    endif
+
+    fields(l," ")
+
+    if F1=="Function"
+
+        fnexpr=from(F,2," ")
+        words=split(fnexpr)
+        if len(words)>2
+            words=tail(words)
+            words=tail(words)
+        endif
+
+        fname=words[0][:strpos(words[0],"(")]
+        cc[curcat]=cc[curcat]+1
+        cats[curcat]=append(cats[curcat],fname)
+
+        # check for test
+        if tests!=""
+            finds=line_filter(tests,`(?i)^[ \t]*test[ \t]+"{fname}"[ \t]+`)
+            if count(finds)>0
+                print "[#4]",fname,"[#-] "
+                hastest[curcat]=hastest[curcat]+1
+            else
+                print "[#2]",fname,"[#-] "
+            endif
+        else
+            print "[#2]",fname,"[#-] "
+        endif
+
+    endif
+
+endfor
+
+# deal with end category
+summary(curcat,hastest[curcat],cc[curcat])
+
+
+# final summary
+
+textline("[#bold][#underline][#5]TEST SUMMARY[#default]")
+totcount=0
+tottests=0
+
+foreach c in sumcount
+    print format("%30s : %d\n",key_c,c)
+    totcount=totcount+c
+    tottests=tottests+sumtot[key_c]
+endfor
+println format("%30s : [#5]%3.2f[#-]","TOTAL",100.0*totcount/tottests)
+textline("--")
+
+
+
