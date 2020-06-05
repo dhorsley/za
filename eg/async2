@@ -1,5 +1,8 @@
 #!/usr/bin/za
 
+locks(true)
+coproc(false)
+
 define f(z); pause rand(3000); return z*2; enddef
 
 # launch all in parallel

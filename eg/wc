@@ -1,4 +1,0 @@
-#!/usr/bin/za
-foreach l in read_file("/dev/stdin")
-    println "* {l}"
-endfor
