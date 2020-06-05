@@ -82,7 +82,7 @@ func buildStringLib() {
         "substr", "gsub", "replace", "trim", "lines", "count",
         "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format",
-        "split", "join", "collapse","strpos",
+        "split", "join", "collapse","strpos","stripansi",
     }
 
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
@@ -213,6 +213,12 @@ func buildStringLib() {
         }
         cases := args[2].(string)
         return tr(args[0].(string), action, cases), nil
+    }
+
+    slhelp["stripansi"] = LibHelp{in: "string", out: "string", action: "Remove escaped ansi codes."}
+    stdlib["stripansi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 { return "",errors.New("Bad arguments (count) to stripansi()") }
+        return Strip(args[0].(string)), nil
     }
 
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
@@ -841,10 +847,11 @@ func buildStringLib() {
 
         // trim right-most newline from replacement
         repl:=ns.String()
-        if repl[len(repl)-1] == '\n' {
-            repl = repl[:len(repl)-1]
+        if len(repl)>0 {
+            if repl[len(repl)-1] == '\n' {
+                repl = repl[:len(repl)-1]
+            }
         }
-
         return repl,nil
 
     }

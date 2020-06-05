@@ -205,7 +205,7 @@ func EvalCrush(fs uint64, tok []Token, tstart int, tend int) (interface{}, bool)
 
 // as evalCrush but operate over all remaining tokens from tstart onwards
 func EvalCrushRest(fs uint64, tok []Token, tstart int) (interface{}, bool) {
-    expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:]), false)
+    expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:]), true)
     if expr.evalError { return expr.result,false }
     return expr.result, true
 }

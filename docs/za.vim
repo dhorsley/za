@@ -165,6 +165,7 @@ syntax match internal_functions "\s*getcol\s*("he=e-1
 syntax match internal_functions "\s*unmap\s*("he=e-1
 syntax match internal_functions "\s*coproc\s*("he=e-1
 syntax match internal_functions "\s*await\s*("he=e-1
+syntax match internal_functions "\s*funcs\s*("he=e-1
 
 syntax match image_functions "\s*svg_start\s*("he=e-1
 syntax match image_functions "\s*svg_end\s*("he=e-1
@@ -253,6 +254,7 @@ syntax match db_functions "\s*db_init\s*("he=e-1
 syntax match db_functions "\s*db_query\s*("he=e-1
 syntax match db_functions "\s*db_fields\s*("he=e-1
 
+syntax match string_functions "\s*stripansi\s*("he=e-1
 syntax match string_functions "\s*pad\s*("he=e-1
 syntax match string_functions "\s*len\s*("he=e-1
 syntax match string_functions "\s*length\s*("he=e-1
