@@ -709,6 +709,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     // replace interpreted RHS vars with ident[fs] values
     if interpol {
         ws,didInterp = interpolate(fs, ws, true)
+        // pf("has interpolated. -> ws : %v\n",ws)
     }
 
     // check for potential user-defined functions

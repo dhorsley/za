@@ -122,7 +122,7 @@ func buildFileLib() {
 		case string:
 			f, err := os.Stat(args[0].(string))
 			if err == nil {
-				return f.Mode().IsRegular(), err
+				return f.Mode().IsRegular(), nil
 			} else {
 				return false, nil
 			}

@@ -5,6 +5,17 @@ CHANGE LOG
 1.1.0 will be the release version
 
 
+---------------------------------------------------------------------------------------------
+1.0.5
+
+    features:
+        * added stripansi() lib call.
+        * added eg/tests/libcov for vaguely testing library test coverage.
+
+    
+
+
+---------------------------------------------------------------------------------------------
 1.0.4
 
     fixes:
