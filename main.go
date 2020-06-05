@@ -112,8 +112,6 @@ var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process in, out and error streams
 var po io.ReadCloser
 var pe io.ReadCloser
-var runInParent bool        // if /bin/false specified for shell, then run commands in parent
-
 var row, col int            // for pane + terminal use
 var MW, MH int              // for pane + terminal use
 var currentpane string      // for pane use
@@ -229,6 +227,9 @@ func main() {
 
     // turn debug mode off
     debug_level = 0
+
+    // run in parent flag
+    vset(0,"@runInParent",false) // if -S opt or /bin/false specified for shell, then run commands in parent
 
     // set available build info
     vset(0, "@language", "Za")
@@ -462,9 +463,8 @@ func main() {
 
     vset(0, "@shell_location", coprocLoc)
 
-    // if no_shell || coprocLoc=="/bin/false" {
     if runtime.GOOS=="windows" || no_shell || coprocLoc=="/bin/false" {
-        runInParent=true
+        vset(0,"@runInParent",true)
     }
 
     // spawn a bash co-process

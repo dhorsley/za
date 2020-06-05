@@ -12,6 +12,7 @@ enddef
 # MAIN
 
 locks(true)
+coproc(false)
 
 println "Spinning async tasks"
 

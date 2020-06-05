@@ -1205,11 +1205,15 @@ func NewCoprocess(loc string) (process *exec.Cmd, pi io.WriteCloser, po io.ReadC
 func GetCommand(c string) (string, error) {
     c=str.Trim(c," \t")
     bargs := str.Split(c, " ")
-    cmd := exec.Command(bargs[0], bargs[1:]...)
+    cmd,err := exec.Command(bargs[0], bargs[1:]...).Output()
+    return string(cmd),err
+/*
+    cmd := exec.Command(bargs[0], bargs[1:]...).Output()
     var out bytes.Buffer
     cmd.Stdout = &out
     err := cmd.Run()
     return out.String(), err
+*/
 }
 
 
@@ -1243,9 +1247,10 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
         // otherwise poke it to end of output string
         // if EOF then end with what we have accumulated so far
 
-        // save cursor - move to start of row
+        // if we are marking progress on screen:
         mt, _ := vget(0, "mark_time")
         if mt.(bool) {
+            // save cursor - move to start of row
             pf("[#CSI]s[#CSI]1G")
         }
 
@@ -1255,11 +1260,11 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
             if err == nil {
                 bytes=append(bytes,v)
-                if v == 10 {
+                if v == 10 { // at every LF... this routine isn't used in windows
                     if mt.(bool) {
-                        pf("⟊")
+                        pf("⟊") // this should be a configurable, ascii<128 really
                     }
-                    t.Reset(dur)
+                    t.Reset(dur) // reset timeout each recv line
                 }
             }
 
@@ -1301,7 +1306,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
             }
         }
 
-        s=string(bytes)
+        //s=string(bytes)
+        s=sf("%s",string(bytes))
 
         c <- BashRead{S: s, E: err}
 
@@ -1345,7 +1351,8 @@ func Copper(line string, squashErr bool) (string, int) {
     var err error  // generic error handle
     var commandErr error
 
-    if runInParent {
+    rip,_:=vget(0,"@runInParent")
+    if rip.(bool) {
         ns,err = GetCommand(line)
         if err != nil {
 

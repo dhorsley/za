@@ -3,7 +3,12 @@
 locks(true)
 coproc(false)
 
-define f(z); pause rand(3000); return z*2; enddef
+define f(z)
+    # generally, do some work in here..
+    z =| date --rfc-3339=ns
+    pause rand(2000)
+    return z
+enddef
 
 # launch all in parallel
 for x=0 to 99
@@ -11,9 +16,9 @@ for x=0 to 99
 endfor
 
 # collect results
+println "Waiting for task completions."
 res=await(hndmap,true)
 for e=0 to 99
     println "{e} -> {res[e]}"
-    assert res[e]/2 == e
 endfor
 

@@ -163,6 +163,8 @@ syntax match internal_functions "\s*echo\s*("he=e-1
 syntax match internal_functions "\s*getrow\s*("he=e-1
 syntax match internal_functions "\s*getcol\s*("he=e-1
 syntax match internal_functions "\s*unmap\s*("he=e-1
+syntax match internal_functions "\s*coproc\s*("he=e-1
+syntax match internal_functions "\s*await\s*("he=e-1
 
 syntax match image_functions "\s*svg_start\s*("he=e-1
 syntax match image_functions "\s*svg_end\s*("he=e-1
@@ -330,7 +332,7 @@ syntax match statements "\( do \| to \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(for\|nop\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(pause\|debug\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(pause\|debug\|async\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(version\|require\|println\|setglob\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|foreach\|continue\)\($\|\s\+\)"
