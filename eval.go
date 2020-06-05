@@ -63,7 +63,7 @@ func vunset(fs uint64, name string) {
 
     loc, found := VarLookup(fs, name)
 
-    vlock.Lock()
+    if lockSafety { vlock.Lock() }
 
     vc:=varcount[fs]
     if found {
@@ -74,7 +74,7 @@ func vunset(fs uint64, name string) {
         varcount[fs]--
     }
 
-    vlock.Unlock()
+    if lockSafety { vlock.Unlock() }
 }
 
 
@@ -324,17 +324,8 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
 func vget(fs uint64, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-
-        // if lockSafety { vlock.RLock() }
         vlock.RLock()
         defer vlock.RUnlock()
-
-        // i hate to do this, but defer definitely messes with async access
-        // allocating a temp var instead so the Unlock can be placed sequentially.
-        // t:=ident[fs][vi].iValue
-        // if lockSafety { vlock.RUnlock() }
-
-        // return t, true
         return ident[fs][vi].iValue, true
     }
     return nil, false
@@ -377,12 +368,14 @@ func escape(str string) string {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
-    if lockSafety { lastlock.RLock() }
+    // @note: re-enable these locks if there are any problems.
+
+    // if lockSafety { lastlock.RLock() }
     if no_interpolation {
-        if lockSafety { lastlock.RUnlock() }
+        // if lockSafety { lastlock.RUnlock() }
         return s,false
     }
-    if lockSafety { lastlock.RUnlock() }
+    // if lockSafety { lastlock.RUnlock() }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
@@ -392,7 +385,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
     // we need the extra loops to deal with embedded indirection
     for {
         os := s
-        if lockSafety { vlock.RLock() }
+        // if lockSafety { vlock.RLock() }
         vc:=varcount[fs]
         for k := 0; k < vc; k++ {
 
@@ -414,7 +407,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                 }
             }
         }
-        if lockSafety { vlock.RUnlock() }
+        // if lockSafety { vlock.RUnlock() }
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         if os == s {
@@ -472,11 +465,6 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         lhs = tokens[0]
         callOnly = false
         if !callOnly && splitPoint!=1 {
-            /*  this should now be handled by check at start of fn
-            if splitPoint == 0 {
-                report(ifs,-1,"Left-hand side is missing.\n")
-            }
-            */
             if splitPoint == len(tokens)-1 {
                 report(ifs,-1,"Right-hand side is missing.\n")
             }
@@ -708,8 +696,6 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
 }
 
-// var lastreval *[]Token
-// var lastws string
 
 // evaluate an expression string using a modified version of the third-party goval lib
 func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
@@ -722,7 +708,6 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
     // replace interpreted RHS vars with ident[fs] values
     if interpol {
-        // pf("ev [%v] sending '%v' for interpolation.\n",fs,ws)
         ws,didInterp = interpolate(fs, ws, true)
     }
 
@@ -734,19 +719,19 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     var reval = make([]Token,0,4)
     var valcount int
 
-        var t Token
-        var eol,eof bool
+    var t Token
+    var eol,eof bool
 
-        for p := 0; p < len(ws); p++ {
-            t, eol , eof = nextToken(ws, &cl, p, t.tokType)
-            if t.tokPos != -1 {
-                p = t.tokPos
-            }
-            if str.IndexByte(t.tokText, '(') != -1 { maybeFunc=true }
-            reval=append(reval,t)
-            valcount++
-            if eol||eof { break }
+    for p := 0; p < len(ws); p++ {
+        t, eol , eof = nextToken(ws, &cl, p, t.tokType)
+        if t.tokPos != -1 {
+            p = t.tokPos
         }
+        if str.IndexByte(t.tokText, '(') != -1 { maybeFunc=true }
+        reval=append(reval,t)
+        valcount++
+        if eol||eof { break }
+    }
 
     //.. eval the user defined functions if it looks like there are any
 
@@ -771,9 +756,9 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
                 ef=false
             } else {
                 if shouldError {
-                    lastlock.RLock()
+                    // lastlock.RLock()
                     report(fs,-1,sf("Error evaluating '%s'",ws))
-                    lastlock.RUnlock()
+                    // lastlock.RUnlock()
                     finish(false,ERR_EVAL)
                 }
             }

@@ -5,7 +5,6 @@ import (
     "math"
     "math/rand"
     "log"
-//    "net/http"
     "os"
     "path/filepath"
     "reflect"
@@ -337,7 +336,6 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
                 fnlookup.lmset(newName,q)
                 // pf("-- leaving code with %v,%v --\n\n",q,suf)
                 calllock.Unlock()
-
                 return q,newName
             }
 
@@ -470,7 +468,9 @@ tco_reentry:
             vlock.RLock()
             vtm=vtable_maxreached
             vlock.RUnlock()
+
             if ifs>=vtm { vcreatetable(ifs, &vtable_maxreached, VAR_CAP) }
+
             globlock.Lock()
             test_group = ""
             test_name = ""
@@ -507,16 +507,16 @@ tco_reentry:
     if lockSafety { vlock.RUnlock() }
     if lockSafety { looplock.Unlock() }
 
-    // assign value to local vars named in functionArgs (the call parameters) from each 
-    // va value (functionArgs[] created at definition time from the call signature).
-
    /* 
     pf("in %v \n",fs)
     pf("base  -> %v\n",base)
     pf("va    -> %#v\n",va)
     pf("fargs -> %#v\n",functionArgs[base])
-   */ 
+   */
 
+
+    // assign value to local vars named in functionArgs (the call parameters) from each 
+    // va value (functionArgs[] created at definition time from the call signature).
 
     if lockSafety { farglock.RLock() }
     if len(va) > 0 {
@@ -525,14 +525,12 @@ tco_reentry:
             vset(ifs,fa,v)
         }
     }
-
-    // pre-calculate the len to save the extra overhead during the call loop
     finalline = len(functionspaces[base])
     if lockSafety { farglock.RUnlock() }
 
     inside_test := false            // are we currently inside a test bock
     inside_with := false            // WITH cannot be nested and remains local in scope.
-    // current_with_var := ""
+
     var defining bool               // are we currently defining a function
     var definitionName string       // ... if we are, what is it called
 
@@ -554,14 +552,12 @@ tco_reentry:
         }
 
         // get the next Phrase
-        inbound = &functionspaces[base][pc]
-        // debug(20,sf("Now processing [%d-%d]: %v\n",ifs,pc,inbound.Original))
-
+        inbound     = &functionspaces[base][pc]
         tokencount := inbound.TokenCount // length of phrase
-        lastline := inbound.Tokens[0].Line
+        lastline   := inbound.Tokens[0].Line
 
         // .. skip comments and DOC statements
-        if inbound.Tokens[0].tokType == C_Doc && !testMode {
+        if !testMode && inbound.Tokens[0].tokType == C_Doc {
             continue
         }
 
@@ -573,22 +569,21 @@ tco_reentry:
         }
 
         // remove trailing C_Semicolon token remnants
-        if tokencount > 1 {
+        // if tokencount > 1 {
             if inbound.Tokens[tokencount-1].tokType == C_Semicolon {
                 inbound.TokenCount--
                 tokencount--
                 inbound.Tokens = inbound.Tokens[:tokencount]
             }
-        }
+        // }
 
         // finally... start processing the statement.
-        ondo_reenter:
+   ondo_reenter:
 
         statement := inbound.Tokens[0]
 
         // append statements to a function if currently inside a DEFINE block.
         if defining && statement.tokType != C_Enddef {
-            //.. add to functionspace
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
@@ -690,9 +685,7 @@ tco_reentry:
                 if lockSafety { lastlock.Lock() }
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 if lockSafety { lastlock.Unlock() }
-
                 depth[ifs]--
-
                 if lockSafety { looplock.Unlock() }
 
                 breakIn = Error
@@ -1321,7 +1314,6 @@ tco_reentry:
                         case IT_LINE:
                             switch (*thisLoop).iterOverArray.(type) {
                             // map ranges are randomly ordered!!
-                            // case map[string]interface{},map[string]int,map[string]float64,map[string]string,[]http.Header,map[string][]string:
                             case map[string]interface{},map[string]int,map[string]float64,map[string]string,map[string][]string:
                                 if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                     vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
@@ -1358,17 +1350,13 @@ tco_reentry:
                                 vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
                                 vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter])
                             default:
-                                 pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter]))
-                                 pf("Unknown type [%T] in END/Foreach\n",pv)
+                                // @note: should put a proper exit in here.
+                                pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter]))
+                                pf("Unknown type [%T] in END/Foreach\n",pv)
                             }
                         case IT_CHAR:
                             vset(ifs, (*thisLoop).loopVar, (string)((*thisLoop).iterOverString.(string)[(*thisLoop).ecounter]))
                         }
-
-                        /*
-                        pv,_:=vget(ifs,(*thisLoop).loopVar)
-                        pf("endfor with new val-> <<%v>>\n",pv)
-                        */
 
                     }
 
@@ -1519,6 +1507,13 @@ tco_reentry:
 
 
         case C_Unset: // remove a variable
+
+            // @note: need to look at this...
+            //  unset on a map entry would be fine.
+            //  unset on an array element is pointless.
+            //  unset on a scalar should be fine.
+            //  basically, need to add more intelligence to this.
+            //  just keeping it from attempting the deletion for now.
 
             if tokencount != 2 {
                 report(ifs,lastline,  "Incorrect arguments supplied for UNSET.")
@@ -2877,8 +2872,6 @@ tco_reentry:
                 break
             }
 
-            // vunset(ifs,current_with_var)
-            // current_with_var=""
             inside_with=false
 
 
@@ -2894,7 +2887,8 @@ tco_reentry:
                             badval=true
                             break
                         }
-                        pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                        // pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                        pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                         previousterm = term + 1
                     }
                 }
@@ -2906,7 +2900,8 @@ tco_reentry:
                     pf(`<badval>`)
                     break
                 }
-                pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                // pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                 if interactive { pf("\n") }
             } else {
                 pf("\n")
@@ -2925,7 +2920,8 @@ tco_reentry:
                             badval=true
                             break
                         }
-                        pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                        // pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                        pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                         previousterm = term + 1
                     }
                 }
@@ -2937,7 +2933,8 @@ tco_reentry:
                     pf(`<badval>`)
                     break
                 }
-                pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                // pf(`%v`, sparkle(sf(`%v`, expr.result)))
+                pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                 pf("\n")
             } else {
                 pf("\n")
@@ -2955,14 +2952,16 @@ tco_reentry:
                     if inbound.Tokens[term].tokType == C_Comma {
                         expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
                         if ef || expr.evalError { badval=true; break }
-                        plog_out += sparkle(sf(`%v`, expr.result))
+                        // plog_out += sparkle(sf(`%v`, expr.result))
+                        plog_out += sparkle( stripOuter( sf(`%v`, expr.result),'"') )
                         previousterm = term + 1
                     }
                 }
                 if badval { break }
                 expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:]), true)
                 if ef || expr.evalError { break }
-                plog_out += sparkle(sf(`%v`, expr.result))
+                // plog_out += sparkle(sf(`%v`, expr.result))
+                plog_out += sparkle( stripOuter( sf(`%v`, expr.result),'"') )
             }
 
             plog("%v", plog_out)
@@ -3275,10 +3274,6 @@ tco_reentry:
 
                     if !found { val=0 }
 
-                    // pf("id      : %v\n",id)
-                    // pf("preval  : %v\n",val)
-                    // pf("pretype : %T\n",val)
-
                     if found {
                         switch val.(type) {
                         case int:
@@ -3291,13 +3286,6 @@ tco_reentry:
                             endIncDec=true
                         }
                     }
-
-                    // pf("id       : %v\n",id)
-                    // pf("postval  : %v\n",val)
-                    // pf("posttype : %T\n",val)
-                    // pf("ampl     : %v\n",ampl)
-                    // pf("eid      : %v\n",endIncDec)
-                    // pf("isarray  : %v\n",isArray)
 
                     // if not found then will init with 0+ampl
                     if !endIncDec {
@@ -3399,11 +3387,6 @@ tco_reentry:
             // try to eval and assign
             cet := crushEvalTokens(inbound.Tokens)
             tmpres,_ := wrappedEval(ifs, cet, true)
-            /*
-            if tmpres.evalError && tmpres.reason != "" {
-                pf("Code %v: [#2]%s[#-]\n", tmpres.evalCode, tmpres.reason)
-            }
-            */
             if tmpres.evalError { break }
 
         } // end-statements-case
@@ -3439,7 +3422,6 @@ tco_reentry:
 
     }
 
-    // return endFunc, breakIn, continueOut
     return endFunc
 
 }
@@ -3450,7 +3432,7 @@ func system(cmd string, display bool) (string) {
         cmd=stripOuter(cmd,'`')
     }
     out, _ := Copper(cmd, false)
-    if display { pf(out) }
+    if display { pf("%s",out) }
     return out
 }
 

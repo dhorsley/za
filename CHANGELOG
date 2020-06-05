@@ -210,6 +210,11 @@ CHANGE LOG
             * it would probably also be wise to use the -l option (or the locks(true) call at runtime) to ensure that all mutex
                 locking is enabled, for the same reason. this should not be necessary, but this is a new feature after all!
 
+        * added: coproc(bool) call. This is to enable processing of | and =| statements using either the co-process shell (true) 
+            or the current execution pid's shell (false). This was added so that async command calls could be safely processed.
+            On windows, by default, execution is in the current process rather than the child shell (as we use 'cmd /c' calls
+            currently on windows.)
+
 
 1.0.3
 
