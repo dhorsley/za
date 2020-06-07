@@ -46,6 +46,23 @@ func finish(hard bool, i int) {
 
 }
 
+
+// have to use gotos here as loops can't be inlined
+func strcmp(a string, b string) (bool) {
+    if len(a)==0 && len(b)==0  { return true }
+    if len(a)!=len(b)   { return false }
+    if a[0]!=b[0]       { return false }
+    i:=0
+    strcmp_repeat_point:
+    // for i:=0 ; i<rlen(a); i++ {
+        if a[i]!=b[i] { return false }
+        i++
+    if i<len(a) { goto strcmp_repeat_point }
+    // if a[i]!=b[i]   { return false }
+    // }
+    return true
+}
+
 // GetAsFloat : converts a variety of types to a float
 func GetAsFloat(unk interface{}) (float64, bool) {
     switch i := unk.(type) {
@@ -453,14 +470,6 @@ tco_reentry:
 
     if varmode == MODE_NEW {
 
-        // in interactive mode, the current functionspace is 0
-        // in normal exec mode, the source is treated as functionspace 1
-
-        if base < 2 {
-            globalaccess = ifs
-            vset(globalaccess, "userSigIntHandler", "")
-        }
-
         // create the local variable storage for the function
         var vtm uint64
         if ! tco {
@@ -477,6 +486,13 @@ tco_reentry:
             test_assert = ""
             globlock.Unlock()
 
+        }
+
+        // in interactive mode, the current functionspace is 0
+        // in normal exec mode, the source is treated as functionspace 1
+        if base < 2 {
+            globalaccess = ifs
+            vset(globalaccess, "userSigIntHandler", "")
         }
 
         // nesting levels in this function
@@ -2025,7 +2041,7 @@ tco_reentry:
 
 
         case C_Nop:
-            time.Sleep(100 * time.Millisecond)
+            time.Sleep(1 * time.Microsecond)
 
 
         case C_Async:
@@ -2101,7 +2117,7 @@ tco_reentry:
                 // pf("task returned channel id : %+v\n",h)
 
                 // assign h to handles map
-                if next_id=="" {
+                if strcmp(next_id,"") {
                     vsetElement(ifs,handles,sf("async_%v",id),h)
                 } else {
                     vsetElement(ifs,handles,next_id,h)
@@ -2293,7 +2309,7 @@ tco_reentry:
                         // pf("Base func is  -> <%v>\n",bname)
                         // pf("Call token is -> <%v>\n",inbound.Tokens[1].tokText)
 
-                        if bname==inbound.Tokens[1].tokText {
+                        if strcmp(bname,inbound.Tokens[1].tokText) {
                             tco_check=true
                         }
                     }
@@ -2504,7 +2520,7 @@ tco_reentry:
 
             fom := expr.result.(string)
 
-            if fom == "" {
+            if strcmp(fom,"") {
                 report(ifs,lastline,  "Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
@@ -3272,35 +3288,49 @@ tco_reentry:
                         val, found = vget(ifs, id)
                     }
 
-                    if !found { val=0 }
-
+                    var ival int
                     if found {
                         switch val.(type) {
                         case int:
-                            val,_=GetAsInt(val)
-                        case int32,int64,uint8:
-                            val,_=GetAsInt(val)
+                            // val,_=GetAsInt(val)
+                            ival=int(val.(int))
+                        case uint64:
+                            ival=int(val.(uint64))
+                        case int32:
+                            ival=int(val.(int32))
+                        case int64:
+                            ival=int(val.(int64))
+                        case uint8:
+                            // val,_=GetAsInt(val)
+                            ival=int(val.(uint8))
                         default:
                             report(ifs,lastline, sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                         }
+                    // } else {
+                    //    val=0
                     }
+
 
                     // if not found then will init with 0+ampl
                     if !endIncDec {
                         switch statement.tokType {
                         case C_Inc:
                             if isArray {
-                                vsetElement(ifs,id[:sqPos],elementComponents,val.(int)+ampl)
+                                // vsetElement(ifs,id[:sqPos],elementComponents,val.(int)+ampl)
+                                vsetElement(ifs,id[:sqPos],elementComponents,ival+ampl)
                             } else {
-                                vset(ifs, id, val.(int)+ampl)
+                                // vset(ifs, id, val.(int)+ampl)
+                                vset(ifs, id, ival+ampl)
                             }
                         case C_Dec:
                             if isArray {
-                                vsetElement(ifs,id[:sqPos],elementComponents,val.(int)-ampl)
+                                // vsetElement(ifs,id[:sqPos],elementComponents,val.(int)-ampl)
+                                vsetElement(ifs,id[:sqPos],elementComponents,ival-ampl)
                             } else {
-                                vset(ifs, id, val.(int)-ampl)
+                                // vset(ifs, id, val.(int)-ampl)
+                                vset(ifs, id, ival-ampl)
                             }
                         }
                     }

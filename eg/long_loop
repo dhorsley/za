@@ -9,16 +9,14 @@ define humansize(i,prec,unit)
     return format( "%." + prec + "f %s" ,i,unit)
 enddef
 
-define report(ts,te,max_count,instructions)
+define report(ts,te,max_count)
     dur=time_diff(te,ts)/1000
     println format("\nduration       [#5]%0.3f s[#-]",dur)
     println format("iterations     %v",humansize(float(max_count),0,""))
     rate=float(dur/max_count)
     println format("avg iteration  %0.3f ns",rate*1e9)
     hs=humansize(1/rate,3,"")
-    println format("its/sec        [#5]%s[#-]",hs)
-    hvis=humansize((1/rate)*instructions,3,"")
-    println format("vi/sec         [#5]%s[#-]\n",hvis)
+    println format("its/sec        [#5]%s[#-]\n",hs)
 enddef
 
 #
@@ -29,12 +27,9 @@ max_count=100000000
 input mc optarg 1
 on mc!="" do max_count=int(mc)
 
-instructions=4
-# vi: nop, inc, cmp, endfor
-
 ts=epoch_nano_time()
 for x=1 to max_count
-    ;
+    ; 
 endfor
 println "x:",x
 te=epoch_nano_time()
@@ -44,5 +39,5 @@ assert(x==max_count)
 # END
 #
 
-report(ts,te,max_count,instructions)
+report(ts,te,max_count)
 

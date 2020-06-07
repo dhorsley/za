@@ -104,11 +104,11 @@ totcount=0
 tottests=0
 
 foreach c in sumcount
-    print format("%30s : %d\n",key_c,c)
+    print format("%30s : %3d / %-3d\n",key_c,c,sumtot[key_c])
     totcount=totcount+c
     tottests=tottests+sumtot[key_c]
 endfor
-println format("%30s : [#5]%3.2f[#-]","TOTAL",100.0*totcount/tottests)
+println format("%30s : [#5]%3.2f[#-] %%","TOTAL",100.0*totcount/tottests)
 textline("--")
 
 

@@ -1,0 +1,7 @@
+Package: za-pkg
+Version: 1.0-1
+Section: base
+Priority: optional
+Architecture: i386
+Maintainer: Daniel Horsley <daniel@zalang.org>
+Description: Za Test Package
