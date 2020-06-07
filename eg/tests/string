@@ -284,5 +284,30 @@ test "strpos" group "string"
     assert strpos(t,"g")==len(t)-1
 endtest
 
+test "addansi" group "string"
+    header(_test_name)
+    t="[#1]we [#bold]must per[##]form[#-] a quirkafleeg[#-]"
+    a=addansi(t)
+    println "original : ",t
+    println "ansified : ",a
+    | echo -en "{a}" | hexdump -C
+    q="\x1b[94mwe \x1b[1mmust per\x1b[49mform\x1b[0m a quirkafleeg\x1b[0m"
+    println format("escaped comparison : %q",q)
+    assert addansi(t)==q
+endtest
+
+test "stripansi" group "string"
+    header(_test_name)
+    t="[#1]we [#bold]must per[##]form[#-] a quirkafleeg[#-]"
+    a=addansi(t)
+    println "original : ",t
+    println "ansified : ",a
+    | echo -en "{a}" | hexdump -C
+    println "stripped : ",stripansi(a)
+    | echo -en "{stripansi(a)}" | hexdump -C
+    assert stripansi(a)=="we must perform a quirkafleeg"
+endtest
+
+
 
 

@@ -37,18 +37,7 @@ define perf_regex_dna()
         async ahandles runFilter(seq,v) key_v
     endfor
 
-    doc `
-    # async without waiting
-    init res assoc
-    while true
-        some_res=await(ahandles,false)
-        res=res+some_res
-        on len(res)==len(variants) do break
-        println "Collecting more results..."
-    endwhile
-    `
-
-    # or wait for completion
+    # wait for completion
     res=await(ahandles,true)
 
     # push to screen in same order they were sent for processing

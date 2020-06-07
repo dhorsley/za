@@ -21,20 +21,21 @@ var vlock = &sync.RWMutex{}
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
-    // need to use full lock() as varcount may change in background otherwise.
+/*
+    if lockSafety { vlock.RLock() ; defer vlock.RUnlock() }
 
-    if lockSafety { vlock.RLock() }
-
+    if k,there:=vmap[fs][name]; there {
+        return k,true
+    }
+    return 0,false
+*/
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
-        if ident[fs][k].iName == name {
-            if lockSafety { vlock.RUnlock() }
+        if strcmp(ident[fs][k].iName,name) {
             // pf("found in vl: k=%v cap_id=%v len_id=%v varcount=%v\n",k,cap(ident[fs]),len(ident[fs]),varcount[fs])
             return k, true
         }
     }
-
-    if lockSafety { vlock.RUnlock() }
 
     // pf("not found in vl: cap_id=%v len_id=%v varcount=%v\n",cap(ident[fs]),len(ident[fs]),varcount[fs])
     return 0, false
@@ -43,8 +44,13 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
 func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
-    vlock.Lock()
+    if lockSafety {
+        vlock.Lock()
+        defer vlock.Unlock()
+    }
+
     vtmr:=*vtable_maxreached
+    // vmap[fs]=make(map[string]int)
 
     if fs>=vtmr {
         *vtable_maxreached=fs
@@ -54,7 +60,6 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
     } else {
         // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
     }
-    vlock.Unlock()
 
 }
 
@@ -63,7 +68,10 @@ func vunset(fs uint64, name string) {
 
     loc, found := VarLookup(fs, name)
 
-    if lockSafety { vlock.Lock() }
+    if lockSafety {
+        vlock.Lock()
+        defer vlock.Unlock()
+    }
 
     vc:=varcount[fs]
     if found {
@@ -72,13 +80,18 @@ func vunset(fs uint64, name string) {
         }
         ident[fs][vc] = Variable{}
         varcount[fs]--
+        // delete(vmap[fs],name)
     }
 
-    if lockSafety { vlock.Unlock() }
 }
 
 
 func vdelete(fs uint64, name string, ename string) {
+
+    // no need for lock here as vget already locks and
+    // we are working with a copy before vset writes.
+    // vset also locks when required.
+
     if _, ok := VarLookup(fs, name); ok {
         m,_:=vget(fs,name)
         switch m.(type) {
@@ -117,23 +130,28 @@ func vdelete(fs uint64, name string, ename string) {
 }
 
 
+
 func vset(fs uint64, name string, value interface{}) bool {
 
     if vi, ok := VarLookup(fs, name); ok {
         // set
-        if lockSafety { vlock.Lock() }
+        if lockSafety {
+            vlock.Lock()
+            defer vlock.Unlock()
+        }
         ident[fs][vi].iValue = value
-        if lockSafety { vlock.Unlock() }
     } else {
 
         // instantiate
 
-        if lockSafety { vlock.Lock() }
+        if lockSafety {
+            vlock.Lock()
+            defer vlock.Unlock()
+        }
+
         if varcount[fs]==len(ident[fs]) {
 
             // append thread safety workaround
-            // newary:=make([]Variable,cap(ident[fs])*2,cap(ident[fs])*2)
-            // pf("len to copy -> %v  new cap -> %v\n",len(ident[fs]), cap(ident[fs])*2)
             newary:=make([]Variable,len(ident[fs]),len(ident[fs])*2)
             copy(newary,ident[fs])
             newary=append(newary,Variable{iName: name, iValue: value})
@@ -143,9 +161,11 @@ func vset(fs uint64, name string, value interface{}) bool {
             ident[fs][varcount[fs]] = Variable{iName: name, iValue: value}
         }
 
+        // vmap[fs][name]=varcount[fs]
         varcount[fs]++
-        if lockSafety { vlock.Unlock() }
+
     }
+
     return true
 
 }
@@ -324,8 +344,10 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
 func vget(fs uint64, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-        vlock.RLock()
-        defer vlock.RUnlock()
+        if lockSafety {
+            vlock.RLock()
+            defer vlock.RUnlock()
+        }
         return ident[fs][vi].iValue, true
     }
     return nil, false
@@ -370,17 +392,36 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     // @note: re-enable these locks if there are any problems.
 
-    // if lockSafety { lastlock.RLock() }
+    /*
+     if lockSafety {
+        lastlock.RLock()
+        defer lastlock.RUnlock()
+    }
+    */
+
     if no_interpolation {
-        // if lockSafety { lastlock.RUnlock() }
         return s,false
     }
-    // if lockSafety { lastlock.RUnlock() }
 
     // should finish sooner if no curly open brace in string.
+
+    // manually inlining this to see if the average time comes down
+    //  when we avoid indexbyte. this will only help when the match
+    //  is found in the first few (4?) bytes.
+
+    p:=-1
+    for p=range s {
+        if s[p]=='{' { continue }
+    }
+    if p==-1 {
+        return s,false
+    }
+
+    /*
     if str.IndexByte(s, '{') == -1 {
         return s,false
     }
+    */
 
     // we need the extra loops to deal with embedded indirection
     for {
@@ -410,7 +451,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         // if lockSafety { vlock.RUnlock() }
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
-        if os == s {
+        if strcmp(os,s) {
             redo:=true
             for ;redo==true; {
                 modified:=false

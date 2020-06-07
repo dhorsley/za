@@ -2,17 +2,57 @@
 CHANGE LOG
 =============================================================================================
 
-1.1.0 will be the release version
+1.1.0   will be the release version
+
+1.0.9   bug fixes and documentation updates
+
+1.0.8   documentation wiki and related fixes that come out of this.
+         possibly write the documentation server in Za.
+
+1.0.7   more example code
+         there are also probably some internal functions we can expose as library calls.
+         for example, the za colour code stripper and similar. 
+
+1.0.6   clean up of source layout and use of modules.
+
+        this will exclude changing the goval code, it's far too entwined now.
+        however, we could probably update the remaining used modules more regularly. i'm
+        still somewhat reluctant to do this though, as i don't like having releases break
+        of their own accord - that's my job! 
+        
 
 
 ---------------------------------------------------------------------------------------------
 1.0.5
 
+    There are currently, most likely, stil a lot of missing type cases in the library and 
+     other eval spots. The same applies to arg count checks in the library. So, a small pass
+     will be done for these.
+
+    At this point also it seems worth the effort to have another optimisation pass for 
+     obvious issues.
+
+    We would also like to increase the library tests somewhat and improve the quality of the
+     library documentation. This is only for descriptive content at the moment. A full working
+     of the reference doc into a wiki or similar will come later.
+
+    We will also potentially be adding a few more small helper routines in the library as 
+     requirements come out of writing test code in Za for the library.
+
+    Another sanity check should be done over the various conditional and looping constructs to
+     check they still work as expected.
+
+    rejected:
+        * tried changing back to loops without pointers in actor.go. ( i.e. (*thisLoop) )
+            * change was reverted as addition test was between 600ms to 1s slower without pointers.
+
     features:
         * added stripansi() lib call.
         * added eg/tests/libcov for vaguely testing library test coverage.
 
-    
+    fixes:
+        * added an inline'able strcmp to use in hot spots instead of built-in string equality
+            * this speeds up inc/dec and interpolation somewhat.
 
 
 ---------------------------------------------------------------------------------------------
