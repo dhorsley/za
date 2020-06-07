@@ -70,9 +70,9 @@ var wccount = make([]int, SPACE_CAP)                // count of active WHEN..END
 
 var globalaccess uint64                             // number of functionspace which is considered to be "global"
 
-var varcount = make([]int, SPACE_CAP)               // how many local variables are declared in each active function.
+var varcount = make([]int, SPACE_CAP)                 // how many local variables are declared in each active function.
+// var vmap = make(map[uint64]map[string]int, SPACE_CAP) // test lookup make for var names
 
-// var lastline int                                    // last processed line
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
 var ident = make([][]Variable, SPACE_CAP)
@@ -199,6 +199,11 @@ func main() {
     fnlookup.lmset("main",1)
     numlookup.lmset(0,"global")
     numlookup.lmset(1,"main")
+
+    /*
+    vmap[0]=make(map[string]int,VAR_CAP)
+    vmap[1]=make(map[string]int,VAR_CAP)
+    */
 
     calllock.Lock()
     calltable[0] = call_s{} // reset call stacks for global and main

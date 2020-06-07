@@ -36,8 +36,6 @@ syn match   Operator	"\[[[^:]\|\]]"		contained
 syn match   WrapLineOperator "\\$"
 syn match   Escape	contained	'\%(^\)\@!\%(\\\\\)*\\.'
 
-syn match   Source	"^\.\s*"
-syn match   Source	"\s\.\s"
 syn match   Colon	'^\s*\zs:'
 
 
@@ -58,7 +56,7 @@ syn match	Comment		"\s\zs//.*$"	contains=@CommentGroup
 " Identifiers: {{{1
 "=============
 syn match   folVarRHS           "{[\~#\&]\=[[:alnum:]_]\{-}}"hs=s+1,he=e-1
-syn keyword assignStatements    input zero inc dec nextgroup=folVarLHS skipwhite
+syn keyword assignStatements    setglob input zero inc dec nextgroup=folVarLHS skipwhite
 syn match   folVarLHS           '\i\+' contained
 
 " Functions: {{{1
@@ -95,6 +93,7 @@ syntax match list_functions "\s*fieldsort\s*("he=e-1
 syntax match list_functions "\s*numcomp\s*("he=e-1
 
 syntax match conversion_functions "\s*int\s*("he=e-1
+syntax match conversion_functions "\s*bool\s*("he=e-1
 syntax match conversion_functions "\s*float\s*("he=e-1
 syntax match conversion_functions "\s*string\s*("he=e-1
 syntax match conversion_functions "\s*kind\s*("he=e-1
@@ -254,6 +253,7 @@ syntax match db_functions "\s*db_init\s*("he=e-1
 syntax match db_functions "\s*db_query\s*("he=e-1
 syntax match db_functions "\s*db_fields\s*("he=e-1
 
+syntax match string_functions "\s*addansi\s*("he=e-1
 syntax match string_functions "\s*stripansi\s*("he=e-1
 syntax match string_functions "\s*pad\s*("he=e-1
 syntax match string_functions "\s*len\s*("he=e-1
@@ -336,7 +336,7 @@ syntax match statements "\(^\|\s\+\)\(for\|nop\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(pause\|debug\|async\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(version\|require\|println\|setglob\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|foreach\|continue\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(accessfile\)\($\|\s\+\)"
 
@@ -383,6 +383,11 @@ syntax match colour_normal "\[#-\]"hs=s+1,he=e-1 containedin=DoubleQuote
 " ========
 syntax region DoubleQuote start=/\v"/ skip=+\\['"]+ end=/\v"/
 syntax region DoubleQuote start=/\v`/ skip=+\\[`]+ end=/\v`/
+
+" Extra Bracing: {{{1
+" ===================
+
+syntax region sqBrace transparent start=/\v\[/ skip=+\\[\]]+ end=/\v\]/
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
@@ -439,10 +444,8 @@ hi def link Paren	Arithmetic
 hi def link QuickComment	Comment
 hi def link Range	Operator
 hi def link SingleQuote	String
-hi def link Source	Operator
 hi def link SubShRegion	Operator
 hi def link WrapLineOperator	Operator
-
 hi def link time_functions functionlist
 hi def link list_functions functionlist
 hi def link conversion_functions functionlist
@@ -477,6 +480,8 @@ hi def link assignStatements	statements
 hi def link StringLiteral		String
 hi def link folBash             colfolbash
 
+hi def link sqBrace MatchParen
+
 hi Normal       ctermfg=white ctermbg=NONE
 hi comment      ctermfg=Red
 hi Constant     ctermfg=darkGreen cterm=bold
@@ -488,6 +493,8 @@ hi colfolcc     ctermfg=lightBlue
 hi colfolvar    ctermfg=darkYellow
 hi ErrorMsg     ctermfg=black ctermbg=red
 hi WarningMsg   ctermfg=black ctermbg=green
+hi MatchParen   ctermbg=Blue ctermfg=Yellow
+hi InnerBrace   ctermbg=darkGray ctermfg=Blue
 hi Error        ctermbg=Red
 hi functionlist ctermfg=Blue cterm=italic
 hi userfunctionlist ctermfg=darkYellow cterm=italic

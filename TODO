@@ -12,6 +12,19 @@ next release will have only:
     no new features! (unless absolutely, strictly necessary - or i change my mind)
 
 
+    za-ref.html:
+        * add calls:
+            * stripansi,addansi
+
+    update install() and uninstall() for rpm, apk, sh in other OS
+        * add uninstall to za.vim and za-ref
+
+    add is_installed(pkg) call.
+
+    investigate /tmp/copper*err and /tmp/za_with* file remnants
+
+
+
 LATER
 -----
 

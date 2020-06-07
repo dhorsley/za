@@ -82,7 +82,7 @@ func buildStringLib() {
         "substr", "gsub", "replace", "trim", "lines", "count",
         "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format",
-        "split", "join", "collapse","strpos","stripansi",
+        "split", "join", "collapse","strpos","stripansi","addansi",
     }
 
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
@@ -214,6 +214,17 @@ func buildStringLib() {
         cases := args[2].(string)
         return tr(args[0].(string), action, cases), nil
     }
+
+	slhelp["addansi"] = LibHelp{in: "string", out: "ansi_string", action: "Return a string with za colour codes replaced with ANSI values."}
+	stdlib["addansi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return "", errors.New("invalid argument (count) provided to addansi()")
+		}
+		if sf("%T", args[0])!="string" {
+            return "", errors.New("invalid argument (type) provided to addansi()")
+        }
+        return sparkle(args[0].(string)),nil
+	}
 
     slhelp["stripansi"] = LibHelp{in: "string", out: "string", action: "Remove escaped ansi codes."}
     stdlib["stripansi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

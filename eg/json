@@ -63,7 +63,7 @@ enddef
 
 # MAIN
 
-f=read_file("test.json")
+f=read_file("json-test.json")
 if f==nil
     println "Error: could not read JSON file."
     exit 1
