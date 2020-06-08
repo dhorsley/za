@@ -594,7 +594,7 @@ func buildNetLib() {
 
 
     features["net"] = Feature{version: 1, category: "net"}
-    categories["net"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", }
+    categories["net"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download", }
 
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
@@ -964,6 +964,17 @@ func buildNetLib() {
             return "",errors.New(sf("Could not post to %v",args[0].(string)))
         }
         return string(s),nil
+    }
+
+    slhelp["download"] = LibHelp{in: "url_string", out: "local_name", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_name[#i0]. Includes console feedback."}
+    stdlib["download"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if sf("%T",args[0])!="string" {
+            return "",errors.New("Bad args (type) in download()")
+        }
+        if len(args)!=1 { return "",errors.New("Bad args (count) in download()") }
+        fname, down_code := FileDownload(args[0].(string))
+        if down_code<300 { return fname, nil }
+        return "", nil
     }
 
     slhelp["web_download"] = LibHelp{in: "url_string,local_file", out: "bool_okay", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_file[#i0]."}

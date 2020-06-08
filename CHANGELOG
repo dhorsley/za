@@ -48,11 +48,19 @@ CHANGE LOG
 
     features:
         * added stripansi() lib call.
-        * added eg/tests/libcov for vaguely testing library test coverage.
+        * added addansi() lib call.
+        * added uninstall() lib call.
+        * added eg/tests/libcov for vaguely checking library test coverage.
+        * added download() lib call in lib-net. Like web_download() but auto names and 
+            provides console feedback.
 
     fixes:
         * added an inline'able strcmp to use in hot spots instead of built-in string equality
             * this speeds up inc/dec and interpolation somewhat.
+
+        * added scaler to loop allocator
+        * amended loop and functionspace allocator to loop until ifs>cap as async
+            allocations were busting it a new asshole. (instead of only allocating once)
 
 
 ---------------------------------------------------------------------------------------------
