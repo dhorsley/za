@@ -66,6 +66,11 @@ func ulen(args interface{}) (int,error) {
     return -1,errors.New(sf("Unknown type '%T'",args))
 }
 
+func getMemUsage() (uint64,uint64) {
+        var m runtime.MemStats
+        runtime.ReadMemStats(&m)
+        return m.Alloc, m.Sys
+}
 
 func buildInternalLib() {
 
@@ -77,7 +82,7 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","length","tco", "echo","getrow","getcol","unmap","await",
+        "globlen","len","length","tco", "echo","getrow","getcol","unmap","await","getmem",
     }
 
 
@@ -96,6 +101,12 @@ func buildInternalLib() {
             }
         }
         return GetWinInfo(hnd), nil
+    }
+
+    slhelp["getmem"] = LibHelp{in: "", out: "number", action: "Returns the current allocated memory and system memory usage."}
+    stdlib["getmem"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        a,s:=getMemUsage()
+        return sf("%d %d",a/1024/1024,s/1024/1024), nil
     }
 
     slhelp["term_h"] = LibHelp{in: "", out: "number", action: "Returns the current terminal height."}
@@ -293,7 +304,8 @@ func buildInternalLib() {
 
     slhelp["thisref"] = LibHelp{in: "", out: "func_ref_num", action: "Find this function's handle."}
     stdlib["thisref"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        return evalfs, nil
+        i,_:=GetAsInt(evalfs)
+        return i,nil
     }
 
     slhelp["tco"] = LibHelp{in: "", out: "bool", action: "are we currently in a tail call loop?"}
