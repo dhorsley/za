@@ -19,7 +19,6 @@ import (
 const RefreshRate = time.Millisecond * 100
 
 func humansize(i float64,prec int,unit string) (string) {
-    if unit!="" { unit=" "+unit }
     if i>=1e9 { unit="Gi"+unit; i=float64(i/1e9)  }
     if i>=1e6 { unit="Mi"+unit; i=float64(i/1e6)  }
     if i>=1e3 { unit="Ki"+unit; i=float64(i/1e3) }
@@ -97,7 +96,7 @@ func buildPackageLib() {
     // packages
 
     features["package"] = Feature{version: 1, category: "os"}
-    categories["package"] = []string{"install", "uninstall", "service", "vcmp"}
+    categories["package"] = []string{"install", "uninstall", "service", "vcmp","is_installed"}
 
     slhelp["install"] = LibHelp{in: "packages_string", out: "", action: "Installs the packages in [#i1]packages_string[#i0]."}
     stdlib["install"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -110,6 +109,19 @@ func buildPackageLib() {
             return done, err
         }
         return false, errors.New("invalid argument type for install()")
+    }
+
+    slhelp["is_installed"] = LibHelp{in: "package_name", out: "bool", action: "Is package [#i1]package_name[#i0] installed?"}
+    stdlib["is_installed"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args) != 1 {
+            return false, errors.New("invalid argument count for is_installed()")
+        }
+        switch args[0].(type) {
+        case string:
+            if args[0].(string)=="" { return false,errors.New("Invalid package name") }
+            return isinstalled(args[0].(string)),nil
+        }
+        return false, errors.New("invalid argument type for is_installed()")
     }
 
     slhelp["uninstall"] = LibHelp{in: "packages_string", out: "", action: "Removes the packages in [#i1]packages_string[#i0]."}
@@ -193,6 +205,28 @@ func vconvert(v string) (float64, error) {
     return strconv.ParseFloat(f, 64)
 }
 
+func isinstalled(pkg string) (bool) {
+
+    v, _ := vget(0, "@release_id")
+
+    err:=-1
+    switch v.(string) {
+    case "ubuntu", "debian":
+        _, err = Copper("dpkg -V "+pkg+" 2>/dev/null", true)
+    case "opensuse":
+        _, err = Copper("rpm -q "+pkg+" 2>/dev/null", true)
+    case "alpine":
+        _, err = Copper("apk info -e "+pkg+" 2>/dev/null", true)
+    case "fedora", "amzn", "centos", "rhel":
+        _, err = Copper("rpm -q "+pkg+" 2>/dev/null", true)
+    default:
+        return false
+    }
+
+    if err==0 { return true }
+    return false
+
+}
 
 func uninstall(pkgs string) (state int) {
 

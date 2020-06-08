@@ -23,6 +23,11 @@ test "vcmp" group "package"
     assert vcmp("1.0.0","19.0.1")==-1
 endtest
 
+test "is_installed" group "package"
+    assert is_installed("binutils")
+    assert ! is_installed("za-pkg")
+endtest 
+
 
 test "service" group "package"
 
@@ -70,5 +75,7 @@ test "uninstall" group "package"
     assert last()!=0
 endtest
 
+on is_file("za_test.out") do | chown ${SUDO_USER}. za_test.out
 
-| chown ${SUDO_USER}. za_test.out
+
+

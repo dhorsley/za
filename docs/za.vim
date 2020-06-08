@@ -189,6 +189,8 @@ syntax match image_functions "\s*svg_link_end\s*("he=e-1
 syntax match image_functions "\s*svg_group\s*("he=e-1
 syntax match image_functions "\s*svg_group_end\s*("he=e-1
 
+syntax match package_functions "\s*uninstall\s*("he=e-1
+syntax match package_functions "\s*is_installed\s*("he=e-1
 syntax match package_functions "\s*install\s*("he=e-1
 syntax match package_functions "\s*service\s*("he=e-1
 syntax match package_functions "\s*vcmp\s*("he=e-1
@@ -233,6 +235,7 @@ syntax match file_functions "\s*perms\s*("he=e-1
 syntax match file_functions "\s*file_create\s*("he=e-1
 syntax match file_functions "\s*file_close\s*("he=e-1
 
+syntax match web_functions "\s*download\s*("he=e-1
 syntax match web_functions "\s*web_download\s*("he=e-1
 syntax match web_functions "\s*web_custom\s*("he=e-1
 syntax match web_functions "\s*web_max_clients\s*("he=e-1
@@ -330,7 +333,7 @@ syntax match html_functions "\s*wh5\s*("he=e-1
 
 syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
-syntax match statements "\( do \| to \| in \)"
+syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(for\|nop\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"

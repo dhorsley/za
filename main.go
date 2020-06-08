@@ -61,8 +61,8 @@ var orow, ocol, ow, oh int                          // console cursor location a
 
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
 var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for each defined function (key: function name)
-var loops = make([][]s_loop, LOOP_CAP)              // counters per function per loop type (keys: function, keyword-token id)
-var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function name)
+var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
+var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function id)
 var fairydust = make(map[string]string, FAIRY_CAP)  // ANSI colour code mappings (key: colour alias)
 var lastConstruct = make([][]int, SPACE_CAP)        // stores the active construct/loop types outer->inner for the break command
 var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN statements

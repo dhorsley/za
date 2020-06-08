@@ -21,14 +21,15 @@ var vlock = &sync.RWMutex{}
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
-/*
     if lockSafety { vlock.RLock() ; defer vlock.RUnlock() }
 
+/*
     if k,there:=vmap[fs][name]; there {
         return k,true
     }
     return 0,false
 */
+
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if strcmp(ident[fs][k].iName,name) {
@@ -392,12 +393,10 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     // @note: re-enable these locks if there are any problems.
 
-    /*
      if lockSafety {
         lastlock.RLock()
         defer lastlock.RUnlock()
     }
-    */
 
     if no_interpolation {
         return s,false
@@ -407,7 +406,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     // manually inlining this to see if the average time comes down
     //  when we avoid indexbyte. this will only help when the match
-    //  is found in the first few (4?) bytes.
+    //  is found in the first few (4?) bytes?
 
     p:=-1
     for p=range s {
@@ -426,7 +425,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
     // we need the extra loops to deal with embedded indirection
     for {
         os := s
-        // if lockSafety { vlock.RLock() }
+        if lockSafety { vlock.RLock() }
         vc:=varcount[fs]
         for k := 0; k < vc; k++ {
 
@@ -448,7 +447,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                 }
             }
         }
-        // if lockSafety { vlock.RUnlock() }
+        if lockSafety { vlock.RUnlock() }
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         if strcmp(os,s) {

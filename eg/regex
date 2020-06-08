@@ -33,7 +33,6 @@ define perf_regex_dna()
     l2 = len(seq)
 
     foreach v in variants
-      # async mapname  function args    new key name
         async ahandles runFilter(seq,v) key_v
     endfor
 

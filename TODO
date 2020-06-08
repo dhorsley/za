@@ -11,15 +11,13 @@ next release will have only:
 
     no new features! (unless absolutely, strictly necessary - or i change my mind)
 
+    copy za-ref.html to work on and generate archive copy
 
     za-ref.html:
         * add calls:
-            * stripansi,addansi
+            * stripansi,addansi,is_installed,uninstall,download
 
-    update install() and uninstall() for rpm, apk, sh in other OS
-        * add uninstall to za.vim and za-ref
-
-    add is_installed(pkg) call.
+    update uninstall() for rpm, apk, sh in other OS
 
     investigate /tmp/copper*err and /tmp/za_with* file remnants
 

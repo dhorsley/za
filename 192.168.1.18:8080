@@ -1,0 +1,24 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+</head>
+<body lang="en-GB" dir="ltr"><p><br/>
+<br/>
+
+</p>
+<p align="center"><font size="4" style="font-size: 14pt"><b>Test Index</b></font></p>
+<p align="center"><a href="/headers/blue-flower.jpg">Image 1</a></p>
+<p align="center"><a href="/headers/raindrops.jpg">Image 2</a></p>
+<p align="center"><a href="/headers/maple.jpg">Image 3</a></p>
+<p align="center"><a href="/notblah/index.html">Rewrite to Existing Path</a></p>
+<p align="center"><a href="/notblah/missing_index.html">Generate Error</a></p>
+<p align="center"><a href="/gone">Forced Redirect Link</a></p>
+<p align="center"><a href="/fun/awsip">Function Routing</a></p>
+<p align="center"><br/>
+<br/>
+
+</p>
+</body>
+</html>
