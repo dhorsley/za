@@ -6,19 +6,21 @@ package main
 
 const MaxUint64 = ^uint64(0)
 
-const MAX_LOOPS = 10
+// const MAX_LOOPS = 10
+const MAX_LOOPS = 16
 const DEFAULT_INIT_SIZE = 64   // start size of INIT'ed arrays
 
 // maximum lib-net listener clients for http server
 // should be below LOOP_CAP
 const MAX_CLIENTS = 800
 
-const SPACE_CAP = 64000     // max user function instances 
+// const SPACE_CAP = 64000     // max user function instances 
+const SPACE_CAP = 16000     // max user function instances 
 const FUNC_CAP = 300        // max stdlib functions
 const CALL_CAP = 20
-const LOOP_CAP = 64000      // max loops per function 
-const VAR_CAP = 40          // max vars per function (scales up)
-const CONSTRUCT_CAP = 128   // max break/continue wrappings
+const LOOP_START_CAP = 32      // max loops per function 
+const VAR_CAP = 20          // max vars per function (scales up)
+// const CONSTRUCT_CAP = 128   // max break/continue wrappings
 const FAIRY_CAP = 256       // max ansi mappings
 const LIST_SIZE_CAP = 32    // initial list size on construction
 

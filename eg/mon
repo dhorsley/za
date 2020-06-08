@@ -74,12 +74,17 @@ define showFiles()
         mfd=tr(open_fd,"d","\n")
         mfd=tr(mfd,"s","\t ")
         mfd=float(field(mfd,3,"\t "))
-        at 2,2 ; print "Open Descriptors : [#6]{ofd}[#-]"
-        at 3,2 ; print "Max Descriptors  : [#6]",format("%.7g",mfd),"[#-]"
+        at 2,2 ; print "Open Descr. : [#6]{ofd}[#-]"
+        at 3,2 ; print "Max         : [#6]"
+        if mfd>1e8
+            print "No Limit[#-]"
+        else
+            print format("%.7g",mfd),"[#-]"
+        endif
         fin=field(open_inode,2," \t\n")
         tin=float(field(open_inode,1," \t"))
-        at 4,2 ; print "Free Inodes      : [#6]{fin}[#-]"
-        at 5,2 ; print "Total Inodes     : [#6]",format("%.7g",tin),"[#-]"
+        at 4,2 ; print "Free Inodes : [#6]{fin}[#-]"
+        at 5,2 ; print "Total       : [#6]",format("%.7g",tin),"[#-]"
 
     endif
 
@@ -141,14 +146,14 @@ define showMem()
     on count(slabs)<8 do cs=count(slabs)
 
     comwidth=10
-    at 1,38; print format("[#b2][#7][#bold]%24s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    at 1,35; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
     for p = 0 to cs-1
         l=lines(slabs,"{p}:{p}")
         sa=strpos(l," ",0)
         c1=substr(l,0,sa)
         c2=substr(l,sa+1,len(l)-sa-1)
-        at 2+p,38; print format("%24s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
+        at 2+p,35; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
     endfor
 enddef
 
@@ -559,8 +564,8 @@ define redef_layout(cpu_count)
     pane define "procs",  cpu_count+10, 2,              11,      64,           "[#b1] Processes [##]",   "round"
     pane define "net",    cpu_count+3,  66,             18,      term_w()-67,  "[#b1] Network [##]",     "none"
     pane define "envs",   cpu_count+22, 1,              13,      50,           "[#b1] Environment [##]", "topline"
-    pane define "mem",    cpu_count+22, 51,             13,      80,           "[#b1] Memory [##]",      "topline"
-    pane define "files",  cpu_count+22, 131,            13,      term_w()-130, "[#b1] Files [##]",       "topline"
+    pane define "mem",    cpu_count+22, 51,             13,      70,           "[#b1] Memory [##]",      "topline"
+    pane define "files",  cpu_count+22, 121,            13,      term_w()-120, "[#b1] Files [##]",       "topline"
     pane define "status", cpu_count+36, 1,              4,       term_w(),     "[#b1] Status [##]",      "none"
 
     setglob net_sample_count = term_w()-71

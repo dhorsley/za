@@ -4,6 +4,8 @@
 
 # location of tests
 test_path="."
+thresh=90
+totthresh=95
 
 # mash together remnant elements
 define from(ary,n,sep)
@@ -104,11 +106,23 @@ totcount=0
 tottests=0
 
 foreach c in sumcount
-    print format("%30s : %3d / %-3d\n",key_c,c,sumtot[key_c])
+
+    pc=100.0*sumcount[key_c]/sumtot[key_c]
+    clr="[#4]"
+    on pc<thresh do clr="[#2]"
+
+    print format("%30s : %3d / %-3d  %s%06.02f %%[#-]\n",key_c,c,sumtot[key_c],clr,pc)
     totcount=totcount+c
     tottests=tottests+sumtot[key_c]
+
 endfor
-println format("%30s : [#5]%3.2f[#-] %%","TOTAL",100.0*totcount/tottests)
+
+pc=100.0*totcount/tottests
+clr="[#4]"
+on pc<totthresh do clr="[#2]"
+
+println format("\n%30s : [#bold]%s%3.2f[#-] %%","TOTAL",clr,100.0*totcount/tottests)
+
 textline("--")
 
 
