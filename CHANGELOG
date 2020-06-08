@@ -59,8 +59,10 @@ CHANGE LOG
             * this speeds up inc/dec and interpolation somewhat.
 
         * added scaler to loop allocator
-        * amended loop and functionspace allocator to loop until ifs>cap as async
+        * amended loop and functionspace allocator to loop while req_ifs>cap as async
             allocations were busting it a new asshole. (instead of only allocating once)
+            * scale down isn't included yet - beware! it's coming soon (tm) still deciding on 
+            simplest workable strategy.
 
 
 ---------------------------------------------------------------------------------------------
