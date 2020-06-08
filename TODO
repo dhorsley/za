@@ -15,16 +15,22 @@ next release will have only:
 
     za-ref.html:
         * add calls:
-            * stripansi,addansi,is_installed,uninstall,download
+            * stripansi,addansi,is_installed,uninstall,download,getmem
 
     update uninstall() for rpm, apk, sh in other OS
 
     investigate /tmp/copper*err and /tmp/za_with* file remnants
 
 
-
 LATER
 -----
+
+* to add: scale-down policy on the 2 main allocators. not doing this yet, but should
+    just stick with a very simple algorithm something like...
+    * if highest ref unchanged for 3 poll periods 
+        *and* lower than half of cap, then reallocate to half cap.
+    * no idea what duration of poll period should be...
+        * maybe just do it every 'x' allocations (in GetNextFnSpace() for functionspaces and Call() for loops)
 
 * add a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
 
