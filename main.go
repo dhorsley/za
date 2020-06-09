@@ -723,13 +723,11 @@ func main() {
                 break
             }
 
-            addrow := 1
-            if row >= MH+1 {
-                row = MH+1
-                fmt.Printf("\033[%dS", 1) // scroll up 1 line
-                addrow = 0
-            }
-            row += addrow
+            cr,_:=GetCursorPos()
+            row=cr+1
+            if row>MH { pf("\n") }
+
+            // row:=row+(len(input)/MW)
             col = 1
             at(row, col)
 
