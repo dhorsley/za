@@ -576,10 +576,8 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
     // calculate real prompt length after ansi codes applied.
     dlen := displayedLen(prompt)
 
-    globalPaneShiftLen := 0
-
     // init
-    p := panes[pane]
+    // p := panes[pane]
     cpos := 0                    // cursor pos as extent of printable chars from start
     var cx, cy int               // current cursor position (row:cy,col:cx)
     os := ""                     // original string before history navigation begins
@@ -595,8 +593,9 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
     var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
 
-    icol := col + dlen + globalPaneShiftLen // input (row,col)
+    icol := col + dlen // input (row,col)
     irow := row
+    if irow>MH { irow=MH }
 
     endLine := false // input complete?
 
@@ -616,21 +615,25 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
     for {
 
         dispL := rlen(s)
+        offy  := dispL / MW
 
         // show input
-        at(irow, icol)
-        clearToEOPane(irow, icol, 2+dispL+displayedLen(helpstring))
+        at(irow-offy, icol)
         if echo.(bool) {
             pf(s)
         } else {
-            l:=rlen(s)
-            pf(str.Repeat(mask,l))
+            pf(str.Repeat(mask,dispL))
         }
+
+        _,cc := GetCursorPos()
+        if cc==MW { pf(">") }
+        clearToEOL()
         pf(helpstring)
 
         // print cursor
-        cx = (icol + cpos) % (p.w)
-        cy = row + int(float64(icol+cpos)/float64(p.w))
+        cx = (icol+cpos) % MW
+        cy = irow + int((icol+cpos)/MW)
+        if cy>MH { cy=MH }
         at(cy, cx)
 
         // get key stroke
@@ -673,7 +676,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
                 if startedContextHelp {
                     contextHelpSelected = true
-                    clearToEOPane(irow, icol, dispL)
+                    clearChars(irow, icol, dispL)
                     helpstring = ""
                     break
                 }
@@ -731,7 +734,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                 s = removeAllBefore(s, cpos)
                 cpos = 0
                 wordUnderCursor = getWord(s, cpos)
-                clearToEOPane(irow, icol, dispL)
+                clearChars(irow, icol, dispL)
 
             case bytes.Equal(c, []byte{127}): // backspace
 
@@ -743,14 +746,14 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                     s = removeBefore(s, cpos)
                     cpos--
                     wordUnderCursor = getWord(s, cpos)
-                    clearToEOPane(irow, icol, dispL)
+                    clearChars(irow, icol, dispL)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
                 if cpos < rlen(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor = getWord(s, cpos)
-                    clearToEOPane(irow, icol, displayedLen(s))
+                    clearChars(irow, icol, displayedLen(s))
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
@@ -787,8 +790,8 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
 
-                if p.w<displayedLen(s) && cpos>p.w {
-                    cpos-=p.w
+                if MW<displayedLen(s) && cpos>MW {
+                    cpos-=MW
                     break
                 }
 
@@ -807,15 +810,15 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                         wordUnderCursor = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
-                            clearToEOPane(irow, icol, l)
+                            clearChars(irow, icol, l)
                         }
                     }
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
 
-                if displayedLen(s)>p.w && cpos<p.w {
-                    cpos+=p.w
+                if displayedLen(s)>MW && cpos<MW {
+                    cpos+=MW
                     break
                 }
 
@@ -832,7 +835,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                         wordUnderCursor = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
-                            clearToEOPane(irow, icol, l)
+                            clearChars(irow, icol, l)
                         }
                     }
                 }
@@ -956,7 +959,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
             for cnt, v := range helpColoured {
                 starMax = cnt
                 l := displayedLen(helpstring) + displayedLen(s) + icol
-                if (l + displayedLen(v) + icol +4 ) > p.w {
+                if (l + displayedLen(v) + icol +4 ) > MW {
                     if l > 3 {
                         helpstring += "..."
                     }
@@ -987,7 +990,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                     s = insertWord(s, newstart, add+helpList[0]+" ")
                     cpos = rlen(s)
                     l := displayedLen(s)
-                    clearToEOPane(irow, icol, l)
+                    clearChars(irow, icol, l)
                     helpstring = ""
                 }
             }
@@ -1002,11 +1005,23 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
     } // input loop
 
+    /*
+    cr,cc := GetCursorPos()
+    rd:=cr-irow
+    irow=irow-rd
+    */
+
     at(irow, icol)
-    clearToEOPane(irow, icol, displayedLen(s))
+    // clearChars(irow, icol, displayedLen(s))
     if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
 
     return s, eof, broken
+}
+
+/// clear n chars
+func clearChars(row int,col int,l int) {
+    at(row,col)
+    fmt.Print(str.Repeat(" ",l))
 }
 
 /// clear to end of current window pane
@@ -1019,11 +1034,11 @@ func clearToEOPane(row int, col int, va ...int) {
         lines := va[0] / (p.w - 1)
         for ; lines >= 0; lines-- {
             at(row+lines-1, 1)
-            fmt.Print(rep(" ", int(p.w)))
+            fmt.Print(rep(" ", p.w))
         }
     } else {
         at(row, col)
-        fmt.Print(rep(" ", int(p.w-col-1)))
+        fmt.Print(rep(" ", p.w-col-1))
     }
     // restore cursor pos
     fmt.Printf("\033[u")
