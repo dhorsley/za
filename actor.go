@@ -322,22 +322,48 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int,
 
 }
 
+
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
 func GetNextFnSpace(requiredName string) (uint64,string) {
 
     calllock.Lock()
+    defer calllock.Unlock()
 
-    // c:=0
+    // find highest in list
 
-    for q := uint64(1); q < 128000; q++ {  // arbitrary limit
+    var top, highest, ccap uint64
+
+    top=uint64(cap(calltable))
+    highest=top
+    ccap=CALL_CAP
+    deallow:=top>uint64(ccap*2)
+
+    for q:=top-1; q>(ccap*2) && q>(top/2)-ccap; q-- {
+        if calltable[q]!=(call_s{}) { highest=q; break }
+    }
+
+    // dealloc
+
+    if deallow {
+        if highest<((top/2)-(ccap/2)-1) {
+            ncs:=make([]call_s,len(calltable)/2,cap(calltable)/2)
+            copy(ncs,calltable)
+            calltable=ncs
+            top=uint64(cap(calltable))
+        }
+    }
+
+    // we know at this point that if a dealloc occurred then highest was
+    // already below new cap and a fresh alloc should not occur below
+
+    for q := uint64(1); q < top+1 ; q++ { 
 
         if _, found := numlookup.lmget(q); found {
             continue
         }
 
         for ; q>=uint64(cap(calltable)) ; {
-        // if q>=uint64(cap(calltable)) {
             ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
             copy(ncs,calltable)
             calltable=ncs
@@ -348,8 +374,6 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
         // pf("-- entered reserving code--\n")
         for  ; ; {
 
-            // c++
-
             newName := requiredName
 
             if newName[len(newName)-1]=='@' {
@@ -357,20 +381,23 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
                 newName+=suf
             }
 
-            // pf("Trying "+newName+"\n")
-
             if _, found := numlookup.lmget(q); !found { // unreserved
                 numlookup.lmset(q, newName)
                 fnlookup.lmset(newName,q)
-                // pf("-- leaving code with %v,%v --\n\n",q,suf)
-                calllock.Unlock()
+                // place a reservation in calltable:
+                // if we don't do this, then there is a small chance that the id [q]
+                //  will get re-used between the calls to GetNextFnSpace() and Call()
+                //  by fast spawning async tasks.
+                calltable[q]=call_s{fs:"@@reserved",caller:0,base:0,retvar:""}
+                // pf("-- leaving gnfs with %v,%v --\n\n",q,suf)
+                // calllock.Unlock()
                 return q,newName
             }
 
         }
     }
 
-    calllock.Unlock()
+    // calllock.Unlock()
 
     pf("Error: no more function space available.\n")
     finish(true, ERR_FATAL)
@@ -397,10 +424,10 @@ var globlock   = &sync.RWMutex{}
 // everything about what is to be executed is contained in calltable[csloc]
 func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
-    if lockSafety { calllock.RLock() }
+    // if lockSafety { calllock.RLock() }
     // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
-    if lockSafety { calllock.RUnlock() }
+    // if lockSafety { calllock.RUnlock() }
 
     var inbound *Phrase
     var current_with_handle *os.File
@@ -440,8 +467,8 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     base = (*ncs).base                      // the source code to be read for this function
     caller = (*ncs).caller                  // which func id called this code
     retvar = (*ncs).retvar                  // usually @temp, the return variable name
-    calllock.RUnlock()
     ifs,_:=fnlookup.lmget(fs)               // the uint64 id attached to fs name
+    calllock.RUnlock()
 
     if base==0 {
         if !interactive {
@@ -528,17 +555,43 @@ tco_reentry:
 
     if lockSafety { looplock.Lock() }
     wccount[ifs] = 0
+
     // allocate loop storage space if not a repeat ifs value.
     if lockSafety { vlock.RLock() }
 
+    var top,highest,lscap uint64
+
+    top=uint64(cap(loops))
+    highest=top
+    lscap=LOOP_START_CAP
+    deallow:=top>uint64(lscap*2)
+
+    for q:=top-1; q>(lscap*2) && q>(top/2)-lscap; q-- {
+        if loops[q]!=nil { highest=q; break }
+    }
+
+    // dealloc
+    if deallow {
+        if highest<((top/2)-(lscap/2)-1) {
+            nloops:=make([][]s_loop,len(loops)/2,cap(loops)/2)
+            copy(nloops,loops)
+            loops=nloops
+            // pf("[#1]--[#-] loops-pre-dec  highest %d,len %d, cap %d\n",highest,lscap,top)
+            top=uint64(cap(loops))
+            // pf("[#1]--[#-] loops-post-dec highest %d,len %d, cap %d\n",highest,lscap,top)
+        }
+    }
+
     for ; ifs>=uint64(cap(loops)) ; {
             // increase
+            // pf("[#2]++[#-] loops-pre-inc highest %d,len %d, cap %d\n",highest,lscap,top)
             nloops:=make([][]s_loop,len(loops)*2,cap(loops)*2)
             copy(nloops,loops)
             loops=nloops
     }
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
+
     if lockSafety { vlock.RUnlock() }
     if lockSafety { looplock.Unlock() }
 
@@ -2617,8 +2670,8 @@ tco_reentry:
 
             // debug(20,"[#3]MODULE taking a space[#-]\n")
             loc, _ := GetNextFnSpace("@mod_"+fom)
-            // numlookup.lmset(loc,"@mod_" + fom)
-            // fnlookup.lmset("@mod_"+fom, loc)
+
+            calllock.Lock()
 
             fspacelock.Lock()
             functionspaces[loc] = []Phrase{}
@@ -2635,19 +2688,21 @@ tco_reentry:
             modcs.base = loc
             modcs.caller = ifs
             modcs.fs = "@mod_" + fom
-            calllock.Lock()
             calltable[loc] = modcs
+
             calllock.Unlock()
+
             Call(MODE_NEW, loc)
+
+            calllock.Lock()
+            calltable[loc]=call_s{}
+            calllock.Unlock()
+
 
             // purge the module source as the code has been executed
             fspacelock.Lock()
             functionspaces[loc]=[]Phrase{}
             fspacelock.Unlock()
-
-            calllock.Lock()
-            calltable[loc]=call_s{}
-            calllock.Unlock()
 
 
         case C_When:
@@ -3458,13 +3513,15 @@ tco_reentry:
         // pf("[#2]about to delete %v[#-]\n",fs)
         if lockSafety { calllock.Lock() }
 
+        calltable[ifs]=call_s{}
         fnlookup.lmdelete(fs)
         numlookup.lmdelete(ifs)
+        // pf("call disposing of ifs : %d\n",ifs)
 
         looplock.Lock()
         depth[ifs]=0
+        loops[ifs]=nil
         looplock.Unlock()
-        // loops[ifs] is re-made on entry
 
         fspacelock.Lock()
         if ifs>2 { functionspaces[ifs] = []Phrase{} }

@@ -694,10 +694,10 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 
                     // debug(20,"gnfs called from buildRhs()\n")
                     loc,id := GetNextFnSpace(previous.tokText+"@")
-                    calllock.Lock()
+                    if lockSafety { calllock.Lock() }
                     lmv,_:=fnlookup.lmget(previous.tokText)
                     calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: "@temp"}
-                    calllock.Unlock()
+                    if lockSafety { calllock.Unlock() }
 
                     Call(MODE_NEW, loc, iargs...)
 

@@ -7,8 +7,9 @@ module "web_modules/aws_handler"
 # GLOBALS
 
 PORT=8080
-POLL_TIMEOUT=5000*1000
 HOME_PATH="/home/daniel/www"
+# POLL_TIMEOUT=5000*1000
+
 
 # FUNCTIONS
 
@@ -156,7 +157,7 @@ ipListRefreshMaxCount=12*60*24
 ipListRefreshCount=ipListRefreshMaxCount
 
 tmp=|mktemp
-if last()>0 || tmp=="." || tmp=="" || tmp=="/"
+if last()>0
     println "Could not make a temporary file."
     exit 1
 endif

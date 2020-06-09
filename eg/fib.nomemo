@@ -2,6 +2,7 @@
 
 define fib(n)
     setglob calls = getglob("calls")+1
+#    println thisref(), " ref and mem-> ", getmem()
     on n<=1 do return n
     return fib(n-1)+fib(n-2)
 enddef
