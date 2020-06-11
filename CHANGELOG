@@ -2,42 +2,24 @@
 CHANGE LOG
 =============================================================================================
 
-1.1.0   will be the release version
-
-1.0.9   bug fixes and documentation updates
-
-1.0.7   more example code
-         there are also probably some internal functions we can expose as library calls.
-         for example, the za colour code stripper and similar. 
-
-1.0.6   clean up of source layout and use of modules.
-
-        this will exclude changing the goval code, it's far too entwined now.
-        however, we could probably update the remaining used modules more regularly. i'm
-        still somewhat reluctant to do this though, as i don't like having releases break
-        of their own accord - that's my job! 
-
-        at this point, may be worth making repo public. or could do so closer to release. no
-         preference really yet.        
-
-
----------------------------------------------------------------------------------------------
 1.0.5
 
     features:
 
         * added stripansi() lib call.
         * added addansi() lib call.
-        * added uninstall() lib call.
-        * added eg/tests/libcov for vaguely checking library test coverage.
+        * added uninstall() lib call. *experimental, not tested in all OS yet*
+
         * added download() lib call in lib-net. Like web_download() but auto names and 
             provides console feedback.
+
         * added func_categories, func_inputs, func_outputs, func_descriptions lib calls.
+            * these are to support doc generation. probably no use for anything else.
 
     fixes:
 
-        * added an inline'able strcmp to use in hot spots instead of built-in string equality
-            * this speeds up inc/dec and interpolation somewhat.
+        * added an inline'able strcmp (internal fn) to use in hot spots instead of built-in
+            string equality. this speeds up inc/dec and interpolation somewhat.
 
         * added up-scaler to loop allocator
 
@@ -57,6 +39,8 @@ CHANGE LOG
         * added check on user-define funcs for names clashing with stdlib funcs
 
     misc:
+
+        * added eg/tests/libcov for vaguely checking library test coverage.
 
         * function reference
             * auto-generating now with libdoc tool. still needs some work. 

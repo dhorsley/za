@@ -1,3 +1,0 @@
-
-foreach f in dir("/","^[Vv]"); println f["name"]; endfor
-

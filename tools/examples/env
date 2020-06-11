@@ -1,5 +1,0 @@
-
-foreach e in env()
-    println e
-endfor
-
