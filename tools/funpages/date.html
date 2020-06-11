@@ -16,13 +16,20 @@
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 
 </style>
 </HEAD>
@@ -42,25 +49,25 @@
 
 </ul>
 
-<div class="ttab hdbg"><div ><a id="date"></a><h3 >string = date(integer)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="date"></a><h3 >string = date(integer)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a human-readable date/time. The parsed timestamp is either the current date/time or the optional <span class='ion'>integer<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="epoch_time"></a><h3 >integer = epoch_time()</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="epoch_time"></a><h3 >integer = epoch_time()</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns the current epoch (Unix) time in seconds.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="epoch_nano_time"></a><h3 >integer = epoch_nano_time()</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="epoch_nano_time"></a><h3 >integer = epoch_nano_time()</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns the current epoch (Unix) time in nano-seconds.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="time_diff"></a><h3 >integer = time_diff(te,ts)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_diff"></a><h3 >integer = time_diff(te,ts)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>

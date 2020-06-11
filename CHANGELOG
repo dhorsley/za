@@ -6,24 +6,6 @@ CHANGE LOG
 
 1.0.9   bug fixes and documentation updates
 
-1.0.8   documentation wiki and related fixes that come out of this.
-         possibly write the documentation server in Za.
-
-        Review candidates for language wiki.
-
-            * requires:
-
-                * blog on front page for updates
-                * how-to for basic tasks
-                * function reference
-                    * auto-gen possible with libdoc tool. still needs some work
-                * no need for forum. won't be enough users :)
-                * known issues page
-
-            * can be placed on main site, so will want SEO awareness in link gen and similar.
-            * preferably a fairly static site - drupal/joomla etc may be overkill.
-
-
 1.0.7   more example code
          there are also probably some internal functions we can expose as library calls.
          for example, the za colour code stripper and similar. 
@@ -50,6 +32,7 @@ CHANGE LOG
         * added eg/tests/libcov for vaguely checking library test coverage.
         * added download() lib call in lib-net. Like web_download() but auto names and 
             provides console feedback.
+        * added func_categories, func_inputs, func_outputs, func_descriptions lib calls.
 
     fixes:
 
@@ -72,6 +55,16 @@ CHANGE LOG
         * updated arg names in library call help.
 
         * added check on user-define funcs for names clashing with stdlib funcs
+
+    misc:
+
+        * function reference
+            * auto-generating now with libdoc tool. still needs some work. 
+            * za-ref.html now contains a link back to zalang.org/funpages/index.html instead
+                of maintaining two lots of fn descs.
+            * libdoc is executing during "docpull" run.
+            * example pages can be created by hand and placed in a prepared location for 
+                inclusion in the final page output.
 
 
 ---------------------------------------------------------------------------------------------
