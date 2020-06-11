@@ -1,7 +1,12 @@
 <!DOCTYPE html>
-<HTML >
+<HTML lang="en">
 <HEAD >
-<style>
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - db functions">
+      <title>db functions</title>
+    <style>
 
     .0 {color:#000;}
     .1 {color:#00a;}
@@ -37,21 +42,18 @@
 
 <div class="ttab hdbg"><div ><a id="db_init"></a><h3 >handle = db_init(schema)</h3>
 </div>
-<div >&nbsp;&nbsp;&nbsp;</div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a database connection <span class='ion'>handle<span class='ioff'>, based on inbound environmental variables.</p>
 <br>
 <div class="ttab hdbg"><div ><a id="db_query"></a><h3 >string = db_query(handle,query,field_sep)</h3>
 </div>
-<div >&nbsp;&nbsp;&nbsp;</div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
-<p >Simple database query. Optional: field separator, default: '|'</p>
+<p >Simple database query. Optional: field separator, default: &#39;|&#39;</p>
 <br>
 <div class="ttab hdbg"><div ><a id="db_close"></a><h3 >db_close(handle)</h3>
 </div>
-<div >&nbsp;&nbsp;&nbsp;</div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Closes the database connection.</p>
