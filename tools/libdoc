@@ -59,6 +59,7 @@ enddef
 # main
 
 docpath="funpages"
+egpages="{docpath}/examples"
 
 fi=func_inputs()
 fo=func_outputs()
@@ -96,8 +97,8 @@ foreach c in func_categories()
         )
         body=body+wp(`{desc}`)
 
-        if is_file("examples/{i}")
-            body=body+wp("<i>Example:</i><br><pre>"+html_escape(read_file("examples/{i}"))+"</pre>")
+        if is_file("{egpages}/{i}")
+            body=body+wp("<i>Example:</i><br><pre>"+html_escape(read_file("{egpages}/{i}"))+"</pre>")
         endif
 
         body=body+"<br>\n"

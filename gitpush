@@ -4,6 +4,7 @@ input msg param 1
 
 | rm -fr ~/git/za/*
 | cp -R . ~/git/za/
+| rm -f ~/git/za/tools/funpages/*.html
 | pushd ~/git/za
 | git add -A .
 | git commit -m "{msg}"
