@@ -2327,8 +2327,19 @@ tco_reentry:
                 defining = true
                 definitionName = fn
 
-                // error if it has already been defined
+                // error if it clashes with a stdlib name
+                exMatchStdlib:=false
+                for n,_:=range slhelp {
+                    if n==definitionName {
+                        report(ifs,lastline,"A library function already exists with the name '"+definitionName+"'")
+                        finish(false,ERR_SYNTAX)
+                        exMatchStdlib=true
+                        break
+                    }
+                }
+                if exMatchStdlib { break }
 
+                // error if it has already been user defined
                 if _, exists := fnlookup.lmget(definitionName); exists {
                     report(ifs,lastline,  "Function "+definitionName+" already exists.")
                     finish(false, ERR_SYNTAX)

@@ -78,7 +78,8 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system","funcinputs","funcoutputs","funcdescriptions","catmap",
+        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
+        "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","length","tco", "echo","getrow","getcol","unmap","await","getmem",
@@ -753,8 +754,8 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["funcinputs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function inputs."}
-    stdlib["funcinputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["func_inputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function inputs."}
+    stdlib["func_inputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.in
@@ -762,8 +763,8 @@ func buildInternalLib() {
         return fm,nil
     }
 
-    slhelp["funcoutputs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function outputs."}
-    stdlib["funcoutputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["func_outputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function outputs."}
+    stdlib["func_outputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.out
@@ -771,8 +772,8 @@ func buildInternalLib() {
         return fm,nil
     }
 
-    slhelp["funcdescriptions"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function descriptions."}
-    stdlib["funcdescriptions"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["func_descriptions"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function descriptions."}
+    stdlib["func_descriptions"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.action
@@ -780,8 +781,8 @@ func buildInternalLib() {
         return fm,nil
     }
 
-    slhelp["catmap"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library functions."}
-    stdlib["catmap"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["func_categories"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library functions."}
+    stdlib["func_categories"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return categories,nil
     }
 

@@ -16,16 +16,13 @@ CHANGE LOG
                 * blog on front page for updates
                 * how-to for basic tasks
                 * function reference
+                    * auto-gen possible with libdoc tool. still needs some work
                 * no need for forum. won't be enough users :)
                 * known issues page
 
             * can be placed on main site, so will want SEO awareness in link gen and similar.
             * preferably a fairly static site - drupal/joomla etc may be overkill.
-            * however, if static, need to be able to update docs quickly.
-            * also would be good if pages can be auto-generated for missing library functions.
-            * undecided, but may even write web site using Za. it's not meant for that kind of
-                thing but it would be a good test. might also force me into writing better 
-                template support into it!
+
 
 1.0.7   more example code
          there are also probably some internal functions we can expose as library calls.
@@ -73,6 +70,8 @@ CHANGE LOG
 
         * updated help descriptions for library calls.
         * updated arg names in library call help.
+
+        * added check on user-define funcs for names clashing with stdlib funcs
 
 
 ---------------------------------------------------------------------------------------------

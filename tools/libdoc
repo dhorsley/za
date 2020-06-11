@@ -3,6 +3,7 @@
 # library html ref gen
 
 interpol(false)
+
 style=`
     .0 {color:#000;}
     .1 {color:#00a;}
@@ -52,13 +53,13 @@ enddef
 
 docpath="funpages"
 
-fi=funcinputs()
-fo=funcoutputs()
-fd=funcdescriptions()
+fi=func_inputs()
+fo=func_outputs()
+fd=func_descriptions()
 
 # get all categories
 
-foreach c in catmap()
+foreach c in func_categories()
 
     header=wh1()+"\n"
     header=header+wh2("{key_c} functions") 
@@ -72,7 +73,7 @@ foreach c in catmap()
 
         in=clean(fi[i])
         out=clean(fo[i])
-        desc=clean(fd[i])
+        desc=clean(html_escape(fd[i]))
 
         if out!=""
             fnline=`{out} = {i}({in})` 
@@ -80,27 +81,34 @@ foreach c in catmap()
             fnline=`{i}({in})`
         endif
 
+        #    wdiv( "&nbsp;&nbsp;&nbsp;" ) +
         body=body+wdiv(
-            
             wdiv( wa("",`id="{i}"`)+wh3(fnline)) + 
-            wdiv( "&nbsp;&nbsp;&nbsp;" ) +
             wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`)),
           `class="ttab hdbg"`
         )
-        # body=body+"<hr>\n"
         body=body+wp("{desc}")
         body=body+"<br>\n"
 
     endfor
 
+
+    meta=`
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - {key_c} functions">
+      <title>{key_c} functions</title>
+    `
+
     page=wpage(
-        whead("<style>\n"+style+"\n</style>\n")+
+        whead(format(meta)+"<style>\n"+style+"\n</style>\n")+
         wbody(
             header+"\n"+
             wa("",`id="top"`)+"\n"+
             wul(pageindex)+"\n"+
             body+"\n"
-        )
+        ),
+      `lang="en"`
     )
 
     println "{docpath}/{key_c}.html"
@@ -112,7 +120,7 @@ endfor
 
 indices=""
 
-foreach c in catmap()
+foreach c in func_categories()
     indices=indices+wli(wa(key_c,`href="{key_c}.html"`)+"\n")
 endfor
 

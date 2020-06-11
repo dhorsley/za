@@ -4,12 +4,10 @@ package main
 
 import (
     "os"
-//    "fmt"
     "errors"
     "github.com/ajstarks/svgo"
     "math/rand"
     "sync"
-//    "strings"
 )
 
 

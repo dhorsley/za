@@ -14,7 +14,7 @@ func buildDbLib() {
 
 	// os level
 
-	features["db"] = Feature{version: 1, category: "net"}
+	features["db"] = Feature{version: 1, category: "db"}
 	categories["db"] = []string{"db_init", "db_query", "db_close"} // ,"db_prepared_query"}
 
 	// @todo: fix this: engine not found when in subdir of za build!
