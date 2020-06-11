@@ -75,7 +75,7 @@ func buildDbLib() {
 		return nil, nil
 	}
 
-	slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: "|"`}
+	slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: '|'`}
 	stdlib["db_query"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
 		var q string

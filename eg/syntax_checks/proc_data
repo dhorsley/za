@@ -8,7 +8,7 @@ define then()
 enddef
 
 define now(then)
-    print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," ms\n\n"
+    print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," us\n\n"
 enddef
 
 define listOp(list,var,expr)
