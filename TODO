@@ -4,20 +4,13 @@ NEXT
 ----
 
     * libdoc
-        * deal with special chars in page generation (< and > etc)
         * remove dead funcs
         * update bad descriptions
-        * tart up index page a little?
         * add more info per func
-
-    * function descriptions in za-ref.html. (2)
 
     We will also potentially be adding a few more small helper routines in the library as 
      requirements come out of writing test code in Za for the library.
 
-        * we have added catmap, funcinputs, funcoutputs, funcdescriptions
-            * they may still need different names?
-            * new funcs need adding to za.vim and za-ref.html (at least until lib doc gen is okay)
 
     * some done, more probably during test creation. (3)
 
@@ -33,12 +26,6 @@ next release will have only:
     * new tests
     * documentation updates
     * small library functions
-
-    copy za-ref.html to work on and generate archive copy (1)
-
-    za-ref.html:
-        * add calls:
-            * stripansi,addansi,is_installed,uninstall,download,getmem (1)
 
     update uninstall() for rpm, apk, sh in other OS (4)
 

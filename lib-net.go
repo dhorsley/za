@@ -634,7 +634,11 @@ func buildNetLib() {
         return nil,nil
     }
 
-    slhelp["web_serve_decode"] = LibHelp{in: "webcallstruct", out: "call_details", action: "(debug)"}
+    slhelp["web_serve_decode"] = LibHelp{in: "webcallstruct", out: "call_details",
+            action: "Returns a struct representing details of an inbound web request.\n"+
+                    "web_serve_decode() returns the following member fields:\n"+
+                    "  .host (host:port), .method, .path, .remote_ip (remote_ip:port) and .data (POST data).",
+}
     stdlib["web_serve_decode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==1 {
             switch args[0].(type) {

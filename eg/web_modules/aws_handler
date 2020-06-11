@@ -31,17 +31,6 @@ define fwhandle(call)
 
     bodyOptMap["style"]      = "background:url(/img/whirlpool.png);background-repeat:no-repeat;background-size:cover;"
 
-    # example - currently not used.
-    #table = wtable(
-    #            wthead( wtr( wth("Parameter") + wth("Content") ) ) +
-    #            wtbody(
-    #                wtr( wtd("host")+wtd(c.host) ) +
-    #                wtr( wtd("path")+wtd(c.path) ) +
-    #                wtr( wtd("remote")+wtd(c.remote) ) +
-    #                wtr( wtd("method")+wtd(c.method) )
-    #                ),
-    #        `class='pure-table pure-table-striped' style='margin:auto;'`
-    #)
 
     # convert aws IPs to text
     iptabhead =wthead(wtr(wth("IP Range")))
