@@ -1,3 +1,0 @@
-
-on get_env("AWS_DEFAULT_REGION")!="" do region=get_env("AWS_DEFAULT_REGION")
-
