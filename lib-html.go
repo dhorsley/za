@@ -60,7 +60,7 @@ func buildHtmlLib() {
                                 "wh1","wh2","wh3","wh4","wh5","wol","wul","wli",
     }
 
-	slhelp["wpage"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wpage"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML page tag wrapping."}
 	stdlib["wpage"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -69,7 +69,7 @@ func buildHtmlLib() {
         return "<!DOCTYPE html>\n<HTML "+o+">\n"+content+"</HTML>\n",nil
 	}
 
-	slhelp["wbody"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wbody"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML body tag wrapping."}
 	stdlib["wbody"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -78,7 +78,7 @@ func buildHtmlLib() {
         return "<BODY "+o+">\n"+content+"\n</BODY>\n",nil
 	}
 
-	slhelp["whead"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["whead"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML head tag wrapping."}
 	stdlib["whead"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -87,7 +87,7 @@ func buildHtmlLib() {
         return "<HEAD "+o+">\n"+content+"</HEAD>\n",nil
 	}
 
-	slhelp["wdiv"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wdiv"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML division tag wrapping."}
 	stdlib["wdiv"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -96,7 +96,7 @@ func buildHtmlLib() {
         return "<div "+o+">"+content+"</div>\n",nil
 	}
 
-	slhelp["wp"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wp"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML paragraph tag wrapping."}
 	stdlib["wp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -105,7 +105,7 @@ func buildHtmlLib() {
         return "<p "+o+">"+content+"</p>\n",nil
 	}
 
-	slhelp["wimg"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wimg"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML image tag."}
 	stdlib["wimg"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var o string
         if len(args)>0 { o,err=parseHtmlArgs(args[0]) }
@@ -113,7 +113,7 @@ func buildHtmlLib() {
         return "<img "+o+">",nil
 	}
 
-	slhelp["wlink"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wlink"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML hyper-link tag."}
 	stdlib["wlink"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var o string
         if len(args)>0 { o,err=parseHtmlArgs(args[0]) }
@@ -121,7 +121,7 @@ func buildHtmlLib() {
         return "<link "+o+">\n",nil
 	}
 
-	slhelp["wa"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wa"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML anchor tag."}
 	stdlib["wa"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -130,7 +130,7 @@ func buildHtmlLib() {
         return "<a "+o+">"+content+"</a>",nil
 	}
 
-	slhelp["wtable"] = LibHelp{in: "content[,options]", out: "", action: ""}
+	slhelp["wtable"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table tag wrapping."}
 	stdlib["wtable"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -139,7 +139,7 @@ func buildHtmlLib() {
         return "<table "+o+">\n"+content+"</table>\n",nil
 	}
 
-    slhelp["wthead"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wthead"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table head tag wrapping."}
 	stdlib["wthead"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -148,7 +148,7 @@ func buildHtmlLib() {
         return "<thead "+o+">\n"+content+"</thead>\n",nil
 	}
 
-    slhelp["wtbody"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wtbody"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table body tag wrapping."}
 	stdlib["wtbody"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -157,7 +157,7 @@ func buildHtmlLib() {
         return "<tbody "+o+">\n"+content+"</tbody>\n",nil
 	}
 
-    slhelp["wtr"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wtr"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TR table row tag wrapping."}
 	stdlib["wtr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -166,7 +166,7 @@ func buildHtmlLib() {
         return "<tr "+o+">"+content+"</tr>\n",nil
 	}
 
-    slhelp["wth"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wth"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TH table header tag wrapping."}
 	stdlib["wth"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -175,7 +175,7 @@ func buildHtmlLib() {
         return "<th "+o+">"+content+"</th>",nil
 	}
 
-    slhelp["wtd"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wtd"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TD table data tag wrapping."}
 	stdlib["wtd"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -184,7 +184,7 @@ func buildHtmlLib() {
         return "<td "+o+">"+content+"</td>",nil
 	}
 
-    slhelp["wh1"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wh1"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h1 header tag wrapping."}
 	stdlib["wh1"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -193,7 +193,7 @@ func buildHtmlLib() {
         return "<h1 "+o+">"+content+"</h1>\n",nil
 	}
 
-    slhelp["wh2"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wh2"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h2 header tag wrapping."}
 	stdlib["wh2"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -202,7 +202,7 @@ func buildHtmlLib() {
         return "<h2 "+o+">"+content+"</h2>\n",nil
 	}
 
-    slhelp["wh3"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wh3"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h3 header tag wrapping."}
 	stdlib["wh3"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -211,7 +211,7 @@ func buildHtmlLib() {
         return "<h3 "+o+">"+content+"</h3>\n",nil
 	}
 
-    slhelp["wh4"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wh4"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h4 header tag wrapping."}
 	stdlib["wh4"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -220,7 +220,7 @@ func buildHtmlLib() {
         return "<h4 "+o+">"+content+"</h4>\n",nil
 	}
 
-    slhelp["wh5"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wh5"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h5 header tag wrapping."}
 	stdlib["wh5"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -229,7 +229,7 @@ func buildHtmlLib() {
         return "<h5 "+o+">"+content+"</h5>\n",nil
 	}
 
-    slhelp["wol"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wol"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML ordered list tag wrapping."}
 	stdlib["wol"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -238,7 +238,7 @@ func buildHtmlLib() {
         return "<ol "+o+">"+content+"</ol>\n",nil
 	}
 
-    slhelp["wul"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wul"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML unordered list tag wrapping."}
 	stdlib["wul"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }
@@ -247,7 +247,7 @@ func buildHtmlLib() {
         return "<ul "+o+">"+content+"</ul>\n",nil
 	}
 
-    slhelp["wli"] = LibHelp{in: "content[,options]", out: "", action: ""}
+    slhelp["wli"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML list tag wrapping."}
 	stdlib["wli"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var content,o string
         if len(args)>0 { content=sf("%v",args[0]) }

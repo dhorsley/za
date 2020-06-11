@@ -174,7 +174,7 @@ while web_serve_up(suid)
             dec ipListRefreshCount
             s=epoch_nano_time()
             thisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
-            println "Completed in ",time_diff(epoch_nano_time(),s)," ms"
+            println "Completed in ",time_diff(epoch_nano_time(),s)," us"
             | rm -f {tmp}
         else
             println "Could not fetch ip ranges from AWS."

@@ -3,21 +3,34 @@
 NEXT
 ----
 
+    * function descriptions in za-ref.html. (2)
+    * add html markup on descriptions (2)
+
+    We will also potentially be adding a few more small helper routines in the library as 
+     requirements come out of writing test code in Za for the library.
+
+    * some done, more probably during test creation. (3)
+
+    We also need to clean up console_linux/windows and maybe create a console_all.go for 
+     common functionality between the two. (5)
+
+    Documentation needs an update to mention the use of 0x1e command output separation.
+
+
 next release will have only:
 
     * bug fixes
     * new tests
     * documentation updates
+    * small library functions
 
-    no new features! (unless absolutely, strictly necessary - or i change my mind)
-
-    copy za-ref.html to work on and generate archive copy
+    copy za-ref.html to work on and generate archive copy (1)
 
     za-ref.html:
         * add calls:
-            * stripansi,addansi,is_installed,uninstall,download,getmem
+            * stripansi,addansi,is_installed,uninstall,download,getmem (1)
 
-    update uninstall() for rpm, apk, sh in other OS
+    update uninstall() for rpm, apk, sh in other OS (4)
 
 
 LATER

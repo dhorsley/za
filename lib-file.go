@@ -21,7 +21,7 @@ func buildFileLib() {
     }
 
     // file_create and file_close need replacing and adding to with append, write, read and seek operations
-    slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file."}
+    slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file, or an error."}
     stdlib["file_create"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="string" {
             return nil,errors.New("Bad arguments to file_create()")
@@ -40,7 +40,7 @@ func buildFileLib() {
         return nil,nil
     }
 
-	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file."}
+	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
 	stdlib["file_mode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_mode()")
@@ -55,7 +55,7 @@ func buildFileLib() {
 		return -1, err
 	}
 
-	slhelp["file_size"] = LibHelp{in: "file_name", out: "integer", action: "Returns the file size, in bytes, of a given file."}
+	slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
 	stdlib["file_size"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_size()")
@@ -70,7 +70,7 @@ func buildFileLib() {
 		return -1, err
 	}
 
-	slhelp["read_file"] = LibHelp{in: "file_name", out: "string", action: "Returns the contents of the named file."}
+	slhelp["read_file"] = LibHelp{in: "string", out: "string", action: "Returns the contents of the named file [#i1]string[#i0], or errors."}
 	stdlib["read_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return "", errors.New("invalid arguments provided to read_file()")
@@ -84,7 +84,7 @@ func buildFileLib() {
 		return "", errors.New("Filename in read_file() must be a string.")
 	}
 
-	slhelp["write_file"] = LibHelp{in: "filename,variable,mode_string", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files."}
+	slhelp["write_file"] = LibHelp{in: "filename,variable,mode_number_or_string", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
 	stdlib["write_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		var outVar string
 		var filename string
@@ -98,7 +98,18 @@ func buildFileLib() {
 		case 3:
 			filename = args[0].(string)
 			outVar = args[1].(string)
-			omconv, convErr = sc.ParseUint(args[2].(string), 8, 32)
+            switch args[2].(type) {
+			case string:
+                omconv, convErr = sc.ParseUint(args[2].(string), 8, 32)
+            case int:
+                omconv = uint64(args[2].(int))
+            case uint:
+                omconv = uint64(args[2].(uint))
+            case int32:
+                omconv = uint64(args[2].(int32))
+            case int64:
+                omconv = uint64(args[2].(int64))
+            }
 			if convErr != nil {
 				return false, errors.New("could not make an octal mode from the provided string.")
 			}
@@ -113,7 +124,7 @@ func buildFileLib() {
 		return true, err
 	}
 
-	slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a regular file?"}
+	slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
 	stdlib["is_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_file()")
@@ -130,7 +141,7 @@ func buildFileLib() {
 		return false, errors.New("argument to is_file() not a string.")
 	}
 
-	slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a directory?"}
+	slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a directory."}
 	stdlib["is_dir"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_dir()")
@@ -147,7 +158,7 @@ func buildFileLib() {
 		return false, errors.New("argument to is_dir() not a string.")
 	}
 
-	slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a symbolic link?"}
+	slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
 	stdlib["is_soft"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_soft()")
@@ -164,7 +175,7 @@ func buildFileLib() {
 		return false, errors.New("argument to is_soft() not a string.")
 	}
 
-	slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "is file_name a named pipe?"}
+	slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a named pipe."}
 	stdlib["is_pipe"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_pipe()")
@@ -199,3 +210,6 @@ func buildFileLib() {
 	}
 
 }
+
+
+

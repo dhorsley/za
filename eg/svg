@@ -63,23 +63,7 @@ svg_link(h,"/img/star.png","star")
 svg_image(h,300,340,40,40,"/img/castle.png")
 svg_link_end(h)
 
-# these two can be tested later when we have gradients done:
-# svg_def()
-# svg_def_end()
-
-## test graph functions
-#g=graph(h,50,50,400,200,"fill:silver;stroke-width:1;stroke:rgb(0,20,80)")
-#print "svgid : ",h,"\n"
-#print "graph : ",g,"\n"
-#graph_limit(g,0,0,400,100)
-## graph_title(g,"Graph Demonstration","")
-#graph_grid(g,`stroke:white;`)
-#graph_output(g)
-#
-
 # write file
 svg_end(h)
-
-# | ls -l {loc}
 
 
