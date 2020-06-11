@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<HTML >
+<HEAD >
+<style>
+
+    .0 {color:#000;}
+    .1 {color:#00a;}
+    .2 {color:#a00;}
+    .3 {color:#a0a;}
+    .4 {color:#0a0;}
+    .5 {color:#0aa;}
+    .6 {color:#aa0;}
+    .7 {color:#aaa;}
+    .ioff {font-style:normal;}
+    .ion  {font-style:italic;}
+    .boff {font-weight:normal;}
+    .bon  {font-weight:bold;}
+    .ttab {display:table}
+    .ttab > div {display:table-cell}
+    .hdbg {width:100%;background-color:#07b;}
+
+</style>
+</HEAD>
+<BODY >
+<h1 ></h1>
+
+<h2 >net functions</h2>
+
+<a id="top"></a>
+<ul ><li ><a href="#web_download">web_download</a></li>
+
+<li ><a href="#web_head">web_head</a></li>
+
+<li ><a href="#web_get">web_get</a></li>
+
+<li ><a href="#web_custom">web_custom</a></li>
+
+<li ><a href="#web_post">web_post</a></li>
+
+<li ><a href="#web_serve_start">web_serve_start</a></li>
+
+<li ><a href="#web_serve_stop">web_serve_stop</a></li>
+
+<li ><a href="#web_serve_up">web_serve_up</a></li>
+
+<li ><a href="#web_serve_path">web_serve_path</a></li>
+
+<li ><a href="#web_serve_log_throttle">web_serve_log_throttle</a></li>
+
+<li ><a href="#web_display">web_display</a></li>
+
+<li ><a href="#web_serve_decode">web_serve_decode</a></li>
+
+<li ><a href="#web_serve_log">web_serve_log</a></li>
+
+<li ><a href="#web_max_clients">web_max_clients</a></li>
+
+<li ><a href="#net_interfaces">net_interfaces</a></li>
+
+<li ><a href="#html_escape">html_escape</a></li>
+
+<li ><a href="#html_unescape">html_unescape</a></li>
+
+<li ><a href="#download">download</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div ><a id="web_download"></a><h3 >bool_okay = web_download(url_string,local_file)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Downloads from URL <span class='ion'>url_string<span class='ioff'> and stores the returned data in the file <span class='ion'>local_file<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_head"></a><h3 >bool = web_head(loc_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Makes a HEAD request of the given <span class='ion'>loc_string<span class='ioff'>. Returns true if retrieved successfully.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_get"></a><h3 >string = web_get(loc_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a <span class='ion'>string<span class='ioff'> with content downloaded from <span class='ion'>loc_string<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_custom"></a><h3 >string = web_custom(method_string,loc_string,headers_array)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a <span class='ion'>string<span class='ioff'> with content downloaded from <span class='ion'>loc_string<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_post"></a><h3 >result_string = web_post(loc_string,key_value_list)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Perform a HTTP POST.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_start"></a><h3 >handle = web_serve_start(docroot,port,vhost)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an identifier for a new http server.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_stop"></a><h3 >success_flag = web_serve_stop(handle)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Stops and discards a running http server.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_up"></a><h3 >bool = web_serve_up(handle)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a web server is still running.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_path"></a><h3 >string = web_serve_path(handle,action_type,request_regex,new_path)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Provides a traffic routing instruction to a web server.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_log_throttle"></a><h3 >web_serve_log_throttle(start,freq)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Set the throttle controls for web server logging.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_display"></a><h3 >web_display()</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >(debug)</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_decode"></a><h3 >call_details = web_serve_decode(webcallstruct)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >(debug)</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_serve_log"></a><h3 >web_serve_log(args)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Write arguments to the web log file, if available.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="web_max_clients"></a><h3 >web_max_clients()</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >(read-only) returns the maximum permitted client count for a web server.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="net_interfaces"></a><h3 >device_string = net_interfaces()</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >newline separated list of device names.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="html_escape"></a><h3 >string = html_escape(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Converts HTML special characters to ampersand values.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="html_unescape"></a><h3 >string = html_unescape(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Converts a string containing ampersand values to include HTML special characters.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="download"></a><h3 >local_name = download(url_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Downloads from URL <span class='ion'>url_string<span class='ioff'> and stores the returned data in the file <span class='ion'>local_name<span class='ioff'>. Includes console feedback.</p>
+<br>
+
+
+</BODY>
+</HTML>

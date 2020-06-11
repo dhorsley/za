@@ -10,7 +10,7 @@ define humansize(i,prec,unit)
 enddef
 
 define report(ts,te,max_count,instructions)
-    dur=time_diff(te,ts)/1000
+    dur=time_diff(te,ts)/1000000
     println format("\nduration       [#5]%0.3f s[#-]",dur)
     println format("iterations     %v",humansize(float(max_count),0,""))
     rate=float(dur/max_count)

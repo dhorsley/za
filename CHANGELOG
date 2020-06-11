@@ -9,6 +9,24 @@ CHANGE LOG
 1.0.8   documentation wiki and related fixes that come out of this.
          possibly write the documentation server in Za.
 
+        Review candidates for language wiki.
+
+            * requires:
+
+                * blog on front page for updates
+                * how-to for basic tasks
+                * function reference
+                * no need for forum. won't be enough users :)
+                * known issues page
+
+            * can be placed on main site, so will want SEO awareness in link gen and similar.
+            * preferably a fairly static site - drupal/joomla etc may be overkill.
+            * however, if static, need to be able to update docs quickly.
+            * also would be good if pages can be auto-generated for missing library functions.
+            * undecided, but may even write web site using Za. it's not meant for that kind of
+                thing but it would be a good test. might also force me into writing better 
+                template support into it!
+
 1.0.7   more example code
          there are also probably some internal functions we can expose as library calls.
          for example, the za colour code stripper and similar. 
@@ -19,33 +37,13 @@ CHANGE LOG
         however, we could probably update the remaining used modules more regularly. i'm
         still somewhat reluctant to do this though, as i don't like having releases break
         of their own accord - that's my job! 
-        
+
+        at this point, may be worth making repo public. or could do so closer to release. no
+         preference really yet.        
 
 
 ---------------------------------------------------------------------------------------------
 1.0.5
-
-    There are currently, most likely, stil a lot of missing type cases in the library and 
-     other eval spots. The same applies to arg count checks in the library. So, a small pass
-     will be done for these.
-
-    At this point also it seems worth the effort to have another optimisation pass for 
-     obvious issues.
-
-    We would also like to increase the library tests somewhat and improve the quality of the
-     library documentation. This is only for descriptive content at the moment. A full working
-     of the reference doc into a wiki or similar will come later.
-
-    We will also potentially be adding a few more small helper routines in the library as 
-     requirements come out of writing test code in Za for the library.
-
-    Another sanity check should be done over the various conditional and looping constructs to
-     check they still work as expected.
-
-    rejected:
-        * tried changing back to loops without pointers in actor.go. ( i.e. (*thisLoop) )
-            * change was reverted as addition test was between 600ms to 1s slower without pointers.
-
 
     features:
 
@@ -61,7 +59,7 @@ CHANGE LOG
         * added an inline'able strcmp to use in hot spots instead of built-in string equality
             * this speeds up inc/dec and interpolation somewhat.
 
-        * added scaler to loop allocator
+        * added up-scaler to loop allocator
 
         * fixed issue with calltable id allocator not reserving instances before async tasks
             swamped it. new allocation requests now have faked allocation slot info on 
@@ -72,6 +70,9 @@ CHANGE LOG
 
         * added deallocator to calltable[] actor.go/GetNextFnSpace(). 
         * added deallocator to loops[] in actor.go/Call()
+
+        * updated help descriptions for library calls.
+        * updated arg names in library call help.
 
 
 ---------------------------------------------------------------------------------------------

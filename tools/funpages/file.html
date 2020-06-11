@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<HTML >
+<HEAD >
+<style>
+
+    .0 {color:#000;}
+    .1 {color:#00a;}
+    .2 {color:#a00;}
+    .3 {color:#a0a;}
+    .4 {color:#0a0;}
+    .5 {color:#0aa;}
+    .6 {color:#aa0;}
+    .7 {color:#aaa;}
+    .ioff {font-style:normal;}
+    .ion  {font-style:italic;}
+    .boff {font-weight:normal;}
+    .bon  {font-weight:bold;}
+    .ttab {display:table}
+    .ttab > div {display:table-cell}
+    .hdbg {width:100%;background-color:#07b;}
+
+</style>
+</HEAD>
+<BODY >
+<h1 ></h1>
+
+<h2 >file functions</h2>
+
+<a id="top"></a>
+<ul ><li ><a href="#file_mode">file_mode</a></li>
+
+<li ><a href="#file_size">file_size</a></li>
+
+<li ><a href="#read_file">read_file</a></li>
+
+<li ><a href="#write_file">write_file</a></li>
+
+<li ><a href="#is_file">is_file</a></li>
+
+<li ><a href="#is_dir">is_dir</a></li>
+
+<li ><a href="#is_soft">is_soft</a></li>
+
+<li ><a href="#is_pipe">is_pipe</a></li>
+
+<li ><a href="#perms">perms</a></li>
+
+<li ><a href="#file_create">file_create</a></li>
+
+<li ><a href="#file_close">file_close</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div ><a id="file_mode"></a><h3 >file_mode = file_mode(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the file mode attributes of a given file, or -1 on error.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="file_size"></a><h3 >integer = file_size(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the file size, in bytes, of a given file <span class='ion'>string<span class='ioff'>, or -1 if the file cannot be checked.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="read_file"></a><h3 >string = read_file(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the contents of the named file <span class='ion'>string<span class='ioff'>, or errors.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="write_file"></a><h3 >bool = write_file(filename,variable,mode_number_or_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Writes the contents of the string <span class='ion'>variable<span class='ioff'> to file <span class='ion'>filename<span class='ioff'>. Optionally sets the umasked file mode on new files. Returns true on success.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="is_file"></a><h3 >bool = is_file(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns true if <span class='ion'>file_name<span class='ioff'> is a regular file.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="is_dir"></a><h3 >bool = is_dir(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns true if <span class='ion'>file_name<span class='ioff'> is a directory.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="is_soft"></a><h3 >bool = is_soft(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns true if <span class='ion'>file_name<span class='ioff'> is a symbolic link.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="is_pipe"></a><h3 >bool = is_pipe(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns true if <span class='ion'>file_name<span class='ioff'> is a named pipe.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="perms"></a><h3 >int = perms(file_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the file access permissions as an integer.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="file_create"></a><h3 >filehandle = file_create(filename)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a file handle for a new file, or an error.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="file_close"></a><h3 >file_close(filehandle)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Closes an open file handle.</p>
+<br>
+
+
+</BODY>
+</HTML>

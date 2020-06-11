@@ -100,6 +100,8 @@ var dbpass string   //
 
 // not thread-safe: used during debug
 // var high_q uint64
+var elast int                                       // mainly for debugging eval routine. should only be used when locks are 
+                                                    //  disabled. it contains the last line number executed.
 
 
 //

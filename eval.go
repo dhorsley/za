@@ -821,7 +821,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         nv := getReportFunctionName(fs,false)
 
         if nv!="" {
-            report(0,-1,sf("Evaluation Error @ Function %v", nv))
+            report(0,elast,sf("Evaluation Error @ Function %v", nv))
         }
         pf("[#6]%v[#-]\n", err)
 

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<HTML >
+<HEAD >
+<style>
+
+    .0 {color:#000;}
+    .1 {color:#00a;}
+    .2 {color:#a00;}
+    .3 {color:#a0a;}
+    .4 {color:#0a0;}
+    .5 {color:#0aa;}
+    .6 {color:#aa0;}
+    .7 {color:#aaa;}
+    .ioff {font-style:normal;}
+    .ion  {font-style:italic;}
+    .boff {font-weight:normal;}
+    .bon  {font-weight:bold;}
+    .ttab {display:table}
+    .ttab > div {display:table-cell}
+    .hdbg {width:100%;background-color:#07b;}
+
+</style>
+</HEAD>
+<BODY >
+<h1 ></h1>
+
+<h2 >os functions</h2>
+
+<a id="top"></a>
+<ul ><li ><a href="#env">env</a></li>
+
+<li ><a href="#get_env">get_env</a></li>
+
+<li ><a href="#set_env">set_env</a></li>
+
+<li ><a href="#cwd">cwd</a></li>
+
+<li ><a href="#cd">cd</a></li>
+
+<li ><a href="#dir">dir</a></li>
+
+<li ><a href="#umask">umask</a></li>
+
+<li ><a href="#chroot">chroot</a></li>
+
+<li ><a href="#delete">delete</a></li>
+
+<li ><a href="#rename">rename</a></li>
+
+<li ><a href="#copy">copy</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div ><a id="env"></a><h3 >string = env()</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return all available environmental variables.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="get_env"></a><h3 >string = get_env(key_name)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return the value of the environmental variable <span class='ion'>key_name<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="set_env"></a><h3 >set_env(key_name,value_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Set the value of the environmental variable <span class='ion'>key_name<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="cwd"></a><h3 >string = cwd()</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current working directory.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="cd"></a><h3 >cd(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Changes directory to a given path.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="dir"></a><h3 >array = dir([filepath[,filter]])</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an array containing file information on path <span class='ion'>filepath<span class='ioff'>. <span class='ion'>filter<span class='ioff'> can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir key-value pairs. These specify filename, file mode, file size, modification time and directory status respectively.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="umask"></a><h3 >int = umask(int)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Sets the umask value. Returns the previous value.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="chroot"></a><h3 >chroot(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Performs a chroot to a given path.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="delete"></a><h3 >bool = delete(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Delete a file.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="rename"></a><h3 >bool = rename(src_string,dest_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Rename a file.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="copy"></a><h3 >bool = copy(src_string,dest_string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Copy a single file.</p>
+<br>
+
+
+</BODY>
+</HTML>

@@ -648,6 +648,7 @@ tco_reentry:
         inbound     = &functionspaces[base][pc]
         tokencount := inbound.TokenCount // length of phrase
         lastline   := inbound.Tokens[0].Line
+        if !lockSafety { elast = lastline }
 
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
@@ -985,6 +986,19 @@ tco_reentry:
                     l=len(lv)
                 case []map[string]interface{}:
                     l=len(lv)
+                case map[string]string:
+                    l=len(lv)
+                case map[string][]string:
+                    l=len(lv)
+                case map[string][]int:
+                    l=len(lv)
+                case map[string][]bool:
+                    l=len(lv)
+                case map[string][]float64:
+                    l=len(lv)
+                default:
+                    pf("Unknown loop type [%T]\n",lv)
+                    pf("Unknown loop type [%s]\n",reflect.TypeOf(lv).Kind())
                 }
                 if l==0 {
                     // skip empty expressions

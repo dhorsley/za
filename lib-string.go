@@ -93,6 +93,8 @@ func buildStringLib() {
         src := args[0].(string)
         regex := args[1].(string)
         repl := args[2].(string)
+        // pf("debug : s %v , reg %v , repl %v\n",src,regex,repl)
+
         var re = regexp.MustCompile(regex)
         s := re.ReplaceAllString(src, repl)
         return s, nil

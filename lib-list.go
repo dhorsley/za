@@ -38,9 +38,20 @@ func anyDissimilar(list []interface{}) bool {
     return false
 }
 
-var unitOrder = make(map[rune]int)
 
 func buildNum(a string) float64 {
+
+    var unitOrder = make(map[rune]int)
+    unitOrder['K']=3
+    unitOrder['M']=6
+    unitOrder['G']=9
+    unitOrder['T']=12
+    unitOrder['P']=15
+    unitOrder['E']=18
+    unitOrder['Z']=21
+    unitOrder['Y']=24
+    unitOrder['k']=3
+
     minus:=false
     digits:=""
     unit:=0
@@ -76,15 +87,6 @@ func human_numcompare_reverse(astr,bstr string) (bool) {
 
 func buildListLib() {
 
-    unitOrder['K']=3
-    unitOrder['M']=6
-    unitOrder['G']=9
-    unitOrder['T']=12
-    unitOrder['P']=15
-    unitOrder['E']=18
-    unitOrder['Z']=21
-    unitOrder['Y']=24
-    unitOrder['k']=3
 
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
@@ -93,7 +95,7 @@ func buildListLib() {
         "empty", "list_string", "list_float", "list_int","numcomp",
     }
 
-    slhelp["numcomp"] = LibHelp{in: "stringa,stringb", out: "bool", action: "Is a<b?"}
+    slhelp["numcomp"] = LibHelp{in: "stringa,stringb", out: "bool", action: "Is a<b? a and b are strings of human readable numbers with units."}
     stdlib["numcomp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return human_numcompare(args[0].(string),args[1].(string)),nil
     }
@@ -118,6 +120,14 @@ func buildListLib() {
             }
         case []int:
             if len(args[0].([]int)) == 0 {
+                return true, nil
+            }
+        case []int32:
+            if len(args[0].([]int32)) == 0 {
+                return true, nil
+            }
+        case []int64:
+            if len(args[0].([]int64)) == 0 {
                 return true, nil
             }
         case []uint8:
@@ -160,7 +170,7 @@ func buildListLib() {
        }
     */
 
-    slhelp["col"] = LibHelp{in: "string_list,column,delimiter", out: "list", action: "Creates a list from a particular [#i1]column[#i0] of [#i1]string_list[#i0]."}
+    slhelp["col"] = LibHelp{in: "string_list,column,delimiter", out: "list", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string_list[#i0]."}
     stdlib["col"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 3 {
@@ -208,7 +218,7 @@ func buildListLib() {
     }
 
     // append returns a[]+arg
-    slhelp["append"] = LibHelp{in: "[list,],item", out: "new_list", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
+    slhelp["append"] = LibHelp{in: "[list,]item", out: "new_list", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
     stdlib["append"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
             switch args[0].(type) {
@@ -230,6 +240,12 @@ func buildListLib() {
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
+            case int32:
+                l := make([]int32, 0, 31)
+                return append(l, args[0].(int32)), nil
+            case int64:
+                l := make([]int64, 0, 31)
+                return append(l, args[0].(int64)), nil
             default:
                 return nil, errors.New(sf("data type (%T) not supported in lists.",args[0]))
             }
@@ -243,7 +259,6 @@ func buildListLib() {
         }
         switch args[0].(type) {
         case []interface{}:
-            // if "interface{}" != sf("%T",args[1]) { return nil,errors.New(sf("(l:<interface>,a:%T) data types must match in append()",args[1])) }
             l := append(args[0].([]interface{}), args[1].(interface{}))
             return l, nil
         case []string:
@@ -276,7 +291,6 @@ func buildListLib() {
         default:
             return nil, errors.New("data type not supported in append()")
         }
-        // return nil, errors.New("append() needs arguments")
     }
 
     slhelp["push"] = LibHelp{in: "[list,]item", out: "new_list", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
@@ -833,6 +847,7 @@ func buildListLib() {
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] < list.([]string)[j] })
                 return list, nil
 
+            // placeholders until we can do something useful here...
             case map[string]interface{}:
                 var iter *reflect.MapIter
                 iter = reflect.ValueOf(list.(map[string]interface{})).MapRange()
@@ -883,6 +898,7 @@ func buildListLib() {
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] > list.([]string)[j] })
                 return list, nil
 
+            // placeholders again...
             case map[string]interface{}:
                 var iter *reflect.MapIter
                 iter = reflect.ValueOf(list.(map[string]interface{})).MapRange()
@@ -936,6 +952,20 @@ func buildListLib() {
                     float_list = append(float_list, v)
                 }
             }
+        case []int32:
+            for _, q := range args[0].([]int32) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, v)
+                }
+            }
+        case []int64:
+            for _, q := range args[0].([]int64) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, v)
+                }
+            }
         case []uint8:
             for _, q := range args[0].([]uint8) {
                 v, invalid := GetAsFloat(sf("%v", q))
@@ -951,12 +981,12 @@ func buildListLib() {
                 }
             }
         default:
-            return nil, errors.New("That's not a list of strings")
+            return nil, errors.New("That's not a valid list type.")
         }
         return float_list, nil
     }
 
-    slhelp["list_int"] = LibHelp{in: "float_or_string_list", out: "int_list", action: "Returns [#i1]float_or_string_list[#i0] as a list of integers, with invalid items removed."}
+    slhelp["list_int"] = LibHelp{in: "float_or_string_list", out: "int_list", action: "Returns [#i1]float_or_string_list[#i0] as a list of integers. Invalid items will generate an error."}
     stdlib["list_int"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to list_int()") }
         var int_list []int
@@ -970,6 +1000,12 @@ func buildListLib() {
                     return nil, errors.New(sf("could not treat %v as an integer.", q))
                 }
             }
+        case []int:
+            return args[0].([]int),nil
+        case []int32:
+            return args[0].([]int32),nil
+        case []int64:
+            return args[0].([]int64),nil
         case []float64:
             for _, q := range args[0].([]float64) {
                 v, invalid := GetAsInt(sf("%v", q))
@@ -1001,7 +1037,8 @@ func buildListLib() {
         case []interface{}:
             for _, q := range args[0].([]interface{}) { string_list = append(string_list, sf("%v",q)) }
         case []string:
-            for _, q := range args[0].([]string) { string_list = append(string_list, sf("%v",q)) }
+            return args[0].([]string),nil
+            // for _, q := range args[0].([]string) { string_list = append(string_list, sf("%v",q)) }
         case []float64:
             for _, q := range args[0].([]float64) { string_list = append(string_list, sf("%v",q)) }
         case []int:
@@ -1014,8 +1051,8 @@ func buildListLib() {
         return string_list, nil
     }
 
-    // uniq(l) returns list with duplicates removed (must be pre-sorted?)
-    slhelp["uniq"] = LibHelp{in: "list", out: "new_list", action: "Returns [#i1]list[#i0] with duplicate values removed."}
+    // uniq(l) returns a sorted list with duplicates removed
+    slhelp["uniq"] = LibHelp{in: "list", out: "new_list", action: "Returns [#i1]list[#i0] sorted with duplicate values removed."}
     stdlib["uniq"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 1 { return nil, errors.New("Bad arguments (count) in uniq()") }
@@ -1143,6 +1180,10 @@ func buildListLib() {
             return append(args[0].([]interface{}), args[1].([]interface{})...), nil
         case []int:
             return append(args[0].([]int), args[1].([]int)...), nil
+        case []int32:
+            return append(args[0].([]int32), args[1].([]int32)...), nil
+        case []int64:
+            return append(args[0].([]int64), args[1].([]int64)...), nil
         case []uint8:
             return append(args[0].([]uint8), args[1].([]uint8)...), nil
         case []string:
@@ -1382,3 +1423,5 @@ func buildListLib() {
     }
 
 }
+
+

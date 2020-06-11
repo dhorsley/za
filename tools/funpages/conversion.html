@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<HTML >
+<HEAD >
+<style>
+
+    .0 {color:#000;}
+    .1 {color:#00a;}
+    .2 {color:#a00;}
+    .3 {color:#a0a;}
+    .4 {color:#0a0;}
+    .5 {color:#0aa;}
+    .6 {color:#aa0;}
+    .7 {color:#aaa;}
+    .ioff {font-style:normal;}
+    .ion  {font-style:italic;}
+    .boff {font-weight:normal;}
+    .bon  {font-weight:bold;}
+    .ttab {display:table}
+    .ttab > div {display:table-cell}
+    .hdbg {width:100%;background-color:#07b;}
+
+</style>
+</HEAD>
+<BODY >
+<h1 ></h1>
+
+<h2 >conversion functions</h2>
+
+<a id="top"></a>
+<ul ><li ><a href="#byte">byte</a></li>
+
+<li ><a href="#int">int</a></li>
+
+<li ><a href="#float">float</a></li>
+
+<li ><a href="#bool">bool</a></li>
+
+<li ><a href="#string">string</a></li>
+
+<li ><a href="#kind">kind</a></li>
+
+<li ><a href="#chr">chr</a></li>
+
+<li ><a href="#ascii">ascii</a></li>
+
+<li ><a href="#is_number">is_number</a></li>
+
+<li ><a href="#base64e">base64e</a></li>
+
+<li ><a href="#base64d">base64d</a></li>
+
+<li ><a href="#json_decode">json_decode</a></li>
+
+<li ><a href="#json_format">json_format</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div ><a id="byte"></a><h3 >byte = byte(var)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert to a uint8 sized integer, or errors.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="int"></a><h3 >integer = int(var)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var<span class='ioff'> to an integer, or errors.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="float"></a><h3 >float = float(var)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var<span class='ioff'> to a float. Returns NaN on error.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="bool"></a><h3 >bool = bool(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>string<span class='ioff'> to a boolean value, or errors</p>
+<br>
+<div class="ttab hdbg"><div ><a id="string"></a><h3 >string = string(var)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Converts <span class='ion'>var<span class='ioff'> to a string.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="kind"></a><h3 >string = kind(var)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string indicating the type of the variable <span class='ion'>var<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="chr"></a><h3 >string = chr(int)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string representation of ASCII char <span class='ion'>int<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="ascii"></a><h3 >int = ascii(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a numeric representation of the first char in <span class='ion'>string<span class='ioff'>.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="is_number"></a><h3 >bool = is_number(expression)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >is <span class='ion'>expression<span class='ioff'> a number?</p>
+<br>
+<div class="ttab hdbg"><div ><a id="base64e"></a><h3 >string = base64e(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string of the base64 encoding of <span class='ion'>string<span class='ioff'></p>
+<br>
+<div class="ttab hdbg"><div ><a id="base64d"></a><h3 >string = base64d(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string of the base64 decoding of <span class='ion'>string<span class='ioff'></p>
+<br>
+<div class="ttab hdbg"><div ><a id="json_decode"></a><h3 >array = json_decode(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a mixed type array representing a JSON string.</p>
+<br>
+<div class="ttab hdbg"><div ><a id="json_format"></a><h3 >string = json_format(string)</h3>
+</div>
+<div >&nbsp;&nbsp;&nbsp;</div>
+<div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a formatted JSON representation of string, or an empty string on error.</p>
+<br>
+
+
+</BODY>
+</HTML>

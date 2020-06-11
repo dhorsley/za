@@ -8,7 +8,6 @@ import (
     "errors"
     "io/ioutil"
     "os"
-	// "golang.org/x/sys/unix"
     "unicode/utf8"
     "reflect"
     "regexp"
@@ -79,19 +78,19 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
+        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system","funcinputs","funcoutputs","funcdescriptions","catmap",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","length","tco", "echo","getrow","getcol","unmap","await","getmem",
     }
 
 
-    slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant."}
+    slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant?"}
     stdlib["utf8supported"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return str.HasSuffix(str.ToLower(os.Getenv("LANG")),".utf-8") , nil
     }
 
-    slhelp["wininfo"] = LibHelp{in: "", out: "number", action: "(windows) Returns the console geometry."}
+    slhelp["wininfo"] = LibHelp{in: "", out: "int", action: "(windows) Returns the console geometry."}
     stdlib["wininfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         hnd:=1
         if len(args)==1 {
@@ -103,28 +102,28 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["getmem"] = LibHelp{in: "", out: "number", action: "Returns the current allocated memory and system memory usage."}
+    slhelp["getmem"] = LibHelp{in: "", out: "int", action: "Returns the current allocated memory and system memory usage."}
     stdlib["getmem"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         a,s:=getMemUsage()
         return sf("%d %d",a/1024/1024,s/1024/1024), nil
     }
 
-    slhelp["term_h"] = LibHelp{in: "", out: "number", action: "Returns the current terminal height."}
+    slhelp["term_h"] = LibHelp{in: "", out: "int", action: "Returns the current terminal height."}
     stdlib["term_h"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return MH, nil
     }
 
-    slhelp["term_w"] = LibHelp{in: "", out: "number", action: "Returns the current terminal width."}
+    slhelp["term_w"] = LibHelp{in: "", out: "int", action: "Returns the current terminal width."}
     stdlib["term_w"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return MW, nil
     }
 
-    slhelp["pane_h"] = LibHelp{in: "", out: "number", action: "Returns the current pane height."}
+    slhelp["pane_h"] = LibHelp{in: "", out: "int", action: "Returns the current pane height."}
     stdlib["pane_h"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return panes[currentpane].h, nil
     }
 
-    slhelp["pane_w"] = LibHelp{in: "", out: "number", action: "Returns the current pane width."}
+    slhelp["pane_w"] = LibHelp{in: "", out: "int", action: "Returns the current pane width."}
     stdlib["pane_w"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return panes[currentpane].w, nil
     }
@@ -158,7 +157,7 @@ func buildInternalLib() {
         return cmdargs, nil
     }
 
-    slhelp["argc"] = LibHelp{in: "", out: "number", action: "CLI argument count."}
+    slhelp["argc"] = LibHelp{in: "", out: "int", action: "CLI argument count."}
     stdlib["argc"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return len(cmdargs), nil
     }
@@ -175,14 +174,14 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["getrow"] = LibHelp{in: "", out: "number", action: "row position of console text cursor."}
+    slhelp["getrow"] = LibHelp{in: "", out: "int", action: "row position of console text cursor."}
     stdlib["getrow"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         r,_:=GetCursorPos()
         if runtime.GOOS=="windows" { r++ }
         return r, nil
     }
 
-    slhelp["getcol"] = LibHelp{in: "", out: "number", action: "column position of console text cursor."}
+    slhelp["getcol"] = LibHelp{in: "", out: "int", action: "column position of console text cursor."}
     stdlib["getcol"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         _,c:=GetCursorPos()
         if runtime.GOOS=="windows" { c++ }
@@ -754,6 +753,38 @@ func buildInternalLib() {
         return nil, nil
     }
 
+    slhelp["funcinputs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function inputs."}
+    stdlib["funcinputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        var fm = make(map[string]string)
+        for k,i:=range slhelp {
+            fm[k]=i.in
+        }
+        return fm,nil
+    }
+
+    slhelp["funcoutputs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function outputs."}
+    stdlib["funcoutputs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        var fm = make(map[string]string)
+        for k,i:=range slhelp {
+            fm[k]=i.out
+        }
+        return fm,nil
+    }
+
+    slhelp["funcdescriptions"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library function descriptions."}
+    stdlib["funcdescriptions"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        var fm = make(map[string]string)
+        for k,i:=range slhelp {
+            fm[k]=i.action
+        }
+        return fm,nil
+    }
+
+    slhelp["catmap"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library functions."}
+    stdlib["catmap"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        return categories,nil
+    }
+
     slhelp["funcs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library functions."}
     stdlib["funcs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
@@ -823,7 +854,7 @@ func buildInternalLib() {
         return funclist,nil
     }
 
-    slhelp["dump"] = LibHelp{in: "function_name", out: "none", action: "Displays variable list, or a specific entry."}
+    slhelp["dump"] = LibHelp{in: "function_name", out: "", action: "Displays variable list, or a specific entry."}
     stdlib["dump"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         s := ""
         if len(args) == 0 { s="global" }
@@ -863,7 +894,7 @@ func buildInternalLib() {
         return v, nil
     }
 
-    slhelp["clktck"] = LibHelp{in: "", out: "number", action: "Get clock ticks from aux file."}
+    slhelp["clktck"] = LibHelp{in: "", out: "int", action: "Get clock ticks from aux file."}
     stdlib["clktck"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return getclktck(), nil
     }

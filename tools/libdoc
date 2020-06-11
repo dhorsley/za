@@ -1,0 +1,124 @@
+#!/usr/bin/za
+
+# library html ref gen
+
+interpol(false)
+style=`
+    .0 {color:#000;}
+    .1 {color:#00a;}
+    .2 {color:#a00;}
+    .3 {color:#a0a;}
+    .4 {color:#0a0;}
+    .5 {color:#0aa;}
+    .6 {color:#aa0;}
+    .7 {color:#aaa;}
+    .ioff {font-style:normal;}
+    .ion  {font-style:italic;}
+    .boff {font-weight:normal;}
+    .bon  {font-weight:bold;}
+    .ttab {display:table}
+    .ttab > div {display:table-cell}
+    .hdbg {width:100%;background-color:#07b;}
+`
+interpol(true)
+
+hc["\[#0]"] = `<span class='.0'>`
+hc["\[#1]"] = `<span class='.1'>`
+hc["\[#2]"] = `<span class='.2'>`
+hc["\[#3]"] = `<span class='.3'>`
+hc["\[#4]"] = `<span class='.4'>`
+hc["\[#5]"] = `<span class='.5'>`
+hc["\[#6]"] = `<span class='.6'>`
+hc["\[#7]"] = `<span class='.7'>`
+
+define clean(s)
+
+    s=replace(s,`\[#i0]`,    `<span class='ioff'>`)
+    s=replace(s,`\[#i1]`,    `<span class='ion'>`)
+    s=replace(s,`\[#bold]`,  `<span class='boff'>`)
+    s=replace(s,`\[#boff]`,  `<span class='bon'>`)
+    s=replace(s,"`\n",       `<br>`)
+
+    foreach c in getglob("hc")
+        s=replace(s,key_c,c)
+    endfor
+
+    return s
+
+enddef
+
+
+# main
+
+docpath="funpages"
+
+fi=funcinputs()
+fo=funcoutputs()
+fd=funcdescriptions()
+
+# get all categories
+
+foreach c in catmap()
+
+    header=wh1()+"\n"
+    header=header+wh2("{key_c} functions") 
+
+    body=""
+    pageindex=""
+
+    foreach i in c
+
+        pageindex=pageindex+wli(wa(i,`href="#{i}"`))+"\n"
+
+        in=clean(fi[i])
+        out=clean(fo[i])
+        desc=clean(fd[i])
+
+        if out!=""
+            fnline=`{out} = {i}({in})` 
+        else
+            fnline=`{i}({in})`
+        endif
+
+        body=body+wdiv(
+            
+            wdiv( wa("",`id="{i}"`)+wh3(fnline)) + 
+            wdiv( "&nbsp;&nbsp;&nbsp;" ) +
+            wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`)),
+          `class="ttab hdbg"`
+        )
+        # body=body+"<hr>\n"
+        body=body+wp("{desc}")
+        body=body+"<br>\n"
+
+    endfor
+
+    page=wpage(
+        whead("<style>\n"+style+"\n</style>\n")+
+        wbody(
+            header+"\n"+
+            wa("",`id="top"`)+"\n"+
+            wul(pageindex)+"\n"+
+            body+"\n"
+        )
+    )
+
+    println "{docpath}/{key_c}.html"
+    write_file(docpath+"/"+key_c+".html",page)
+
+endfor
+
+# generate index page
+
+indices=""
+
+foreach c in catmap()
+    indices=indices+wli(wa(key_c,`href="{key_c}.html"`)+"\n")
+endfor
+
+indexpage=wpage( whead( wbody( wul(indices) ) ) )
+write_file(docpath+"/index.html",indexpage)
+
+exit 0
+
+
