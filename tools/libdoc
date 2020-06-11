@@ -45,7 +45,7 @@ define clean(s)
     s=replace(s,`\[#i1]`,    `<span class='ion'>`)
     s=replace(s,`\[#bold]`,  `<span class='boff'>`)
     s=replace(s,`\[#boff]`,  `<span class='bon'>`)
-    s=replace(s,"`\n",       `<br>`)
+    s=replace(s,`\n`,       `<br><br>`)
 
     foreach c in getglob("hc")
         s=replace(s,key_c,c)
@@ -94,7 +94,12 @@ foreach c in func_categories()
             wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`,`class="ttabright"`)),
           `class="ttab hdbg"`
         )
-        body=body+wp("{desc}")
+        body=body+wp(`{desc}`)
+
+        if is_file("examples/{i}")
+            body=body+wp("<i>Example:</i><br><pre>"+html_escape(read_file("examples/{i}"))+"</pre>")
+        endif
+
         body=body+"<br>\n"
 
     endfor

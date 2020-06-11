@@ -16,13 +16,20 @@
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 
 </style>
 </HEAD>
@@ -78,133 +85,133 @@
 
 </ul>
 
-<div class="ttab hdbg"><div ><a id="wpage"></a><h3 >string = wpage(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wpage"></a><h3 >string = wpage(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML page tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wbody"></a><h3 >string = wbody(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wbody"></a><h3 >string = wbody(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML body tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wdiv"></a><h3 >string = wdiv(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wdiv"></a><h3 >string = wdiv(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML division tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wa"></a><h3 >string = wa(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wa"></a><h3 >string = wa(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML anchor tag.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wimg"></a><h3 >string = wimg(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wimg"></a><h3 >string = wimg(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML image tag.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="whead"></a><h3 >string = whead(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="whead"></a><h3 >string = whead(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML head tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wlink"></a><h3 >string = wlink(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wlink"></a><h3 >string = wlink(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML hyper-link tag.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wp"></a><h3 >string = wp(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wp"></a><h3 >string = wp(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML paragraph tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wtable"></a><h3 >string = wtable(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wtable"></a><h3 >string = wtable(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML table tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wthead"></a><h3 >string = wthead(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wthead"></a><h3 >string = wthead(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML table head tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wtbody"></a><h3 >string = wtbody(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wtbody"></a><h3 >string = wtbody(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML table body tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wtr"></a><h3 >string = wtr(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wtr"></a><h3 >string = wtr(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML TR table row tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wth"></a><h3 >string = wth(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wth"></a><h3 >string = wth(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML TH table header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wtd"></a><h3 >string = wtd(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wtd"></a><h3 >string = wtd(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML TD table data tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wh1"></a><h3 >string = wh1(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wh1"></a><h3 >string = wh1(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML h1 header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wh2"></a><h3 >string = wh2(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wh2"></a><h3 >string = wh2(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML h2 header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wh3"></a><h3 >string = wh3(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wh3"></a><h3 >string = wh3(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML h3 header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wh4"></a><h3 >string = wh4(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wh4"></a><h3 >string = wh4(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML h4 header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wh5"></a><h3 >string = wh5(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wh5"></a><h3 >string = wh5(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML h5 header tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wol"></a><h3 >string = wol(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wol"></a><h3 >string = wol(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML ordered list tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wul"></a><h3 >string = wul(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wul"></a><h3 >string = wul(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Create a HTML unordered list tag wrapping.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="wli"></a><h3 >string = wli(content[,options])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="wli"></a><h3 >string = wli(content[,options])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>

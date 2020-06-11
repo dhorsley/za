@@ -16,13 +16,20 @@
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 
 </style>
 </HEAD>
@@ -44,31 +51,31 @@
 
 </ul>
 
-<div class="ttab hdbg"><div ><a id="install"></a><h3 >install(packages_string)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="install"></a><h3 >install(packages_string)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Installs the packages in <span class='ion'>packages_string<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="uninstall"></a><h3 >uninstall(packages_string)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="uninstall"></a><h3 >uninstall(packages_string)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Removes the packages in <span class='ion'>packages_string<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="service"></a><h3 >success_flag = service(service_name,action)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="service"></a><h3 >success_flag = service(service_name,action)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Attempts to take the required <span class='ion'>action<span class='ioff'> on service <span class='ion'>service_name<span class='ioff'>. Returns true if successful.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="vcmp"></a><h3 >int = vcmp(v1,v2)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="vcmp"></a><h3 >int = vcmp(v1,v2)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns -1, 0, or +1 depending on semantic version string <span class='ion'>v1<span class='ioff'> being less than, equal to, or greater than version string <span class='ion'>v2<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="is_installed"></a><h3 >bool = is_installed(package_name)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_installed"></a><h3 >bool = is_installed(package_name)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>

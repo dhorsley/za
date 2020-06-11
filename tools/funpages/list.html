@@ -16,13 +16,20 @@
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 
 </style>
 </HEAD>
@@ -82,145 +89,145 @@
 
 </ul>
 
-<div class="ttab hdbg"><div ><a id="col"></a><h3 >list = col(string_list,column,delimiter)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="col"></a><h3 >list = col(string_list,column,delimiter)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Creates a list from a particular <span class='ion'>column<span class='ioff'> of line separated <span class='ion'>string_list<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="head"></a><h3 >item = head(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="head"></a><h3 >item = head(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns the head element of a list.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="tail"></a><h3 >new_list = tail(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="tail"></a><h3 >new_list = tail(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a new list containing all items in <span class='ion'>list<span class='ioff'> except the head item.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="sum"></a><h3 >number = sum(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="sum"></a><h3 >number = sum(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Calculate the sum of the values in <span class='ion'>list<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="fieldsort"></a><h3 >new_string = fieldsort(nl_string,field[,sort_type][,bool_reverse])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="fieldsort"></a><h3 >new_string = fieldsort(nl_string,field[,sort_type][,bool_reverse])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Sorts a newline separated string <span class='ion'>nl_string<span class='ioff'> in ascending or descending (<span class='ion'>bool_reverse<span class='ioff'>==true) order on key <span class='ion'>field<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="sort"></a><h3 >new_list = sort(list [,bool_reverse])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="sort"></a><h3 >new_list = sort(list [,bool_reverse])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Sorts a <span class='ion'>list<span class='ioff'> in ascending or descending (<span class='ion'>bool_reverse<span class='ioff'>==true) order.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="uniq"></a><h3 >new_list = uniq(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="uniq"></a><h3 >new_list = uniq(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns <span class='ion'>list<span class='ioff'> sorted with duplicate values removed.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="append"></a><h3 >new_list = append([list,]item)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="append"></a><h3 >new_list = append([list,]item)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns <span class='ion'>new_list<span class='ioff'> containing <span class='ion'>item<span class='ioff'> appended to <span class='ion'>list<span class='ioff'>. If <span class='ion'>list<span class='ioff'> is omitted then a new list is created containing <span class='ion'>item<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="insert"></a><h3 >new_list = insert(list,pos,item)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="insert"></a><h3 >new_list = insert(list,pos,item)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a <span class='ion'>new_list<span class='ioff'> with <span class='ion'>item<span class='ioff'> inserted in <span class='ion'>list<span class='ioff'> at position <span class='ion'>pos<span class='ioff'>. (1-based)</p>
 <br>
-<div class="ttab hdbg"><div ><a id="remove"></a><h3 >new_list = remove(list,pos)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="remove"></a><h3 >new_list = remove(list,pos)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a <span class='ion'>new_list<span class='ioff'> with the item at position <span class='ion'>pos<span class='ioff'> removed.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="push"></a><h3 >new_list = push([list,]item)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="push"></a><h3 >new_list = push([list,]item)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Adds <span class='ion'>item<span class='ioff'> to the front of <span class='ion'>list<span class='ioff'>. If only an item is provided, then a new list is started.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="deq"></a><h3 >item = deq(list_name)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="deq"></a><h3 >item = deq(list_name)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Removes and returns the last <span class='ion'>item<span class='ioff'> in the named list <span class='ion'>list_name<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="any"></a><h3 >boolean = any(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="any"></a><h3 >boolean = any(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns true if any item in <span class='ion'>list<span class='ioff'> evaluate to true.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="all"></a><h3 >boolean = all(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="all"></a><h3 >boolean = all(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns true if all items in <span class='ion'>list<span class='ioff'> evaluate to true.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="concat"></a><h3 >new_list = concat(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="concat"></a><h3 >new_list = concat(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Concatenates two lists and returns the result.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="esplit"></a><h3 >bool = esplit(list,"var1","var2",match)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="esplit"></a><h3 >bool = esplit(list,"var1","var2",match)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Split <span class='ion'>list<span class='ioff'> at position <span class='ion'>match<span class='ioff'> (1-based). Each side is put into variables <span class='ion'>var1<span class='ioff'> and <span class='ion'>var2<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="min"></a><h3 >number = min(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="min"></a><h3 >number = min(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Calculate the minimum value in a <span class='ion'>list<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="max"></a><h3 >number = max(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="max"></a><h3 >number = max(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Calculate the maximum value in a <span class='ion'>list<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="avg"></a><h3 >number = avg(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="avg"></a><h3 >number = avg(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Calculate the average value in a <span class='ion'>list<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="empty"></a><h3 >bool = empty(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="empty"></a><h3 >bool = empty(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Is list empty?</p>
 <br>
-<div class="ttab hdbg"><div ><a id="list_string"></a><h3 >string_list = list_string(list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="list_string"></a><h3 >string_list = list_string(list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns <span class='ion'>list<span class='ioff'> as a list of strings.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="list_float"></a><h3 >float_list = list_float(int_or_string_list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="list_float"></a><h3 >float_list = list_float(int_or_string_list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns <span class='ion'>int_or_string_list<span class='ioff'> as a list of floats, with invalid items removed.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="list_int"></a><h3 >int_list = list_int(float_or_string_list)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="list_int"></a><h3 >int_list = list_int(float_or_string_list)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns <span class='ion'>float_or_string_list<span class='ioff'> as a list of integers. Invalid items will generate an error.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="numcomp"></a><h3 >bool = numcomp(stringa,stringb)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="numcomp"></a><h3 >bool = numcomp(stringa,stringb)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>

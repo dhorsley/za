@@ -16,13 +16,20 @@
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 
 </style>
 </HEAD>
@@ -78,133 +85,133 @@
 
 </ul>
 
-<div class="ttab hdbg"><div ><a id="svg_start"></a><h3 >svg_handle = svg_start(filename,w,h[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_start"></a><h3 >svg_handle = svg_start(filename,w,h[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Returns a handle to a new SVG canvas.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_end"></a><h3 >svg_end(handle)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_end"></a><h3 >svg_end(handle)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Signals completion of the SVG canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_title"></a><h3 >svg_title(handle,title)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_title"></a><h3 >svg_title(handle,title)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Places a title on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_desc"></a><h3 >svg_desc(handle,description)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_desc"></a><h3 >svg_desc(handle,description)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Attach a description to the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_plot"></a><h3 >svg_plot(handle,x,y[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_plot"></a><h3 >svg_plot(handle,x,y[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Plots a point on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_circle"></a><h3 >svg_circle(handle,x,y,radius[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_circle"></a><h3 >svg_circle(handle,x,y,radius[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a circle on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_ellipse"></a><h3 >svg_ellipse(handle,x,y,w,h[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_ellipse"></a><h3 >svg_ellipse(handle,x,y,w,h[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws an ellipse on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_rect"></a><h3 >svg_rect(handle,x,y,w,h[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_rect"></a><h3 >svg_rect(handle,x,y,w,h[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a rectangle on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_roundrect"></a><h3 >svg_roundrect(handle,x,y,w,h,rx,ry[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_roundrect"></a><h3 >svg_roundrect(handle,x,y,w,h,rx,ry[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a rounded rectangle on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_square"></a><h3 >svg_square(handle,x,y,size[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_square"></a><h3 >svg_square(handle,x,y,size[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a square on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_line"></a><h3 >svg_line(handle,x,y,w,h[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_line"></a><h3 >svg_line(handle,x,y,w,h[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a line on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_polyline"></a><h3 >svg_polyline(handle,[]x,[]y[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_polyline"></a><h3 >svg_polyline(handle,[]x,[]y[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a polyline on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_polygon"></a><h3 >svg_polygon(handle,[]x,[]y[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_polygon"></a><h3 >svg_polygon(handle,[]x,[]y[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a polygon on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_text"></a><h3 >svg_text(handle,x,y,text[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_text"></a><h3 >svg_text(handle,x,y,text[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Writes text to the SVG canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_image"></a><h3 >svg_image(handle,x,y,w,h,image_link[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_image"></a><h3 >svg_image(handle,x,y,w,h,image_link[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Links an image to the SVG canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_grid"></a><h3 >svg_grid(handle,x,y,w,h,n[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_grid"></a><h3 >svg_grid(handle,x,y,w,h,n[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Draws a grid on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_def"></a><h3 >svg_def(handle)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_def"></a><h3 >svg_def(handle)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Attach a definition to the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_def_end"></a><h3 >svg_def_end(handle)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_def_end"></a><h3 >svg_def_end(handle)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Ends a definition in <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_group"></a><h3 >svg_group(handle[,attributes])</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_group"></a><h3 >svg_group(handle[,attributes])</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Attach a group definition to the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_group_end"></a><h3 >svg_group_end(handle)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_group_end"></a><h3 >svg_group_end(handle)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Ends a group definition in <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_link"></a><h3 >svg_link(handle,href,title)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_link"></a><h3 >svg_link(handle,href,title)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
 <p >Places a link on the canvas <span class='ion'>handle<span class='ioff'>.</p>
 <br>
-<div class="ttab hdbg"><div ><a id="svg_link_end"></a><h3 >svg_link_end(handle)</h3>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_link_end"></a><h3 >svg_link_end(handle)</h3>
 </div>
 <div ><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
 </div>
