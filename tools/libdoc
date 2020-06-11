@@ -13,13 +13,20 @@ style=`
     .5 {color:#0aa;}
     .6 {color:#aa0;}
     .7 {color:#aaa;}
-    .ioff {font-style:normal;}
-    .ion  {font-style:italic;}
-    .boff {font-weight:normal;}
-    .bon  {font-weight:bold;}
-    .ttab {display:table}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
     .ttab > div {display:table-cell}
-    .hdbg {width:100%;background-color:#07b;}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#07b;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:blue;background-color:transparent;text-decoration:none;}
+    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
+    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
+    a:active    {color:blue;background-color:transparent;text-decoration:none;}
 `
 interpol(true)
 
@@ -83,8 +90,8 @@ foreach c in func_categories()
 
         #    wdiv( "&nbsp;&nbsp;&nbsp;" ) +
         body=body+wdiv(
-            wdiv( wa("",`id="{i}"`)+wh3(fnline)) + 
-            wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`)),
+            wdiv( wa("",`id="{i}"`)+wh3(fnline) , `class="ttableft"` ) + 
+            wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`,`class="ttabright"`)),
           `class="ttab hdbg"`
         )
         body=body+wp("{desc}")
@@ -121,10 +128,21 @@ endfor
 indices=""
 
 foreach c in func_categories()
-    indices=indices+wli(wa(key_c,`href="{key_c}.html"`)+"\n")
+    indices=indices+wli(
+        wa(key_c,`href="{key_c}.html"`)+"\n",
+        `class="ilink"`
+    )
 endfor
 
-indexpage=wpage( whead( wbody( wul(indices) ) ) )
+indexpage=wpage(
+        whead(format(meta)+"<style>\n"+style+"\n</style>\n")+
+        wbody(
+            wdiv( wh1("Za Function Reference") )+
+            wdiv( wh2("Categories:") )+
+            wdiv( wul(indices) , `class="ttab"` )
+        )
+)
+
 write_file(docpath+"/index.html",indexpage)
 
 exit 0
