@@ -955,9 +955,67 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         return expr, false
     }
 
+    // lhs brace nesting and quoting
+    bnest:=0; inq:=false
     pos := str.IndexByte(expr.assignVar, '[')
     if pos != -1 {
-        epos := str.IndexByte(expr.assignVar, ']')
+        // inside quote?
+        closedAt:=-1; startq:=""
+        for spos:=pos; spos<len(expr.assignVar); spos++ {
+            switch expr.assignVar[spos] {
+            case '[':
+                if !inq { bnest++ }
+            case ']':
+                if bnest>0 {
+                    if !inq { bnest-- }
+                } else {
+                    pf("error in lhs braces\n")
+                    expr.evalError=true
+                    return expr,false
+                }
+                if bnest==0 {
+                    closedAt=spos
+                    break
+                }
+            case '"':
+                if !inq {
+                    startq=`"`
+                    inq=true
+                } else {
+                    if startq==`"` {
+                        inq=false
+                    }
+                }
+            case '`':
+                if !inq {
+                    startq="`"
+                    inq=true
+                } else {
+                    if startq=="`" {
+                        inq=false
+                    }
+                }
+            case '\'':
+                if !inq {
+                    startq="'"
+                    inq=true
+                } else {
+                    if startq=="'" {
+                        inq=false
+                    }
+                }
+            }
+        } // endfor
+
+        if closedAt==-1 {
+            pf("unclosed braces in lhs\n")
+            expr.evalError=true
+            return expr,false
+        }
+
+        // epos := str.IndexByte(expr.assignVar, ']')
+        epos := closedAt
+
         if epos != -1 {
             // handle array reference
             element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
@@ -976,6 +1034,8 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                 }
                 vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
             }
+        } else {
+            bnest++
         }
     }
 

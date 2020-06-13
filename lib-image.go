@@ -13,7 +13,7 @@ import (
 
 // This package includes functions for interfacing with SVG components.
 
-// https://github.com/ajstarks/svgo
+// underlying package: https://github.com/ajstarks/svgo
 
 type svg_table_entry struct {
     location    string

@@ -1,8 +1,8 @@
 " za syntax file
 " Language:		za (za)
 " Maintainer:	Daniel Horsley  <dhorsley@gmail.com>
-" Last Change:	August 10, 2019
-" Version:		5
+" Last Change:	June 13, 2020
+" Version:		6
 
 " Version control
 
@@ -68,6 +68,7 @@ syntax match time_functions "\s*date\s*("he=e-1
 syntax match time_functions "\s*epoch_time\s*("he=e-1
 syntax match time_functions "\s*epoch_nano_time\s*("he=e-1
 syntax match time_functions "\s*time_diff\s*("he=e-1
+syntax match time_functions "\s*date_human\s*("he=e-1
 
 syntax match list_functions "\s*empty\s*("he=e-1
 syntax match list_functions "\s*similar\s*("he=e-1
@@ -261,6 +262,7 @@ syntax match db_functions "\s*db_init\s*("he=e-1
 syntax match db_functions "\s*db_query\s*("he=e-1
 syntax match db_functions "\s*db_fields\s*("he=e-1
 
+syntax match string_functions "\s*stripquotes\s*("he=e-1
 syntax match string_functions "\s*addansi\s*("he=e-1
 syntax match string_functions "\s*stripansi\s*("he=e-1
 syntax match string_functions "\s*pad\s*("he=e-1
@@ -297,6 +299,7 @@ syntax match string_functions "\s*tr\s*("he=e-1
 syntax match string_functions "\s*lower\s*("he=e-1
 syntax match string_functions "\s*upper\s*("he=e-1
 syntax match string_functions "\s*format\s*("he=e-1
+syntax match string_functions "\s*ccformat\s*("he=e-1
 syntax match string_functions "\s*strpos\s*("he=e-1
 
 syntax match env_functions "\s*env\s*("he=e-1

@@ -3,11 +3,33 @@
 
 1.1.0   will be the release version
 
+    * more library tests
+
 1.0.9   bug fixes and documentation updates
+
+    * more library tests
 
 1.0.7   more example code
          there are also probably some internal functions we can expose as library calls.
          for example, the za colour code stripper and similar. 
+
+        examples can go in two places.
+
+            1) larger examples live in eg/ path
+            2) small examples of stdlib use should be placed in:
+                tools/funpages/examples/<call_name>
+
+        When tools/libdoc is executed, it incorporates everthing from 2) in the generated files.
+    
+    * more library tests
+
+    * libdoc
+        * update bad descriptions
+        * add more info per func
+
+    * documentation updates
+        * Documentation needs an update to mention the use of 0x1e command output separation.
+
 
 1.0.6   clean up of source layout and use of modules.
 
@@ -22,37 +44,19 @@
 
 ---------------------------------------------------------------------------------------------
 
-NEXT
-----
+NEXT : 1.0.6
+------------
 
-    * libdoc
-        * remove dead funcs
-        * update bad descriptions
-        * add more info per func
-
-    We will also potentially be adding a few more small helper routines in the library as 
-     requirements come out of writing test code in Za for the library.
-
-    We also need to clean up console_linux/windows and maybe create a console_all.go for 
-     common functionality between the two. (5)
-
-    Documentation needs an update to mention the use of 0x1e command output separation.
-
-
-next release will have only:
-
-    * bug fixes
-    * new tests
-    * documentation updates
     * small library functions
+        * todo: int=next_match(s,regex,start_line) # to return matching line number (0 based)
+        * update uninstall() for rpm, apk, sh in other OS (4)
 
-    update uninstall() for rpm, apk, sh in other OS (4)
+    * check current situation with module support in Go. 
+        * maybe update, depending how it smells.
 
 
 LATER
 -----
-
-* add a nesting check in endif. currently ENDIF is completely ignored syntactically. it is only used during lookaheads.
 
 * windows keypress() (getch function):
 
@@ -75,23 +79,11 @@ LATER
 
     * might also be useful to have this integrate with FOREACH somehow.
 
-* CHECK IF NEEDED - console_windows.go/Copper-NextCopper needs update to be like linux version and accumulate bytes then form string after
-    end marker x1e detected. without this, the windows version will break up utf-8 char formation in the string.
-
-    * currently, windows uses the GetCommand() call to execute and populate output from commands as they always execute
-        in "cmd" call from the parent process. The output is already a byte stream, so Copper+NextCopper can probably be removed
-        entirely eventually. However, this may change later, so should probably keep the method in sync with the linux one
-        in case it will be needed.
-
 
 UNDECIDED
 ---------
 
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
     * as usual, really low priority on this. i only wanted it for £ symbols!
-
-* function piping.. any need for this? to consider, as most cases will be covered with shell integration.
-    * off hand, it seems like it is just syntactic sugar rewriting a | b to b(a). not sure how useful it really would be.
-
 
 

@@ -616,7 +616,7 @@ func buildNetLib() {
         return nil,nil
     }
 
-    slhelp["web_max_clients"] = LibHelp{in: "", out: "", action: "(read-only) returns the maximum permitted client count for a web server."}
+    slhelp["web_max_clients"] = LibHelp{in: "", out: "int", action: "(read-only) returns the maximum permitted client count for a web server."}
     stdlib["web_max_clients"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return int(MAX_CLIENTS),nil
     }
@@ -887,10 +887,12 @@ func buildNetLib() {
         return nil,nil
     }
 
+/*
     slhelp["web_template"] = LibHelp{in: "handle,template_path", out: "processed_string", action: "Reads from either an absolute path or a docroot relative path (if handle not nil), with template instructions interpolated."}
     stdlib["web_template"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
     return nil,errors.New("Not implemented.")
     }
+*/
 
     slhelp["web_head"] = LibHelp{in: "loc_string", out: "bool", action: "Makes a HEAD request of the given [#i1]loc_string[#i0]. Returns true if retrieved successfully."}
     stdlib["web_head"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

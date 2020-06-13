@@ -1,0 +1,36 @@
+
+# simple getopt
+
+define next()
+    lav=getglob("av")
+    arg=head(lav)
+    lav=tail(lav)
+    setglob av = lav
+    return arg
+enddef    
+
+av=argv()
+
+while !empty(av)
+    arg=next()
+    if len(arg)>1 && start(arg,"-")
+        opt=substr(arg,0,2)
+        when opt
+        is "-h"
+            println "Help requested."
+        is "-s"
+            svar=string(next())
+        is "-b"
+            bvar=bool(next())
+        is "-n"
+            nvar=int(next())
+        endwhen
+    else
+        println "unprocessed argument found: {arg}"
+    endif
+endwhile
+
+println "string option : {svar} [{kind(svar)}]"
+println "bool option   : {bvar} [{kind(bvar)}]"
+println "number option : {nvar} [{kind(nvar)}]"
+

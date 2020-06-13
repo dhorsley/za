@@ -308,6 +308,27 @@ test "stripansi" group "string"
     assert stripansi(a)=="we must perform a quirkafleeg"
 endtest
 
+test "stripquotes" group "string"
+    header(_test_name)
+    a=stripquotes(`"test"`)
+    b=stripquotes(`'test'`)
+    c=stripquotes("`test`")
+    assert a=="test"
+    assert b=="test"
+    assert c=="test"
+endtest
+
+test "ccformat" group "string"
+    header(_test_name)
+    a=ccformat("[#1]blue[#-]")
+    b="\033[94mblue\033[0m"
+    | echo -en "{a}" | hexdump -C
+    | echo -en "{b}" | hexdump -C
+    assert a==b
+endtest
+
+
+
 
 
 
