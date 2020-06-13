@@ -819,6 +819,8 @@ func buildListLib() {
             if len(list.([]float64)) < 2    { return list, nil }
         case []string:
             if len(list.([]string)) < 2     { return list, nil }
+        case []interface{}:
+            if len(list.([]interface{})) < 2 { return list, nil }
         case map[string]interface{}:
             if len(list.(map[string]interface{})) < 2 { return list,nil }
         default:
@@ -845,6 +847,10 @@ func buildListLib() {
 
             case []string:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] < list.([]string)[j] })
+                return list, nil
+
+            case []interface{}:
+                sort.SliceStable(list, func(i, j int) bool { return sf("%v",list.([]interface{})[i]) < sf("%v",list.([]interface{})[j]) })
                 return list, nil
 
             // placeholders until we can do something useful here...
@@ -896,6 +902,10 @@ func buildListLib() {
 
             case []string:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] > list.([]string)[j] })
+                return list, nil
+
+            case []interface{}:
+                sort.SliceStable(list, func(i, j int) bool { return sf("%v",list.([]interface{})[i]) > sf("%v",list.([]interface{})[j]) })
                 return list, nil
 
             // placeholders again...
