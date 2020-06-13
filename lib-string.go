@@ -78,11 +78,11 @@ func buildStringLib() {
     // string handling
 
     features["string"] = Feature{version: 1, category: "text"}
-    categories["string"] = []string{"pad", "field", "fields", "pipesep", "get_value", "start", "end", "match", "filter",
+    categories["string"] = []string{"pad", "field", "fields", "get_value", "start", "end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
         "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
-        "reverse", "tr", "lower", "upper", "format",
-        "split", "join", "collapse","strpos","stripansi","addansi",
+        "reverse", "tr", "lower", "upper", "format", "ccformat",
+        "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
 
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
@@ -180,7 +180,17 @@ func buildStringLib() {
         return nil, errors.New("could not reverse()")
     }
 
-    // format() - as sprintf()
+    slhelp["ccformat"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf(). Also processes embedded colour codes to ANSI."}
+    stdlib["ccformat"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)==0 { return "",errors.New("Bad arguments (count) in ccformat()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) (arg #1 not string) in ccformat()") }
+        if len(args) == 1 {
+            return sparkle(sf(args[0].(string))), nil
+        }
+        return sparkle(sf(args[0].(string), args[1:]...)), nil
+    }
+
+    // tr() - bad version of tr, that doesn't actually translate :)  really needs to not append with addition nor use bytes instead of runes. Probably quite slow.
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}
     stdlib["format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in format()") }
@@ -230,8 +240,20 @@ func buildStringLib() {
 
     slhelp["stripansi"] = LibHelp{in: "string", out: "string", action: "Remove escaped ansi codes."}
     stdlib["stripansi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) to stripansi()") }
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to stripansi()") }
         return Strip(args[0].(string)), nil
+    }
+
+    slhelp["stripquotes"] = LibHelp{in: "string", out: "string", action: "Remove outer quotes (double, single or backtick)"}
+    stdlib["stripquotes"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 { return "",errors.New("Bad arguments (count) to stripansi()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) to stripquotes()") }
+        s:=args[0].(string)
+        if hasOuter(s,'"') { return stripOuter(s,'"'),nil }
+        if hasOuter(s,'\'') { return stripOuter(s,'\''),nil }
+        if hasOuter(s,'`') { return stripOuter(s,'`'),nil }
+        return s,nil
     }
 
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
@@ -444,7 +466,7 @@ func buildStringLib() {
         return s, nil
     }
 
-    slhelp["pad"] = LibHelp{in: "string,justify,width,character", out: "string", action: "Return left (-1), centred (0) or right (1) justified, padded string."}
+    slhelp["pad"] = LibHelp{in: "string,justify,width[,padchar]", out: "string", action: "Return left (-1), centred (0) or right (1) justified, padded string."}
     stdlib["pad"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) < 3 || len(args) > 4 {
             return "", errors.New("bad argument count in pad()")
@@ -466,7 +488,7 @@ func buildStringLib() {
 
 
 
-    slhelp["field"] = LibHelp{in: "input_string,position,optional_separator", out: "", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
+    slhelp["field"] = LibHelp{in: "input_string,position[,optional_separator]", out: "string", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
     stdlib["field"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         // get sep
@@ -502,7 +524,7 @@ func buildStringLib() {
 
     }
 
-    slhelp["fields"] = LibHelp{in: "input_string,optional_separator", out: "", action: "Splits up [#i1]input_string[#i0] into variables in the current namespace. Variables are named [#i1]F1[#i0] through to [#i1]Fn[#i0]. Field count is stored in [#i1]NF[#i0]."}
+    slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]", out: "int", action: "Splits up [#i1]input_string[#i0] into variables in the current namespace. Variables are named [#i1]F1[#i0] through to [#i1]Fn[#i0]. Field count is stored in [#i1]NF[#i0]. Returns -1 on error, or field count."}
     stdlib["fields"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         // purge previous
@@ -544,6 +566,7 @@ func buildStringLib() {
         return c, err
     }
 
+/*
     slhelp["pipesep"] = LibHelp{in: "input_string", out: "", action: "deprecated."}
         // Splits [#i1]input_string[#i0] into variables named [#i1]F1[#i0] through to [#i1]Fn[#i0]. The split is performed at pipe (|) symbols. Field count is stored in [#i1]NF[#i0]."}
     stdlib["pipesep"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -562,7 +585,7 @@ func buildStringLib() {
         }
         return nil, err
     }
-
+*/
 
     slhelp["split"] = LibHelp{in: "string[,fs]", out: "list", action: "Returns [#i1]string[#i0] as a list, breaking the string on [#i1]fs[#i0]."}
     stdlib["split"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

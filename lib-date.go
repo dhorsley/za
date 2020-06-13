@@ -10,9 +10,9 @@ import (
 func buildDateLib() {
 
 	features["date"] = Feature{version: 1, category: "date"}
-	categories["date"] = []string{"date", "epoch_time", "epoch_nano_time", "time_diff"}
+	categories["date"] = []string{"date", "epoch_time", "epoch_nano_time", "time_diff", "date_human"}
 
-	slhelp["date"] = LibHelp{in: "integer", out: "string", action: "Returns a human-readable date/time. The parsed timestamp is either the current date/time or the optional [#i1]integer[#i0]."}
+	slhelp["date"] = LibHelp{in: "integer", out: "string", action: "Returns a date/time string. The parsed timestamp is either the current date/time or the optional [#i1]integer[#i0]. RFC3339 format."}
 	stdlib["date"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
 		var t time.Time
@@ -30,6 +30,11 @@ func buildDateLib() {
 		st := t.Format(time.RFC3339)
 		return st, err
 	}
+
+	slhelp["date_human"] = LibHelp{in: "", out: "string", action: "Returns the current date and time in a readable format (RFC822Z)"}
+	stdlib["date_human"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        return time.Now().Format(time.RFC822Z),nil
+    }
 
 	slhelp["epoch_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
 	stdlib["epoch_time"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -54,11 +59,6 @@ func buildDateLib() {
 			return 0, errors.New("Bad args (type) for time_diff()")
         }
 
-/*		if reflect.TypeOf(args[0]).Name() != "int64" || reflect.TypeOf(args[1]).Name() != "int64" {
-			return 0, errors.New("Bad args (type) for time_diff()")
-		}
-		return float64(args[0].(int64)-args[1].(int64)) / 1000, nil
-*/
 		return float64(a-b) / 1000, nil
 
 	}

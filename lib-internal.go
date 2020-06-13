@@ -82,7 +82,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","length","tco", "echo","getrow","getcol","unmap","await","getmem",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem",
     }
 
 
@@ -335,14 +335,6 @@ func buildInternalLib() {
             return ulen(args[0])
         }
         return -1,errors.New("Bad argument in len()")
-    }
-
-    slhelp["length"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
-    stdlib["length"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            return ulen(args[0])
-        }
-        return -1,errors.New("Bad argument in length()")
     }
 
     slhelp["globlen"] = LibHelp{in: "name", out: "int", action: "Get the length of a global variable. Returns -1 on not found or error."}
@@ -599,13 +591,6 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-/*
-    slhelp["keypeek"] = LibHelp{in: "", out: "int", action: "Returns an integer corresponding with a currently held down keypress."}
-    stdlib["keypeek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        return wrappedGetCh(-1), nil
-    }
-*/
-
     slhelp["keypress"] = LibHelp{in: "timeout", out: "int", action: "Returns an integer corresponding with a keypress."}
     stdlib["keypress"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
@@ -647,12 +632,12 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["ppid"] = LibHelp{in: "", out: "", action: "Return the pid of parent process."}
+    slhelp["ppid"] = LibHelp{in: "", out: "int", action: "Return the pid of parent process."}
     stdlib["ppid"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return os.Getppid(), nil
     }
 
-    slhelp["pid"] = LibHelp{in: "", out: "", action: "Return the pid of the current process."}
+    slhelp["pid"] = LibHelp{in: "", out: "int", action: "Return the pid of the current process."}
     stdlib["pid"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return os.Getpid(), nil
     }
@@ -705,7 +690,7 @@ func buildInternalLib() {
         return z, err
     }
 
-    slhelp["tokens"] = LibHelp{in: "string", out: "", action: "Returns a list of tokens in a string."}
+    slhelp["tokens"] = LibHelp{in: "string", out: "[]string", action: "Returns a list of tokens in a string."}
     stdlib["tokens"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return []string{},errors.New("No argument provided to tokens()") }
         if sf("%T",args[0])!="string" {
@@ -883,7 +868,7 @@ func buildInternalLib() {
         return true, err
     }
 
-    slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if there is a child co-process has been launched."}
+    slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}
     stdlib["has_shell"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0,"@noshell")
         return !v.(bool), nil
