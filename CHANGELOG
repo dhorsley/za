@@ -4,6 +4,12 @@ CHANGE LOG
 
 1.0.6
 
+    * clean up of source layout and use of modules.
+        * this excludes changing the goval code, it's far too entwined now.
+        * added go.mod/.sum for other modules, internal archiving updated to exclude the cache
+
+        * will monitor for problems, before opening up the github repository.
+            * will also probably need a rebase/cleanup of old version code.
 
 
 ---------------------------------------------------------------------------------------------
