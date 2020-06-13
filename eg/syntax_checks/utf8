@@ -1,9 +1,4 @@
 
-define utf8supported()
-    ufound=end(lower(get_env("LANG")),".utf-8")
-    return ufound
-enddef
-
 define checkutf()
     print "testing\n"
     print utf8supported(),"\n"

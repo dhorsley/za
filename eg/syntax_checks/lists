@@ -52,7 +52,7 @@ a=remove(a,2)
 println "remove @2  a> ",a
 a=remove(a,1)
 println "remove @1  a> ",a
-a=remove(a,length(a))
+a=remove(a,len(a))
 println "remove @end  a> ",a,"\n"
 
 test "list_generic_1" group "list" assert continue
