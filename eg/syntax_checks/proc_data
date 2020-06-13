@@ -34,7 +34,7 @@ for e=0 to llen-1
 endfor
 now(t)
 
-t=then(); print "List Length : ",numcomma(length(list),0),"\n"; now(t)
+t=then(); print "List Length : ",numcomma(len(list),0),"\n"; now(t)
 println "First 100   : ",list[:100]
 t=then(); print "[#4]Min         : [#-]",min(list),"\n"; now(t)
 t=then(); print "[#4]Max         : [#-]",max(list),"\n"; now(t)

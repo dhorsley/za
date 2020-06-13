@@ -13,7 +13,7 @@ min=min(q)
 max=max(q)
 avg=avg(q)
 
-println "Length of set  : ",length(q),""
+println "Length of set  : ",len(q),""
 println "Minimum in set : {min}"
 println "Maximum in set : {max}"
 println "Average in set : {avg}"

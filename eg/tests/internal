@@ -122,17 +122,14 @@ test "key" group "internal"
 endtest
 
 define test_globkey()
-    header(_test_name)
     return globkey("tg","test")
 enddef
 
 define test_getglob()
-    header(_test_name)
     return getglob(`gg`)
 enddef
 
 define test_getglobelement(e)
-    header(_test_name)
     return getglob(`tg["{e}"]`)
 enddef
 
