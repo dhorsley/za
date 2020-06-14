@@ -685,7 +685,8 @@ func buildInternalLib() {
 
     slhelp["hostname"] = LibHelp{in: "", out: "string", action: "Returns the current hostname."}
     stdlib["hostname"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        z, _ := Copper("hostname", true)
+        // z, _ := Copper("hostname", true)
+        z, _ := os.Hostname()
         vset(0, "@hostname", z)
         return z, err
     }

@@ -5,11 +5,20 @@ CHANGE LOG
 1.0.6
 
     * clean up of source layout and use of modules.
+        * if compiling from Go version 1.11/1.12 then source GO script before first build.
         * this excludes changing the goval code, it's far too entwined now.
         * added go.mod/.sum for other modules, internal archiving updated to exclude the cache
 
         * will monitor for problems, before opening up the github repository.
             * will also probably need a rebase/cleanup of old version code.
+
+    * added: int=next_match(s,regex,start_line) # to return matching line number (0 based)
+
+    * interactive mode
+        * added a little more sanity to multiline input on bottom terminal window line and
+            at line endings.
+            * fairly sure it will still be broken in a multitude of neferious ways.
+                ( such as navigating multiline history )
 
 
 ---------------------------------------------------------------------------------------------

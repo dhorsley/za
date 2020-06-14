@@ -568,18 +568,30 @@ func GetCursorPos() (int,int) {
 }
 
 
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+
 /// get an input string from stdin, in raw mode
 func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     sprompt := sparkle(prompt)
 
     // calculate real prompt length after ansi codes applied.
-    dlen := displayedLen(prompt)
-
     // init
     // p := panes[pane]
     cpos := 0                    // cursor pos as extent of printable chars from start
-    var cx, cy int               // current cursor position (row:cy,col:cx)
+//    var cx, cy int               // current cursor position (row:cy,col:cx)
     os := ""                     // original string before history navigation begins
     navHist := false             // currently navigating history entries?
     startedContextHelp := false  // currently displaying auto-completion options
@@ -593,48 +605,71 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
     var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
 
-    icol := col + dlen // input (row,col)
-    irow := row
-    if irow>MH { irow=MH }
-
-    endLine := false // input complete?
-
-    // print prompt
-    at(row, col)
-    pf(sprompt)
-
-    at(irow, icol)
-
-    // change input colour
-    pf(sparkle(pcol))
-
     // get echo status
     echo,_:=vget(0,"@echo")
     if mask=="" { mask="*" }
 
+    endLine := false // input complete?
+
+    at(row,col)
+
+    var srow,scol int // the start of input, including prompt position
+    var irow,icol int // current start of input position
+
+    irow,_=GetCursorPos()
+    lastsrow:=row
+
     for {
 
-        dispL := rlen(s)
-        offy  := dispL / MW
+        // calc new values for row,col
+        srow=row; scol=col
+        inputLen:=displayedLen(s)+displayedLen(prompt)
+
+        // move start row back if multiline at bottom of window
+        rowLen:=int(inputLen-1)/MW
+        if srow>MH { srow=MH }
+        if srow==MH { srow=srow-rowLen }
+        if lastsrow!=srow {
+            m1:=min(lastsrow,srow)
+            m2:=max(lastsrow,srow)
+            for r:=m2; r>m1; r-- {
+                at(r,col); clearToEOL()
+            }
+        }
+        lastsrow=srow
+
+        // print prompt
+        at(srow, scol)
+        pf(sprompt)
+        irow,icol=GetCursorPos()
+
+        // change input colour
+        pf(sparkle(pcol))
+
+        dispL := displayedLen(s)
+        cursAtCol:=((icol+dispL-1)%MW)+1
+        rowLen=int(icol+dispL-1)/MW
 
         // show input
-        at(irow-offy, icol)
+        at(irow, icol)
         if echo.(bool) {
             pf(s)
         } else {
             pf(str.Repeat(mask,dispL))
         }
 
-        _,cc := GetCursorPos()
-        if cc==MW { pf(">") }
         clearToEOL()
         pf(helpstring)
 
-        // print cursor
-        cx = (icol+cpos) % MW
-        cy = irow + int((icol+cpos)/MW)
-        if cy>MH { cy=MH }
-        at(cy, cx)
+        // move cursor to correct position (cpos)
+
+        if irow==MH && cursAtCol==1 { srow--; rowLen++; pf("\n\033M") }
+
+        cposCursAtCol:=((icol+cpos-1)%MW)+1
+        cposRowLen:=int(icol+cpos-1)/MW
+
+        at(srow+cposRowLen, cposCursAtCol)
+
 
         // get key stroke
         c, _ , pasted, pbuf := getch(0)
@@ -808,9 +843,11 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                         }
                         cpos = rlen(s)
                         wordUnderCursor = getWord(s, cpos)
+                        rowLen=int(icol+cpos-1)/MW
+                        if rowLen>0 { irow-=rowLen }
                         if curHist != lastHist {
-                            l := displayedLen(s)
-                            clearChars(irow, icol, l)
+                            // l := displayedLen(s)
+                            // clearChars(irow, icol, l)
                         }
                     }
                 }
@@ -879,7 +916,6 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
             case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
             case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
-
 
             // specials over 128 - don't do this.. too messy with runes.
 
@@ -997,7 +1033,6 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
             contextHelpSelected = false
             startedContextHelp = false
         }
-
 
         if eof || broken || endLine {
             break
