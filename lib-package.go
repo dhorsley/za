@@ -244,7 +244,7 @@ func uninstall(pkgs string) (state int) {
     case "opensuse":
         pm = "zypper"
         upopts = "update -y"
-        inopts = "remove -y -l"
+        inopts = "remove -y"
         checkcmd1 = "rpm -q "
         checkcmd2 = ""
     case "alpine":
@@ -264,6 +264,7 @@ func uninstall(pkgs string) (state int) {
     }
 
     updateCommand := sf("%s %s", pm, upopts)
+    pf("[upd] Executing: %s\n",updateCommand)
 
     if firstInstallRun {
         pf("Updating repository.\n")
@@ -280,6 +281,7 @@ func uninstall(pkgs string) (state int) {
     if err == 0 { // installed
         // remove
         removeCommand := sf("%s %s %s", pm, inopts, pkgs)
+        pf("[rem] Executing: %s\n",removeCommand)
         pf("Removing: %v\n", pkgs)
         out, err := Copper(removeCommand, true)
         if err != 0 {
@@ -345,8 +347,15 @@ func install(pkgs string) (state int) {
             pf("[#4]%s installed.[#-]\n",pkgs)
             return 0
         case ".rpm": // rpm
+            // not doing yet. just not checked syntax for rpm. most likely rpm -i or rpm -Uvh
+            // depending on current install state.
         case ".apk": // apk
+            // not doing yet. not checked and not guessing :) likely similarly easy to do though.
         case ".sh" : // execute script
+            // not adding this yet, as there's a good chance an install script could require
+            // interactivity, which may or may not work correctly. not checked yet.
+            // this is probably just a matter of adding a Copper(pkgs, true) command.
+            // have to check pkgs only contains one item too i suppose.
         default:
         }
     } else {

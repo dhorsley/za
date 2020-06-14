@@ -80,7 +80,7 @@ func buildStringLib() {
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "start", "end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
-        "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
+        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
@@ -844,6 +844,52 @@ func buildStringLib() {
             if m,_:=regexp.MatchString(reg, v);m { return true,nil }
         }
         return false,nil
+
+    }
+
+
+    // int=next_match(s,regex,start_line) # to return matching line number (0 based)
+    slhelp["next_match"] = LibHelp{in: "nl_string,regex,start_line", out: "int", action: "Returns the next line number which contains the [#i1]regex[#i0] in [#i1]nl_string[#i0]. -1 is returned on no match."}
+    stdlib["next_match"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+
+
+        if len(args)!=3 { return false,errors.New("Bad arguments (count) in next_match()") }
+        var val string
+        var reg string
+        switch args[0].(type) {
+        case string:
+            val=args[0].(string)
+        default:
+            return -1,errors.New("Bad argument #1 (type) in next_match()")
+        }
+        switch args[1].(type) {
+        case string:
+            reg=args[1].(string)
+        default:
+            return -1,errors.New("Bad argument #2 (type) in next_match()")
+        }
+
+        startcount:=0
+        switch args[2].(type) {
+        case int:
+            startcount=args[2].(int)
+        default:
+            return -1,errors.New("Bad argument #3 (type) in next_match()")
+        }
+
+        var r []string
+        if runtime.GOOS!="windows" {
+            r = str.Split(val, "\n")
+        } else {
+            r = str.Split(str.Replace(val, "\r\n", "\n", -1), "\n")
+        }
+
+        for curpos,v:=range r {
+            if curpos>=startcount {
+                if m,_:=regexp.MatchString(reg, v);m { return curpos, nil }
+            }
+        }
+        return -1,nil
 
     }
 

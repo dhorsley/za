@@ -62,10 +62,14 @@ endtest
 
 
 test "install" group "package"
-    install("https://zalang.org/files/za-pkg_1.0-1.deb")
-    | sudo dpkg -V za-pkg
-    println "Returned code : {last()}"
-    assert last()==0
+    if install("https://zalang.org/files/za-pkg_1.0-1.deb")==0
+        | sudo dpkg -V za-pkg
+        println "Returned dpkg code : {last()}"
+        assert last()==0
+    else
+        println "skipped package check."
+        assert false
+    endif
 endtest
 
 test "uninstall" group "package"

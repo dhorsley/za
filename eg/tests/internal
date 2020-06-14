@@ -25,7 +25,7 @@ test "last_out" group "internal"
     header(_test_name)
     println "1 error should appear below."
     | stat notafile
-    assert last_out()=="stat: cannot stat 'notafile': No such file or directory\n"
+    assert match(last_out(),`stat: cannot stat.* 'notafile': No such file`)
     | stat . >/dev/null
     println format("%q",last_out())
     assert last_out()=="\x00"
@@ -82,13 +82,13 @@ endtest
 test "release_version" group "internal"
     header(_test_name)
     osrelver=stripquotes(get_value(read_file("/etc/os-release"),"VERSION_ID"))
-    assert release_version()==osrelver
+    assert match(release_version(),"^"+osrelver)
 endtest
 
 test "release_id" group "internal"
     header(_test_name)
     osid=stripquotes(get_value(read_file("/etc/os-release"),"ID"))
-    assert release_id()==osid
+    assert match(osid,"^"+release_id())
 endtest
 
 test "winterm" group "internal"

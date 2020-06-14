@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# this is only going to work on ubuntu at best...
+#  you'll probably need to do this manually until i have the
+#  patience to write a generic script. feel free to contribute one!
+
 pth=$(ls -d /usr/share/vim/vim8*)
 echo "PATH : |$pth|"
 
