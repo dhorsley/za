@@ -438,9 +438,17 @@ func main() {
                 if fexists("/bin/bash") {
                     coprocLoc="/bin/bash"
                 } else {
-                    pf("Error: could not locate a Bash shell.\n")
-                    pf("Error content:\n%v\n",err)
-                    os.Exit(ERR_NOBASH)
+                    // try for /bin/sh then default to noshell
+                    if fexists("/bin/sh") {
+                        coprocLoc="/bin/sh"
+                    } else {
+                        vset(0,"@noshell",true)
+                        vset(0, "@noshell",no_shell)
+                        coprocLoc="/bin/false"
+                    }
+                    // pf("Error: could not locate a Bash shell.\n")
+                    // pf("Error content:\n%v\n",err)
+                    // os.Exit(ERR_NOBASH)
                 }
             }
         } else {
@@ -597,6 +605,9 @@ func main() {
     // globals with a '@' sign are considered as nominally constant. The @ sign is not available to users in identifiers.
     // however, the standard library functions may modify their values if needed.
 
+    // @note:
+    //  all of these Copper() calls need reworking to use internal info where 
+    //  possible. also need to get rid of this grep/cut dependency.
 
     // static globals from bash
     if runtime.GOOS!="windows" {
@@ -655,8 +666,9 @@ func main() {
 
 
         // further globals from bash
-        cop, _ = Copper("hostname", true)
-        vset(0, "@hostname", cop)
+        // cop, _ = Copper("hostname", true)
+        h, _ := os.Hostname()
+        vset(0, "@hostname", h)
 
     } // if not windows
 
@@ -727,7 +739,7 @@ func main() {
 
             cr,_:=GetCursorPos()
             row=cr+1
-            if row>MH { pf("\n") }
+            if row>MH { row=MH ; pf("\n") }
 
             // row:=row+(len(input)/MW)
             col = 1

@@ -199,7 +199,7 @@ define showProcs(ct,uptime)
         endif
     endfor
 
-    if length(proc_list)>0
+    if len(proc_list)>0
 
         # sort, reverse, by user time
         shellout=""
@@ -224,7 +224,7 @@ define showProcs(ct,uptime)
             fields(p," ")
             # skip low activity processes
             if float(F4)>0.2 || float(F5)>0.2
-                on length(F10)>=comwidth do F10=substr(F10,0,comwidth-1)
+                on len(F10)>=comwidth do F10=substr(F10,0,comwidth-1)
                 print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{comwidth-1}s[#-]",F1,int(F2),int(F3),float(F4),float(F5),float(F8),collapse(F10))
                 dec count
                 on count==0 do break
@@ -262,12 +262,12 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     # init previous values for cpu stats
 
-    on length(proc_file)==0 do return sample_start_in
+    on len(proc_file)==0 do return sample_start_in
 
     foreach line in proc_file
 
         fields(line)
-        on length(F)==0 do continue
+        on len(F)==0 do continue
 
         name=F1
         on kind(name)!="string" do continue
@@ -288,7 +288,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 else
                     _{i}    = float(0)
                 endif
-                on length(f)>0 do f = tail(f)
+                on len(f)>0 do f = tail(f)
             endfor
 
             # set initial value for the global store
@@ -449,7 +449,7 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
     pane redraw
 
     at 1,2
-    print "Interface Address : {ipaddr}        "
+    print "Interface [{interface}] Address : {ipaddr}        "
 
     at pane_h()-3,2
     print "Legend [#6]", load[0], "[#-] 64B-4KiB [#6]", load[1], "[#-] 4KiB-256KiB [#6]"
@@ -611,73 +611,12 @@ timeout=key_timeout/1000
 sample_start_in=4
 net_sample_start_in=1
 
-interface="enp0s3"
-name_unresolved=true
-
-# quick check for eth0 default
-when release_id()
-
-is "ubuntu"
-
-    # little bodge for ubuntu under wsl
-    if winterm()
-        name_unresolved=false
-        interface="eth0"
-        break
-    else
-        if vcmp(release_version(),"16.4")>=0
-	        interface=collapse(negreg(net_interfaces(),"^lo$"))
-            if interface!=""
-                name_unresolved=false
-                # println(interface); exit
-                break
-            endif
-            ifstate=""
-            if is_file("/etc/network/run/ifstate")
-                ifstate=read_file("/etc/network/run/ifstate")
-            else
-                ifstate=| cat /var/lib/NetworkManager/dhclient-*.conf
-            endif
-
-            if ifstate!=""
-                if get_value(ifstate,"eth0")=="eth0"        ; interface="eth0"   ; name_unresolved=false; endif
-                if get_value(ifstate,"enp0s3")=="enp0s3"    ; interface="enp0s3" ; name_unresolved=false; endif
-            endif
-
-            if name_unresolved
-                running=|ls /run/dhclient-*.pid
-                if length(running)>0
-                    interface=replace(field(field(running,2,"/"),1,"."),"^dhclient-","")
-                    name_unresolved=false
-                endif
-            endif
-        endif
-    endif
-    break
-
-contains "(amzn|rhce|redhat)"
-    interface=read_file("/etc/sysconfig/network-scripts/ifcfg-eth0")
-    interface=get_value(interface,"DEVICE")
-    break
-
-is "alpine"
-    dhcpfile=read_file("/etc/udhcpd.conf")
-    foreach l in dhcpfile
-        if match(l,"^interface[ \t]+")
-            interface=field(tr(l,"s"," \t"),2)
-            break
-        endif
-    endfor
-    on interface=="enp0s3" do name_unresolved=true
-
-endwhen
-
-if name_unresolved
-    cls
-    println "Error : could not determine the network interface name."
-    exit 1
+if winterm()
+    interface="eth0"
+else
+    i =| ip -o -4 route show to default
+    interface=field(i,5)
 endif
-
 
 ct=clktck()
 if ct==0
@@ -688,6 +627,7 @@ endif
 cls
 
 user=get_env("USER")
+on user=="" do user=|whoami
 sudo=get_env("SUDO_USER")
 access=true
 
