@@ -2,6 +2,20 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.7
+
+    * console: key repeat was not behaving. holding down key caused glitches.
+        * GetCursorPos() call (ANSI VT code call+response) was a little slow anyway
+            and opening and closing tty constantly was getting to be bad news.
+        * now keeping a handle throughout execution for dev/tty and not trying to flush+restore
+            in different places, just at end of za execution.
+            * update: now tested, seems okay. *tentatively backs away slowly from the scene of the crime.*
+
+        * still a small issue with repeated ENTER presses. cursor is jumping about. nothing
+          urgent to fix though. mainly cosmetic.
+
+
+---------------------------------------------------------------------------------------------
 1.0.6
 
     * clean up of source layout and use of modules.
@@ -17,8 +31,11 @@ CHANGE LOG
     * interactive mode
         * added a little more sanity to multiline input on bottom terminal window line and
             at line endings.
-            * fairly sure it will still be broken in a multitude of neferious ways.
+            * fairly sure it will still be broken in a multitude of ways.
                 ( such as navigating multiline history )
+
+    * added date functions:
+        * time_hours,time_minutes,time_seconds,time_nanos,time_dow,time_dom,time_month,time_year
 
 
 ---------------------------------------------------------------------------------------------

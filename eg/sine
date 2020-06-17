@@ -1,40 +1,46 @@
-#!/usr/bin/za -f
+#!/usr/bin/za
 
-input dur optarg 1
-if dur!=""
-    dur=int(dur)
-else
-    dur=100
-endif
+# about as similar to processing.js example as you can do with text chars
+
+define calcWave(theta,width,dx,amplitude)
+    setglob theta = theta + 0.2
+    x=float(theta)
+    for i = 0 to width-1
+        yvalues = append(yvalues,sin(x)*amplitude)
+        x=x+dx
+    endfor 
+    return yvalues
+enddef
+
+define renderWave(yvalues,height)
+    for x = 0 to len(yvalues)-1
+        y=int(height/2)+int(yvalues[x])
+        at y,x+1
+        print "o"
+    endfor
+enddef
+
+
+#
+# MAIN
+#
 
 cls
 
-# rough sine wave graphing
+theta = 45.0
+period = 120.0
 
-period  = term_w()
-dx      = ((pi()*4) / period)
-cy      = term_h()/2
-amp     = 12
+height=term_h()
+amplitude = int(height/2)
+width=term_w()
 
-theta=0
+dx = (2.0*pi() / period)
 
 while true
-
-    x=0
     cls
-
-    at cy,1
-    print "[#1]",pad("·",-1,term_w()-1,"·"),"[#-]"
-
-    for i=0 to term_w()*4
-        at cy+sin(x+theta)*amp,x*4+7
-        print "🐿"
-        x=x+dx
-    endfor
-
-    theta=(theta+1) % 180
-    pause dur
-
+    yvalues=calcWave(theta,width,dx,amplitude)
+    renderWave(yvalues,height)
+    pause 50
 endwhile
 
 at term_h()-1,0 
