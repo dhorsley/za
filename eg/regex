@@ -2,9 +2,17 @@
 
 define runFilter(s,v)
     f=filter(s,v,-1)
+    println "filter [{v}] done."
     return format("%s %d", v, len(f))
 enddef
 
+define runSubs(subs,seq)
+    foreach v in subs
+        println `Sub for {v[0]},{v[1]}`
+        seq=replace(seq,v[0],v[1])
+    endfor
+    return len(seq)
+enddef
 
 define perf_regex_dna()
 
@@ -33,28 +41,23 @@ define perf_regex_dna()
     l2 = len(seq)
 
     foreach v in variants
-        async ahandles runFilter(seq,v) key_v
+        async ahandles runFilter(seq,v) "filter_{key_v}"
     endfor
+
+    async ahandles runSubs(subs,seq) "subtot"
 
     # wait for completion
     res=await(ahandles,true)
 
     # push to screen in same order they were sent for processing
     for e=0 to len(res)-1
-        println format("%s",res[e])
-    endfor
-
-    println "\n[#3]Running seq subs[#-]\n"
-
-    foreach v in subs
-        println `Sub for {v[0]},{v[1]}`
-        seq=replace(seq,v[0],v[1])
+        on key("res","filter_{e}") do println format("%s",res["filter_{e}"])
     endfor
 
     println
     println l1
     println l2
-    println len(seq)
+    println res["subtot"]
 
 enddef
 

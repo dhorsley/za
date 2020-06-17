@@ -8,6 +8,7 @@ import (
     "flag"
     "fmt"
     "path/filepath"
+    term "github.com/pkg/term"
     "io"
     "io/ioutil"
     "os"
@@ -122,6 +123,7 @@ var cmdargs []string        // cli args
 
 var no_interpolation bool   // true: disable string interpolation.
 
+var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // defaults to true. false disables ansi colour code output
 
 var testMode bool           // is TEST..ENDTEST functionality enabled this run? (this may change later for alternative run types)
@@ -482,10 +484,15 @@ func main() {
         vset(0,"@runInParent",true)
     }
 
-    // spawn a bash co-process
     if runtime.GOOS!="windows" {
+
+        // create shell process
         bgproc, pi, po, pe = NewCoprocess(coprocLoc)
         vset(0, "@shellpid",bgproc.Process.Pid)
+
+        // prepare for getInput() keyboard input (from main process)
+        tt, _ = term.Open("/dev/tty")
+
     }
 
     // ctrl-c handler
@@ -841,6 +848,9 @@ func main() {
 
     // a little paranoia to finish things off...
     setEcho(true)
+
+    tt.Restore()
+    tt.Close()
 
 }
 

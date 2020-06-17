@@ -165,6 +165,13 @@ foreach c in scat
     )
 endfor
 
+    meta=`
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - {key_c} functions">
+      <title>Za functions</title>
+    `
+
 indexpage=wpage(
         whead(format(meta)+"<style>\n"+style+"\n</style>\n")+
         wbody(

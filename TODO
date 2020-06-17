@@ -21,55 +21,30 @@
         not expecting any problems in behaviour, but should try to populate some other za system
          variables from those shells and look for peculiarities.
 
+---------------------------------------------------------------------------------------------
 
-1.0.7   more example code
-         there are also probably some internal functions we can expose as library calls.
-         for example, the za colour code stripper and similar. 
+NEXT : 1.0.7
+------------
 
-        examples can go in two places.
+    * more example code (4)
+    1) larger examples live in eg/ path
+    2) small examples of stdlib use should be placed in:
+        tools/funpages/examples/<call_name>
+            When tools/libdoc is executed, it incorporates everthing from 2) in the generated files.
 
-            1) larger examples live in eg/ path
-            2) small examples of stdlib use should be placed in:
-                tools/funpages/examples/<call_name>
-
-        When tools/libdoc is executed, it incorporates everthing from 2) in the generated files.
+    * more library tests (3)
+    * libdoc: update descriptions (2)
     
-    * more library tests
+    * opensuse
+        * most everything okay now, except a fault in test/package with renaming the
+            temporary downloaded file in install(). doesn't affect normal zypper repo use.
 
-    * libdoc
-        * update bad descriptions
-        * add more info per func
+    * alpine
+           as with opensuse, some tests fail due to them being written for ubuntu.
 
     * documentation updates
         * Documentation needs an update to mention the use of 0x1e command output separation.
-
-
----------------------------------------------------------------------------------------------
-
-NEXT : 1.0.6
-------------
-
-    * small library functions
-        * update uninstall() for rpm, apk in other OS (4)
-            * checked opensuse:
-                * uninstall() is fine.
-                * other stuff: most everything okay now, except a fault in test/package
-                               with renaming the temporary downloaded file in install().
-                               doesn't affect normal zypper repo use.
-                               interactive mode is not playing too nicely either, but does work.
-                               not sure if it is opensuse, kernel or other libs at play with this.
-                               not a priority - will check later.
-            * check alpine
-                * uninstall() okay.
-                * other stuff:
-                   as with opensuse, some tests fail due to them being written for ubuntu.
-                    not a high priority to fix, so long as they are only failing due to my lazyness 
-                    and not because the things they are testing are broken.
-            * check centos/aws/redhat
-                * not checked yet but will release this version as is. will patch up in 1.0.7 if any
-                    thing is amiss for centos. not checking it for a few days. however, centos is
-                    generally fairly compatible and well understood by Za, so any faults are likely
-                    to be due to updates within the centos/redhat/aws repositories.
+            * do we need to allow a custom separator to be used?
 
 
 LATER

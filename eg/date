@@ -1,0 +1,7 @@
+#!/usr/bin/za
+
+z=epoch_nano_time()
+println
+println format( "%02d:%02d.%02d off_ns %d", time_hours(), time_minutes(), time_seconds(), time_nanos() )
+println format( "%s %02d-%02d-%04d", time_dow(), time_dom(), time_month(), time_year() )
+println

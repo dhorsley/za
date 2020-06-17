@@ -107,7 +107,7 @@ func buildConversionLib() {
 
 	}
 
-	slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of string, or an empty string on error."}
+	slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of [#i1]string[#i0], or an empty string on error."}
 	stdlib["json_format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_format()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_format()") }
@@ -124,11 +124,11 @@ func buildConversionLib() {
 			return -1, errors.New("invalid arguments provided to float()")
 		}
 		i, e := GetAsFloat(args[0])
-        if e { return math.NaN(),nil } // errors.New(sf("could not convert '%v' in float()",args[0])) }
+        if e { return math.NaN(),nil }
 		return i, nil
 	}
 
-	slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors."}
+	slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors. The type is still [#bold]int[#boff] however the bounds are limited between 0-255."}
 	stdlib["byte"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to byte()")
@@ -151,13 +151,6 @@ func buildConversionLib() {
 			return -1, errors.New("invalid arguments provided to bool()")
 		}
         switch args[0].(type) {
-        /*
-        case interface{}:
-            b, err := strconv.ParseBool(string(args[0].(interface{})))
-            if err==nil {
-                return b, nil
-            }
-        */
         case string:
             b, err := strconv.ParseBool(args[0].(string))
             if err==nil {
@@ -189,7 +182,7 @@ func buildConversionLib() {
 		return i, nil
 	}
 
-	slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "is [#i1]expression[#i0] a number?"}
+	slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "Returns true if [#i1]expression[#i0] evaluates to a numeric value."}
 	stdlib["is_number"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to is_number()")

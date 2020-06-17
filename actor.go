@@ -2157,7 +2157,7 @@ tco_reentry:
 
             next_id:=""
             if tokencount==5 {
-                nival,_,err := ev(ifs,inbound.Tokens[4].tokText,false,true)
+                nival,_,err := ev(ifs,inbound.Tokens[4].tokText,true,true)
                 if err!=nil {
                     report(ifs,lastline,sf("could not evaluate handle key argument '%s' in ASYNC.",inbound.Tokens[4].tokText))
                     finish(false,ERR_EVAL)
