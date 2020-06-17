@@ -309,16 +309,17 @@ func at(row int, col int) {
 
 var bigbytelist = make([]byte,3*4096)
 
+
 /// get a key press
 func getch(timeo int) ( []byte, bool, bool, string ) {
-    tt, _ := term.Open("/dev/tty")
+
+    // tt, _ := term.Open("/dev/tty")
     term.RawMode(tt)
+
     tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Microsecond))
     numRead, err := tt.Read(bigbytelist)
 
-    tt.Flush()
     tt.Restore()
-    tt.Close()
 
     // deal with mass input (pasting?)
     if numRead>6 {
@@ -355,7 +356,7 @@ func cursorX(n int) {
 
 /// remove runes in string s before position pos
 func removeAllBefore(s string, pos int) string {
-    if rlen(s)<pos { return s }
+    if len(s)<pos { return s }
     return s[pos:]
 }
 
@@ -368,7 +369,7 @@ func removeBefore(s string, pos int) string {
 
 /// insert a number of characters in string at position pos
 func insertBytesAt(s string, pos int, c []byte) string {
-    if pos == rlen(s) { // append
+    if pos == len(s) { // append
         s += string(c)
         return s
     }
@@ -378,7 +379,7 @@ func insertBytesAt(s string, pos int, c []byte) string {
 
 /// insert a single byte at position pos in string s
 func insertAt(s string, pos int, c byte) string {
-    if pos == rlen(s) { // append
+    if pos == len(s) { // append
         s = sf("%s%c",s,c) // string(c)
         return s
     }
@@ -388,7 +389,7 @@ func insertAt(s string, pos int, c byte) string {
 
 /// append a string to end of string or insert it mid-string
 func insertWord(s string, pos int, w string) string {
-    if pos >= rlen(s) { // append
+    if pos >= len(s) { // append
         s += w
         return s
     }
@@ -401,7 +402,7 @@ func deleteWord(s string, pos int) (string,int) {
 
     start := 0
     cpos:=0
-    end := rlen(s)
+    end := len(s)
 
     if end<pos { return s,0 }
 
@@ -416,7 +417,7 @@ func deleteWord(s string, pos int) (string,int) {
         cpos--
     }
 
-    for p := pos; p < rlen(s)-1; p++ {
+    for p := pos; p < len(s)-1; p++ {
         if s[p] == ' ' {
             end = p + 1
             break
@@ -431,7 +432,7 @@ func deleteWord(s string, pos int) (string,int) {
     }
 
     add:=""
-    if end < rlen(s)-1 {
+    if end < len(s)-1 {
         if start!=0 { add=" " }
         endsub = s[end:]
     }
@@ -497,13 +498,13 @@ func wrappedGetCh(p int) (i int) {
 /// get the word in string s under the cursor (at position c)
 func getWord(s string, c int) string {
 
-    if rlen(s)<c {
+    if len(s)<c {
         return s
     }
 
     // track back
     var i int
-    i = rlen(s) - 1
+    i = len(s) - 1
     if c < i {
         i = c
     }
@@ -521,7 +522,7 @@ func getWord(s string, c int) string {
 
     // track forwards
     var j int
-    for j = c; j < rlen(s)-1; j++ {
+    for j = c; j < len(s)-1; j++ {
         if s[j] == ' ' {
             break
         }
@@ -541,9 +542,8 @@ func GetCursorPos() (int,int) {
     buf:=make([]byte,15,15)
     var r,c int
 
-    tt, _ := term.Open("/dev/tty")
-
     term.RawMode(tt)
+
     tt.Write([]byte("\033[6n"))
 
     n,_:=tt.Read(buf)
@@ -560,13 +560,10 @@ func GetCursorPos() (int,int) {
         }
     }
 
-    tt.Flush()
     tt.Restore()
-    tt.Close()
     return r,c
 
 }
-
 
 func min(a, b int) int {
     if a < b {
@@ -582,6 +579,7 @@ func max(a, b int) int {
     return b
 }
 
+
 /// get an input string from stdin, in raw mode
 func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
@@ -589,9 +587,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
     // calculate real prompt length after ansi codes applied.
     // init
-    // p := panes[pane]
     cpos := 0                    // cursor pos as extent of printable chars from start
-//    var cx, cy int               // current cursor position (row:cy,col:cx)
     os := ""                     // original string before history navigation begins
     navHist := false             // currently navigating history entries?
     startedContextHelp := false  // currently displaying auto-completion options
@@ -616,17 +612,19 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
     var srow,scol int // the start of input, including prompt position
     var irow,icol int // current start of input position
 
-    irow,_=GetCursorPos()
+    irow=srow
     lastsrow:=row
 
     for {
 
         // calc new values for row,col
         srow=row; scol=col
-        inputLen:=displayedLen(s)+displayedLen(prompt)
+        promptL := displayedLen(sprompt)
+        inputL  := displayedLen(s)
+        dispL   :=promptL+inputL
 
         // move start row back if multiline at bottom of window
-        rowLen:=int(inputLen-1)/MW
+        rowLen:=int(dispL-1)/MW
         if srow>MH { srow=MH }
         if srow==MH { srow=srow-rowLen }
         if lastsrow!=srow {
@@ -641,35 +639,32 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
         // print prompt
         at(srow, scol)
         pf(sprompt)
-        irow,icol=GetCursorPos()
+
+        // irow,icol=GetCursorPos() // @note: this is too slow. causing additional char buffering on key repeats.
+        irow=srow+(int(scol+promptL-1)/MW)
+        icol=((scol+promptL-1)%MW)+1
 
         // change input colour
         pf(sparkle(pcol))
 
-        dispL := displayedLen(s)
-        cursAtCol:=((icol+dispL-1)%MW)+1
-        rowLen=int(icol+dispL-1)/MW
+        cursAtCol:=((icol+inputL-1)%MW)+1
+        rowLen=int(icol+inputL-1)/MW
 
         // show input
         at(irow, icol)
         if echo.(bool) {
             pf(s)
         } else {
-            pf(str.Repeat(mask,dispL))
+            pf(str.Repeat(mask,inputL))
         }
-
         clearToEOL()
         pf(helpstring)
 
         // move cursor to correct position (cpos)
-
         if irow==MH && cursAtCol==1 { srow--; rowLen++; pf("\n\033M") }
-
         cposCursAtCol:=((icol+cpos-1)%MW)+1
         cposRowLen:=int(icol+cpos-1)/MW
-
         at(srow+cposRowLen, cposCursAtCol)
-
 
         // get key stroke
         c, _ , pasted, pbuf := getch(0)
@@ -693,7 +688,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
             // strip ansi codes from pbuf then shove it in the input string
             s = insertWord(s, cpos, Strip(pbuf))
-            cpos+=rlen(pbuf)
+            cpos+=len(pbuf)
             wordUnderCursor = getWord(s, cpos)
             selectedStar = -1
 
@@ -711,7 +706,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
                 if startedContextHelp {
                     contextHelpSelected = true
-                    clearChars(irow, icol, dispL)
+                    clearChars(irow, icol, inputL)
                     helpstring = ""
                     break
                 }
@@ -735,10 +730,10 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                         var newstart int
                         s,newstart = deleteWord(s, cpos)
                         add:=""
-                        if rlen(s)>0 { add=" " }
+                        if len(s)>0 { add=" " }
                         if newstart==-1 { newstart=0 }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
-                        cpos = rlen(s)
+                        cpos = len(s)
                         helpstring = ""
                     }
 
@@ -754,7 +749,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
-                cpos = rlen(s)
+                cpos = len(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{1}): // ctrl-a
@@ -762,18 +757,18 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{5}): // ctrl-e
-                cpos = rlen(s)
+                cpos = len(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{21}): // ctrl-u
                 s = removeAllBefore(s, cpos)
                 cpos = 0
                 wordUnderCursor = getWord(s, cpos)
-                clearChars(irow, icol, dispL)
+                clearChars(irow, icol, inputL)
 
             case bytes.Equal(c, []byte{127}): // backspace
 
-                if startedContextHelp && rlen(helpstring) == 0 {
+                if startedContextHelp && len(helpstring) == 0 {
                     startedContextHelp = false
                 }
 
@@ -781,11 +776,11 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                     s = removeBefore(s, cpos)
                     cpos--
                     wordUnderCursor = getWord(s, cpos)
-                    clearChars(irow, icol, dispL)
+                    clearChars(irow, icol, inputL)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
-                if cpos < rlen(s) {
+                if cpos < len(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor = getWord(s, cpos)
                     clearChars(irow, icol, displayedLen(s))
@@ -818,7 +813,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                 }
 
                 // normal RIGHT:
-                if cpos < rlen(s) {
+                if cpos < len(s) {
                     cpos++
                 }
                 wordUnderCursor = getWord(s, cpos)
@@ -841,13 +836,11 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                             curHist--
                             s = hist[curHist]
                         }
-                        cpos = rlen(s)
+                        cpos = len(s)
                         wordUnderCursor = getWord(s, cpos)
                         rowLen=int(icol+cpos-1)/MW
                         if rowLen>0 { irow-=rowLen }
                         if curHist != lastHist {
-                            // l := displayedLen(s)
-                            // clearChars(irow, icol, l)
                         }
                     }
                 }
@@ -868,7 +861,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                             s = os
                             navHist = false
                         }
-                        cpos = rlen(s)
+                        cpos = len(s)
                         wordUnderCursor = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
@@ -881,7 +874,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                 cpos = 0
                 wordUnderCursor = getWord(s, cpos)
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
-                cpos = rlen(s)
+                cpos = len(s)
                 wordUnderCursor = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{9}): // TAB
@@ -925,12 +918,12 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
             // to support it on this limited input implementation.
 
             case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
-                /*
+               /* 
                 s = insertAt(s, cpos, '£')
                 cpos++
                 wordUnderCursor = getWord(s, cpos)
                 selectedStar = -1
-                */
+               */
 
             // ignore list
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
@@ -985,7 +978,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
             }
 
             // if !startedContextHelp {
-                startedContextHelp = true
+            //    startedContextHelp = true
             // }
 
             //.. build display string
@@ -1021,10 +1014,10 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
                     var newstart int
                     s,newstart = deleteWord(s, cpos)
                     add:=""
-                    if rlen(s)>0 { add=" " }
+                    if len(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
                     s = insertWord(s, newstart, add+helpList[0]+" ")
-                    cpos = rlen(s)
+                    cpos = len(s)
                     l := displayedLen(s)
                     clearChars(irow, icol, l)
                     helpstring = ""
@@ -1040,14 +1033,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
     } // input loop
 
-    /*
-    cr,cc := GetCursorPos()
-    rd:=cr-irow
-    irow=irow-rd
-    */
-
     at(irow, icol)
-    // clearChars(irow, icol, displayedLen(s))
     if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
 
     return s, eof, broken
