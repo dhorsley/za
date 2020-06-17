@@ -14,6 +14,10 @@ CHANGE LOG
         * still a small issue with repeated ENTER presses. cursor is jumping about. nothing
           urgent to fix though. mainly cosmetic.
 
+        * added date functions:
+            * time_hours,time_minutes,time_seconds,time_nanos,time_dow,time_dom,time_month,time_year
+
+
 
 ---------------------------------------------------------------------------------------------
 1.0.6
@@ -33,10 +37,6 @@ CHANGE LOG
             at line endings.
             * fairly sure it will still be broken in a multitude of ways.
                 ( such as navigating multiline history )
-
-    * added date functions:
-        * time_hours,time_minutes,time_seconds,time_nanos,time_dow,time_dom,time_month,time_year
-
 
 ---------------------------------------------------------------------------------------------
 1.0.5
