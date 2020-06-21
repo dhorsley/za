@@ -23,9 +23,9 @@ import (
 )
 
 var completions = []string{"ZERO", "INC", "DEC",
-    "INIT", "INSTALL", "PUSH", "TRIGGER", "DOWNLOAD", "PAUSE",
-    "HELP", "NOP", "DEBUG", "REQUIRE", "DEPENDS", "EXIT", "VERSION",
-    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "INDENT", "LOG", "PRINT", "PRINTLN",
+    "INIT", "PAUSE",
+    "HELP", "NOP", "DEBUG", "REQUIRE", "EXIT", "VERSION",
+    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN",
     "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "WHEN",
@@ -653,7 +653,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
         // show input
         at(irow, icol)
         if echo.(bool) {
-            pf(s)
+            fmt.Print(s)
         } else {
             pf(str.Repeat(mask,inputL))
         }
@@ -1033,9 +1033,12 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
     } // input loop
 
-    at(irow, icol)
-    if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
-
+    // if echo.(bool) { fmt.Print(sparkle(recolour+StripCC(s)+"[#-]")) }
+    if echo.(bool) {
+        // for r:=irow; r>=lastsrow; r-- { at(r,col); clearToEOL() }
+        at(irow, icol) ; clearToEOL()
+        fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
+    }
     return s, eof, broken
 }
 

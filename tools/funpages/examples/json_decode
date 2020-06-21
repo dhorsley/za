@@ -1,0 +1,26 @@
+
+dl=web_get("https://zalang.org/files/eg/example.json")
+j=dl[0]
+
+ary=json_decode(j)
+
+widget=ary["widget"]
+
+foreach part in widget
+    when key_part
+    is "debug"
+        println "Debug Mode : ",part
+    is "window"
+        println "Window Title : {part["title"]}"
+    is "image"
+    is "text"
+        println "Text Name : {part["name"]}"
+    endwhen 
+endfor
+
+`
+should generate this...
+Text Name : text1
+Debug Mode : on
+Window Title : Sample Konfabulator Widget
+`

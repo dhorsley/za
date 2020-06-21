@@ -30,6 +30,15 @@ import (
 */
 
 // TEST : Metrics
+// The code below was for testing graphite stuff.
+//  it can probably be ripped out now - no intention to incorporate it fully.
+//  So long as WebSendMetrics remains false then it will have no side effect leaving it in
+//  in case minds are changed, but it is most likely dead code.
+//  if we wanted to use it, we would need library/env stuff for setting the host+port and 
+//  a way of turning metrics generation off and on.
+//  we would also want to be able to push metrics on demand from other areas of Za code. 
+//  not saying it would be difficult to add, just incredibly low priority.
+
 ///
     var WLOG_METRICS_HOST="172.16.10.29"
     var WLOG_METRICS_PORT=2003
@@ -152,7 +161,6 @@ func webRoutesAll() {
     for uid,entry:=range web_handles {
         host:=entry.addr
         port:=entry.port
-        // mux:=entry.mux
         pf("Service Host : %s / %d\n",host,port)
         webRoutes(uid)
     }
@@ -713,9 +721,13 @@ func buildNetLib() {
 
         go func() {
             e=srv.ListenAndServe()
-            // listener, e := net.Listen("tcp4", addr)
-	        // if e==nil { e=http.Serve(listener, mux) }
         }()
+
+        // have to give listenandserve a chance to fail and write 'e'
+        // @note: there's probably a graceful way to do this.
+
+        time.Sleep(100*time.Millisecond)
+
 
         if e==nil {
             // create a handle
@@ -739,7 +751,7 @@ func buildNetLib() {
             wlog("Started web service "+uid+"\n")
             return uid,nil
         } else {
-            return nil,e
+            return "",e
         }
     }
 
@@ -888,6 +900,10 @@ func buildNetLib() {
     }
 
 /*
+
+//  @note: really should write something for this, but i'm lazy and it needs thinking about substantially more
+//  than the few seconds I've considered it for.
+
     slhelp["web_template"] = LibHelp{in: "handle,template_path", out: "processed_string", action: "Reads from either an absolute path or a docroot relative path (if handle not nil), with template instructions interpolated."}
     stdlib["web_template"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
     return nil,errors.New("Not implemented.")
@@ -904,7 +920,7 @@ func buildNetLib() {
         return true,nil
     }
 
-    slhelp["web_get"] = LibHelp{in: "loc_string", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
+    slhelp["web_get"] = LibHelp{in: "loc_string", out: "list", action: "Returns a [#i1]list[#i0] with content downloaded from [#i1]loc_string[#i0]. list[0] is the content string. list[1] is the header."}
     stdlib["web_get"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return false,errors.New("Bad args (count) to web_get()") }
         s, down_code, header := download(args[0].(string))

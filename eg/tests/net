@@ -1,0 +1,192 @@
+#!/usr/bin/za
+
+
+define header(n)
+    println "\n[#1]{n}[#-]"
+enddef
+
+test "web_serve_start" group "net"
+    header(_test_name)
+
+    println "There should be a function error below."
+    h=web_serve_start(".",6144000,"127.0.0.1")
+
+    h=web_serve_start("www",61440,"127.0.0.1")
+    assert h!=""
+
+endtest
+
+test "web_display" group "net"
+    header(_test_name)
+    doc "nothing much to see here. doesn't matter if it works anyway."
+    web_display()
+endtest
+
+test "web_serve_up" group "net"
+    header(_test_name)
+    assert web_serve_up(h)
+endtest
+
+test "web_serve_path" group "net"
+    header(_test_name)
+    web_serve_path(h,"f","/dyn","reqhandler")
+    web_serve_path(h,"s","/","")
+    assert true
+endtest
+
+test "download" group "net"
+    header(_test_name)
+    n=download("http://127.0.0.1:61440/index.html")
+    println "local file : ",n
+    assert is_file(n)
+    | cat {n}
+    on is_file(n) do delete(n)
+endtest
+
+test "web_download" group "net"
+    header(_test_name)
+    assert web_download("http://127.0.0.1:61440/index.html","index.html")
+    assert is_file("index.html")
+    on is_file("index.html") do delete("index.html")
+endtest
+
+test "web_head" group "net"
+    header(_test_name)
+    doc `only checks retrieval, not content!`
+    assert web_head("http://127.0.0.1:61440/index.html")
+endtest
+
+test "web_get" group "net"
+
+    header(_test_name)
+
+    web_download("http://127.0.0.1:61440/index.html","index.html")
+    downloaded=read_file("index.html")
+    dllen=len(downloaded)
+    println "dllen:", dllen
+
+    wgdown=web_get("http://127.0.0.1:61440/index.html")
+    status=wgdown[1]
+    salen=status["Content-Length"]
+    wglen=int(salen[0])
+    println "wglen:", wglen
+
+    println "downloaded:\n",downloaded
+    println "wgdown:\n",wgdown[0]
+    assert downloaded==wgdown[0]
+    assert dllen==wglen
+
+endtest
+
+test "web_custom" group "net"
+
+    header(_test_name)
+
+    reqheaders["Authorization"]="Faux "+base64e("kermit")
+    res=web_custom("GET","http://127.0.0.1:61440/index.html",reqheaders)
+    respheaders=res[1]
+    code=res[2]
+    println respheaders
+    assert key("respheaders","Content-Length")
+    assert code<400
+
+endtest
+
+#doc `
+#will come back to this one:
+#test "web_post" group "net"
+#    header(_test_name)
+#endtest
+#`
+
+define dl()
+    readme=web_get("http://127.0.0.1:61440/index.html")
+    return readme
+enddef
+
+test "web_serve_log_throttle" group "net"
+    header(_test_name)
+    doc `@todo: need to run a proper load test really in this test.`
+    # test should be something like below...
+    `
+    | rm -f .access
+    logging accessfile ".access"
+    logging web enable
+    web_serve_log_throttle(10,10)
+    for x=1 to 100
+        async throwaway_handle dl() x
+    endfor
+    res=await(throwaway_handle,true)
+    logging web disable
+    for x=1 to 100
+        resx=res[x]
+        body=resx[0]
+        print x,"->",len(body)," "
+    endfor
+    println
+    `
+endtest
+
+test "web_serve_log" group "net"
+    header(_test_name)
+    logging accessfile ".access"
+    logging web enable
+    web_serve_log("quirkafleeg")
+    logging web disable
+    lf = read_file(".access")
+    assert count(line_filter(lf,"quirkafleeg")) == 1
+    | rm -f .access
+endtest
+
+define reqhandler(call)
+    c=web_serve_decode(call)
+    return wpage( wbody( wp( format( "%s %s %s %s",c.host,c.path,c.method,c.query) ) ) )
+enddef
+
+
+test "web_serve_decode" group "net"
+
+    header(_test_name)
+    q=web_get("http://127.0.0.1:61440/dyn?stuff#fragment")
+    assert q[0]!=""
+    println "q[1] map :\n",q[1]
+    println "Content : ",q[0]
+    assert match(q[0],"127.0.0.1:61440 /dyn GET stuff")
+
+endtest
+
+test "web_max_clients" group "net"
+    header(_test_name)
+    doc "not much to test for this. just ensure there's a reasonable return value."
+    assert web_max_clients()>100
+endtest
+
+test "web_serve_stop" group "net"
+    header(_test_name)
+    web_serve_stop(h)
+    assert !web_serve_up(h)
+endtest
+
+test "net_interfaces" group "net"
+    header(_test_name)
+    doc `not much to test here. just ensure there's some kind of result for now.`
+    println net_interfaces()
+    assert net_interfaces()!=""
+endtest
+
+test "html_escape" group "net"
+    header(_test_name)
+    teststring="encode>;&help!!"
+    res=html_escape(teststring)
+    assert res=="encode&gt;;&amp;help!!"
+endtest
+
+test "html_unescape" group "net"
+    header(_test_name)
+    decodedstring=html_unescape("encode&gt;;&amp;help!!")
+    assert decodedstring==teststring
+endtest
+
+| rm -f index.html
+
+

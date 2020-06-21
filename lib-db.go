@@ -111,7 +111,7 @@ func buildDbLib() {
 			log.Fatal(err)
 		}
 
-		rows, err := dbh.Query(q) // @todo: add prepared statement args later
+		rows, err := dbh.Query(q) // @todo: add prepared statements later
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -120,28 +120,26 @@ func buildDbLib() {
 		l := make([]string, 50, 200)
 		rc := 0
 
-		for rows.Next() {
+        cols, err := rows.ColumnTypes()
+        if err != nil {
+            return "", err
+        }
 
-			cols, err := rows.ColumnTypes()
-			if err != nil {
-				return "", err
-			}
+        vals := make([]interface{}, len(cols))
+        for i, _ := range cols {
+            vals[i] = new(sql.RawBytes)
+        }
 
-			vals := make([]interface{}, len(cols))
-			for i, _ := range cols {
-				vals[i] = new(sql.RawBytes)
-			}
+        for rows.Next() {
+            err = rows.Scan(vals...)
+            l = append(l, "")
+            for v := range vals {
+                l[rc] += sf("%s"+fsep, vals[v])[1:]
+            }
+            l[rc] = l[rc][0 : len(l[rc])-1]
+            rc++
+        }
 
-			for rows.Next() {
-				err = rows.Scan(vals...)
-				l = append(l, "")
-				for v := range vals {
-					l[rc] += sf("%s"+fsep, vals[v])[1:]
-				}
-				l[rc] = l[rc][0 : len(l[rc])-1]
-				rc++
-			}
-		}
 		return l[:rc], err
 	}
 

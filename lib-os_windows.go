@@ -111,7 +111,6 @@ func buildOsLib() {
     stdlib["copy"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2               { return nil,errors.New("Bad argument count in copy()")  }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("Bad argument type in copy()")   }
-        // var n int64
         _,err=fcopy(args[0].(string),args[1].(string))
         suc:=true
         if err!=nil { suc=false }

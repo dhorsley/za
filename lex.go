@@ -19,10 +19,10 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE", "SYM_AMP",
     "COMMA", "TILDE", "ASSIGN", "SETGLOB", "ZERO", "INC", "DEC", "ASS_COMMAND", "L_COMMAND",
-    "R_COMMAND", "INIT", "INSTALL", "PUSH", "TRIGGER", "DOWNLOAD", "PAUSE",
-    "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "DEPENDS", "EXIT", "VERSION",
-    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "INDENT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN","ASYNC",
+    "R_COMMAND", "INIT", "PAUSE",
+    "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
+    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
+    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
@@ -397,14 +397,6 @@ get_nt_eval_point:
         tokType = C_Init
     case "setglob":
         tokType = C_SetGlob
-    case "install":
-        tokType = C_Install
-    case "push":
-        tokType = C_Push
-    case "trigger":
-        tokType = C_Trigger
-    case "download":
-        tokType = C_Download
     case "pause":
         tokType = C_Pause
     case "help":
@@ -417,8 +409,6 @@ get_nt_eval_point:
         tokType = C_Debug
     case "require":
         tokType = C_Require
-    case "depends":
-        tokType = C_Depends
     case "exit":
         tokType = C_Exit
     case "version":
@@ -433,8 +423,6 @@ get_nt_eval_point:
         tokType = C_Input
     case "prompt":
         tokType = C_Prompt
-    case "indent":
-        tokType = C_Indent
     case "log":
         tokType = C_Log
     case "print":

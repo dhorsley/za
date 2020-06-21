@@ -1,0 +1,117 @@
+#!/usr/bin/za
+
+
+define header(n)
+    println "\n[#1]{n}[#-]"
+enddef
+
+test "env" group "os"
+    header(_test_name)
+    ec =| env | wc -l
+    ec = int(ec)
+    ic = count(env())
+    println "ic:",ic
+    println "ec:",ec
+    assert ic==ec
+endtest
+
+
+test "get_env" group "os"
+    header(_test_name)
+    e=| env | grep "^TERM="| cut -d"=" -f 2
+    i=get_env("TERM")
+    println "i:",i
+    println "e:",e
+    assert i==e
+endtest
+
+test "set_env" group "os"
+    header(_test_name)
+    n = rand(10000000)
+    i = rand(10000000)
+    set_env("ZATEST-{n}",string(i))
+    e=get_env("ZATEST-{n}")
+    e=int(e)
+    println "i:",i
+    println "e:",e
+    assert i==e
+endtest
+
+test "cwd" group "os"
+    header(_test_name)
+    a=cwd()
+    cd("/")
+    b=cwd()
+    cd(a)
+    println "Original directory : {a}"
+    println "     New directory : {b}"
+    assert a!=b
+    assert b=="/"
+endtest
+
+test "cd" group "os"
+    header(_test_name)
+    doc "Covered by cwd() test adequately?"
+endtest
+
+test "dir" group "os"
+    header(_test_name)
+    a=dir(".")
+    b=| ls -1 "." | wc -l
+    assert len(a)==int(b)
+endtest
+
+test "umask" group "os"
+
+    header(_test_name)
+
+    # built-in: read, then set back to original value, convert to octal
+    pmask=umask(0)
+    umask(pmask)
+    opm=format("%04s",ibase(8,pmask))
+
+    # measured: get parent process umask from status file
+    dum=|cat /proc/{ppid()}/status
+    parts=split(line_filter(dum,"^Umask:"),":")
+    real_oct=trim(parts[1],0)
+
+    println "calc : ",opm
+    println "real : ",real_oct
+
+    assert opm==real_oct
+
+endtest
+
+test "chroot" group "os"
+    header(_test_name)
+    doc `chroot needs superuser access. probably not worth a test anyway.`
+    doc `if anyone uses it, i'll be surprised, but we can write some kind of check then.`
+    # chroot(".")
+    # assert len(dir("/"))==0
+endtest
+
+test "copy" group "os"
+    header(_test_name)
+    a=|mktemp
+    b=|mktemp
+    suc=copy(a,b) 
+    println suc
+    assert suc
+endtest
+
+test "rename" group "os"
+    header(_test_name)
+    suc=rename(b,a)
+    println suc
+    assert suc
+endtest
+
+test "delete" group "os"
+    header(_test_name)
+    suc=delete(a)
+    println suc
+    assert suc
+endtest
+
+
+
