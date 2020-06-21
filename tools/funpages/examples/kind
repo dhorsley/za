@@ -1,0 +1,26 @@
+a=42
+b="the answer"
+c=pi()
+d=true
+init e int 10
+f=append(f,"test")
+println kind(a)
+println kind(b)
+println kind(c)
+println kind(d)
+println kind(e)
+println kind(f)
+
+`
+should generate this...
+int
+string
+float64
+bool
+[]int
+[]interface {}
+
+Please Note : The underlying data type will always be Go-specific.
+ You shouldn't always need this function, but it can be useful in
+ a few situations, such as trouble-shooting.
+`

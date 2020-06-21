@@ -1,10 +1,10 @@
 
 
-z=push(1)
+z=push_front(1)
 z=append(z,2)
 z=append(z,3)
 z=append(z,4)
-x=push(4)
+x=push_front(4)
 x=append(x,3)
 x=append(x,2)
 x=append(x,1)

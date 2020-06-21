@@ -100,7 +100,7 @@ func buildDateLib() {
 		return t.Nanosecond(), nil
 	}
 
-	slhelp["time_dow"] = LibHelp{in: "epochnano", out: "integer", action: "Returns the current day of the week (no arguments) or the day of the epoch nano time specified in [#i1]epochnano[#i0]."}
+	slhelp["time_dow"] = LibHelp{in: "epochnano", out: "string", action: "Returns the current day of the week (no arguments) or the day of the epoch nano time specified in [#i1]epochnano[#i0]."}
 	stdlib["time_dow"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		var t time.Time
 		if len(args) == 1 {

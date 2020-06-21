@@ -24,9 +24,9 @@ import (
 )
 
 var completions = []string{"ZERO", "INC", "DEC",
-    "INIT", "INSTALL", "PUSH", "TRIGGER", "DOWNLOAD", "PAUSE",
-    "HELP", "NOP", "DEBUG", "REQUIRE", "DEPENDS", "EXIT", "VERSION",
-    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "INDENT", "LOG", "PRINT", "PRINTLN",
+    "INIT", "PAUSE",
+    "HELP", "NOP", "DEBUG", "REQUIRE", "EXIT", "VERSION",
+    "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN",
     "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "WHEN",

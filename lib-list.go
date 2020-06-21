@@ -2,9 +2,16 @@
 
 package main
 
+/*
+
+    General array and array-as-list functions.
+
+    Let's never talk about this code.
+
+*/
+
 import (
     "errors"
-    // "os"
     "math"
     "reflect"
     "runtime"
@@ -90,7 +97,7 @@ func buildListLib() {
 
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
-        "append", "insert", "remove", "push", "deq",
+        "append", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "concat", "esplit", "min", "max", "avg",
         "empty", "list_string", "list_float", "list_int","numcomp",
     }
@@ -145,30 +152,6 @@ func buildListLib() {
         }
         return false, nil
     }
-
-    /*
-       slhelp["similar"] = LibHelp{in:"list",out:"bool",action:"Are all items in [#i1]list[#i0] of the same type?"}
-       stdlib["similar"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-           if len(args)!=1 { return nil,errors.New("Bad arguments passed to similar()") }
-           switch args[0].(type) {
-           case []bool:
-               if len(args[0].([]bool))<2 { return true,nil }
-               if anyDissimilar(args[0].([]bool)) { return false,nil }
-           case []int:
-               if len(args[0].([]int))<2 { return true,nil }
-               if anyDissimilar(args[0].([]int)) { return false,nil }
-           case []string:
-               if len(args[0].([]string))<2 { return true,nil }
-               if anyDissimilar(args[0].([]string)) { return false,nil }
-           case []float64:
-               if len(args[0].([]float64))<2 { return true,nil }
-               if anyDissimilar(args[0].([]float64)) { return false,nil }
-           default:
-               return nil,errors.New("similar() requires a list.")
-           }
-           return true,nil
-       }
-    */
 
     slhelp["col"] = LibHelp{in: "string_list,column,delimiter", out: "list", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string_list[#i0]."}
     stdlib["col"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -293,8 +276,8 @@ func buildListLib() {
         }
     }
 
-    slhelp["push"] = LibHelp{in: "[list,]item", out: "new_list", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
-    stdlib["push"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["push_front"] = LibHelp{in: "[list,]item", out: "new_list", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
+    stdlib["push_front"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
             switch args[0].(type) {
             case interface{}:
@@ -320,36 +303,50 @@ func buildListLib() {
             }
         }
         if len(args) != 2 {
-            return nil, errors.New("Invalid arguments to push()")
+            return nil, errors.New("Invalid arguments to push_front()")
         }
         switch args[0].(type) {
         case []float64:
             if "float64" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
+                return nil, errors.New("data types must match in push_front()")
             }
             l := make([]float64, 0, 31)
             l = append(l, args[1].(float64))
             l = append(l, args[0].([]float64)...)
             return l, nil
         case []interface{}:
-            if "interface{}" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
-            }
             l := make([]interface{}, 0, 31)
             l = append(l, sf("%v", args[1].(interface{})))
             l = append(l, args[0].([]interface{})...)
             return l, nil
         case []bool:
             if "bool" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
+                return nil, errors.New("data types must match in push_front()")
             }
             l := make([]bool, 0, 31)
             l = append(l, args[1].(bool))
             l = append(l, args[0].([]bool)...)
             return l, nil
+        case []int32:
+            if "int32" != sf("%T", args[1]) {
+                return nil, errors.New("data types must match in push_front()")
+            }
+            l := make([]int32, 0, 31)
+            l = append(l, args[1].(int32))
+            l = append(l, args[0].([]int32)...)
+            return l, nil
+        case []int64:
+            if "int64" != sf("%T", args[1]) {
+                return nil, errors.New("data types must match in push_front()")
+            }
+            l := make([]int64, 0, 31)
+            l = append(l, args[1].(int64))
+            l = append(l, args[0].([]int64)...)
+            return l, nil
         case []int:
             if "int" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
+                pf("found kind : [%T]\n",args[1])
+                return nil, errors.New("data types must match in push_front()")
             }
             l := make([]int, 0, 31)
             l = append(l, args[1].(int))
@@ -357,7 +354,7 @@ func buildListLib() {
             return l, nil
         case []uint8:
             if "uint8" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
+                return nil, errors.New("data types must match in push_front()")
             }
             l := make([]uint8, 0, 31)
             l = append(l, args[1].(uint8))
@@ -365,21 +362,47 @@ func buildListLib() {
             return l, nil
         case []string:
             if "string" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push()")
+                return nil, errors.New("data types must match in push_front()")
             }
             l := make([]string, 0, 31)
             l = append(l, args[1].(string))
             l = append(l, args[0].([]string)...)
             return l, nil
         default:
-            return nil, errors.New("Unknown list type provided to push()")
+            return nil, errors.New("Unknown list type provided to push_front()")
         }
     }
 
-    slhelp["deq"] = LibHelp{in: "list_name", out: "item", action: "Removes and returns the last [#i1]item[#i0] in the named list [#i1]list_name[#i0]."}
-    stdlib["deq"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["peek"] = LibHelp{in: "list_name", out: "item", action: "Returns a copy of the last [#i1]item[#i0] in the list [#i1]list_name[#i0]. Returns an error if the list is empty."}
+    stdlib["peek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
-            return nil, errors.New("Invalid arguments to deq()")
+            return nil, errors.New("Invalid arguments to peek()")
+        }
+        switch a:=args[0].(type) {
+        case []string:
+            return a[len(a)-1],nil
+        case []interface{}:
+            return a[len(a)-1],nil
+        case []int:
+            return a[len(a)-1],nil
+        case []int64:
+            return a[len(a)-1],nil
+        case []int32:
+            return a[len(a)-1],nil
+        case []uint8:
+            return a[len(a)-1],nil
+        case []float64:
+            return a[len(a)-1],nil
+        case []bool:
+            return a[len(a)-1],nil
+        }
+        return nil,errors.New("No values available to peek()")
+    }
+
+    slhelp["pop"] = LibHelp{in: "list_name", out: "item", action: "Removes and returns the last [#i1]item[#i0] in the named list [#i1]list_name[#i0]."}
+    stdlib["pop"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args) != 1 {
+            return nil, errors.New("Invalid arguments to pop()")
         }
         switch args[0].(type) {
         case string:
@@ -427,7 +450,7 @@ func buildListLib() {
             return nil, errors.New("list was empty")
 
         default:
-            return nil, errors.New("could not evaluate list name in deq()")
+            return nil, errors.New("could not evaluate list name in pop()")
         }
     }
 
@@ -1048,7 +1071,6 @@ func buildListLib() {
             for _, q := range args[0].([]interface{}) { string_list = append(string_list, sf("%v",q)) }
         case []string:
             return args[0].([]string),nil
-            // for _, q := range args[0].([]string) { string_list = append(string_list, sf("%v",q)) }
         case []float64:
             for _, q := range args[0].([]float64) { string_list = append(string_list, sf("%v",q)) }
         case []int:

@@ -118,17 +118,12 @@ const (
 	C_LocalCommand
 	C_RemoteCommand
 	C_Init
-	C_Install
-	C_Push
-	C_Trigger
-	C_Download
 	C_Pause
 	C_Help
 	C_Nop
 	C_Hist
 	C_Debug
 	C_Require
-	C_Depends
 	C_Exit
 	C_Version
 	C_Quiet
@@ -136,7 +131,6 @@ const (
 	C_Unset
 	C_Input
 	C_Prompt
-	C_Indent
 	C_Log
 	C_Print
 	C_Println

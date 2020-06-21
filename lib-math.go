@@ -17,7 +17,7 @@ func buildMathLib() {
 		"seed", "rand", "sqr", "sqrt", "pow","abs",
 		"sin", "cos", "tan", "asin", "acos", "atan","floor",
 		"ln", "log", "log2", "log10", "round", "rad2deg", "deg2rad",
-		"e", "pi", "phi", "ln2", "ln10",
+		"e", "pi", "phi", "ln2", "ln10","ibase",
         "ubin8","uhex32","numcomma",
 	}
 
@@ -461,6 +461,24 @@ func buildMathLib() {
             return int(0),errors.New(sf("could not convert %s",args[0].(string)))
         }
 	}
+
+	slhelp["ibase"] = LibHelp{in: "n,int", out: "string", action: "Returns a string holding a conversion of [#i1]int[#i0] to base [#i1]n[#i0]"}
+	stdlib["ibase"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 2 {
+			finish(false, ERR_SYNTAX)
+            return "",errors.New("ibase() only takes two arguments.")
+		}
+        var i int64
+        var n int
+        var e bool
+        if n,e=GetAsInt(args[0]); e==true {
+            return "",errors.New("invalid base specified in ibase()")
+        }
+        if i,e=GetAsInt64(args[1]); e==true {
+            return "",errors.New("invalid number specified in ibase()")
+        }
+        return strconv.FormatInt(i, n),nil
+    }
 
 	slhelp["rand"] = LibHelp{in: "positive_max_int", out: "integer", action: "Generate a random integer between 1 and [#i1]positive_max_int[#i0] inclusive."}
 	stdlib["rand"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

@@ -17,10 +17,21 @@ func buildFileLib() {
 	categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "is_soft", "is_pipe", "perms",
-                        "file_create", "file_close",
     }
+                        // "file_create", "file_close",
+                        // "file_create", "file_close",
 
-    // file_create and file_close need replacing and adding to with append, write, read and seek operations
+    // @note:
+    //  we could update these to proper fopen/fclose/seek/read/write/feof type of operations. however, anything that 
+    //  needs to handle the sizes or nature of files in this way should probably be doing so in a language more 
+    //  suitable to the task.  we'll maybe do this at some point in the future, but can't really justify it right now.
+    //  it's never going to be the type of operation we are looking to support with current goals in mind.
+
+    //  we'll maybe add file_append and file_write as stop gaps, but random or sequential read access just is not
+    //  going to happen yet. i don't even remember why i added file_create/file_close now :)
+
+
+/*
     slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file, or an error."}
     stdlib["file_create"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="string" {
@@ -39,6 +50,7 @@ func buildFileLib() {
         args[0].(*os.File).Close()
         return nil,nil
     }
+*/
 
 	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
 	stdlib["file_mode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

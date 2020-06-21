@@ -10,6 +10,7 @@ import (
     "os"
     "unicode/utf8"
     "reflect"
+    "net/http" // for key()
     "regexp"
     "runtime"
     "sort"
@@ -45,6 +46,8 @@ func ulen(args interface{}) (int,error) {
         return len(args.([]float64)),nil
     case []bool:
         return len(args.([]bool)),nil
+    case []map[string]interface{}:
+        return len(args.([]map[string]interface{})),nil
     case map[string]float64:
         return len(args.(map[string]float64)),nil
     case map[string]interface{}:
@@ -86,7 +89,7 @@ func buildInternalLib() {
     }
 
 
-    slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant?"}
+    slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant? This only works if the environmental variable LANG is available."}
     stdlib["utf8supported"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return str.HasSuffix(str.ToLower(os.Getenv("LANG")),".utf-8") , nil
     }
@@ -129,7 +132,7 @@ func buildInternalLib() {
         return panes[currentpane].w, nil
     }
 
-    slhelp["system"] = LibHelp{in: "string,bool", out: "string", action: "Executes command [#i1]string[#i0] and returns (bool=false) or displays (bool=true) the output."}
+    slhelp["system"] = LibHelp{in: "string,bool", out: "string", action: "Executes command [#i1]string[#i0] and returns (bool==false) or displays (bool==true) the output."}
     stdlib["system"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         cmd:=""
@@ -153,7 +156,7 @@ func buildInternalLib() {
 
     }
 
-    slhelp["argv"] = LibHelp{in: "", out: "arg_list", action: "CLI arguments."}
+    slhelp["argv"] = LibHelp{in: "", out: "arg_list", action: "CLI arguments as an array."}
     stdlib["argv"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return cmdargs, nil
     }
@@ -175,21 +178,21 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["getrow"] = LibHelp{in: "", out: "int", action: "row position of console text cursor."}
+    slhelp["getrow"] = LibHelp{in: "", out: "int", action: "reads the row position of console text cursor."}
     stdlib["getrow"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         r,_:=GetCursorPos()
         if runtime.GOOS=="windows" { r++ }
         return r, nil
     }
 
-    slhelp["getcol"] = LibHelp{in: "", out: "int", action: "column position of console text cursor."}
+    slhelp["getcol"] = LibHelp{in: "", out: "int", action: "reads the column position of console text cursor."}
     stdlib["getcol"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         _,c:=GetCursorPos()
         if runtime.GOOS=="windows" { c++ }
         return c, nil
     }
 
-    slhelp["echo"] = LibHelp{in: "bool[,mask]", out: "bool", action: "Enable (default) or disable local echo. Optionally, set the mask character to be used during input. Current visibility state is returned."}
+    slhelp["echo"] = LibHelp{in: "[bool[,mask]]", out: "bool", action: "Optionally, enable or disable local echo. Optionally, set the mask character to be used during input. Current visibility state is returned."}
     stdlib["echo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)>2 {
             return nil,errors.New("incorrect argument count for echo().")
@@ -221,9 +224,14 @@ func buildInternalLib() {
             }
         }
 
-        setEcho(se)
-        vset(0,"@echomask", mask)
-        return se,nil
+        if len(args)>0 {
+            setEcho(se)
+            vset(0,"@echomask", mask)
+        }
+
+        v,_:=vget(0,"@echo")
+
+        return v,nil
     }
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable ANSI colour support at runtime."}
@@ -243,7 +251,7 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["interpol"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable string interpolation at runtime."}
+    slhelp["interpol"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable string interpolation at runtime. This is useful for ensuring that braced phrases remain unmolested."}
     stdlib["interpol"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 {
             return nil,errors.New("interpol() accepts a boolean value only.")
@@ -259,7 +267,7 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["coproc"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should execute in the coprocess (true) or parent (false) process."}
+    slhelp["coproc"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should execute in the coprocess (true) or the current Za process (false)."}
     stdlib["coproc"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 {
             return nil,errors.New("coproc() accepts a boolean value only.")
@@ -480,6 +488,8 @@ func buildInternalLib() {
         switch v.(type) {
         case map[string]interface{}:
             if _, found = v.(map[string]interface{})[key];   found { return true, nil }
+        case http.Header:
+            if _, found = v.(http.Header)[key];   found { return true, nil }
         case map[string]float64:
             if _, found = v.(map[string]float64)[key];       found { return true, nil }
         case map[string]uint8:
@@ -525,6 +535,8 @@ func buildInternalLib() {
         switch v.(type) {
         case map[string]interface{}:
             if _, found = v.(map[string]interface{})[key];   found { return true, nil }
+        case map[string]http.Header:
+            if _, found = v.(http.Header)[key];   found { return true, nil }
         case map[string]float64:
             if _, found = v.(map[string]float64)[key];       found { return true, nil }
         case map[string]uint8:
@@ -558,7 +570,7 @@ func buildInternalLib() {
         return -1,errors.New("no co-process command has been executed yet.")
     }
 
-    slhelp["execpath"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
+    slhelp["execpath"] = LibHelp{in: "", out: "string", action: "Returns the initial working directory."}
     stdlib["execpath"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0, "@execpath")
         return string(v.(string)), err
