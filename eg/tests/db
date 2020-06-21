@@ -1,0 +1,57 @@
+#!/usr/bin/za
+
+
+define header(n)
+    println "\n[#1]{n}[#-]"
+enddef
+
+test "db_init" group "db"
+    header(_test_name)
+    doc "\nN.B.:\nYou must have a local MySQL DB install for these tests!"
+    doc "It is necessary to have a DB user named 'zatester' which has sufficient privileges"
+    doc "to create, drop, select, insert within an empty schema named 'zatest'\n"
+    set_env("ZA_DB_ENGINE","mysql")
+    set_env("ZA_DB_HOST","localhost")
+    set_env("ZA_DB_PORT","3306")
+    set_env("ZA_DB_USER","zatester")
+    set_env("ZA_DB_PASS","v3r1tas")
+    dbh=db_init("zatest")
+    assert dbh!=nil
+endtest
+
+test "db_query" group "db"
+
+    header(_test_name)
+    q=db_query(dbh, `create table if not exists zatest.zatab1 (name VARCHAR(20), birth DATE, death DATE);`,"|")
+    q=db_query(dbh, `insert into zatest.zatab1 values ('testname','2010-01-01','2020-12-31');`,"|")
+
+    q=db_query(dbh, `select * from zatest.zatab1;`,"|")
+    println "SELECT\n{q}\n",len(q)
+    assert len(q)==1
+
+    q=db_query(dbh, `show tables;`,"|")
+    println "SHOW TABLES"
+    println q,"\n",len(q)
+    assert len(q)==1
+
+    q=db_query(dbh, `describe zatest.zatab1;`,"|")
+    println "DESCRIBE"
+    foreach r in q
+        cols=split(r,"|")
+        foreach c in cols
+            print format("%20s",c)
+        endfor
+        println
+    endfor
+    assert len(q)==3
+
+    q=db_query(dbh, `drop table zatest.zatab1;`,"|")
+
+endtest
+
+test "db_close" group "db"
+    header(_test_name)
+    db_close(dbh)
+endtest
+
+

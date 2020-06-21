@@ -570,10 +570,10 @@ define redef_layout(cpu_count)
 
     setglob net_sample_count = term_w()-71
 
-    setglob rblist = push(0)
-    setglob relist = push(0)
-    setglob tblist = push(0)
-    setglob telist = push(0)
+    setglob rblist = push_front(0)
+    setglob relist = push_front(0)
+    setglob tblist = push_front(0)
+    setglob telist = push_front(0)
 
     for f=1 to getglob("net_sample_count")
         setglob rblist = append(getglob("rblist"),0)

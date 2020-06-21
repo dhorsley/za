@@ -1,13 +1,21 @@
 #!/usr/bin/za
+
 doc `
 ignore me
 please
 (this one has side-effect of being processed into the test output during -t test executions)
 `
+
 nop `
 ignore me
 please
-(this one has side-effect of 100ms delay)
+(this one has side-effect of 1us delay)
+`
+
+`you can
+also just leave strings like this
+hanging around.
+however, they will be evaluated, so don't leave them in tight loops.
 `
 
 #

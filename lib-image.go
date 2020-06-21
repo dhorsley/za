@@ -722,7 +722,7 @@ func buildImageLib() {
 // RadialGradient(id string, cx, cy, r, fx, fy uint8, sc []Offcolor)
 
 
-    slhelp["svg_start"] = LibHelp{in: "filename,w,h[,attributes]", out: "svg_handle", action: "Returns a handle to a new SVG canvas."}
+    slhelp["svg_start"] = LibHelp{in: "filename,w,h[,attributes]", out: "svg_handle", action: "Returns a handle to a new SVG canvas. You must use this call to initiate the image creation process.\nReturns an empty string on failure or a handle name on success."}
     stdlib["svg_start"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args)<3 || len(args)>4 {
