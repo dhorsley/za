@@ -13,6 +13,7 @@ import (
     "os/exec"
     "bufio"
     "errors"
+    "encoding/hex"
     "golang.org/x/sys/unix"
     "strconv"
     "unicode/utf8"
@@ -1267,6 +1268,9 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
     var result BashRead
 
+    CMDSEP,_:=vget(0,"@cmdsep")
+    cmdsep:=CMDSEP.(byte)
+
     siglock.Lock()
     coproc_active = true
     siglock.Unlock()
@@ -1315,7 +1319,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
             }
 
             if len(bytes) > 0 {
-                if bytes[len(bytes)-1] == 0x1e {
+                if bytes[len(bytes)-1] == cmdsep {
                     break
                 }
                 if !t.Stop() {
@@ -1333,14 +1337,14 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
         // remove trailing end marker
         if len(bytes) > 0 {
-            if bytes[len(bytes)-1] == 0x1e {
+            if bytes[len(bytes)-1] == cmdsep {
                 bytes = bytes[:len(bytes)-1]
             }
         }
 
         // skip null end marker strings
         if len(bytes) > 0 {
-            if bytes[0] == 0x1e {
+            if bytes[0] == cmdsep {
                 bytes=[]byte{}
             }
         }
@@ -1425,13 +1429,16 @@ func Copper(line string, squashErr bool) (string, int) {
         read_out := bufio.NewReader(po)
 
         // issue command
-        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x1e${last}\x1e"`+"\n")
+        CMDSEP,_:=vget(0,"@cmdsep")
+        cmdsep:=CMDSEP.(byte)
+        hexenc:=hex.EncodeToString([]byte{cmdsep})
+        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
 
         // get output
         ns, commandErr = NextCopper(line, read_out)
 
         // get status code - cmd is not important for this, NextCopper just reads
-        //  the output until the next 0x1e
+        //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
 
         // pull cwd from /proc

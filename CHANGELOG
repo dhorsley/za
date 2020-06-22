@@ -32,6 +32,14 @@ CHANGE LOG
 
     * added stdlib tests: db, net
 
+    * added -U startup option
+        this option is for specifying the byte to be used for signalling end-of-output
+            of a co-process command.
+        By default, this is 0x1e (31)
+        If this may clash with something in your environment, you should specify an alternative
+        with the -U option.
+
+
 ---------------------------------------------------------------------------------------------
 1.0.6
 

@@ -12,6 +12,7 @@ import (
     "os/exec"
     "bufio"
     "errors"
+    "encoding/hex"
     "strconv"
     "regexp"
     "syscall"
@@ -1300,6 +1301,9 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
     var result BashRead
 
+    CMDSEP,_:=vget(0,"@cmdsep")
+    cmdsep:=CMDSEP.(byte)
+
     siglock.Lock()
     coproc_active = true
     siglock.Unlock()
@@ -1346,7 +1350,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
             }
 
             if len(s) > 0 {
-                if s[len(s)-1] == 0x1e {
+                if s[len(s)-1] == cmdsep {
                     break
                 }
                 if !t.Stop() {
@@ -1364,14 +1368,14 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
         // remove trailing end marker
         if len(s) > 0 {
-            if s[len(s)-1] == 0x1e {
+            if s[len(s)-1] == cmdsep {
                 s = s[:len(s)-1]
             }
         }
 
         // skip null end marker strings
         if len(s) > 0 {
-            if s[0] == 0x1e {
+            if s[0] == cmdsep {
                 s = ""
             }
         }
@@ -1453,13 +1457,16 @@ func Copper(line string, squashErr bool) (string, int) {
         read_out := bufio.NewReader(po)
 
         // issue command
-        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x1e${last}\x1e"`+"\n")
+        CMDSEP,_:=vget(0,"@cmdsep")
+        cmdsep:=CMDSEP.(byte)
+        hexenc:=hex.EncodeToString([]byte{cmdsep})
+        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
 
         // get output
         ns, commandErr = NextCopper(line, read_out)
 
         // get status code - cmd is not important for this, NextCopper just reads
-        //  the output until the next 0x1e
+        //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
 
         // pull cwd from /proc

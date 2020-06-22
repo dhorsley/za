@@ -21,28 +21,12 @@
         not expecting any problems in behaviour, but should try to populate some other za system
          variables from those shells and look for peculiarities.
 
+    * consider adding an optional taglist and filtering mechanism for TEST..ENDTEST.
+
+    * more library tests
+    * more example code
+
 ---------------------------------------------------------------------------------------------
-
-NEXT : 1.0.7
-------------
-
-    * more example code (4)
-    1) larger examples live in eg/ path
-    2) small examples of stdlib use should be placed in:
-        tools/funpages/examples/<call_name>
-            When tools/libdoc is executed, it incorporates everything from 2) in the generated files.
-
-    * opensuse
-        * most everything okay now, except a fault in test/package with renaming the
-            temporary downloaded file in install(). doesn't affect normal zypper repo use.
-
-    * alpine
-           as with opensuse, some tests fail due to them being written for ubuntu.
-
-    * documentation updates
-        * Documentation needs an update to mention the use of 0x1e command output separation.
-            * do we need to allow a custom separator to be used?
-
 
 LATER
 -----
