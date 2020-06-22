@@ -73,7 +73,7 @@ func help(hargs string) {
     [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
-    [-T [#i1]time-out[#i0]] [[-f] [#i1]input_file[#i0]][#-]
+    [-T [#i1]time-out[#i0]] [-U [#i1]sep[#i0]] [[-f] [#i1]input_file[#i0]][#-]
 
     [#4]-v[#-] : Version
     [#4]-h[#-] : Help
@@ -85,6 +85,7 @@ func help(hargs string) {
     [#4]-G[#-] : Test group filter [#i1]group_filter[#i0]
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
     [#4]-m[#-] : Mark co-process command progress
+    [#4]-U[#-] : Specify system command separator byte
     [#4]-c[#-] : Ignore colour code macros at startup
     [#4]-C[#-] : Enable colour code macros at startup
     [#4]-l[#-] : Enable mutex locking for multi-threaded use

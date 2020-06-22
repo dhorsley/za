@@ -122,12 +122,8 @@ var currentpane string      // for pane use
 var cmdargs []string        // cli args
 
 var no_interpolation bool   // true: disable string interpolation.
-
 var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // defaults to true. false disables ansi colour code output
-
-var testMode bool           // is TEST..ENDTEST functionality enabled this run? (this may change later for alternative run types)
-var docGen bool             // is DOC processing enabled this run? (now deprecated?)
 
 // setup getInput() history for interactive mode
 var curHist int
@@ -145,14 +141,16 @@ var web_log_file string = "/var/log/za_access.log"
 var sig_int bool       // ctrl-c pressed?
 var coproc_active bool // for resetting co-proc if interrupted
 
+
 // test related setup
+var testMode bool           // is TEST..ENDTEST functionality enabled this run? (this may change later for alternative run types)
+var docGen bool             // is DOC processing enabled this run? (now deprecated?)
 var under_test bool
 var test_group string
 var test_name string
 var test_assert string
 var test_group_filter string
 var fail_override string
-// var inside_test bool
 var test_output_file string
 var testsPassed int
 var testsFailed int
@@ -204,11 +202,6 @@ func main() {
     numlookup.lmset(0,"global")
     numlookup.lmset(1,"main")
 
-    /*
-    vmap[0]=make(map[string]int,VAR_CAP)
-    vmap[1]=make(map[string]int,VAR_CAP)
-    */
-
     calllock.Lock()
     calltable[0] = call_s{} // reset call stacks for global and main
     calltable[1] = call_s{}
@@ -238,7 +231,8 @@ func main() {
     debug_level = 0
 
     // run in parent flag
-    vset(0,"@runInParent",false) // if -S opt or /bin/false specified for shell, then run commands in parent
+    vset(0,"@cmdsep",byte(0x1e))    // command output unit separator
+    vset(0,"@runInParent",false)    // if -S opt or /bin/false specified for shell, then run commands in parent
 
     // set available build info
     vset(0, "@language", "Za")
@@ -295,6 +289,7 @@ func main() {
     var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use")
     var a_shell         = flag.String("s", "", "path to coprocess shell")
     var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
+    var a_cmdsep        = flag.Int("U", 0x1e, "Command output separator byte.")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -351,6 +346,11 @@ func main() {
     if *a_version {
         version()
         os.Exit(0)
+    }
+
+    // command separator
+    if *a_cmdsep != 0 {
+        vset(0,"@cmdsep",byte(*a_cmdsep))
     }
 
     // max timeout
