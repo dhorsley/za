@@ -70,6 +70,11 @@ func enableEcho() {
     }
 }
 
+func term_complete() {
+    tt.Restore()
+    tt.Close()
+}
+
 /// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
 
@@ -314,7 +319,6 @@ var bigbytelist = make([]byte,3*4096)
 /// get a key press
 func getch(timeo int) ( []byte, bool, bool, string ) {
 
-    // tt, _ := term.Open("/dev/tty")
     term.RawMode(tt)
 
     tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Microsecond))

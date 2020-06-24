@@ -849,8 +849,11 @@ func main() {
     // a little paranoia to finish things off...
     setEcho(true)
 
-    tt.Restore()
-    tt.Close()
+    if runtime.GOOS!="windows" {
+        term_complete()
+        // tt.Restore()
+        // tt.Close()
+    }
 
 }
 
