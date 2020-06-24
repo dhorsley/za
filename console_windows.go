@@ -68,6 +68,10 @@ func pf(s string, va ...interface{}) {
 }
 
 
+func term_complete() {
+    // do nothing
+}
+
 /*
 ENABLE_PROCESSED_INPUT          = 0x0001
 ENABLE_LINE_INPUT               = 0x0002
