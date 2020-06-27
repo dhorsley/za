@@ -1,0 +1,7 @@
+
+# set seed, otherwise sequences repeat
+seed(epoch_nano_time())
+
+# dice roll
+dr=rand(6)
+
