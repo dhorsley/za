@@ -2,6 +2,33 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.8
+
+    * added ctrl-c handler in keypress() func. sig_int is now raised when detected, but keypress
+        still returns as normal. this allows a user interrupt handler to still be defined, or
+        for the interruption to be ignored and the ctrl-c (dec:3) to be captured in keypress().
+
+    * after testing with sh/dash/ash and similar, found the echo -e required in coproc calls was
+        problematic. (didn't interpret escape codes too well).
+
+        * added check for custom shell basename of sh, ash or dash. when this occurs, then external
+            printf command is used instead (/bin/printf).
+            * will try and come up with a better workaround later.
+
+        * no extra system variables output that are sh/ash/dash specific yet.
+
+    * zsh seems fine still, except for only putting out a single zsh specific sysvar. will work 
+        on more of them later.
+
+    * will deal with WSL/mingw/windows'y things later.
+
+    * fixed repeated enter key glitches in interactive mode. (was more slow ANSI VT response issues).
+
+    * added check for terminal availability and ready-to-send status in GetCursorPos(). 
+        * mainly added for docker compatibility when not using -it in exec/run.
+
+
+---------------------------------------------------------------------------------------------
 1.0.7
 
     * console: key repeat was not behaving. holding down key caused glitches.

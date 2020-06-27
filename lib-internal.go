@@ -618,7 +618,16 @@ func buildInternalLib() {
                 }
             }
         }
-        return wrappedGetCh(int(timeo)), nil
+
+        k:=wrappedGetCh(int(timeo))
+
+        if k==3 { // ctrl-c 
+            siglock.RLock()
+            sig_int=true
+            siglock.RUnlock()
+        }
+
+        return k,nil
     }
 
     slhelp["cursoroff"] = LibHelp{in: "", out: "", action: "Disables cursor display."}

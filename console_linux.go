@@ -544,6 +544,14 @@ func getWord(s string, c int) string {
 
 func GetCursorPos() (int,int) {
 
+    if tt==nil {
+        return 0,0
+    }
+
+    if ready,er:=tt.RTS(); !ready || er==nil {
+        return 0,0
+    }
+
     buf:=make([]byte,15,15)
     var r,c int
 
@@ -566,6 +574,7 @@ func GetCursorPos() (int,int) {
     }
 
     tt.Restore()
+
     return r,c
 
 }
@@ -1300,7 +1309,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
             // save cursor - move to start of row
             pf("[#CSI]s[#CSI]1G")
         }
-
         for {
 
             v, err = r.ReadByte()
@@ -1436,7 +1444,13 @@ func Copper(line string, squashErr bool) (string, int) {
         CMDSEP,_:=vget(0,"@cmdsep")
         cmdsep:=CMDSEP.(byte)
         hexenc:=hex.EncodeToString([]byte{cmdsep})
-        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
+
+        // looks like ash+dash+variants don't handle echo -e too well
+        if st,_:=vget(0,"@shelltype"); st.(string)=="ash" || st.(string)=="dash" || st.(string)=="sh" {
+            io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; /bin/printf "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
+        } else {
+            io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
+        }
 
         // get output
         ns, commandErr = NextCopper(line, read_out)
