@@ -493,7 +493,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
     if !serviced {
         // only try to serve locally once other rules are processed.
-        // for _,rule := range web_rules[handle] {
         for _,rule := range wr_copy {
 
             switch rule.code {
@@ -532,7 +531,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     _, err := os.Stat(fp)
                     if err != nil {
                         if os.IsNotExist(err) {
-                            // wlog("Could not serve from %v to %v.\n",fp,remoteIp)
+                            wlog("Could not serve from %v to %v.\n",fp,remoteIp)
                             for _,fail_rule := range wr_copy {
                                 switch fail_rule.code[0] {
                                 case 'e':
@@ -687,7 +686,7 @@ func buildNetLib() {
         }
 
         if len(args)==3 {
-            // must be an ip/dns too
+            // host string
             switch args[2].(type) {
             case string:
                 host=args[2].(string)
@@ -698,8 +697,8 @@ func buildNetLib() {
 
         // verify
 
-        if port==0 {
-            return "",errors.New("port must be non-zero in web_serve_start()")
+        if port<=0 || port>65535 {
+            return "",errors.New("port must be between 1 and 65535 in web_serve_start()")
         }
 
         // setup server
@@ -708,8 +707,8 @@ func buildNetLib() {
         var srv http.Server
         var addr string
 
-        if host=="" {
-            // host="127.0.0.1"
+        if host=="0.0.0.0" {
+            host=""
         }
         addr=host+":"+sf("%v",port)
         srv.Addr=addr

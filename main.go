@@ -7,6 +7,7 @@ package main
 import (
     "flag"
     "fmt"
+    "path"
     "path/filepath"
     term "github.com/pkg/term"
     "io"
@@ -429,6 +430,7 @@ func main() {
     // start shell in co-process
 
     coprocLoc:=""
+    vset(0,"@shelltype","")
 
     if runtime.GOOS!="windows" {
 
@@ -439,6 +441,7 @@ func main() {
             } else {
                 if fexists("/bin/bash") {
                     coprocLoc="/bin/bash"
+                    vset(0,"@shelltype","bash")
                 } else {
                     // try for /bin/sh then default to noshell
                     if fexists("/bin/sh") {
@@ -448,9 +451,6 @@ func main() {
                         vset(0, "@noshell",no_shell)
                         coprocLoc="/bin/false"
                     }
-                    // pf("Error: could not locate a Bash shell.\n")
-                    // pf("Error content:\n%v\n",err)
-                    // os.Exit(ERR_NOBASH)
                 }
             }
         } else {
@@ -459,6 +459,12 @@ func main() {
                 os.Exit(ERR_NOBASH)
             }
             coprocLoc=default_shell
+            shellname:=path.Base(coprocLoc)
+            if shellname=="dash" || shellname=="ash" || shellname=="sh" {
+                // specify that NextCopper() should use external printf
+                // for generating \x1e (or other cmdsep) in output
+                vset(0,"@shelltype",shellname)
+            }
         }
 
     } else {
@@ -618,7 +624,6 @@ func main() {
 
     // static globals from bash
     if runtime.GOOS!="windows" {
-
         cop, _ = Copper("echo -n $ZSH_VERSION", true)
         vset(0, "@zsh_version", cop)
         cop, _ = Copper("echo -n $BASH_VERSION", true)
@@ -744,11 +749,9 @@ func main() {
                 break
             }
 
-            cr,_:=GetCursorPos()
-            row=cr+1
+            row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
             if row>MH { row=MH ; pf("\n") }
 
-            // row:=row+(len(input)/MW)
             col = 1
             at(row, col)
 
@@ -851,8 +854,6 @@ func main() {
 
     if runtime.GOOS!="windows" {
         term_complete()
-        // tt.Restore()
-        // tt.Close()
     }
 
 }
