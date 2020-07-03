@@ -37,6 +37,7 @@ func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
     return r
 }
 
+var debuglock = &sync.RWMutex{}
 var siglock = &sync.RWMutex{}
 
 // finish : flag the machine state as okay or in error and optionally

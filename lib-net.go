@@ -238,6 +238,15 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     // we do not log by default
     // if globalvar log_web is true, then log to web_log_file (global)
 
+    // we also throw out some debug info too when enabled. this should not be the default!
+    // it really slows down request processing.
+
+    // get debug level once
+
+    debuglock.RLock()
+    dlevel:=debug_level
+    debuglock.RUnlock()
+
     method:=r.Method        // get, put, etc
     purl  :=r.URL           // provided url
     header:=r.Header        // map[string][]string
@@ -248,18 +257,38 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     if scheme=="" { scheme="http" }
     _=method ; _=header
 
+    srvAddr := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+    srvStr  := srvAddr.String()
+
+    localSplitAt:=str.IndexByte(srvStr,':')
+    // localIp:=srvStr[:localSplitAt]
+    localPort:=srvStr[localSplitAt+1:]
+
     remoteSplitAt:=str.IndexByte(remote,':')
     remoteIp:=remote[:remoteSplitAt]
+
+    if dlevel>5 { wlog("^ NEW REQUEST : host [%v] path [%v]\n",host,purl) }
 
     serviced:=false         // was a rule acted upon?
     handle := webLookup(host)
 
     if handle=="" {
-        http.NotFound(w,r)
-        return
+        port:=""
+        if dlevel>5 { wlog("  entered empty handle processing\n") }
+        // extract port
+        reqHostSplitAt:=str.IndexByte(host,':')
+        if reqHostSplitAt>-1 {
+            reqPort:=host[reqHostSplitAt+1:]
+            port=reqPort
+        } else {
+            // .. or use port from request context
+            port=localPort
+        }
+        handle=webLookup("0.0.0.0:"+port)
+        if dlevel>5 { wlog("  new handle: %v [with 0.0.0.0:%v]\n",handle,port) }
+    } else {
+        if dlevel>5 { wlog("  using handle: %v [with %v]\n",handle,host) }
     }
-
-    // wlog("^ NEW REQUEST : path [%v]\n",purl)
 
     // deal with forced redirects and reverse proxying first
 
@@ -286,7 +315,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
         case "p": // rewrite and reverse proxy
 
-            // wlog("Hitting reverse proxy rule [ %s / %s ]\n",rule.in,rule.mutation)
+            if dlevel>5 { wlog("Hitting reverse proxy rule [ %s / %s ]\n",rule.in,rule.mutation) }
             // build new_path based on path in rule.in + rule.mutation
             // make a client request from here to host+new_path
             // pass result back including status codes
@@ -377,7 +406,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         case 'e':
                         // fail_rule.in is which path prefix to match on
                         // fail_rule.mutation is where to redirect to on error
-                            // wlog("Checking error rules for path [%s]\n",path)
+                            if dlevel>5 { wlog("Checking error rules for path [%s]\n",path) }
                             expectedStatusCode:=fail_rule.code[1:]
                             if str.HasPrefix(path,fail_rule.in) {
                                 if expectedStatusCode=="" || expectedStatusCode==sf("%d",down_code) {
@@ -387,7 +416,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                                     serviced=true
                                     break
                                 } else {
-                                    // wlog("Error check reached inconclusive state with rule code '%s' and inbound code '%+v'\n",expectedStatusCode,down_code)
+                                    if dlevel>5 { wlog("Error check reached inconclusive state with rule code '%s' and inbound code '%+v'\n",expectedStatusCode,down_code) }
                                 }
                             }
                         }
@@ -418,7 +447,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             if re.MatchString(path) {
 
                 fn:=rule.mutation.(string)
-                // wlog("Called %s from %s.\n",fn,path)
+                if dlevel>5 { wlog("Called %s from %s.\n",fn,path) }
 
                 // check that function exists
                 ifn,found:=fnlookup.lmget(fn)
@@ -507,7 +536,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     if rule.in!="" && rule.mutation.(string)!="" {
                         // provided with a regex rewrite
                         new_path = re.ReplaceAllString(path, rule.mutation.(string))
-                        // wlog("Rewrote %s to %s\n",path,new_path)
+                        if dlevel>5 { wlog("Rewrote %s to %s\n",path,new_path) }
                     } else {
                         // just proxy
                         new_path=path
@@ -516,7 +545,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     // decode the reformed url
                     new_url,url_err:=url.Parse(new_path)
                     if url_err==nil {
-                        // wlog("New URL Struct : %#v\n",new_url)
+                        if dlevel>5 { wlog("New URL Struct : %#v\n",new_url) }
                         new_path=new_url.Path
 
                     }
@@ -707,9 +736,12 @@ func buildNetLib() {
         var srv http.Server
         var addr string
 
+        /* Removed as inexplicit setting may have tcp6 issues.
         if host=="0.0.0.0" {
             host=""
         }
+        */
+
         addr=host+":"+sf("%v",port)
         srv.Addr=addr
 
@@ -719,7 +751,14 @@ func buildNetLib() {
         mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS, evalfs))
 
         go func() {
-            e=srv.ListenAndServe()
+            // e=srv.ListenAndServe()
+            // @note: testing: manually enforce tcp4 to make docker happier.
+            l, e := net.Listen("tcp4", addr)
+            if e != nil {
+                log.Fatal(err)
+	        } else {
+	            e=srv.Serve(l)
+            }
         }()
 
         // have to give listenandserve a chance to fail and write 'e'

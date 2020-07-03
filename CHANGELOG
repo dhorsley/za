@@ -27,6 +27,13 @@ CHANGE LOG
     * added check for terminal availability and ready-to-send status in GetCursorPos(). 
         * mainly added for docker compatibility when not using -it in exec/run.
 
+    * added some more functionality around handling "all interfaces" 0.0.0.0 web service requests.
+        * http.ListenAndServe now split in half and tcp4 request servicing enforced.
+        * removed the enforced 404 return when hostname/ip not found in web rules
+            * instead a secondary check is done when the request host name not found for rules
+                which contain 0.0.0.0:reqPort instead.
+        * these changes were done to allow the web server to be used more successfully from
+            inside docker containers.
 
 ---------------------------------------------------------------------------------------------
 1.0.7
