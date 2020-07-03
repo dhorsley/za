@@ -1522,9 +1522,11 @@ func Copper(line string, squashErr bool) (string, int) {
 }
 
 func debug(level int, s string, va ...interface{}) {
+    if lockSafety { debuglock.RLock() }
     if debug_level >= level {
         pf(sparkle(s), va...)
     }
+    if lockSafety { debuglock.RUnlock() }
     /*
     if debug_level==20 {
         plog(sparkle(s),va...)
