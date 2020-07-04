@@ -434,36 +434,38 @@ func main() {
 
     if runtime.GOOS!="windows" {
 
-        if default_shell=="" {
-            coprocLoc, err = GetCommand("/usr/bin/which bash")
-            if err == nil {
-                coprocLoc = coprocLoc[:len(coprocLoc)-1]
-            } else {
-                if fexists("/bin/bash") {
-                    coprocLoc="/bin/bash"
-                    vset(0,"@shelltype","bash")
+        if !no_shell {
+            if default_shell=="" {
+                coprocLoc, err = GetCommand("/usr/bin/which bash")
+                if err == nil {
+                    coprocLoc = coprocLoc[:len(coprocLoc)-1]
                 } else {
-                    // try for /bin/sh then default to noshell
-                    if fexists("/bin/sh") {
-                        coprocLoc="/bin/sh"
+                    if fexists("/bin/bash") {
+                        coprocLoc="/bin/bash"
+                        vset(0,"@shelltype","bash")
                     } else {
-                        vset(0,"@noshell",true)
-                        vset(0, "@noshell",no_shell)
-                        coprocLoc="/bin/false"
+                        // try for /bin/sh then default to noshell
+                        if fexists("/bin/sh") {
+                            coprocLoc="/bin/sh"
+                        } else {
+                            vset(0,"@noshell",true)
+                            vset(0, "@noshell",no_shell)
+                            coprocLoc="/bin/false"
+                        }
                     }
                 }
-            }
-        } else {
-            if !fexists(default_shell) {
-                pf("The chosen shell (%v) does not exist.\n",default_shell)
-                os.Exit(ERR_NOBASH)
-            }
-            coprocLoc=default_shell
-            shellname:=path.Base(coprocLoc)
-            if shellname=="dash" || shellname=="ash" || shellname=="sh" {
-                // specify that NextCopper() should use external printf
-                // for generating \x1e (or other cmdsep) in output
-                vset(0,"@shelltype",shellname)
+            } else {
+                if !fexists(default_shell) {
+                    pf("The chosen shell (%v) does not exist.\n",default_shell)
+                    os.Exit(ERR_NOBASH)
+                }
+                coprocLoc=default_shell
+                shellname:=path.Base(coprocLoc)
+                if shellname=="dash" || shellname=="ash" || shellname=="sh" {
+                    // specify that NextCopper() should use external printf
+                    // for generating \x1e (or other cmdsep) in output
+                    vset(0,"@shelltype",shellname)
+                }
             }
         }
 
@@ -492,9 +494,11 @@ func main() {
 
     if runtime.GOOS!="windows" {
 
-        // create shell process
-        bgproc, pi, po, pe = NewCoprocess(coprocLoc)
-        vset(0, "@shellpid",bgproc.Process.Pid)
+        if !no_shell {
+            // create shell process
+            bgproc, pi, po, pe = NewCoprocess(coprocLoc)
+            vset(0, "@shellpid",bgproc.Process.Pid)
+        }
 
         // prepare for getInput() keyboard input (from main process)
         tt, _ = term.Open("/dev/tty")
