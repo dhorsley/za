@@ -85,9 +85,17 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zinfo",
     }
 
+
+    slhelp["zinfo"] = LibHelp{in: "", out: "build info list", action: "internal info"}
+    stdlib["zinfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        v,_:=vget(0,"@version")
+        l,_:=vget(0,"@language")
+        c,_:=vget(0,"@ct_info")
+        return []string{v.(string),l.(string),c.(string)},nil
+    }
 
     slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant? This only works if the environmental variable LANG is available."}
     stdlib["utf8supported"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
