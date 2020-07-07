@@ -123,7 +123,7 @@ func wlog(s string,va... interface{}) {
 
         if WlogDisplay {
             oldFlags:=web_logger.Flags()
-            web_logger.SetFlags(log.Lmicroseconds+log.LUTC)
+            web_logger.SetFlags((oldFlags | log.Lmicroseconds) &^ log.LUTC)
             if throttle      { web_logger.Printf("// skipped %d repeat messages.\n",lastWlogEvery) }
             if throttleEnded { web_logger.Printf("// stopped throttling messages.\n") }
             web_logger.Printf(new_s)
