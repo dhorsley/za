@@ -35,6 +35,8 @@ CHANGE LOG
         * these changes were done to allow the web server to be used more successfully from
             inside docker containers.
 
+    * added getcores() to retrieve cpu core count.
+
 ---------------------------------------------------------------------------------------------
 1.0.7
 

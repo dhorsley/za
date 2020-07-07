@@ -637,7 +637,7 @@ if !(user=="root" || sudo!="")
 endif
 
 # @todo: figure max cpu count automatically
-cpu_count=5
+cpu_count=getcores()
 
 # set up panes
 w=term_w()

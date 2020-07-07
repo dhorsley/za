@@ -85,7 +85,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zinfo",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zinfo","getcores",
     }
 
 
@@ -118,6 +118,11 @@ func buildInternalLib() {
     stdlib["getmem"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         a,s:=getMemUsage()
         return sf("%d %d",a/1024/1024,s/1024/1024), nil
+    }
+
+    slhelp["getcores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
+    stdlib["getcores"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        return runtime.NumCPU(),nil
     }
 
     slhelp["term_h"] = LibHelp{in: "", out: "int", action: "Returns the current terminal height."}
