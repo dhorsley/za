@@ -178,6 +178,15 @@ var vtable_maxreached uint64
 
 func main() {
 
+    // time zone handling
+    if tz := os.Getenv("TZ"); tz != "" {
+        var err error
+        time.Local, err = time.LoadLocation(tz)
+        if err != nil {
+            log.Printf("error loading location '%s': %v\n", tz, err)
+        }
+    }
+
     runtime.GOMAXPROCS(runtime.NumCPU())
 
     // setup winch handler receive channel to indicate a refresh is required, then check it in Call() before enact().
