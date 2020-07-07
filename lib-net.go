@@ -7,7 +7,7 @@ import (
     "context"
     "crypto/tls"
     "errors"
-    "fmt"
+    // "fmt"
     "time"
     "net"
     "regexp"
@@ -39,11 +39,11 @@ import (
 //  we would also want to be able to push metrics on demand from other areas of Za code. 
 //  not saying it would be difficult to add, just incredibly low priority.
 
-///
+/*
     var WLOG_METRICS_HOST="172.16.10.29"
     var WLOG_METRICS_PORT=2003
-    var WebSendMetrics=false
-///
+*/
+var WebSendMetrics=false
 
 var web_tr *http.Transport
 var web_client *http.Client
@@ -122,9 +122,12 @@ func wlog(s string,va... interface{}) {
         }
 
         if WlogDisplay {
+            oldFlags:=web_logger.Flags()
+            web_logger.SetFlags(log.Lmicroseconds+log.LUTC)
             if throttle      { web_logger.Printf("// skipped %d repeat messages.\n",lastWlogEvery) }
             if throttleEnded { web_logger.Printf("// stopped throttling messages.\n") }
             web_logger.Printf(new_s)
+            web_logger.SetFlags(oldFlags)
         }
     }
     lastlock.Unlock()
@@ -182,7 +185,7 @@ func fireMetric(host string,typ string,value int) {
     // increments to local served
     // increments to proxied requests
     // failed to serve
-    var strType string
+/*     var strType string
     switch typ {
     case "e":
         strType="error"
@@ -197,16 +200,19 @@ func fireMetric(host string,typ string,value int) {
     default:
         return
     }
+*/
 
+/*
     reqHostSplitAt:=str.IndexByte(host,':')
     reqHost:=host[:reqHostSplitAt]
     reqPort:=host[reqHostSplitAt+1:]
+*/
 
-    metconn, _ := net.Dial("tcp", WLOG_METRICS_HOST+":"+sf("%v",WLOG_METRICS_PORT))
+    // metconn, _ := net.Dial("tcp", WLOG_METRICS_HOST+":"+sf("%v",WLOG_METRICS_PORT))
     // wlog("metric: local.%s.%s.%s %v %v\n",reqHost,reqPort,strType,value,time.Now().Unix())
-    fmt.Fprintf(metconn,"local.%s.%s.%s %v %v\n",reqHost,reqPort,strType,value,time.Now().Unix())
+    // fmt.Fprintf(metconn,"local.%s.%s.%s %v %v\n",reqHost,reqPort,strType,value,time.Now().Unix())
     // we should check error here, but what would we do with it?
-    metconn.Close()
+    // metconn.Close()
 
 }
 
