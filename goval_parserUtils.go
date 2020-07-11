@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-    "reflect"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-//    "sync"
+	//    "sync"
 )
 
 func init() {
@@ -25,9 +25,10 @@ func typeOf(val interface{}) string {
 		return "nil"
 	}
 
-
 	kind := reflect.TypeOf(val).Kind()
-    if kind.String()=="map" { return "map" }
+	if kind.String() == "map" {
+		return "map"
+	}
 
 	switch kind {
 	case reflect.Bool:
@@ -210,7 +211,9 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 	int2, int2OK := val2.(int)
 
 	if int1OK && int2OK {
-        if int2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
+		if int2 == 0 {
+			panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)"))
+		}
 		return int1 / int2
 	}
 
@@ -227,7 +230,9 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 	}
 
 	if float1OK && float2OK {
-        if float2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
+		if float2 == 0 {
+			panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)"))
+		}
 		return float1 / float2
 	}
 	panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
@@ -386,166 +391,186 @@ func asObjectKey(key interface{}) string {
 }
 
 func addMapMember(evalfs uint64, obj string, key, val interface{}) {
-    // map key
+	// map key
 	s := asObjectKey(key)
 	vsetElement(evalfs, obj, s, val)
-    return
-}
-
-func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}) {
-    // normal array
-	s,invalid := GetAsInt(key.(string))
-    if invalid { panic(fmt.Errorf("type error: element must be an integer")) }
-
-    switch val.(type) {
-    case map[string]interface{},map[string]string,int, float64, bool, interface{}:
-        vsetElement(evalfs, obj, sf("%v",s), val)
-    default:
-        pf("addobjmember cannot handle type %T for %v\n",val,key)
-    }
 	return
 }
 
+func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}) {
+	// normal array
+	s, invalid := GetAsInt(key.(string))
+	if invalid {
+		panic(fmt.Errorf("type error: element must be an integer"))
+	}
+
+	switch val.(type) {
+	case map[string]interface{}, map[string]string, int, float64, bool, interface{}:
+		vsetElement(evalfs, obj, sf("%v", s), val)
+	default:
+		pf("addobjmember cannot handle type %T for %v\n", val, key)
+	}
+	return
+}
 
 func convertToInt(ar interface{}) []int {
-    var v interface{}
-    var i int
-    switch ar.(type) {
-    case []float32:
-        newar := make([]int, len(ar.([]float32)))
-        for i, v = range ar.([]float32) { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []float64:
-        newar := make([]int, len(ar.([]float64)))
-        for i, v = range ar.([]float64) { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int32:
-        newar := make([]int, len(ar.([]int32)))
-        for i, v = range ar.([]int32) { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int:
-        newar := make([]int, len(ar.([]int)))
-        for i, v = range ar.([]int) { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int64:
-        newar := make([]int, len(ar.([]int64)))
-        for i, v = range ar.([]int64) { newar[i],_ = GetAsInt(v) }
-        return newar
-    default:
-        panic(fmt.Errorf("type error: cannot convert from %T to int",ar))
-    }
+	var v interface{}
+	var i int
+	switch ar := ar.(type) {
+	case []float32:
+		newar := make([]int, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsInt(v)
+		}
+		return newar
+	case []float64:
+		newar := make([]int, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsInt(v)
+		}
+		return newar
+	case []int32:
+		newar := make([]int, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsInt(v)
+		}
+		return newar
+	case []int:
+		newar := make([]int, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsInt(v)
+		}
+		return newar
+	case []int64:
+		newar := make([]int, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsInt(v)
+		}
+		return newar
+	default:
+		panic(fmt.Errorf("type error: cannot convert from %T to int", ar))
+	}
 }
-
 
 func convertToFloat64(ar interface{}) []float64 {
-    var v interface{}
-    var i int
-    switch ar.(type) {
-    case []float32:
-        newar := make([]float64, len(ar.([]float32)))
-        for i, v = range ar.([]float32) { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []float64:
-        newar := make([]float64, len(ar.([]float64)))
-        for i, v = range ar.([]float64) { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int32:
-        newar := make([]float64, len(ar.([]int32)))
-        for i, v = range ar.([]int32) { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int:
-        newar := make([]float64, len(ar.([]int)))
-        for i, v = range ar.([]int) { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int64:
-        newar := make([]float64, len(ar.([]int64)))
-        for i, v = range ar.([]int64) { newar[i],_ = GetAsFloat(v) }
-        return newar
-    default:
-		panic(fmt.Errorf("type error: cannot convert from %T to float",ar))
-    }
+	var v interface{}
+	var i int
+	switch ar := ar.(type) {
+	case []float32:
+		newar := make([]float64, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsFloat(v)
+		}
+		return newar
+	case []float64:
+		newar := make([]float64, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsFloat(v)
+		}
+		return newar
+	case []int32:
+		newar := make([]float64, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsFloat(v)
+		}
+		return newar
+	case []int:
+		newar := make([]float64, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsFloat(v)
+		}
+		return newar
+	case []int64:
+		newar := make([]float64, len(ar))
+		for i, v = range ar {
+			newar[i], _ = GetAsFloat(v)
+		}
+		return newar
+	default:
+		panic(fmt.Errorf("type error: cannot convert from %T to float", ar))
+	}
 }
 
-func accessVar(evalfs uint64, varName string) (interface{},bool) {
-    var EvalFail bool
-    EvalFail=false
+func accessVar(evalfs uint64, varName string) (interface{}, bool) {
+	var EvalFail bool
+	EvalFail = false
 	val, found := vget(evalfs, varName)
 	if !found {
-        // pf("ERROR: Could not find variable '%s'\n",varName)
-        EvalFail=true
-    }
-    return val,EvalFail
+		// pf("ERROR: Could not find variable '%s'\n",varName)
+		EvalFail = true
+	}
+	return val, EvalFail
 }
 
 func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} {
 
-    var ifield string
+	var ifield string
 
-    switch field.(type) {
-    case string:
-        ifield=field.(string)
-    case int:
-        ifield=sf("%v",field)
-    }
+	switch field := field.(type) {
+	case string:
+		ifield = field
+	case int:
+		ifield = sf("%v", field)
+	}
 
 	// types
-	switch obj.(type) {
-    case string:
-        vg,_:=vgetElement(evalfs,obj.(string),ifield)
-        return vg
+	switch obj := obj.(type) {
+	case string:
+		vg, _ := vgetElement(evalfs, obj, ifield)
+		return vg
 	case map[string]string:
-		return obj.(map[string]string)[ifield]
+		return obj[ifield]
 	case map[string]float64:
-		return obj.(map[string]float64)[ifield]
+		return obj[ifield]
 	case map[string]int:
-		return obj.(map[string]int)[ifield]
+		return obj[ifield]
 	case map[string]uint8:
-		return obj.(map[string]uint8)[ifield]
+		return obj[ifield]
 	case map[string]interface{}:
-		return obj.(map[string]interface{})[ifield]
-    case http.Header:
-         r := reflect.ValueOf(obj.(http.Header))
-         f := reflect.Indirect(r).FieldByName(ifield)
-         return f
-    case webstruct:
-         r := reflect.ValueOf(obj.(webstruct))
-         f := reflect.Indirect(r).FieldByName(ifield)
-         return f
-    default:
-         pf("unknown type in accessField: %T for obj %+v\n",obj,obj)
+		return obj[ifield]
+	case http.Header:
+		r := reflect.ValueOf(obj)
+		f := reflect.Indirect(r).FieldByName(ifield)
+		return f
+	case webstruct:
+		r := reflect.ValueOf(obj)
+		f := reflect.Indirect(r).FieldByName(ifield)
+		return f
+	default:
+		pf("unknown type in accessField: %T for obj %+v\n", obj, obj)
 	}
 
 	idx, invalid := GetAsInt(ifield)
-	if invalid || idx<0 {
-		panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
+	if invalid || idx < 0 {
+		panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)", ifield))
 	}
 
-    pf("ev-af %v[%v]\n",obj,idx)
-	switch obj.(type) {
+	pf("ev-af %v[%v]\n", obj, idx)
+	switch obj := obj.(type) {
 	case []string:
-		return obj.([]string)[idx]
+		return obj[idx]
 	case [][]string:
-		return obj.([][]string)[idx]
+		return obj[idx]
 	case []bool:
-		return obj.([]bool)[idx]
+		return obj[idx]
 	case [][]bool:
-		return obj.([][]bool)[idx]
+		return obj[idx]
 	case []int:
-		return obj.([]int)[idx]
+		return obj[idx]
 	case [][]int:
-		return obj.([][]int)[idx]
+		return obj[idx]
 	case []uint8:
-		return obj.([]uint8)[idx]
+		return obj[idx]
 	case [][]uint8:
-		return obj.([][]uint8)[idx]
+		return obj[idx]
 	case []float64:
-		return obj.([]float64)[idx]
+		return obj[idx]
 	case [][]float64:
-		return obj.([][]float64)[idx]
+		return obj[idx]
 	case []interface{}:
-		return obj.([]interface{})[idx]
+		return obj[idx]
 	case [][]interface{}:
-		return obj.([][]interface{})[idx]
+		return obj[idx]
 	default:
 		strVal := sf("%#v", obj)
 		structOfString := `[]interface {}{"`
@@ -635,38 +660,40 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
 		lmv, isFunc := fnlookup.lmget(name)
 		if isFunc {
 
-            var valid bool
+			var valid bool
 
 			// make Za function call
-            // debug(20,"gnfs called from callFunction()\n")
-            loc,id := GetNextFnSpace(name+"@")
+			// debug(20,"gnfs called from callFunction()\n")
+			loc, id := GetNextFnSpace(name + "@")
 
-            if lockSafety { calllock.Lock() }
+			if lockSafety {
+				calllock.Lock()
+			}
 			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, retvar: "@temp"}
-            if lockSafety { calllock.Unlock() }
+			if lockSafety {
+				calllock.Unlock()
+			}
 
 			Call(MODE_NEW, loc, args...)
 
 			// handle the returned result, if present.
-            res, valid = vget(evalfs, "@temp")
-            if !valid {
-                return nil
-            }
+			res, valid = vget(evalfs, "@temp")
+			if !valid {
+				return nil
+			}
 
-            return res
+			return res
 
 		} else {
-		    // no? now panic
-		    panic(fmt.Errorf("syntax error: no such function %q", name))
-        }
+			// no? now panic
+			panic(fmt.Errorf("syntax error: no such function %q", name))
+		}
 	} else {
-        // call standard function
-        res, err := f(evalfs,args...)
-        if err != nil {
-            panic(fmt.Errorf("function error: %s", err))
-        }
-        return res
-    }
+		// call standard function
+		res, err := f(evalfs, args...)
+		if err != nil {
+			panic(fmt.Errorf("function error: %s", err))
+		}
+		return res
+	}
 }
-
-
