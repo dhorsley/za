@@ -883,14 +883,14 @@ tco_reentry:
                     vset(ga, aryName, make(map[string]interface{}, 31))
                 }
 
-                switch element.(type) {
+                switch element:=element.(type) {
                 case string:
-                    inter,_:=interpolate(ifs,element.(string),true)
+                    inter,_:=interpolate(ifs,element,true)
                     vsetElement(ga, aryName, inter, expr.result)
                 case int:
                     // error on negative element
-                    if element.(int)<0 {
-                        report(ifs,lastline, sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element.(int)))
+                    if element<0 {
+                        report(ifs,lastline, sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element))
                         finish(false,ERR_EVAL)
                         break
                     }
@@ -1676,10 +1676,10 @@ tco_reentry:
 
                 cp, _, _ := ev(ifs, inbound.Tokens[2].tokText, true,true)
 
-                switch cp.(type) {
+                switch cp:=cp.(type) {
                 case string:
-                    setPane(cp.(string))
-                    currentpane = cp.(string)
+                    setPane(cp)
+                    currentpane = cp
 
                 default:
                     report(ifs, lastline, "Warning: you must provide a string value to PANE SELECT.")
@@ -2850,7 +2850,7 @@ tco_reentry:
 
             case C_Or: // default
 
-                if carton.dodefault == false {
+                if !carton.dodefault {
                     pc = carton.endLine - 1
                     ramble_on = false
                 } else {
@@ -3327,15 +3327,15 @@ tco_reentry:
                     // is a var?
                     v,ok:=vget(ifs,inbound.Tokens[2].tokText)
                     if ok {
-                        switch v.(type) {
+                        switch v:=v.(type) {
                         case uint8:
-                            ampl,_ = GetAsInt(v.(uint8))
+                            ampl,_ = GetAsInt(v)
                         case int32:
-                            ampl,_ = GetAsInt(v.(int32))
+                            ampl,_ = GetAsInt(v)
                         case int64:
-                            ampl,_ = GetAsInt(v.(int64))
+                            ampl,_ = GetAsInt(v)
                         case int:
-                            ampl = v.(int)
+                            ampl = v
                         default:
                             report(ifs,lastline, sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
                             finish(false,ERR_EVAL)
@@ -3613,7 +3613,7 @@ func ShowDef(fn string) bool {
         first := true
         for q := range functionspaces[ifn] {
             strOut := "\t\t "
-            if first == true {
+            if first {
                 first = false
                 strOut = sf("\n%s(%v)\n\t\t ", fn, str.Join(functionArgs[ifn], ","))
             }

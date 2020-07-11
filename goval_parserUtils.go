@@ -410,26 +410,26 @@ func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}
 func convertToInt(ar interface{}) []int {
     var v interface{}
     var i int
-    switch ar.(type) {
+    switch ar:=ar.(type) {
     case []float32:
-        newar := make([]int, len(ar.([]float32)))
-        for i, v = range ar.([]float32) { newar[i],_ = GetAsInt(v) }
+        newar := make([]int, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
     case []float64:
-        newar := make([]int, len(ar.([]float64)))
-        for i, v = range ar.([]float64) { newar[i],_ = GetAsInt(v) }
+        newar := make([]int, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
     case []int32:
-        newar := make([]int, len(ar.([]int32)))
-        for i, v = range ar.([]int32) { newar[i],_ = GetAsInt(v) }
+        newar := make([]int, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
     case []int:
-        newar := make([]int, len(ar.([]int)))
-        for i, v = range ar.([]int) { newar[i],_ = GetAsInt(v) }
+        newar := make([]int, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
     case []int64:
-        newar := make([]int, len(ar.([]int64)))
-        for i, v = range ar.([]int64) { newar[i],_ = GetAsInt(v) }
+        newar := make([]int, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
     default:
         panic(fmt.Errorf("type error: cannot convert from %T to int",ar))
@@ -440,26 +440,26 @@ func convertToInt(ar interface{}) []int {
 func convertToFloat64(ar interface{}) []float64 {
     var v interface{}
     var i int
-    switch ar.(type) {
+    switch ar:=ar.(type) {
     case []float32:
-        newar := make([]float64, len(ar.([]float32)))
-        for i, v = range ar.([]float32) { newar[i],_ = GetAsFloat(v) }
+        newar := make([]float64, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
     case []float64:
-        newar := make([]float64, len(ar.([]float64)))
-        for i, v = range ar.([]float64) { newar[i],_ = GetAsFloat(v) }
+        newar := make([]float64, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
     case []int32:
-        newar := make([]float64, len(ar.([]int32)))
-        for i, v = range ar.([]int32) { newar[i],_ = GetAsFloat(v) }
+        newar := make([]float64, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
     case []int:
-        newar := make([]float64, len(ar.([]int)))
-        for i, v = range ar.([]int) { newar[i],_ = GetAsFloat(v) }
+        newar := make([]float64, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
     case []int64:
-        newar := make([]float64, len(ar.([]int64)))
-        for i, v = range ar.([]int64) { newar[i],_ = GetAsFloat(v) }
+        newar := make([]float64, len(ar))
+        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
     default:
 		panic(fmt.Errorf("type error: cannot convert from %T to float",ar))
@@ -489,26 +489,26 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
     }
 
 	// types
-	switch obj.(type) {
+    switch obj:=obj.(type) {
     case string:
-        vg,_:=vgetElement(evalfs,obj.(string),ifield)
+        vg,_:=vgetElement(evalfs,obj,ifield)
         return vg
 	case map[string]string:
-		return obj.(map[string]string)[ifield]
+		return obj[ifield]
 	case map[string]float64:
-		return obj.(map[string]float64)[ifield]
+		return obj[ifield]
 	case map[string]int:
-		return obj.(map[string]int)[ifield]
+		return obj[ifield]
 	case map[string]uint8:
-		return obj.(map[string]uint8)[ifield]
+		return obj[ifield]
 	case map[string]interface{}:
-		return obj.(map[string]interface{})[ifield]
+		return obj[ifield]
     case http.Header:
-         r := reflect.ValueOf(obj.(http.Header))
+         r := reflect.ValueOf(obj)
          f := reflect.Indirect(r).FieldByName(ifield)
          return f
     case webstruct:
-         r := reflect.ValueOf(obj.(webstruct))
+         r := reflect.ValueOf(obj)
          f := reflect.Indirect(r).FieldByName(ifield)
          return f
     default:
@@ -520,32 +520,32 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
 		panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
 	}
 
-    pf("ev-af %v[%v]\n",obj,idx)
-	switch obj.(type) {
+    // pf("ev-af %v[%v]\n",obj,idx)
+    switch obj:=obj.(type) {
 	case []string:
-		return obj.([]string)[idx]
-	case [][]string:
-		return obj.([][]string)[idx]
+		return obj[idx]
 	case []bool:
-		return obj.([]bool)[idx]
-	case [][]bool:
-		return obj.([][]bool)[idx]
+		return obj[idx]
 	case []int:
-		return obj.([]int)[idx]
-	case [][]int:
-		return obj.([][]int)[idx]
+		return obj[idx]
 	case []uint8:
-		return obj.([]uint8)[idx]
-	case [][]uint8:
-		return obj.([][]uint8)[idx]
+		return obj[idx]
+	case [][]bool:
+		return obj[idx]
+	case [][]string:
+		return obj[idx]
 	case []float64:
-		return obj.([]float64)[idx]
+		return obj[idx]
+	case [][]int:
+		return obj[idx]
+	case [][]uint8:
+		return obj[idx]
 	case [][]float64:
-		return obj.([][]float64)[idx]
-	case []interface{}:
-		return obj.([]interface{})[idx]
+		return obj[idx]
 	case [][]interface{}:
-		return obj.([][]interface{})[idx]
+		return obj[idx]
+	case []interface{}:
+		return obj[idx]
 	default:
 		strVal := sf("%#v", obj)
 		structOfString := `[]interface {}{"`

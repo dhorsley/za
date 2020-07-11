@@ -95,37 +95,37 @@ func vdelete(fs uint64, name string, ename string) {
 
     if _, ok := VarLookup(fs, name); ok {
         m,_:=vget(fs,name)
-        switch m.(type) {
+        switch m:=m.(type) {
         case map[string]interface{}:
-            delete(m.(map[string]interface{}),ename)
-            vset(fs,name,m.(map[string]interface{}))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string][]string:
-            delete(m.(map[string][]string),ename)
-            vset(fs,name,m.(map[string][]string))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]string:
-            delete(m.(map[string]string),ename)
-            vset(fs,name,m.(map[string]string))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]int:
-            delete(m.(map[string]int),ename)
-            vset(fs,name,m.(map[string]int))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]int32:
-            delete(m.(map[string]int32),ename)
-            vset(fs,name,m.(map[string]int32))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]int64:
-            delete(m.(map[string]int64),ename)
-            vset(fs,name,m.(map[string]int64))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]uint8:
-            delete(m.(map[string]uint8),ename)
-            vset(fs,name,m.(map[string]uint8))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]uint64:
-            delete(m.(map[string]uint64),ename)
-            vset(fs,name,m.(map[string]uint64))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]float64:
-            delete(m.(map[string]float64),ename)
-            vset(fs,name,m.(map[string]float64))
+            delete(m,ename)
+            vset(fs,name,m)
         case map[string]bool:
-            delete(m.(map[string]bool),ename)
-            vset(fs,name,m.(map[string]bool))
+            delete(m,ename)
+            vset(fs,name,m)
         }
     }
 }
@@ -176,41 +176,41 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
     var v interface{}
     if _, ok := VarLookup(fs, name); ok {
         v, ok = vget(fs, name)
-        switch v.(type) {
+        switch v:=v.(type) {
         case map[string]interface{}:
             // pf("*debug* vgetElement: ifs %v name %v v %v el %v\n",fs,name,v,el)
             // pf(" content : |%v|\n",v.(map[string]interface{})[el])
-            return v.(map[string]interface{})[el], ok
+            return v[el], ok
         case http.Header:
-            return v.(http.Header)[el], ok
+            return v[el], ok
         case map[string]int:
-            return v.(map[string]int)[el], ok
+            return v[el], ok
         case map[string]float64:
-            return v.(map[string]float64)[el], ok
+            return v[el], ok
         case map[string][]string:
-            return v.(map[string][]string)[el], ok
+            return v[el], ok
         case map[string]string:
-            return v.(map[string]string)[el], ok
+            return v[el], ok
         case map[string]bool:
-            return v.(map[string]bool)[el], ok
+            return v[el], ok
         case []int:
             iel,_:=GetAsInt(el)
-            return v.([]int)[iel],ok
+            return v[iel],ok
         case []bool:
             iel,_:=GetAsInt(el)
-            return v.([]bool)[iel],ok
+            return v[iel],ok
         case []float64:
             iel,_:=GetAsInt(el)
-            return v.([]float64)[iel],ok
+            return v[iel],ok
         case []string:
             iel,_:=GetAsInt(el)
-            return v.([]string)[iel],ok
+            return v[iel],ok
         case string:
             iel,_:=GetAsInt(el)
-            return string(v.(string)[iel]),ok
+            return string(v[iel]),ok
         case []interface{}:
             iel,_:=GetAsInt(el)
-            return v.([]interface{})[iel],ok
+            return v[iel],ok
         default:
             // pf("Unknown type in %v[%v] (%T)\n",name,el,v)
             iel,_:=GetAsInt(el)
@@ -452,7 +452,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         if strcmp(os,s) {
             redo:=true
-            for ;redo==true; {
+            for ;redo; {
                 modified:=false
                 for p:=0;p<len(s);p++ {
                     if s[p]=='{' {
