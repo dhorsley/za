@@ -623,7 +623,7 @@ func buildStringLib() {
             fs=args[1].(string)
         }
         // all okay...
-        return str.Join(ary, fs), nil
+        return str.Join(ary[:], fs), nil
     }
 
     slhelp["collapse"] = LibHelp{in: "string", out: "string", action: "Turns a newline separated string into a space separated string."}

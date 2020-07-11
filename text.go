@@ -2,7 +2,7 @@ package main
 
 import (
 	"unicode/utf8"
-	//    "os"
+//    "os"
 )
 
 func lastCharSize(s string) int {
@@ -12,11 +12,12 @@ func lastCharSize(s string) int {
 
 func pad(s string, just int, w int, fill string) string {
 
-	if s == "" {
-		return ""
-	}
+    if s=="" {
+       return ""
+    }
 
-	var ls int = utf8.RuneCountInString(StripCC(s))
+	var ls int
+	ls = utf8.RuneCountInString(StripCC(s))
 	if ls == 0 {
 		return ""
 	}
@@ -25,7 +26,7 @@ func pad(s string, just int, w int, fill string) string {
 
 	case -1:
 		// left
-		return s + rep(fill, w-ls)
+		return s + rep(fill,w-ls)
 
 	case 1:
 		// right
@@ -54,10 +55,10 @@ func pad(s string, just int, w int, fill string) string {
 
 func stripOuter(s string, c byte) string {
 	if len(s) > 0 && s[0] == c {
-		s = s[1:]
+        s=s[1:]
 	}
 	if len(s) > 1 && s[len(s)-1] == c {
-		s = s[:len(s)-1]
+        s=s[:len(s)-1]
 	}
 	return s
 }
@@ -103,3 +104,4 @@ func hasOuterSingleQuotes(s string) bool {
 func hasOuterDoubleQuotes(s string) bool {
 	return hasOuter(s, '"')
 }
+
