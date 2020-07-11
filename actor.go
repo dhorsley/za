@@ -2994,7 +2994,7 @@ tco_reentry:
 
 			case C_Or: // default
 
-				if carton.dodefault == false {
+				if !carton.dodefault {
 					pc = carton.endLine - 1
 					ramble_on = false
 				} else {
@@ -3786,7 +3786,7 @@ func ShowDef(fn string) bool {
 		first := true
 		for q := range functionspaces[ifn] {
 			strOut := "\t\t "
-			if first == true {
+			if first {
 				first = false
 				strOut = sf("\n%s(%v)\n\t\t ", fn, str.Join(functionArgs[ifn], ","))
 			}
