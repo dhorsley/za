@@ -1,0 +1,33 @@
+
+[93m[4m[1mZa Test[0m
+
+Testing : package on linux-gnu
+
+
+    We should add more tests for local file and repository installs/uninstalls.
+
+
+Test Section : [96m[1mpackage/vcmp[22m[0m
+[92mTEST PASSED package/vcmp (main/line 21) : vcmp("1.0.0","0.9.9")==1[0m
+[92mTEST PASSED package/vcmp (main/line 22) : vcmp("1.0.0","1.0.0")==0[0m
+[92mTEST PASSED package/vcmp (main/line 23) : vcmp("1.0.0","19.0.1")==-1[0m
+
+Test Section : [96m[1mpackage/is_installed[22m[0m
+[92mTEST PASSED package/is_installed (main/line 27) : is_installed("binutils")[0m
+[92mTEST PASSED package/is_installed (main/line 28) : !is_installed("za-pkg")[0m
+
+Test Section : [96m[1mpackage/service[22m[0m
+Need to install a dummy service here. This one (systemd-timesyncd) won't be available everywhere.
+[92mTEST PASSED package/service (main/line 56) : stopmsg==filter(realstop,stopreg)[0m
+[92mTEST PASSED package/service (main/line 57) : startmsg==filter(realstart,startreg)[0m
+[92mTEST PASSED package/service (main/line 59) : ( st1 && stop && start )[0m
+
+Test Section : [96m[1mpackage/install[22m[0m
+[91mTEST FAILED package/install (main/line 71) : false[0m
+
+Test Section : [96m[1mpackage/uninstall[22m[0m
+[92mTEST PASSED package/uninstall (main/line 79) : last()!=0[0m
+
+[93mTests Performed 10 -- Tests Failed 1 -- Tests Passed 9[0m
+
+
