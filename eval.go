@@ -472,7 +472,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string, bool) {
 		// if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
 		if strcmp(os, s) {
 			redo := true
-			for redo == true {
+			for redo {
 				modified := false
 				for p := 0; p < len(s); p++ {
 					if s[p] == '{' {
