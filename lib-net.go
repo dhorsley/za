@@ -1062,15 +1062,15 @@ func post(loc string,valueMap interface{}) ([]byte,bool) {
     // tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
     // client := &http.Client{Transport: tr}
     vlist := url.Values{}
-    switch valueMap.(type) {
+    switch valueMap:=valueMap.(type) {
     case map[string]interface{}:
-        for k,val := range valueMap.(map[string]interface{}) { vlist.Set(k,sf("%v",val)) }
+        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]int:
-        for k,val := range valueMap.(map[string]int) { vlist.Set(k,sf("%v",val)) }
+        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]float64:
-        for k,val := range valueMap.(map[string]float64) { vlist.Set(k,sf("%v",val)) }
+        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]string:
-        for k,val := range valueMap.(map[string]string) { vlist.Set(k,sf("%v",val)) }
+        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     default:
         return []byte{},false
     }

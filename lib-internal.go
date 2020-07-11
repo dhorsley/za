@@ -27,43 +27,43 @@ const (
 )
 
 func ulen(args interface{}) (int,error) {
-    switch args.(type) { // i'm getting fed up of typing these case statements!!
+    switch args:=args.(type) { // i'm getting fed up of typing these case statements!!
     case string:
-        return utf8.RuneCountInString(args.(string)),nil
+        return utf8.RuneCountInString(args),nil
     case []string:
-        return len(args.([]string)),nil
+        return len(args),nil
     case []interface{}:
-        return len(args.([]interface{})),nil
+        return len(args),nil
     case []int:
-        return len(args.([]int)),nil
+        return len(args),nil
     case []int32:
-        return len(args.([]int32)),nil
+        return len(args),nil
     case []int64:
-        return len(args.([]int64)),nil
+        return len(args),nil
     case []uint8:
-        return len(args.([]uint8)),nil
+        return len(args),nil
     case []float64:
-        return len(args.([]float64)),nil
+        return len(args),nil
     case []bool:
-        return len(args.([]bool)),nil
+        return len(args),nil
     case []map[string]interface{}:
-        return len(args.([]map[string]interface{})),nil
+        return len(args),nil
     case map[string]float64:
-        return len(args.(map[string]float64)),nil
+        return len(args),nil
     case map[string]interface{}:
-        return len(args.(map[string]interface{})),nil
+        return len(args),nil
     case map[string]string:
-        return len(args.(map[string]string)),nil
+        return len(args),nil
     case map[string]int:
-        return len(args.(map[string]int)),nil
+        return len(args),nil
     case map[string]bool:
-        return len(args.(map[string]bool)),nil
+        return len(args),nil
     case map[string]int32:
-        return len(args.(map[string]int32)),nil
+        return len(args),nil
     case map[string]int64:
-        return len(args.(map[string]int64)),nil
+        return len(args),nil
     case map[string]uint8:
-        return len(args.(map[string]uint8)),nil
+        return len(args),nil
     }
     return -1,errors.New(sf("Unknown type '%T'",args))
 }
@@ -498,25 +498,25 @@ func buildInternalLib() {
 
         key,_:=interpolate(evalfs,args[1].(string),true)
 
-        switch v.(type) {
-        case map[string]interface{}:
-            if _, found = v.(map[string]interface{})[key];   found { return true, nil }
+        switch v:=v.(type) {
         case http.Header:
-            if _, found = v.(http.Header)[key];   found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]float64:
-            if _, found = v.(map[string]float64)[key];       found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]uint8:
-            if _, found = v.(map[string]uint8) [key];        found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]int64:
-            if _, found = v.(map[string]int64) [key];        found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]int32:
-            if _, found = v.(map[string]int32) [key];        found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]int:
-            if _, found = v.(map[string]int) [key];          found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]bool:
-            if _, found = v.(map[string]bool)[key];          found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
         case map[string]string:
-            if _, found = v.(map[string]string)[key];        found { return true, nil }
+            if _, found = v[key];   found { return true, nil }
+        case map[string]interface{}:
+            if _, found = v[key];   found { return true, nil }
         default:
             pf("unknown type: %T\n",v); os.Exit(0)
         }
