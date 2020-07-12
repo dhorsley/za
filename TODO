@@ -2,8 +2,24 @@
 
 
 1.1.0   will be the release version
+
 1.0.9   bug fixes and documentation updates
     * more example code
+
+
+CHECKLIST BEFORE 1.1.0
+
+    * example code in library docs (pulldoc gen)
+    * more deepsource.io fixes
+    * typo/doc fixes (website and source)
+    * no new functionality!!!
+    * fixup go tests?
+    * merge appends?
+    * console_windows consolidation review
+    * test merging of type assertions
+    * remove deprecated features and options (startup options, dead code, unused funcs)
+    * re-order cases to place interface{} types at end of case lists
+
 
 ---------------------------------------------------------------------------------------------
 

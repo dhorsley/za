@@ -96,9 +96,6 @@ func vdelete(fs uint64, name string, ename string) {
     if _, ok := VarLookup(fs, name); ok {
         m,_:=vget(fs,name)
         switch m:=m.(type) {
-        case map[string]interface{}:
-            delete(m,ename)
-            vset(fs,name,m)
         case map[string][]string:
             delete(m,ename)
             vset(fs,name,m)
@@ -124,6 +121,9 @@ func vdelete(fs uint64, name string, ename string) {
             delete(m,ename)
             vset(fs,name,m)
         case map[string]bool:
+            delete(m,ename)
+            vset(fs,name,m)
+        case map[string]interface{}:
             delete(m,ename)
             vset(fs,name,m)
         }
@@ -162,7 +162,6 @@ func vset(fs uint64, name string, value interface{}) bool {
             ident[fs][varcount[fs]] = Variable{iName: name, iValue: value}
         }
 
-        // vmap[fs][name]=varcount[fs]
         varcount[fs]++
 
     }
@@ -177,10 +176,6 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
     if _, ok := VarLookup(fs, name); ok {
         v, ok = vget(fs, name)
         switch v:=v.(type) {
-        case map[string]interface{}:
-            // pf("*debug* vgetElement: ifs %v name %v v %v el %v\n",fs,name,v,el)
-            // pf(" content : |%v|\n",v.(map[string]interface{})[el])
-            return v[el], ok
         case http.Header:
             return v[el], ok
         case map[string]int:
@@ -208,6 +203,8 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
         case string:
             iel,_:=GetAsInt(el)
             return string(v[iel]),ok
+        case map[string]interface{}:
+            return v[el], ok
         case []interface{}:
             iel,_:=GetAsInt(el)
             return v[iel],ok
@@ -316,6 +313,11 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
             }
             list.([]float64)[numel],_ = GetAsFloat(value) // convertToFloat64(value)
 
+        case map[string]int:            // pass straight through to vset
+        case map[string]float64:        // pass straight through to vset
+        case map[string]bool:           // pass straight through to vset
+        case map[string]interface{}:    // pass straight through to vset
+
         case []interface{}:
             sz:=cap(list.([]interface{}))
             barrier:=sz/4
@@ -329,11 +331,6 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
                 list=newar
             }
             list.([]interface{})[numel] = value
-
-        case map[string]int:            // pass straight through to vset
-        case map[string]float64:        // pass straight through to vset
-        case map[string]bool:           // pass straight through to vset
-        case map[string]interface{}:    // pass straight through to vset
 
         default:
             pf("DEFAULT: Unknown type %T for list %s\n",list,name)
@@ -391,8 +388,6 @@ func escape(str string) string {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
-    // @note: re-enable these locks if there are any problems.
-
      if lockSafety {
         lastlock.RLock()
         defer lastlock.RUnlock()
@@ -404,23 +399,9 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     // should finish sooner if no curly open brace in string.
 
-    // manually inlining this to see if the average time comes down
-    //  when we avoid indexbyte. this will only help when the match
-    //  is found in the first few (4?) bytes?
-
-    p:=-1
-    for p=range s {
-        if s[p]=='{' { continue }
-    }
-    if p==-1 {
-        return s,false
-    }
-
-    /*
     if str.IndexByte(s, '{') == -1 {
         return s,false
     }
-    */
 
     // we need the extra loops to deal with embedded indirection
     for {
