@@ -58,19 +58,17 @@ func finish(hard bool, i int) {
 }
 
 
+// slightly faster string comparison.
 // have to use gotos here as loops can't be inlined
 func strcmp(a string, b string) (bool) {
     if len(a)==0 && len(b)==0  { return true }
     if len(a)!=len(b)   { return false }
     if a[0]!=b[0]       { return false }
-    i:=0
+    i:=0; la:=len(a)
     strcmp_repeat_point:
-    // for i:=0 ; i<rlen(a); i++ {
         if a[i]!=b[i] { return false }
         i++
-    if i<len(a) { goto strcmp_repeat_point }
-    // if a[i]!=b[i]   { return false }
-    // }
+    if i<la { goto strcmp_repeat_point }
     return true
 }
 
@@ -150,10 +148,10 @@ func GetAsInt32(expr interface{}) (int32, bool) {
         return int32(i), false
     case int:
         return int32(i), false
-    case int32:
-        return int32(i), false
     case int64:
         return int32(i), false
+    case int32:
+        return i, false
     case string:
         p, e := strconv.ParseFloat(i, 64)
         if e == nil {
@@ -177,12 +175,12 @@ func GetAsInt(expr interface{}) (int, bool) {
         return int(i), false
     case uint64:
         return int(i), false
-    case int:
-        return int(i), false
     case int32:
         return int(i), false
     case int64:
         return int(i), false
+    case int:
+        return i, false
     case string:
         p, e := strconv.ParseFloat(i, 64)
         if e == nil {
@@ -273,7 +271,7 @@ func searchToken(base uint64, start int, end int, sval string) bool {
             if v.Tokens[r].tokType == Identifier && v.Tokens[r].tokText == sval {
                 return true
             }
-            // check for direct reference
+            // c,heck for direct reference
             if str.Contains(v.Tokens[r].tokText, sval) {
                 return true
             }
@@ -969,8 +967,6 @@ tco_reentry:
                     l=len(lv)
                 case []string:
                     l=len(lv)
-                case []interface{}:
-                    l=len(lv)
                 case []int:
                     l=len(lv)
                 case []int32:
@@ -983,10 +979,6 @@ tco_reentry:
                     l=len(lv)
                 case []uint8:
                     l=len(lv)
-                case map[string]interface{}:
-                    l=len(lv)
-                case []map[string]interface{}:
-                    l=len(lv)
                 case map[string]string:
                     l=len(lv)
                 case map[string][]string:
@@ -996,6 +988,12 @@ tco_reentry:
                 case map[string][]bool:
                     l=len(lv)
                 case map[string][]float64:
+                    l=len(lv)
+                case []map[string]interface{}:
+                    l=len(lv)
+                case map[string]interface{}:
+                    l=len(lv)
+                case []interface{}:
                     l=len(lv)
                 default:
                     pf("Unknown loop type [%T]\n",lv)
@@ -1111,42 +1109,6 @@ tco_reentry:
                             ce = len(finalExprArray.(map[string][]string)) - 1
                         }
 
-                    case map[string]interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string]interface{})) > 0 {
-
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string]interface{})).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            } else {
-                                // empty
-                            }
-                            ce = len(finalExprArray.(map[string]interface{})) - 1
-                        }
-
-                    case []map[string]interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]map[string]interface{})) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]map[string]interface{})[0])
-                            ce = len(finalExprArray.([]map[string]interface{})) - 1
-                        }
-
-                    case []interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]interface{})) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]interface{})[0])
-                            ce = len(finalExprArray.([]interface{})) - 1
-                        }
-
                     case []float64:
 
                         finalExprArray = expr
@@ -1218,6 +1180,42 @@ tco_reentry:
                             vset(ifs, "key_"+fid, 0)
                             vset(ifs, fid, finalExprArray.([]string)[0])
                             ce = len(finalExprArray.([]string)) - 1
+                        }
+
+                    case []map[string]interface{}:
+
+                        finalExprArray = expr
+                        if len(finalExprArray.([]map[string]interface{})) > 0 {
+                            vset(ifs, "key_"+fid, 0)
+                            vset(ifs, fid, finalExprArray.([]map[string]interface{})[0])
+                            ce = len(finalExprArray.([]map[string]interface{})) - 1
+                        }
+
+                    case map[string]interface{}:
+
+                        finalExprArray = expr
+                        if len(finalExprArray.(map[string]interface{})) > 0 {
+
+                            // get iterator for this map
+                            iter = reflect.ValueOf(finalExprArray.(map[string]interface{})).MapRange()
+
+                            // set initial key and value
+                            if iter.Next() {
+                                vset(ifs, "key_"+fid, iter.Key().String())
+                                vset(ifs, fid, iter.Value().Interface())
+                            } else {
+                                // empty
+                            }
+                            ce = len(finalExprArray.(map[string]interface{})) - 1
+                        }
+
+                    case []interface{}:
+
+                        finalExprArray = expr
+                        if len(finalExprArray.([]interface{})) > 0 {
+                            vset(ifs, "key_"+fid, 0)
+                            vset(ifs, fid, finalExprArray.([]interface{})[0])
+                            ce = len(finalExprArray.([]interface{})) - 1
                         }
 
                     default:
@@ -1429,12 +1427,6 @@ tco_reentry:
                                     vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
                                     vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                                 }
-                            case []map[string]interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).ecounter])
-                            case []interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).ecounter])
                             case []bool:
                                 vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
                                 vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).ecounter])
@@ -1459,6 +1451,12 @@ tco_reentry:
                             case []float64:
                                 vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
                                 vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter])
+                            case []map[string]interface{}:
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).ecounter])
+                            case []interface{}:
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).ecounter])
                             default:
                                 // @note: should put a proper exit in here.
                                 pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter]))
@@ -3328,12 +3326,14 @@ tco_reentry:
                     v,ok:=vget(ifs,inbound.Tokens[2].tokText)
                     if ok {
                         switch v:=v.(type) {
-                        case uint8:
+                        case uint8,int32,int64,uint32,uint64:
                             ampl,_ = GetAsInt(v)
+                        /*
                         case int32:
                             ampl,_ = GetAsInt(v)
                         case int64:
                             ampl,_ = GetAsInt(v)
+                        */
                         case int:
                             ampl = v
                         default:
@@ -3377,7 +3377,6 @@ tco_reentry:
                     if sqPos=str.IndexByte(id,'['); sqPos!=-1 {
                         sqEndPos=str.IndexByte(id,']')
                         elementComponents=stripOuter(id[sqPos+1:sqEndPos],'"')
-                        // pf("parts: %v [ %v ]\n",id[:sqPos],elementComponents)
                         val, found = vgetElement(ifs,id[:sqPos],elementComponents)
                         isArray = true
                     } else {
@@ -3388,8 +3387,7 @@ tco_reentry:
                     if found {
                         switch val.(type) {
                         case int:
-                            // val,_=GetAsInt(val)
-                            ival=int(val.(int))
+                            ival=val.(int)
                         case uint64:
                             ival=int(val.(uint64))
                         case int32:
@@ -3397,15 +3395,12 @@ tco_reentry:
                         case int64:
                             ival=int(val.(int64))
                         case uint8:
-                            // val,_=GetAsInt(val)
                             ival=int(val.(uint8))
                         default:
                             report(ifs,lastline, sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                         }
-                    // } else {
-                    //    val=0
                     }
 
 
@@ -3414,18 +3409,14 @@ tco_reentry:
                         switch statement.tokType {
                         case C_Inc:
                             if isArray {
-                                // vsetElement(ifs,id[:sqPos],elementComponents,val.(int)+ampl)
                                 vsetElement(ifs,id[:sqPos],elementComponents,ival+ampl)
                             } else {
-                                // vset(ifs, id, val.(int)+ampl)
                                 vset(ifs, id, ival+ampl)
                             }
                         case C_Dec:
                             if isArray {
-                                // vsetElement(ifs,id[:sqPos],elementComponents,val.(int)-ampl)
                                 vsetElement(ifs,id[:sqPos],elementComponents,ival-ampl)
                             } else {
-                                // vset(ifs, id, val.(int)-ampl)
                                 vset(ifs, id, ival-ampl)
                             }
                         }
