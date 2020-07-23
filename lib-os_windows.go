@@ -39,7 +39,7 @@ func buildOsLib() {
 	features["os"] = Feature{version: 1, category: "os"}
 	categories["os"] = []string{"env", "get_env", "set_env", "cwd", "cd", "dir", "delete", "rename", "copy", }
 
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "array", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir key-value pairs. These specify filename, file mode, file size, modification time and directory status respectively."}
+    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]array_structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir key-value pairs. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)>2 { return nil,errors.New("Bad arguments (count) in dir()") }
         dir:="."; filter:="^.*$"

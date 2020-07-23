@@ -2,6 +2,10 @@
 
 # about as similar to processing.js example as you can do with text chars
 
+fps=20
+input in_fps optarg 1
+on in_fps!="" do fps=int(in_fps)
+
 define calcWave(theta,width,dx,amplitude)
     setglob theta = theta + 0.2
     x=float(theta)
@@ -12,14 +16,20 @@ define calcWave(theta,width,dx,amplitude)
     return yvalues
 enddef
 
-define renderWave(yvalues,height)
-    for x = 0 to len(yvalues)-1
-        y=int(height/2)+int(yvalues[x])
+define renderWave(yv,height,glyph)
+    on len(yv)==0 do return
+    on glyph=="" do glyph="·"
+    for x = 0 to len(yv)-1
+        y=int(height/2)+int(yv[x])
         at y,x+1
-        print "o"
+        print glyph
     endfor
 enddef
 
+define async_waitkey()
+    keypress()
+    setglob quit=true
+enddef
 
 #
 # MAIN
@@ -33,17 +43,30 @@ period = 120.0
 height=term_h()
 amplitude = int(height/2)
 width=term_w()
+yvalues=[]
 
 dx = (2.0*pi() / period)
 
-while true
-    cls
+
+# key loop
+quit=false
+async retmap async_waitkey()
+
+
+# display loop
+
+cursoroff()
+fps_pause=1000/fps
+while !quit
+    lastyary=yvalues
     yvalues=calcWave(theta,width,dx,amplitude)
+    renderWave(lastyary,height," ")
     renderWave(yvalues,height)
-    pause 50
+    at 1,1; print "FPS : {fps}"
+    pause fps_pause
 endwhile
 
 at term_h()-1,0 
-
+cursoron()
 
 

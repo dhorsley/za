@@ -96,7 +96,7 @@ func buildFileLib() {
 		return "", errors.New("Filename in read_file() must be a string.")
 	}
 
-	slhelp["write_file"] = LibHelp{in: "filename,variable,mode_number_or_string", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
+	slhelp["write_file"] = LibHelp{in: "filename,variable[,mode_number_or_string]", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
 	stdlib["write_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		var outVar string
 		var filename string

@@ -964,7 +964,7 @@ func buildNetLib() {
         return true,nil
     }
 
-    slhelp["web_get"] = LibHelp{in: "loc_string", out: "list", action: "Returns a [#i1]list[#i0] with content downloaded from [#i1]loc_string[#i0]. list[0] is the content string. list[1] is the header."}
+    slhelp["web_get"] = LibHelp{in: "loc_string", out: "[]list", action: "Returns a [#i1]list[#i0] with content downloaded from [#i1]loc_string[#i0]. list[0] is the content string. list[1] is the header."}
     stdlib["web_get"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return false,errors.New("Bad args (count) to web_get()") }
         s, down_code, header := download(args[0].(string))
@@ -974,7 +974,7 @@ func buildNetLib() {
         return []interface{}{string(s),header}, nil
     }
 
-    slhelp["web_custom"] = LibHelp{in: "method_string,loc_string,headers_array", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
+    slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
     stdlib["web_custom"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var method_string, loc_string string
         var headers =make(map[string]string)
@@ -1017,7 +1017,7 @@ func buildNetLib() {
         return []interface{}{"404 - Not found in web_custom()",nil,404},nil
     }
 
-    slhelp["web_post"] = LibHelp{in: "loc_string,key_value_list", out: "result_string", action: "Perform a HTTP POST."}
+    slhelp["web_post"] = LibHelp{in: "loc_string,[]key_value_list", out: "result_string", action: "Perform a HTTP POST."}
     stdlib["web_post"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 {
             return "",errors.New("invalid args to web_post()")
@@ -1063,13 +1063,13 @@ func post(loc string,valueMap interface{}) ([]byte,bool) {
     // client := &http.Client{Transport: tr}
     vlist := url.Values{}
     switch valueMap:=valueMap.(type) {
-    case map[string]interface{}:
-        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]int:
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]float64:
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]string:
+        for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
+    case map[string]interface{}:
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     default:
         return []byte{},false

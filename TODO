@@ -3,22 +3,16 @@
 
 1.1.0   will be the release version
 
-1.0.9   bug fixes and documentation updates
-    * more example code
-
-
-CHECKLIST BEFORE 1.1.0
-
-    * example code in library docs (pulldoc gen)
-    * more deepsource.io fixes
-    * typo/doc fixes (website and source)
     * no new functionality!!!
-    * fixup go tests?
-    * merge appends?
-    * console_windows consolidation review
-    * test merging of type assertions
+    * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
-    * re-order cases to place interface{} types at end of case lists
+    * review library features and REQUIRE functionality.
+
+
+1.0.9   bug fixes and documentation updates
+
+    * no new functionality!!!
+    * typo/doc fixes (website and source)
 
 
 ---------------------------------------------------------------------------------------------
@@ -40,9 +34,6 @@ LATER
         this affects keypress use with a timeout specified, as a timeout may occur before key up and debounce complete.
 
         * we either need to figure a way to make it wait patiently and report lag or put stricter limits in place.
-
-* console_windows is drifting quite far from console_linux now. not all functionality can be/needs to be ported over
-    to windows, but should do some of it at some point, in the distant future.
 
 * we could use some way of dealing with large files, for convenience. it isn't the goal of the language to handle this, 
     but it seems like an easy win. we can either add access to mmap methods of go libraries and/or some sequential and 

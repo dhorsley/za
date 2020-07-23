@@ -91,7 +91,7 @@ func buildConversionLib() {
 		return string(dec),nil
 	}
 
-	slhelp["json_decode"] = LibHelp{in: "string", out: "array", action: "Return a mixed type array representing a JSON string."}
+	slhelp["json_decode"] = LibHelp{in: "string", out: "[]mixed", action: "Return a mixed type array representing a JSON string."}
 	stdlib["json_decode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_decode()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_decode()") }
