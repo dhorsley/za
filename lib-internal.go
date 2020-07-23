@@ -32,8 +32,6 @@ func ulen(args interface{}) (int,error) {
         return utf8.RuneCountInString(args),nil
     case []string:
         return len(args),nil
-    case []interface{}:
-        return len(args),nil
     case []int:
         return len(args),nil
     case []int32:
@@ -46,11 +44,7 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case []bool:
         return len(args),nil
-    case []map[string]interface{}:
-        return len(args),nil
     case map[string]float64:
-        return len(args),nil
-    case map[string]interface{}:
         return len(args),nil
     case map[string]string:
         return len(args),nil
@@ -64,6 +58,12 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case map[string]uint8:
         return len(args),nil
+    case []map[string]interface{}:
+        return len(args),nil
+    case map[string]interface{}:
+        return len(args),nil
+    case []interface{}:
+        return len(args),nil
     }
     return -1,errors.New(sf("Unknown type '%T'",args))
 }
@@ -76,8 +76,6 @@ func getMemUsage() (uint64,uint64) {
 
 func buildInternalLib() {
 
-    // language
-
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
@@ -89,7 +87,7 @@ func buildInternalLib() {
     }
 
 
-    slhelp["zinfo"] = LibHelp{in: "", out: "build info list", action: "internal info"}
+    slhelp["zinfo"] = LibHelp{in: "", out: "[]string", action: "internal info [0]=language_version, [1]=language_name, [2]=build_time"}
     stdlib["zinfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v,_:=vget(0,"@version")
         l,_:=vget(0,"@language")
@@ -102,7 +100,7 @@ func buildInternalLib() {
         return str.HasSuffix(str.ToLower(os.Getenv("LANG")),".utf-8") , nil
     }
 
-    slhelp["wininfo"] = LibHelp{in: "", out: "int", action: "(windows) Returns the console geometry."}
+    slhelp["wininfo"] = LibHelp{in: "", out: "int", action: "(windows only) Returns the console geometry."}
     stdlib["wininfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         hnd:=1
         if len(args)==1 {
@@ -114,7 +112,7 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["getmem"] = LibHelp{in: "", out: "int", action: "Returns the current allocated memory and system memory usage."}
+    slhelp["getmem"] = LibHelp{in: "", out: "string", action: "Returns the current allocated memory and system memory usage in MB. Space separated values."}
     stdlib["getmem"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         a,s:=getMemUsage()
         return sf("%d %d",a/1024/1024,s/1024/1024), nil
@@ -169,7 +167,7 @@ func buildInternalLib() {
 
     }
 
-    slhelp["argv"] = LibHelp{in: "", out: "arg_list", action: "CLI arguments as an array."}
+    slhelp["argv"] = LibHelp{in: "", out: "[]string", action: "CLI arguments as an array."}
     stdlib["argv"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         return cmdargs, nil
     }
@@ -179,7 +177,7 @@ func buildInternalLib() {
         return len(cmdargs), nil
     }
 
-    slhelp["eval"] = LibHelp{in: "string", out: "various", action: "evaluate expression in [#i1]string[#i0]."}
+    slhelp["eval"] = LibHelp{in: "string", out: "[mixed]", action: "evaluate expression in [#i1]string[#i0]."}
     stdlib["eval"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
             switch args[0].(type) {
@@ -382,7 +380,7 @@ func buildInternalLib() {
     }
 
 
-    slhelp["getglob"] = LibHelp{in: "name", out: "var", action: "Read a global variable."}
+    slhelp["getglob"] = LibHelp{in: "name", out: "mixed", action: "Read a global variable."}
     stdlib["getglob"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
             switch args[0].(type) {
@@ -456,7 +454,7 @@ func buildInternalLib() {
     }
 
 
-    slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key"}
+    slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key. Returns true on successful removal."}
     stdlib["unmap"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return false, errors.New("bad argument count in unmap()")
@@ -546,8 +544,6 @@ func buildInternalLib() {
         key,_:=interpolate(evalfs,args[1].(string),true)
 
         switch v.(type) {
-        case map[string]interface{}:
-            if _, found = v.(map[string]interface{})[key];   found { return true, nil }
         case map[string]http.Header:
             if _, found = v.(http.Header)[key];   found { return true, nil }
         case map[string]float64:
@@ -564,6 +560,8 @@ func buildInternalLib() {
             if _, found = v.(map[string]bool)[key];          found { return true, nil }
         case map[string]string:
             if _, found = v.(map[string]string)[key];        found { return true, nil }
+        case map[string]interface{}:
+            if _, found = v.(map[string]interface{})[key];   found { return true, nil }
         default:
             pf("unknown type: %T\n",v); os.Exit(0)
         }
@@ -616,7 +614,7 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["keypress"] = LibHelp{in: "timeout", out: "int", action: "Returns an integer corresponding with a keypress."}
+    slhelp["keypress"] = LibHelp{in: "timeout_μs", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
     stdlib["keypress"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         timeo := int64(0)
@@ -693,25 +691,25 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["os"] = LibHelp{in: "", out: "string", action: "Returns the kernel version name."}
+    slhelp["os"] = LibHelp{in: "", out: "string", action: "Returns the kernel version name as reported by the coprocess."}
     stdlib["os"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0, "@os")
         return v.(string), err
     }
 
-    slhelp["home"] = LibHelp{in: "", out: "string", action: "Returns the home directory of the user that launched Za."}
+    slhelp["home"] = LibHelp{in: "", out: "string", action: "Returns the home directory of the user that launched Za as reported by the coprocess."}
     stdlib["home"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0, "@home")
         return v.(string), err
     }
 
-    slhelp["lang"] = LibHelp{in: "", out: "string", action: "Returns the locale name for the active Za session."}
+    slhelp["lang"] = LibHelp{in: "", out: "string", action: "Returns the locale name used within the coprocess."}
     stdlib["lang"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0, "@lang")
         return v.(string), err
     }
 
-    slhelp["release_name"] = LibHelp{in: "", out: "string", action: "Returns the OS release name."}
+    slhelp["release_name"] = LibHelp{in: "", out: "string", action: "Returns the OS release name as reported by the coprocess."}
     stdlib["release_name"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v, _ := vget(0, "@release_name")
         return v.(string), err

@@ -1,9 +1,8 @@
 #!/usr/bin/za
 
 locks(true)
-coproc(false)
 
-define f(z)
+define f()
     # generally, do some work in here..
     z =| date --rfc-3339=ns
     pause rand(2000)
@@ -12,7 +11,7 @@ enddef
 
 # launch all in parallel
 for x=0 to 99
-    async hndmap f(x) x
+    async hndmap f() x
 endfor
 
 # collect results
