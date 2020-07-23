@@ -7,7 +7,7 @@ enddef
 
 setglob userSigIntHandler = "testbreak"
 
-for f=0 to 10e6
+for f=0 to 5e5
     println f
 endfor
 

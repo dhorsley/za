@@ -40,10 +40,10 @@ func parseHtmlArgs(arg interface{}) (o string,e error) {
         o=arg.(string)
     case map[string]string:
         o=getHtmlOptionsString(arg.(map[string]string))
-    case map[string]interface{}:
-        o=getHtmlOptionsInterface(arg.(map[string]interface{}))
     case map[string]int:
         o=getHtmlOptionsInt(arg.(map[string]int))
+    case map[string]interface{}:
+        o=getHtmlOptionsInterface(arg.(map[string]interface{}))
     default:
         return "",errors.New(sf("Bad arguments provided to argument parser (%T/%v)",arg,arg))
     }

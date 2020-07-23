@@ -263,7 +263,7 @@ syntax match web_functions "\s*html_unescape\s*("he=e-1
 
 syntax match db_functions "\s*db_init\s*("he=e-1
 syntax match db_functions "\s*db_query\s*("he=e-1
-syntax match db_functions "\s*db_fields\s*("he=e-1
+syntax match db_functions "\s*db_close\s*("he=e-1
 
 syntax match string_functions "\s*next_match\s*("he=e-1
 syntax match string_functions "\s*stripquotes\s*("he=e-1

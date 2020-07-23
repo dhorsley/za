@@ -81,7 +81,7 @@ func buildStringLib() {
     categories["string"] = []string{"pad", "field", "fields", "get_value", "start", "end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
-        "reverse", "tr", "lower", "upper", "format", "ccformat",
+        "reverse", "tr", "lower", "upper", "format", "ccformat","at",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
 
@@ -148,25 +148,39 @@ func buildStringLib() {
                 r = r + string(args[0].(string)[i])
             }
             return r, nil
-        case []int, []int32, []int64:
+        case []int:
+            ln := len(args[0].([]int)) - 1
+            r := make([]int, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]int)[i])
+            }
+            return r, nil
+        case []int32:
+            ln := len(args[0].([]int32)) - 1
+            r := make([]int32, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]int32)[i])
+            }
+            return r, nil
+        case []int64:
             ln := len(args[0].([]int64)) - 1
             r := make([]int64, 0, ln+1)
             for i := ln; i >= 0; i-- {
                 r = append(r, args[0].([]int64)[i])
             }
             return r, nil
-        case []float32, []float64:
+        case []float32:
+            ln := len(args[0].([]float32)) - 1
+            r := make([]float32, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]float32)[i])
+            }
+            return r, nil
+        case []float64:
             ln := len(args[0].([]float64)) - 1
             r := make([]float64, 0, ln+1)
             for i := ln; i >= 0; i-- {
                 r = append(r, args[0].([]float64)[i])
-            }
-            return r, nil
-        case []interface{}:
-            ln := len(args[0].([]interface{})) - 1
-            r := make([]interface{}, 0, ln+1)
-            for i := ln; i >= 0; i-- {
-                r = append(r, args[0].([]interface{})[i])
             }
             return r, nil
         case []string:
@@ -174,6 +188,13 @@ func buildStringLib() {
             r := make([]string, 0, ln+1)
             for i := ln; i >= 0; i-- {
                 r[ln-i] = args[0].([]string)[i]
+            }
+            return r, nil
+        case []interface{}:
+            ln := len(args[0].([]interface{})) - 1
+            r := make([]interface{}, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]interface{})[i])
             }
             return r, nil
         }
@@ -190,7 +211,6 @@ func buildStringLib() {
         return sparkle(sf(args[0].(string), args[1:]...)), nil
     }
 
-    // tr() - bad version of tr, that doesn't actually translate :)  really needs to not append with addition nor use bytes instead of runes. Probably quite slow.
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}
     stdlib["format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in format()") }
@@ -199,6 +219,13 @@ func buildStringLib() {
             return sf(args[0].(string)), nil
         }
         return sf(args[0].(string), args[1:]...), nil
+    }
+
+    slhelp["at"] = LibHelp{in: "int_row,int_col", out: "string", action: "Returns a cursor positioning ANSI code string for (row,col)."}
+    stdlib["at"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2 { return "",errors.New("Bad arguments (count) in at()") }
+        if sf("%T",args[0])!="int" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) (not int) in at()") }
+        return sat(args[0].(int),args[1].(int)), nil
     }
 
     // tr() - bad version of tr, that doesn't actually translate :)  really needs to not append with addition nor use bytes instead of runes. Probably quite slow.
@@ -267,18 +294,6 @@ func buildStringLib() {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to upper()") }
         return str.ToUpper(args[0].(string)), nil
     }
-
-/*
-    slhelp["utf8e"] = LibHelp{in: "string", out: "string", action: "Converts to utf-8"}
-    stdlib["utf8e"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-
-        if len(args)!=1 { return "",errors.New("Bad arguments (count) to utf8e()") }
-        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) to utf8e()") }
-
-        return runesToUTF8([]rune(args[0].(string))),nil
-
-    }
-*/
 
     slhelp["line_add"] = LibHelp{in: "var,string", out: "string", action: "Append a line to array string [#i1]var[#i0]."}
     stdlib["line_add"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -566,28 +581,7 @@ func buildStringLib() {
         return c, err
     }
 
-/*
-    slhelp["pipesep"] = LibHelp{in: "input_string", out: "", action: "deprecated."}
-        // Splits [#i1]input_string[#i0] into variables named [#i1]F1[#i0] through to [#i1]Fn[#i0]. The split is performed at pipe (|) symbols. Field count is stored in [#i1]NF[#i0]."}
-    stdlib["pipesep"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-
-        fsep := func(c rune) bool { return c == '|' }
-        if len(args) == 1 {
-
-            ta := str.FieldsFunc(args[0].(string), fsep)
-            var c int
-            for c = 0; c < len(ta); c++ {
-                vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
-                v, _ := vget(evalfs, "F")
-                vset(evalfs, "F", append(v.([]string), ta[c]))
-            }
-            vset(evalfs, "NF", c)
-        }
-        return nil, err
-    }
-*/
-
-    slhelp["split"] = LibHelp{in: "string[,fs]", out: "list", action: "Returns [#i1]string[#i0] as a list, breaking the string on [#i1]fs[#i0]."}
+    slhelp["split"] = LibHelp{in: "string[,fs]", out: "[]list", action: "Returns [#i1]string[#i0] as a list, breaking the string on [#i1]fs[#i0]."}
     stdlib["split"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var strIn string
         if len(args)>0 {
@@ -603,17 +597,17 @@ func buildStringLib() {
         return str.Split(strIn, fs),nil
     }
 
-    slhelp["join"] = LibHelp{in: "string_list[,fs]", out: "string", action: "Returns a string with all elements of [#i1]string_list[#i0] concatenated, separated by [#i1]fs[#i0]."}
+    slhelp["join"] = LibHelp{in: "[]string_list[,fs]", out: "string", action: "Returns a string with all elements of [#i1]string_list[#i0] concatenated, separated by [#i1]fs[#i0]."}
     stdlib["join"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var ary []string
         if len(args)>0 {
             switch args[0].(type) {
+            case []string:
+                ary=args[0].([]string)
             case []interface{}:
                 for _,v:=range args[0].([]interface{}) {
                     ary=append(ary,sf("%v",v))
                 }
-            case []string:
-                ary=args[0].([]string)
             default:
                 return "",errors.New("Bad args (type) in join()")
             }
