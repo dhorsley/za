@@ -46,8 +46,10 @@ func enableEcho() {
 }
 
 func term_complete() {
-    tt.Restore()
-    tt.Close()
+    if tt!=nil {
+        tt.Restore()
+        tt.Close()
+    }
 }
 
 // not on linux:

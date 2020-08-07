@@ -12,6 +12,7 @@ CHANGE LOG
     * console_windows consolidation review
         * split common functionality with console_linux to console_common.go
         * still a couple of other funcs that could be broken up, but okay with those for now.
+        * added terminal object nil check in term_complete()
 
     * more doc cleanup
 
