@@ -504,7 +504,7 @@ func setPane(c string) {
 }
 
 // build-a-bash
-func NewCoprocess(loc string) (process *exec.Cmd, pi io.WriteCloser, po io.ReadCloser, pe io.ReadCloser) {
+func NewCoprocess(loc string,args ...string) (process *exec.Cmd, pi io.WriteCloser, po io.ReadCloser, pe io.ReadCloser) {
 
     var err error
 
