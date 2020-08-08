@@ -439,6 +439,8 @@ func main() {
     // start shell in co-process
 
     coprocLoc:=""
+    var coprocArgs []string
+
     vset(0,"@shelltype","")
 
     if runtime.GOOS!="windows" {
@@ -447,15 +449,20 @@ func main() {
             if default_shell=="" {
                 coprocLoc, err = GetCommand("/usr/bin/which bash")
                 if err == nil {
+                    // @todo: need to check if this -1 below is correct.
+                    // got a feeling it's chomping too much.
                     coprocLoc = coprocLoc[:len(coprocLoc)-1]
+                    vset(0,"@shelltype","bash")
                 } else {
                     if fexists("/bin/bash") {
-                        coprocLoc="/bin/bash"
+                        coprocLoc ="/bin/bash"
+                        coprocArgs=[]string{"-i"}
                         vset(0,"@shelltype","bash")
                     } else {
                         // try for /bin/sh then default to noshell
                         if fexists("/bin/sh") {
                             coprocLoc="/bin/sh"
+                            coprocArgs=[]string{"-i"}
                         } else {
                             vset(0,"@noshell",true)
                             vset(0, "@noshell",no_shell)
@@ -505,7 +512,7 @@ func main() {
 
         if !no_shell {
             // create shell process
-            bgproc, pi, po, pe = NewCoprocess(coprocLoc)
+            bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
             vset(0, "@shellpid",bgproc.Process.Pid)
         }
 
@@ -538,7 +545,7 @@ func main() {
                     bgproc.Process.Release()
                 }
                 // in with the new
-                bgproc, pi, po, pe = NewCoprocess(coprocLoc)
+                bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
                 debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
                 vset(0, "@shellpid",bgproc.Process.Pid)
                 siglock.Lock()
@@ -697,6 +704,11 @@ func main() {
 
     } // if not windows
 
+    // special case: aliases in bash
+    shelltype, _ := vget(0, "@shelltype")
+    if shelltype=="bash" {
+        cop, _ = Copper("shopt -s expand_aliases",true)
+    }
 
     if testMode {
         testStart(exec_file_name)
