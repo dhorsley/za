@@ -677,9 +677,17 @@ func Copper(line string, squashErr bool) (string, int) {
     var err error  // generic error handle
     var commandErr error
 
-    rip,_:=vget(0,"@runInParent")
-    if rip.(bool) {
-        ns,err = GetCommand("cmd /c "+line)
+    riwp,_:=vget(0,"@runInWindowsParent")
+    rip,_ :=vget(0,"@runInParent")
+
+    if riwp.(bool) || rip.(bool) {
+
+        if riwp.(bool) {
+            ns,err = GetCommand("cmd /c "+line)
+        } else {
+            ns,err = GetCommand(line)
+        }
+
         if err != nil {
 
             vset(0,"@last","0")

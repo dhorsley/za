@@ -241,9 +241,9 @@ func main() {
     debug_level = 0
 
     // run in parent flag
-    vset(0,"@cmdsep",byte(0x1e))    // command output unit separator
-    vset(0,"@runInParent",false)    // if -S opt or /bin/false specified for shell, then run commands in parent
-
+    vset(0,"@cmdsep",byte(0x1e))        // command output unit separator
+    vset(0,"@runInParent",false)        // if -S opt or /bin/false specified for shell, then run commands in parent
+    vset(0,"@runInWindowsParent",false) // like -S, but insist upon it for Windows executions.
     // set available build info
     vset(0, "@language", "Za")
     vset(0, "@version", BuildVersion)
@@ -500,6 +500,7 @@ func main() {
         vset(0, "@release_name", "")
         vset(0, "@release_version", "")
         vset(0, "@winterm", false)
+        vset(0,"@runInWindowsParent",true)
     }
 
     vset(0, "@shell_location", coprocLoc)
