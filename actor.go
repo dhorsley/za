@@ -2538,7 +2538,8 @@ tco_reentry:
             // get C_Input arguments
 
             if tokencount != 4 {
-                usage := "INPUT [#i1]id[#i0] PARAM | OPTARG | ENV [#i1]field_position[#i0]"
+                usage  :=         "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0]\n"
+                usage   = usage + "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
                 report(ifs, lastline, "Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
@@ -2600,7 +2601,16 @@ tco_reentry:
                 }
 
             case "env":
-                vset(ifs, id, os.Getenv(pos))
+                if os.Getenv(pos)!="" {
+                    // non-empty env var so set id var to value.
+                    vset(ifs, id, os.Getenv(pos))
+                } else {
+                    // when env var empty either create the id var or
+                    // leave it alone if it already exists.
+                    if _, found := VarLookup(ifs,id); !found {
+                        vset(ifs,id,"")
+                    }
+                }
             }
 
 
