@@ -4,6 +4,8 @@ CHANGE LOG
 
 1.0.9
 
+    * more doc cleanup
+
     * moved interface{} type cases to end of switches.
         * fixed error in reverse() lib call due to the new placements. (type assertion error 
             revealed in previously uncalled code).
@@ -12,11 +14,18 @@ CHANGE LOG
     * console_windows consolidation review
         * split common functionality with console_linux to console_common.go
         * still a couple of other funcs that could be broken up, but okay with those for now.
-        * added terminal object nil check in term_complete()
-        * added expand_aliases and -i to bash startups. 
+
+    * added terminal object nil check in term_complete()
+
+    * added expand_aliases and -i to bash startups. 
             it still won't pull a startup file in, but at least the alias command
              will work again for new aliases.
-    * more doc cleanup
+
+    * fixed bug in non-shell interactive mode exec calls.
+
+    * added existence and empty checks in INPUT id ENV var command.
+        * the Za id variable is left intact when env var is empty.
+        * if Za id variable didn't exist then it is created regardless of env var existence.
 
 
 ---------------------------------------------------------------------------------------------
