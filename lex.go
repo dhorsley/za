@@ -25,7 +25,8 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
+    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
 }
 
 
@@ -487,6 +488,10 @@ get_nt_eval_point:
         tokType = C_With
     case "endwith":
         tokType = C_Endwith
+    case "struct":
+        tokType = C_Struct
+    case "endstruct":
+        tokType = C_Endstruct
     case "pane":
         tokType = C_Pane
     case "doc":

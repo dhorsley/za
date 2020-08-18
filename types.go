@@ -66,7 +66,6 @@ type Feature struct {
 type whenCarton struct {
 	endLine   int         // where is the endWhen, so that we can break or skip to it
 	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
-	// broken    bool        // might not use this. set when a BREAK has been encountered.
 	dodefault bool        // set false when another clause has been active
 }
 
@@ -78,8 +77,6 @@ type ExpressionCarton struct {
 	assign    bool        // is this an assignment expression
 	assignVar string      // name of var to assign to
 	evalError bool        // did the evaluation succeed
-	// evalCode  int         // error code returned on failure
-	// reason    string      // failure reason
 	result    interface{} // result of evaluation
 }
 
@@ -100,7 +97,8 @@ type s_loop struct {
 	condEnd          int              // terminating position value
 	forEndPos        int              // ENDFOR location
 	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
-	iterOverMap      *reflect.MapIter // stored iterator
+    // @todo: this is bad. should not be carrying the iterable value in here. should be a reference.
+    iterOverMap      *reflect.MapIter // stored iterator
 	iterOverString   interface{}      // stored value to iterate over from start expression
 	iterOverArray    interface{}      // stored value to iterate over from start expression
 	optNoUse         int              // for deciding if the local variable should reflect the loop counter

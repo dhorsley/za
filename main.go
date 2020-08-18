@@ -173,6 +173,9 @@ var debug_level int
 // list of keywords for lookups (used in interactive mode TAB completion)
 var keywordset map[string]struct{}
 
+// list of struct fields per struct type - used by INIT when defining a struct
+var structmaps map[string][]string
+
 // highest numbered vtable entry created
 var vtable_maxreached uint64
 
@@ -231,6 +234,9 @@ func main() {
         keywordset[completions[keyword]] = struct{}{}
     }
 
+    // create the struct map
+    structmaps = make(map[string][]string)
+
     // global namespace
     vcreatetable(0, &vtable_maxreached, VAR_CAP)
 
@@ -261,6 +267,20 @@ func main() {
     vset(0, "@echo", true)
     vset(0, "userSigIntHandler", "")// name of Za function that handles ctrl-c.
     vset(0, "@echomask", "*")
+
+
+    // TESTING!!!
+
+    type t_ts struct {
+        A int
+        B bool
+        C string
+    }
+
+    ts:=t_ts{42,true,"something"}
+    vset(0,"teststruct",ts) 
+
+    // END TESTING
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
