@@ -9,9 +9,11 @@ CHANGE LOG
 
     * started work on STRUCT struct_name...ENDSTRUCT and INIT var struct_name
         * syntax in place. need to add dynamic struct construction in INIT.
+            * need to add STRUCT and ENDSTRUCT to vim syntax file and online doc.
         * struct builder done.
         * INIT changes done. (init var_name struct_type)
             * need to add check against reserved words in INIT that struct_type is hijacking.
+            * need to update online doc.
         * eval lib updated (accessField processing and add/sum/mul/div/unaryminus/mod to
             handle other signed int types.
         * eval.go/dotted assignment changes done.

@@ -1038,12 +1038,12 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     //    field_name_x type
     // endstruct
 
-    if dotpos:=str.IndexByte(expr.assignVar,'.'); pos==-1 && dotpos>-1 {
-        // pf("dotted lhs -> %s\n",expr.assignVar)
+    if dotpos:=str.IndexByte(inter,'.'); pos==-1 && dotpos>-1 {
+        // pf("dotted lhs -> %s\n",inter)
 
-        if dotpos>0 && dotpos<(len(expr.assignVar)-1) {
-            lhs_v:=expr.assignVar[:dotpos]
-            lhs_f:=expr.assignVar[dotpos+1:]
+        if dotpos>0 && dotpos<(len(inter)-1) {
+            lhs_v:=inter[:dotpos]
+            lhs_f:=inter[dotpos+1:]
             var ts interface{}
             var found bool
             ts,found=vget(fs,lhs_v)

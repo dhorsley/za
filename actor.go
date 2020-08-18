@@ -2082,7 +2082,7 @@ tco_reentry:
                 break
             }
 
-            varname := inbound.Tokens[1].tokText
+            varname,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
             vartype := "assoc"
             if tokencount>2 {
                 vartype = inbound.Tokens[2].tokText
