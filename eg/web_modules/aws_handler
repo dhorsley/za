@@ -5,7 +5,6 @@
 
 define fwhandle(call)
     c=web_serve_decode(call)
-
     region=getglob("region")
     pageTitle="AWS IP Ranges for {region}"
 
@@ -36,7 +35,7 @@ define fwhandle(call)
     iptabhead =wthead(wtr(wth("IP Range")))
     iptabbody=""
     ipglob=getglob("thisRegion")
-    if length(ipglob)>0
+    if len(ipglob)>0
         foreach ip in ipglob
             iptabbody = iptabbody+wtr(wtd(ip))
         endfor

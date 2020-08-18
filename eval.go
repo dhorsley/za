@@ -8,6 +8,7 @@ import (
 //    "fmt"
     "sync"
     str "strings"
+    "unsafe"
 )
 
 
@@ -939,9 +940,10 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     // lhs brace nesting and quoting
     bnest:=0; inq:=false
     pos := str.IndexByte(expr.assignVar, '[')
+    startq:=""
     if pos != -1 {
         // inside quote?
-        closedAt:=-1; startq:=""
+        closedAt:=-1
         for spos:=pos; spos<len(expr.assignVar); spos++ {
             switch expr.assignVar[spos] {
             case '[':
@@ -994,7 +996,6 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
             return expr,false
         }
 
-        // epos := str.IndexByte(expr.assignVar, ']')
         epos := closedAt
 
         if epos != -1 {
@@ -1022,6 +1023,81 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
 
     // non indexed
     inter,_:=interpolate(fs,expr.assignVar,true) // for indirection
+
+    // field assignment handling:
+
+    // for now, only permit dotted names when no array ref present.
+    //  need to improve the lexer to avoid this.
+
+    // the struct must perform as a go struct type otherwise the goval routines
+    // will blow a fuse processing expressions.
+
+    // syntax will have to be something like this:
+    // struct
+    //    field_name_1 type
+    //    field_name_x type
+    // endstruct
+
+    if dotpos:=str.IndexByte(expr.assignVar,'.'); pos==-1 && dotpos>-1 {
+        // pf("dotted lhs -> %s\n",expr.assignVar)
+
+        if dotpos>0 && dotpos<(len(expr.assignVar)-1) {
+            lhs_v:=expr.assignVar[:dotpos]
+            lhs_f:=expr.assignVar[dotpos+1:]
+            var ts interface{}
+            var found bool
+            ts,found=vget(fs,lhs_v)
+
+            if found {
+
+                /*
+                pf("ts       -> %#v\n",ts)
+                pf("ts type  -> %T\n",ts)
+                pf("&ts type -> %T\n",&ts)
+                pf("lhs_f    -> %v\n",lhs_f)
+                */
+
+                val:=reflect.ValueOf(ts)
+                typ:=reflect.ValueOf(ts).Type()
+
+                // pf("ref type -> %v\n",typ)
+
+                if typ.Kind()==reflect.Struct {
+
+                    found:=false
+                    // pf("val   : %#v\n",val)
+                    // pf("field : %#v\n",val.FieldByName(lhs_f))
+
+                    tmp:=reflect.New(val.Type()).Elem()
+                    tmp.Set(val)
+                    tf:=tmp.FieldByName(lhs_f)
+                    tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                    tf.Set(reflect.ValueOf(expr.result))
+
+                    vset(fs,lhs_v,tmp.Interface())
+                    // pf("Updated value : \n%#v\n",tmp.Interface())
+
+                    if !found {
+                        // error
+                    } else {
+                        // pf("vset dotted variable!\n")
+                        return expr,false
+                    }
+                }
+            } else {
+                pf("record variable not found\n")
+                return expr,true
+            }
+        } else {
+            pf("bad lhs dot\n")
+            return expr,true
+        }
+
+        // expr.evalError=true
+        return expr,true
+    }
+
+    // final assignation
     vset(fs, inter, expr.result)
 
     return expr,false

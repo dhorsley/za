@@ -4,6 +4,62 @@ CHANGE LOG
 
 1.0.9
 
+    * because of the changes in this version, general release will be delayed for more clean-
+        up and testing. i felt structs were important enough to allow this.
+
+    * started work on STRUCT struct_name...ENDSTRUCT and INIT var struct_name
+        * syntax in place. need to add dynamic struct construction in INIT.
+        * struct builder done.
+        * INIT changes done. (init var_name struct_type)
+            * need to add check against reserved words in INIT that struct_type is hijacking.
+        * eval lib updated (accessField processing and add/sum/mul/div/unaryminus/mod to
+            handle other signed int types.
+        * eval.go/dotted assignment changes done.
+            * need to add a check for field name's existence pre-assign still.
+
+        |
+        | example:
+        |
+        | struct s_person
+        |   name    string
+        |   age     int
+        |   dob     string
+        | endstruct
+        |
+        | init person s_person
+        |
+        | person.name="billy bramble"
+        |
+        | define showPerson(p)
+        |    print p.dob
+        | enddef
+        | showPerson(person)
+        |
+        | etc, etc....
+
+        * struct definitions are available throughout all scopes.
+        * struct instantiations are locally scoped.
+        * only some basic types are supported for fields: bool, int, int32, int64, float64, string
+            * (others may be present but they are not yet supported, such as uint) 
+
+        * i am very unlikely to add more complex types as field types (arrays/maps/etc).
+            * this intention here is for structs to be used for bundling config and improving stdlib options.
+            * for this, we do not need anything more complicated. will see how it goes though...
+
+        * the structs are formed with compatibility in mind to the underlying Go language.
+            * this will allow for their use in the Za stdlib and a few other hard to reach places.
+        * it should also allow for some slightly cleaner passing around of bunches of config. 
+
+        * it is currently not possible to mix dotting and arrays in assignments.
+        * on evalution, a dotted field reference is converted to the given struct field type.
+
+        * @todo: more friendly (or even existing) error messages and handling around the elements of this.
+
+        !!                                                                          !!
+        !!  there are quite likely a ton of bugs with struct handling currently     !!
+        !!  USE WITH CAUTION                                                        !!
+        !!                                                                          !!
+
     * more doc cleanup
 
     * moved interface{} type cases to end of switches.
