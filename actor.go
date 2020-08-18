@@ -618,7 +618,10 @@ tco_reentry:
     inside_test := false            // are we currently inside a test bock
     inside_with := false            // WITH cannot be nested and remains local in scope.
 
-    var defining bool               // are we currently defining a function
+    var structMode bool             // are we currently defining a struct
+    var structName string           // name of struct currently being defined
+    var structNode []string         // struct builder
+    var defining bool               // are we currently defining a function. takes priority over structmode.
     var definitionName string       // ... if we are, what is it called
 
     pc = -1                         // program counter : increments to zero at start of loop
@@ -681,6 +684,18 @@ tco_reentry:
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
             fspacelock.Unlock()
+            continue
+        }
+
+        // struct building
+        if structMode && statement.tokType!=C_Endstruct {
+            // consume the statement as an identifier
+            if tokencount!=2 {
+                report(ifs,lastline,"Invalid STRUCT entry")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+            structNode=append(structNode,statement.tokText,inbound.Tokens[1].tokText)
             continue
         }
 
@@ -997,7 +1012,7 @@ tco_reentry:
                     l=len(lv)
                 default:
                     pf("Unknown loop type [%T]\n",lv)
-                    pf("Unknown loop type [%s]\n",reflect.TypeOf(lv).Kind())
+                    // pf("Unknown loop type [%s]\n",reflect.TypeOf(lv).Kind())
                 }
                 if l==0 {
                     // skip empty expressions
@@ -2073,7 +2088,6 @@ tco_reentry:
                 vartype = inbound.Tokens[2].tokText
             }
 
-            dimensions:=1
             size:=DEFAULT_INIT_SIZE
 
             if tokencount>3 {
@@ -2102,27 +2116,97 @@ tco_reentry:
             }
 
             if varname != "" {
-                switch dimensions {
-                case 1:
-                    switch vartype {
-                    case "byte":
-                        vset(ifs, varname, make([]uint8,size,size))
-                    case "int":
-                        vset(ifs, varname, make([]int,size,size))
-                    case "float":
-                        vset(ifs, varname, make([]float64,size,size))
-                    case "bool":
-                        vset(ifs, varname, make([]bool,size,size))
-                    case "mixed":
-                        vset(ifs, varname, make([]interface{},size,size))
-                    case "string":
-                        vset(ifs, varname, make([]string,size,size))
-                    case "assoc":
-                        vset(ifs, varname, make(map[string]interface{},size))
-                    }
+                switch vartype {
+                case "byte":
+                    vset(ifs, varname, make([]uint8,size,size))
+                case "int":
+                    vset(ifs, varname, make([]int,size,size))
+                case "float":
+                    vset(ifs, varname, make([]float64,size,size))
+                case "bool":
+                    vset(ifs, varname, make([]bool,size,size))
+                case "mixed":
+                    vset(ifs, varname, make([]interface{},size,size))
+                case "string":
+                    vset(ifs, varname, make([]string,size,size))
+                case "assoc":
+                    vset(ifs, varname, make(map[string]interface{},size))
                 default:
-                    report(ifs,lastline, "Too many dimensions!")
-                    finish(false,ERR_SYNTAX)
+
+                    //
+                    // move this later:
+                    var tb bool
+                    var tu8 uint8
+                    var tu32 uint32
+                    var tu64 uint64
+                    var ti int
+                    var ti32 int32
+                    var ti64 int64
+                    var tf32 float32
+                    var tf64 float64
+                    var ts string
+
+                    // instantiate fields with an empty expected type:
+                    typemap:=make(map[string]reflect.Type)
+                    typemap["bool"]     = reflect.TypeOf(tb)
+                    typemap["byte"]     = reflect.TypeOf(tu8)
+                    typemap["uint8"]    = reflect.TypeOf(tu8)
+                    typemap["uint32"]   = reflect.TypeOf(tu32)
+                    typemap["uint64"]   = reflect.TypeOf(tu64)
+                    typemap["int"]      = reflect.TypeOf(ti)
+                    typemap["int32"]    = reflect.TypeOf(ti32)
+                    typemap["int64"]    = reflect.TypeOf(ti64)
+                    typemap["float"]    = reflect.TypeOf(tf64)
+                    typemap["float64"]  = reflect.TypeOf(tf64)
+                    typemap["float32"]  = reflect.TypeOf(tf32)
+                    typemap["string"]   = reflect.TypeOf(ts)
+                    //
+
+                    // check here for struct init by name
+                    found:=false
+                    structvalues:=[]string{}
+
+                    // structmap has list of field_name,field_type,... for each struct
+                    for sn, snv := range structmaps {
+                        // pf("struct : %v - ",sn)
+                        if sn==vartype {
+                            // pf("MATCH\n")
+                            found=true
+                            structvalues=snv
+                            break
+                        }
+                        // pf("no match\n")
+                    }
+                    if found {
+                        // deal with init name struct_type
+                        if len(structvalues)>0 {
+                            var sf []reflect.StructField
+                            // var snv []interface{}
+                            offset:=uintptr(0)
+                            for svpos:=0; svpos<len(structvalues); svpos+=2 {
+                                nv:=structvalues[svpos]
+                                nt:=structvalues[svpos+1]
+                                sf=append(sf,
+                                    reflect.StructField{
+                                        Name:nv,PkgPath:"main",
+                                        // Type:reflect.TypeOf(snv).Elem(),
+                                        Type:typemap[nt],
+                                        Offset:offset,
+                                        Anonymous:false,
+                                    },
+                                )
+                                offset+=typemap[nt].Size()
+                            }
+                            // pf("Struct Fields ->\n%v\n",sf)
+                            typ:=reflect.StructOf(sf)
+                            v:=reflect.Zero(typ).Interface()
+                            // pf("Zero Value : %#v\n",v)
+                            // pf("Value Type : %T\n",v)
+                            vset(ifs,varname,v)
+                        }
+                    } else {
+                        // handle unknown type error
+                    }
                 }
             }
 
@@ -2929,6 +3013,58 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
 
 
+        case C_Struct:
+
+            // STRUCT name
+            // start structmode
+            // consume identifiers sequentially, adding each to definition.
+            // Format:
+            // STRUCT name
+            // a type; b type;
+            // c type;
+            // d type; e type;
+            // ...
+            // ENDSTRUCT
+
+            if structMode {
+                report(ifs,lastline,"Cannot nest a STRUCT")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            if tokencount!=2 {
+                report(ifs,lastline,"STRUCT must contain a name.")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            structName=inbound.Tokens[1].tokText
+            structMode=true
+            // pf("Building struct %v\n",structName)
+
+        case C_Endstruct:
+
+            // ENDSTRUCT
+            // end structmode
+
+            if ! structMode {
+                report(ifs,lastline,"ENDSTRUCT without STRUCT.")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            // 
+            // take definition and create a structmaps entry from it:
+            structmaps[structName]=structNode[:]
+            // pf("Completing struct %v\n",structName)
+            // pf("structNode -> %v\n",structNode)
+            //
+
+            structName=""
+            structNode=[]string{}
+            structMode=false
+
+
         case C_With:
             // WITH var AS file
             // get params
@@ -3225,7 +3361,7 @@ tco_reentry:
             case "accessfile":
                 if tokencount > 2 {
                     cet := crushEvalTokens(inbound.Tokens[2:])
-                    expr,ef := wrappedEval(ifs, cet, false)
+                    expr,ef := wrappedEval(ifs, cet, true)
                     if ef || expr.evalError { break }
                     web_log_file=expr.result.(string)
                     // pf("accessfile changed to %v\n",web_log_file)
@@ -3524,6 +3660,12 @@ tco_reentry:
     siglock.RLock()
     si:=sig_int
     siglock.RUnlock()
+
+    if structMode {
+        // incomplete struct definition
+        pf("Open STRUCT definition %v\n",structName)
+        finish(true,ERR_SYNTAX)
+    }
 
     if !si {
 

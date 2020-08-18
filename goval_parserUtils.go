@@ -75,21 +75,53 @@ func asInteger(val interface{}) int {
 
 func add(val1 interface{}, val2 interface{}) interface{} {
 
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+    if intInOne && intInTwo {
+        return int1+int2
+    }
+    /*
 	int1, int1OK := val1.(int)
 	int2, int2OK := val2.(int)
 
 	if int1OK && int2OK { // int + int = int
 		return int1 + int2
 	}
+    */
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	if int1OK {
+	// if int1OK {
+	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	if int2OK {
+	// if int2OK {
+	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
 	}
@@ -154,21 +186,49 @@ func add(val1 interface{}, val2 interface{}) interface{} {
 }
 
 func sub(val1 interface{}, val2 interface{}) interface{} {
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
+	//int1, int1OK := val1.(int)
+	//int2, int2OK := val2.(int)
 
-	if int1OK && int2OK {
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+	// if int1OK && int2OK {
+	if intInOne && intInTwo {
 		return int1 - int2
 	}
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	if int1OK {
+	// if int1OK {
+	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	if int2OK {
+	// if int2OK {
+	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
 	}
@@ -180,21 +240,53 @@ func sub(val1 interface{}, val2 interface{}) interface{} {
 }
 
 func mul(val1 interface{}, val2 interface{}) interface{} {
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
+	//int1, int1OK := val1.(int)
+	//int2, int2OK := val2.(int)
 
-	if int1OK && int2OK {
+	//if int1OK && int2OK {
+	//	return int1 * int2
+	//}
+
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+	//if int1OK && int2OK {
+	if intInOne && intInTwo {
 		return int1 * int2
-	}
+    }
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	if int1OK {
+	// if int1OK {
+	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	if int2OK {
+	// if int2OK {
+	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
 	}
@@ -206,10 +298,36 @@ func mul(val1 interface{}, val2 interface{}) interface{} {
 }
 
 func div(val1 interface{}, val2 interface{}) interface{} {
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
+	//int1, int1OK := val1.(int)
+	//int2, int2OK := val2.(int)
 
-	if int1OK && int2OK {
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+	// if int1OK && int2OK {
+	if intInOne && intInTwo {
         if int2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
 		return int1 / int2
 	}
@@ -217,11 +335,13 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	if int1OK {
+	// if int1OK {
+	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	if int2OK {
+	// if int2OK {
+	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
 	}
@@ -234,21 +354,49 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 }
 
 func mod(val1 interface{}, val2 interface{}) interface{} {
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
+	//int1, int1OK := val1.(int)
+	//int2, int2OK := val2.(int)
 
-	if int1OK && int2OK {
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+	// if int1OK && int2OK {
+	if intInOne && intInTwo {
 		return int1 % int2
 	}
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	if int1OK {
+	// if int1OK {
+	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	if int2OK {
+	// if int2OK {
+	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
 	}
@@ -260,14 +408,26 @@ func mod(val1 interface{}, val2 interface{}) interface{} {
 }
 
 func unaryMinus(val interface{}) interface{} {
-	intVal, ok := val.(int)
-	if ok {
-		return -intVal
-	}
-	floatVal, ok := val.(float64)
-	if ok {
-		return -floatVal
-	}
+
+    var intVal int
+    intInOne:=true
+    switch i:=val.(type) {
+    case int:
+        intVal=i
+    case int32:
+        intVal=int(i)
+    case int64:
+        intVal=int(i)
+    default:
+        intInOne=false
+    }
+
+    // intVal, ok := val.(int)
+	if intInOne { return -intVal }
+
+    floatVal, ok := val.(float64)
+	if ok { return -floatVal }
+
 	panic(fmt.Errorf("type error: unary minus requires number, but was %s", typeOf(val)))
 }
 
@@ -504,15 +664,48 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
 	case map[string]interface{}:
 		return obj[ifield]
     case http.Header:
-         r := reflect.ValueOf(obj)
-         f := reflect.Indirect(r).FieldByName(ifield)
-         return f
+        r := reflect.ValueOf(obj)
+        f := reflect.Indirect(r).FieldByName(ifield)
+        return f
     case webstruct:
-         r := reflect.ValueOf(obj)
-         f := reflect.Indirect(r).FieldByName(ifield)
-         return f
+        r := reflect.ValueOf(obj)
+        f := reflect.Indirect(r).FieldByName(ifield)
+        return f
     default:
-         pf("unknown type in accessField: %T for obj %+v\n",obj,obj)
+        r := reflect.ValueOf(obj)
+        if reflect.ValueOf(r).Kind().String()=="struct" {
+            f := reflect.Indirect(r).FieldByName(ifield)
+            switch f.Type().Kind() {
+            case reflect.Bool:
+                return f.Bool()
+            case reflect.Int:
+                return f.Int()
+            case reflect.Int32:
+                return int32(f.Int())
+            case reflect.Int64:
+                return int64(f.Int())
+            case reflect.String:
+                return f.String()
+            case reflect.Float32:
+                return float32(f.Float())
+            case reflect.Float64:
+                return f.Float()
+            case reflect.Uint:
+                return uint(f.Uint())
+            case reflect.Uint8:
+                return uint8(f.Uint())
+            case reflect.Uint16:
+                return uint16(f.Uint())
+            case reflect.Uint32:
+                return uint32(f.Uint())
+            case reflect.Uint64:
+                return uint64(f.Uint())
+            default:
+                return f.Interface()
+            }
+        } else {
+            pf("unknown type in accessField: %T for obj %+v\n",obj,obj)
+        }
 	}
 
 	idx, invalid := GetAsInt(ifield)

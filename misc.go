@@ -198,6 +198,8 @@ Available commands:
 [#7]DEC[#-] [#i1]var[#i0] [ [#i1]step[#i0] ]                                - decrement [#i1]var[#i0] by 1 (or [#i1]step[#i0])
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]NOP[#-]                                             - dummy 100 millisecond command.
+[#7]STRUCT[#-] [#i1]name[#i0]                           - begin structure definition.
+[#7]ENDSTRUCT[#-]                                       - end structure definition.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
 [#7]VERSION[#-]                                         - show Za version.
 [#7]HELP[#-]                                            - this page.
