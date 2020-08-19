@@ -16,7 +16,6 @@ CHANGE LOG
         * struct builder done. (actor.go, added struct, endstruct and structmode)
         * added SHOWSTRUCT [filter] command for listing structmaps.
         * INIT changes done. (init var_name struct_type)
-            * need to update online doc.
         * struct comparisons:
             * == and != should be fine for shallow comparisons.
                 * as we don't allow nesting, this should be enough for now.
@@ -39,10 +38,10 @@ CHANGE LOG
         |
         | person.name="billy bramble"
         |
-        | define showPerson(p)
+        | define showBirthOf(p)
         |    print p.dob
         | enddef
-        | showPerson(person)
+        | showBirthOf(person)
         |
         | etc, etc....
 
@@ -53,7 +52,7 @@ CHANGE LOG
             * (others may be present but they are not yet supported, such as uint) 
 
         * i am very unlikely to add more complex types as field types (arrays/maps/etc).
-            * this intention here is for structs to be used for bundling config and improving stdlib options.
+            * the intention here is for structs to be used for bundling config and improving stdlib options.
             * for this, we do not need anything more complicated. will see how it goes though...
 
         * the structs are formed with compatibility in mind to the underlying Go language.
@@ -71,6 +70,60 @@ CHANGE LOG
         !!  there are quite likely a ton of bugs with struct handling currently     !!
         !!  USE WITH CAUTION                                                        !!
         !!                                                                          !!
+
+    * STRUCT parsing limitations:
+
+        * dereferencing: array of struct
+            * it is possible to declare an array as mixed type, eg:
+                | init ary mixed 10
+            * and to then assign a struct value into an array element:
+                | init b s_person
+                | b.name="test"; b.age=10
+                | a[0]=b
+                | print kind(a[0])
+                >  struct { name string; age int; dob string }
+
+            * if you assign a 'blank' (initialised, but no fields assigned to) struct value to an array element,
+                then unspecified behaviour occurs. generally, the array element will assume the type and zero value
+                of one of the struct fields of the whole struct assigned to it. populate the struct before assignment
+                to the array element! (even partially)
+
+            * you can access fields directly, eg:
+                | print a[0].name
+            * or retrieve an entire struct record:
+                | c=a[0]
+
+            * however, to operate on elements of a field, you must pass the object through a temporary var, eg:
+                | c=a[0]
+                | c.name="new_name"
+                | print c[2] # 'w'
+                | a[0]=c
+                | print a[0].name       # 'new_name'
+            * you cannot directly dereference elements of a dotted array element, eg:
+                | print c.name[0]       # error
+                | print a[0].name[0]    # error
+
+        * as usual, I cannot improve much upon this without rewriting the parser and evaluator "properly".
+
+        * the situation is similar for associative arrays:
+
+            | struct S; a int; b bool; endstruct ; showstruct
+            > S
+                                   a int
+                                   b bool
+
+            | init a S
+            | m["first"]=a
+            | print kind(m["first"])
+            > struct { a int; b bool }
+            
+            | for e=1 to 5; m[rand(10000)]=a; endfor; print m
+            > map[1319:{0 false} 1848:{0 false} 2082:{0 false} 2541:{0 false} 3301:{0 false}]
+
+            | print m[1848].a
+            > 0
+            | print m[1848].b
+            > false
 
     * more doc cleanup
 
