@@ -200,6 +200,7 @@ Available commands:
 [#7]NOP[#-]                                             - dummy 100 millisecond command.
 [#7]STRUCT[#-] [#i1]name[#i0]                           - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
+[#7]SHOWSTRUCT[#-]                                      - display structure definitions.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
 [#7]VERSION[#-]                                         - show Za version.
 [#7]HELP[#-]                                            - this page.

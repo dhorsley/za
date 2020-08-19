@@ -1027,16 +1027,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     // field assignment handling:
 
     // for now, only permit dotted names when no array ref present.
-    //  need to improve the lexer to avoid this.
-
-    // the struct must perform as a go struct type otherwise the goval routines
-    // will blow a fuse processing expressions.
-
-    // syntax will have to be something like this:
-    // struct
-    //    field_name_1 type
-    //    field_name_x type
-    // endstruct
+    //  need to improve the lexer to avoid this?
 
     if dotpos:=str.IndexByte(inter,'.'); pos==-1 && dotpos>-1 {
         // pf("dotted lhs -> %s\n",inter)
@@ -1059,41 +1050,55 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
 
                 val:=reflect.ValueOf(ts)
                 typ:=reflect.ValueOf(ts).Type()
+                intyp:=reflect.ValueOf(expr.result).Type()
 
                 // pf("ref type -> %v\n",typ)
 
                 if typ.Kind()==reflect.Struct {
 
-                    found:=false
                     // pf("val   : %#v\n",val)
                     // pf("field : %#v\n",val.FieldByName(lhs_f))
 
                     tmp:=reflect.New(val.Type()).Elem()
                     tmp.Set(val)
-                    tf:=tmp.FieldByName(lhs_f)
-                    tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-                    tf.Set(reflect.ValueOf(expr.result))
-
-                    vset(fs,lhs_v,tmp.Interface())
-                    // pf("Updated value : \n%#v\n",tmp.Interface())
-
-                    if !found {
-                        // error
+                    if _,exists:=typ.FieldByName(lhs_f); exists {
+                        tf:=tmp.FieldByName(lhs_f)
+                        if intyp.AssignableTo(tf.Type()) {
+                            tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                            tf.Set(reflect.ValueOf(expr.result))
+                            vset(fs,lhs_v,tmp.Interface())
+                            // pf("Updated value : \n%#v\n",tmp.Interface())
+                            return expr,false
+                        } else {
+                            pf("cannot assign result (%T) to %v (%v)\n",expr.result,inter,tf.Type())
+                            expr.evalError=true
+                            return expr,true
+                        }
                     } else {
-                        // pf("vset dotted variable!\n")
-                        return expr,false
+                        pf("STRUCT field %v not found in %v\n",lhs_f,lhs_v)
+                        expr.evalError=true
+                        return expr,true
                     }
+
+                } else {
+                    pf("variable %v is not a STRUCT\n",lhs_v)
+                    expr.evalError=true
+                    return expr,true
                 }
+
             } else {
-                pf("record variable not found\n")
+                pf("record variable %v not found\n",lhs_v)
+                expr.evalError=true
                 return expr,true
             }
         } else {
             pf("bad lhs dot\n")
+            expr.evalError=true
             return expr,true
         }
 
-        // expr.evalError=true
+        pf("unspecified error in struct reference.\n")
+        expr.evalError=true
         return expr,true
     }
 
