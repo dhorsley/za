@@ -75,7 +75,7 @@ CHANGE LOG
 
         * dereferencing: array of struct
             * it is possible to declare an array as mixed type, eg:
-                | init ary mixed 10
+                | init a mixed 10
             * and to then assign a struct value into an array element:
                 | init b s_person
                 | b.name="test"; b.age=10
