@@ -25,10 +25,10 @@ for e=1 to 1000
         person_{p}.name=forenames[rand(len(forenames))-1]+" "+surnames[rand(len(surnames))-1]
         person_{p}.age=rand(49)
         person_{p}.dob=date(rand(1546300800)) # 1970 to 2019
-        println format("%4v,%3v : %32s : %2d",e,p,person_{p}.name,person_{p}.age)
+        # println format("%4v,%3v : %32s : %2d",e,p,person_{p}.name,person_{p}.age)
     endfor
-    print
+    # print
 endfor
 
-println "1000 iterations of 100 struct init + display"
+println "1000 iterations of 100 struct init and populations."
 
