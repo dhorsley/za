@@ -19,8 +19,6 @@
 
     * serialise and deserialise struct to string/json/something for save/load
     * allow array of struct (probably as simple as fixing lhs assignment statements to filter `[` and `.` better)
-    * need to update online doc.
-
 
 
 ---------------------------------------------------------------------------------------------
