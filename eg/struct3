@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+# same as struct example, except using an assoc. array. similar speed to fixed length arrays.
+
 seed(epoch_nano_time())
 
 struct s_person
@@ -16,16 +18,14 @@ surnames =["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cope
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
 
-for p=1 to 100
-    init person_{p} s_person
-endfor
-
+init person s_person
 for e=1 to 1000
     for p=1 to 100
-        person_{p}.name=forenames[rand(len(forenames))-1]+" "+surnames[rand(len(surnames))-1]
-        person_{p}.age=rand(49)
-        person_{p}.dob=date(rand(1546300800)) # 1970 to 2019
-        # println format("%4v,%3v : %32s : %2d",e,p,person_{p}.name,person_{p}.age)
+        person.name=forenames[rand(len(forenames))-1]+" "+surnames[rand(len(surnames))-1]
+        person.age=rand(49)
+        person.dob=date(rand(1546300800)) # 1970 to 2019
+        people[p]=person
+        # println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
     endfor
     # print
 endfor
