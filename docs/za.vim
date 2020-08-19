@@ -349,11 +349,12 @@ syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(for\|nop\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(pause\|debug\|async\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|foreach\|continue\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(accessfile\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(endstruct\|accessfile\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(showstruct\)\($\|\s\+\)"
 
 " Color Matching {{{1
 " ===============

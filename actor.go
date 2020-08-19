@@ -3065,6 +3065,31 @@ tco_reentry:
             structMode=false
 
 
+        case C_Showstruct:
+
+            // SHOWSTRUCT [filter]
+
+            var filter string
+
+            if tokencount>1 {
+                cet := crushEvalTokens(inbound.Tokens[1:])
+                filter,_ = interpolate(ifs,cet.text,true)
+            }
+
+            for k,s:=range structmaps {
+
+                if matched, _ := regexp.MatchString(filter, k); !matched { continue }
+
+                pf("[#6]%v[#-]\n",k)
+
+                for i:=0; i<len(s); i+=2 {
+                    pf("[#4]%24v[#-] [#3]%v[#-]\n",s[i],s[i+1])
+                }
+                pf("\n")
+
+            }
+
+
         case C_With:
             // WITH var AS file
             // get params
@@ -3728,7 +3753,7 @@ func coprocCall(ifs uint64,s string) {
         }
         */
         cet = s[pipepos+1:]
-        inter,_ := interpolate(ifs, cet,true)
+        inter,_ := interpolate(ifs,cet,true)
         out, ec := Copper(inter, false)
         if ec==-1 || ec > 0 {
             pf("Error: [%d] in shell command '%s'\n", ec, str.TrimLeft(cet, " \t"))
