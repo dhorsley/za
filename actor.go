@@ -1396,19 +1396,18 @@ tco_reentry:
             if lockSafety { lastlock.Lock() }
 
             if depth[ifs]==0 {
-                pf("trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
-                pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
+                pf("*debug* trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
+                // pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
                 finish(true,ERR_FATAL)
                 break
             }
 
             if lastConstruct[ifs][depth[ifs]-1]!=C_For && lastConstruct[ifs][depth[ifs]-1]!=C_Foreach {
                 report(ifs,lastline, "ENDFOR without a FOR or FOREACH")
-                pf("depth ifs -1 -> %d\n",depth[ifs])
-                pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
-                for k,q:=range lastConstruct[ifs] {
-                    pf("k->%d q->%d n->%s\n",k,q,tokNames[q])
-                }
+                // pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
+                //for k,q:=range lastConstruct[ifs] {
+                //    pf("k->%d q->%d n->%s\n",k,q,tokNames[q])
+                //}
                 finish(false,ERR_SYNTAX)
                 break
             }

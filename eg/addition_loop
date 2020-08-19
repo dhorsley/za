@@ -18,7 +18,7 @@ for f=0 to max_count
     inc a f
 endfor
 te=epoch_nano_time()
-println "total {f} , loop-count {a}"
+println "total {a} , loop-count {f}"
 
 dur=time_diff(te,ts)/1000000
 println format("\nduration       [#5]%0.3f s[#-]",dur)
