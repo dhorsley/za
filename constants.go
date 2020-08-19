@@ -165,6 +165,7 @@ const (
     C_Endwith
     C_Struct
     C_Endstruct
+    C_Showstruct
     C_Pane
 	C_Doc
 	C_Test
