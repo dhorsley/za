@@ -93,10 +93,11 @@ CHANGE LOG
             * or retrieve an entire struct record:
                 | c=a[0]
 
-            * however, to operate on elements of a field, you must pass the object through a temporary var, eg:
+            * however, to operate on elements of a field, you must pass the object or the field through temporary vars, eg:
                 | c=a[0]
                 | c.name="new_name"
-                | print c[2] # 'w'
+                | d=c.name
+                | print d[2] # 'w'
                 | a[0]=c
                 | print a[0].name       # 'new_name'
             * you cannot directly dereference elements of a dotted array element, eg:
