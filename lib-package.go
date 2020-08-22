@@ -58,11 +58,11 @@ func FileDownload(fp string) (fname string, ecode int) {
 
         // download
         r, err := http.Get(fp)
-        defer r.Body.Close()
         if err != nil || (r.StatusCode <200 || r.StatusCode >299) {
             pf("[download] could not get file from %v\n",fp)
             return "",-2
         }
+        defer r.Body.Close()
 
         fname=filepath.Base(r.Request.URL.String())
         contdisp := r.Header.Get("Content-Disposition")

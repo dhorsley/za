@@ -187,6 +187,7 @@ func GetAsInt(expr interface{}) (int, bool) {
             return int(p), false
         }
     default:
+        /*
         // special case: these need rationalising eventually...
         switch sf("%T",expr) {
         case "float32":
@@ -215,8 +216,39 @@ func GetAsInt(expr interface{}) (int, bool) {
         default:
             // pf("\n\n*debug* GetAsInt default on type %T\n\n",expr)
         }
+        */
     }
     return 0, true
+}
+
+func GetAsUint(expr interface{}) (uint64, bool) {
+    switch i := expr.(type) {
+    case float32:
+        return uint64(i), false
+    case float64:
+        return uint64(i), false
+    case int:
+        return uint64(i), false
+    case uint8:
+        return uint64(i), false
+    case uint32:
+        return uint64(i), false
+    case uint64:
+        return i, false
+    case int32:
+        return uint64(i), false
+    case int64:
+        return uint64(i), false
+    case uint:
+        return uint64(i), false
+    case string:
+        p, e := strconv.ParseFloat(i, 64)
+        if e == nil {
+            return uint64(p), false
+        }
+    default:
+    }
+    return uint64(0), true
 }
 
 // EvalCrush* used in C_If, C_Exit, C_For and C_Debug:
@@ -435,7 +467,7 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         if r := recover(); r != nil {
 
             if _, ok := r.(runtime.Error); ok {
-                pf("Fatal error on ( %v )\n",inbound.Original)
+                pf("Fatal error on: %v\n",inbound.Original)
                 pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
                 if debug_level==0 {
                     os.Exit(127)
@@ -690,11 +722,16 @@ tco_reentry:
         // struct building
         if structMode && statement.tokType!=C_Endstruct {
             // consume the statement as an identifier
+            // as we are only accepting simple types currently, restrict validity
+            //  to single type token.
             if tokencount!=2 {
-                report(ifs,lastline,"Invalid STRUCT entry")
+                cet := crushEvalTokens(inbound.Tokens[1:])
+                report(ifs,lastline,sf("Invalid STRUCT entry '%v'",cet.text))
                 finish(false,ERR_SYNTAX)
                 break
             }
+            // @todo: add a check here for syntax. for example, placing type before name will result
+            //  in an error during INIT. need to raise error here instead. (on order and type validity).
             structNode=append(structNode,statement.tokText,inbound.Tokens[1].tokText)
             continue
         }
@@ -2180,7 +2217,6 @@ tco_reentry:
                         // deal with init name struct_type
                         if len(structvalues)>0 {
                             var sf []reflect.StructField
-                            // var snv []interface{}
                             offset:=uintptr(0)
                             for svpos:=0; svpos<len(structvalues); svpos+=2 {
                                 nv:=structvalues[svpos]
@@ -2188,7 +2224,6 @@ tco_reentry:
                                 sf=append(sf,
                                     reflect.StructField{
                                         Name:nv,PkgPath:"main",
-                                        // Type:reflect.TypeOf(snv).Elem(),
                                         Type:typemap[nt],
                                         Offset:offset,
                                         Anonymous:false,
@@ -2196,12 +2231,16 @@ tco_reentry:
                                 )
                                 offset+=typemap[nt].Size()
                             }
-                            // pf("Struct Fields ->\n%v\n",sf)
                             typ:=reflect.StructOf(sf)
-                            v:=reflect.Zero(typ).Interface()
+                            // v:=reflect.Zero(typ).Interface()
+                            v:=(reflect.New(typ).Elem()).Interface()
+                            // pf("Struct Fields ->\n%v\n",sf)
                             // pf("Zero Value : %#v\n",v)
                             // pf("Value Type : %T\n",v)
                             vset(ifs,varname,v)
+                            // also register value of type with gob in case of serialisation
+                            // pf("registering type : %T\n",v)
+                            // gob.Register(v)
                         }
                     } else {
                         // handle unknown type error

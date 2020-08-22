@@ -95,6 +95,7 @@ syntax match list_functions "\s*fieldsort\s*("he=e-1
 syntax match list_functions "\s*numcomp\s*("he=e-1
 
 syntax match conversion_functions "\s*int\s*("he=e-1
+syntax match conversion_functions "\s*uint\s*("he=e-1
 syntax match conversion_functions "\s*bool\s*("he=e-1
 syntax match conversion_functions "\s*float\s*("he=e-1
 syntax match conversion_functions "\s*string\s*("he=e-1
@@ -110,6 +111,8 @@ syntax match conversion_functions "\s*base64e\s*("he=e-1
 syntax match conversion_functions "\s*base64d\s*("he=e-1
 syntax match conversion_functions "\s*json_decode\s*("he=e-1
 syntax match conversion_functions "\s*json_format\s*("he=e-1
+syntax match conversion_functions "\s*write_struct\s*("he=e-1
+syntax match conversion_functions "\s*read_struct\s*("he=e-1
 
 syntax match internal_functions "\s*execpath\s*("he=e-1
 syntax match internal_functions "\s*last\s*("he=e-1

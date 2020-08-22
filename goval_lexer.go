@@ -14,8 +14,8 @@ const BitSizeOfInt = int(unsafe.Sizeof(0)) * 8
 
 // za variable
 type Variable struct {
-	iName  string
-	iValue interface{}
+	IName  string
+	IValue interface{}
 }
 
 type eToken struct {

@@ -4,14 +4,67 @@ package main
 
 import (
 	"errors"
+    "bufio"
     "bytes"
+//    "io/ioutil"
     "math"
+    "reflect"
+    "os"
     "strconv"
     "encoding/base64"
     "encoding/json"
     "strings"
+    "unsafe"
+    "encoding/gob"
 )
 
+// struct to map
+func s2m(val interface{}) map[string]interface{} {
+
+    m:=make(map[string]interface{})
+
+    rs  := reflect.ValueOf(val)
+    rt  := rs.Type()
+    rs2 := reflect.New(rs.Type()).Elem()
+    rs2.Set(rs)
+
+    for i := 0; i < rs.NumField(); i++ {
+        rf := rs2.Field(i)
+        rf  = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
+        name:=rt.Field(i).Name
+        m[name] = rf.Interface()
+    }
+
+    return m
+}
+
+
+// map to struct: requires type information of receiver.
+
+func m2s(m map[string]interface{}, rcvr interface{}) interface{} {
+
+    // get underlying type of rcvr
+    rs  := reflect.ValueOf(rcvr)
+    rt  := rs.Type()
+
+    rs2 := reflect.New(rs.Type()).Elem()
+    rs2.Set(rs)
+
+    // populate rcvr through reflection
+    for i := 0; i < rs.NumField(); i++ {
+        rf := rs2.Field(i)
+        rf  = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
+        name:=rt.Field(i).Name
+        switch tm:=m[name].(type) {
+        case bool,int,int32,int64,uint,uint8,uint32,uint64,float32,float64,string:
+            rf.Set(reflect.ValueOf(tm))
+        default:
+            pf("unknown type in m2s '%T'\n",tm)
+        }
+    }
+
+    return rs2.Interface()
+}
 
 func buildConversionLib() {
 
@@ -19,9 +72,92 @@ func buildConversionLib() {
 
 	features["conversion"] = Feature{version: 1, category: "os"}
 	categories["conversion"] = []string{
-        "byte","int", "float", "bool", "string", "kind", "chr", "ascii",
+        "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii",
         "is_number","base64e","base64d","json_decode","json_format",
+        "write_struct","read_struct",
     }
+
+	slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
+	stdlib["write_struct"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+
+		if len(args) != 2 { return 0, errors.New("invalid arguments (count) provided to write_struct()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
+			return 0, errors.New("invalid arguments (type) provided to write_struct()")
+        }
+
+        fn:=args[0].(string)
+        vn:=args[1].(string)
+
+        // convert struct to map
+        v,_:=vget(evalfs,vn)
+        m:=s2m(v)
+
+        // encode with gob
+        b:=new(bytes.Buffer)
+        e:=gob.NewEncoder(b)
+        err=e.Encode(m)
+        if err!=nil {
+            return false,err
+        }
+
+        // start writer
+        f, err := os.Create(fn)
+        w:=bufio.NewWriter(f)
+        w.Write(b.Bytes())
+        w.Flush()
+        f.Close()
+
+        return true, nil
+
+    }
+
+	slhelp["read_struct"] = LibHelp{in: "filename,name_of_destination_struct", out: "success_flag", action: "Read a struct from a file."}
+	stdlib["read_struct"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+
+		if len(args) != 2 { return 0, errors.New("invalid arguments (count) provided to read_struct()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
+			return 0, errors.New("invalid arguments (type) provided to read_struct()")
+        }
+
+        fn:=args[0].(string)
+        vn:=args[1].(string)
+
+        v,success:=vget(evalfs,vn)
+        if !success {
+            return false,errors.New(sf("could not find '%v'",vn))
+        }
+
+        r  :=reflect.ValueOf(v)
+        // typ:=reflect.TypeOf(v)
+
+        // confirm this is a struct
+        if reflect.ValueOf(r).Kind().String()!="struct" {
+            return false,errors.New(sf("'%v' is not a STRUCT",vn))
+        }
+
+        // retrieve the packed file
+        f,err:=os.Open(fn)
+        if err!=nil {
+            return nil,err
+        }
+
+        // unpack
+        var m = new(map[string]interface{})
+        d:=gob.NewDecoder(f)
+        err=d.Decode(&m)
+        f.Close()
+
+        if err != nil {
+            return false,errors.New("unpacking error")
+        }
+
+        // write to Za variable.
+        vset(evalfs,vn,m2s(*m,v))
+
+        return true,nil
+
+	}
+
 
 	slhelp["chr"] = LibHelp{in: "int", out: "string", action: "Return a string representation of ASCII char [#i1]int[#i0]."}
 	stdlib["chr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -171,6 +307,42 @@ func buildConversionLib() {
 			return i, nil
 		}
 		return 0, errors.New(sf("could not convert [%T] (%v) to integer in int()",args[0],args[0]))
+	}
+
+	slhelp["uint"] = LibHelp{in: "var", out: "unsigned integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
+	stdlib["uint"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return -1, errors.New("invalid arguments provided to uint()")
+		}
+		i, invalid := GetAsUint(args[0])
+		if !invalid {
+			return uint64(i), nil
+		}
+		return uint64(0), errors.New(sf("could not convert [%T] (%v) to integer in uint()",args[0],args[0]))
+	}
+
+	slhelp["int32"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int32 type, or errors."}
+	stdlib["int32"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return -1, errors.New("invalid arguments provided to int32()")
+		}
+		i, invalid := GetAsInt32(args[0])
+		if !invalid {
+			return int32(i), nil
+		}
+		return int32(0), errors.New(sf("could not convert [%T] (%v) to integer in int32()",args[0],args[0]))
+	}
+
+	slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
+	stdlib["int64"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return -1, errors.New("invalid arguments provided to int64()")
+		}
+		i, invalid := GetAsInt(args[0])
+		if !invalid {
+			return int64(i), nil
+		}
+		return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in int64()",args[0],args[0]))
 	}
 
 	slhelp["string"] = LibHelp{in: "var", out: "string", action: "Converts [#i1]var[#i0] to a string."}

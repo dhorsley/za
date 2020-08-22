@@ -1,0 +1,39 @@
+#!/usr/bin/za
+
+struct T
+    a int
+    b bool
+    c string
+    d float64
+    e uint64
+endstruct
+
+init a T
+
+file="struct-test-serial"
+
+a.a=42
+a.b=true
+
+if !write_struct(file,"a")
+    println "error during write!"
+    exit 1
+endif
+
+| hexdump -C {file}
+
+init z T
+
+if read_struct(file,"z")
+    println "returned value: ",z
+    println "kind of value : ",kind(z)
+else
+    println "failed to read variable."
+endif
+
+z.c="blah"
+z.d=float(100000)
+z.e=uint(200)
+
+println "Updated value : ",z
+

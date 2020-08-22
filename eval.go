@@ -5,7 +5,6 @@ import (
     "strconv"
     "bytes"
     "net/http"
-//    "fmt"
     "sync"
     str "strings"
     "unsafe"
@@ -33,7 +32,7 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
-        if strcmp(ident[fs][k].iName,name) {
+        if strcmp(ident[fs][k].IName,name) {
             // pf("found in vl: k=%v cap_id=%v len_id=%v varcount=%v\n",k,cap(ident[fs]),len(ident[fs]),varcount[fs])
             return k, true
         }
@@ -66,7 +65,7 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 }
 
 func vunset(fs uint64, name string) {
-    return
+    // return
 
     loc, found := VarLookup(fs, name)
 
@@ -141,7 +140,7 @@ func vset(fs uint64, name string, value interface{}) bool {
             vlock.Lock()
             defer vlock.Unlock()
         }
-        ident[fs][vi].iValue = value
+        ident[fs][vi].IValue = value
     } else {
 
         // instantiate
@@ -156,11 +155,11 @@ func vset(fs uint64, name string, value interface{}) bool {
             // append thread safety workaround
             newary:=make([]Variable,len(ident[fs]),len(ident[fs])*2)
             copy(newary,ident[fs])
-            newary=append(newary,Variable{iName: name, iValue: value})
+            newary=append(newary,Variable{IName: name, IValue: value})
             ident[fs]=newary
 
         } else {
-            ident[fs][varcount[fs]] = Variable{iName: name, iValue: value}
+            ident[fs][varcount[fs]] = Variable{IName: name, IValue: value}
         }
 
         varcount[fs]++
@@ -347,11 +346,21 @@ func vget(fs uint64, name string) (interface{}, bool) {
             vlock.RLock()
             defer vlock.RUnlock()
         }
-        return ident[fs][vi].iValue, true
+        return ident[fs][vi].IValue, true
     }
     return nil, false
 }
 
+func getvtype(fs uint64, name string) (reflect.Type, bool) {
+    if vi, ok := VarLookup(fs, name); ok {
+        if lockSafety {
+            vlock.RLock()
+            defer vlock.RUnlock()
+        }
+        return reflect.TypeOf(ident[fs][vi].IValue), true
+    }
+    return nil, false
+}
 
 func isBool(expr interface{}) bool {
 
@@ -412,19 +421,19 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         for k := 0; k < vc; k++ {
 
             v := ident[fs][k]
-            if str.IndexByte(v.iName,'@')==-1 { continue }
+            if str.IndexByte(v.IName,'@')==-1 { continue }
 
-            if v.iValue != nil {
-                switch v.iValue.(type) {
+            if v.IValue != nil {
+                switch v.IValue.(type) {
                 case uint8, uint64, int64, float32, float64, int, bool:
                 case interface{}:
-                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 case string:
-                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
-                    s = str.Replace(s, "{"+v.iName+"}", sf("%v",v.iValue),-1)
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 default:
-                    s = str.Replace(s, "{"+v.iName+"}", sf("!%T!%v",v.iValue,v.iValue),-1)
+                    s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
 
                 }
             }
@@ -1059,14 +1068,24 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                     // pf("val   : %#v\n",val)
                     // pf("field : %#v\n",val.FieldByName(lhs_f))
 
+                    // create temp copy of struct
                     tmp:=reflect.New(val.Type()).Elem()
                     tmp.Set(val)
+
                     if _,exists:=typ.FieldByName(lhs_f); exists {
                         tf:=tmp.FieldByName(lhs_f)
                         if intyp.AssignableTo(tf.Type()) {
+
+                            // if tf is made unsafe then, basically, serialisation routines will
+                            // stop working as they appear to no longer interpret the value's type
+                            // correctly through reflection. (e.g. gob, struc, restruct)
+
                             tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+
                             tf.Set(reflect.ValueOf(expr.result))
+
                             vset(fs,lhs_v,tmp.Interface())
+
                             // pf("Updated value : \n%#v\n",tmp.Interface())
                             return expr,false
                         } else {
@@ -1097,9 +1116,6 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
             return expr,true
         }
 
-        pf("unspecified error in struct reference.\n")
-        expr.evalError=true
-        return expr,true
     }
 
     // final assignation

@@ -891,8 +891,8 @@ func buildInternalLib() {
             vc:=varcount[lmv]
             for q := 0; q < vc; q++ {
                 v := ident[lmv][q]
-                if v.iName[0]=='@' { continue }
-                    pf("%s = %v\n", v.iName, v.iValue)
+                if v.IName[0]=='@' { continue }
+                    pf("%s = %v\n", v.IName, v.IValue)
                 }
             } else {
                 pf("Invalid space name provided '%v'.\n",s)
