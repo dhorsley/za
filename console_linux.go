@@ -587,8 +587,8 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
                     //.. add var names
                     for _, v := range ident[evalfs] {
-                        if v.iName!="" {
-                            varnames = append(varnames, v.iName)
+                        if v.IName!="" {
+                            varnames = append(varnames, v.IName)
                         }
                     }
                     sort.Strings(varnames)

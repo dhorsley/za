@@ -19,6 +19,7 @@ surnames =["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cope
 ]
 
 init person s_person
+
 for e=1 to 1000
     for p=1 to 100
         person.name=forenames[rand(len(forenames))-1]+" "+surnames[rand(len(surnames))-1]

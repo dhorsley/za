@@ -1,6 +1,5 @@
 
 
-
 1.1.0   will be the release version
 
     * no new functionality!!!
@@ -12,14 +11,6 @@
 1.0.9   bug fixes and documentation updates
 
     * typo/doc fixes (website and source)
-
-    STRUCT TODO
-
-    all @todo: listed in changelog, plus:
-
-    * serialise and deserialise struct to string/json/something for save/load
-    * allow array of struct (probably as simple as fixing lhs assignment statements to filter `[` and `.` better)
-
 
 ---------------------------------------------------------------------------------------------
 

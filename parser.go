@@ -81,8 +81,8 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 			// -- add original version
 			// if pos>0 { phrase.Original = input[lstart:pos+1] }
 			if pos>0 { phrase.Original = input[lstart:pos] }
-			// lstart = pos + 1
-			lstart = pos
+			lstart = pos + 1
+			// lstart = pos
             // debug(15,"current phrase orig = '%v'\n",phrase.Original)
 
             // -- discard empty lines
