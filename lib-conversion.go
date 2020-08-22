@@ -72,7 +72,7 @@ func buildConversionLib() {
 
 	features["conversion"] = Feature{version: 1, category: "os"}
 	categories["conversion"] = []string{
-        "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii",
+        "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii","uint","int32",
         "is_number","base64e","base64d","json_decode","json_format",
         "write_struct","read_struct",
     }
