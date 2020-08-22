@@ -48,8 +48,9 @@ CHANGE LOG
 
         * struct definitions are available throughout all scopes.
         * struct instantiations are locally scoped.
-        * only some basic types are supported for fields: bool, int, int32, int64, float64, string
-            * (others may be present but they are not yet supported, such as uint) 
+        * only some basic types are supported for fields:
+            * bool, int, float64, string
+            * int32, int64 and uint64 should also be supported, but need more testing.
 
         * i am very unlikely to add more complex types as field types (arrays/maps/etc).
             * the intention here is for structs to be used for bundling config and improving stdlib options.
@@ -62,8 +63,15 @@ CHANGE LOG
 
         * structs should also allow for some slightly cleaner passing around of bunches of config. 
 
-        * it is currently not possible to mix dotting and arrays in assignments.
-        * on evalution, a dotted field reference is converted to the given struct field type.
+        * serialise and deserialise struct to string/json/something for save/load:
+            * new lib calls: write_struct(file,source_struct_name) and read_struct(file,dest_struct_name)
+                * these functions take a flat struct variable and send them to or from disk.
+                * read_struct requires a reference struct as a template for populating the return value.
+                    * the usual process would be to define a struct, initialise a var as that struct type
+                        then use the empty initialised var as the destination struct which read_struct will
+                        populate after examining the layout. 
+
+        * some vague examples here: eg/struct, eg/struct[23], eg/struct-serial
 
 
         !!                                                                          !!
@@ -71,9 +79,11 @@ CHANGE LOG
         !!  USE WITH CAUTION                                                        !!
         !!                                                                          !!
 
+
     * STRUCT parsing limitations:
 
         * dereferencing: array of struct
+
             * it is possible to declare an array as mixed type, eg:
                 | init a mixed 10
             * and to then assign a struct value into an array element:
@@ -86,21 +96,24 @@ CHANGE LOG
             * if you assign a 'blank' (initialised, but no fields assigned to) struct value to an array element,
                 then unspecified behaviour occurs. generally, the array element will assume the type and zero value
                 of one of the struct fields of the whole struct assigned to it. populate the struct before assignment
-                to the array element! (even partially)
-
+                to the array element! (at least partially)
+    
             * you can access fields directly, eg:
                 | print a[0].name
             * or retrieve an entire struct record:
                 | c=a[0]
 
-            * however, to operate on elements of a field, you must pass the object or the field through temporary vars, eg:
+        * it is currently not possible to mix dotting and arrays in assignments.
+
+            * to operate on elements of a field, you must pass the object or the field through temporary vars, eg:
                 | c=a[0]
                 | c.name="new_name"
                 | d=c.name
                 | print d[2] # 'w'
                 | a[0]=c
                 | print a[0].name       # 'new_name'
-            * you cannot directly dereference elements of a dotted array element, eg:
+
+            * you cannot directly access elements of a dotted array element, eg:
                 | print c.name[0]       # error
                 | print a[0].name[0]    # error
 
@@ -125,6 +138,9 @@ CHANGE LOG
             > 0
             | print m[1848].b
             > false
+
+    * added write_struct and read_struct lib calls. (to/from disk)
+    * added uint lib call (for type conversion)
 
     * more doc cleanup
 
