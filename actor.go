@@ -1433,8 +1433,8 @@ tco_reentry:
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
-            //if lockSafety { looplock.Lock() }
-            //if lockSafety { lastlock.Lock() }
+            if lockSafety { looplock.Lock() }
+            if lockSafety { lastlock.Lock() }
 
             if depth[ifs]==0 {
                 pf("*debug* trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
@@ -1577,8 +1577,8 @@ tco_reentry:
                 pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
             }
 
-            //if lockSafety { lastlock.Unlock() }
-            //if lockSafety { looplock.Unlock() }
+            if lockSafety { lastlock.Unlock() }
+            if lockSafety { looplock.Unlock() }
 
         case C_Continue:
 
