@@ -275,9 +275,10 @@ func main() {
         A int
         B bool
         C string
+        D []string
     }
 
-    ts:=t_ts{42,true,"something"}
+    ts:=t_ts{42,true,"something",[]string{"t1","t2","t3"}}
     vset(0,"teststruct",ts) 
 
     // END TESTING

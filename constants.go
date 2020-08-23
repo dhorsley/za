@@ -6,19 +6,19 @@ package main
 
 const MaxUint64 = ^uint64(0)
 
-const MAX_LOOPS = 16
-const DEFAULT_INIT_SIZE = 64   // start size of INIT'ed arrays
+const MAX_LOOPS = 8
+const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 
 // maximum lib-net concurrent listener clients for http server
 const MAX_CLIENTS = 800
 
-const SPACE_CAP = 32000         // max user function instances ack(4,1) memoised uses ~16.5k
-const CALL_CAP = 20             // calltable (open calls) start capacity. scales up.
-const FUNC_CAP = 300            // max stdlib functions
+const SPACE_CAP = 20000         // max user function instances ack(4,1) memoised uses ~16.5k
+const CALL_CAP = 10             // calltable (open calls) start capacity. scales up.
+const FUNC_CAP = 350            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 
 const VAR_CAP = 20              // max vars per function (scales up)
 const FAIRY_CAP = 256           // max ansi mappings
-const LIST_SIZE_CAP = 32        // initial list size on construction
+const LIST_SIZE_CAP = 16        // initial list size on construction
 
 const globalspace = uint64(0)   // global namespace
 
