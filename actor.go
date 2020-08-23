@@ -61,14 +61,13 @@ func finish(hard bool, i int) {
 // slightly faster string comparison.
 // have to use gotos here as loops can't be inlined
 func strcmp(a string, b string) (bool) {
-    if len(a)==0 && len(b)==0  { return true }
-    if len(a)!=len(b)   { return false }
-    if a[0]!=b[0]       { return false }
-    i:=0; la:=len(a)
+    la:=len(a)
+    if la!=len(b)           { return false }
+    if la==0 && len(b)==0   { return true }
     strcmp_repeat_point:
-        if a[i]!=b[i] { return false }
-        i++
-    if i<la { goto strcmp_repeat_point }
+        la--
+        if a[la]!=b[la] { return false }
+    if la>0 { goto strcmp_repeat_point }
     return true
 }
 
@@ -655,19 +654,24 @@ tco_reentry:
     var structNode []string         // struct builder
     var defining bool               // are we currently defining a function. takes priority over structmode.
     var definitionName string       // ... if we are, what is it called
-
+    var ampl int                    // sets amplitude of change in INC/DEC statements
+    var vid int                     // VarLookup ID cache for FOR loops when !lockSafety
     pc = -1                         // program counter : increments to zero at start of loop
 
+    var si bool
     /*
     grso,_:=getRealSizeOf(functionspaces)
     pf(">> fs[] sz : %d len %d\n",grso,len(functionspaces))
     */
 
+    var tokencount, lastline int    // was getting allocated per pc iteration. temp move outside for debug.
+    var statement Token
+
     for {
 
         pc++  // program counter, equates to each Phrase struct in the function
 
-        si:=sig_int
+        si=sig_int
 
         if pc >= finalline || endFunc || si {
             break
@@ -680,9 +684,9 @@ tco_reentry:
 
         // get the next Phrase
         inbound     = &functionspaces[base][pc]
-        tokencount := inbound.TokenCount // length of phrase
-        lastline   := inbound.Tokens[0].Line
-        if !lockSafety { elast = lastline }
+        tokencount  = inbound.TokenCount // length of phrase
+        lastline    = inbound.Tokens[0].Line
+        // if !lockSafety { elast = lastline }
 
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
@@ -708,7 +712,7 @@ tco_reentry:
         // finally... start processing the statement.
    ondo_reenter:
 
-        statement := inbound.Tokens[0]
+        statement = inbound.Tokens[0]
 
         // append statements to a function if currently inside a DEFINE block.
         if defining && statement.tokType != C_Enddef {
@@ -1294,7 +1298,7 @@ tco_reentry:
                     // pf("loop ifs:\n%#v\n",loops[ifs])
                     loops[ifs][depth[ifs]] = s_loop{loopVar: fid, repeatFrom: pc + 1, iterOverMap: iter,
                         iterOverString: finalExprString, iterOverArray: finalExprArray,
-                        ecounter: 0, econdEnd: ce, forEndPos: enddistance + pc,
+                        counter: 0, condEnd: ce, forEndPos: enddistance + pc,
                         loopType: C_Foreach, iterType: iterType,
                     }
 
@@ -1429,22 +1433,17 @@ tco_reentry:
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
-            if lockSafety { looplock.Lock() }
-            if lockSafety { lastlock.Lock() }
+            //if lockSafety { looplock.Lock() }
+            //if lockSafety { lastlock.Lock() }
 
             if depth[ifs]==0 {
                 pf("*debug* trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
-                // pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
                 finish(true,ERR_FATAL)
                 break
             }
 
             if lastConstruct[ifs][depth[ifs]-1]!=C_For && lastConstruct[ifs][depth[ifs]-1]!=C_Foreach {
                 report(ifs,lastline, "ENDFOR without a FOR or FOREACH")
-                // pf("lc-ifs->\n%#v\n",lastConstruct[ifs])
-                //for k,q:=range lastConstruct[ifs] {
-                //    pf("k->%d q->%d n->%s\n",k,q,tokNames[q])
-                //}
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1462,9 +1461,9 @@ tco_reentry:
 
                 case C_Foreach: // move through range
 
-                    (*thisLoop).ecounter++
+                    (*thisLoop).counter++
 
-                    if (*thisLoop).ecounter > (*thisLoop).econdEnd {
+                    if (*thisLoop).counter > (*thisLoop).condEnd {
                         loopEnd = true
                     } else {
 
@@ -1473,48 +1472,48 @@ tco_reentry:
                         case IT_LINE:
                             switch (*thisLoop).iterOverArray.(type) {
                             // map ranges are randomly ordered!!
-                            case map[string]interface{},map[string]int,map[string]float64,map[string]string,map[string][]string:
+                            case map[string]interface{}, map[string]int, map[string]float64, map[string]string, map[string][]string:
                                 if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                     vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
                                     vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                                 }
                             case []bool:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
                             case []int:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
                             case []uint8:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
                             case []int32:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).counter])
                             case []int64:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
                             case []string:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
                             case []float32:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).counter])
                             case []float64:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
                             case []map[string]interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])
                             case []interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).ecounter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).ecounter])
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).counter])
                             default:
                                 // @note: should put a proper exit in here.
-                                pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).ecounter]))
+                                pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter]))
                                 pf("Unknown type [%T] in END/Foreach\n",pv)
                             }
                         case IT_CHAR:
-                            vset(ifs, (*thisLoop).loopVar, (string)((*thisLoop).iterOverString.(string)[(*thisLoop).ecounter]))
+                            vset(ifs, (*thisLoop).loopVar,(*thisLoop).iterOverString.(string)[(*thisLoop).counter])
                         }
 
                     }
@@ -1552,7 +1551,12 @@ tco_reentry:
 
                     // assign loop counter value back to local variable
                     if (*thisLoop).optNoUse == Opt_LoopSet {
-                        vset(ifs, (*thisLoop).loopVar, (*thisLoop).counter)
+                        if !lockSafety {
+                            vid, _ = VarLookup(ifs,(*thisLoop).loopVar)
+                            ident[ifs][vid].IValue = (*thisLoop).counter
+                        } else {
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).counter)
+                        }
                     }
 
                 }
@@ -1573,8 +1577,8 @@ tco_reentry:
                 pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
             }
 
-            if lockSafety { lastlock.Unlock() }
-            if lockSafety { looplock.Unlock() }
+            //if lockSafety { lastlock.Unlock() }
+            //if lockSafety { looplock.Unlock() }
 
         case C_Continue:
 
@@ -3522,8 +3526,8 @@ tco_reentry:
                     break
                 }
 
-                var ampl int
-                var er bool
+                // var ampl int
+                // var er bool
                 var endIncDec bool
                 var isArray bool
 
@@ -3537,12 +3541,6 @@ tco_reentry:
                         switch v:=v.(type) {
                         case uint8,int32,int64,uint32,uint64:
                             ampl,_ = GetAsInt(v)
-                        /*
-                        case int32:
-                            ampl,_ = GetAsInt(v)
-                        case int64:
-                            ampl,_ = GetAsInt(v)
-                        */
                         case int:
                             ampl = v
                         default:
@@ -3552,6 +3550,7 @@ tco_reentry:
                             break
                         }
                     } else { // is an int?
+                        var er bool
                         ampl,er = GetAsInt(inbound.Tokens[2].tokText)
                         if er { // else evaluate
                             cet := crushEvalTokens(inbound.Tokens[2:])
@@ -3721,7 +3720,7 @@ tco_reentry:
 
 
     siglock.RLock()
-    si:=sig_int
+    si=sig_int
     siglock.RUnlock()
 
     if structMode {

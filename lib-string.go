@@ -85,17 +85,42 @@ func buildStringLib() {
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
 
+    // part of regex caching test - may be removed later.
+    compileCache:=make(map[string]regexp.Regexp)
+
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
     stdlib["replace"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return "", errors.New("Error: invalid argument count.\n")
         }
+        // @todo: type checks on args.
+
         src := args[0].(string)
         regex := args[1].(string)
         repl := args[2].(string)
         // pf("debug : s %v , reg %v , repl %v\n",src,regex,repl)
 
-        var re = regexp.MustCompile(regex)
+        // pf("compiling %#v\n",regex)
+
+        /*
+        // caching added as a test. 
+        // may be removed pre-release
+        //
+        // if it stays in it will also need a max cache size and expiry mechanism.
+        //
+        */
+
+        var re regexp.Regexp
+        if pre,found:=compileCache[regex];!found {
+            re = *regexp.MustCompile(regex)
+            compileCache[regex]=re
+        } else
+        {
+            re = pre
+        }
+
+        // pf("compiled  %#v\n",re)
+
         s := re.ReplaceAllString(src, repl)
         return s, nil
     }

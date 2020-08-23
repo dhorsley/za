@@ -91,9 +91,7 @@ type s_loop struct {
 	repeatCond       ExpressionCarton // tested with ev() // used by while
 	repeatAction     int              // enum: ACT_NONE, ACT_INC, ACT_DEC
 	repeatActionStep int              // size of repeatAction
-	ecounter         int              // current position in loop
 	counter          int              // current position in loop
-	econdEnd         int              // terminating position value
 	condEnd          int              // terminating position value
 	forEndPos        int              // ENDFOR location
 	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
@@ -122,8 +120,8 @@ func (l s_loop) String() string {
 		// pick out: loopVar, iterType, ecounter, econdEnd
 		op += sf("    variable   -> %v\n", l.loopVar)
 		op += sf("    type       -> %v\n", iterTypeList[l.iterType])
-		op += sf("    counter    -> %v\n", l.ecounter)
-		op += sf("    condition  -> %v\n", l.econdEnd)
+//		op += sf("    counter    -> %v\n", l.ecounter)
+//		op += sf("    condition  -> %v\n", l.econdEnd)
 	case C_While:
 		op = "~{ [#4]loop: WHILE \n"
 		// pick out: repeatCond

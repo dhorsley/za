@@ -23,13 +23,6 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
     if lockSafety { vlock.RLock() ; defer vlock.RUnlock() }
 
-/*
-    if k,there:=vmap[fs][name]; there {
-        return k,true
-    }
-    return 0,false
-*/
-
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if strcmp(ident[fs][k].IName,name) {
@@ -51,7 +44,6 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
     }
 
     vtmr:=*vtable_maxreached
-    // vmap[fs]=make(map[string]int)
 
     if fs>=vtmr {
         *vtable_maxreached=fs
@@ -81,7 +73,6 @@ func vunset(fs uint64, name string) {
         }
         ident[fs][vc] = Variable{}
         varcount[fs]--
-        // delete(vmap[fs],name)
     }
 
 }
@@ -341,14 +332,18 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 }
 
 func vget(fs uint64, name string) (interface{}, bool) {
+
     if vi, ok := VarLookup(fs, name); ok {
+
         if lockSafety {
             vlock.RLock()
             defer vlock.RUnlock()
         }
+
         return ident[fs][vi].IValue, true
     }
     return nil, false
+
 }
 
 func getvtype(fs uint64, name string) (reflect.Type, bool) {
@@ -812,7 +807,9 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         nv := getReportFunctionName(fs,false)
 
         if nv!="" {
-            report(0,elast,sf("Evaluation Error @ Function %v", nv))
+            // @debug: elast is a global which is set every Call() iteration of the program loop
+            // disabled for now.
+            // report(0,elast,sf("Evaluation Error @ Function %v", nv))
         }
         pf("[#6]%v[#-]\n", err)
 
