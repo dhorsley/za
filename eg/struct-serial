@@ -8,6 +8,8 @@ struct T
     e uint64
 endstruct
 
+showstruct
+
 init a T
 
 file="struct-test-serial"

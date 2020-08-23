@@ -6,7 +6,6 @@ import (
 	"errors"
     "bufio"
     "bytes"
-//    "io/ioutil"
     "math"
     "reflect"
     "os"
@@ -309,7 +308,7 @@ func buildConversionLib() {
 		return 0, errors.New(sf("could not convert [%T] (%v) to integer in int()",args[0],args[0]))
 	}
 
-	slhelp["uint"] = LibHelp{in: "var", out: "unsigned integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
+	slhelp["uint"] = LibHelp{in: "var", out: "unsigned_integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
 	stdlib["uint"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to uint()")
