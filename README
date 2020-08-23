@@ -5,3 +5,63 @@ Za Language Interpreter
 More documentation is available here: https://zalang.org/
 
 
+Current State - 23-08-2020
+--------------------------
+
+Outstanding issues:
+
+    * more library tests required (written in Za)
+
+    * more Go tests required (for the interpreter itself)
+
+    * should be passing more references around instead of values, especially in loops
+
+    * more syntax (count+type) checks required in stdlib
+
+    * there's a lot of @todo and @note comments littering the code that i should probably get around to looking at!
+        some of them are dealt with now, but it all needs cleaning up some.
+
+    * documentation pass: the online manual requires a complete overhaul. It currently just describes the syntax 
+        in a basic manner and doesn't really offer tuition. The layout is terrible. Needs a bit of work!
+
+    * performance improvements: there are a lot of areas that still need work. this was my first Go project and 
+        it clearly doesn't follow best practice, guidelines, etc. I'm not bothered about 'idiomatic' code, but
+        it could use more documentation and certain parts require a serious rethink.
+
+        with all that said, it works and is reasonably robust for a toy. it is usable and fairly stable, just a
+        bit rough around the edges in places. 
+
+        i'm not going to be putting much more work in to it though until I can get some idea of if it is worth
+        the effort.
+
+
+    * ports
+
+        * Windows: not much testing done recently, so probably many bugs, but it was fairly comparable to the
+            Linux build when last checked.
+
+        * Not built or tested for many potential platforms that Go can support, but many of them should not be 
+            too much effort for anyone who wants to port it.
+
+        * Supported shells:
+
+            * Bash support is fairly complete ( or as much as required so far )
+
+            * Sh/Ash - some support and testing done. Works okay in Docker/Alpine (with Ash). A little more work
+                outstanding for this. No Sh/Ash specific environmental variables imported yet.
+
+            * Dash - support unlikely.
+
+            * Zsh - tested, and was working fine in last round of testing. Needs a bit more work still on Zsh-
+                specific imports.
+
+
+    * the math evaluator still requires a replacement one day. it's the last thing on the cards for me though.
+        It would allow for quite a number of extra features and fixes to the language and would certainly be a 
+        source for performance improvements, but it's still just not important enough for me. 
+
+        To explain, I'm more than happy with the current speed and features of the language - it does the job. 
+
+        Sure, there's a lot of room for improvements here, but it's outside of my initial scope for Za.
+
+
