@@ -16,8 +16,7 @@ func pad(s string, just int, w int, fill string) string {
        return ""
     }
 
-	var ls int
-	ls = utf8.RuneCountInString(StripCC(s))
+	ls := utf8.RuneCountInString(StripCC(s))
 	if ls == 0 {
 		return ""
 	}
