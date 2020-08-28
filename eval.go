@@ -470,7 +470,17 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
             if v.IValue != nil {
                 switch v.IValue.(type) {
-                case uint8, uint64, int64, float32, float64, int, bool:
+                case int:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.Itoa(v.IValue.(int)),-1)
+                case int64:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
+                case uint64:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
+                case int32:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int32)), 10),-1)
+                case uint8:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
+                case float32, float64, bool:
                 case interface{}:
                     s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 case string:
@@ -1092,9 +1102,7 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
             return expr,false
         }
 
-        // epos := closedAt
-
-        if closedAt != -1 {
+       //  if closedAt != -1 {
             // handle array reference
             element, _, err := ev(fs, expr.assignVar[pos+1:closedAt], true, true)
             if err!=nil {
@@ -1110,13 +1118,13 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                     expr.evalError=true
                     return expr,true
                 }
-                vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
+                vsetElement(fs, expr.assignVar[:pos], strconv.Itoa(element.(int)), expr.result)
             default:
                 pf("**debug** unhandled element type!! [%T]\n",element)
             }
-        } else {
-            bnest++
-        }
+        // } else {
+        //     bnest++
+        // }
     }
 
     // non indexed
