@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+input N optarg 1
+if N==""; exit ; endif
+
+define f(n)
+    for i = 1 to n
+        d[i%1000]=i
+    endfor
+enddef
+
+f(N)
+
+
+

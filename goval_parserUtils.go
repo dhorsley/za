@@ -626,19 +626,15 @@ func convertToFloat64(ar interface{}) []float64 {
     }
 }
 
-func accessVar(evalfs uint64, varName string) (interface{},bool) {
-    var EvalFail bool
-    EvalFail=false
-	val, found := vget(evalfs, varName)
-	if !found {
-        // pf("ERROR: Could not find variable '%s'\n",varName)
-        EvalFail=true
+func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
+	if val, found = vget(evalfs, varName); !found {
+        return val,true
     }
-    return val,EvalFail
+    return val,false
 }
 
 func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} {
-
+    // pf("gv-af: entered accessField with %v -> %v\n",obj,field)
     var ifield string
 
     switch field.(type) {
@@ -821,17 +817,12 @@ func arrayContains(arr interface{}, val interface{}) bool {
 
 func callFunction(evalfs uint64, name string, args []interface{}) (res interface{}) {
 
-	f, ok := stdlib[name]
+	if f, ok := stdlib[name]; !ok {
 
-	if !ok {
 		// check if exists in user defined function space
-		lmv, isFunc := fnlookup.lmget(name)
-		if isFunc {
-
-            var valid bool
+		if lmv, isFunc := fnlookup.lmget(name); isFunc {
 
 			// make Za function call
-            // debug(20,"gnfs called from callFunction()\n")
             loc,id := GetNextFnSpace(name+"@")
 
             if lockSafety { calllock.Lock() }
@@ -841,11 +832,7 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
 			Call(MODE_NEW, loc, args...)
 
 			// handle the returned result, if present.
-            res, valid = vget(evalfs, "@temp")
-            if !valid {
-                return nil
-            }
-
+            res, _ = vget(evalfs, "@temp")
             return res
 
 		} else {

@@ -25,13 +25,13 @@ func (p Phrase) String() string {
 //
 // holds a Token which forms part of a Phrase.
 type Token struct {
-    name string
+    // name string
 	tokType int         // token type from list in constants.go
     tokPos  int         // by character (from start of input)
-	tokText string      // the content of the token
     tokVal  interface{} // raw value storage
 	Line    int         // line in parsed string (1 based) of token
 	Col     int         // starting char position (from start of line) (not currently used)
+	tokText string      // the content of the token
 }
 
 func (t Token) String() string {
@@ -42,9 +42,10 @@ func (t Token) String() string {
 //
 // holds the details of a function call.
 type call_s struct {
-	fs      string   // the text name of the calling party
 	caller  uint64   // the thing which made the call
 	base    uint64   // the original functionspace location of the source
+	fs      string   // the text name of the calling party
+    _pad0   [4]uint64
 	retvar  string   // the lhs var in the caller to be assigned back to
 }
 
@@ -65,41 +66,42 @@ type Feature struct {
 // holds internal state for the WHEN command
 type whenCarton struct {
 	endLine   int         // where is the endWhen, so that we can break or skip to it
-	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
 	dodefault bool        // set false when another clause has been active
+	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
 }
 
 
 //
 // holds an expression to be evaluated and its result
 type ExpressionCarton struct {
-	text      string      // total expression
-	assign    bool        // is this an assignment expression
 	assignVar string      // name of var to assign to
-	evalError bool        // did the evaluation succeed
+	text      string      // total expression
 	result    interface{} // result of evaluation
+	assign    bool        // is this an assignment expression
+	evalError bool        // did the evaluation succeed
 }
 
 
 //
 // struct for loop internals
 type s_loop struct {
-	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
 	loopType         int              // C_For, C_Foreach, C_While
 	iterType         int              // from enum IT_CHAR, IT_LINE
-	repeatFrom       int              // line number
-	repeatCond       ExpressionCarton // tested with ev() // used by while
-	repeatAction     int              // enum: ACT_NONE, ACT_INC, ACT_DEC
-	repeatActionStep int              // size of repeatAction
+	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
+	repeatFrom       int              // line number
+	repeatAction     int              // enum: ACT_NONE, ACT_INC, ACT_DEC
+	repeatActionStep int              // size of repeatAction
 	forEndPos        int              // ENDFOR location
 	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
-    // @todo: this is bad. should not be carrying the iterable value in here. should be a reference.
+	optNoUse         int              // for deciding if the local variable should reflect the loop counter
+    _pad0            [4]uint64
     iterOverMap      *reflect.MapIter // stored iterator
 	iterOverString   interface{}      // stored value to iterate over from start expression
 	iterOverArray    interface{}      // stored value to iterate over from start expression
-	optNoUse         int              // for deciding if the local variable should reflect the loop counter
+    _pad1            [11]uint64
+	repeatCond       ExpressionCarton // tested with ev() // used by while
 }
 
 func (l s_loop) String() string {
@@ -138,8 +140,8 @@ func (l s_loop) String() string {
 // 
 // struct to support pseudo-windows in console
 type Pane struct {
-	bg       string // currently unused, background colour
-	fg       string // currently unused, foreground colour
+//	bg       string // currently unused, background colour
+//	fg       string // currently unused, foreground colour
 	col, row int    // top-left location in console
 	w, h     int    // width and height
 	boxed    string // border type
