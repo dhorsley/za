@@ -73,7 +73,6 @@ var wccount = make([]int, SPACE_CAP)                // count of active WHEN..END
 var globalaccess uint64                             // number of functionspace which is considered to be "global"
 
 var varcount = make([]int, SPACE_CAP)                 // how many local variables are declared in each active function.
-// var vmap = make(map[uint64]map[string]int, SPACE_CAP) // test lookup make for var names
 
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
@@ -129,7 +128,7 @@ var ansiMode bool           // defaults to true. false disables ansi colour code
 // setup getInput() history for interactive mode
 var curHist int
 var lastHist int
-var hist []string // =make([]string)
+var hist []string
 var histEmpty bool
 
 // setup logging
@@ -729,7 +728,7 @@ func main() {
     // special case: aliases in bash
     shelltype, _ := vget(0, "@shelltype")
     if shelltype=="bash" {
-        cop, _ = Copper("shopt -s expand_aliases",true)
+        _, _ = Copper("shopt -s expand_aliases",true)
     }
 
     if testMode {
@@ -857,7 +856,7 @@ func main() {
         }
     }
 
-    if *a_program_loop==true {
+    if *a_program_loop {
         s:= `NL=0` + "\n" +
             `foreach _line in read_file("/dev/stdin")` + "\n" +
             `inc NL` + "\n"

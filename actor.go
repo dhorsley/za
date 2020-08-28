@@ -362,11 +362,9 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
 
     // find highest in list
 
-    var top, highest, ccap uint64
-
-    top=uint64(cap(calltable))
-    highest=top
-    ccap=CALL_CAP
+    top:=uint64(cap(calltable))
+    highest:=top
+    ccap:=uint64(CALL_CAP)
     deallow:=top>uint64(ccap*2)
 
     for q:=top-1; q>(ccap*2) && q>(top/2)-ccap; q-- {
@@ -426,8 +424,6 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
 
         }
     }
-
-    // calllock.Unlock()
 
     pf("Error: no more function space available.\n")
     finish(true, ERR_FATAL)
@@ -1630,8 +1626,8 @@ tco_reentry:
 
                 // jump calc, depending on break context
 
-                var thisLoop *s_loop
-                thisLoop = &loops[ifs][depth[ifs]]
+                // var thisLoop *s_loop
+                thisLoop := &loops[ifs][depth[ifs]]
                 bmess := ""
 
                 switch lastConstruct[ifs][depth[ifs]-1] {
@@ -3171,7 +3167,7 @@ tco_reentry:
                 break
             }
             content,_:=vget(ifs,vname)
-		    err = ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
+		    ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
             inside_with=true
             // current_with_var=fname

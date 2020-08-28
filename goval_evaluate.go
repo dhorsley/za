@@ -1,10 +1,12 @@
 package main
 
 import (
-	"runtime"
+    "runtime"
 )
 
 func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error) {
+
+    // pf("gv-ev: entered with %v\n",str)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -16,7 +18,9 @@ func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error
 		}
 	}()
 
-    lexer:=NewLexer(str)
+        lexer:=NewLexer(str)
+
 	_,ef=YyNewParser().Parse(lexer, evalfs)
 	return lexer.Result(), ef, err
 }
+

@@ -1,6 +1,7 @@
 package main
 
 import (
+//    "fmt"
     "reflect"
     "strconv"
     "bytes"
@@ -18,20 +19,44 @@ import (
 // for locking vset/vcreate/vdelete during a variable write
 var vlock = &sync.RWMutex{}
 
+/*
+var vlcacheval  int
+var vlcachefs   uint64
+var vlcachename string
+*/
+
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
-    if lockSafety { vlock.RLock() ; defer vlock.RUnlock() }
+    if lockSafety { vlock.RLock() }
+
+    /* @todo: make this thread-safe */
+/*
+    if fs==vlcachefs && strcmp(vlcachename,name) {
+        if lockSafety { vlock.RUnlock() }
+        return vlcacheval, true
+    }
+*/
 
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if strcmp(ident[fs][k].IName,name) {
-            // pf("found in vl: k=%v cap_id=%v len_id=%v varcount=%v\n",k,cap(ident[fs]),len(ident[fs]),varcount[fs])
+            // fmt.Printf("found in vl: name=%v k=%v cap_id=%v len_id=%v varcount=%v\n",name,k,cap(ident[fs]),len(ident[fs]),varcount[fs])
+
+/*
+            vlcachename=name
+            vlcachefs=fs
+            vlcacheval=k
+*/
+
+            if lockSafety { vlock.RUnlock() }
             return k, true
         }
     }
 
-    // pf("not found in vl: cap_id=%v len_id=%v varcount=%v\n",cap(ident[fs]),len(ident[fs]),varcount[fs])
+    // fmt.Printf("varcount: %#v\n",varcount)
+    // fmt.Printf("not found in vl: name=%v cap_id=%v len_id=%v varcount=%v\n",name,cap(ident[fs]),len(ident[fs]),varcount[fs])
+    if lockSafety { vlock.RUnlock() }
     return 0, false
 }
 
@@ -40,7 +65,6 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
     if lockSafety {
         vlock.Lock()
-        defer vlock.Unlock()
     }
 
     vtmr:=*vtable_maxreached
@@ -54,6 +78,10 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
         // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
     }
 
+    if lockSafety {
+        vlock.Unlock()
+    }
+
 }
 
 func vunset(fs uint64, name string) {
@@ -61,10 +89,7 @@ func vunset(fs uint64, name string) {
 
     loc, found := VarLookup(fs, name)
 
-    if lockSafety {
-        vlock.Lock()
-        defer vlock.Unlock()
-    }
+    if lockSafety { vlock.Lock() }
 
     vc:=varcount[fs]
     if found {
@@ -74,6 +99,8 @@ func vunset(fs uint64, name string) {
         ident[fs][vc] = Variable{}
         varcount[fs]--
     }
+
+    if lockSafety { vlock.Unlock() }
 
 }
 
@@ -127,19 +154,14 @@ func vset(fs uint64, name string, value interface{}) bool {
 
     if vi, ok := VarLookup(fs, name); ok {
         // set
-        if lockSafety {
-            vlock.Lock()
-            defer vlock.Unlock()
-        }
+        if lockSafety { vlock.Lock() }
         ident[fs][vi].IValue = value
+        if lockSafety { vlock.Unlock() }
     } else {
 
         // instantiate
 
-        if lockSafety {
-            vlock.Lock()
-            defer vlock.Unlock()
-        }
+        if lockSafety { vlock.Lock() }
 
         if varcount[fs]==len(ident[fs]) {
 
@@ -155,6 +177,8 @@ func vset(fs uint64, name string, value interface{}) bool {
 
         varcount[fs]++
 
+        if lockSafety { vlock.Unlock() }
+
     }
 
     return true
@@ -163,12 +187,11 @@ func vset(fs uint64, name string, value interface{}) bool {
 
 
 func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
+    // pf("vgetE: entered with %v[%v]\n",name,el)
     var v interface{}
     if _, ok := VarLookup(fs, name); ok {
         v, ok = vget(fs, name)
         switch v:=v.(type) {
-        case http.Header:
-            return v[el], ok
         case map[string]int:
             return v[el], ok
         case map[string]float64:
@@ -178,6 +201,10 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
         case map[string]string:
             return v[el], ok
         case map[string]bool:
+            return v[el], ok
+        case map[string]interface{}:
+            return v[el], ok
+        case http.Header:
             return v[el], ok
         case []int:
             iel,_:=GetAsInt(el)
@@ -194,8 +221,6 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
         case string:
             iel,_:=GetAsInt(el)
             return string(v[iel]),ok
-        case map[string]interface{}:
-            return v[el], ok
         case []interface{}:
             iel,_:=GetAsInt(el)
             return v[iel],ok
@@ -208,35 +233,51 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
             }
         }
     }
+    // pf("vgetE: leaving %v[%v]\n",name,el)
     return nil, false
 }
 
 // this could probably be faster. not a great idea duplicating the list like this...
 func vsetElement(fs uint64, name string, el string, value interface{}) {
+    // pf("vsetE: entered with %v[%v]=%v\n",name,el,value)
 
     var list interface{}
-    if _, ok := VarLookup(fs, name); ok {
+    var vi int
+    var ok bool
+
+    if vi, ok = VarLookup(fs, name); ok {
         list, _ = vget(fs, name)
     } else {
         list = make(map[string]interface{}, LIST_SIZE_CAP)
     }
 
+    if lockSafety { vlock.Lock() }
+
     switch list.(type) {
     case map[string]interface{}:
-        if lockSafety { vlock.Lock() }
-        list.(map[string]interface{})[el] = value
+        if ok {
+            ident[fs][vi].IName= name
+            ident[fs][vi].IValue.(map[string]interface{})[el]= value
+        } else {
+            list.(map[string]interface{})[el] = value
+            ident[fs][vi] = Variable{IName: name, IValue: list}
+        }
         if lockSafety { vlock.Unlock() }
-        vset(fs, name, list)
+        return
+    default:
+        // pf("vsetE: list type -> %T\n",list)
     }
 
     numel,er:=strconv.Atoi(el)
-    if er==nil {
+
+    if er==nil { // is an integer element id
+        barrierDivision:=1
         newend:=0
         switch list.(type) {
 
         case []int:
             sz:=cap(list.([]int))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -250,7 +291,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
         case []uint8:
             sz:=cap(list.([]uint8))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -264,7 +305,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
         case []bool:
             sz:=cap(list.([]bool))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -278,7 +319,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
         case []string:
             sz:=cap(list.([]string))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -292,7 +333,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
         case []float64:
             sz:=cap(list.([]float64))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -311,7 +352,7 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
         case []interface{}:
             sz:=cap(list.([]interface{}))
-            barrier:=sz/4
+            barrier:=sz/barrierDivision
             if numel>=sz {
                 newend=sz*2
                 if numel>newend { newend=numel+barrier }
@@ -327,7 +368,8 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
             pf("DEFAULT: Unknown type %T for list %s\n",list,name)
 
         }
-        vset(fs, name, list)
+        ident[fs][vi] = Variable{IName: name, IValue: list}
+        if lockSafety { vlock.Unlock() }
     }
 }
 
@@ -340,7 +382,7 @@ func vget(fs uint64, name string) (interface{}, bool) {
             defer vlock.RUnlock()
         }
 
-        return ident[fs][vi].IValue, true
+        return ident[fs][vi].IValue , true
     }
     return nil, false
 
@@ -352,7 +394,7 @@ func getvtype(fs uint64, name string) (reflect.Type, bool) {
             vlock.RLock()
             defer vlock.RUnlock()
         }
-        return reflect.TypeOf(ident[fs][vi].IValue), true
+        return reflect.TypeOf(ident[fs][vi].IValue) , true
     }
     return nil, false
 }
@@ -366,6 +408,7 @@ func isBool(expr interface{}) bool {
     }
     return false
 }
+
 
 func isNumber(expr interface{}) bool {
     typeof := reflect.TypeOf(expr).Kind()
@@ -395,16 +438,18 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
      if lockSafety {
         lastlock.RLock()
-        defer lastlock.RUnlock()
+        // defer lastlock.RUnlock()
     }
 
     if no_interpolation {
+        if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
     // should finish sooner if no curly open brace in string.
 
     if str.IndexByte(s, '{') == -1 {
+        if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
@@ -459,6 +504,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         }
     }
 
+    if lockSafety { lastlock.RUnlock() }
     return s,true
 }
 
@@ -474,6 +520,8 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
     if tokens[0].tokType == C_Assign {
         return []Token{},true
     }
+
+    // pf("udf: toks %v\n",tokens)
 
     // check for assignment
     for t := range tokens {
@@ -723,12 +771,55 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
 }
 
 
+func fastConv(s string) interface{} {
+
+    if len(s)==0 { return nil }
+
+    isfloat:=false
+    isneg:=false
+
+    if len(s)>1 && s[0]=='-' { isneg=true; s=s[1:] }
+
+    // this is not 100% effective, it's just meant to filter
+    // out some easy return values.
+
+    for _, v := range s {
+        if v=='.' { isfloat=true; continue }
+        if v=='e' { continue }
+        if v<'0' || v>'9' { break }
+    }
+
+    pn,e := strconv.ParseFloat(s,64)
+
+    // @note: not checking if is string here..
+    if e==nil {
+        if !isfloat {
+            if isneg { return int(-pn) }
+            return int(pn)
+        }
+        return pn
+    }
+    return s
+}
+
+
+
 // evaluate an expression string using a modified version of the third-party goval lib
 func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
 
     // before tokens are crushed, search for za functions
     // and execute them, replacing the relevant found terms
     // with the result to reduce the expression.
+
+    // pf("ev: received: %v\n",ws)
+    // tc:=fastConv(ws)
+    // pf("ev: fastconv got this [%T] %v\n",tc,tc)
+
+    // switch tc.(type) {
+    // case string:
+    // default:
+    //     return tc,false,nil
+    // }
 
     var didInterp bool
 
@@ -783,9 +874,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
                 ef=false
             } else {
                 if shouldError {
-                    // lastlock.RLock()
                     report(fs,-1,sf("Error evaluating '%s'",ws))
-                    // lastlock.RUnlock()
                     finish(false,ERR_EVAL)
                 }
             }
@@ -804,13 +893,14 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
 
     if maybeFunc && err != nil {
 
+        /*
         nv := getReportFunctionName(fs,false)
-
         if nv!="" {
             // @debug: elast is a global which is set every Call() iteration of the program loop
             // disabled for now.
             // report(0,elast,sf("Evaluation Error @ Function %v", nv))
         }
+        */
         pf("[#6]%v[#-]\n", err)
 
         return nil, ef, err
@@ -1021,6 +1111,8 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
                     return expr,true
                 }
                 vsetElement(fs, expr.assignVar[:pos], sf("%v",element.(int)), expr.result)
+            default:
+                pf("**debug** unhandled element type!! [%T]\n",element)
             }
         } else {
             bnest++

@@ -72,7 +72,7 @@ var yyStatenames = [...]string{}
 
 const yyEofCode = 1
 const yyErrCode = 2
-const yyInitialStackSize = 4
+const yyInitialStackSize = 1
 
 var yyExca = [...]int{
 	-1, 1,
@@ -382,16 +382,20 @@ out:
 	return char, token
 }
 
+/*
 func yyParse(yylex yyLexer, evalfs uint64) (int,bool) {
 	res,ef:=YyNewParser().Parse(yylex, evalfs)
     return res,ef
 }
+*/
 
 func (yyrcvr *yyParserImpl) Parse(yylex yyLexer, evalfs uint64) (int,bool) {
 	var yyn int
 	var yyVAL yySymType
 	var yyDollar []yySymType
-	yyS := yyrcvr.stack[:]
+	// yyS := yyrcvr.stack[:]
+    yyS := make([]yySymType, len(yyrcvr.stack)*2)
+    copy(yyS, yyrcvr.stack[:])
 
     var ef bool = false
 	var Nerrs int    /* number of errors */
@@ -416,7 +420,7 @@ yystack:
 	yyp++
     ly:=len(yyS)
 	if yyp >= ly {
-		nyys := make([]yySymType, ly*3)
+		nyys := make([]yySymType, ly*2)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
@@ -529,7 +533,7 @@ yydefault:
 	// reduced production is ε, $1 is possibly out of range.
     ly=len(yyS)
     if yyp+1 >= ly {
-		nyys := make([]yySymType, ly*3)
+		nyys := make([]yySymType, ly*2)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
@@ -565,11 +569,13 @@ yydefault:
 	case 8:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
+            // pf("gv-p1: about to call %v\n",yyDollar[1].token.literal)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, []interface{}{})
 		}
 	case 9:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
+            // pf("gv-p2: about to call %v\n",yyDollar[1].token.literal)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, yyDollar[3].exprList)
 		}
 	case 10:

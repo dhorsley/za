@@ -15,6 +15,7 @@ const BitSizeOfInt = int(unsafe.Sizeof(0)) * 8
 // za variable
 type Variable struct {
 	IName  string
+    _pad0  [15]uint64
 	IValue interface{}
 }
 
