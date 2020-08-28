@@ -1199,7 +1199,7 @@ func buildListLib() {
     }
 
     // concat(l1,l2) returns concatenated list of l1,l2
-    slhelp["concat"] = LibHelp{in: "[]list", out: "[]new_list", action: "Concatenates two lists and returns the result."}
+    slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "Concatenates two lists and returns the result."}
     stdlib["concat"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return nil, errors.New("Invalid arguments to concat()")
