@@ -72,7 +72,7 @@ var yyStatenames = [...]string{}
 
 const yyEofCode = 1
 const yyErrCode = 2
-const yyInitialStackSize = 1
+const yyInitialStackSize = 4
 
 var yyExca = [...]int{
 	-1, 1,
@@ -393,8 +393,7 @@ func (yyrcvr *yyParserImpl) Parse(yylex yyLexer, evalfs uint64) (int,bool) {
 	var yyn int
 	var yyVAL yySymType
 	var yyDollar []yySymType
-	// yyS := yyrcvr.stack[:]
-    yyS := make([]yySymType, len(yyrcvr.stack)*2)
+    yyS := make([]yySymType, len(yyrcvr.stack))
     copy(yyS, yyrcvr.stack[:])
 
     var ef bool = false
@@ -420,7 +419,7 @@ yystack:
 	yyp++
     ly:=len(yyS)
 	if yyp >= ly {
-		nyys := make([]yySymType, ly*2)
+		nyys := make([]yySymType, ly*4)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
@@ -533,7 +532,7 @@ yydefault:
 	// reduced production is ε, $1 is possibly out of range.
     ly=len(yyS)
     if yyp+1 >= ly {
-		nyys := make([]yySymType, ly*2)
+		nyys := make([]yySymType, ly*4)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
