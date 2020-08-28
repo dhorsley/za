@@ -247,8 +247,10 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
     if vi, ok = VarLookup(fs, name); ok {
         list, _ = vget(fs, name)
+        // pf("::: found %v @ %d\n",name,vi)
     } else {
         list = make(map[string]interface{}, LIST_SIZE_CAP)
+        // pf("::: initialising %v\n",name)
     }
 
     if lockSafety { vlock.Lock() }
@@ -260,7 +262,10 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
             ident[fs][vi].IValue.(map[string]interface{})[el]= value
         } else {
             list.(map[string]interface{})[el] = value
-            ident[fs][vi] = Variable{IName: name, IValue: list}
+            if lockSafety { vlock.Unlock() }
+            vset(fs,name,list)
+            return
+            // ident[fs][vi] = Variable{IName: name, IValue: list}
         }
         if lockSafety { vlock.Unlock() }
         return
@@ -829,82 +834,71 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         // pf("has interpolated. -> ws : %v\n",ws)
     }
 
-    // check for potential user-defined functions
-    var cl int
-    var maybeFunc bool
+    // var maybeFunc bool
 
-    //.. retokenise string, while substituting udf results for udf calls.
-    var reval = make([]Token,0,4)
-    var valcount int
+    //.. eval user defined functions if it looks like there are any
 
-    var t Token
-    var eol,eof bool
+    //    check for start bracket after first char as it cannot be a 
+    //    function call without a name and must be a normal expression instead.
 
-    for p := 0; p < len(ws); p++ {
-        t, eol , eof = nextToken(ws, &cl, p, t.tokType)
-        if t.tokPos != -1 {
-            p = t.tokPos
+    if str.IndexByte(ws, '(') >0 {
+        // maybeFunc=true
+        //.. retokenise string, while substituting udf results for udf calls.
+        var valcount int
+        var reval = make([]Token,0,4)
+        var cl int
+        var t Token
+        var eol,eof bool
+        for p := 0; p < len(ws); p++ {
+            t, eol , eof = nextToken(ws, &cl, p, t.tokType)
+            if t.tokPos != -1 {
+                p = t.tokPos
+            }
+            // if !maybeFunc && str.IndexByte(t.tokText, '(') != -1 { maybeFunc=true }
+            reval=append(reval,t)
+            valcount++
+            if eol||eof { break }
         }
-        if str.IndexByte(t.tokText, '(') != -1 { maybeFunc=true }
-        reval=append(reval,t)
-        valcount++
-        if eol||eof { break }
-    }
 
-    //.. eval the user defined functions if it looks like there are any
-
-    if maybeFunc {
-        // crush to get an ExpressionCarton. .text holds a string version
         r,e:=userDefEval(fs,reval[:valcount])
         if e {
             report(fs,-1,sf("Could not evaluate the call '%v'",reval[:valcount]))
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
+
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
-    } else {
-
-        // normal evaluation
-        result, ef, err = Evaluate(ws, fs)
-
-        if result==nil { // could not eval
-            if didInterp {
-                result=ws
-                err=nil
-                ef=false
-            } else {
-                if shouldError {
-                    report(fs,-1,sf("Error evaluating '%s'",ws))
-                    finish(false,ERR_EVAL)
-                }
-            }
+        if err != nil {
+            pf("[#6]%v[#-]\n", err)
+            return nil, ef, err
         }
+        return result, ef, err
+    }
 
-        if err!=nil {
-            if isNumber(ws) {
-                var ierr bool
-                result,ierr=GetAsInt(ws)
-                if ierr {
-                    result,_=GetAsFloat(ws)
-                }
+    // normal evaluation
+    result, ef, err = Evaluate(ws, fs)
+
+    if result==nil { // could not eval
+        if didInterp {
+            result=ws
+            err=nil
+            ef=false
+        } else {
+            if shouldError {
+                report(fs,-1,sf("Error evaluating '%s'",ws))
+                finish(false,ERR_EVAL)
             }
         }
     }
 
-    if maybeFunc && err != nil {
-
-        /*
-        nv := getReportFunctionName(fs,false)
-        if nv!="" {
-            // @debug: elast is a global which is set every Call() iteration of the program loop
-            // disabled for now.
-            // report(0,elast,sf("Evaluation Error @ Function %v", nv))
+    if err!=nil {
+        if isNumber(ws) {
+            var ierr bool
+            result,ierr=GetAsInt(ws)
+            if ierr {
+                result,_=GetAsFloat(ws)
+            }
         }
-        */
-        pf("[#6]%v[#-]\n", err)
-
-        return nil, ef, err
-
     }
 
     return result, ef, err
@@ -917,7 +911,8 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     token := intoks[0]
 
-    if token.tokType == EOL || token.tokType == SingleComment {
+    // if token.tokType == EOL || token.tokType == SingleComment {
+    if token.tokType == SingleComment {
         return ExpressionCarton{}
     }
 
@@ -955,11 +950,13 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
         for e:=1;e<tc;e++ {
             if intoks[e].tokType==C_Assign {
                 eqPos=e
+                break
             }
         }
 
         // check for identifier c_equals expression
-        if eqPos>0 && intoks[eqPos].tokType == C_Assign {
+        // if eqPos>0 && intoks[eqPos].tokType == C_Assign {
+        if eqPos>0 {
             assign = true
             for t:=0;t<eqPos; t++ {
                 id.WriteString(intoks[t].tokText)
@@ -1011,14 +1008,16 @@ func tokenise(s string) (toks []Token) {
 /// this function handles boxing/unboxing around the ev() call
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
-    v, _ , err := ev(fs, expr.text, interpol, true)
+    // v, _ , err := ev(fs, expr.text, interpol, true)
+    var err error
+    expr.result, _ , err = ev(fs, expr.text, interpol, true)
 
     if err!=nil {
         expr.evalError=true
         return expr,false
     }
 
-    expr.result = v
+    // expr.result = v
 
     // @note: this section is allowing commas through on l.h.s. of assignment. 
     // we may want to permit this eventually for multiple assignment.
@@ -1034,11 +1033,12 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
     }
 
     // lhs brace nesting and quoting
-    bnest:=0; inq:=false
+    // bnest:=0; inq:=false
     pos := str.IndexByte(expr.assignVar, '[')
-    startq:=""
     if pos != -1 {
         // inside quote?
+        bnest:=0; inq:=false
+        startq:=""
         closedAt:=-1
         for spos:=pos; spos<len(expr.assignVar); spos++ {
             switch expr.assignVar[spos] {
@@ -1092,11 +1092,11 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
             return expr,false
         }
 
-        epos := closedAt
+        // epos := closedAt
 
-        if epos != -1 {
+        if closedAt != -1 {
             // handle array reference
-            element, _, err := ev(fs, expr.assignVar[pos+1:epos], true, true)
+            element, _, err := ev(fs, expr.assignVar[pos+1:closedAt], true, true)
             if err!=nil {
                 expr.evalError=true
                 return expr, false
