@@ -11,7 +11,6 @@ on target!="" do tgt=target
 upx_enable=false
 on do_upx=="upx" do upx_enable=true
 
-
 #
 # main
 #
@@ -21,38 +20,48 @@ GCLIMIT = "GOGC=250 GOMAXPROCS=4"
 bvers =  "1.0.9"
 bdate =| date "+%d-%m-%Y %H:%M"
 
+
 upxfound=| which upx | wc -l
-upxfound=int(upxfound)
+upxfound=int(trim(upxfound,0))
 
 strip_opts="-s -w"
 
-when lower(tgt)
-is "alpine"
-    if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
-        print "Failed to build alpine version.\n"
-        exit 1
-    endif
-is "libc"
-    if buildLibc(bvers,bdate)!=0
-        print "Failed to build libc version.\n"
-        exit 1
-    endif
-is "win"
-    if buildWin(bvers,bdate,strip_opts)!=0
-        print "Failed to build windows version.\n"
-        exit 1
-    endif
-endwhen
 
-if upxfound==1 && is_file("za")
-    if tgt!="win"
-        | strip {strip_opts} za
-        on upx_enable do | upx za
-    endif
+if !start(os(),"freebsd")
+    when lower(tgt)
+    is "alpine"
+        if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
+            print "Failed to build alpine version.\n"
+            exit 1
+        endif
+    is "libc"
+        if buildLibc(bvers,bdate)!=0
+            print "Failed to build libc version.\n"
+            exit 1
+        endif
+    is "win"
+        if buildWin(bvers,bdate,strip_opts)!=0
+            print "Failed to build windows version.\n"
+            exit 1
+        endif
+    endwhen
 else
-    on is_file("za") do print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
+    if buildFreeBSD(bvers,bdate)!=0
+        print "Failed to build bsd version.\n"
+        exit 1
+    endif
 endif
 
+if !start(os(),"freebsd")
+    if upxfound==1 && is_file("za")
+        if tgt!="win"
+            | strip {strip_opts} za
+            on upx_enable do | upx za
+        endif
+    else
+        on is_file("za") do print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
+    endif
+endif
 
 when lower(tgt)
 is "libc"

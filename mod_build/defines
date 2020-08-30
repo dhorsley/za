@@ -33,6 +33,17 @@ define buildLibc(build_version,build_date)
     return r
 enddef
 
+define buildFreeBSD(build_version,build_date)
+    GCLIMIT=getglob("GCLIMIT")
+    print "[#4]BSD build[#-]\n"
+    | {GCLIMIT} go build -ldflags '-s -w -extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
+    r=last()
+    on r>0 do println last_out()
+    | cp za za.dynamic
+    | ./za -v
+    return r
+enddef
+
 define buildWin(build_version,build_date,strip_opts)
     GCLIMIT=getglob("GCLIMIT")
     print "[#4]Windows build[#-] ~ [#i1]experimental![#i0]\n"
