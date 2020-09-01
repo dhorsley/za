@@ -85,7 +85,11 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 }
 
 func vunset(fs uint64, name string) {
-    // return
+
+    // @note: if we intend to use this function then we should
+    //  make sure that delete and other funcs update VarLookup
+    //  correctly first. this means not re-enabling vlcache 
+    //  also without some investigation first.
 
     loc, found := VarLookup(fs, name)
 
@@ -441,20 +445,23 @@ func escape(str string) string {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
-     if lockSafety {
+    // think that we are safe to remove lastlock from here now, just 
+    //  commenting it out for now though.
+
+    /*
+    if lockSafety {
         lastlock.RLock()
-        // defer lastlock.RUnlock()
     }
+    */
 
     if no_interpolation {
-        if lockSafety { lastlock.RUnlock() }
+    //    if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
     // should finish sooner if no curly open brace in string.
-
     if str.IndexByte(s, '{') == -1 {
-        if lockSafety { lastlock.RUnlock() }
+     //   if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
@@ -497,17 +504,29 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         if strcmp(os,s) {
+            var modified bool
             redo:=true
             for ;redo; {
-                modified:=false
+                modified=false
                 for p:=0;p<len(s);p++ {
                     if s[p]=='{' {
                         q:=str.IndexByte(s[p+1:],'}')
                         if q==-1 { break }
-                        evstr := s[p+1:p+q+1]
-                        aval, ef, _ := ev(fs, evstr, false, false)
-                        if !ef {
-                            s=s[:p]+sf("%v",aval)+s[p+q+2:]
+                        if aval, ef, _ := ev(fs, s[p+1:p+q+1], false, false); !ef {
+                            switch val:=aval.(type) {
+                            // a few special cases here which will operate faster
+                            //  than waiting for fmt.sprintf() to execute.
+                            case string:
+                                s=s[:p]+val+s[p+q+2:]
+                            case int:
+                                s=s[:p]+strconv.Itoa(val)+s[p+q+2:]
+                            case int64:
+                                s=s[:p]+strconv.FormatInt(val,10)+s[p+q+2:]
+                            case uint:
+                                s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+2:]
+                            default:
+                                s=s[:p]+sf("%v",val)+s[p+q+2:]
+                            }
                             modified=true
                             break
                         }
@@ -519,7 +538,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         }
     }
 
-    if lockSafety { lastlock.RUnlock() }
+    // if lockSafety { lastlock.RUnlock() }
     return s,true
 }
 

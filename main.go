@@ -268,6 +268,7 @@ func main() {
     vset(0, "@echomask", "*")
 
 
+    /*
     // TESTING!!!
 
     type t_ts struct {
@@ -281,6 +282,7 @@ func main() {
     vset(0,"teststruct",ts) 
 
     // END TESTING
+    */
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
