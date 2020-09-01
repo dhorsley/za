@@ -256,15 +256,15 @@ func GetAsUint(expr interface{}) (uint64, bool) {
 // if no evalError then returns a "validated" true bool
 func EvalCrush(fs uint64, tok []Token, tstart int, tend int) (interface{}, bool) {
     expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:tend+1]), false)
-    if expr.evalError { return expr.result,false }
-    return expr.result, true
+    // if expr.evalError { return expr.result,false }
+    return expr.result, !expr.evalError
 }
 
 // as evalCrush but operate over all remaining tokens from tstart onwards
 func EvalCrushRest(fs uint64, tok []Token, tstart int) (interface{}, bool) {
     expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:]), true)
-    if expr.evalError { return expr.result,false }
-    return expr.result, true
+    // if expr.evalError { return expr.result,false }
+    return expr.result, !expr.evalError
 }
 
 // check for value in slice
@@ -3706,9 +3706,8 @@ tco_reentry:
             }
 
             // try to eval and assign
-            cet := crushEvalTokens(inbound.Tokens)
-            tmpres,_ := wrappedEval(ifs, cet, true)
-            if tmpres.evalError { break }
+            // cet := crushEvalTokens(inbound.Tokens)
+            if tmpres,_ := wrappedEval(ifs, crushEvalTokens(inbound.Tokens), true); tmpres.evalError { break }
 
         } // end-statements-case
 

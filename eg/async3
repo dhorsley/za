@@ -11,8 +11,10 @@ locks(true)
 
 define f(v)
     # generally, do some work in here..
+    datecmd="date --rfc-3339=ns"
+    on start(os(),"freebsd") do datecmd="date"
     println v,"->",has_shell()
-    z =| date --rfc-3339=ns
+    z =| {datecmd}
     pause rand(2000)
     return z
 enddef

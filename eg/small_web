@@ -5,7 +5,8 @@
 # change these to suit:
 # HOME_PATH in web_serve_start() currently needs to be absolute path
 
-HOST="192.168.1.18"
+# HOST="192.168.1.18"
+HOST="10.0.2.15"
 PORT=61440
 HOME_PATH="/home/daniel/www/exmachina"
 
