@@ -2,6 +2,8 @@
 
 # about as similar to processing.js example as you can do with text chars
 
+locks(true)
+
 fps=20
 input in_fps optarg 1
 on in_fps!="" do fps=int(in_fps)
@@ -18,7 +20,7 @@ enddef
 
 define renderWave(yv,height,glyph)
     on len(yv)==0 do return
-    on glyph=="" do glyph="·"
+    on glyph=="" do glyph="+"
     for x = 0 to len(yv)-1
         y=int(height/2)+int(yv[x])
         at y,x+1
