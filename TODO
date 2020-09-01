@@ -2,6 +2,11 @@
 
 1.1.0   will be the release version
 
+    * fix shell detection on startup for freebsd
+    * test web server functionality in freebsd
+    * check concurrency is working as expected for dynamic pages in web server (in freebsd)
+        + siege : siege -b -c 100 -r 10000 -k http://{IP}:8080/fun/awsip
+
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
