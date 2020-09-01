@@ -1,4 +1,4 @@
-// +build !windows
+// +build !windows linux freebsd
 //+build !test
 
 package main
