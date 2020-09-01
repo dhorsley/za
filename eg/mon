@@ -254,6 +254,12 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     row=1
 
+    if !is_file("/proc/stat")
+        cls
+        println "[#2]Proc stat file not found![#-]\n"
+        exit 1
+    endif
+
     proc_file=read_file("/proc/stat")
 
     mult            = float(timeout)/10.0

@@ -61,5 +61,9 @@ define perf_regex_dna()
 
 enddef
 
+# MAIN
+
+locks(true)
 perf_regex_dna()
+
 

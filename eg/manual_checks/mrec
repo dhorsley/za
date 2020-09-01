@@ -6,7 +6,6 @@
 #  temporary state creation on a function call. most of it should be done on
 #  a stack instead. However, not likely to change given typical expected usage.
 
-
 define F(n)
     on n == 0 do return 1
     return n-M(F(n-1))
@@ -17,9 +16,23 @@ define M(n)
     return n-F(M(n-1))
 enddef
 
-input c param 1
-c=int(c)
+input c optarg 1
 
-print F(c),"\n"
-print M(c),"\n"
+if c!=""
+    c=int(c)
+    println F(c)
+    println M(c)
+    exit
+endif
 
+for n=0 to 39
+    print F(n),", "
+endfor
+
+print
+
+for n=0 to 39
+    print M(n),", "
+endfor
+
+print

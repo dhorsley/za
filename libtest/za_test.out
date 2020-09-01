@@ -1,0 +1,23 @@
+
+[93m[4m[1mZa Test[0m
+
+Testing : os on freebsd12.1
+
+
+Test Section : [96m[1mos/env[22m[0m
+[91mTEST FAILED  (main/line 15) : ic==ec[0m
+
+Test Section : [96m[1mos/get_env[22m[0m
+[92mTEST PASSED  (main/line 25) : i==e[0m
+
+Test Section : [96m[1mos/set_env[22m[0m
+[92mTEST PASSED  (main/line 37) : i==e[0m
+
+Test Section : [96m[1mos/cwd[22m[0m
+[92mTEST PASSED  (main/line 48) : a!=b[0m
+[92mTEST PASSED  (main/line 49) : b=="/"[0m
+
+Test Section : [96m[1mos/cd[22m[0m
+Covered by cwd() test adequately?
+
+Test Section : [96m[1mos/dir[22m[0m

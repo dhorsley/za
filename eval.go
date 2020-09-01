@@ -406,8 +406,8 @@ func getvtype(fs uint64, name string) (reflect.Type, bool) {
 
 func isBool(expr interface{}) bool {
 
-    typeof := reflect.TypeOf(expr).Kind()
-    switch typeof {
+    // typeof := reflect.TypeOf(expr).Kind()
+    switch reflect.TypeOf(expr).Kind() {
     case reflect.Bool:
         return true
     }
@@ -1018,7 +1018,6 @@ func tokenise(s string) (toks []Token) {
 /// this function handles boxing/unboxing around the ev() call
 func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
 
-    // v, _ , err := ev(fs, expr.text, interpol, true)
     var err error
     expr.result, _ , err = ev(fs, expr.text, interpol, true)
 
@@ -1026,8 +1025,6 @@ func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result Expres
         expr.evalError=true
         return expr,false
     }
-
-    // expr.result = v
 
     // @note: this section is allowing commas through on l.h.s. of assignment. 
     // we may want to permit this eventually for multiple assignment.

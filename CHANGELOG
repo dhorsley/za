@@ -10,6 +10,8 @@ CHANGE LOG
         * amended build and build module with freebsd specific options (removed upx)
     	* THIS IS A TEST BUILD. IT RUNS, BUT A FAIR NUMBER OF TESTS+EXAMPLES STILL BROKEN.
             * in particular async operations need immediate review in freebsd.
+                * async was fine, freebsd just didn't like the date command options in eg/async3.
+            * eg/flood displayed zero hitching due to the OS. performs better than linux in this regard.
 
     * because of the changes in this version, general release will be delayed for more clean-
         up and testing. i felt structs were important enough to allow this.
