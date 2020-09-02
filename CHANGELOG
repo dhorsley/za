@@ -8,10 +8,14 @@ CHANGE LOG
         * cloned console_*, winch_* and lib-os_* to freebsd versions.
         * amended console_freebsd with TCGETS/TCSETS replacement values: TIOCGETA+TIOCSETA
         * amended build and build module with freebsd specific options (removed upx)
-    	* THIS IS A TEST BUILD. IT RUNS, BUT A FAIR NUMBER OF TESTS+EXAMPLES STILL BROKEN.
+    	* THIS IS A TEST BUILD. IT RUNS, BUT A FAIR NUMBER OF THINGS MAY STILL BROKEN.
             * in particular async operations need immediate review in freebsd.
                 * async was fine, freebsd just didn't like the date command options in eg/async3.
             * eg/flood displayed zero hitching due to the OS. performs better than linux in this regard.
+        * moved TC[SG]ETS and TIOC[SG]ETA to separate const files:
+            : console_const_linux.go+console_const_freebsd.go
+            : moved console_linux.go to console_unix.go
+            : removed console_freebsd.go
 
     * added -Q option for reporting specified coproc/shell command options.
     * fix shell detection on startup for freebsd: anomaly - was missing a @last default set
