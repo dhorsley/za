@@ -13,8 +13,24 @@ CHANGE LOG
                 * async was fine, freebsd just didn't like the date command options in eg/async3.
             * eg/flood displayed zero hitching due to the OS. performs better than linux in this regard.
 
+    * added -Q option for reporting specified coproc/shell command options.
+    * fix shell detection on startup for freebsd: anomaly - was missing a @last default set
+        in Copper()/console_common.go
+
+    * test web server functionality in freebsd:
+        * was fine with some changes to the eg/web example for static hostname.
+
+    * check concurrency is working as expected for dynamic pages in web server (in freebsd):
+        + siege : siege -b -c 100 -r 100 -k http://127.0.0.1:8080/fun/awsip
+        * siege worked fine for lower numbers than above. would have been fine with higher
+            except that the example page has a link to unpkg.com for pure CSS and this and
+            DNS lookups hit rate limitations upstream. 
+            Lower numbers for -c and -r were fine (once throttles dropped away between tests)
+        * siege was perfect with the above (or higher) -c and -r when fetching the static
+            example @ http://127.0.0.1:8080/exmachina/index.html.
+
     * because of the changes in this version, general release will be delayed for more clean-
-        up and testing. i felt structs were important enough to allow this.
+        up and testing. i felt bsd support + structs were important enough to allow this.
 
     * eval lib updated (accessField processing and add/sum/mul/div/unaryminus/mod to
         handle other signed int types.

@@ -69,7 +69,7 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]{lower("{@language}")} [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-S]      \
+[#1]{lower("{@language}")} [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-Q] [-S] \
     [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
@@ -91,6 +91,7 @@ func help(hargs string) {
     [#4]-l[#-] : Enable mutex locking for multi-threaded use
     [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-S[#-] : Disable the co-process shell
+    [#4]-Q[#-] : Show shell command options
     [#4]-e[#-] : Provide source code in a string for interpretation. Stdin becomes available for data input
     [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields
     [#4]-F[#-] : Provides a field separator character for -r

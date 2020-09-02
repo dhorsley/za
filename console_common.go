@@ -680,6 +680,26 @@ func Copper(line string, squashErr bool) (string, int) {
     riwp,_:=vget(0,"@runInWindowsParent")
     rip,_ :=vget(0,"@runInParent")
 
+
+    // shell reporting option:
+    sr,_:=vget(0,"@shell_report")
+    if sr.(bool)==true {
+        noshell,_  :=vget(0,"@noshell")
+        shelltype,_:=vget(0,"@shelltype")
+        shellloc,_ :=vget(0,"@shell_location")
+        if !noshell.(bool) {
+            pf("[#4]Shell Options: ")
+            pf("%v (%v) ",shelltype,shellloc)
+            if riwp.(bool) { pf("Windows ") }
+            if rip.(bool)  {
+                pf("in parent\n[#-]")
+            } else {
+                pf("in coproc\n[#-]")
+            }
+        }
+    }
+
+
     if riwp.(bool) || rip.(bool) {
 
         if riwp.(bool) {
@@ -712,10 +732,11 @@ func Copper(line string, squashErr bool) (string, int) {
     } else {
 
         errorFile, err := ioutil.TempFile("", "copper.*.err")
+        defer os.Remove(errorFile.Name())
         if err != nil {
             log.Fatal(err)
         }
-        defer os.Remove(errorFile.Name())
+        vset(0, "@last", "0")
 
         read_out := bufio.NewReader(po)
 
