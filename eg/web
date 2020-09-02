@@ -6,6 +6,7 @@ module "web_modules/aws_handler"
 
 # GLOBALS
 
+HOST="127.0.0.1"
 PORT=8080
 HOME_PATH="/home/daniel/www"
 # POLL_TIMEOUT=5000*1000
@@ -37,7 +38,7 @@ is "ubuntu"
     println "Found interface : {inter}"
 endwhen
 
-HOST=interface_ip(inter)
+# HOST=interface_ip(inter)
 
 on get_env("PROXY_HOST")!="" do HOST=get_env("PROXY_HOST")
 on get_env("PROXY_PORT")!="" do PORT=get_env("PROXY_PORT")
