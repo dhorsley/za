@@ -23,6 +23,7 @@ var vlock = &sync.RWMutex{}
 var vlcacheval  int
 var vlcachefs   uint64
 var vlcachename string
+var vlcacheInvalidate bool
 */
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
@@ -32,7 +33,7 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
     /* @todo: make this thread-safe */
 /*
-    if fs==vlcachefs && strcmp(vlcachename,name) {
+    if !vlcacheInvalidate && fs==vlcachefs && strcmp(vlcachename,name) {
         if lockSafety { vlock.RUnlock() }
         return vlcacheval, true
     }
@@ -47,8 +48,8 @@ func VarLookup(fs uint64, name string) (int, bool) {
             vlcachename=name
             vlcachefs=fs
             vlcacheval=k
+            vlcacheInvalidate=false
 */
-
             if lockSafety { vlock.RUnlock() }
             return k, true
         }
@@ -73,6 +74,7 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
         *vtable_maxreached=fs
         ident[fs] = make([]Variable, capacity, capacity)
         varcount[fs] = 0
+        // vlcacheInvalidate=true
         // pf("vcreatetable: [for %s] just allocated [%d] cap:%d max:%d\n",name,fs,capacity,*vtable_maxreached)
     } else {
         // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
@@ -95,6 +97,7 @@ func vunset(fs uint64, name string) {
 
     if lockSafety { vlock.Lock() }
 
+    // vlcacheInvalidate=true
     vc:=varcount[fs]
     if found {
         for pos := loc; pos < vc-1; pos++ {
@@ -174,6 +177,7 @@ func vset(fs uint64, name string, value interface{}) bool {
             copy(newary,ident[fs])
             newary=append(newary,Variable{IName: name, IValue: value})
             ident[fs]=newary
+            // vlcacheInvalidate=true
 
         } else {
             ident[fs][varcount[fs]] = Variable{IName: name, IValue: value}
@@ -445,23 +449,18 @@ func escape(str string) string {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
-    // think that we are safe to remove lastlock from here now, just 
-    //  commenting it out for now though.
-
-    /*
     if lockSafety {
         lastlock.RLock()
     }
-    */
 
     if no_interpolation {
-    //    if lockSafety { lastlock.RUnlock() }
+        if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
-     //   if lockSafety { lastlock.RUnlock() }
+        if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
@@ -538,7 +537,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         }
     }
 
-    // if lockSafety { lastlock.RUnlock() }
+    if lockSafety { lastlock.RUnlock() }
     return s,true
 }
 

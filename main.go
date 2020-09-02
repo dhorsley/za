@@ -159,6 +159,7 @@ var testsTotal int
 
 // for disabling the coprocess entirely:
 var no_shell bool
+var shellrep bool
 
 // pane resize indicator
 var winching bool
@@ -320,6 +321,7 @@ func main() {
     var a_ansiForce     = flag.Bool("C", false, "enable colour output")
     var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use")
     var a_shell         = flag.String("s", "", "path to coprocess shell")
+    var a_shellrep      = flag.Bool("Q", false, "enables the shell info reporting")
     var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
     var a_cmdsep        = flag.Int("U", 0x1e, "Command output separator byte.")
 
@@ -437,10 +439,15 @@ func main() {
     test_group_filter = *a_test_group
 
     // disable the coprocess command
-    if *a_noshell!=false {
+    if *a_noshell {
         no_shell=true
     }
     vset(0, "@noshell",no_shell)
+
+    if *a_shellrep {
+        shellrep=true
+    }
+    vset(0, "@shell_report",shellrep)
 
     // set the coprocess command
     default_shell:=""
@@ -471,8 +478,6 @@ func main() {
             if default_shell=="" {
                 coprocLoc, err = GetCommand("/usr/bin/which bash")
                 if err == nil {
-                    // @todo: need to check if this -1 below is correct.
-                    // got a feeling it's chomping too much.
                     coprocLoc = coprocLoc[:len(coprocLoc)-1]
                     vset(0,"@shelltype","bash")
                 } else {
