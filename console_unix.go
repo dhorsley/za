@@ -12,13 +12,6 @@ import (
     "time"
 )
 
-const ioctlReadTermios = unix.TIOCGETA
-const ioctlWriteTermios = unix.TIOCSETA
-
-/* ^^ replaces this in linux:
-const ioctlReadTermios = unix.TCGETS
-const ioctlWriteTermios = unix.TCSETS
-*/
 
 func setEcho(s bool) {
     if s {
