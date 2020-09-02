@@ -5,7 +5,7 @@ import (
 	"fmt"
     "go/scanner"
 	"go/token"
-	"strconv"
+    "strconv"
 	// "strings"
 	"unsafe"
 )
@@ -41,6 +41,7 @@ func NewLexer(src string) *Lexer {
     var file *token.File
 
     lexer = &Lexer{}
+
     fset = token.NewFileSet()
     file = fset.AddFile("", fset.Base(), len(src))
     lexer.scanner.Init(file, []byte(src), nil, 0)

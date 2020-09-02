@@ -530,6 +530,7 @@ func main() {
         vset(0,"@runInWindowsParent",true)
     }
 
+    shelltype, _ := vget(0, "@shelltype")
     vset(0, "@shell_location", coprocLoc)
 
     if runtime.GOOS=="windows" || no_shell || coprocLoc=="/bin/false" {
@@ -667,39 +668,52 @@ func main() {
     // however, the standard library functions may modify their values if needed.
 
     // @note:
-    //  all of these Copper() calls need reworking to use internal info where 
-    //  possible. also need to get rid of this grep/cut dependency.
+    //  all of these Copper() calls need reworking to use internal info where possible. 
 
     // static globals from bash
     if runtime.GOOS!="windows" {
-        cop, _ = Copper("echo -n $ZSH_VERSION", true)
-        vset(0, "@zsh_version", cop)
-        cop, _ = Copper("echo -n $BASH_VERSION", true)
-        vset(0, "@bash_version", cop)
-        cop, _ = Copper("echo -n $BASH_VERSINFO", true)
-        vset(0, "@bash_versinfo", cop)
-        cop, _ = Copper("echo -n $USER", true)
-        vset(0, "@user", cop)
-        cop, _ = Copper("echo -n $OSTYPE", true)
-        vset(0, "@os", cop)
-        cop, _ = Copper("echo -n $HOME", true)
-        vset(0, "@home", cop)
-        cop, _ = Copper("echo -n $LANG", true)
-        vset(0, "@lang", cop)
+
         cop, _ = Copper("echo -n $WSL_DISTRO_NAME", true)
         vset(0, "@wsl", cop)
 
-        tmp, _ := Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
-        vset(0, "@release_name", stripOuterQuotes(tmp, 1))
+        switch shelltype {
+        case "zsh":
+            cop, _ = Copper("echo -n $ZSH_VERSION", true)
+            vset(0, "@zsh_version", cop)
+        case "bash":
+            cop, _ = Copper("echo -n $BASH_VERSION", true)
+            vset(0, "@bash_version", cop)
+            cop, _ = Copper("echo -n $BASH_VERSINFO", true)
+            vset(0, "@bash_versinfo", cop)
+            cop, _ = Copper("echo -n $LANG", true)
+            vset(0, "@lang", cop)
+        }
 
-        tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
-        vset(0, "@release_version", stripOuterQuotes(tmp, 1))
+        cop, _ = Copper("echo -n $USER", true)
+        vset(0, "@user", cop)
+
+        vset(0,"@os",runtime.GOOS)
+
+        cop, _ = Copper("echo -n $HOME", true)
+        vset(0, "@home", cop)
+
+        var tmp string
+
+        vset(0, "@release_name", "unknown")
+        vset(0, "@release_version", "unknown")
+
+        if runtime.GOOS=="linux" {
+            tmp, _ = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
+            vset(0, "@release_name", stripOuterQuotes(tmp, 1))
+            tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
+            vset(0, "@release_version", stripOuterQuotes(tmp, 1))
+        }
 
         // special cases for release version:
 
         // case 1: centos/other non-semantic expansion
         vtmp, _ := vget(0, "@release_version")
-        if !str.ContainsAny(vtmp.(string), ".") {
+        if tr(vtmp.(string),DELETE,"0123456789.")=="" && !str.ContainsAny(vtmp.(string), ".") {
             vtmp = vtmp.(string) + ".0"
         }
         vset(0, "@release_version", vtmp)
@@ -733,7 +747,6 @@ func main() {
     } // if not windows
 
     // special case: aliases in bash
-    shelltype, _ := vget(0, "@shelltype")
     if shelltype=="bash" {
         _, _ = Copper("shopt -s expand_aliases",true)
     }

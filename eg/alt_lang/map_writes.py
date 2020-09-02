@@ -8,10 +8,9 @@
 
 def f(NUMBER):
     d = {}
-    # for i in xrange(0,NUMBER,2):
-    for i in xrange(0,NUMBER):
+    for i in range(0,NUMBER):
         d[i % 1000] = i
-
+    print(i)
 import sys
 f(int(sys.argv[1]))
 
