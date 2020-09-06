@@ -273,7 +273,6 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
             if lockSafety { vlock.Unlock() }
             vset(fs,name,list)
             return
-            // ident[fs][vi] = Variable{IName: name, IValue: list}
         }
         if lockSafety { vlock.Unlock() }
         return
@@ -361,7 +360,6 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
         case map[string]int:            // pass straight through to vset
         case map[string]float64:        // pass straight through to vset
         case map[string]bool:           // pass straight through to vset
-        case map[string]interface{}:    // pass straight through to vset
 
         case []interface{}:
             sz:=cap(list.([]interface{}))
@@ -834,7 +832,6 @@ func fastConv(s string) interface{} {
     }
     return s
 }
-
 
 
 // evaluate an expression string using a modified version of the third-party goval lib

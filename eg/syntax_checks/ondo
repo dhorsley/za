@@ -8,8 +8,8 @@ answer=42
 s="42"
 
 # output
-on !t do print "should not appear\n"
-on !f do print "should appear\n"
+on !t do print "--- <-- should not appear\n"
+on !f do print "*** <-- should appear\n"
 
 # assignment
 
@@ -19,7 +19,10 @@ print "? 52 == ",nv,"\n"
 
 # bash command
 
-on answer==42 do | dir /
+cmd="ls -w"
+on os()=="freebsd" do cmd="ls -CG"
+
+on answer==42 do | {cmd} /
 print
 
 on !f do print dir("/")

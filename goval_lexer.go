@@ -33,7 +33,17 @@ type Lexer struct {
 
 }
 
+func (l *Lexer) SetSource (src string) {
+    fset := token.NewFileSet()
+    file := fset.AddFile("", fset.Base(), len(src))
+    l.scanner.Init(file, []byte(src), nil, 0)
+}
 
+func NewLexer() *Lexer {
+    return &Lexer{}
+}
+
+/*
 func NewLexer(src string) *Lexer {
 
     var fset *token.FileSet
@@ -48,6 +58,7 @@ func NewLexer(src string) *Lexer {
 
     return lexer
 }
+*/
 
 func (l *Lexer) scan() (token.Pos, token.Token, string) {
 	for {
@@ -223,5 +234,6 @@ func (l *Lexer) Perrorf(pos token.Pos, format string, a ...interface{}) {
 }
 
 func (l *Lexer) Result() interface{} {
+    // pf("lexer returning [%T] %v\n",l.result,l.result)
 	return l.result
 }

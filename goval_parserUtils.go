@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 //    "sync"
+    "unsafe"
 )
 
 func init() {
@@ -668,10 +669,19 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
         f := reflect.Indirect(r).FieldByName(ifield)
         return f
     default:
+
+        // work with mutable copy as we need to make field unsafe
+        // further down in switch.
+
         r := reflect.ValueOf(obj)
+        rcopy := reflect.New(r.Type()).Elem()
+        rcopy.Set(r)
+
         if reflect.ValueOf(r).Kind().String()=="struct" {
-            f := reflect.Indirect(r).FieldByName(ifield)
+            f := rcopy.FieldByName(ifield)
             switch f.Type().Kind() {
+            case reflect.String:
+                return f.String()
             case reflect.Bool:
                 return f.Bool()
             case reflect.Int:
@@ -680,8 +690,6 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
                 return int32(f.Int())
             case reflect.Int64:
                 return int64(f.Int())
-            case reflect.String:
-                return f.String()
             case reflect.Float32:
                 return float32(f.Float())
             case reflect.Float64:
@@ -696,7 +704,23 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
                 return uint32(f.Uint())
             case reflect.Uint64:
                 return uint64(f.Uint())
+
+            case reflect.Slice:
+
+                f  = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+                slc:=f.Slice(0,f.Len())
+
+                switch f.Type().Elem().Kind() {
+                case reflect.Interface:
+                    return slc.Interface()
+                default:
+                    return []interface{}{}
+                }
+
+            case reflect.Interface:
+                return f.Interface()
             default:
+                pf("default type in accessField is [%+v]",f.Type().Name())
                 return f.Interface()
             }
         } else {

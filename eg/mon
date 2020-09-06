@@ -62,8 +62,13 @@ define showFiles()
 
     if !winterm()
 
-        open_fd     = read_file("/proc/sys/fs/file-nr")
-        open_inode  = read_file("/proc/sys/fs/inode-nr")
+        open_fd=""
+        open_inode=""
+
+        on is_file("/proc/sys/fs/file-nr")  do open_fd    = read_file("/proc/sys/fs/file-nr")
+        on is_file("/proc/sys/fs/inode-nr") do open_inode = read_file("/proc/sys/fs/inode-nr")
+
+        on open_fd=="" || open_inode=="" do return
 
         pane select "files"
         pane redraw
@@ -103,33 +108,42 @@ define showMem()
     endif
 
     # gather
-    
-    slab_file=read_file("/proc/slabinfo")
+   
+    slab_file="" 
+    on is_file("/proc/slabinfo") do slab_file=read_file("/proc/slabinfo")
 
     slabs=""
-    foreach l in lines(slab_file,"2:")
-        name=field(l,1," \t")
-        s_sz=field(l,3," \t")
-        s_cn=field(l,4," \t")
-        on s_sz==0 || s_cn==0 do continue
-        slabs=slabs+format("%s %3v\n",name,(float(s_sz)*float(s_cn))/1024/1024)
-    endfor
-    slabs=fieldsort(slabs,2,"n",true) 
+    if count(slab_file)>1
+        foreach l in lines(slab_file,"2:")
+            name=field(l,1," \t")
+            s_sz=field(l,3," \t")
+            s_cn=field(l,4," \t")
+            on s_sz==0 || s_cn==0 do continue
+            slabs=slabs+format("%s %3v\n",name,(float(s_sz)*float(s_cn))/1024/1024)
+        endfor
+        slabs=fieldsort(slabs,2,"n",true) 
+    endif
 
-    foreach line in read_file("/proc/meminfo")
-        fields(line)
-        if F2!=""
-            when F1
-                is "MemTotal:";     mem_total=F2
-                is "MemFree:";      mem_free=F2
-                is "MemAvailable:"; mem_avail=F2
-                is "Cached:";       mem_cached=F2
-                is "Active:";       mem_active=F2
-                is "SwapFree:";     mem_swap_free=F2
-                is "SwapTotal:";    mem_swap_total=F2
-            endwhen
-        endif
+    foreach f in ["total","free","avail","cached","active","swap_free","swap_total"]
+        mem_{f}=0
     endfor
+
+    if is_file("/proc/meminfo")
+        foreach line in read_file("/proc/meminfo")
+            fields(line)
+            if F2!=""
+                when F1
+                    is "MemTotal:";     mem_total=F2
+                    is "MemFree:";      mem_free=F2
+                    is "MemAvailable:"; mem_avail=F2
+                    is "Cached:";       mem_cached=F2
+                    is "Active:";       mem_active=F2
+                    is "SwapFree:";     mem_swap_free=F2
+                    is "SwapTotal:";    mem_swap_total=F2
+                endwhen
+            endif
+        endfor
+    endif
 
     # display mem
 
@@ -148,13 +162,15 @@ define showMem()
     comwidth=10
     at 1,35; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
-    for p = 0 to cs-1
-        l=lines(slabs,"{p}:{p}")
-        sa=strpos(l," ",0)
-        c1=substr(l,0,sa)
-        c2=substr(l,sa+1,len(l)-sa-1)
-        at 2+p,35; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
-    endfor
+    if count(slabs)>0
+        for p = 0 to cs-1
+            l=lines(slabs,"{p}:{p}")
+            sa=strpos(l," ",0)
+            c1=substr(l,0,sa)
+            c2=substr(l,sa+1,len(l)-sa-1)
+            at 2+p,35; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
+        endfor
+    endif
 enddef
 
 
@@ -166,6 +182,8 @@ define showProcs(ct,uptime)
     # get filenames
     procs =| ls -1 /proc/*/stat
     procs = line_filter(procs,"/[0-9]+/")
+
+    proc_list=[]
 
     foreach p in procs
         on !is_file(p) do break
@@ -186,9 +204,6 @@ define showProcs(ct,uptime)
         on kind(cstime)!="float64" || kind(cutime)!="float64" do continue
 
         on procstarttime==0 do continue
-
-        # @todo: we should deduct this program's usage from the totals and have a toggle to add it back in and also
-        # to display this process in the list.
 
         # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
         if pid!=pid()
@@ -246,6 +261,16 @@ enddef
 
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
+    proc_file=""
+    if is_file("/proc/stat")
+        proc_file=read_file("/proc/stat")
+    else
+        return sample_start_in
+    endif
+
+    on len(proc_file)==0 do return sample_start_in
+
+
     pane select "cpu"
     pane redraw
 
@@ -254,21 +279,11 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     row=1
 
-    if !is_file("/proc/stat")
-        cls
-        println "[#2]Proc stat file not found![#-]\n"
-        exit 1
-    endif
-
-    proc_file=read_file("/proc/stat")
-
     mult            = float(timeout)/10.0
     indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
     partindexlist   = tail(indexlist)
 
     # init previous values for cpu stats
-
-    on len(proc_file)==0 do return sample_start_in
 
     foreach line in proc_file
 
@@ -450,6 +465,10 @@ enddef
 
 
 define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
+
+    if !is_file("/proc/net/dev")
+        return net_sample_start_in-1
+    endif
 
     pane select "net"
     pane redraw
@@ -684,7 +703,7 @@ while !quit
     endif
 
     # capture system uptime
-    uptime=float(field(read_file("/proc/uptime"),1))
+    on is_file("/proc/uptime") do uptime=float(field(read_file("/proc/uptime"),1))
 
     # show panes
     sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)

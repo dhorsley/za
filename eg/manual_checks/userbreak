@@ -5,7 +5,7 @@ define testbreak()
     return 42
 enddef
 
-setglob userSigIntHandler = "testbreak"
+setglob trapInt = "testbreak"
 
 for f=0 to 5e5
     println f

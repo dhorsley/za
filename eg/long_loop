@@ -32,9 +32,7 @@ for x=1 to max_count
     ; 
 endfor
 println "x: ",kind(x)," ",x
-println "x:",x
 te=epoch_nano_time()
-println "mc ",kind(max_count)," ",max_count
 assert x==max_count
 
 #

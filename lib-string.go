@@ -149,6 +149,10 @@ func buildStringLib() {
 
         key := args[1].(string)
 
+        if key=="" {
+            return "", nil
+        }
+
         fsep := func(c rune) bool { return c == '=' }
         for _, l := range search {
             ta := str.FieldsFunc(l, fsep)

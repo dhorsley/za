@@ -246,7 +246,7 @@ type yyLexer interface {
 
 type yyParser interface {
 	Parse(yyLexer, uint64) (int,bool)
-	Lookahead() int
+	// Lookahead() int
 }
 
 type yyParserImpl struct {
@@ -256,9 +256,11 @@ type yyParserImpl struct {
 	evalfs uint64
 }
 
+/*
 func (p *yyParserImpl) Lookahead() int {
 	return p.char
 }
+*/
 
 func YyNewParser() yyParser {
 	return &yyParserImpl{}
@@ -396,8 +398,8 @@ func (yyrcvr *yyParserImpl) Parse(yylex yyLexer, evalfs uint64) (int,bool) {
     yyS := make([]yySymType, len(yyrcvr.stack))
     copy(yyS, yyrcvr.stack[:])
 
-    var ef bool = false
-	var Nerrs int    /* number of errors */
+    var ef bool
+	// var Nerrs int    /* number of errors */
 	var Errflag int  /* error recovery flag */
 	var yystate int
 	yyrcvr.char = -1
@@ -419,7 +421,7 @@ yystack:
 	yyp++
     ly:=len(yyS)
 	if yyp >= ly {
-		nyys := make([]yySymType, ly*4)
+		nyys := make([]yySymType, ly*2)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
@@ -427,19 +429,16 @@ yystack:
 	yyS[yyp].yys = yystate
 
 yynewstate:
-	yyn = yyPact[yystate]
-	if yyn <= yyFlag {
+	if yyn=yyPact[yystate]; yyn <= yyFlag {
 		goto yydefault /* simple state */
 	}
 	if yyrcvr.char < 0 {
 		yyrcvr.char, yytoken = yylex1(yylex, &yyrcvr.lval)
 	}
-	yyn += yytoken
-	if yyn < 0 || yyn >= yyLast {
+	if yyn+=yytoken; yyn < 0 || yyn >= yyLast {
 		goto yydefault
 	}
-	yyn = yyAct[yyn]
-	if yyChk[yyn] == yytoken { /* valid shift */
+	if yyn=yyAct[yyn]; yyChk[yyn] == yytoken { /* valid shift */
 		yyrcvr.char = -1
 		yytoken = -1
 		yyVAL = yyrcvr.lval
@@ -452,8 +451,7 @@ yynewstate:
 
 yydefault:
 	/* default state action */
-	yyn = yyDef[yystate]
-	if yyn == -2 {
+	if yyn=yyDef[yystate]; yyn == -2 {
 		if yyrcvr.char < 0 {
 			yyrcvr.char, yytoken = yylex1(yylex, &yyrcvr.lval)
 		}
@@ -470,15 +468,12 @@ yydefault:
 			xi++
 		}
 		for ; ; {
-            xi++
-            xi++
-			yyn = yyExca[xi]
-			if yyn < 0 || yyn == yytoken {
+            xi+=2
+			if yyn=yyExca[xi]; yyn < 0 || yyn == yytoken {
 				break
 			}
 		}
-		yyn = yyExca[xi+1]
-		if yyn < 0 {
+		if yyn=yyExca[xi+1]; yyn < 0 {
 		    yystate = -1
 		    yyrcvr.char = -1
 		    yytoken = -1
@@ -490,7 +485,7 @@ yydefault:
 		switch Errflag {
 		case 0: /* brand new error */
 			yylex.Error(yyErrorMessage(yystate, yytoken))
-			Nerrs++
+			// Nerrs++
 			fallthrough
 
 		case 1, 2: /* incompletely recovered error ... try again */
@@ -532,7 +527,7 @@ yydefault:
 	// reduced production is ε, $1 is possibly out of range.
     ly=len(yyS)
     if yyp+1 >= ly {
-		nyys := make([]yySymType, ly*4)
+		nyys := make([]yySymType, ly*2)
 		copy(nyys, yyS)
 		yyS = nyys
 	}
@@ -570,12 +565,14 @@ yydefault:
 		{
             // pf("gv-p1: about to call %v\n",yyDollar[1].token.literal)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, []interface{}{})
+            // pf("gv-p2: got -> %#v\n",yyVAL.expr)
 		}
 	case 9:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-            // pf("gv-p2: about to call %v\n",yyDollar[1].token.literal)
+            // pf("gv-p1: about to call %v\n",yyDollar[1].token.literal)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, yyDollar[3].exprList)
+            // pf("gv-p2: got -> [%T] %#v\n",yyVAL.expr,yyVAL.expr)
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]

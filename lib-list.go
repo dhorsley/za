@@ -274,7 +274,7 @@ func buildListLib() {
             l := append(args[0].([]interface{}), args[1].(interface{}))
             return l, nil
         default:
-            return nil, errors.New("data type not supported in append()")
+            return nil, errors.New(sf("data type [%T] not supported in append()",args[0]))
         }
     }
 
