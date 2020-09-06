@@ -4,7 +4,7 @@ println "\n[#fcyan]Za function defining[#default]"
 
 module "./math.mod"
 
-showdef factorial
+showdef
 
 println "\n[#4]factorial test[#-]"
 println "4! = ", factorial(4)

@@ -556,7 +556,7 @@ tco_reentry:
         // in normal exec mode, the source is treated as functionspace 1
         if base < 2 {
             globalaccess = ifs
-            vset(globalaccess, "userSigIntHandler", "")
+            vset(globalaccess, "trapInt", "")
         }
 
         // nesting levels in this function
@@ -724,15 +724,16 @@ tco_reentry:
             // consume the statement as an identifier
             // as we are only accepting simple types currently, restrict validity
             //  to single type token.
-            if tokencount!=2 {
-                cet := crushEvalTokens(inbound.Tokens[1:])
-                report(ifs,lastline,sf("Invalid STRUCT entry '%v'",cet.text))
+            if tokencount<2 {
+                report(ifs,lastline,sf("Invalid STRUCT entry '%v'",statement.tokText))
                 finish(false,ERR_SYNTAX)
                 break
             }
             // @todo: add a check here for syntax. for example, placing type before name will result
             //  in an error during INIT. need to raise error here instead. (on order and type validity).
-            structNode=append(structNode,statement.tokText,inbound.Tokens[1].tokText)
+            cet :=crushEvalTokens(inbound.Tokens[1:])
+            // structNode=append(structNode,statement.tokText,inbound.Tokens[1].tokText)
+            structNode=append(structNode,statement.tokText,cet.text)
             continue
         }
 
@@ -2181,6 +2182,13 @@ tco_reentry:
                     var tf32 float32
                     var tf64 float64
                     var ts string
+                    var atint   []interface{}
+                    /* not supported yet:
+                    var ats     []string
+                    var ati     []int
+                    var atf     []float64
+                    var atb     []bool
+                    */
 
                     // instantiate fields with an empty expected type:
                     typemap:=make(map[string]reflect.Type)
@@ -2196,6 +2204,13 @@ tco_reentry:
                     typemap["float64"]  = reflect.TypeOf(tf64)
                     typemap["float32"]  = reflect.TypeOf(tf32)
                     typemap["string"]   = reflect.TypeOf(ts)
+                    /* only interface{} currently supported.
+                    typemap["[]string"] = reflect.TypeOf(ats)
+                    typemap["[]int"]    = reflect.TypeOf(ati)
+                    typemap["[]float"]  = reflect.TypeOf(atf)
+                    typemap["[]bool"]   = reflect.TypeOf(atb)
+                    */
+                    typemap["[]"]       = reflect.TypeOf(atint)
                     //
 
                     // check here for struct init by name
@@ -2204,14 +2219,11 @@ tco_reentry:
 
                     // structmap has list of field_name,field_type,... for each struct
                     for sn, snv := range structmaps {
-                        // pf("struct : %v - ",sn)
                         if sn==vartype {
-                            // pf("MATCH\n")
                             found=true
                             structvalues=snv
                             break
                         }
-                        // pf("no match\n")
                     }
                     if found {
                         // deal with init name struct_type
@@ -2229,17 +2241,13 @@ tco_reentry:
                                         Anonymous:false,
                                     },
                                 )
+                                // pf("typemap nt -> %v\n",nt)
                                 offset+=typemap[nt].Size()
                             }
                             typ:=reflect.StructOf(sf)
-                            // v:=reflect.Zero(typ).Interface()
                             v:=(reflect.New(typ).Elem()).Interface()
-                            // pf("Struct Fields ->\n%v\n",sf)
-                            // pf("Zero Value : %#v\n",v)
-                            // pf("Value Type : %T\n",v)
                             vset(ifs,varname,v)
                             // also register value of type with gob in case of serialisation
-                            // pf("registering type : %T\n",v)
                             // gob.Register(v)
                         }
                     } else {
@@ -3170,7 +3178,6 @@ tco_reentry:
 		    ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
             inside_with=true
-            // current_with_var=fname
             current_with_handle=tfile
 
             defer func() {
@@ -3615,13 +3622,23 @@ tco_reentry:
                             if isArray {
                                 vsetElement(ifs,id[:sqPos],elementComponents,ival+ampl)
                             } else {
-                                vset(ifs, id, ival+ampl)
+                                if lockSafety {
+                                    vset(ifs, id, ival+ampl)
+                                } else {
+                                    vid, _ = VarLookup(ifs,id)
+                                    ident[ifs][vid].IValue = ival+ampl
+                                }
                             }
                         case C_Dec:
                             if isArray {
                                 vsetElement(ifs,id[:sqPos],elementComponents,ival-ampl)
                             } else {
-                                vset(ifs, id, ival-ampl)
+                                if lockSafety {
+                                    vset(ifs, id, ival-ampl)
+                                } else {
+                                    vid, _ = VarLookup(ifs,id)
+                                    ident[ifs][vid].IValue = ival-ampl
+                                }
                             }
                         }
                     }

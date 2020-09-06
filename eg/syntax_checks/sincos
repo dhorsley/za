@@ -24,15 +24,15 @@ for r=10 to 2 step -2
         at cr+ymag*cos(f),cw+xmag*sin(f)
         if signum(xmag*sin(f))==-1
             if signum(ymag*cos(f))==-1
-                print "/"
+                print "▗"
             else
-                print `\`
+                print "▝"
             endif
         else
             if signum(ymag*cos(f))==-1
-                print `\`
+                print "▖"
             else
-                print "/"
+                print "▘"
             endif
         endif
     endfor

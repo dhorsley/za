@@ -2,10 +2,9 @@ package main
 
 import (
     "runtime"
-    )
+)
 
 var	cacheParser yyParserImpl
-var cacheLexer *Lexer
 
 func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error) {
 
@@ -21,13 +20,16 @@ func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error
 		}
 	}()
 
-    lexer:=NewLexer(str)
+    lexer:=&Lexer{}
+    lexer.SetSource(str)
+
     if lockSafety {
 	    _,ef=YyNewParser().Parse(lexer, evalfs)
     } else {
         _,ef=cacheParser.Parse(lexer,evalfs)
     }
-
 	return lexer.Result(), ef, err
+
+
 }
 
