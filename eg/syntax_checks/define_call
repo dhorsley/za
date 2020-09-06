@@ -9,7 +9,7 @@ enddef
 
 define mixtest(a,b,c)
     println "hello, goat!"
-    | lsb_release -a
+    | cat /etc/motd
     w=mixtest2()
  	println "Return value is {w}"
     return [w,w]

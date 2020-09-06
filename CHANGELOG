@@ -775,7 +775,7 @@ CHANGE LOG
 
         1. added a user interrupt (ctrl-c) handler:
 
-            when global variable userSigIntHandler is set to the name of a Za function,
+            when global variable trapInt is set to the name of a Za function,
             that function will be called at the end of normal ctrl-c handling.
             if the function returns a non-zero value then a hard exit is made from Za with
             the specified return value as the exit code.
@@ -791,7 +791,7 @@ CHANGE LOG
                 return exCode
             enddef
 
-            userSigIntHandler = "test(status,code)"
+            trapInt = "test(status,code)"
 
             status="current break message."
             code=127

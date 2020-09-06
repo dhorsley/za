@@ -4,10 +4,10 @@ input N optarg 1
 if N==""; exit ; endif
 
 define f(n)
-    for i = 1 to n
+    for i = 0 to n-1
         d[i%1000]=i
     endfor
-    println d
+    # println d
 enddef
 
 f(N)

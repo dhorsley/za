@@ -4,28 +4,20 @@ debug 0
 c1=false; c2=false
 input c1 optarg 1
 input c2 optarg 2
+on c1!="" do c1=bool(c1)
+on c2!="" do c2=bool(c2)
 
 if c1
-
     if true 
-
         if c2
-
             println "smeagol!"
-        
         else
-
             println "gollum!"
-
         endif
     else
-
         println "gandalf."
-
     endif
-
-println "monty"
-
+    println "monty"
 endif
 
 println "Complete."

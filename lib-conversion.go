@@ -362,6 +362,9 @@ func buildConversionLib() {
 		case uint, uint8, uint32, uint64, int, int32, int64, float32, float64:
 			return isNumber(args[0]), nil
 		case string:
+            if len(args[0].(string))==0 {
+                return false,nil
+            }
 		    _, invalid := GetAsFloat(args[0])
 		    if invalid {
                 return false, nil

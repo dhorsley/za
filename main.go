@@ -265,7 +265,7 @@ func main() {
     vset(0, "@silentlog", true)
     vset(0, "mark_time", false)
     vset(0, "@echo", true)
-    vset(0, "userSigIntHandler", "")// name of Za function that handles ctrl-c.
+    vset(0, "trapInt", "")// name of Za function that handles ctrl-c.
     vset(0, "@echomask", "*")
 
 
@@ -584,7 +584,7 @@ func main() {
 
             // user-trap handling
 
-            userSigIntHandler,usihfound:=vget(globalaccess,"userSigIntHandler")
+            userSigIntHandler,usihfound:=vget(globalaccess,"trapInt")
             usih:=""
             if usihfound { usih=userSigIntHandler.(string) }
 

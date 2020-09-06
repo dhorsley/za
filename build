@@ -40,13 +40,16 @@ if !start(os(),"freebsd")
             exit 1
         endif
     is "win"
-        if buildWin(bvers,bdate,strip_opts)!=0
+        if buildWin(bvers,bdate,strip_opts) != 0
             print "Failed to build windows version.\n"
             exit 1
         endif
     endwhen
 else
-    if buildFreeBSD(bvers,bdate)!=0
+    # r=buildFreeBSD(bvers,bdate)
+    # println "R::",r
+    # if r!=0
+    if buildFreeBSD(bvers,bdate) != 0
         print "Failed to build bsd version.\n"
         exit 1
     endif
