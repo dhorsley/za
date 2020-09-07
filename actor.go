@@ -1187,6 +1187,14 @@ tco_reentry:
                             ce = len(finalExprArray.([]uint8)) - 1
                         }
 
+                    case []bool:
+                        finalExprArray = expr
+                        if len(finalExprArray.([]bool)) > 0 {
+                            vset(ifs, "key_"+fid, 0)
+                            vset(ifs, fid, finalExprArray.([]bool)[0])
+                            ce = len(finalExprArray.([]bool)) - 1
+                        }
+
                     case []int:
                         finalExprArray = expr
                         if len(finalExprArray.([]int)) > 0 {

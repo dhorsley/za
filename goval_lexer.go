@@ -6,7 +6,6 @@ import (
     "go/scanner"
 	"go/token"
     "strconv"
-	// "strings"
 	"unsafe"
 )
 
@@ -45,6 +44,7 @@ func NewLexer() *Lexer {
 }
 */
 
+/*
 func NewLexer(src string) *Lexer {
 
     var fset *token.FileSet
@@ -59,6 +59,7 @@ func NewLexer(src string) *Lexer {
 
     return lexer
 }
+*/
 
 func (l *Lexer) scan() (token.Pos, token.Token, string) {
 	for {
