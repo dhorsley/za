@@ -34,7 +34,7 @@ syn match   Operator	"\[[[^:]\|\]]"		contained
 " Misc: {{{1
 "======
 syn match   WrapLineOperator "\\$"
-syn match   Escape	contained	'\%(^\)\@!\%(\\\\\)*\\.'
+" syn match   Escape	contained	'\%(^\)\@!\%(\\\\\)*\\.'
 
 syn match   Colon	'^\s*\zs:'
 
@@ -43,8 +43,8 @@ syn match   Colon	'^\s*\zs:'
 "================================
 syn match   Number	"\<\d\+\>#\="
 syn match   Number	"-\=\.\=\d\+\>#\="
-syn match   CtrlSeq	"\\\d\d\d\|\\[abcfnrtv0]"		contained
-syn match   StringSpecial	"[^[:print:] \t]"		contained
+" syn match   CtrlSeq	"\\\d\d\d\|\\[\\abcfnrtv0]"		contained
+" syn match   CtrlSeq  contained "\\\([4-9]\d\|[0-3]\d\d\|[\"\\'ntbrf]\|u\x\{4\}\)"
 
 " Comments: {{{1
 "==========
@@ -309,15 +309,17 @@ syntax match string_functions "\s*format\s*("he=e-1
 syntax match string_functions "\s*ccformat\s*("he=e-1
 syntax match string_functions "\s*strpos\s*("he=e-1
 
-syntax match env_functions "\s*env\s*("he=e-1
-syntax match env_functions "\s*get_env\s*("he=e-1
-syntax match env_functions "\s*set_env\s*("he=e-1
-syntax match env_functions "\s*cd\s*("he=e-1
-syntax match env_functions "\s*cwd\s*("he=e-1
-syntax match env_functions "\s*dir\s*("he=e-1
-syntax match env_functions "\s*umask\s*("he=e-1
-syntax match env_functions "\s*chroot\s*("he=e-1
-syntax match env_functions "\s*remove\s*("he=e-1
+syntax match os_functions "\s*env\s*("he=e-1
+syntax match os_functions "\s*get_env\s*("he=e-1
+syntax match os_functions "\s*set_env\s*("he=e-1
+syntax match os_functions "\s*cd\s*("he=e-1
+syntax match os_functions "\s*cwd\s*("he=e-1
+syntax match os_functions "\s*dir\s*("he=e-1
+syntax match os_functions "\s*umask\s*("he=e-1
+syntax match os_functions "\s*chroot\s*("he=e-1
+syntax match os_functions "\s*delete\s*("he=e-1
+syntax match os_functions "\s*rename\s*("he=e-1
+syntax match os_functions "\s*copy\s*("he=e-1
 
 syntax match html_functions "\s*wpage\s*("he=e-1
 syntax match html_functions "\s*wbody\s*("he=e-1
@@ -400,8 +402,10 @@ syntax match colour_normal "\[#-\]"hs=s+1,he=e-1 containedin=DoubleQuote
 
 " Quoting: {{{1
 " ========
-syntax region DoubleQuote start=/\v"/ skip=+\\['"]+ end=/\v"/
-syntax region DoubleQuote start=/\v`/ skip=+\\[`]+ end=/\v`/
+syn match   cSpecial    display contained "\\\(x\x\+\|\o\{1,3}\|.\|$\)" containedin=DoubleQuote
+syn region  DoubleQuote   start=+L\="+ skip=+\\\\\|\\"+ end=+"+ extend
+" syntax region DoubleQuote start=/\v"/ skip=+\\['"]+ end=/\v"/
+" syntax region DoubleQuote start=/\v`/ skip=+\\[`]+ end=/\v`/
 
 " Extra Bracing: {{{1
 " ===================
@@ -410,8 +414,9 @@ syntax region sqBrace transparent start=/\v\[/ skip=+\\[\]]+ end=/\v\]/
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,env_functions,image_functions,html_functions,udf_functions
-syn cluster ArithParenList  contains=Arithmetic,Comment,Escape,Number,Operator,SingleQuote,Variable,CtrlSeq,Special,Paren,Functions
+syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,udf_functions
+" syn cluster ArithParenList  contains=Arithmetic,Comment,Escape,Number,Operator,SingleQuote,Variable,CtrlSeq,Special,Paren,Functions
+syn cluster ArithParenList  contains=Arithmetic,Comment,Number,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
 " =====================================
@@ -469,13 +474,13 @@ hi def link time_functions functionlist
 hi def link list_functions functionlist
 hi def link conversion_functions functionlist
 hi def link internal_functions functionlist
+hi def link os_functions functionlist
 hi def link package_functions functionlist
 hi def link math_functions functionlist
 hi def link file_functions functionlist
 hi def link web_functions functionlist
 hi def link db_functions functionlist
 hi def link string_functions functionlist
-hi def link env_functions functionlist
 hi def link html_functions functionlist
 hi def link image_functions functionlist
 hi def link udf_functions userfunctionlist

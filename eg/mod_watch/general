@@ -1,0 +1,30 @@
+#!/usr/bin/za
+
+# exit handler
+define error(s,n)
+    println "[#2]Error: {s}\n[#-]"
+    exit n
+enddef
+
+# interrupt handler
+define handlebreak(e)
+    on e==0 do println "[#2]** user break **[#-]"
+    exit e
+enddef
+
+# does list 'hay' contain 'needle'?
+define contains(hay,needle)
+    foreach straw in hay
+        on straw==needle do return true
+    endfor
+    return false
+enddef
+
+# find key in previous file list which matches 'n'
+define lookup_old(conf,n)
+    foreach straw in conf.prev
+        on straw.name == n do return key_straw
+    endfor
+    return -1
+enddef
+
