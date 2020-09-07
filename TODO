@@ -9,6 +9,7 @@
 
 1.0.9   bug fixes and documentation updates
 
+    * assignments fail silently when var name matches a statement (e.g. "test")
     * typo/doc fixes (website and source)
 
 ---------------------------------------------------------------------------------------------
