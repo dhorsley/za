@@ -108,8 +108,8 @@ func buildOsLib() {
 
 	slhelp["delete"] = LibHelp{in: "string", out: "bool", action: "Delete a file."}
 	stdlib["delete"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1               { return nil,errors.New("Bad argument count in delete()")  }
-        if sf("%T",args[0])!="string" { return nil,errors.New("Bad argument type in delete()")   }
+        if len(args)!=1               { return false,errors.New("Bad argument count in delete()")  }
+        if sf("%T",args[0])!="string" { return false,errors.New("Bad argument type in delete()")   }
         err=os.Remove(args[0].(string))
         suc:=true
         if err!=nil { suc=false }
@@ -118,8 +118,8 @@ func buildOsLib() {
 
 	slhelp["rename"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Rename a file."}
 	stdlib["rename"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2               { return nil,errors.New("Bad argument count in rename()")  }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("Bad argument type in rename()")   }
+        if len(args)!=2               { return false,errors.New("Bad argument count in rename()")  }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return false,errors.New("Bad argument type in rename()")   }
         err=os.Rename(args[0].(string),args[1].(string))
         suc:=true
         if err!=nil { suc=false }
@@ -128,8 +128,8 @@ func buildOsLib() {
 
 	slhelp["copy"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Copy a single file."}
 	stdlib["copy"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2               { return nil,errors.New("Bad argument count in copy()")  }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("Bad argument type in copy()")   }
+        if len(args)!=2               { return false,errors.New("Bad argument count in copy()")  }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return false,errors.New("Bad argument type in copy()")   }
         _,err=fcopy(args[0].(string),args[1].(string))
         suc:=true
         if err!=nil { suc=false }

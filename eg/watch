@@ -9,40 +9,20 @@ doc `
             1) moving files on change
             2) deleting files on change
             3) copying files on change
-    Status: INCOMPLETE
+    Status:
+        NEAR COMPLETE
+            Requires logging and quiet modes/functions.
+            Maybe could add recursive copies.
+            Possibly add separate destinations per source.
 `
 
 #
 # FUNCTIONS
 #
 
-# exit handler
-define error(s,n)
-    println "[#2]Error: {s}\n[#-]"
-    exit n
-enddef
+module "mod_watch/general"
+module "mod_watch/file"
 
-# interrupt handler
-define handlebreak(e)
-    on e==0 do println "[#2]** user break **[#-]"
-    exit e
-enddef
-
-# does list 'hay' contain 'needle'?
-define contains(hay,needle)
-    foreach straw in hay
-        on straw==needle do return true
-    endfor
-    return false
-enddef
-
-# find key in previous file list which matches 'n'
-define lookup_old(conf,n)
-    foreach straw in conf.prev
-        on straw.name == n do return key_straw
-    endfor
-    return -1
-enddef
 
 # build change list for directory 'd' and perform configured actions on change
 define check_dir(conf,d)
@@ -106,12 +86,18 @@ define check_dir(conf,d)
 
         # summary
         if conf.summary
-            println "[#6]Directory -> {d}[#-]"
-            on len(new_files)>0       do println " New       : {new_files}"
-            on len(rem_files)>0       do println " Removed   : {rem_files}"
-            on len(mod_files_time)>0  do println " Mod, Time : {mod_files_time}"
-            on len(mod_files_size)>0  do println " Mod, Size : {mod_files_size}"
-            println
+
+            sum=""
+            on len(new_files)>0       do sum=sum+ " New       : {new_files}"
+            on len(rem_files)>0       do sum=sum+ " Removed   : {rem_files}"
+            on len(mod_files_time)>0  do sum=sum+ " Mod, Time : {mod_files_time}"
+            on len(mod_files_size)>0  do sum=sum+ " Mod, Size : {mod_files_size}"
+
+            if sum!=""
+                sum="[#6]{date_human()}    [#5]Directory -> {d}[#-]\n{sum}\n"
+                println sum
+            endif
+
         endif
 
         # take actions
@@ -119,29 +105,60 @@ define check_dir(conf,d)
         is "copy"
             # new
             foreach f in new_files
-                println "COPY NEW {f}"
+                println "[COPY] NEW {f} to {conf.destination}"
+                on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
             # rem
             foreach f in rem_files
-                println "COPY REM {f}"
+                if conf.mirror
+                    println "[COPY] REM {f} from {conf.destination} (mirror mode)"
+                    if is_file(mkfn(conf.destination,f))
+                        on !delete(mkfn(conf.destination,f)) do println ": error removing {f}"
+                    endif
+                endif
             endfor
             # mod time
             foreach f in mod_files_time
-                println "COPY MODT {f}"
+                println "[COPY] MODT {f} to {conf.destination}"
+                on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
             # mod size
             foreach f in mod_files_size
-                println "COPY MODS {f}"
+                println "[COPY] MODS {f} to {conf.destination}"
+                on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
         is "move"
             # new
             foreach f in new_files
-                println "MOVE NEW {f}"
+                println "[MOVE] NEW {f} to {conf.destination}"
+                on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
+            endfor
+            # rem
+            foreach f in rem_files
+                if conf.mirror
+                    println "[MOVE] REM {f} from {conf.destination} (mirror mode)"
+                    on !delete(mkfn(conf.destination,f)) do println ": error removing {f}"
+                endif
+            endfor
+            # mod time
+            foreach f in mod_files_time
+                println "[MOVE] MODT {f} to {conf.destination}"
+                on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
+            endfor
+            # mod size
+            foreach f in mod_files_size
+                println "[MOVE] MODS {f} to {conf.destination}"
+                on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
             endfor
         is "delete"
+            # new
+            foreach f in new_files
+                println "[DELETE] NEW {f}"
+                on !delete(mkfn(d,f)) do println ": error removing {f}"
+            endfor
         is ""
         or
-            error("bad action verb",3)
+            error("bad action verb in watch configuration file",3)
         endwhen
 
     endif
@@ -167,6 +184,7 @@ struct s_config
     starting    bool
     action      string
     destination string
+    mirror      bool
 endstruct
 
 # initialise config struct with some default values
@@ -179,6 +197,7 @@ c.summary       = true
 c.prev          = []
 c.action        = ""
 c.destination   = ""
+c.mirror        = false
 
 # check for env vars
 input ecf env CF 
@@ -191,6 +210,7 @@ foreach l in read_file(c.configfile)
     on get_value(l,"destination")!=""   do c.destination=stripquotes(get_value(l,"destination"))
     on get_value(l,"filter")!=""        do c.filter=stripquotes(get_value(l,"filter"))
     on get_value(l,"summary")!=""       do c.summary=bool(stripquotes(get_value(l,"summary")))
+    on get_value(l,"mirror")!=""        do c.mirror=bool(stripquotes(get_value(l,"mirror")))
     f=get_value(l,"frequency")
     if f!=""
         if ! is_number(f)
@@ -214,6 +234,7 @@ while !quit
         c=check_dir(c,d)
     endfor
 
+    # should change this delay to take into account the time taken by check_dir() above
     pause c.freq*1000
 
 endwhile
