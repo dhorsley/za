@@ -39,11 +39,12 @@ func (l *Lexer) SetSource (src string) {
     l.scanner.Init(file, []byte(src), nil, 0)
 }
 
+/*
 func NewLexer() *Lexer {
     return &Lexer{}
 }
+*/
 
-/*
 func NewLexer(src string) *Lexer {
 
     var fset *token.FileSet
@@ -58,7 +59,6 @@ func NewLexer(src string) *Lexer {
 
     return lexer
 }
-*/
 
 func (l *Lexer) scan() (token.Pos, token.Token, string) {
 	for {

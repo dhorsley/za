@@ -183,8 +183,6 @@ define showProcs(ct,uptime)
     procs =| ls -1 /proc/*/stat
     procs = line_filter(procs,"/[0-9]+/")
 
-    proc_list=[]
-
     foreach p in procs
         on !is_file(p) do break
         ps = read_file(p)
@@ -209,8 +207,10 @@ define showProcs(ct,uptime)
         if pid!=pid()
             putime=float(uptime-(procstarttime/ct))
             on putime==0 do continue
+
             proc_list[pid]=[ state, ppid, 100*float(utime/ct/putime), 100*float(stime/ct/putime), 
                             100*float(cutime/ct/putime), 100*float(cstime/ct/putime), threads, procstarttime, gsub(comm," ","_") ]
+
         endif
     endfor
 
@@ -509,6 +509,7 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
             dte=float(terr-getglob("prev_terr"))
 
             # shift left and append new to end
+
             rblist=append(tail(getglob("rblist")),drb)
             relist=append(tail(getglob("relist")),dre)
             tblist=append(tail(getglob("tblist")),dtb)

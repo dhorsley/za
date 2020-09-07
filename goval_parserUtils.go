@@ -733,7 +733,6 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
 		panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
 	}
 
-    // pf("ev-af %v[%v]\n",obj,idx)
     switch obj:=obj.(type) {
 	case []string:
 		return obj[idx]
@@ -779,7 +778,49 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
 
 func slice(v interface{}, from, to interface{}) interface{} {
 	str, isStr := v.(string)
-	arr, isArr := v.([]interface{})
+    isArr:=false
+    var arl int
+
+    switch v.(type) {
+    case []bool:
+        isArr=true
+        arl= len(v.([]bool))
+    case []int:
+        isArr=true
+        arl= len(v.([]int))
+    case []int32:
+        isArr=true
+        arl= len(v.([]int32))
+    case []int64:
+        isArr=true
+        arl= len(v.([]int64))
+    case []float32:
+        isArr=true
+        arl= len(v.([]float32))
+    case []float64:
+        isArr=true
+        arl= len(v.([]float64))
+    case []uint:
+        isArr=true
+        arl= len(v.([]uint))
+    case []uint8:
+        isArr=true
+        arl= len(v.([]uint8))
+    case []uint32:
+        isArr=true
+        arl= len(v.([]uint32))
+    case []uint64:
+        isArr=true
+        arl= len(v.([]uint64))
+    case []string:
+        isArr=true
+        arl= len(v.([]string))
+    case []interface{}:
+        isArr=true
+        arl= len(v.([]interface{}))
+    default:
+        panic(fmt.Errorf("syntax error: unknown array type '%T'",v))
+    }
 
 	if !isStr && !isArr {
 		panic(fmt.Errorf("syntax error: slicing requires an array or string, but was %s", typeOf(v)))
@@ -795,7 +836,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 	if to == nil && isStr {
 		toInt = len(str)
 	} else if to == nil && isArr {
-		toInt = len(arr)
+		toInt = arl
 	} else {
 		toInt = asInteger(to)
 	}
@@ -814,13 +855,40 @@ func slice(v interface{}, from, to interface{}) interface{} {
 		return str[fromInt:toInt]
 	}
 
-	if toInt < 0 || toInt > len(arr) {
-		panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, len(arr)))
+	if toInt < 0 || toInt > arl {
+		panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, arl))
 	}
 	if fromInt > toInt {
 		panic(fmt.Errorf("range error: start-index %d is greater than end-index %d", fromInt, toInt))
 	}
-	return arr[fromInt:toInt]
+
+    switch v.(type) {
+    case []bool:
+	    return v.([]bool)[fromInt:toInt]
+    case []int:
+	    return v.([]int)[fromInt:toInt]
+    case []int32:
+	    return v.([]int32)[fromInt:toInt]
+    case []int64:
+	    return v.([]int64)[fromInt:toInt]
+    case []float32:
+	    return v.([]float32)[fromInt:toInt]
+    case []float64:
+	    return v.([]float64)[fromInt:toInt]
+    case []uint:
+	    return v.([]uint)[fromInt:toInt]
+    case []uint8:
+	    return v.([]uint8)[fromInt:toInt]
+    case []uint32:
+	    return v.([]uint32)[fromInt:toInt]
+    case []uint64:
+	    return v.([]uint64)[fromInt:toInt]
+    case []string:
+	    return v.([]string)[fromInt:toInt]
+    case []interface{}:
+	    return v.([]interface{})[fromInt:toInt]
+    }
+    return nil
 }
 
 func arrayContains(arr interface{}, val interface{}) bool {
