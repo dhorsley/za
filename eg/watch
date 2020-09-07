@@ -23,9 +23,9 @@ define error(s,n)
 enddef
 
 # interrupt handler
-define handlebreak()
-    println "[#2]** user break **[#-]"
-    exit
+define handlebreak(e)
+    on e==0 do println "[#2]** user break **[#-]"
+    exit e
 enddef
 
 # does list 'hay' contain 'needle'?
@@ -202,7 +202,7 @@ endfor
 
 # main loop
 
-trapInt="handlebreak"
+trapInt="handlebreak(0)"
 quit=false
 
 while !quit
