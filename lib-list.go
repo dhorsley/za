@@ -240,7 +240,22 @@ func buildListLib() {
         }
         switch args[0].(type) {
         case nil:
-            args[0] = make([]interface{}, 0, 31)
+            switch args[1].(type) {
+            case float64:
+                 args[0] = make([]float64, 0, 31)
+            case int64:
+                 args[0] = make([]int64, 0, 31)
+            case uint64:
+                 args[0] = make([]uint64, 0, 31)
+            case int:
+                 args[0] = make([]int, 0, 31)
+            case bool:
+                 args[0] = make([]bool, 0, 31)
+            case string:
+                 args[0] = make([]string, 0, 31)
+            case interface{}:
+                 args[0] = make([]interface{}, 0, 31)
+            }
         }
         switch args[0].(type) {
         case []string:

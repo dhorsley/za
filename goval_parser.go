@@ -563,16 +563,17 @@ yydefault:
 	case 8:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
-            // pf("gv-p1: about to call %v\n",yyDollar[1].token.literal)
+            // pf("gv8-p1: about to call [efs:%v] %v\n",yyrcvr.evalfs,yyDollar[1].token.literal)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, []interface{}{})
-            // pf("gv-p2: got -> %#v\n",yyVAL.expr)
+            // pf("gv8-p2: got -> %#v\n",yyVAL.expr)
 		}
 	case 9:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-            // pf("gv-p1: about to call %v\n",yyDollar[1].token.literal)
+            // pf("gv9-p1: about to call [efs:%v] %v\n",yyrcvr.evalfs,yyDollar[1].token.literal)
+            // pf("      : params -> %+v | %+v\n",yyDollar[1].token.literal,yyDollar[3].exprList)
 			yyVAL.expr = callFunction(yyrcvr.evalfs, yyDollar[1].token.literal, yyDollar[3].exprList)
-            // pf("gv-p2: got -> [%T] %#v\n",yyVAL.expr,yyVAL.expr)
+            // pf("gv9-p2: got -> [%T] %#v\n",yyVAL.expr,yyVAL.expr)
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -735,6 +736,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.expr,ef = accessVar(yyrcvr.evalfs, yyDollar[1].token.literal)
+            // pf("yy-retrieving %v -> %+v\n",yyDollar[1].token.literal,yyVAL.expr)
 		}
 	case 40: // GET STRUCT FIELD
 		yyDollar = yyS[yypt-3 : yypt+1]
@@ -779,6 +781,7 @@ yydefault:
 	case 48: // APPEND TO LIST
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
+            // pf("48appendtolist -> %v,%v\n",yyDollar[1].exprList,yyDollar[3].expr)
 			yyVAL.exprList = append(yyDollar[1].exprList, yyDollar[3].expr)
 		}
 	case 49: // MAP ELEMENT READ VALUE

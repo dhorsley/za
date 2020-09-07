@@ -1,7 +1,7 @@
 package main
 
 import (
-//    "fmt"
+    // "fmt"
     "reflect"
     "strconv"
     "bytes"
@@ -19,44 +19,19 @@ import (
 // for locking vset/vcreate/vdelete during a variable write
 var vlock = &sync.RWMutex{}
 
-/*
-var vlcacheval  int
-var vlcachefs   uint64
-var vlcachename string
-var vlcacheInvalidate bool
-*/
-
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint64, name string) (int, bool) {
 
     if lockSafety { vlock.RLock() }
 
-    /* @todo: make this thread-safe */
-/*
-    if !vlcacheInvalidate && fs==vlcachefs && strcmp(vlcachename,name) {
-        if lockSafety { vlock.RUnlock() }
-        return vlcacheval, true
-    }
-*/
-
     // more recent variables created should, on average, be higher numbered.
     for k := varcount[fs]-1; k>=0 ; k-- {
         if strcmp(ident[fs][k].IName,name) {
-            // fmt.Printf("found in vl: name=%v k=%v cap_id=%v len_id=%v varcount=%v\n",name,k,cap(ident[fs]),len(ident[fs]),varcount[fs])
-
-/*
-            vlcachename=name
-            vlcachefs=fs
-            vlcacheval=k
-            vlcacheInvalidate=false
-*/
             if lockSafety { vlock.RUnlock() }
             return k, true
         }
     }
 
-    // fmt.Printf("varcount: %#v\n",varcount)
-    // fmt.Printf("not found in vl: name=%v cap_id=%v len_id=%v varcount=%v\n",name,cap(ident[fs]),len(ident[fs]),varcount[fs])
     if lockSafety { vlock.RUnlock() }
     return 0, false
 }
@@ -74,7 +49,6 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
         *vtable_maxreached=fs
         ident[fs] = make([]Variable, capacity, capacity)
         varcount[fs] = 0
-        // vlcacheInvalidate=true
         // pf("vcreatetable: [for %s] just allocated [%d] cap:%d max:%d\n",name,fs,capacity,*vtable_maxreached)
     } else {
         // pf("vcreatetable: [for %s] skipped allocation for [%d] -> length:%v max:%v\n",name,fs,len(ident),*vtable_maxreached)
@@ -88,6 +62,8 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
 func vunset(fs uint64, name string) {
 
+    return
+
     // @note: if we intend to use this function then we should
     //  make sure that delete and other funcs update VarLookup
     //  correctly first. this means not re-enabling vlcache 
@@ -97,7 +73,6 @@ func vunset(fs uint64, name string) {
 
     if lockSafety { vlock.Lock() }
 
-    // vlcacheInvalidate=true
     vc:=varcount[fs]
     if found {
         for pos := loc; pos < vc-1; pos++ {
@@ -177,7 +152,6 @@ func vset(fs uint64, name string, value interface{}) bool {
             copy(newary,ident[fs])
             newary=append(newary,Variable{IName: name, IValue: value})
             ident[fs]=newary
-            // vlcacheInvalidate=true
 
         } else {
             ident[fs][varcount[fs]] = Variable{IName: name, IValue: value}
@@ -392,7 +366,6 @@ func vget(fs uint64, name string) (interface{}, bool) {
             vlock.RLock()
             defer vlock.RUnlock()
         }
-
         return ident[fs][vi].IValue , true
     }
     return nil, false
@@ -842,6 +815,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
     // with the result to reduce the expression.
 
     // pf("ev: received: %v\n",ws)
+
     // tc:=fastConv(ws)
     // pf("ev: fastconv got this [%T] %v\n",tc,tc)
 
@@ -891,8 +865,10 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
             finish(false,ERR_EVAL)
             return nil,true,nil
         }
+        // pf("returning from ude(%+v) with %v\n",reval[:valcount],r)
 
         result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
+        // pf("returning from eval(%+v) with %v\n",crushEvalTokens(r).text,result)
         if err != nil {
             pf("[#6]%v[#-]\n", err)
             return nil, ef, err

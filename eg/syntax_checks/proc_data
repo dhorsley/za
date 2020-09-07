@@ -45,6 +45,7 @@ t=then()
  nl=listOp(list,"x","x/2")
 println "[#4]Op (x/2)    : [#-]"
 now(t)
+println "list len nl -> ",len(nl)
 println "First 100   : ",nl[:100]
 
 reduce_expr="x>9899"
