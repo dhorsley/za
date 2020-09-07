@@ -9,8 +9,7 @@
 def f(NUMBER):
     d = {}
     for i in range(0,NUMBER):
-        # d[i % 1000] = i
-        d[i] = i
+        d[i % 1000] = i
     print(i)
 import sys
 f(int(sys.argv[1]))

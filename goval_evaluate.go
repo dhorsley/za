@@ -4,11 +4,9 @@ import (
     "runtime"
 )
 
-var	cacheParser yyParserImpl
-
 func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error) {
 
-    // pf("gv-ev: entered with %v\n",str)
+    // pf("gv-ev: entered with [efs:%v] %v\n",evalfs,str)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -20,16 +18,12 @@ func Evaluate(str string, evalfs uint64) (result interface{}, ef bool, err error
 		}
 	}()
 
-    lexer:=&Lexer{}
-    lexer.SetSource(str)
+    // lexer:=&Lexer{}
+    // lexer.SetSource(str)
+    lexer:=NewLexer(str)
+	_,ef=YyNewParser().Parse(lexer, evalfs)
 
-    if lockSafety {
-	    _,ef=YyNewParser().Parse(lexer, evalfs)
-    } else {
-        _,ef=cacheParser.Parse(lexer,evalfs)
-    }
 	return lexer.Result(), ef, err
-
 
 }
 
