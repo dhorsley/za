@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+# file handling functions
+
+q=fopen("/usr/share/dict/american-english","r")
+while !feof(q)
+    println fread(q,"\n")
+endwhile
+fclose(q)
+

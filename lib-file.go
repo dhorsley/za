@@ -5,9 +5,17 @@ package main
 import (
 	"errors"
 	"io/ioutil"
+    "io"
 	"os"
 	sc "strconv"
+    str "strings"
 )
+
+
+type pfile struct {
+    hnd     *os.File
+    name    string
+}
 
 func buildFileLib() {
 
@@ -17,9 +25,8 @@ func buildFileLib() {
 	categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "is_soft", "is_pipe", "perms",
+                        "fopen", "fclose","seek","fread","fwrite","feof",
     }
-                        // "file_create", "file_close",
-                        // "file_create", "file_close",
 
     // @note:
     //  we could update these to proper fopen/fclose/seek/read/write/feof type of operations. however, anything that 
@@ -27,30 +34,112 @@ func buildFileLib() {
     //  suitable to the task.  we'll maybe do this at some point in the future, but can't really justify it right now.
     //  it's never going to be the type of operation we are looking to support with current goals in mind.
 
-    //  we'll maybe add file_append and file_write as stop gaps, but random or sequential read access just is not
-    //  going to happen yet. i don't even remember why i added file_create/file_close now :)
-
-
-/*
-    slhelp["file_create"] = LibHelp{in: "filename", out: "filehandle", action: "Returns a file handle for a new file, or an error."}
-    stdlib["file_create"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="string" {
-            return nil,errors.New("Bad arguments to file_create()")
+    slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
+    stdlib["fopen"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2 {
+            return nil,errors.New("Bad arguments (count) to fopen()")
         }
-        f, err := os.Create(args[0].(string))
-        return f,nil
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
+            return nil,errors.New("Bad arguments (type) to fopen()")
+        }
+        fn:=args[0].(string)
+        mode:=str.ToLower(args[1].(string))
+        var f *os.File
+        switch mode {
+        case "w":
+            f, err = os.Create(fn)
+        case "wa":
+            f, err = os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+        case "r":
+            f, err = os.Open(fn)
+        default:
+            return nil,errors.New("Unknown mode specified in fopen()")
+        }
+        var fw pfile
+        fw.name=fn
+        fw.hnd=f
+        return fw,nil
     }
 
-    slhelp["file_close"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file handle."}
-    stdlib["file_close"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="*os.File" {
-            return nil,errors.New("Bad arguments to file_close()")
+    slhelp["seek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
+    stdlib["seek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=3 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
+            return nil,errors.New("Bad arguments to seek()")
         }
-        args[0].(*os.File).Sync()
-        args[0].(*os.File).Close()
+        fw :=args[0].(pfile)
+        off:=int64(args[1].(int))
+        rel:=args[2].(int)
+        return fw.hnd.Seek(off,rel)
+    }
+
+    // this needs a lot of improvement...
+    //  it can be optimised later, but currently very slow, too much allocating, bad (lack of) buffering, etc.
+    //  just wanted a working function in situ for release.
+    slhelp["fread"] = LibHelp{in: "filehandle,delim", out: "string", action: "Reads a string from an open file until [#i1]delim[#i0] is encountered (or end-of-file)."}
+    stdlib["fread"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
+            return nil,errors.New("Bad arguments to fread()")
+        }
+        fw:=args[0].(pfile)
+        de:=(args[1].(string))
+        if len(de)==0 {
+            return nil,errors.New("Empty delimiter in fread()")
+        }
+        deby:=byte(de[0])
+        s:=make([]byte,4096)
+        b:=make([]byte,1)
+        var n int
+        for ;; {
+            n,err=fw.hnd.Read(b)
+            if n!=0 {
+                if b[0]==deby { break }
+                s=append(s,b[0])
+            }
+            if err==io.EOF { break }
+        }
+        // convert to string for now - later it should use better string appender,
+        //  which it can't do currently because we are breaking up the runes by reading
+        //  a byte at a time... and that will only improve when i fix the buffering,
+        //  i.e. when it is rewritten properly. we also cannot handle a multi-char delim,
+        //  which means windows EOL files aren't exactly compatible without fudging.
+        return string(s),nil
+    }
+
+    // issues with race cond when file open in write-append mode?
+    slhelp["feof"] = LibHelp{in: "filehandle", out: "bool", action: "Check if open file cursor is at end-of-file"}
+    stdlib["feof"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
+            return false,errors.New("Bad arguments to feof()")
+        }
+        fw:=args[0].(pfile)
+        // find a better way than this, it's presumably cripping read speeds in loops...
+        cp,_:=fw.hnd.Seek(0,io.SeekCurrent)
+        // may be better to compare cp to file stat size here? or some other method.
+        ep,_:=fw.hnd.Seek(0,io.SeekEnd)
+        fw.hnd.Seek(cp,io.SeekStart)
+        return cp==ep,nil
+    }
+
+    slhelp["fwrite"] = LibHelp{in: "filehandle,string", out: "", action: "Writes a string to an open file."}
+    stdlib["fwrite"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
+            return nil,errors.New("Bad arguments to fwrite()")
+        }
+        fw:=args[0].(pfile)
+        fw.hnd.WriteString(args[1].(string))
         return nil,nil
     }
-*/
+
+    slhelp["fclose"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file."}
+    stdlib["fclose"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
+            return nil,errors.New("Bad arguments to fclose()")
+        }
+        fw:=args[0].(pfile)
+        fw.hnd.Sync()
+        fw.hnd.Close()
+        return nil,nil
+    }
 
 	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
 	stdlib["file_mode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
