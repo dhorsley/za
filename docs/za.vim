@@ -244,8 +244,12 @@ syntax match file_functions "\s*is_dir\s*("he=e-1
 syntax match file_functions "\s*is_soft\s*("he=e-1
 syntax match file_functions "\s*is_pipe\s*("he=e-1
 syntax match file_functions "\s*perms\s*("he=e-1
-syntax match file_functions "\s*file_create\s*("he=e-1
-syntax match file_functions "\s*file_close\s*("he=e-1
+syntax match file_functions "\s*fopen\s*("he=e-1
+syntax match file_functions "\s*fclose\s*("he=e-1
+syntax match file_functions "\s*seek\s*("he=e-1
+syntax match file_functions "\s*fread\s*("he=e-1
+syntax match file_functions "\s*fwrite\s*("he=e-1
+syntax match file_functions "\s*feof\s*("he=e-1
 
 syntax match web_functions "\s*download\s*("he=e-1
 syntax match web_functions "\s*web_download\s*("he=e-1
