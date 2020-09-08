@@ -72,9 +72,6 @@ func buildFileLib() {
         return fw.hnd.Seek(off,rel)
     }
 
-    // this needs a lot of improvement...
-    //  it can be optimised later, but currently very slow, too much allocating, bad (lack of) buffering, etc.
-    //  just wanted a working function in situ for release.
     slhelp["fread"] = LibHelp{in: "filehandle,delim", out: "string", action: "Reads a string from an open file until [#i1]delim[#i0] is encountered (or end-of-file)."}
     stdlib["fread"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
@@ -86,23 +83,31 @@ func buildFileLib() {
             return nil,errors.New("Empty delimiter in fread()")
         }
         deby:=byte(de[0])
-        s:=make([]byte,4096)
-        b:=make([]byte,1)
+        var s str.Builder
+        b:=make([]byte,64)
+        add:=make([]byte,64)
         var n int
+        done:=false
         for ;; {
             n,err=fw.hnd.Read(b)
-            if n!=0 {
-                if b[0]==deby { break }
-                s=append(s,b[0])
+            // search returned buffer for delimiter
+            add=b[:n]
+            for p:=0; p<n; p++ {
+                if b[p]==deby {
+                    // seek to deby+1
+                    fw.hnd.Seek(int64(1-(n-p)),1)
+                    add=b[:p]
+                    done=true
+                    break
+                }
             }
+            s.Write(add)
+            if done { break }
             if err==io.EOF { break }
         }
-        // convert to string for now - later it should use better string appender,
-        //  which it can't do currently because we are breaking up the runes by reading
-        //  a byte at a time... and that will only improve when i fix the buffering,
-        //  i.e. when it is rewritten properly. we also cannot handle a multi-char delim,
+        // does not currently handle a multi-char delim,
         //  which means windows EOL files aren't exactly compatible without fudging.
-        return string(s),nil
+        return s.String(),nil
     }
 
     // issues with race cond when file open in write-append mode?
@@ -115,8 +120,10 @@ func buildFileLib() {
         // find a better way than this, it's presumably cripping read speeds in loops...
         cp,_:=fw.hnd.Seek(0,io.SeekCurrent)
         // may be better to compare cp to file stat size here? or some other method.
-        ep,_:=fw.hnd.Seek(0,io.SeekEnd)
-        fw.hnd.Seek(cp,io.SeekStart)
+        eps,_:=fw.hnd.Stat()
+        ep:=eps.Size()
+        // ep,_:=fw.hnd.Seek(0,io.SeekEnd)
+        // fw.hnd.Seek(cp,io.SeekStart)
         return cp==ep,nil
     }
 
