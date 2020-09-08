@@ -25,14 +25,8 @@ func buildFileLib() {
 	categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "is_soft", "is_pipe", "perms",
-                        "fopen", "fclose","seek","fread","fwrite","feof",
+                        "fopen", "fclose","fseek","fread","fwrite","feof",
     }
-
-    // @note:
-    //  we could update these to proper fopen/fclose/seek/read/write/feof type of operations. however, anything that 
-    //  needs to handle the sizes or nature of files in this way should probably be doing so in a language more 
-    //  suitable to the task.  we'll maybe do this at some point in the future, but can't really justify it right now.
-    //  it's never going to be the type of operation we are looking to support with current goals in mind.
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
     stdlib["fopen"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
@@ -61,10 +55,10 @@ func buildFileLib() {
         return fw,nil
     }
 
-    slhelp["seek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
-    stdlib["seek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
+    stdlib["fseek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=3 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
-            return nil,errors.New("Bad arguments to seek()")
+            return nil,errors.New("Bad arguments to fseek()")
         }
         fw :=args[0].(pfile)
         off:=int64(args[1].(int))

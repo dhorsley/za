@@ -32,12 +32,6 @@ LATER
 
         * we either need to figure a way to make it wait patiently and report lag or put stricter limits in place.
 
-* we could use some way of dealing with large files, for convenience. it isn't the goal of the language to handle this, 
-    but it seems like an easy win. we can either add access to mmap methods of go libraries and/or some sequential and 
-    random access file operations. (fopen, fclose, fseek, fread, fscanf, fwritef, etc) 
-
-    * might also be useful to have this integrate with FOREACH somehow.
-
 
 UNDECIDED
 ---------
