@@ -18,28 +18,111 @@ func fexists(fp string) bool {
 
 func getReportFunctionName(ifs uint64, full bool) string {
 	nl,_ := numlookup.lmget(ifs)
-    var new string
     if !full && str.IndexByte(nl, '@') > -1 {
-		new=nl[:str.IndexByte(nl, '@')]
-	} else {
-        new=nl
+		nl=nl[:str.IndexByte(nl, '@')]
     }
-    return new
+    return nl
 }
 
-func report(ifs uint64, pos int, s string) {
-    add := getReportFunctionName(ifs,true)
-    // err_stream:=os.Stderr
-    // if interactive { err_stream=os.Stdout }
-	if pos>0 {
-        if add!="" { add+="," }
-		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s line %d[##][#-]\n%s\n", add, pos, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in %s line %d[##][#-]\n%s\n", add, pos, s)))
-	} else {
-		// fpf(err_stream, sparkle(sf("\n[#bred][#7]Error in %s[##][#-]\n%s\n", nl, s)))
-		pf(sparkle(sf("\n[#bred][#7]Error in [%v] %s[##][#-]\n%s\n", ifs, add, s)))
-	}
+
+func ShowSource(funcInstance string,start int,end int) bool {
+
+    var funcInstanceId uint64
+    var present bool
+
+    // return if func instance doesn't exist
+    if funcInstanceId, present = fnlookup.lmget(funcInstance); !present {
+        return false
+    }
+
+    if funcInstanceId < uint64(len(functionspaces)) {
+
+        var baseId uint64
+
+        // convert instance to source function
+        funcName := getReportFunctionName(funcInstanceId,false)    //      -> name of failing func converted to base name
+        if funcInstanceId==2 {
+            baseId=1
+        } else {
+            baseId,_    = fnlookup.lmget(funcName)                 //      -> id of base funcs source space 
+        }
+
+        if start<0 { start=0 }
+        max:=len(functionspaces[baseId])-1
+        if end+1>max { end=max-1 }
+
+        CTE:="\033[0K"
+        strOut:=CTE
+
+        for q := range functionspaces[baseId][start:end+1] {
+            strOut = strOut + sf("%5d : %s\n"+CTE, start+q, functionspaces[baseId][start+q].Original)
+        }
+
+        strOut = sf("\n"+CTE+"%s(%v)\n"+CTE, funcName, str.Join(functionArgs[baseId], ",")) + strOut
+        pf(strOut)
+
+    }
+    return true
 }
+
+func showCallChain(base string) {
+
+    CTE:="\033[0K"
+
+    // show chain
+    pf(CTE+"[#5]")
+    for k,v:=range callChain {
+        if k==0 { continue }
+        v.name=getReportFunctionName(v.loc,false)
+        pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
+    }
+    pf("-> [#6]"+base+"[#-]\n"+CTE)
+
+    // show source lines
+    for k,v:=range callChain {
+        if k==0 { continue }
+        v.name=getReportFunctionName(v.loc,false)
+        ShowSource(v.name,v.line,v.line)
+    }
+}
+
+func lookupChainName(n uint8) string {
+    //  ciTrap ciCall ciEval ciMod ciAsyn ciRepl ciRhsb ciLnet ciMain ciErr
+    return [10]string{"0-Trap Handler","1-Call","2-Evaluator",
+                            "3-Module Definition","4-Async Handler","5-Interactive Mode",
+                            "6-UDF Builder","7-Net Library","8-Main Function","9-Error Handling"}[n]
+}
+
+func (parser *leparser) report(s string) {
+
+    var baseId uint64
+
+    line:=parser.line-1
+    ifs:=parser.fs
+
+    CTE    := "\033[0K"
+                                                    // ifs  -> id of failing func
+    funcName    := getReportFunctionName(ifs,false) //      -> name of failing func
+    if ifs==2 {
+        baseId=1
+    } else {
+        baseId,_    = fnlookup.lmget(funcName)         //      -> id of base func  
+    }
+    baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
+
+    // callChain=append(callChain,chainInfo{name:baseName,registrant:ciErr,loc:baseId,line:line})
+    line_content:=functionspaces[baseId][line+1]
+
+    pf( sparkle(sf(CTE+"\n[#bred]\n"+CTE+"\n"+CTE+"[#7]Error in %s (statement #%d) : %v\n"+CTE+"\n[##][#-]"+CTE+"%s\n"+CTE,
+        baseName, line+1, line_content, s ) ) )
+
+    if !interactive {
+        showCallChain(baseName)
+        pf("\n"+CTE)
+    }
+
+}
+
 
 func appendToTestReport(test_output_file string, ifs uint64, pos int, s string) {
 

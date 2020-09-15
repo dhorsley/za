@@ -16,7 +16,7 @@ coproc(false)
 
 println "Spinning async tasks"
 
-for e = 1 to 2000
+for e = 1 to 400
     async handles q(e)
 endfor
 

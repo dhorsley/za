@@ -21,12 +21,20 @@ func (p Phrase) String() string {
 	return p.Text
 }
 
+// ExpressionFunction can be called from within expressions.
+type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, error)
 
-//
+// za variable
+type Variable struct {
+    IName  string
+    _pad0  [15]uint64
+    IValue interface{}
+}
+
 // holds a Token which forms part of a Phrase.
 type Token struct {
     // name string
-	tokType int         // token type from list in constants.go
+	tokType uint8         // token type from list in constants.go
     tokPos  int         // by character (from start of input)
     tokVal  interface{} // raw value storage
 	Line    int         // line in parsed string (1 based) of token
@@ -38,19 +46,29 @@ func (t Token) String() string {
 	return t.tokText
 }
 
-
-//
 // holds the details of a function call.
 type call_s struct {
-	caller  uint64   // the thing which made the call
-	base    uint64   // the original functionspace location of the source
-	fs      string   // the text name of the calling party
-    _pad0   [4]uint64
-	retvar  string   // the lhs var in the caller to be assigned back to
+	caller      uint64      // the thing which made the call
+	base        uint64      // the original functionspace location of the source
+	fs          string      // the text name of the calling party
+    callline    int         // from whence it came
+    _pad0       [3]uint64
+	retvar      string      // the lhs var in the caller to be assigned back to
 }
 
 func (cs call_s) String() string {
 	return sf("~{ fs %v - caller %v - return var %v }~", cs.fs, cs.caller, cs.retvar)
+}
+
+
+// chainInfo : used for passing debug info to error functions
+
+
+type chainInfo struct {
+    loc         uint64
+    name        string
+    line        int
+    registrant  uint8
 }
 
 
@@ -79,14 +97,14 @@ type ExpressionCarton struct {
 	result    interface{} // result of evaluation
 	assign    bool        // is this an assignment expression
 	evalError bool        // did the evaluation succeed
+    errVal    error
 }
 
 
 //
 // struct for loop internals
 type s_loop struct {
-	loopType         int              // C_For, C_Foreach, C_While
-	iterType         int              // from enum IT_CHAR, IT_LINE
+	loopType         uint8            // C_For, C_Foreach, C_While
 	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
@@ -96,46 +114,10 @@ type s_loop struct {
 	forEndPos        int              // ENDFOR location
 	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
 	optNoUse         int              // for deciding if the local variable should reflect the loop counter
-    _pad0            [4]uint64
     iterOverMap      *reflect.MapIter // stored iterator
-	iterOverString   interface{}      // stored value to iterate over from start expression
 	iterOverArray    interface{}      // stored value to iterate over from start expression
-    _pad1            [11]uint64
-	repeatCond       ExpressionCarton // tested with ev() // used by while
+	repeatCond       []Token          // tested with wrappedEval() // used by while
 }
-
-func (l s_loop) String() string {
-	var op string = "" // output string
-	switch l.loopType {
-	case C_For:
-		repActionList := [...]string{"NONE", "INCREMENT", "DECREMENT"}
-		op = "~{ [#5]loop: FOR \n"
-		// pick out: loopVar, repeatAction, repeatActionStep, counter, condEnd
-		op += sf("    variable   -> %v\n", l.loopVar)
-		op += sf("    counter    -> %v\n", l.counter)
-		op += sf("    condition  -> %v\n", l.condEnd)
-		op += sf("    repAction  -> %v\n", repActionList[l.repeatAction])
-		op += sf("    repStep    -> %v\n", l.repeatActionStep)
-	case C_Foreach:
-		iterTypeList := [...]string{"CHARACTER", "LINE"}
-		op = "~{ [#6]loop: FOREACH \n"
-		// pick out: loopVar, iterType, ecounter, econdEnd
-		op += sf("    variable   -> %v\n", l.loopVar)
-		op += sf("    type       -> %v\n", iterTypeList[l.iterType])
-//		op += sf("    counter    -> %v\n", l.ecounter)
-//		op += sf("    condition  -> %v\n", l.econdEnd)
-	case C_While:
-		op = "~{ [#4]loop: WHILE \n"
-		// pick out: repeatCond
-		// op+=sf("    condition  -> %v\n",l.repeatCond.spaced)
-		op += sf("    condition  -> %v\n", l.repeatCond.text)
-	default:
-		op = "~{ loop: unknown type "
-	}
-	op += "[#-]}~\n"
-	return sparkle(op)
-}
-
 
 // 
 // struct to support pseudo-windows in console

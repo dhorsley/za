@@ -1,102 +1,96 @@
+
 package main
 
 import (
-	"fmt"
-	"math"
-	"net/http"
-    "reflect"
-	"regexp"
-	"strconv"
-	"strings"
-//    "sync"
+    "errors"
+    "fmt"
+    "math"
+    "net/http"
     "unsafe"
+//    "regexp"
+    "reflect"
+    "strconv"
+//    "strings"
 )
 
-func init() {
-	yyErrorVerbose = false
-	// yyErrorVerbose = true // make sure to get better errors than just "syntax error"
-}
-
-// ExpressionFunction can be called from within expressions.
-// The returned object needs to have one of the following types: `nil`, `bool`, `int`, `float64`, `string`, `[]interface{}` or `map[string]interface{}`.
-// type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, error)
 
 func typeOf(val interface{}) string {
-	if val == nil {
-		return "nil"
-	}
+    if val == nil {
+        return "nil"
+    }
 
 
-	kind := reflect.TypeOf(val).Kind()
+    kind := reflect.TypeOf(val).Kind()
     if kind.String()=="map" { return "map" }
 
-	switch kind {
-	case reflect.Bool:
-		return "bool"
-	case reflect.Int, reflect.Float64:
-		return "number"
-	case reflect.String:
-		return "string"
-	default:
-		// pf("[ kind %#v ]\n", kind.String())
-	}
+    switch kind {
+    case reflect.Bool:
+        return "bool"
+    case reflect.Int, reflect.Float64:
+        return "number"
+    case reflect.String:
+        return "string"
+    default:
+        // pf("[ kind %#v ]\n", kind.String())
+    }
 
-	if _, ok := val.([]interface{}); ok {
-		return "array"
-	}
+    if _, ok := val.([]interface{}); ok {
+        return "array"
+    }
 
-	if _, ok := val.(map[string]interface{}); ok {
-		return "object"
-	}
+    if _, ok := val.(map[string]interface{}); ok {
+        return "object"
+    }
 
-	return "<unknown type>"
+    return "<unknown type>"
 }
 
 func asBool(val interface{}) bool {
-	b, ok := val.(bool)
-	if !ok {
-		panic(fmt.Errorf("type error: required bool, but was %s", typeOf(val)))
-	}
-	return b
+    b, ok := val.(bool)
+    if !ok {
+        panic(fmt.Errorf("type error: required bool, but was %s", typeOf(val)))
+    }
+    return b
 }
 
 func asInteger(val interface{}) int {
-	i, ok := val.(int)
-	if ok {
-		return i
-	}
-	f, ok := val.(float64)
-	if !ok {
-		panic(fmt.Errorf("type error: required number of type integer, but was %s", typeOf(val)))
-	}
+    i, ok := val.(int)
+    if ok {
+        return i
+    }
+    f, ok := val.(float64)
+    if !ok {
+        panic(fmt.Errorf("type error: required number of type integer, but was %s", typeOf(val)))
+    }
 
-	i = int(f)
-	return i
+    i = int(f)
+    return i
 }
 
-func add(val1 interface{}, val2 interface{}) interface{} {
+
+func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
     var int1 int
     var int2 int
 
-    switch i:=val1.(type) {
+    switch val1.(type) {
     case int:
-        int1=i
+        int1=val1.(int)
     case int32:
-        int1=int(i)
+        int1=int(val1.(int32))
     case int64:
-        int1=int(i)
+        int1=int(val1.(int64))
     default:
         intInOne=false
     }
-    switch i:=val2.(type) {
+    switch val2.(type) {
     case int:
-        int2=i
+        int2=val2.(int)
     case int32:
-        int2=int(i)
+        int2=int(val2.(int32))
     case int64:
-        int2=int(i)
+        int2=int(val2.(int64))
     default:
         intInTwo=false
     }
@@ -104,24 +98,14 @@ func add(val1 interface{}, val2 interface{}) interface{} {
     if intInOne && intInTwo {
         return int1+int2
     }
-    /*
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
-
-	if int1OK && int2OK { // int + int = int
-		return int1 + int2
-	}
-    */
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	// if int1OK {
 	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	// if int2OK {
 	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
@@ -186,9 +170,7 @@ func add(val1 interface{}, val2 interface{}) interface{} {
 	panic(fmt.Errorf("type error: cannot add or concatenate type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func sub(val1 interface{}, val2 interface{}) interface{} {
-	//int1, int1OK := val1.(int)
-	//int2, int2OK := val2.(int)
+func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
     var int1 int
@@ -215,7 +197,6 @@ func sub(val1 interface{}, val2 interface{}) interface{} {
         intInTwo=false
     }
 
-	// if int1OK && int2OK {
 	if intInOne && intInTwo {
 		return int1 - int2
 	}
@@ -223,12 +204,10 @@ func sub(val1 interface{}, val2 interface{}) interface{} {
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	// if int1OK {
 	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	// if int2OK {
 	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
@@ -240,13 +219,7 @@ func sub(val1 interface{}, val2 interface{}) interface{} {
 	panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func mul(val1 interface{}, val2 interface{}) interface{} {
-	//int1, int1OK := val1.(int)
-	//int2, int2OK := val2.(int)
-
-	//if int1OK && int2OK {
-	//	return int1 * int2
-	//}
+func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
     var int1 int
@@ -273,7 +246,6 @@ func mul(val1 interface{}, val2 interface{}) interface{} {
         intInTwo=false
     }
 
-	//if int1OK && int2OK {
 	if intInOne && intInTwo {
 		return int1 * int2
     }
@@ -281,12 +253,10 @@ func mul(val1 interface{}, val2 interface{}) interface{} {
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	// if int1OK {
 	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	// if int2OK {
 	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
@@ -298,9 +268,7 @@ func mul(val1 interface{}, val2 interface{}) interface{} {
 	panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func div(val1 interface{}, val2 interface{}) interface{} {
-	//int1, int1OK := val1.(int)
-	//int2, int2OK := val2.(int)
+func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
     var int1 int
@@ -327,7 +295,6 @@ func div(val1 interface{}, val2 interface{}) interface{} {
         intInTwo=false
     }
 
-	// if int1OK && int2OK {
 	if intInOne && intInTwo {
         if int2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
 		return int1 / int2
@@ -336,12 +303,10 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	// if int1OK {
 	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	// if int2OK {
 	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
@@ -354,9 +319,7 @@ func div(val1 interface{}, val2 interface{}) interface{} {
 	panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func mod(val1 interface{}, val2 interface{}) interface{} {
-	//int1, int1OK := val1.(int)
-	//int2, int2OK := val2.(int)
+func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
     var int1 int
@@ -383,7 +346,6 @@ func mod(val1 interface{}, val2 interface{}) interface{} {
         intInTwo=false
     }
 
-	// if int1OK && int2OK {
 	if intInOne && intInTwo {
 		return int1 % int2
 	}
@@ -391,12 +353,10 @@ func mod(val1 interface{}, val2 interface{}) interface{} {
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
-	// if int1OK {
 	if intInOne {
 		float1 = float64(int1)
 		float1OK = true
 	}
-	// if int2OK {
 	if intInTwo {
 		float2 = float64(int2)
 		float2OK = true
@@ -408,13 +368,141 @@ func mod(val1 interface{}, val2 interface{}) interface{} {
 	panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func unaryMinus(val interface{}) interface{} {
+func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
+
+    intInOne:=true; intInTwo:=true
+    var int1 int
+    var int2 int
+
+    switch i:=val1.(type) {
+    case int:
+        int1=i
+    case int32:
+        int1=int(i)
+    case int64:
+        int1=int(i)
+    default:
+        intInOne=false
+    }
+    switch i:=val2.(type) {
+    case int:
+        int2=i
+    case int32:
+        int2=int(i)
+    case int64:
+        int2=int(i)
+    default:
+        intInTwo=false
+    }
+
+	if intInOne && intInTwo {
+		return math.Pow(float64(int1),float64(int2))
+	}
+
+	float1, float1OK := val1.(float64)
+	float2, float2OK := val2.(float64)
+
+	if intInOne {
+		float1 = float64(int1)
+		float1OK = true
+	}
+	if intInTwo {
+		float2 = float64(int2)
+		float2OK = true
+	}
+
+	if float1OK && float2OK {
+		return math.Pow(float1,float2)
+	}
+	panic(fmt.Errorf("type error: cannot perform exponentiation on type %s and %s", typeOf(val1), typeOf(val2)))
+}
+
+func ev_shift_left(left,right interface{}) (interface{}) {
+    // both must be integers
+    intInOne:=true; uintInTwo:=true; uintInOne:=false
+    var uint1 uint64
+    var int1 int64
+    var uint2 uint64
+
+    switch i:=left.(type) {
+    case int,int32,int64:
+        int1,_=GetAsInt64(i)
+    case uint,uint8,uint32,uint64:
+        uint1,_=GetAsUint(i)
+        uintInOne=true
+    default:
+        uintInOne=false
+        intInOne=false
+    }
+    switch i:=right.(type) {
+    case uint,uint8,uint32,uint64,int,int32,int64:
+        uint2,_=GetAsUint(i)
+    default:
+        uintInTwo=false
+    }
+
+	if uintInOne && uintInTwo {
+		return uint1 << uint2
+	}
+
+	if intInOne && uintInTwo {
+		return int1 << uint2
+	}
+
+    panic(fmt.Errorf("shift operations only work with integers"))
+
+}
+
+func ev_shift_right(left,right interface{}) (interface{}) {
+    // both must be integers
+    intInOne:=true; uintInTwo:=true; uintInOne:=false
+    var uint1 uint64
+    var int1 int64
+    var uint2 uint64
+
+    switch i:=left.(type) {
+    case int,int32,int64:
+        int1,_=GetAsInt64(i)
+    case uint,uint8,uint32,uint64:
+        uint1,_=GetAsUint(i)
+        uintInOne=true
+    default:
+        uintInOne=false
+        intInOne=false
+    }
+    switch i:=right.(type) {
+    case uint,uint8,uint32,uint64,int,int32,int64:
+        uint2,_=GetAsUint(i)
+    default:
+        uintInTwo=false
+    }
+
+	if uintInOne && uintInTwo {
+		return uint1 << uint2
+	}
+
+	if intInOne && uintInTwo {
+		return int1 >> uint2
+	}
+
+    panic("shift operations only work with integers")
+}
+
+func unaryNegate(val interface{}) (interface{}) {
+    switch i:=val.(type) {
+    case bool:
+        return !i
+    }
+    panic("cannot negate a non-bool")
+}
+
+func unaryMinus(val interface{}) (interface{}) {
 
     var intVal int
     intInOne:=true
     switch i:=val.(type) {
     case int:
-        intVal=i
+        intVal=int(i)
     case int32:
         intVal=int(i)
     case int64:
@@ -423,7 +511,6 @@ func unaryMinus(val interface{}) interface{} {
         intInOne=false
     }
 
-    // intVal, ok := val.(int)
 	if intInOne { return -intVal }
 
     floatVal, ok := val.(float64)
@@ -432,7 +519,8 @@ func unaryMinus(val interface{}) interface{} {
 	panic(fmt.Errorf("type error: unary minus requires number, but was %s", typeOf(val)))
 }
 
-func deepEqual(val1 interface{}, val2 interface{}) bool {
+
+func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 	switch typ1 := val1.(type) {
 
 	case []interface{}:
@@ -484,7 +572,7 @@ func deepEqual(val1 interface{}, val2 interface{}) bool {
 	return val1 == val2
 }
 
-func compare(val1 interface{}, val2 interface{}, operation string) bool {
+func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
 	int1, int1OK := val1.(int)
 	int2, int2OK := val2.(int)
 
@@ -510,7 +598,7 @@ func compare(val1 interface{}, val2 interface{}, operation string) bool {
 	panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func compareInt(val1 int, val2 int, operation string) bool {
+func compareInt(val1 int, val2 int, operation string) (bool) {
 	switch operation {
 	case "<":
 		return val1 < val2
@@ -524,7 +612,7 @@ func compareInt(val1 int, val2 int, operation string) bool {
 	panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareFloat(val1 float64, val2 float64, operation string) bool {
+func compareFloat(val1 float64, val2 float64, operation string) (bool) {
 	switch operation {
 	case "<":
 		return val1 < val2
@@ -538,10 +626,10 @@ func compareFloat(val1 float64, val2 float64, operation string) bool {
 	panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func asObjectKey(key interface{}) string {
+func asObjectKey(key interface{}) (string) {
 	s, ok := key.(string)
 	if !ok {
-		panic(fmt.Errorf("type error: object key must be string, but was %s", typeOf(key)))
+        panic(fmt.Errorf("type error: object key must be string, but was %s", typeOf(key)))
 	}
 	return s
 }
@@ -562,7 +650,7 @@ func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}
     case map[string]interface{},map[string]string,int, float64, bool, interface{}:
         vsetElement(evalfs, obj, sf("%v",s), val)
     default:
-        pf("addobjmember cannot handle type %T for %v\n",val,key)
+        panic(fmt.Errorf("addobjmember cannot handle type %T for %v\n",val,key))
     }
 	return
 }
@@ -634,8 +722,8 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
     return val,false
 }
 
-func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} {
-    // pf("gv-af: entered accessField with %v -> %v\n",obj,field)
+func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
+    // pf("gv-af: entered accessField with [%T] %v -> [%T], %v\n",obj,obj,field,field)
     var ifield string
 
     switch field.(type) {
@@ -643,6 +731,8 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
         ifield=field.(string)
     case int:
         ifield=sf("%v",field)
+    default:
+        // pf("field -> [%T] %+v\n",field)
     }
 
 	// types
@@ -670,110 +760,113 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) interface{} 
         return f
     default:
 
-        // work with mutable copy as we need to make field unsafe
-        // further down in switch.
-
         r := reflect.ValueOf(obj)
-        rcopy := reflect.New(r.Type()).Elem()
-        rcopy.Set(r)
 
-        if reflect.ValueOf(r).Kind().String()=="struct" {
+        switch r.Kind().String() {
+        case "slice":
+	        idx, invalid := GetAsInt(ifield)
+	        if invalid || idx<0 {
+		        panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
+	        }
+		    switch obj:=obj.(type) {
+            case []interface{}:
+                if len(obj)>idx { return obj[idx] }
+            case []int:
+                if len(obj)>idx { return obj[idx] }
+            case []bool:
+                if len(obj)>idx { return obj[idx] }
+            case []int64:
+                if len(obj)>idx { return obj[idx] }
+            case []int32:
+                if len(obj)>idx { return obj[idx] }
+            case []uint:
+                if len(obj)>idx { return obj[idx] }
+            case []uint8:
+                if len(obj)>idx { return obj[idx] }
+            case []uint32:
+                if len(obj)>idx { return obj[idx] }
+            case []uint64:
+                if len(obj)>idx { return obj[idx] }
+            case []string:
+                if len(obj)>idx { return obj[idx] }
+            case []float64:
+                if len(obj)>idx { return obj[idx] }
+            default:
+                panic(fmt.Errorf("unhandled type %T in array access.",obj))
+            }
+
+            panic(errors.New(sf("element '%d' is out of range in '%v'",idx,obj)))
+
+        case "struct":
+
+            // work with mutable copy as we need to make field unsafe
+            // further down in switch.
+
+            rcopy := reflect.New(r.Type()).Elem()
+            rcopy.Set(r)
+
+            // get the required struct field and make a r/w copy
             f := rcopy.FieldByName(ifield)
-            switch f.Type().Kind() {
-            case reflect.String:
-                return f.String()
-            case reflect.Bool:
-                return f.Bool()
-            case reflect.Int:
-                return f.Int()
-            case reflect.Int32:
-                return int32(f.Int())
-            case reflect.Int64:
-                return int64(f.Int())
-            case reflect.Float32:
-                return float32(f.Float())
-            case reflect.Float64:
-                return f.Float()
-            case reflect.Uint:
-                return uint(f.Uint())
-            case reflect.Uint8:
-                return uint8(f.Uint())
-            case reflect.Uint16:
-                return uint16(f.Uint())
-            case reflect.Uint32:
-                return uint32(f.Uint())
-            case reflect.Uint64:
-                return uint64(f.Uint())
 
-            case reflect.Slice:
+            if f.IsValid() {
 
-                f  = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
-                slc:=f.Slice(0,f.Len())
-
-                switch f.Type().Elem().Kind() {
-                case reflect.Interface:
-                    return slc.Interface()
-                default:
-                    return []interface{}{}
+                if rcopy.Type().AssignableTo(f.Type()) {
+                    f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
                 }
 
-            case reflect.Interface:
-                return f.Interface()
-            default:
-                pf("default type in accessField is [%+v]",f.Type().Name())
-                return f.Interface()
+                switch f.Type().Kind() {
+                case reflect.String:
+                    return f.String()
+                case reflect.Bool:
+                    return f.Bool()
+                case reflect.Int:
+                    return f.Int()
+                case reflect.Int32:
+                    return int32(f.Int())
+                case reflect.Int64:
+                    return int64(f.Int())
+                case reflect.Float32:
+                    return float32(f.Float())
+                case reflect.Float64:
+                    return f.Float()
+                case reflect.Uint:
+                    return uint(f.Uint())
+                case reflect.Uint8:
+                    return uint8(f.Uint())
+                case reflect.Uint16:
+                    return uint16(f.Uint())
+                case reflect.Uint32:
+                    return uint32(f.Uint())
+                case reflect.Uint64:
+                    return uint64(f.Uint())
+
+                case reflect.Slice:
+
+                    f  = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+                    slc:=f.Slice(0,f.Len())
+
+                    switch f.Type().Elem().Kind() {
+                    case reflect.Interface:
+                        return slc.Interface()
+                    default:
+                        return []interface{}{}
+                    }
+
+                case reflect.Interface:
+                    return f.Interface()
+                default:
+                    pf("default type in accessField is [%+v]",f.Type().Name())
+                    return f.Interface()
+                }
             }
-        } else {
-            pf("unknown type in accessField: %T for obj %+v\n",obj,obj)
+
         }
-	}
 
-	idx, invalid := GetAsInt(ifield)
-	if invalid || idx<0 {
-		panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
-	}
+	} // end default case
 
-    switch obj:=obj.(type) {
-	case []string:
-		return obj[idx]
-	case []bool:
-		return obj[idx]
-	case []int:
-		return obj[idx]
-	case []uint8:
-		return obj[idx]
-	case [][]bool:
-		return obj[idx]
-	case [][]string:
-		return obj[idx]
-	case []float64:
-		return obj[idx]
-	case [][]int:
-		return obj[idx]
-	case [][]uint8:
-		return obj[idx]
-	case [][]float64:
-		return obj[idx]
-	case [][]interface{}:
-		return obj[idx]
-	case []interface{}:
-		return obj[idx]
-	default:
-		strVal := sf("%#v", obj)
-		structOfString := `[]interface {}{"`
-		if strings.HasPrefix(strVal, structOfString) {
-			// strip start+end non-data chars
-			strVal = strVal[15 : len(strVal)-1]
-			// convert remnant into array
-			r := regexp.MustCompile(`[^,"'\s]+|"([^"]*)"`)
-			arr := r.FindAllString(strVal, -1)
-			// return required index
-			return stripOuterQuotes(arr[idx], 1)
-		}
-	}
 
-	return nil
-	// panic(fmt.Errorf("syntax error: cannot access fields in %v on type %s", s, typeOf(obj)))
+    return nil
+
 }
 
 func slice(v interface{}, from, to interface{}) interface{} {
@@ -905,9 +998,7 @@ func arrayContains(arr interface{}, val interface{}) bool {
 	return false
 }
 
-// var liblock = &sync.RWMutex{}
-
-func callFunction(evalfs uint64, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint64, callline int, name string, args []interface{}) (res interface{}) {
 
 	if f, ok := stdlib[name]; !ok {
 
@@ -918,13 +1009,13 @@ func callFunction(evalfs uint64, name string, args []interface{}) (res interface
             loc,id := GetNextFnSpace(name+"@")
 
             if lockSafety { calllock.Lock() }
-			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, retvar: "@temp"}
+			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
             if lockSafety { calllock.Unlock() }
 
-			Call(MODE_NEW, loc, args...)
+			Call(MODE_NEW, loc, ciEval, args...)
 
 			// handle the returned result, if present.
-            res, _ = vget(evalfs, "@temp")
+            res, _ = vget(evalfs, "@#")
             return res
 
 		} else {

@@ -73,8 +73,8 @@ json=json_decode(f)
 
 # drill down to right level
 res=json["Reservations"]
-groups=res["Groups"]
-instances=groups["Instances"]
+groups=res[0]["Groups"]
+instances=res[0]["Instances"]
 
 # deep iteration over pairs
 foreach i in instances[0]

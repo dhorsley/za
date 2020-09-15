@@ -18,7 +18,7 @@ on do_upx=="upx" do upx_enable=true
 GCLIMIT = "GOGC=250 GOMAXPROCS=4"
 GCFLAGS = "-gcflags=-B"
 
-bvers =  "1.0.9"
+bvers =  "1.0.10"
 bdate =| date "+%d-%m-%Y %H:%M"
 
 
@@ -26,7 +26,6 @@ upxfound=| which upx | wc -l
 upxfound=int(trim(upxfound,0))
 
 strip_opts="-s -w"
-
 
 if !start(os(),"freebsd")
     when lower(tgt)
@@ -73,5 +72,6 @@ is "libc"
     | sudo cp -f za /usr/bin
     | sudo chmod 755 /usr/bin/za
 endwhen
+
 
 

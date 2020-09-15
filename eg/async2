@@ -7,13 +7,14 @@ define f(z); pause rand(3000); return z*2; enddef
 
 # launch all in parallel
 for x=0 to 99
-    async hndmap f(x) x
+    async hndmap f(x) t{x}
 endfor
 
 # collect results
 res=await(hndmap,true)
+
 for e=0 to 99
-    println "{e} -> {res[e]}"
-    assert res[e]/2 == e
+    println "{e} ->", res["t"+e]
+    assert res["t"+e]/2 == e
 endfor
 

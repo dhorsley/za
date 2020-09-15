@@ -45,14 +45,14 @@ func clearChars(row int,col int,l int) {
 func min(a, b int) int {
     if a < b {
         return a
-    }    
+    }
     return b
 }
 
 func max(a, b int) int {
     if a > b {
         return a
-    }    
+    }
     return b
 }
 

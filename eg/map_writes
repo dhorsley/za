@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 input N optarg 1
-if N==""; exit ; endif
+on kind(N)=="string" do exit
 
 define f(n)
     for i = 0 to n-1
