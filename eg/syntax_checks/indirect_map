@@ -12,17 +12,24 @@ steal=10
 guest=0
 guest_nice=50
 
-indexlist=["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest","guest_nice"]
-
 init prev
 
 name="cpu0"
 
 # local
 i="sys"
-j=i
-prev["{name}_{i}"]=int({j})
 
+# indirect j="sys"
+j="i"
+
+println "ind. i = {i}"
+println "ind. j = {j}"
+
+# double indirect j=sys=40
+prev["{name}_{i}"]=int({i})
+prev["{name}_{i}"]=int({{j}})
+
+println "stored type : ",kind(prev["{name}_{{j}}"])
 println "Name : {name}"
 println "Append(i) : {i}"
 println "prev values list :\n",prev

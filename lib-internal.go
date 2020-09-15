@@ -79,7 +79,7 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
+        "funcs", "dump", "keypress", "deval", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
@@ -182,7 +182,9 @@ func buildInternalLib() {
         if len(args) == 1 {
             switch args[0].(type) {
             case string:
-                ret, _, err = ev(evalfs, args[0].(string), true,true)
+                p:=&leparser{}
+                p.Init()
+                ret, err = ev(p,evalfs, args[0].(string), true,true)
                 return ret, err
             }
         }
@@ -364,8 +366,11 @@ func buildInternalLib() {
 
                 inp,_ :=interpolate(evalfs,args[0].(string),true)
 
+                p:=&leparser{}
+                p.Init()
+
                 globlock.RLock()
-                res,_,err:=ev(globalaccess,inp,true,true)
+                res,err:=ev(p,globalaccess,inp,true,true)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -388,8 +393,11 @@ func buildInternalLib() {
 
                 inp,_ :=interpolate(evalfs,args[0].(string),true)
 
+                p:=&leparser{}
+                p.Init()
+
                 globlock.RLock()
-                res,_,err:=ev(globalaccess,inp,true,true)
+                res,err:=ev(p,globalaccess,inp,true,true)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -722,6 +730,30 @@ func buildInternalLib() {
         vset(0, "@hostname", z)
         return z, err
     }
+
+    slhelp["deval"] = LibHelp{in: "string", out: "result", action: "(debug) test evaluator."}
+    stdlib["deval"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        tt := Error
+        var toks []Token
+        cl := 1
+        for p := 0; p < len(args[0].(string)); p++ {
+            t, eol, eof := nextToken(args[0].(string), &cl, p, tt)
+            tt = t.tokType
+            if t.tokPos != -1 {
+                p = t.tokPos
+            }
+            toks = append(toks, t)
+            if eof || eol {
+                break
+            }
+        }
+
+        p:=&leparser{}
+        p.Init()
+        return p.Eval(evalfs,toks)
+
+    }
+
 
     slhelp["tokens"] = LibHelp{in: "string", out: "[]string", action: "Returns a list of tokens in a string."}
     stdlib["tokens"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {

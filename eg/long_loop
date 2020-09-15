@@ -9,6 +9,7 @@ define humansize(i,prec,unit)
     return format( "%." + prec + "f %s" ,i,unit)
 enddef
 
+
 define report(ts,te,max_count)
     dur=time_diff(te,ts)/1000000
     println format("\nduration       [#5]%0.3f s[#-]",dur)
@@ -25,11 +26,12 @@ enddef
 
 max_count=100000000
 input mc optarg 1
-on mc!="" do max_count=int(mc)
+on kind(mc)=="int" do max_count=int(mc)
+
+println "Starting loop...\n"
 
 ts=epoch_nano_time()
 for x=1 to max_count
-    ; 
 endfor
 println "x: ",kind(x)," ",x
 te=epoch_nano_time()

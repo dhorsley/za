@@ -2,10 +2,10 @@
 debug 0
 
 c1=false; c2=false
-input c1 optarg 1
-input c2 optarg 2
-on c1!="" do c1=bool(c1)
-on c2!="" do c2=bool(c2)
+input ic1 optarg 1
+input ic2 optarg 2
+on kind(ic1)=="bool" do c1=bool(ic1)
+on kind(ic2)=="bool" do c2=bool(ic2)
 
 if c1
     if true 
