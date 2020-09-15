@@ -1,0 +1,8 @@
+#!/usr/bin/za
+# struct ints are typed as int64
+struct sa ; a int; b bool; endstruct
+init q sa
+q.a=42
+println kind(q.a)
+assert q.a==int64(42)
+

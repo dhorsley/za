@@ -38,6 +38,32 @@ const (
     WEB_REDIRECT
 )
 
+    //  chainInfoRegistrants:
+    //               0: Trap Handler
+    //               1: Call Function
+    //               2: User Defined Eval
+    //               3: Module Definition
+    //               4: Async Task
+    //               5: Interactive Mode
+    //               6: RHS Builder
+    //               7: lib-net
+    //               8: Main Routine
+    //               9: Error Routines
+
+const (
+    ciTrap      uint8 = iota
+    ciCall
+    ciEval
+    ciMod
+    ciAsyn
+    ciRepl
+    ciRhsb
+    ciLnet
+    ciMain
+    ciErr
+)
+
+
 // used by C_Endfor statement:
 const (
 	Opt_LoopStart int = iota
@@ -60,8 +86,7 @@ const (
 )
 
 const (
-	IT_CHAR int = iota
-	IT_LINE
+	IT_LINE int = iota
 )
 
 const (
@@ -80,7 +105,7 @@ const (
 )
 
 const (
-	Error int = iota
+	Error uint8 = iota
 	EscapeSequence
 	StringLiteral
 	NumericLiteral
@@ -100,13 +125,25 @@ const (
 	C_Semicolon
 	LeftSBrace
 	RightSBrace
+    LParen
+    RParen
 	SYM_EQ
 	SYM_LT
 	SYM_LE
 	SYM_GT
 	SYM_GE
 	SYM_NE
-	SYM_AMP
+    SYM_LAND
+    SYM_LOR
+    SYM_BAND
+    SYM_BOR
+    SYM_DOT
+    SYM_PP
+    SYM_MM
+    SYM_POW
+    SYM_LSHIFT
+    SYM_RSHIFT
+    SYM_COLON
     C_Comma
 	C_Tilde
 	C_Assign
@@ -115,7 +152,6 @@ const (
 	C_Inc
 	C_Dec
 	C_AssCommand
-	C_LocalCommand
 	C_RemoteCommand
 	C_Init
 	C_Pause

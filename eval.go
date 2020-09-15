@@ -1,15 +1,598 @@
 package main
 
 import (
-    // "fmt"
+    "errors"
+    "fmt"
     "reflect"
     "strconv"
     "bytes"
     "net/http"
+    "os"
+//    "runtime"
     "sync"
     str "strings"
     "unsafe"
 )
+
+
+
+
+func (p *leparser) Init() {
+
+    // precedence table
+	p.table = [127]rule{
+		RParen        : {-1,p.ignore, nil},
+		RightSBrace   : {-1,p.ignore, nil},
+        LeftSBrace    : {45,p.array_concat,p.binaryLed},   // un: [ x,y,z ], bin: a[b], c[d]  sub-scripting
+        NumericLiteral: {-1,p.number, nil},
+        StringLiteral : {-1,p.stringliteral,nil},
+        Identifier    : {-1,p.identifier,nil},
+        C_Assign      : {5,p.unary,p.binaryLed},
+        C_Plus        : {30,nil,p.binaryLed},
+		C_Minus       : {30,p.unary,p.binaryLed},          // subtraction and unary minus 
+		C_Multiply    : {35,nil,p.binaryLed},
+		C_Divide      : {35,nil,p.binaryLed},
+        C_Percent     : {35,nil,p.binaryLed},
+		C_Comma       : {-1,nil, nil},
+        LParen        : {100,p.grouping, p.binaryLed},      // a(b), c(d)  calls
+		SYM_COLON     : {-1,nil, nil},
+        SYM_DOT       : {45,nil,p.binaryLed},              // a.b, c.d    field refs
+        EOF           : {-1,nil, nil},
+        SYM_EQ        : {25,nil,p.binaryLed},
+        SYM_NE        : {25,nil,p.binaryLed},
+        SYM_LT        : {25,nil,p.binaryLed},
+        SYM_GT        : {25,nil,p.binaryLed},
+        SYM_LE        : {25,nil,p.binaryLed},
+        SYM_GE        : {25,nil,p.binaryLed},
+        SYM_LAND      : {15,nil,p.binaryLed},  // BOOLEAN AND
+        SYM_LOR       : {15,nil,p.binaryLed},  // BOOLEAN OR
+        SYM_BAND      : {20,nil,p.binaryLed},  // AND
+        C_Caret       : {20,nil,p.binaryLed},  // XOR
+        SYM_BOR       : {20,nil,p.binaryLed},  // OR
+		C_Pling       : {15,p.unary, nil},     // Logical Negation
+        SYM_PP        : {40,p.unary, nil},                 // ++x
+        SYM_MM        : {40,p.unary, nil},                 // --x
+        SYM_POW       : {40,nil,p.binaryLed},              // a**b
+        SYM_LSHIFT    : {23,nil,p.binaryLed},
+        SYM_RSHIFT    : {23,nil,p.binaryLed},
+        C_Log         : {125,p.reserved,nil},
+        C_Contains    : {125,p.reserved,nil},
+	}
+
+}
+
+func (p *leparser) reserved(token Token) (interface{}) {
+
+    // this might change in the future:
+    /*
+    if token.tokType>=C_Zero && token.tokType<=C_On {
+        panic("identifiers and functions cannot share a name with keywords!")
+    }
+    */
+
+    return token.tokText
+
+}
+
+func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
+
+    // pf("\n[ ev-query -> %+v p.fs -> %d ]\n",toks,p.fs)
+
+    defer func() {
+        if r := recover(); r != nil {
+            CTE:="\033[0K"
+            p.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            /*
+                if _, ok := r.(runtime.Error); ok {
+                CTE:="\033[0K"
+                p.report(sf("\n"+CTE+"\n"+CTE+"*** %v\n"+CTE+"\n"+CTE,r))
+                finish(false,ERR_EVAL)
+                panic(r)
+            }
+            */
+            err = r.(error)
+            os.Exit(ERR_EVAL)
+        }
+    }()
+
+    p.tokens = toks
+    p.pos    = 0
+    p.fs     = fs
+
+    return p.dparse(0)
+
+}
+
+
+type leparser struct {
+    table       [127]rule   // null+left rules
+    tokens      []Token     // the thing getting evaluated
+    pos         int         // distance through parse
+    fs          uint64      // working function space
+    line        int         // shadows program counter (pc)
+}
+
+
+
+func (p *leparser) next() Token {
+
+    if p.pos == len(p.tokens) {
+        return Token{tokType:EOF}
+    }
+
+    p.pos++
+    return p.tokens[p.pos-1]
+}
+
+func (p *leparser) peek() Token {
+
+     if p.pos == len(p.tokens) {
+        return Token{tokType:EOF}
+    }
+
+    return p.tokens[p.pos]
+}
+
+func (p *leparser) dparse(prec int8) (left interface{},err error) {
+
+    defer func() {
+        if r := recover(); r != nil {
+            CTE:="\033[0K"
+            p.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            /*
+                if _, ok := r.(runtime.Error); ok {
+                CTE:="\033[0K"
+                p.report(sf("\n"+CTE+"\n"+CTE+"*** %v\n"+CTE+"\n"+CTE,r))
+                finish(false,ERR_EVAL)
+                panic(r)
+            }
+            */
+            err = r.(error)
+            os.Exit(ERR_EVAL)
+        }
+    }()
+
+    // pf("dparse query tokens  : %#v\n",p.tokens)
+    // pf("dparse query fs      : %+v\n",p.fs)
+    // pf("dparse query position: %+v\n",p.pos)
+
+	token:=p.next()
+
+	left = p.table[token.tokType].nud(token)
+
+    for prec < p.table[p.peek().tokType].prec {
+        token = p.next()
+            if p.table[token.tokType].led == nil {
+                return nil,errors.New("Token not defined in grammar")
+            }
+	        left = p.table[token.tokType].led(left,token)
+    }
+
+    // pf("dparse result: %+v\n",left)
+    // pf("dparse error : %#v\n",err)
+
+	return left,err
+}
+
+
+type rule struct {
+	prec int8
+	nud func(token Token) (interface{})
+	led func(left interface{}, token Token) (interface{})
+}
+
+
+func (p *leparser) getRule(token Token) rule {
+	return p.table[token.tokType]
+}
+
+func (p *leparser) ignore(token Token) interface{} {
+    p.next()
+    return nil
+}
+
+func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
+
+    switch token.tokType {
+    case LeftSBrace:
+        return p.accessField(left,token)
+    case LParen:
+        return p.callFunction(left,token)
+    case SYM_DOT:
+        return p.accessField(left,token)
+    }
+
+	// left-associative
+
+	right,err := p.dparse(p.table[token.tokType].prec + 1)
+
+    if err!=nil {
+        return nil
+    }
+
+	switch token.tokType {
+	case C_Plus:
+        return ev_add(left,right)
+	case C_Minus:
+		return ev_sub(left,right)
+	case C_Multiply:
+        return ev_mul(left,right)
+	case C_Divide:
+		return ev_div(left,right)
+	case C_Percent:
+		return ev_mod(left,right)
+	case SYM_EQ:
+        return deepEqual(left,right)
+	case SYM_NE:
+        return !deepEqual(left,right)
+	case SYM_LT:
+        return compare(left,right,"<")
+	case SYM_GT:
+        return compare(left,right,">")
+	case SYM_LE:
+        return compare(left,right,"<=")
+	case SYM_GE:
+        return compare(left,right,">=")
+    case SYM_LOR:
+        return asBool(left) || asBool(right)
+    case SYM_LAND:
+        return asBool(left) && asBool(right)
+    case SYM_BAND: // bitwise-and
+        return asInteger(left) & asInteger(right)
+    case SYM_BOR: // bitwise-or
+        return asInteger(left) | asInteger(right)
+	case SYM_LSHIFT:
+        return ev_shift_left(left,right)
+	case SYM_RSHIFT:
+        return ev_shift_right(left,right)
+	case C_Caret: // XOR
+		return asInteger(left) ^ asInteger(right)
+    case SYM_POW:
+        return ev_pow(left,right)
+    case C_Assign:
+        panic(fmt.Errorf("assignment unsupported"))
+	}
+	return left
+}
+
+
+func (p *leparser) accessField(left interface{},right Token) (interface{}) {
+
+    var sz,start,end int
+    var hasStart,hasEnd,hasRange bool
+
+    switch reflect.ValueOf(left).Kind() {
+
+    case reflect.Struct:
+        tok:=p.next()
+        return accessField(p.fs,left,tok.tokText)
+
+    case reflect.Slice:
+
+        switch left:=left.(type) {
+        case []bool:
+            sz=len(left)
+        case []string:
+            sz=len(left)
+        case []int:
+            sz=len(left)
+        case []int32:
+            sz=len(left)
+        case []int64:
+            sz=len(left)
+        case []uint:
+            sz=len(left)
+        case []uint8:
+            sz=len(left)
+        case []uint32:
+            sz=len(left)
+        case []uint64:
+            sz=len(left)
+        case []float32:
+            sz=len(left)
+        case []float64:
+            sz=len(left)
+        case []interface{}:
+            sz=len(left)
+        case string:
+            sz=len(left)
+        default:
+            panic(fmt.Errorf("unknown array type '%T'"))
+        }
+
+        end=sz
+
+        if p.peek().tokType!=RightSBrace { // ! == a[] - start+end unchanged
+
+            // check for start of range
+            if p.peek().tokType!=SYM_COLON {
+                dp,err:=p.dparse(0)
+                if err!=nil {
+                    panic(fmt.Errorf("array range start could not be evaluated"))
+                }
+                switch dp.(type) {
+                case int:
+                    start=dp.(int)
+                    hasStart=true
+                default:
+                    panic(fmt.Errorf("start of range must be an integer"))
+                }
+            }
+
+            // check for end of range
+            if p.peek().tokType==SYM_COLON {
+                p.next() // swallow colon
+                hasRange=true
+                if p.peek().tokType!=RightSBrace {
+                    dp,err:=p.dparse(0)
+                    if err!=nil {
+                        panic(fmt.Errorf("array range end could not be evaluated"))
+                    }
+                    switch dp.(type) {
+                    case int:
+                        end=dp.(int)
+                        hasEnd=true
+                    default:
+                        panic(fmt.Errorf("end of range must be an integer"))
+                    }
+                }
+            }
+
+            if p.peek().tokType!=RightSBrace {
+                panic(fmt.Errorf("end of range brace missing"))
+            }
+
+            // swallow brace
+            p.next()
+
+        }
+
+        if !hasRange && !hasStart && !hasEnd {
+            hasRange=true
+        }
+
+        switch hasRange {
+        case false:
+            return accessField(p.fs,left,start)
+        case true:
+            return slice(left,start,end)
+        }
+
+
+    case reflect.Map:
+
+        // check for key
+
+        var mkey string
+
+        if right.tokType==SYM_DOT {
+
+            t:=p.next()
+            mkey=sf("%v",t.tokText)
+
+        } else {
+
+            if p.peek().tokType!=RightSBrace {
+                // pf("in map peek: tokens [%#v]\n",p.tokens)
+                // pf("in map peek: tokpos [%v]\n",p.pos)
+                dp,err:=p.dparse(0)
+                if err!=nil {
+                    panic(fmt.Errorf("map key could not be evaluated"))
+                }
+                switch dp.(type) {
+                case string:
+                    mkey=dp.(string)
+                default:
+                    mkey=sf("%v",dp)
+                }
+            }
+
+            if p.peek().tokType!=RightSBrace {
+                panic(fmt.Errorf("end of map key brace missing"))
+            }
+            // swallow right brace
+            p.next()
+
+        }
+
+        return accessField(p.fs,left,mkey)
+
+    }
+
+    return nil
+
+}
+
+func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
+
+    name:=left.(string)
+
+    // filter for functions here
+    var isFunc bool
+    if _, isFunc = stdlib[name]; !isFunc {
+        // check if exists in user defined function space
+        _, isFunc = fnlookup.lmget(name)
+    }
+
+    if !isFunc {
+        panic(fmt.Errorf("'%v' is not a function",name))
+    }
+
+    iargs:=[]interface{}{}
+
+    if p.peek().tokType!=RParen {
+        for {
+            dp,err:=p.dparse(0)
+            if err!=nil {
+                return nil
+            }
+            iargs=append(iargs,dp)
+            if p.peek().tokType!=C_Comma {
+                break
+            }
+            p.next()
+        }
+    }
+
+    if p.peek().tokType==RParen {
+        p.next() // consume rparen
+    }
+
+    return callFunction(p.fs,p.line,name,iargs)
+
+}
+
+func (p *leparser) unary(token Token) (interface{}) {
+
+	// right-associative
+
+    // pf("dp from unary\n")
+	right,err := p.dparse(38) // between grouping and other ops
+    if err!=nil {
+        panic(err)
+    }
+	switch token.tokType {
+	case C_Minus:
+		return unaryMinus(right)
+	case C_Pling:
+		return unaryNegate(right)
+	case C_Assign:
+		panic(fmt.Errorf("assignment unsupported"))
+    /* need the identifier for these, not the evaluated value
+    case SYM_PP:
+        return p.preInc(right)
+        // : {p.unary, nil, 40},                 // ++x
+    case SYM_MM:
+        return p.preDec(right)
+        // : {p.unary, nil, 40},                 // --x
+    */
+	}
+	return nil
+}
+
+func (p *leparser) array_concat(tok Token) (interface{}) {
+
+	// right-associative
+
+    ary:=[]interface{}{}
+
+    if p.peek().tokType!=RightSBrace {
+        for {
+            dp,err:=p.dparse(0)
+            if err!=nil {
+                panic(err)
+            }
+            ary=append(ary,dp)
+            if p.peek().tokType!=C_Comma {
+                break
+            }
+            p.next()
+        }
+    }
+
+    if p.peek().tokType==RightSBrace {
+        p.next() // consume rparen
+    }
+
+    return ary
+
+}
+
+func (p *leparser) preInc(tok Token) interface{} {
+    return nil
+}
+
+func (p *leparser) preDec(tok Token) interface{} {
+    return nil
+}
+
+func (p *leparser) grouping(tok Token) (interface{}) {
+
+	// right-associative
+
+    val,err:=p.dparse(0)
+    if err!=nil {
+        panic(err)
+    }
+    p.next() // consume RParen
+    return val
+
+}
+
+func (p *leparser) number(token Token) (interface{}) {
+    var num interface{}
+    var err error
+	num, err = strconv.ParseInt(token.tokText, 10, 0)
+	if err!=nil {
+        num, err = strconv.ParseFloat(token.tokText, 0)
+    } else {
+        num=int(num.(int64))
+    }
+    if num==nil {
+        panic(err)
+    }
+	return num
+}
+
+func (p *leparser) identifier(token Token) (interface{}) {
+
+    // pf("identifier query -> [%+v]\n",token)
+
+    switch token.tokText {
+    case "true":
+        return true
+    case "false":
+        return false
+    case "nil":
+        return nil
+    }
+
+    // filter for functions here
+
+    if p.peek().tokType == LParen {
+        var isFunc bool
+        if _, isFunc = stdlib[token.tokText]; !isFunc {
+            // check if exists in user defined function space
+            _, isFunc = fnlookup.lmget(token.tokText)
+        }
+
+        if isFunc {
+            return token.tokText
+        }
+    }
+
+    // local lookup:
+    // var names take priority over stdlib and user defined function names
+    inter,_:=interpolate(p.fs,token.tokText,false)
+    if val,there:=vget(p.fs,inter); there {
+        return val
+    }
+
+    // global lookup:
+    inter,_=interpolate(p.fs,token.tokText,false)
+    if val,there:=vget(globalaccess,inter); there {
+        return val
+    }
+
+    /* replaced by above 
+    if val,there:=vget(globalaccess,token.tokText); there {
+        // pf("identifier -> got value '%v' from vget with fs->%d and toktext->%s\n",val,p.fs,token.tokText)
+        return val,nil
+    }
+    */
+
+    // currently disabled as we want to permit bad id names in some stdlib funcs ( e.g. append() )
+    // panic(fmt.Errorf("'%v' is neither an identifier or a function.",token.tokText))
+
+    return nil
+
+}
+
+func (p *leparser) stringliteral(token Token) (interface{}) {
+    ws,_:=interpolate(p.fs,stripBacktickQuotes(stripDoubleQuotes(token.tokText)),true)
+    return ws
+}
+
 
 
 /*
@@ -420,30 +1003,28 @@ func escape(str string) string {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
-    if lockSafety {
-        lastlock.RLock()
-    }
-
     if no_interpolation {
-        if lockSafety { lastlock.RUnlock() }
         return s,false
     }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
-        if lockSafety { lastlock.RUnlock() }
         return s,false
+    }
+
+    if lockSafety {
+        lastlock.RLock()
     }
 
     // we need the extra loops to deal with embedded indirection
     for {
-        os := s
         if lockSafety { vlock.RLock() }
         vc:=varcount[fs]
+        os := s
+
         for k := 0; k < vc; k++ {
 
             v := ident[fs][k]
-            if str.IndexByte(v.IName,'@')==-1 { continue }
 
             if v.IValue != nil {
                 switch v.IValue.(type) {
@@ -458,11 +1039,12 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                 case uint8:
                     s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
                 case float32, float64, bool:
-                case interface{}:
                     s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 case string:
                     s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                case interface{}:
                     s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
                 default:
                     s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
@@ -472,9 +1054,18 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
         }
         if lockSafety { vlock.RUnlock() }
 
+        if os==s { break }
+
+    }   // this <-- should possibly include the block below. testing without it currently.
+        //  not convinced we need to allow for possibility of a func returning a var name
+        //  which then needs eval like in block above.
+
+    if lockSafety { lastlock.RUnlock() }
+
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
-        if strcmp(os,s) {
+        // if strcmp(os,s) {
             var modified bool
+
             redo:=true
             for ;redo; {
                 modified=false
@@ -482,7 +1073,18 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                     if s[p]=='{' {
                         q:=str.IndexByte(s[p+1:],'}')
                         if q==-1 { break }
-                        if aval, ef, _ := ev(fs, s[p+1:p+q+1], false, false); !ef {
+                        // BODGE #5000
+                        // this really needs to come out - middle of a heavily used loop *sigh*
+                        //  it's a workaround so i don't have to pass the parser ref around
+                        //  in *everything* that may interpolate.
+                        //  we already pass the calling func's parser ref to eval routines,
+                        //  but doing it everywhere else too is rash, to say the least.
+                        //  will pull this when i think of an alternative.
+                        parse:=&leparser{}
+                        parse.Init()
+                        // END BODGE #5000
+                        if aval, err := ev(parse,fs, s[p+1:p+q+1], false, shouldError); err==nil {
+                            // pf("interpol - ev : %v -> %+v\n", s[p+1:p+q+1], aval)
                             switch val:=aval.(type) {
                             // a few special cases here which will operate faster
                             //  than waiting for fmt.sprintf() to execute.
@@ -500,20 +1102,21 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                             modified=true
                             break
                         }
+                        p=q+1
                     }
                 }
                 if !modified { redo=false }
             }
-            break
-        }
-    }
+            // break
+        // }
 
-    if lockSafety { lastlock.RUnlock() }
+    // moved above:
+    // if lockSafety { lastlock.RUnlock() }
     return s,true
 }
 
 /// find user defined functions in a token stream and evaluate them
-func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
+func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
 
     var splitPoint int
     var callOnly bool
@@ -544,7 +1147,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
         callOnly = false
         if !callOnly && splitPoint!=1 {
             if splitPoint == len(tokens)-1 {
-                report(ifs,-1,"Right-hand side is missing.\n")
+                p.report("Right-hand side is missing.\n")
             }
             finish(false, ERR_SYNTAX)
             return []Token{},true
@@ -590,7 +1193,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
             if indent>0 && endOfList==0 {
                 // something fishy.
-                report(ifs,-1,"unterminated function call?")
+                p.report("unterminated function call?")
                 finish(false,ERR_SYNTAX)
                 return []Token{},true
             }
@@ -605,7 +1208,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
                 for nt:=range termList {
                     if nt>=lfa {
-                        report(ifs,-1,sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
+                        p.report(sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -613,7 +1216,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                     if tokens[nt].tokType!=C_Comma {
                         if expectingComma {
                             // syntax error
-                            report(ifs,-1,"missing comma in parameter list")
+                            p.report("missing comma in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         } else {
@@ -623,15 +1226,15 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
                         if expectingComma {
                             expectingComma=false
                         } else {
-                            report(ifs,-1,"missing a term in parameter list")
+                            p.report("missing a term in parameter list")
                             finish(false,ERR_SYNTAX)
                             return []Token{},true
                         }
                     }
                     // resolve down to list of terms with user functions all evaluated
-                    r,e:=userDefEval(ifs,tokens[t+2:t+nt+2])
+                    r,e:=userDefEval(p,ifs,tokens[t+2:t+nt+2])
                     if e {
-                        report(ifs,-1,"deep error in user function evaluation.")
+                        p.report("deep error in user function evaluation.")
                         finish(false,ERR_SYNTAX)
                         return []Token{},true
                     }
@@ -652,7 +1255,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 
     // replace za defined function calls with their results...
     if termsActive {
-        rhs, okay = buildRhs(ifs, newTermList)
+        rhs, okay = buildRhs(p,ifs, newTermList)
         if ! okay {
             return []Token{},true
         }
@@ -682,7 +1285,7 @@ func userDefEval(ifs uint64, tokens []Token) ([]Token,bool) {
 // by the normal evaluator.
 
 
-func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
+func buildRhs(parser *leparser,ifs uint64, rhs []Token) ([]Token, bool) {
 
     var new_rhs = [31]Token{}
     rhs_tail := 0
@@ -718,8 +1321,9 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, ef, err := ev(ifs, a, false, true)
-                            if ef || err != nil {
+                            aval, err := ev(parser,ifs, a, false, true)
+                            pf("brhs - ev : %v -> %v\n",a,aval)
+                            if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err)
                                 finish(false, ERR_EVAL)
                                 return []Token{},false
@@ -734,18 +1338,19 @@ func buildRhs(ifs uint64, rhs []Token) ([]Token, bool) {
                     loc,id := GetNextFnSpace(previous.tokText+"@")
                     if lockSafety { calllock.Lock() }
                     lmv,_:=fnlookup.lmget(previous.tokText)
-                    calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: "@temp"}
+
+                    calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline:parser.line, retvar: "@#"}
                     if lockSafety { calllock.Unlock() }
 
-                    Call(MODE_NEW, loc, iargs...)
+                    Call(MODE_NEW, loc, ciRhsb, iargs...)
 
                     // handle the returned result
-                    if _, ok := VarLookup(ifs, "@temp"); ok {
+                    if _, ok := VarLookup(ifs, "@#"); ok {
 
                         new_tok := Token{}
 
                         // replace the expression
-                        temp,_ := vget(ifs, "@temp")
+                        temp,_ := vget(ifs, "@#")
                         switch temp.(type) {
                         case bool:
                             // true and false are both treated as identifiers.
@@ -808,85 +1413,49 @@ func fastConv(s string) interface{} {
 
 
 // evaluate an expression string using a modified version of the third-party goval lib
-func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, ef bool, err error) {
-
-    // before tokens are crushed, search for za functions
-    // and execute them, replacing the relevant found terms
-    // with the result to reduce the expression.
+func ev(p *leparser,fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, err error) {
 
     // pf("ev: received: %v\n",ws)
 
-    // tc:=fastConv(ws)
-    // pf("ev: fastconv got this [%T] %v\n",tc,tc)
-
-    // switch tc.(type) {
-    // case string:
-    // default:
-    //     return tc,false,nil
-    // }
-
-    var didInterp bool
-
     // replace interpreted RHS vars with ident[fs] values
+    var didInterp bool
     if interpol {
         ws,didInterp = interpolate(fs, ws, true)
-        // pf("has interpolated. -> ws : %v\n",ws)
     }
 
-    // var maybeFunc bool
-
-    //.. eval user defined functions if it looks like there are any
-
-    //    check for start bracket after first char as it cannot be a 
-    //    function call without a name and must be a normal expression instead.
-
-    if str.IndexByte(ws, '(') >0 {
-        // maybeFunc=true
-        //.. retokenise string, while substituting udf results for udf calls.
-        var valcount int
-        var reval = make([]Token,0,4)
-        var cl int
-        var t Token
-        var eol,eof bool
-        for p := 0; p < len(ws); p++ {
-            t, eol , eof = nextToken(ws, &cl, p, t.tokType)
-            if t.tokPos != -1 {
-                p = t.tokPos
-            }
-            // if !maybeFunc && str.IndexByte(t.tokText, '(') != -1 { maybeFunc=true }
-            reval=append(reval,t)
-            valcount++
-            if eol||eof { break }
+    // build token list from string 'ws'
+    tt := Error
+    toks:=make([]Token,0,6)
+    cl := 1
+    for p := 0; p < len(ws); p++ {
+        t, eol, eof := nextToken(ws, &cl, p, tt)
+        tt = t.tokType
+        if t.tokPos != -1 {
+            p = t.tokPos
         }
-
-        r,e:=userDefEval(fs,reval[:valcount])
-        if e {
-            report(fs,-1,sf("Could not evaluate the call '%v'",reval[:valcount]))
-            finish(false,ERR_EVAL)
-            return nil,true,nil
+        toks = append(toks, t)
+        if eof || eol {
+            break
         }
-        // pf("returning from ude(%+v) with %v\n",reval[:valcount],r)
-
-        result, ef, err = Evaluate( crushEvalTokens(r).text , fs )
-        // pf("returning from eval(%+v) with %v\n",crushEvalTokens(r).text,result)
-        if err != nil {
-            pf("[#6]%v[#-]\n", err)
-            return nil, ef, err
-        }
-        return result, ef, err
     }
 
-    // normal evaluation
-    result, ef, err = Evaluate(ws, fs)
+    // evaluate token list
+
+    // pf("\n\n->> ev calling with '%v'\n : '%+v'\n",ws,toks)
+    if len(toks)!=0 {
+        result, err = p.Eval(fs,toks)
+    }
+    // pf("returned result [%T] '%+v'\n",result,result)
+
 
     if result==nil { // could not eval
         if didInterp {
             result=ws
             err=nil
-            ef=false
         } else {
-            if shouldError {
-                report(fs,-1,sf("Error evaluating '%s'",ws))
+            if err!=nil && shouldError {
+                p.report(sf("Error evaluating '%s'",ws))
+                // pf("[shouldError] di->%v result->%+v err->%+v\n",didInterp,result,err)
                 finish(false,ERR_EVAL)
             }
         }
@@ -902,7 +1471,7 @@ func ev(fs uint64, ws string, interpol bool, shouldError bool) (result interface
         }
     }
 
-    return result, ef, err
+    return result, err
 
 }
 
@@ -912,10 +1481,11 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     token := intoks[0]
 
-    // if token.tokType == EOL || token.tokType == SingleComment {
+    /* should never happen
     if token.tokType == SingleComment {
         return ExpressionCarton{}
     }
+    */
 
     var id str.Builder
     id.Grow(16)
@@ -1005,209 +1575,179 @@ func tokenise(s string) (toks []Token) {
     return toks
 }
 
+
 /// the main call point for actor.go evaluation.
 /// this function handles boxing/unboxing around the ev() call
-func wrappedEval(fs uint64, expr ExpressionCarton, interpol bool) (result ExpressionCarton, ef bool) {
+
+func wrappedEval(p *leparser,fs uint64, tks []Token, interpol bool) (expr ExpressionCarton) {
+
+    // another bodge while testing new evaluator:
+    // .Eval not currently returning an assignment flag, so check manually for it
+    // will change when assignment moved into the evaluator.
+    // this currently won't deal with indirection in assignment and array refs/dotting/etc
+
+    eqPos:=-1
+    for k,_:=range tks {
+        if tks[k].tokType==C_Assign {
+            expr.assign=true
+            eqPos=k
+            break
+        }
+    }
+
+    // end of bodge #7005
 
     var err error
-    expr.result, _ , err = ev(fs, expr.text, interpol, true)
-
+    expr.result, err = p.Eval(fs,tks[eqPos+1:])
     if err!=nil {
         expr.evalError=true
-        return expr,false
+        expr.errVal=err
+        return expr
     }
 
-    // @note: this section is allowing commas through on l.h.s. of assignment. 
-    // we may want to permit this eventually for multiple assignment.
-    // however, it is currently permitting all kinds of dodgy identifier names through.
-    // we should have caught them earlier than this, and they are silently succeeding.
-    // eg. a,b=release_version()
-    // that ^^ works. you can only read the value through interpolation "{a,b}", but it 
-    // should really have errored.
-
-    if !expr.assign {
-        // pf("returning from wrappedEval of <<%v>> with -> <<%v>>\n",expr.text,expr.result)
-        return expr, false
+    if expr.assign {
+        expr=p.doAssign(fs,fs,tks,expr,eqPos)
     }
 
-    // lhs brace nesting and quoting
-    // bnest:=0; inq:=false
-    pos := str.IndexByte(expr.assignVar, '[')
-    if pos != -1 {
-        // inside quote?
-        bnest:=0; inq:=false
-        startq:=""
-        closedAt:=-1
-        for spos:=pos; spos<len(expr.assignVar); spos++ {
-            switch expr.assignVar[spos] {
-            case '[':
-                if !inq { bnest++ }
-            case ']':
-                if bnest>0 {
-                    if !inq { bnest-- }
-                } else {
-                    pf("error in lhs braces\n")
-                    expr.evalError=true
-                    return expr,false
-                }
-                if bnest==0 {
-                    closedAt=spos
-                    break
-                }
-            case '"':
-                if !inq {
-                    startq=`"`
-                    inq=true
-                } else {
-                    if startq==`"` {
-                        inq=false
-                    }
-                }
-            case '`':
-                if !inq {
-                    startq="`"
-                    inq=true
-                } else {
-                    if startq=="`" {
-                        inq=false
-                    }
-                }
-            case '\'':
-                if !inq {
-                    startq="'"
-                    inq=true
-                } else {
-                    if startq=="'" {
-                        inq=false
-                    }
-                }
-            }
-        } // endfor
+    return expr
 
-        if closedAt==-1 {
-            pf("unclosed braces in lhs\n")
+}
+
+func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqPos int) (ExpressionCarton) {
+
+    // pull out pre eqPos tokens
+
+    // normal assign
+    //  a = ...
+    // array/map set
+    //  a [ b ] = ...
+    // field assignment
+    //  a . b = ...
+
+    var err error
+
+    inter,_:=interpolate(rfs,tks[0].tokText,true)
+
+    switch {
+    case eqPos==1:
+        // normal assignment
+        vset(lfs, inter, expr.result)
+
+    case eqPos>3:
+        // array / map
+        // check for lbrace and rbrace
+
+        // pf("In array / map assign\n")
+
+        if tks[1].tokType != LeftSBrace || tks[eqPos-1].tokType != RightSBrace {
+            pf("\nsyntax error in assignment\n")
             expr.evalError=true
-            return expr,false
+            expr.errVal=err
+            return expr
         }
 
-       //  if closedAt != -1 {
-            // handle array reference
-            element, _, err := ev(fs, expr.assignVar[pos+1:closedAt], true, true)
-            if err!=nil {
+        element, err := p.Eval(rfs,tks[2:eqPos-1])
+        if err!=nil {
+            pf("\ncould not evaluate index or key in assignment\n")
+            expr.evalError=true
+            expr.errVal=err
+            return expr
+        }
+
+        switch element.(type) {
+        case string:
+            vsetElement(lfs, inter, element.(string), expr.result)
+        case int:
+            if element.(int)<0 {
                 expr.evalError=true
-                return expr, false
+                expr.errVal=err
+                return expr
             }
-            switch element.(type) {
-            case string:
-                vsetElement(fs, expr.assignVar[:pos], element.(string), expr.result)
-            case int:
-                if element.(int)<0 {
-                    pf("**debug** negative array element found (%v,%v,%v)\n",fs,expr.assignVar[:pos],element.(int))
-                    expr.evalError=true
-                    return expr,true
-                }
-                vsetElement(fs, expr.assignVar[:pos], strconv.Itoa(element.(int)), expr.result)
-            default:
-                pf("**debug** unhandled element type!! [%T]\n",element)
-            }
-        // } else {
-        //     bnest++
-        // }
-    }
+            vsetElement(lfs, inter, strconv.Itoa(element.(int)), expr.result)
+        default:
+            pf("\nunhandled element type!! [%T]\n",element)
+            expr.evalError=true
+            expr.errVal=err
+            return expr
+        }
 
-    // non indexed
-    inter,_:=interpolate(fs,expr.assignVar,true) // for indirection
+    case eqPos==3:
+        // dotted
 
-    // field assignment handling:
+        if tks[1].tokType == SYM_DOT {
 
-    // for now, only permit dotted names when no array ref present.
-    //  need to improve the lexer to avoid this?
+            lhs_v:=inter
+            lhs_f,_:=interpolate(rfs,tks[2].tokText,true)
 
-    if dotpos:=str.IndexByte(inter,'.'); pos==-1 && dotpos>-1 {
-        // pf("dotted lhs -> %s\n",inter)
-
-        if dotpos>0 && dotpos<(len(inter)-1) {
-            lhs_v:=inter[:dotpos]
-            lhs_f:=inter[dotpos+1:]
             var ts interface{}
             var found bool
-            ts,found=vget(fs,lhs_v)
+
+            ts,found=vget(lfs,lhs_v)
 
             if found {
-
-                /*
-                pf("ts       -> %#v\n",ts)
-                pf("ts type  -> %T\n",ts)
-                pf("&ts type -> %T\n",&ts)
-                pf("lhs_f    -> %v\n",lhs_f)
-                */
 
                 val:=reflect.ValueOf(ts)
                 typ:=reflect.ValueOf(ts).Type()
                 intyp:=reflect.ValueOf(expr.result).Type()
 
-                // pf("ref type -> %v\n",typ)
-
                 if typ.Kind()==reflect.Struct {
-
-                    // pf("val   : %#v\n",val)
-                    // pf("field : %#v\n",val.FieldByName(lhs_f))
 
                     // create temp copy of struct
                     tmp:=reflect.New(val.Type()).Elem()
                     tmp.Set(val)
 
+                    // get the required struct field and make a r/w copy
+                    // then assign the new value into the copied field
                     if _,exists:=typ.FieldByName(lhs_f); exists {
                         tf:=tmp.FieldByName(lhs_f)
                         if intyp.AssignableTo(tf.Type()) {
-
-                            // if tf is made unsafe then, basically, serialisation routines will
-                            // stop working as they appear to no longer interpret the value's type
-                            // correctly through reflection. (e.g. gob, struc, restruct)
-
                             tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-
                             tf.Set(reflect.ValueOf(expr.result))
-
-                            vset(fs,lhs_v,tmp.Interface())
-
-                            // pf("Updated value : \n%#v\n",tmp.Interface())
-                            return expr,false
+                            // write the copy back to the 'real' variable
+                            vset(lfs,lhs_v,tmp.Interface())
                         } else {
                             pf("cannot assign result (%T) to %v (%v)\n",expr.result,inter,tf.Type())
                             expr.evalError=true
-                            return expr,true
+                            expr.errVal=err
+                            return expr
                         }
                     } else {
                         pf("STRUCT field %v not found in %v\n",lhs_f,lhs_v)
                         expr.evalError=true
-                        return expr,true
+                        expr.errVal=err
+                        return expr
                     }
 
                 } else {
                     pf("variable %v is not a STRUCT\n",lhs_v)
                     expr.evalError=true
-                    return expr,true
+                    expr.errVal=err
+                    return expr
                 }
 
             } else {
                 pf("record variable %v not found\n",lhs_v)
                 expr.evalError=true
-                return expr,true
+                expr.errVal=err
+                return expr
             }
+
         } else {
-            pf("bad lhs dot\n")
+            pf("assignment looks like it was missing a dot, or you broke it in another way\n")
             expr.evalError=true
-            return expr,true
+            expr.errVal=err
+            return expr
         }
+
+    default:
+        pf("syntax error in assignment\n")
+        expr.evalError=true
+        expr.errVal=err
+        return expr
 
     }
 
-    // final assignation
-    vset(fs, inter, expr.result)
-
-    return expr,false
-
+    return expr
 }
 
 

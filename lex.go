@@ -4,21 +4,27 @@ import (
     str "strings"
 )
 
-const symbols     = "<>=!|&.+-"
-const doubleterms = "<>=|&"
-const soloChars   = "+-/*^!%;<>~=|,[]&"
 
-var soloBinds = [...]int{C_Plus, C_Minus, C_Divide, C_Multiply, C_Caret, C_Pling, C_Percent, C_Semicolon, SYM_LT, SYM_GT, C_Tilde, C_Assign, C_LocalCommand, C_Comma, LeftSBrace, RightSBrace,SYM_AMP}
+const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@{}"
+const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+const numeric = "0123456789."
+const identifier_set = alphanumeric + "_{}"
+const doubleterms = "<>=|&-+*"
 
-const identifier_set = alphanumeric + "_~.{}[]"
+// const symbols     = "<>=!|&.+-*"
+const soloChars   = "+-/*.^!%;<>~=|,():[]&"
 
 var tokNames = [...]string{"ERROR", "ESCAPE",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
     "EXPRESSION", "OPTIONAL_EXPRESSION", "OPERATOR",
     "S_COMMENT", "D_COMMENT", "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
-    "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE",
-    "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE", "SYM_AMP",
-    "COMMA", "TILDE", "ASSIGN", "SETGLOB", "ZERO", "INC", "DEC", "ASS_COMMAND", "L_COMMAND",
+    "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE", "LPAREN", "RPAREN",
+    "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
+    "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW",
+    "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON",
+    "COMMA", "TILDE", "ASSIGN",
+     "SETGLOB", "ZERO", "INC", "DEC", "ASS_COMMAND",
     "R_COMMAND", "INIT", "PAUSE",
     "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -30,6 +36,7 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
 }
 
 
+/*
 type TokenCache struct {
 	s   string
 	t   Token
@@ -37,12 +44,13 @@ type TokenCache struct {
     eol bool
     eof bool
 }
+*/
 
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int, start int, previousToken int) (carton Token, eol bool, eof bool) {
+func nextToken(input string, curLine *int, start int, previousToken uint8) (carton Token, eol bool, eof bool) {
 
-    var tokType int
+    var tokType uint8
     var word string
     var endPos int
     var matchQuote bool
@@ -50,17 +58,15 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
     var backtrack int // push back so that eol can be processed.
     var nonterm string
     var term string
-    var doublesymbol bool
+    // var doublesymbol bool
+    var firstChar byte
     var secondChar byte
     var two bool
-    var firstChar byte
+    var symword string
 
     // skip past whitespace
     skip := -1
 
-    // simple handler for parens nesting
-    var braceNestLevel  int     // round braces
-    var sbraceNestLevel int     // square braces
 
     li:=len(input)
     var i int
@@ -98,16 +104,6 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
         two = true
     }
 
-    // newline in input
-    if firstChar == '\n' {
-        eol = true
-        carton.tokPos = skip
-        carton.Line = *curLine
-        (*curLine)++
-        carton.tokType = EOL
-        goto get_nt_exit_point
-    }
-
     // comments
     if two {
         if (firstChar == '/') && (secondChar == '/') {
@@ -117,67 +113,107 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
             backtrack = 1
             slashComment=true
         }
+
+        // some special cases
+
+        c1 := str.IndexByte(doubleterms, firstChar)
+        if c1!=-1 && firstChar==secondChar {
+                    word = string(firstChar)+string(secondChar)
+                    endPos=skip+1
+                    goto get_nt_eval_point
+        }
+
+        symword = string(firstChar)+string(secondChar)
+        switch symword {
+        case "!=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "<=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case ">=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "=|":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "=@":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "-=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "+=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "*=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "/=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        case "%=":
+            word=symword
+            endPos=skip+1
+            goto get_nt_eval_point
+        }
     }
 
-    if firstChar == '#' {
+    switch firstChar {
+    case '\n':
+        eol = true
+        carton.tokPos = skip
+        carton.Line = *curLine
+        (*curLine)++
+        carton.tokType = EOL
+        goto get_nt_exit_point
+    case '#':
             tokType = SingleComment
             nonterm = ""
             term = "\n"
             backtrack = 1
     }
 
-    // square braced expression
-    if firstChar == '[' {
-        tokType = Expression
-        sbraceNestLevel++
-        nonterm = ""
-        term = "]"
-    }
-
-    // braced expression
-    if firstChar == '(' {
-        tokType = Expression
-        braceNestLevel++
-        nonterm = ""
-        term = ")"
-    }
-
     // number
     if str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
-        nonterm = numeric
+        nonterm = numeric+"e"
         term = ""
     }
 
-    if sbraceNestLevel==0 && braceNestLevel==0 {
-
+        /*
         // symbols
         if two {
             // treat double symbol as a keyword
             c1 := str.IndexByte(symbols, firstChar)
             c2 := str.IndexByte(doubleterms, secondChar)
             if c1 != -1 && c2 != -1 {
-                // nonterm = doubleterms
-                // doublesymbol = true
                     word = string(firstChar)+string(secondChar)
                     endPos=skip+1
                     goto get_nt_eval_point
             }
         }
+        */
 
         // solo symbols
-        if !slashComment && !doublesymbol {
+        if !slashComment {
             c := str.IndexByte(soloChars, firstChar)
             if c != -1 {
-                // tokType = soloBinds[c]
-                // nonterm = string(firstChar)
                     word = string(firstChar)
                     endPos=skip
                     goto get_nt_eval_point
             }
         }
 
-    }
 
     // identifier or statement
     if str.IndexByte(alphaplus, firstChar) != -1 {
@@ -188,7 +224,7 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
     // string literal
     if firstChar == '"' || firstChar == '`' || firstChar == '\'' {
         matchQuote = true
-        tokType = Expression
+        tokType = StringLiteral
         term = string(firstChar)
         nonterm = ""
     }
@@ -204,58 +240,8 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
 
         endPos = i
 
-        if !matchQuote && input[i]=='\n' && ( sbraceNestLevel>0 || braceNestLevel>0 ) {
-            (*curLine)++
-        }
-
         if matchQuote && input[i]=='\n' {
             (*curLine)++
-        }
-
-        if term == "]" {
-
-            if input[i] == '[' {
-                sbraceNestLevel++
-            }
-            if input[i] == ']' {
-                sbraceNestLevel--
-            }
-
-            if sbraceNestLevel > 0 {
-                continue
-            }
-
-            if input[i] == ']' {
-                carton.tokPos = i
-                carton.Line = *curLine
-                carton.tokType = tokType
-                carton.tokText = input[skip : i+1]
-                goto get_nt_exit_point
-            }
-
-        }
-
-        if term == ")" {
-
-            if input[i] == '(' {
-                braceNestLevel++
-            }
-            if input[i] == ')' {
-                braceNestLevel--
-            }
-
-            if braceNestLevel > 0 {
-                continue
-            }
-
-            if input[i] == ')' {
-                carton.tokPos = i
-                carton.Line = *curLine
-                carton.tokType = tokType
-                carton.tokText = input[skip : i+1]
-                goto get_nt_exit_point
-            }
-
         }
 
         if nonterm != "" && str.IndexByte(nonterm, input[i]) == -1 {
@@ -286,8 +272,15 @@ func nextToken(input string, curLine *int, start int, previousToken int) (carton
                 // get word and end, include terminal quote
                 carton.tokPos = endPos
                 carton.Line   = *curLine
-                carton.tokType= Expression
+                carton.tokType= StringLiteral
                 carton.tokText= input[skip:i+1]
+                // unescape escapes
+                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
+                carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
+                carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
+                carton.tokText=str.Replace(carton.tokText, `\%`, "%%", -1)
+                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
+                carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
                 goto get_nt_exit_point
                 // break
             } else {
@@ -344,14 +337,9 @@ get_nt_eval_point:
     // figure token type:
     //  needs tidying.. some aren't used now.
 
-    switch str.ToLower(word) {
-    // EscapeSequence
-    case "zero":
-        tokType = C_Zero
-    case "inc":
-        tokType = C_Inc
-    case "dec":
-        tokType = C_Dec
+    // deal with symbols that don't require a case conversion first, saves some cycles
+
+    switch word {
     case "+":
         tokType = C_Plus
     case "-":
@@ -372,10 +360,16 @@ get_nt_eval_point:
         tokType = LeftSBrace
     case "]":
         tokType = RightSBrace
+    case "(":
+        tokType = LParen
+    case ")":
+        tokType = RParen
     case ",":
         tokType = C_Comma
     case "=":
         tokType = C_Assign
+    case "~":
+        tokType = C_Tilde
     case "<":
         tokType = SYM_LT
     case ">":
@@ -388,124 +382,156 @@ get_nt_eval_point:
         tokType = SYM_GE
     case "!=":
         tokType = SYM_NE
+    case "&&":
+        tokType = SYM_LAND
+    case "||":
+        tokType = SYM_LOR
+    case "&":
+        tokType = SYM_BAND
+    case "|":
+        tokType = SYM_BOR
+    case "++":
+        tokType = SYM_PP
+    case "--":
+        tokType = SYM_MM
+    case "**":
+        tokType = SYM_POW
+    case ".":
+        tokType = SYM_DOT
+    case "<<":
+        tokType = SYM_LSHIFT
+    case ">>":
+        tokType = SYM_RSHIFT
+    case ":":
+        tokType = SYM_COLON
     case "=|":
         tokType = C_AssCommand
-    case "|":
-        tokType = C_LocalCommand
     case "|@":
         tokType = C_RemoteCommand
-    case "init":
-        tokType = C_Init
-    case "setglob":
-        tokType = C_SetGlob
-    case "pause":
-        tokType = C_Pause
-    case "help":
-        tokType = C_Help
-    case "nop":
-        tokType = C_Nop
-    case "hist":
-        tokType = C_Hist
-    case "debug":
-        tokType = C_Debug
-    case "require":
-        tokType = C_Require
-    case "exit":
-        tokType = C_Exit
-    case "version":
-        tokType = C_Version
-    case "quiet":
-        tokType = C_Quiet
-    case "loud":
-        tokType = C_Loud
-    case "unset":
-        tokType = C_Unset
-    case "input":
-        tokType = C_Input
-    case "prompt":
-        tokType = C_Prompt
-    case "log":
-        tokType = C_Log
-    case "print":
-        tokType = C_Print
-    case "println":
-        tokType = C_Println
-    case "logging":
-        tokType = C_Logging
-    case "cls":
-        tokType = C_Cls
-    case "at":
-        tokType = C_At
-    case "define":
-        tokType = C_Define
-    case "enddef":
-        tokType = C_Enddef
-    case "showdef":
-        tokType = C_Showdef
-    case "return":
-        tokType = C_Return
-    case "async":
-        tokType = C_Async
-    case "lib":
-        tokType = C_Lib
-    case "module":
-        tokType = C_Module
-    case "uses":
-        tokType = C_Uses
-    case "while":
-        tokType = C_While
-    case "endwhile":
-        tokType = C_Endwhile
-    case "for":
-        tokType = C_For
-    case "foreach":
-        tokType = C_Foreach
-    case "endfor":
-        tokType = C_Endfor
-    case "continue":
-        tokType = C_Continue
-    case "break":
-        tokType = C_Break
-    case "if":
-        tokType = C_If
-    case "else":
-        tokType = C_Else
-    case "endif":
-        tokType = C_Endif
-    case "when":
-        tokType = C_When
-    case "is":
-        tokType = C_Is
-    case "contains":
-        tokType = C_Contains
-    case "in":
-        tokType = C_In
-    case "or":
-        tokType = C_Or
-    case "endwhen":
-        tokType = C_Endwhen
-    case "with":
-        tokType = C_With
-    case "endwith":
-        tokType = C_Endwith
-    case "struct":
-        tokType = C_Struct
-    case "endstruct":
-        tokType = C_Endstruct
-    case "showstruct":
-        tokType = C_Showstruct
-    case "pane":
-        tokType = C_Pane
-    case "doc":
-        tokType = C_Doc
-    case "test":
-        tokType = C_Test
-    case "endtest":
-        tokType = C_Endtest
-    case "assert":
-        tokType = C_Assert
-    case "on":
-        tokType = C_On
+    }
+
+    if tokType==0 {
+        switch str.ToLower(word) {
+        // EscapeSequence
+        case "zero":
+            tokType = C_Zero
+        case "inc":
+            tokType = C_Inc
+        case "dec":
+            tokType = C_Dec
+        case "init":
+            tokType = C_Init
+        case "setglob":
+            tokType = C_SetGlob
+        case "pause":
+            tokType = C_Pause
+        case "help":
+            tokType = C_Help
+        case "nop":
+            tokType = C_Nop
+        case "hist":
+            tokType = C_Hist
+        case "debug":
+            tokType = C_Debug
+        case "require":
+            tokType = C_Require
+        case "exit":
+            tokType = C_Exit
+        case "version":
+            tokType = C_Version
+        case "quiet":
+            tokType = C_Quiet
+        case "loud":
+            tokType = C_Loud
+        case "unset":
+            tokType = C_Unset
+        case "input":
+            tokType = C_Input
+        case "prompt":
+            tokType = C_Prompt
+        case "log":
+            tokType = C_Log
+        case "print":
+            tokType = C_Print
+        case "println":
+            tokType = C_Println
+        case "logging":
+            tokType = C_Logging
+        case "cls":
+            tokType = C_Cls
+        case "at":
+            tokType = C_At
+        case "define":
+            tokType = C_Define
+        case "enddef":
+            tokType = C_Enddef
+        case "showdef":
+            tokType = C_Showdef
+        case "return":
+            tokType = C_Return
+        case "async":
+            tokType = C_Async
+        case "lib":
+            tokType = C_Lib
+        case "module":
+            tokType = C_Module
+        case "uses":
+            tokType = C_Uses
+        case "while":
+            tokType = C_While
+        case "endwhile":
+            tokType = C_Endwhile
+        case "for":
+            tokType = C_For
+        case "foreach":
+            tokType = C_Foreach
+        case "endfor":
+            tokType = C_Endfor
+        case "continue":
+            tokType = C_Continue
+        case "break":
+            tokType = C_Break
+        case "if":
+            tokType = C_If
+        case "else":
+            tokType = C_Else
+        case "endif":
+            tokType = C_Endif
+        case "when":
+            tokType = C_When
+        case "is":
+            tokType = C_Is
+        case "contains":
+            tokType = C_Contains
+        case "in":
+            tokType = C_In
+        case "or":
+            tokType = C_Or
+        case "endwhen":
+            tokType = C_Endwhen
+        case "with":
+            tokType = C_With
+        case "endwith":
+            tokType = C_Endwith
+        case "struct":
+            tokType = C_Struct
+        case "endstruct":
+            tokType = C_Endstruct
+        case "showstruct":
+            tokType = C_Showstruct
+        case "pane":
+            tokType = C_Pane
+        case "doc":
+            tokType = C_Doc
+        case "test":
+            tokType = C_Test
+        case "endtest":
+            tokType = C_Endtest
+        case "assert":
+            tokType = C_Assert
+        case "on":
+            tokType = C_On
+        }
     }
 
     if tokType == 0 { // assume it was an identifier

@@ -216,9 +216,18 @@ func buildListLib() {
             case bool:
                 l := make([]bool, 0, 31)
                 return append(l, args[0].(bool)), nil
+            case uint:
+                l := make([]uint, 0, 31)
+                return append(l, args[0].(uint)), nil
             case uint8:
                 l := make([]uint8, 0, 31)
                 return append(l, args[0].(uint8)), nil
+            case uint32:
+                l := make([]uint32, 0, 31)
+                return append(l, args[0].(uint32)), nil
+            case uint64:
+                l := make([]uint64, 0, 31)
+                return append(l, args[0].(uint64)), nil
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
@@ -243,12 +252,20 @@ func buildListLib() {
             switch args[1].(type) {
             case float64:
                  args[0] = make([]float64, 0, 31)
-            case int64:
-                 args[0] = make([]int64, 0, 31)
-            case uint64:
-                 args[0] = make([]uint64, 0, 31)
             case int:
                  args[0] = make([]int, 0, 31)
+            case int64:
+                 args[0] = make([]int64, 0, 31)
+            case int32:
+                 args[0] = make([]int32, 0, 31)
+            case uint:
+                 args[0] = make([]uint, 0, 31)
+            case uint8:
+                 args[0] = make([]uint8, 0, 31)
+            case uint32:
+                 args[0] = make([]uint32, 0, 31)
+            case uint64:
+                 args[0] = make([]uint64, 0, 31)
             case bool:
                  args[0] = make([]bool, 0, 31)
             case string:
@@ -258,6 +275,7 @@ func buildListLib() {
             }
         }
         switch args[0].(type) {
+        // @todo: some more need adding here...
         case []string:
             l := append(args[0].([]string), sf("%v", args[1]))
             return l, nil

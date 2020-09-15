@@ -16,11 +16,13 @@ define leven(s, t)
 
 enddef
 
-input a param 1
-input b param 2
+input a optarg 1
+input b optarg 2
 
-a=string(a)
-b=string(b)
+if a=="" || b==""
+    println "need some strings"
+    exit 1
+endif
 
 println "p1 : {a}\np2 : {b}\n"
 println "res: ",leven(a,b)

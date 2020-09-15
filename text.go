@@ -56,7 +56,7 @@ func stripOuter(s string, c byte) string {
 	if len(s) > 0 && s[0] == c {
         s=s[1:]
 	}
-	if len(s) > 1 && s[len(s)-1] == c {
+	if len(s) > 0 && s[len(s)-1] == c {
         s=s[:len(s)-1]
 	}
 	return s
@@ -64,6 +64,10 @@ func stripOuter(s string, c byte) string {
 
 func stripSingleQuotes(s string) string {
 	return stripOuter(s, '\'')
+}
+
+func stripBacktickQuotes(s string) string {
+	return stripOuter(s, '`')
 }
 
 func stripDoubleQuotes(s string) string {
@@ -94,6 +98,10 @@ func hasOuter(s string, c byte) bool {
 		return true
 	}
 	return false
+}
+
+func hasOuterBacktickQuotes(s string) bool {
+	return hasOuter(s, '`')
 }
 
 func hasOuterSingleQuotes(s string) bool {

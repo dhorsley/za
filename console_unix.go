@@ -727,9 +727,7 @@ func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol 
 
     } // input loop
 
-    // if echo.(bool) { fmt.Print(sparkle(recolour+StripCC(s)+"[#-]")) }
     if echo.(bool) {
-        // for r:=irow; r>=lastsrow; r-- { at(r,col); clearToEOL() }
         at(irow, icol) ; clearToEOL()
         fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
     }

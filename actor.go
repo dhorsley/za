@@ -30,8 +30,8 @@ func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
         defer close(r)
-        Call(MODE_NEW, loc, iargs...)
-        v,_:=vget(caller,sf("@temp@%v",loc))
+        Call(MODE_NEW, loc, ciAsyn, iargs...)
+        v,_:=vget(caller,sf("@#@%v",loc))
         r<-v
     }()
     return r
@@ -181,9 +181,11 @@ func GetAsInt(expr interface{}) (int, bool) {
     case int:
         return i, false
     case string:
-        p, e := strconv.ParseFloat(i, 64)
-        if e == nil {
-            return int(p), false
+        if i!="" {
+            p, e := strconv.ParseFloat(i, 64)
+            if e == nil {
+                return int(p), false
+            }
         }
     default:
         /*
@@ -254,21 +256,22 @@ func GetAsUint(expr interface{}) (uint64, bool) {
 
 // EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
 // if no evalError then returns a "validated" true bool
-func EvalCrush(fs uint64, tok []Token, tstart int, tend int) (interface{}, bool) {
-    expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:tend+1]), false)
-    // if expr.evalError { return expr.result,false }
-    return expr.result, !expr.evalError
+func EvalCrush(p *leparser, fs uint64, tok []Token, tstart int, tend int) (interface{}, error) {
+    /*
+    for k,v:=range tok {
+        pf("(%d) %+v\n",k,v)
+    }
+    */
+    return p.Eval(fs,tok[tstart:tend+1])
 }
 
 // as evalCrush but operate over all remaining tokens from tstart onwards
-func EvalCrushRest(fs uint64, tok []Token, tstart int) (interface{}, bool) {
-    expr,_ := wrappedEval(fs, crushEvalTokens(tok[tstart:]), true)
-    // if expr.evalError { return expr.result,false }
-    return expr.result, !expr.evalError
+func EvalCrushRest(p *leparser, fs uint64, tok []Token, tstart int) (interface{}, error) {
+    return p.Eval(fs,tok[tstart:])
 }
 
 // check for value in slice
-func InSlice(a int, list []int) bool {
+func InSlice(a uint8, list []uint8) bool {
     for _, b := range list {
         if b == a {
             return true
@@ -317,7 +320,7 @@ func searchToken(base uint64, start int, end int, sval string) bool {
 
 // used by if..else..endif and similar constructs for nesting
 
-func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term int, indenters []int, dedenters []int) (bool, int, bool) {
+func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
 
     indent := startlevel
     range_fs:=functionspaces[fs][startLine:]
@@ -385,7 +388,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
     // we know at this point that if a dealloc occurred then highest was
     // already below new cap and a fresh alloc should not occur below
 
-    for q := uint64(1); q < top+1 ; q++ { 
+    for q := uint64(1); q < top+1 ; q++ {
 
         if _, found := numlookup.lmget(q); found {
             continue
@@ -444,16 +447,25 @@ var farglock   = &sync.RWMutex{}
 var looplock   = &sync.RWMutex{}
 var globlock   = &sync.RWMutex{}
 
-// var cc int
+
+// test var for error reporting
+//   will probably blow up during recursion.
+
+var callChain []chainInfo
+
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
+func Call(varmode int, csloc uint64, registrant uint8, va ...interface{}) (endFunc bool) {
 
     // if lockSafety { calllock.RLock() }
     // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
     // if lockSafety { calllock.RUnlock() }
+
+    // register call
+    caller_str,_:=numlookup.lmget(calltable[csloc].caller)
+    callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,line:calltable[csloc].callline,registrant:registrant})
 
     var inbound *Phrase
     var current_with_handle *os.File
@@ -475,7 +487,11 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
         }
     }()
 
-    var breakIn int
+    // set up evaluation parser
+    parser:=&leparser{}
+    parser.Init()
+
+    var breakIn uint8
     var pc int
     var retvar string
     var retval interface{}
@@ -492,13 +508,13 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
     fs = (*ncs).fs                          // unique name for this execution, pre-generated before call
     base = (*ncs).base                      // the source code to be read for this function
     caller = (*ncs).caller                  // which func id called this code
-    retvar = (*ncs).retvar                  // usually @temp, the return variable name
+    retvar = (*ncs).retvar                  // usually @#, the return variable name
     ifs,_:=fnlookup.lmget(fs)               // the uint64 id attached to fs name
     calllock.RUnlock()
 
     if base==0 {
         if !interactive {
-            report(ifs, -1, "Possible race condition. Please check. Base->0")
+            parser.report("Possible race condition. Please check. Base->0")
             finish(false,ERR_EVAL)
             return
         }
@@ -506,11 +522,15 @@ func Call(varmode int, csloc uint64, va ...interface{}) (endFunc bool) {
 
     if lockSafety { farglock.RLock() }
 
+    // pf("va->%#v\n",va...)
+    // pf("fa->%#v\n",functionArgs[base])
+    /*
     if len(va) > len(functionArgs[base]) {
-        report(ifs,-1,"Syntax error: too many call arguments provided.")
+        parser.report("Syntax error: too many call arguments provided.")
         finish(false,ERR_SYNTAX)
         return
     }
+    */
 
     // missing varargs in call result in empty string assignments:
     if functionArgs[base]!=nil {
@@ -569,7 +589,7 @@ tco_reentry:
         vlock.Unlock()
 
         lastlock.Lock()
-        lastConstruct[ifs] = []int{}
+        lastConstruct[ifs] = []uint8{}
         lastlock.Unlock()
 
         vset(ifs,"@in_tco",false)
@@ -628,7 +648,6 @@ tco_reentry:
     pf("fargs -> %#v\n",functionArgs[base])
    */
 
-
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
 
@@ -639,8 +658,10 @@ tco_reentry:
             vset(ifs,fa,v)
         }
     }
-    finalline = len(functionspaces[base])
     if lockSafety { farglock.RUnlock() }
+
+
+    finalline = len(functionspaces[base])
 
     inside_test := false            // are we currently inside a test bock
     inside_with := false            // WITH cannot be nested and remains local in scope.
@@ -652,6 +673,7 @@ tco_reentry:
     var definitionName string       // ... if we are, what is it called
     var ampl int                    // sets amplitude of change in INC/DEC statements
     var vid int                     // VarLookup ID cache for FOR loops when !lockSafety
+
     pc = -1                         // program counter : increments to zero at start of loop
 
     var si bool
@@ -660,12 +682,13 @@ tco_reentry:
     pf(">> fs[] sz : %d len %d\n",grso,len(functionspaces))
     */
 
-    var tokencount, lastline int    // was getting allocated per pc iteration. temp move outside for debug.
+    var lastline int
     var statement Token
 
     for {
 
         pc++  // program counter, equates to each Phrase struct in the function
+        parser.line=pc
 
         si=sig_int
 
@@ -680,15 +703,15 @@ tco_reentry:
 
         // get the next Phrase
         inbound     = &functionspaces[base][pc]
-        tokencount  = inbound.TokenCount // length of phrase
         lastline    = inbound.Tokens[0].Line
-        // if !lockSafety { elast = lastline }
 
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
             continue
         }
 
+        // tokencount  = inbound.TokenCount // length of phrase
+/*
         if tokencount == 1 { // if the entire line is a placeholding non-statement then skip
             switch inbound.Tokens[0].tokType {
             case C_Semicolon, EOL, EOF:
@@ -704,6 +727,7 @@ tco_reentry:
                 inbound.Tokens = inbound.Tokens[:tokencount]
             }
         // }
+*/
 
         // finally... start processing the statement.
    ondo_reenter:
@@ -724,15 +748,14 @@ tco_reentry:
             // consume the statement as an identifier
             // as we are only accepting simple types currently, restrict validity
             //  to single type token.
-            if tokencount<2 {
-                report(ifs,lastline,sf("Invalid STRUCT entry '%v'",statement.tokText))
+            if inbound.TokenCount<2 {
+                parser.report(sf("Invalid STRUCT entry '%v'",statement.tokText))
                 finish(false,ERR_SYNTAX)
                 break
             }
             // @todo: add a check here for syntax. for example, placing type before name will result
             //  in an error during INIT. need to raise error here instead. (on order and type validity).
             cet :=crushEvalTokens(inbound.Tokens[1:])
-            // structNode=append(structNode,statement.tokText,inbound.Tokens[1].tokText)
             structNode=append(structNode,statement.tokText,cet.text)
             continue
         }
@@ -762,10 +785,10 @@ tco_reentry:
 
         case C_While:
 
-            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endwhile, []int{C_While}, []int{C_Endwhile})
+            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
 
             if !endfound {
-                report(ifs, lastline, "Could not find an ENDWHILE.")
+                parser.report( "could not find an ENDWHILE")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -776,22 +799,31 @@ tco_reentry:
             // eval
 
             var res bool
-            var cet ExpressionCarton
-            if len(inbound.Tokens)==1 {
-                cet = crushEvalTokens([]Token{Token{tokType: Expression, tokText:"true"}})
+            var etoks []Token
+
+            if inbound.TokenCount==1 {
+                etoks=[]Token{Token{tokType:Identifier,tokText:"true"}}
                 res=true
             } else {
-                cet = crushEvalTokens(inbound.Tokens[1:])
-                expr,ef := wrappedEval(ifs, cet, false)
-                if ef || expr.evalError { break }
+
+                etoks=inbound.Tokens[1:]
+
+                expr := wrappedEval(parser,ifs, etoks, true)
+                if expr.evalError {
+                    parser.report( "could not evaluate WHILE condition")
+                    finish(false,ERR_EVAL)
+                    break
+                }
+
                 switch expr.result.(type) {
                 case bool:
                     res = expr.result.(bool)
                 default:
-                    report(ifs,lastline, "WHILE condition must evaluate to boolean.")
+                    parser.report( "WHILE condition must evaluate to boolean")
                     finish(false,ERR_EVAL)
                     break
                 }
+
             }
 
             if isBool(res) && res {
@@ -799,7 +831,7 @@ tco_reentry:
                 if lockSafety { looplock.Lock() }
                 if lockSafety { lastlock.Lock() }
                 depth[ifs]++
-                loops[ifs][depth[ifs]] = s_loop{repeatFrom: pc, whileContinueAt: pc + enddistance, repeatCond: cet, loopType: C_While}
+                loops[ifs][depth[ifs]] = s_loop{repeatFrom: pc, whileContinueAt: pc + enddistance, repeatCond: etoks, loopType: C_While}
                 lastConstruct[ifs] = append(lastConstruct[ifs], C_While)
                 if lockSafety { lastlock.Unlock() }
                 if lockSafety { looplock.Unlock() }
@@ -819,7 +851,7 @@ tco_reentry:
             cond := loops[ifs][depth[ifs]]
 
             if cond.loopType != C_While {
-                report(ifs,lastline,  "ENDWHILE outside of WHILE loop.")
+                parser.report(  "ENDWHILE outside of WHILE loop.")
                 finish(false, ERR_SYNTAX)
                 if lockSafety { looplock.Unlock() }
                 break
@@ -840,8 +872,12 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
 
             // eval
-            expr,ef := wrappedEval(ifs, cond.repeatCond, true)
-            if ef || expr.evalError { break }
+            expr := wrappedEval(parser,ifs, cond.repeatCond, true)
+            if expr.evalError {
+                parser.report(sf("eval fault in ENDWHILE\n%+v\n",expr.errVal))
+                finish(false,ERR_EVAL)
+                break
+            }
 
             if expr.result.(bool) {
                 // while still true, loop 
@@ -859,103 +895,40 @@ tco_reentry:
 
         case C_SetGlob: // set the value of a global variable.
 
-           if tokencount<3 {
-                // error
-                report(ifs,lastline, "missing value in setglob.")
+           if inbound.TokenCount<4 {
+                parser.report( "missing value in setglob.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
-            // @note: naive - doesn't account for inner brace matches:
-
-            aryRef:=false
-            lhs:=""
-            eqAt := findDelim(inbound.Tokens, "=", 2)
-            if eqAt != -1 {
-                lhsExpr := ""
-                for i:=1;i<eqAt;i++ {
-                    lhsExpr=lhsExpr+inbound.Tokens[i].tokText
-                }
-                lhs=lhsExpr
-            } else {
-                eqAt=1
-                lhs = inbound.Tokens[1].tokText
+            pos:=-1
+            for t:=1; t<inbound.TokenCount; t++ {
+                if inbound.Tokens[t].tokType==C_Assign { pos=t; break }
             }
 
-            var elementComponents string
-
-            var sqPos int
-            if sqPos=str.IndexByte(lhs,'['); sqPos!=-1 {
-                // find token pos of "]"
-                sqEndPos:=str.IndexByte(lhs,']')
-                if sqEndPos==-1 { // missing end brace
-                    report(ifs,lastline, sf("SETGLOB missing end brace in '%v'",lhs))
-                    finish(false,ERR_SYNTAX)
-                    break
-                }
-                if sqEndPos<sqPos { // wrong order
-                    report(ifs,lastline, "SETGLOB braces out-of-order\n")
-                    finish(false,ERR_SYNTAX)
-                    break
-                }
-                elementComponents=lhs[sqPos+1:sqEndPos]
-                aryRef=true
-            }
-
-            // eval rhs
-            cet := crushEvalTokens(inbound.Tokens[eqAt+1:])
-            expr,ef := wrappedEval(ifs, cet, true)
-
-            if ef || expr.evalError {
-                report(ifs,lastline, sf("Bad expression in SETGLOB : '%s'",expr.text))
-                finish(false,ERR_EVAL)
+            if pos==-1 || pos==inbound.TokenCount-1 || pos==1 {
+                parser.report("SETGLOB syntax error")
+                finish(false,ERR_SYNTAX)
                 break
             }
 
-            // now process variables in lhs index
+            var expr ExpressionCarton
+            var err error
 
-            if lockSafety { globlock.Lock() }
-            ga:=globalaccess
-            if lockSafety { globlock.Unlock() }
+            expr.result, err = parser.Eval(ifs,inbound.Tokens[pos+1:])
+            if err!=nil {
+                parser.report("could not evaluate expression in SETGLOB")
+                finish(false,ERR_SYNTAX)
+                break
+            }
 
-            if aryRef {
+            // pos-1 because we have removed the setglob token at front:
+            expr=parser.doAssign(globalaccess,ifs,inbound.Tokens[1:],expr,pos-1)
 
-                // array reference
-                element, ef, _ := ev(ifs, elementComponents, true,true)
-                if ef {
-                    report(ifs,lastline, sf("Bad element in SETGLOB assignment: '%v'",elementComponents))
-                    finish(false,ERR_EVAL)
-                    break
-                }
-
-                aryName := lhs[:sqPos]
-
-                if _, found := VarLookup(ga, aryName); !found {
-                    vset(ga, aryName, make(map[string]interface{}, 31))
-                }
-
-                switch element:=element.(type) {
-                case string:
-                    inter,_:=interpolate(ifs,element,true)
-                    vsetElement(ga, aryName, inter, expr.result)
-                case int:
-                    // error on negative element
-                    if element<0 {
-                        report(ifs,lastline, sf("Negative array element found in SETGLOB (%v,%v,%v)",ifs,aryName,element))
-                        finish(false,ERR_EVAL)
-                        break
-                    }
-                    // otherwise, set global array element
-                    inter,_:=interpolate(ifs,sf("%v",element),true)
-                    vsetElement(ga, aryName, inter, expr.result)
-                default:
-                    report(ifs,lastline, "Unknown type in SETGLOB")
-                    os.Exit(125)
-                }
-
-            } else {
-                inter,_:=interpolate(ifs,lhs,true)
-                vset(globalaccess, inter, expr.result)
+            if expr.evalError {
+                parser.report(sf("error in SETGLOB assignment\n%+v\n",expr.errVal))
+                finish(false,ERR_EVAL)
+                break
             }
 
 
@@ -964,25 +937,24 @@ tco_reentry:
             // FOREACH var IN expr
             // iterates over the result of expression expr as a list
 
-            if tokencount<4 {
-                report(ifs,lastline, "bad argument length in FOREACH.")
+            if inbound.TokenCount<4 {
+                parser.report( "bad argument length in FOREACH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if str.ToLower(inbound.Tokens[2].tokText) != "in" {
-                report(ifs,lastline,  "malformed FOREACH statement.")
+                parser.report(  "malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             if inbound.Tokens[1].tokType != Identifier {
-                report(ifs,lastline,  "parameter 2 must be an identifier.")
+                parser.report(  "parameter 2 must be an identifier.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            var iterType int
             var ce int
 
             fid,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
@@ -991,31 +963,15 @@ tco_reentry:
 
             case NumericLiteral, StringLiteral, LeftSBrace, Identifier, Expression, C_AssCommand:
 
-                exp := crushEvalTokens(inbound.Tokens[3:])
-                var validated bool
-                var expr interface{}
-
-                determinedValue, ok := vget(ifs, exp.text)
-
-                if ok {
-                    expr = determinedValue
-                    validated = true
-                } else {
-
-                    wrappedEval,ef := wrappedEval(ifs, exp, true)
-                    if ef || wrappedEval.evalError {
-                        report(ifs,lastline, sf("error evaluating term in FOREACH statement '%v'",exp.text))
-                        finish(false,ERR_EVAL)
-                        break
-                    }
-
-                    validated=true
-                    expr=wrappedEval.result
-
+                expr := wrappedEval(parser,ifs, inbound.Tokens[3:], true)
+                if expr.evalError {
+                    parser.report( sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
+                    finish(false,ERR_EVAL)
+                    break
                 }
 
-                l:=0
-                switch lv:=expr.(type) {
+                var l int
+                switch lv:=expr.result.(type) {
                 case string:
                     l=len(lv)
                 case []string:
@@ -1049,14 +1005,14 @@ tco_reentry:
                 case []interface{}:
                     l=len(lv)
                 default:
-                    pf("Unknown loop type [%T]\n",lv)
-                    // pf("Unknown loop type [%s]\n",reflect.TypeOf(lv).Kind())
+                    // pf("Unknown loop type [%T]\n",lv)
                 }
+
                 if l==0 {
                     // skip empty expressions
-                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
+                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_Foreach}, []uint8{C_Endfor})
                     if !endfound {
-                        report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
+                        parser.report(  "Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else { //skip
@@ -1065,266 +1021,245 @@ tco_reentry:
                     }
                 }
 
-                var finalExprString string
-                var finalExprArray interface{}
                 var iter *reflect.MapIter
 
-                if validated {
+                switch expr.result.(type) {
 
-                    iterType = IT_LINE // default
+                case string:
 
-                    switch expr.(type) {
+                    // split and treat as array if multi-line
 
-                    case string:
+                    // remove a single trailing \n from string
+                    elast := len(expr.result.(string)) - 1
+                    if expr.result.(string)[elast] == '\n' {
+                        expr.result = expr.result.(string)[:elast]
+                    }
 
-                        // split and treat as array if multi-line
+                    // split up string at \n divisions into an array
+                    if runtime.GOOS!="windows" {
+                        expr.result = str.Split(expr.result.(string), "\n")
+                    } else {
+                        expr.result = str.Split(str.Replace(expr.result.(string), "\r\n", "\n", -1), "\n")
+                    }
 
-                        // remove a single trailing \n from string
-                        elast := len(expr.(string)) - 1
-                        if expr.(string)[elast] == '\n' {
-                            expr = expr.(string)[:elast]
+                    if len(expr.result.([]string))>0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]string)[0])
+                        ce = len(expr.result.([]string)) - 1
+                    }
+
+                case map[string]float64:
+                    if len(expr.result.(map[string]float64)) > 0 {
+                        // get iterator for this map
+                        iter = reflect.ValueOf(expr.result.(map[string]float64)).MapRange()
+
+                        // set initial key and value
+                        if iter.Next() {
+                            vset(ifs, "key_"+fid, iter.Key().String())
+                            vset(ifs, fid, iter.Value().Interface())
                         }
+                        ce = len(expr.result.(map[string]float64)) - 1
+                    }
 
-                        // split up string at \n divisions into an array
-                        if runtime.GOOS!="windows" {
-                            finalExprArray = str.Split(expr.(string), "\n")
+                case map[string]int:
+                    if len(expr.result.(map[string]int)) > 0 {
+                        // get iterator for this map
+                        iter = reflect.ValueOf(expr.result.(map[string]int)).MapRange()
+
+                        // set initial key and value
+                        if iter.Next() {
+                            vset(ifs, "key_"+fid, iter.Key().String())
+                            vset(ifs, fid, iter.Value().Interface())
+                        }
+                        ce = len(expr.result.(map[string]int)) - 1
+                    }
+
+                case map[string]string:
+
+                    if len(expr.result.(map[string]string)) > 0 {
+
+                        // get iterator for this map
+                        iter = reflect.ValueOf(expr.result.(map[string]string)).MapRange()
+
+                        // set initial key and value
+                        if iter.Next() {
+                            vset(ifs, "key_"+fid, iter.Key().String())
+                            vset(ifs, fid, iter.Value().Interface())
                         } else {
-                            finalExprArray = str.Split(str.Replace(expr.(string), "\r\n", "\n", -1), "\n")
+                            // empty
                         }
-
-                        if len(finalExprArray.([]string))>0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]string)[0])
-                            ce = len(finalExprArray.([]string)) - 1
-                        }
-
-                    case map[string]float64:
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string]float64)) > 0 {
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string]float64)).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            }
-                            ce = len(finalExprArray.(map[string]float64)) - 1
-                        }
-
-                    case map[string]int:
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string]int)) > 0 {
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string]int)).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            }
-                            ce = len(finalExprArray.(map[string]int)) - 1
-                        }
-
-                    case map[string]string:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string]string)) > 0 {
-
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string]string)).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            } else {
-                                // empty
-                            }
-                            ce = len(finalExprArray.(map[string]string)) - 1
-                        }
-
-                    case map[string][]string:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string][]string)) > 0 {
-
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string][]string)).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            } else {
-                                // empty
-                            }
-                            ce = len(finalExprArray.(map[string][]string)) - 1
-                        }
-
-                    case []float64:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]float64)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]float64)[0])
-                            ce = len(finalExprArray.([]float64)) - 1
-                        }
-
-                    case float64: // special case: float
-                        finalExprArray = []float64{expr.(float64)}
-                        if len(finalExprArray.([]float64)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]float64)[0])
-                            ce = len(finalExprArray.([]float64)) - 1
-                        }
-
-                    case []uint8:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]uint8)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]uint8)[0])
-                            ce = len(finalExprArray.([]uint8)) - 1
-                        }
-
-                    case []bool:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]bool)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]bool)[0])
-                            ce = len(finalExprArray.([]bool)) - 1
-                        }
-
-                    case []int:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]int)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]int)[0])
-                            ce = len(finalExprArray.([]int)) - 1
-                        }
-
-                    case int: // special case: int
-                        finalExprArray = []int{expr.(int)}
-                        if len(finalExprArray.([]int)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]int)[0])
-                            ce = len(finalExprArray.([]int)) - 1
-                        }
-
-                    case []int32:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]int32)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]int32)[0])
-                            ce = len(finalExprArray.([]int32)) - 1
-                        }
-
-                    case []int64:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]int64)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]int64)[0])
-                            ce = len(finalExprArray.([]int64)) - 1
-                        }
-
-                    case []float32:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]float32)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]float32)[0])
-                            ce = len(finalExprArray.([]float32)) - 1
-                        }
-
-                    case []string:
-                        finalExprArray = expr
-                        if len(finalExprArray.([]string)) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]string)[0])
-                            ce = len(finalExprArray.([]string)) - 1
-                        }
-
-                    case []map[string]interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]map[string]interface{})) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]map[string]interface{})[0])
-                            ce = len(finalExprArray.([]map[string]interface{})) - 1
-                        }
-
-                    case map[string]interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.(map[string]interface{})) > 0 {
-
-                            // get iterator for this map
-                            iter = reflect.ValueOf(finalExprArray.(map[string]interface{})).MapRange()
-
-                            // set initial key and value
-                            if iter.Next() {
-                                vset(ifs, "key_"+fid, iter.Key().String())
-                                vset(ifs, fid, iter.Value().Interface())
-                            } else {
-                                // empty
-                            }
-                            ce = len(finalExprArray.(map[string]interface{})) - 1
-                        }
-
-                    case []interface{}:
-
-                        finalExprArray = expr
-                        if len(finalExprArray.([]interface{})) > 0 {
-                            vset(ifs, "key_"+fid, 0)
-                            vset(ifs, fid, finalExprArray.([]interface{})[0])
-                            ce = len(finalExprArray.([]interface{})) - 1
-                        }
-
-                    default:
-                        report(ifs,lastline, sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr,expr))
-                        finish(false,ERR_EVAL)
-                        break
+                        ce = len(expr.result.(map[string]string)) - 1
                     }
 
-                    // figure end position
-                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_Foreach}, []int{C_Endfor})
-                    if !endfound {
-                        report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
-                        finish(false, ERR_SYNTAX)
-                        break
+                case map[string][]string:
+
+                    if len(expr.result.(map[string][]string)) > 0 {
+
+                        // get iterator for this map
+                        iter = reflect.ValueOf(expr.result.(map[string][]string)).MapRange()
+
+                        // set initial key and value
+                        if iter.Next() {
+                            vset(ifs, "key_"+fid, iter.Key().String())
+                            vset(ifs, fid, iter.Value().Interface())
+                        } else {
+                            // empty
+                        }
+                        ce = len(expr.result.(map[string][]string)) - 1
                     }
 
-                    if lockSafety { looplock.Lock() }
-                    if lockSafety { lastlock.Lock() }
+                case []float64:
 
-                    depth[ifs]++
-                    lastConstruct[ifs] = append(lastConstruct[ifs], C_Foreach)
-
-                    // pf("ifs:%v depth:%v len_depth:%v len_loops:%v\n",ifs,depth[ifs],len(depth),len(loops))
-                    // pf("loop ifs:\n%#v\n",loops[ifs])
-                    loops[ifs][depth[ifs]] = s_loop{loopVar: fid, repeatFrom: pc + 1, iterOverMap: iter,
-                        iterOverString: finalExprString, iterOverArray: finalExprArray,
-                        counter: 0, condEnd: ce, forEndPos: enddistance + pc,
-                        loopType: C_Foreach, iterType: iterType,
+                    if len(expr.result.([]float64)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]float64)[0])
+                        ce = len(expr.result.([]float64)) - 1
                     }
 
+                case float64: // special case: float
+                    expr.result = []float64{expr.result.(float64)}
+                    if len(expr.result.([]float64)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]float64)[0])
+                        ce = len(expr.result.([]float64)) - 1
+                    }
 
-                    if lockSafety { lastlock.Unlock() }
-                    if lockSafety { looplock.Unlock() }
+                case []uint8:
+                    if len(expr.result.([]uint8)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]uint8)[0])
+                        ce = len(expr.result.([]uint8)) - 1
+                    }
 
+                case []bool:
+                    if len(expr.result.([]bool)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]bool)[0])
+                        ce = len(expr.result.([]bool)) - 1
+                    }
+
+                case []int:
+                    if len(expr.result.([]int)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]int)[0])
+                        ce = len(expr.result.([]int)) - 1
+                    }
+
+                case int: // special case: int
+                    expr.result = []int{expr.result.(int)}
+                    if len(expr.result.([]int)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]int)[0])
+                        ce = len(expr.result.([]int)) - 1
+                    }
+
+                case []int32:
+                    if len(expr.result.([]int32)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]int32)[0])
+                        ce = len(expr.result.([]int32)) - 1
+                    }
+
+                case []int64:
+                    if len(expr.result.([]int64)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]int64)[0])
+                        ce = len(expr.result.([]int64)) - 1
+                    }
+
+                case []float32:
+                    if len(expr.result.([]float32)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]float32)[0])
+                        ce = len(expr.result.([]float32)) - 1
+                    }
+
+                case []string:
+                    if len(expr.result.([]string)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]string)[0])
+                        ce = len(expr.result.([]string)) - 1
+                    }
+
+                case []map[string]interface{}:
+
+                    if len(expr.result.([]map[string]interface{})) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]map[string]interface{})[0])
+                        ce = len(expr.result.([]map[string]interface{})) - 1
+                    }
+
+                case map[string]interface{}:
+
+                    if len(expr.result.(map[string]interface{})) > 0 {
+
+                        // get iterator for this map
+                        iter = reflect.ValueOf(expr.result.(map[string]interface{})).MapRange()
+
+                        // set initial key and value
+                        if iter.Next() {
+                            vset(ifs, "key_"+fid, iter.Key().String())
+                            vset(ifs, fid, iter.Value().Interface())
+                        } else {
+                            // empty
+                        }
+                        ce = len(expr.result.(map[string]interface{})) - 1
+                    }
+
+                case []interface{}:
+
+                    if len(expr.result.([]interface{})) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]interface{})[0])
+                        ce = len(expr.result.([]interface{})) - 1
+                    }
+
+                default:
+                    parser.report( sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr.result,expr.result))
+                    finish(false,ERR_EVAL)
+                    break
                 }
+
+                // figure end position
+                endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_Foreach}, []uint8{C_Endfor})
+                if !endfound {
+                    parser.report(  "Cannot determine the location of a matching ENDFOR.")
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                if lockSafety { looplock.Lock() }
+                if lockSafety { lastlock.Lock() }
+
+                depth[ifs]++
+                lastConstruct[ifs] = append(lastConstruct[ifs], C_Foreach)
+
+                // pf("ifs:%v depth:%v len_depth:%v len_loops:%v\n",ifs,depth[ifs],len(depth),len(loops))
+                // pf("loop ifs:\n%#v\n",loops[ifs])
+
+                loops[ifs][depth[ifs]] = s_loop{loopVar: fid, repeatFrom: pc + 1,
+                    iterOverMap: iter, iterOverArray: expr.result,
+                    counter: 0, condEnd: ce, forEndPos: enddistance + pc,
+                    loopType: C_Foreach,
+                }
+
+
+                if lockSafety { lastlock.Unlock() }
+                if lockSafety { looplock.Unlock() }
+
             }
 
         case C_For: // loop over an int64 range
 
-            if tokencount < 5 || inbound.Tokens[2].tokText != "=" {
-                report(ifs,lastline,  "Malformed FOR statement.")
+            if inbound.TokenCount < 5 || inbound.Tokens[2].tokText != "=" {
+                parser.report(  "Malformed FOR statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             toAt := findDelim(inbound.Tokens, "to", 2)
             if toAt == -1 {
-                report(ifs,lastline,  "TO not found in FOR")
+                parser.report(  "TO not found in FOR")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1333,55 +1268,59 @@ tco_reentry:
             stepped := true
             if stepAt == -1 {
                 stepped = false
-                stepAt = tokencount
             }
 
             var fstart, fend, fstep int
             var expr interface{}
-            var validated bool
+            // var validated bool
+            var err error
 
             if toAt>3 {
-                expr, validated = EvalCrush(ifs, inbound.Tokens, 3, toAt-1)
-                if validated && isNumber(expr) {
+                expr, err = EvalCrush(parser,ifs, inbound.Tokens, 3, toAt-1)
+                if err==nil && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
-                    report(ifs,lastline,  "Could not evaluate start expression in FOR")
+                    parser.report(  "Could not evaluate start expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,lastline, "Missing expression in FOR statement?")
+                parser.report( "Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
-            if tokencount>toAt+1 {
-                expr, validated = EvalCrush(ifs, inbound.Tokens, toAt+1, stepAt-1)
-                if validated && isNumber(expr) {
+            if inbound.TokenCount>toAt+1 {
+                if stepAt>0 {
+                    expr, err = EvalCrush(parser,ifs, inbound.Tokens, toAt+1, stepAt-1)
+                } else {
+                    expr, err = EvalCrushRest(parser,ifs, inbound.Tokens, toAt+1)
+                }
+                if err==nil && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
                 } else {
-                    report(ifs,lastline,  "Could not evaluate end expression in FOR")
+                    parser.report(  "Could not evaluate end expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                report(ifs,lastline, "Missing expression in FOR statement?")
+                parser.report( "Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if stepped {
-                if tokencount>stepAt+1 {
-                    expr, validated = EvalCrushRest(ifs, inbound.Tokens, stepAt+1)
-                    if validated && isNumber(expr) {
+                if inbound.TokenCount>stepAt+1 {
+                    expr, err := EvalCrushRest(parser,ifs, inbound.Tokens, stepAt+1)
+                    if err==nil && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
-                        report(ifs,lastline,  "Could not evaluate STEP expression")
+                        parser.report(  "Could not evaluate STEP expression")
                         finish(false, ERR_EVAL)
                         break
                     }
                 } else {
-                    report(ifs,lastline, "Missing expression in FOR statement?")
+                    parser.report( "Missing expression in FOR statement?")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1392,7 +1331,7 @@ tco_reentry:
                 step = fstep
             }
             if step == 0 {
-                report(ifs,lastline,  "This is a road to nowhere. (STEP==0)")
+                parser.report(  "This is a road to nowhere. (STEP==0)")
                 finish(true, ERR_EVAL)
                 break
             }
@@ -1403,9 +1342,9 @@ tco_reentry:
             }
 
             // figure end position
-            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []int{C_For}, []int{C_Endfor})
+            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For}, []uint8{C_Endfor})
             if !endfound {
-                report(ifs,lastline,  "Cannot determine the location of a matching ENDFOR.")
+                parser.report(  "Cannot determine the location of a matching ENDFOR.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1448,7 +1387,7 @@ tco_reentry:
             }
 
             if lastConstruct[ifs][depth[ifs]-1]!=C_For && lastConstruct[ifs][depth[ifs]-1]!=C_Foreach {
-                report(ifs,lastline, "ENDFOR without a FOR or FOREACH")
+                parser.report( "ENDFOR without a FOR or FOREACH")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1473,52 +1412,50 @@ tco_reentry:
                     } else {
 
                         // assign value back to local variable
-                        switch (*thisLoop).iterType {
-                        case IT_LINE:
-                            switch (*thisLoop).iterOverArray.(type) {
-                            // map ranges are randomly ordered!!
-                            case map[string]interface{}, map[string]int, map[string]float64, map[string]string, map[string][]string:
-                                if (*thisLoop).iterOverMap.Next() { // true means not exhausted
-                                    vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
-                                    vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
-                                }
-                            case []bool:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
-                            case []int:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
-                            case []uint8:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
-                            case []int32:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).counter])
-                            case []int64:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
-                            case []string:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
-                            case []float32:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).counter])
-                            case []float64:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
-                            case []map[string]interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])
-                            case []interface{}:
-                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).counter])
-                            default:
-                                // @note: should put a proper exit in here.
-                                pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter]))
-                                pf("Unknown type [%T] in END/Foreach\n",pv)
+
+                        switch (*thisLoop).iterOverArray.(type) {
+
+                        // map ranges are randomly ordered!!
+                        case map[string]interface{}, map[string]int, map[string]float64, map[string]string, map[string][]string:
+                            if (*thisLoop).iterOverMap.Next() { // true means not exhausted
+                                vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
-                        case IT_CHAR:
-                            vset(ifs, (*thisLoop).loopVar,(*thisLoop).iterOverString.(string)[(*thisLoop).counter])
+
+                        case []bool:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
+                        case []int:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
+                        case []uint8:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
+                        case []int32:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).counter])
+                        case []int64:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
+                        case []string:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
+                        case []float32:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).counter])
+                        case []float64:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
+                        case []map[string]interface{}:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])
+                        case []interface{}:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).counter])
+                        default:
+                            // @note: should put a proper exit in here.
+                            pv,_:=vget(ifs,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter]))
+                            pf("Unknown type [%T] in END/Foreach\n",pv)
                         }
 
                     }
@@ -1592,7 +1529,7 @@ tco_reentry:
             if lockSafety { looplock.RLock() }
 
             if depth[ifs] == 0 {
-                report(ifs,lastline,  "Attempting to CONTINUE without a valid surrounding construct.")
+                parser.report(  "Attempting to CONTINUE without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -1629,7 +1566,7 @@ tco_reentry:
             if lockSafety { lastlock.RLock() }
 
             if depth[ifs] == 0 {
-                report(ifs,lastline,  "Attempting to BREAK without a valid surrounding construct.")
+                parser.report(  "Attempting to BREAK without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -1661,7 +1598,7 @@ tco_reentry:
                     bmess = "out of WHEN:\n"
 
                 default:
-                    report(ifs,lastline,  "A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
+                    parser.report(  "A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
                     if lockSafety { lastlock.RUnlock() }
                     if lockSafety { looplock.RUnlock() }
@@ -1686,15 +1623,15 @@ tco_reentry:
             //  basically, need to add more intelligence to this.
             //  just keeping it from attempting the deletion for now.
 
-            if tokencount != 2 {
-                report(ifs,lastline,  "Incorrect arguments supplied for UNSET.")
+            if inbound.TokenCount != 2 {
+                parser.report(  "Incorrect arguments supplied for UNSET.")
                 finish(false, ERR_SYNTAX)
             } else {
                 removee := inbound.Tokens[1].tokText
                 if _, ok := VarLookup(ifs, removee); ok {
                     // vunset(ifs, removee)
                 } else {
-                    report(ifs, lastline, sf("Variable %s does not exist.", removee))
+                    parser.report( sf("Variable %s does not exist.", removee))
                     finish(false, ERR_EVAL)
                 }
             }
@@ -1702,7 +1639,7 @@ tco_reentry:
 
         case C_Pane:
 
-            if tokencount == 1 {
+            if inbound.TokenCount == 1 {
                 pf("Current  %-24s %3s %3s %3s %3s %s\n","Name","y","x","h","w","Title")
                 for p,v:=range panes {
                     def:=""
@@ -1714,8 +1651,8 @@ tco_reentry:
 
             switch str.ToLower(inbound.Tokens[1].tokText) {
             case "off":
-                if tokencount != 2 {
-                    report(ifs,lastline,  "Too many arguments supplied.")
+                if inbound.TokenCount != 2 {
+                    parser.report(  "Too many arguments supplied.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1726,13 +1663,13 @@ tco_reentry:
 
             case "select":
 
-                if tokencount != 3 {
-                    report(ifs,lastline,  "Invalid pane selection.")
+                if inbound.TokenCount != 3 {
+                    parser.report(  "Invalid pane selection.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
-                cp, _, _ := ev(ifs, inbound.Tokens[2].tokText, true,true)
+                cp, _ := ev(parser,ifs, inbound.Tokens[2].tokText, true,true)
 
                 switch cp:=cp.(type) {
                 case string:
@@ -1740,7 +1677,7 @@ tco_reentry:
                     currentpane = cp
 
                 default:
-                    report(ifs, lastline, "Warning: you must provide a string value to PANE SELECT.")
+                    parser.report( "Warning: you must provide a string value to PANE SELECT.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1761,7 +1698,7 @@ tco_reentry:
                    TCommaAt := findDelim(inbound.Tokens, ",", WCommaAt+1)
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
-                    report(ifs,lastline,  "Bad delimiter in PANE DEFINE.")
+                    parser.report(  "Bad delimiter in PANE DEFINE.")
                     // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false, ERR_SYNTAX)
                     break
@@ -1770,48 +1707,44 @@ tco_reentry:
                 hasTitle:=false; hasBox:=false
                 if TCommaAt>-1 {
                     hasTitle=true
-                    if TCommaAt<tokencount-1 {
+                    if TCommaAt<inbound.TokenCount-1 {
                         hasBox=true
                     }
                 }
 
-                var ew,etit,ebox ExpressionCarton
+                // var ew,etit,ebox ExpressionCarton
+                var ew,etit,ebox []Token
 
-                ename := crushEvalTokens(inbound.Tokens[ 2             : nameCommaAt ] )
-                ey    := crushEvalTokens(inbound.Tokens[ nameCommaAt+1 : YCommaAt    ] )
-                ex    := crushEvalTokens(inbound.Tokens[ YCommaAt+1    : XCommaAt    ] )
-                eh    := crushEvalTokens(inbound.Tokens[ XCommaAt+1    : HCommaAt    ] )
                 if hasTitle {
-                    ew    = crushEvalTokens(inbound.Tokens[ HCommaAt+1:WCommaAt   ] )
+                    ew    = inbound.Tokens[ HCommaAt+1:WCommaAt   ]
                 } else {
-                    ew    = crushEvalTokens(inbound.Tokens[ HCommaAt+1: ] )
+                    ew    = inbound.Tokens[ HCommaAt+1: ]
                 }
 
                 if hasTitle && hasBox {
-                    etit = crushEvalTokens(inbound.Tokens[ WCommaAt+1 : TCommaAt ] )
-                    ebox = crushEvalTokens(inbound.Tokens[ TCommaAt+1 : ] )
+                    etit = inbound.Tokens[ WCommaAt+1 : TCommaAt ]
+                    ebox = inbound.Tokens[ TCommaAt+1 : ]
                 } else {
                     if hasTitle {
-                        etit = crushEvalTokens(inbound.Tokens[ WCommaAt+1 : ] )
+                        etit = inbound.Tokens[ WCommaAt+1 : ]
                     }
                 }
 
                 var ptitle, pbox ExpressionCarton
-                pname,_  := wrappedEval(ifs, ename, true)
-                py,_     := wrappedEval(ifs, ey, true)
-                px,_     := wrappedEval(ifs, ex, true)
-                ph,_     := wrappedEval(ifs, eh, true)
-                pw,_     := wrappedEval(ifs, ew, true)
+                pname  := wrappedEval(parser,ifs, inbound.Tokens[2:nameCommaAt], true)
+                py     := wrappedEval(parser,ifs, inbound.Tokens[nameCommaAt+1:YCommaAt], true)
+                px     := wrappedEval(parser,ifs, inbound.Tokens[YCommaAt+1:XCommaAt], true)
+                ph     := wrappedEval(parser,ifs, inbound.Tokens[XCommaAt+1:HCommaAt], true)
+                pw     := wrappedEval(parser,ifs, ew, true)
                 if hasTitle {
-                    ptitle,_ = wrappedEval(ifs, etit, true)
+                    ptitle = wrappedEval(parser,ifs, etit, true)
                 }
                 if hasBox   {
-                    pbox,_   = wrappedEval(ifs, ebox, true)
+                    pbox   = wrappedEval(parser,ifs, ebox, true)
                 }
 
                 if pname.evalError || py.evalError || px.evalError || ph.evalError || pw.evalError {
-                    report(ifs,lastline,  "Could not evaluate an argument in PANE DEFINE.")
-                    // pf("Toks -> [%+v]\n", inbound.Tokens)
+                    parser.report( "could not evaluate an argument in PANE DEFINE")
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -1825,14 +1758,14 @@ tco_reentry:
                 if hasBox   { boxed = sf("%v",pbox.result)   }
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
-                    report(ifs,lastline, "Could not use an argument in PANE DEFINE.")
+                    parser.report( "Could not use an argument in PANE DEFINE.")
                     // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false,ERR_EVAL)
                     break
                 }
 
                 if pname.result.(string) == "global" {
-                    report(ifs, lastline, "Cannot redefine the global PANE.")
+                    parser.report( "Cannot redefine the global PANE.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1844,14 +1777,14 @@ tco_reentry:
                 paneBox(currentpane)
 
             default:
-                report(ifs,lastline,  "Unknown PANE command.")
+                parser.report(  "Unknown PANE command.")
                 finish(false, ERR_SYNTAX)
             }
 
 
-        case C_LocalCommand:
+        case SYM_BOR: // Local Command
 
-            if tokencount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
+            if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
                 s:=stripOuter(inbound.Tokens[1].tokText,'`')
                 coprocCall(ifs,"|"+s)
             } else {
@@ -1862,16 +1795,15 @@ tco_reentry:
 
             var i string
 
-            if tokencount<2 {
-                report(ifs,lastline,  "Not enough arguments in PAUSE.")
+            if inbound.TokenCount<2 {
+                parser.report(  "Not enough arguments in PAUSE.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            cet := crushEvalTokens(inbound.Tokens[1:])
-            expr,ef := wrappedEval(ifs, cet, true)
+            expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
 
-            if ef || !expr.evalError {
+            if !expr.evalError {
 
                 if isNumber(expr.result) {
                     i = sf("%v", expr.result)
@@ -1882,7 +1814,7 @@ tco_reentry:
                 dur, err := time.ParseDuration(i + "ms")
 
                 if err != nil {
-                    report(ifs,lastline,  sf("'%s' did not evaluate to a duration.", expr.text))
+                    parser.report(  sf("'%s' did not evaluate to a duration.", expr.text))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -1890,7 +1822,7 @@ tco_reentry:
                 time.Sleep(dur)
 
             } else {
-                report(ifs,lastline,  sf("Could not evaluate PAUSE expression."))
+                parser.report(  sf("could not evaluate PAUSE expression\n%+v",expr.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -1899,14 +1831,19 @@ tco_reentry:
         case C_Doc:
             var badval bool
             if testMode {
-                if tokencount > 1 {
+                if inbound.TokenCount > 1 {
                     docout := ""
                     previousterm := 1
                     for term := range inbound.Tokens[1:] {
                         if inbound.Tokens[term].tokType == C_Comma {
 
-                            expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
-                            if ef || expr.evalError { badval=true; break }
+                            expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:term], true)
+                            if expr.evalError {
+                                parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
+                                finish(false,ERR_EVAL)
+                                badval=true
+                                break
+                            }
 
                             docout += sparkle(sf(`%v`, expr.result))
                             previousterm = term + 1
@@ -1916,13 +1853,16 @@ tco_reentry:
 
                     if badval { break }
 
-                    expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:]), true)
-                    if ef || expr.evalError { break }
-
-                    if !expr.evalError {
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:], true)
+                    if expr.evalError {
+                        parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
+                        finish(false,ERR_EVAL)
+                    } else {
                         docout += sparkle(sf(`%v`, expr.result))
                     }
+
                     appendToTestReport(test_output_file,ifs, pc, docout)
+
                 }
             }
 
@@ -1935,22 +1875,22 @@ tco_reentry:
 
             if testMode {
 
-                if !(tokencount == 4 || tokencount == 6) {
-                    report(ifs,lastline,  "Badly formatted TEST command.")
+                if !(inbound.TokenCount == 4 || inbound.TokenCount == 6) {
+                    parser.report(  "Badly formatted TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
                 if str.ToLower(inbound.Tokens[2].tokText) != "group" {
-                    report(ifs,lastline,  "Missing GROUP in TEST command.")
+                    parser.report(  "Missing GROUP in TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
                 test_assert = "fail"
-                if tokencount == 6 {
+                if inbound.TokenCount == 6 {
                     if str.ToLower(inbound.Tokens[4].tokText) != "assert" {
-                        report(ifs,lastline,  "Missing ASSERT in TEST command.")
+                        parser.report(  "Missing ASSERT in TEST command.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
@@ -1960,7 +1900,7 @@ tco_reentry:
                         case "continue":
                             test_assert = "continue"
                         default:
-                            report(ifs,lastline,  "Bad ASSERT type in TEST command.")
+                            parser.report(  "Bad ASSERT type in TEST command.")
                             finish(false, ERR_SYNTAX)
                             break
                         }
@@ -1993,21 +1933,24 @@ tco_reentry:
             // was false? - discard command tokens and continue
             // was true? - reform command without the 'ON condition' tokens and re-enter command switch
 
-            if tokencount > 2 {
+            // > print tokens("on int(diff_{i})<0 do print")
+            //  on int        (      diff_42    )      <      0         do         print
+            //  ON IDENTIFIER LPAREN IDENTIFIER RPAREN SYM_LT N_LITERAL IDENTIFIER PRINT
+            //  0  1          2      3          4      5      6         7          8...
+
+            if inbound.TokenCount > 2 {
 
                 doAt := findDelim(inbound.Tokens, "do", 2)
                 if doAt == -1 {
-                    report(ifs,lastline,  "DO not found in ON")
+                    parser.report(  "DO not found in ON")
                     finish(false, ERR_SYNTAX)
                 } else {
                     // more tokens after the DO to form a command with?
-                    if tokencount >= doAt {
+                    if inbound.TokenCount >= doAt {
 
-                        cet := crushEvalTokens(inbound.Tokens[1:doAt])
-
-                        expr,ef := wrappedEval(ifs, cet, true)
-                        if ef || expr.evalError {
-                            report(ifs,lastline, "Could not evaluate expression in ON..DO statement.")
+                        expr := wrappedEval(parser,ifs, inbound.Tokens[1:doAt], true)
+                        if expr.evalError {
+                            parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",expr.text,expr.errVal))
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -2022,7 +1965,7 @@ tco_reentry:
                                 p.TokenCount = inbound.TokenCount - (doAt + 1)
                                 p.Original = inbound.Original
                                 p.Text = inbound.Text
-                                // we can ignore .Text and .Original for now - but shouldn't
+                                // we can ignore .Text and .Original for now - but shouldn't.
                                 // they are only used in *Command calls, and the input is chomped
                                 // from the front to the first pipe symbol so the 'ON expr DO' would
                                 // be consumed. However, @todo: fix this.
@@ -2034,7 +1977,7 @@ tco_reentry:
                             }
                         default:
                             pf("Result Type -> %T\n", expr.result)
-                            report(ifs, lastline, "ON cannot operate without a condition.")
+                            parser.report( "ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
                             break
                         }
@@ -2043,33 +1986,33 @@ tco_reentry:
                 }
 
             } else {
-                report(ifs, lastline, "ON missing arguments.")
+                parser.report( "ON missing arguments.")
                 finish(false, ERR_SYNTAX)
             }
 
 
         case C_Assert:
 
-            if tokencount < 2 {
+            if inbound.TokenCount < 2 {
 
-                report(ifs,lastline,  "Insufficient arguments supplied to ASSERT")
+                parser.report(  "Insufficient arguments supplied to ASSERT")
                 finish(false, ERR_ASSERT)
 
             } else {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                expr,ef := wrappedEval(ifs, cet, true)
+                expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
 
                 if expr.assign {
                     // someone typo'ed a condition 99.9999% of the time
-                    report(ifs,lastline,
+                    parser.report(
                         sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",cet.assignVar,cet.text))
                     finish(false,ERR_ASSERT)
                     break
                 }
 
-                if ef || expr.evalError {
-                    report(ifs,lastline,  "Could not evaluate expression in ASSERT statement.")
+                if expr.evalError {
+                    parser.report(  "Could not evaluate expression in ASSERT statement.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2088,7 +2031,7 @@ tco_reentry:
 
                     if !expr.result.(bool) {
                         if !under_test {
-                            report(ifs,lastline,  sf("Could not assert! ( %s )", expr.text))
+                            parser.report(  sf("Could not assert! ( %s )", expr.text))
                             finish(false, ERR_ASSERT)
                             break
                         }
@@ -2102,10 +2045,10 @@ tco_reentry:
                         }
                         switch temp_test_assert {
                         case "fail":
-                            report(ifs,lastline,  sf("Could not assert! (%s)", expr.text))
+                            parser.report(  sf("Could not assert! (%s)", expr.text))
                             finish(false, ERR_ASSERT)
                         case "continue":
-                            report(ifs,lastline,  sf("Assert failed (%s), but continuing.", expr.text))
+                            parser.report(  sf("Assert failed (%s), but continuing.", expr.text))
                         }
                     } else {
                         if under_test {
@@ -2121,27 +2064,25 @@ tco_reentry:
 
         case C_Init: // initialise an array
 
-            if tokencount<2 {
-                report(ifs,lastline, "Not enough arguments in INIT.")
+            if inbound.TokenCount<2 {
+                parser.report( "Not enough arguments in INIT.")
                 finish(false,ERR_EVAL)
                 break
             }
 
             varname,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
             vartype := "assoc"
-            if tokencount>2 {
+            if inbound.TokenCount>2 {
                 vartype = inbound.Tokens[2].tokText
             }
 
             size:=DEFAULT_INIT_SIZE
 
-            if tokencount>3 {
+            if inbound.TokenCount>3 {
 
-                cet := crushEvalTokens(inbound.Tokens[3:])
-
-                expr,ef := wrappedEval(ifs, cet, true)
-                if ef || expr.evalError {
-                    report(ifs,lastline, "Could not evaluate expression in INIT statement.")
+                expr := wrappedEval(parser,ifs, inbound.Tokens[3:], true)
+                if expr.evalError {
+                    parser.report( sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2153,7 +2094,7 @@ tco_reentry:
                         size=strSize
                     }
                 default:
-                    report(ifs,lastline, "Array width must evaluate to an integer.")
+                    parser.report( "Array width must evaluate to an integer.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2177,7 +2118,6 @@ tco_reentry:
                 case "assoc":
                     vset(ifs, varname, make(map[string]interface{},size))
                 default:
-
                     //
                     // move this later:
                     var tb bool
@@ -2233,6 +2173,7 @@ tco_reentry:
                             break
                         }
                     }
+
                     if found {
                         // deal with init name struct_type
                         if len(structvalues)>0 {
@@ -2249,7 +2190,6 @@ tco_reentry:
                                         Anonymous:false,
                                     },
                                 )
-                                // pf("typemap nt -> %v\n",nt)
                                 offset+=typemap[nt].Size()
                             }
                             typ:=reflect.StructOf(sf)
@@ -2267,7 +2207,7 @@ tco_reentry:
 
         case C_Help:
             hargs := ""
-            if tokencount == 2 {
+            if inbound.TokenCount == 2 {
                 hargs = inbound.Tokens[1].tokText
             }
             help(hargs)
@@ -2279,42 +2219,62 @@ tco_reentry:
 
         case C_Async:
 
-            // ASYNC IDENTIFIER IDENTIFIER EXPRESSION N_LITERAL
+            // ASYNC IDENTIFIER IDENTIFIER LPAREN [EXPRESSION[,...]] RPAREN [IDENTIFIER]
+            // async handles    q          (      [e[,...]]          )      [key]
+            // 0     1          2          3      4
 
-            if tokencount<4 {
+            if inbound.TokenCount<5 {
                 usage := "ASYNC [#i1]handle_map function_call([args]) [next_id][#i0]"
-                report(ifs,lastline,"Invalid arguments in ASYNC\n"+usage)
+                parser.report("Invalid arguments in ASYNC\n"+usage)
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             handles,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
             call      := inbound.Tokens[2].tokText
-            args      := inbound.Tokens[3].tokText
 
-            next_id:=""
-            if tokencount==5 {
-                nival,_,err := ev(ifs,inbound.Tokens[4].tokText,true,true)
+            if inbound.Tokens[3].tokType!=LParen {
+                parser.report("could not find '(' in ASYNC function call.")
+                finish(false,ERR_SYNTAX)
+            }
+
+            // get arguments
+            var argString str.Builder
+            var rparenloc int
+            for ap:=4; ap<inbound.TokenCount; ap++ {
+                if inbound.Tokens[ap].tokType==RParen {
+                    rparenloc=ap
+                    break
+                }
+                if inbound.Tokens[ap].tokType==C_Comma {
+                    argString.WriteString(",")
+                    continue
+                }
+                argString.WriteString(inbound.Tokens[ap].tokText)
+            }
+
+            if rparenloc<4 {
+               parser.report("could not find a valid ')' in ASYNC function call.")
+                finish(false,ERR_SYNTAX)
+            }
+
+            // find the optional key argument, for stipulating the key name to be used in handles
+            var nival interface{}
+            if rparenloc!=inbound.TokenCount-1 {
+                var err error
+                keyString := crushEvalTokens(inbound.Tokens[rparenloc+1:]).text
+                nival,err = ev(parser,ifs,keyString,true,true)
                 if err!=nil {
-                    report(ifs,lastline,sf("could not evaluate handle key argument '%s' in ASYNC.",inbound.Tokens[4].tokText))
+                    parser.report(sf("could not evaluate handle key argument '%s' in ASYNC.",keyString))
                     finish(false,ERR_EVAL)
                     break
                 }
-                next_id=sf("%v",nival)
             }
 
+            // build task call
             lmv, isfunc := fnlookup.lmget(call)
 
             if isfunc {
-
-                if !hasOuterBraces(args) {
-                    report(ifs,lastline,"functions must be called with a braced argument set.")
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
-
-                argString := stripOuter(args, '(')
-                argString  = stripOuter(argString, ')')
 
                 // evaluate args
                 var iargs []interface{}
@@ -2322,12 +2282,12 @@ tco_reentry:
 
                 // populate inbound parameters to the za function call, with evaluated versions of each.
                 fullBreak:=false
-                if argString != "" {
-                    argnames = str.Split(argString, ",")
+                if argString.String() != "" {
+                    argnames = str.Split(argString.String(), ",")
                     for k, a := range argnames {
-                        aval, _, err := ev(ifs, a, false, true)
+                        aval, err := ev(parser,ifs, a, false, true)
                         if err != nil {
-                            report(ifs,lastline,sf("problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err))
+                            parser.report(sf("problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err))
                             finish(false, ERR_EVAL)
                             fullBreak=true
                             break
@@ -2340,8 +2300,8 @@ tco_reentry:
                 // make Za function call
                 loc,id := GetNextFnSpace(call+"@")
                 calllock.Lock()
-                vset(ifs,sf("@temp@%v",loc),nil)
-                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: sf("@temp@%v",loc)}
+                vset(ifs,sf("@#@%v",loc),nil)
+                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline: pc, retvar: sf("@#@%v",loc)}
                 calllock.Unlock()
 
                 // construct a go call that includes a normal Call
@@ -2350,28 +2310,32 @@ tco_reentry:
                 // pf("task returned channel id : %+v\n",h)
 
                 // assign h to handles map
-                if strcmp(next_id,"") {
+                if nival==nil {
                     vsetElement(ifs,handles,sf("async_%v",id),h)
                 } else {
-                    vsetElement(ifs,handles,next_id,h)
+                    vsetElement(ifs,handles,sf("%v",nival),h)
                 }
 
+            } else {
+                // func not found
+                parser.report(sf("invalid function '%s' in ASYNC call",call))
+                finish(false,ERR_EVAL)
             }
 
         case C_Debug:
 
-            if tokencount != 2 {
+            if inbound.TokenCount != 2 {
 
-                report(ifs,lastline,  "Malformed DEBUG statement.")
+                parser.report(  "Malformed DEBUG statement.")
                 finish(false, ERR_SYNTAX)
 
             } else {
 
-                dval, validated := EvalCrush(ifs, inbound.Tokens, 1, tokencount)
-                if validated && isNumber(dval) {
+                dval, err := EvalCrush(parser,ifs, inbound.Tokens, 1, inbound.TokenCount)
+                if err==nil && isNumber(dval) {
                     debug_level = dval.(int)
                 } else {
-                    report(ifs,lastline,  "Bad debug level value - could not evaluate.")
+                    parser.report(  "Bad debug level value - could not evaluate.")
                     finish(false, ERR_EVAL)
                 }
 
@@ -2382,8 +2346,8 @@ tco_reentry:
 
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
-            if tokencount < 2 || tokencount > 3 {
-                report(ifs,lastline,  "Malformed REQUIRE statement.")
+            if inbound.TokenCount < 2 || inbound.TokenCount > 3 {
+                parser.report(  "Malformed REQUIRE statement.")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -2391,7 +2355,7 @@ tco_reentry:
             var reqfeat string
             var reqvers int
 
-            switch tokencount {
+            switch inbound.TokenCount {
             case 2: // only by name
                 reqfeat = inbound.Tokens[1].tokText
             case 3: // name + version
@@ -2417,12 +2381,12 @@ tco_reentry:
 
 
         case C_Exit:
-            if tokencount > 1 {
-                ec, validated := EvalCrush(ifs, inbound.Tokens, 1, tokencount)
-                if validated && isNumber(ec) {
+            if inbound.TokenCount > 1 {
+                ec, err := EvalCrush(parser,ifs, inbound.Tokens, 1, inbound.TokenCount)
+                if err==nil && isNumber(ec) {
                     finish(true, ec.(int))
                 } else {
-                    report(ifs,lastline, "Could not evaluate your EXIT expression")
+                    parser.report( "Could not evaluate your EXIT expression")
                     finish(true,ERR_EVAL)
                 }
             } else {
@@ -2432,10 +2396,10 @@ tco_reentry:
 
         case C_Define:
 
-            if tokencount > 1 {
+            if inbound.TokenCount > 1 {
 
                 if defining {
-                    report(ifs, lastline, "Already defining a function. Nesting not permitted.")
+                    parser.report( "Already defining a function. Nesting not permitted.")
                     finish(true, ERR_SYNTAX)
                     break
                 }
@@ -2443,10 +2407,12 @@ tco_reentry:
                 fn := inbound.Tokens[1].tokText
                 var dargs []string
 
-                if tokencount == 3 {
+                if inbound.TokenCount > 2 {
                     // params supplied:
-                    argString := stripOuter(inbound.Tokens[2].tokText, '(')
+                    argString := crushEvalTokens(inbound.Tokens[2:]).text
+                    argString = stripOuter(argString, '(')
                     argString = stripOuter(argString, ')')
+
                     if len(argString)>0 {
                         dargs = str.Split(argString, ",")
                         for arg:=range dargs {
@@ -2454,11 +2420,13 @@ tco_reentry:
                         }
                     }
                 } else {
-                    if tokencount != 2 {
-                        report(ifs,lastline,  "Braced list of parameters not supplied!")
+                    /*
+                    if inbound.TokenCount != 2 {
+                        parser.report(  "Braced list of parameters not supplied!")
                         finish(true, ERR_SYNTAX)
                         break
                     }
+                    */
                 }
 
                 defining = true
@@ -2468,7 +2436,7 @@ tco_reentry:
                 exMatchStdlib:=false
                 for n,_:=range slhelp {
                     if n==definitionName {
-                        report(ifs,lastline,"A library function already exists with the name '"+definitionName+"'")
+                        parser.report("A library function already exists with the name '"+definitionName+"'")
                         finish(false,ERR_SYNTAX)
                         exMatchStdlib=true
                         break
@@ -2478,7 +2446,7 @@ tco_reentry:
 
                 // error if it has already been user defined
                 if _, exists := fnlookup.lmget(definitionName); exists {
-                    report(ifs,lastline,  "Function "+definitionName+" already exists.")
+                    parser.report(  "Function "+definitionName+" already exists.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2497,12 +2465,12 @@ tco_reentry:
 
         case C_Showdef:
 
-            if tokencount == 2 {
+            if inbound.TokenCount == 2 {
                 fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
                 if _, exists := fnlookup.lmget(fn); exists {
                     ShowDef(fn)
                 } else {
-                    report(ifs, lastline, "Function not found.")
+                    parser.report( "Function not found.")
                     finish(false, ERR_EVAL)
                 }
             } else {
@@ -2518,17 +2486,29 @@ tco_reentry:
         case C_Return:
 
             // tokens must not be braced
-            if tokencount == 2 {
+
+            /*
+                this is kind of invalid now we don't pass (...) as a single expression token.
+                we could still do with a bounds check here of some form, but this is not it...
+
+            if inbound.TokenCount == 2 {
                 if hasOuterBraces(inbound.Tokens[1].tokText) {
                     if inbound.Tokens[1].tokType == Expression {
-                        report(ifs, lastline, "Cannot brace a RETURN value.")
+                        parser.report( "Cannot brace a RETURN value.")
                         finish(true, ERR_SYNTAX)
                         break
                     }
                 }
             }
 
-            if tokencount != 1 {
+            */
+
+
+            if inbound.TokenCount != 1 {
+
+                // @todo: this should still work, but needs some updating to allow for full tokenisation
+                // needs to use Eval() or wrappedEval() instead of ev and process tokens instead of splitting
+                // strings all over the place.
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 if str.Trim(cet.text, " \t") != "" { // found something
@@ -2545,9 +2525,9 @@ tco_reentry:
                     tco_check:=false // disable until we check all is well
                     bname, _ := numlookup.lmget(base)
 
-                    if tokencount > 2 {
+                    if inbound.TokenCount > 2 {
                         // 0:RETURN 1:fn/var_name 2+:(expression)
-                        // if only a var_name, then tokencount must be 2
+                        // if only a var_name, then inbound.TokenCount must be 2
 
                         // pf("This func is  -> <%v>\n",fs)
                         // pf("Base func is  -> <%v>\n",bname)
@@ -2562,7 +2542,7 @@ tco_reentry:
 
                         skip_reentry:=false
 
-                        r,_:=userDefEval(ifs,inbound.Tokens[1:])
+                        r,_:=userDefEval(parser,ifs,inbound.Tokens[1:])
 
                         // until we have more logic in here, also skip if
                         // there's *anything* left in the expression after
@@ -2604,9 +2584,9 @@ tco_reentry:
                             if len(va) == len(dargs) {
 
                                 for q, _ := range va {
-                                    expr, ef, err := ev(ifs, dargs[q], false, true)
-                                    if ef || expr==nil || err != nil {
-                                        report(ifs,lastline,"Could not evaluate RETURN expression")
+                                    expr, err := ev(parser,ifs, dargs[q], false, true)
+                                    if expr==nil || err != nil {
+                                        parser.report("Could not evaluate RETURN expression")
                                         finish(true,ERR_EVAL)
                                         full_break=true
                                         break
@@ -2632,13 +2612,12 @@ tco_reentry:
 
                     // normal return (non tco)
 
-                    expr,ef := wrappedEval(ifs, cet, true) // evaluate it
-                    if !ef && !expr.evalError { // no error?
-
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true) // evaluate it
+                    if !expr.evalError {
                         retval = expr.result
                         if ifs<=2 {
                             if exitCode,not_ok:=GetAsInt(expr.result); not_ok {
-                                report(ifs, lastline, sf("could not evaluate RETURN parameter: %+v", cet.text))
+                                parser.report( sf("could not evaluate RETURN parameter: %+v\n%+v", cet.text,expr.errVal))
                                 finish(true, ERR_EVAL)
                                 break
                             } else {
@@ -2647,7 +2626,7 @@ tco_reentry:
                             }
                         }
                     } else {
-                        report(ifs,lastline,  sf("could not evaluate RETURN parameter: %+v", cet.text))
+                        parser.report(  sf("could not evaluate RETURN parameter: %+v", cet.text))
                         finish(true, ERR_EVAL)
                         break
                     }
@@ -2660,7 +2639,7 @@ tco_reentry:
         case C_Enddef:
 
             if !defining {
-                report(ifs,lastline,  "Not currently defining a function.")
+                parser.report(  "Not currently defining a function.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2675,10 +2654,10 @@ tco_reentry:
 
             // get C_Input arguments
 
-            if tokencount != 4 {
+            if inbound.TokenCount != 4 {
                 usage  :=         "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0]\n"
                 usage   = usage + "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
-                report(ifs, lastline, "Incorrect arguments supplied to INPUT.\n"+usage)
+                parser.report( "Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2694,7 +2673,7 @@ tco_reentry:
                 d, er := strconv.Atoi(pos)
                 if er == nil {
                     if d<1 {
-                        report(ifs,lastline, sf("INPUT position %d too low.",d))
+                        parser.report( sf("INPUT position %d too low.",d))
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -2707,11 +2686,11 @@ tco_reentry:
                             vset(ifs, id, cmdargs[d-1])
                         }
                     } else {
-                        report(ifs,lastline, sf("Expected CLI parameter '%s' not provided at startup.", id))
+                        parser.report( sf("Expected CLI parameter '%s' not provided at startup.", id))
                         finish(true, ERR_SYNTAX)
                     }
                 } else {
-                    report(ifs, lastline, sf("That '%s' doesn't look like a number.", pos))
+                    parser.report( sf("That '%s' doesn't look like a number.", pos))
                     finish(true, ERR_SYNTAX)
                 }
 
@@ -2734,7 +2713,7 @@ tco_reentry:
                         }
                     }
                 } else {
-                    report(ifs, lastline, sf("That '%s' doesn't look like a number.", pos))
+                    parser.report( sf("That '%s' doesn't look like a number.", pos))
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -2756,18 +2735,16 @@ tco_reentry:
             // MODULE <modname>                                - reads in state from a module file.
 
             var expr ExpressionCarton
-            var ef bool
 
-            if tokencount > 1 {
-                cet := crushEvalTokens(inbound.Tokens[1:])
-                expr,ef = wrappedEval(ifs, cet, true)
-                if ef || expr.evalError {
-                    report(ifs,lastline, "Could not evaluate expression in MODULE statement.")
+            if inbound.TokenCount > 1 {
+                expr = wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+                if expr.evalError {
+                    parser.report( sf("could not evaluate expression in MODULE statement\n%+v",expr.errVal))
                     finish(false,ERR_MODULE)
                     break
                 }
             } else {
-                report(ifs, lastline, "No module name provided.")
+                parser.report( "No module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2775,7 +2752,7 @@ tco_reentry:
             fom := expr.result.(string)
 
             if strcmp(fom,"") {
-                report(ifs,lastline,  "Empty module name provided.")
+                parser.report(  "Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2811,13 +2788,13 @@ tco_reentry:
             f, err := os.Stat(moduleloc)
 
             if err != nil {
-                report(ifs, lastline, sf("Module is not accessible. (path:%v)",moduleloc))
+                parser.report( sf("Module is not accessible. (path:%v)",moduleloc))
                 finish(false, ERR_MODULE)
                 break
             }
 
             if !f.Mode().IsRegular() {
-                report(ifs,lastline,  "Module is not a regular file.")
+                parser.report(  "Module is not a regular file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2826,7 +2803,7 @@ tco_reentry:
 
             mod, err := ioutil.ReadFile(moduleloc)
             if err != nil {
-                report(ifs,lastline,  "Problem reading the module file.")
+                parser.report(  "Problem reading the module file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2835,7 +2812,7 @@ tco_reentry:
 
             //.. error if it has already been defined
             if _, exists := fnlookup.lmget("@mod_"+fom); exists {
-                report(ifs,lastline,  "Function @mod_"+fom+" already exists.")
+                parser.report(  "Function @mod_"+fom+" already exists.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2860,11 +2837,12 @@ tco_reentry:
             modcs.base = loc
             modcs.caller = ifs
             modcs.fs = "@mod_" + fom
+            modcs.callline = pc
             calltable[loc] = modcs
 
             calllock.Unlock()
 
-            Call(MODE_NEW, loc)
+            Call(MODE_NEW, loc, ciMod)
 
             calllock.Lock()
             calltable[loc]=call_s{}
@@ -2884,34 +2862,32 @@ tco_reentry:
             // we need to calculate it anyway for nesting
             // after the above setup, we execute next source line as normal
 
-            if tokencount==1 {
-                report(ifs,lastline, "Missing expression in WHEN statement")
+            if inbound.TokenCount==1 {
+                parser.report( "Missing expression in WHEN statement")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             // lookahead
-            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []int{C_When}, []int{C_Endwhen})
+            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
 
             // debug(6,"@%d : Endwhen lookahead set to line %d\n",pc+1,pc+1+enddistance)
 
             if er {
-                report(ifs,lastline,  "Lookahead error!")
+                parser.report(  "Lookahead error!")
                 finish(true, ERR_SYNTAX)
                 break
             }
 
             if !endfound {
-                report(ifs,lastline,  "Missing ENDWHEN for this WHEN")
+                parser.report(  "Missing ENDWHEN for this WHEN")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            cet := crushEvalTokens(inbound.Tokens[1:])
-            expr,ef := wrappedEval(ifs, cet, true)
-
-            if ef || expr.evalError {
-                report(ifs,lastline,  "Could not evaluate the WHEN condition")
+            expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+            if expr.evalError {
+                parser.report( sf("could not evaluate the WHEN condition\n%+v",expr.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -2935,7 +2911,7 @@ tco_reentry:
             if lockSafety { looplock.RLock() }
 
             if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
-                report(ifs,lastline, "Not currently in a WHEN block.")
+                parser.report( "Not currently in a WHEN block.")
                 finish(false,ERR_SYNTAX)
                 if lockSafety { looplock.RUnlock() }
                 if lockSafety { lastlock.RUnlock() }
@@ -2947,15 +2923,14 @@ tco_reentry:
             if lockSafety { looplock.RUnlock() }
             if lockSafety { lastlock.RUnlock() }
 
-            var cet, expr ExpressionCarton
-            var ef bool
+            // var cet, expr ExpressionCarton
+            var expr ExpressionCarton
 
-            if tokencount > 1 { // tokencount==1 for C_Or
-                cet = crushEvalTokens(inbound.Tokens[1:])
-                expr,ef = wrappedEval(ifs, cet, true)
-                if ef || expr.evalError {
-                    report(ifs,lastline,  "Could not evaluate expression in WHEN condition.")
-                    finish(false,ERR_EVAL)
+            if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
+                expr = wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+                if expr.evalError {
+                    parser.report( sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
+                    finish(false, ERR_EVAL)
                     break
                 }
             }
@@ -3012,9 +2987,9 @@ tco_reentry:
             if ramble_on { // move on to next pc statement
             } else {
                 // skip to next WHEN clause:
-                isfound, isdistance, _ := lookahead(base, pc+1, 0, 0, C_Is, []int{C_When}, []int{C_Endwhen})
-                orfound, ordistance, _ := lookahead(base, pc+1, 0, 0, C_Or, []int{C_When}, []int{C_Endwhen})
-                cofound, codistance, _ := lookahead(base, pc+1, 0, 0, C_Contains, []int{C_When}, []int{C_Endwhen})
+                isfound, isdistance, _ := lookahead(base, pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
+                orfound, ordistance, _ := lookahead(base, pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
+                cofound, codistance, _ := lookahead(base, pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
 
                 // add jump distances to list
                 distList := []int{}
@@ -3046,7 +3021,7 @@ tco_reentry:
             if lockSafety { lastlock.Lock() }
 
             if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
-                report(ifs,lastline, "Not currently in a WHEN block.")
+                parser.report( "Not currently in a WHEN block.")
                 if lockSafety { lastlock.Unlock() }
                 if lockSafety { looplock.Unlock() }
                 break
@@ -3059,7 +3034,7 @@ tco_reentry:
             wccount[ifs]--
 
             if wccount[ifs] < 0 {
-                report(ifs,lastline,"Cannot reduce WHEN stack below zero.")
+                parser.report("Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3081,13 +3056,13 @@ tco_reentry:
             // ENDSTRUCT
 
             if structMode {
-                report(ifs,lastline,"Cannot nest a STRUCT")
+                parser.report("Cannot nest a STRUCT")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
-            if tokencount!=2 {
-                report(ifs,lastline,"STRUCT must contain a name.")
+            if inbound.TokenCount!=2 {
+                parser.report("STRUCT must contain a name.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3102,7 +3077,7 @@ tco_reentry:
             // end structmode
 
             if ! structMode {
-                report(ifs,lastline,"ENDSTRUCT without STRUCT.")
+                parser.report("ENDSTRUCT without STRUCT.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3125,7 +3100,7 @@ tco_reentry:
 
             var filter string
 
-            if tokencount>1 {
+            if inbound.TokenCount>1 {
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 filter,_ = interpolate(ifs,cet.text,true)
             }
@@ -3148,15 +3123,15 @@ tco_reentry:
             // WITH var AS file
             // get params
 
-            if tokencount < 4 {
-                report(ifs,lastline,"Malformed WITH statement.")
+            if inbound.TokenCount < 4 {
+                parser.report("Malformed WITH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             asAt := findDelim(inbound.Tokens, "as", 2)
             if asAt == -1 {
-                report(ifs,lastline,"AS not found in WITH")
+                parser.report("AS not found in WITH")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3165,20 +3140,20 @@ tco_reentry:
             fname:=crushEvalTokens(inbound.Tokens[asAt+1:]).text
 
             if fname=="" || vname=="" {
-                report(ifs,lastline,"Bad arguments to provided to WITH.")
+                parser.report("Bad arguments to provided to WITH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if _, found := VarLookup(ifs,vname); !found {
-                report(ifs,lastline,sf("Variable '%s' does not exist.",vname))
+                parser.report(sf("Variable '%s' does not exist.",vname))
                 finish(false,ERR_EVAL)
                 break
             }
 
             tfile, err:= ioutil.TempFile("","za_with_"+sf("%d",os.Getpid())+"_")
             if err!=nil {
-                report(ifs,lastline,"WITH could not create a temporary file.")
+                parser.report("WITH could not create a temporary file.")
                 finish(true,ERR_SYNTAX)
                 break
             }
@@ -3194,14 +3169,14 @@ tco_reentry:
                 current_with_handle=nil
                 err:=os.Remove(remfile)
                 if err!=nil {
-                    report(ifs,lastline,sf("WITH could not remove temporary file '%s'",remfile))
+                    parser.report(sf("WITH could not remove temporary file '%s'",remfile))
                     finish(true,ERR_FATAL)
                 }
             }()
 
         case C_Endwith:
             if !inside_with {
-                report(ifs,lastline,"ENDWITH without a WITH.")
+                parser.report("ENDWITH without a WITH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3209,33 +3184,31 @@ tco_reentry:
             inside_with=false
 
 
+        // parsing for these is a mess, will clean up when new evaluator stable.
+        // i think we only need to worry about parens when scanning for commas
+        // as string expressions should be single string literal tokens.
         case C_Print:
-            var badval bool
-            if tokencount > 1 {
-                previousterm := 1
+            if inbound.TokenCount > 1 {
+                evphrase:=""
+                evnest:=0
                 for term := range inbound.Tokens[1:] {
-                    if inbound.Tokens[term].tokType == C_Comma {
-                        expr, ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
-                        if ef || expr.evalError {
-                            pf(`<badval>`)
-                            badval=true
-                            break
-                        }
-                        // pf(`%v`, sparkle(sf(`%v`, expr.result)))
-                        pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
-                        previousterm = term + 1
+                    nt:=inbound.Tokens[1+term]
+                    if nt.tokType==LParen { evnest++ }
+                    if nt.tokType==RParen { evnest-- }
+                    if nt.tokType!=C_Comma {
+                        evphrase+=nt.tokText
+                    } else {
+                        if evnest>0 { evphrase+=nt.tokText }
                     }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                        v,_:=ev(parser,ifs,evphrase,true,false)
+                        pf(sparkle(sf(`%v`,v)))
+                        evphrase=""
+                        continue
+                    }
+                    // should do something about evnest>0 here, but all this will
+                    // be cleansed eventually.
                 }
-
-                if badval { break }
-
-                expr, ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:]), true)
-                if ef || expr.evalError {
-                    pf(`<badval>`)
-                    break
-                }
-                // pf(`%v`, sparkle(sf(`%v`, expr.result)))
-                pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                 if interactive { pf("\n") }
             } else {
                 pf("\n")
@@ -3243,32 +3216,26 @@ tco_reentry:
 
 
         case C_Println:
-            var badval bool
-            if tokencount > 1 {
-                previousterm := 1
+            if inbound.TokenCount > 1 {
+                evphrase:=""
+                evnest:=0
                 for term := range inbound.Tokens[1:] {
-                    if inbound.Tokens[term].tokType == C_Comma {
-                        expr, ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
-                        if ef || expr.evalError {
-                            pf(`<badval>`)
-                            badval=true
-                            break
-                        }
-                        // pf(`%v`, sparkle(sf(`%v`, expr.result)))
-                        pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
-                        previousterm = term + 1
+                    nt:=inbound.Tokens[1+term]
+                    if nt.tokType==LParen { evnest++ }
+                    if nt.tokType==RParen { evnest-- }
+                    if evnest>0 || nt.tokType!=C_Comma {
+                        evphrase+=nt.tokText
+                    } else {
+                        if evnest>0 { evphrase+=nt.tokText }
+                    }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                        v,_:=ev(parser,ifs,evphrase,true,false)
+                        pf( sf("%v",v) ) // sparkle( sf("%v",v) ) )
+                        // pf(sparkle(sf(`%v`,v)))
+                        evphrase=""
+                        continue
                     }
                 }
-
-                if badval { break }
-
-                expr, ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:]), true)
-                if ef || expr.evalError {
-                    pf(`<badval>`)
-                    break
-                }
-                // pf(`%v`, sparkle(sf(`%v`, expr.result)))
-                pf( `%v`, sparkle( stripOuter( sf(`%v`,expr.result),'"' ) ) )
                 pf("\n")
             } else {
                 pf("\n")
@@ -3278,27 +3245,28 @@ tco_reentry:
         case C_Log:
 
             plog_out := ""
-
-            var badval bool
-            if tokencount > 1 {
-                previousterm := 1
+            if inbound.TokenCount > 1 {
+                evphrase:=""
+                evnest:=0
                 for term := range inbound.Tokens[1:] {
-                    if inbound.Tokens[term].tokType == C_Comma {
-                        expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:term]), true)
-                        if ef || expr.evalError { badval=true; break }
-                        // plog_out += sparkle(sf(`%v`, expr.result))
-                        plog_out += sparkle( stripOuter( sf(`%v`, expr.result),'"') )
-                        previousterm = term + 1
+                    nt:=inbound.Tokens[1+term]
+                    if nt.tokType==LParen { evnest++ }
+                    if nt.tokType==RParen { evnest-- }
+                    if nt.tokType!=C_Comma {
+                        evphrase+=nt.tokText
+                    } else {
+                        if evnest>0 { evphrase+=nt.tokText }
+                    }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                        v,_:=ev(parser,ifs,evphrase,true,false)
+                        plog_out += sparkle(sf(`%v`,v))
+                        evphrase=""
+                        continue
                     }
                 }
-                if badval { break }
-                expr,ef := wrappedEval(ifs, crushEvalTokens(inbound.Tokens[previousterm:]), true)
-                if ef || expr.evalError { break }
-                // plog_out += sparkle(sf(`%v`, expr.result))
-                plog_out += sparkle( stripOuter( sf(`%v`, expr.result),'"') )
             }
-
             plog("%v", plog_out)
+
 
         case C_Hist:
 
@@ -3312,22 +3280,22 @@ tco_reentry:
 
             commaAt := findDelim(inbound.Tokens, ",", 1)
 
-            if commaAt == -1 || commaAt == tokencount {
-                report(ifs,lastline,  "Bad delimiter in AT.")
+            if commaAt == -1 || commaAt == inbound.TokenCount {
+                parser.report(  "Bad delimiter in AT.")
                 finish(false, ERR_SYNTAX)
             } else {
 
                 evrow := crushEvalTokens(inbound.Tokens[1:commaAt])
                 evcol := crushEvalTokens(inbound.Tokens[commaAt+1:])
 
-                expr_row, ef, err := ev(ifs, evrow.text, false,true)
-                if ef || expr_row==nil || err != nil {
-                    report(ifs, lastline, sf("Evaluation error in %v", expr_row))
+                expr_row, err := ev(parser,ifs, evrow.text, false,true)
+                if expr_row==nil || err != nil {
+                    parser.report( sf("Evaluation error in %v", expr_row))
                 }
 
-                expr_col, ef, err := ev(ifs, evcol.text, false,true)
-                if ef || expr_col==nil || err != nil {
-                    report(ifs,lastline,  sf("Evaluation error in %v", expr_col))
+                expr_col, err := ev(parser,ifs, evcol.text, false,true)
+                if expr_col==nil || err != nil {
+                    parser.report(  sf("Evaluation error in %v", expr_col))
                 }
 
                 row, _ = GetAsInt(expr_row)
@@ -3341,35 +3309,38 @@ tco_reentry:
 
             // else continue
 
-            if tokencount < 2 {
+            if inbound.TokenCount < 2 {
                 usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ]"
-                report(ifs,lastline,  "Not enough arguments for PROMPT.\n"+usage)
+                parser.report(  "Not enough arguments for PROMPT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             // prompt variable assignment:
-            if tokencount > 1 { // um, should not do this but...
+            if inbound.TokenCount > 1 { // um, should not do this but...
                 if inbound.Tokens[1].tokType == C_Assign {
-                    cet := crushEvalTokens(inbound.Tokens[2:])
-                    expr,ef := wrappedEval(ifs, cet, true)
-                    if ef || expr.evalError { break }
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], true)
+                    if expr.evalError {
+                        parser.report( sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
+                        finish(false, ERR_EVAL)
+                        break
+                    }
                     switch expr.result.(type) {
                     case string:
                         promptTemplate = sparkle(expr.result.(string))
                     }
                 } else {
                     // prompt command:
-                    if tokencount < 3 || tokencount > 4 {
-                        report(ifs,lastline, "Incorrect arguments for PROMPT command.")
+                    if inbound.TokenCount < 3 || inbound.TokenCount > 4 {
+                        parser.report( "Incorrect arguments for PROMPT command.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
                         validator := ""
                         broken := false
-                        expr, _, prompt_ev_err := ev(ifs, inbound.Tokens[2].tokText, true, true)
+                        expr, prompt_ev_err := ev(parser,ifs, inbound.Tokens[2].tokText, true, true)
                         if expr==nil {
-                            report(ifs, lastline, "Could not evaluate in PROMPT command.")
+                            parser.report( "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -3377,10 +3348,10 @@ tco_reentry:
                             // @todo: allow an expression instead of the string literal for validator
                             processedPrompt := expr.(string)
                             echoMask,_:=vget(0,"@echomask")
-                            if tokencount == 4 {
-                                val_ex,_,val_ex_error := ev(ifs, inbound.Tokens[3].tokText, true, true)
+                            if inbound.TokenCount == 4 {
+                                val_ex,val_ex_error := ev(parser,ifs, inbound.Tokens[3].tokText, true, true)
                                 if val_ex_error != nil {
-                                    report(ifs,lastline,"Validator invalid in PROMPT!")
+                                    parser.report("Validator invalid in PROMPT!")
                                     finish(false,ERR_EVAL)
                                     break
                                 }
@@ -3409,8 +3380,8 @@ tco_reentry:
 
         case C_Logging:
 
-            if tokencount < 2 || tokencount > 3 {
-                report(ifs,lastline,  "LOGGING command malformed.")
+            if inbound.TokenCount < 2 || inbound.TokenCount > 3 {
+                parser.report(  "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3422,10 +3393,13 @@ tco_reentry:
 
             case "on":
                 loggingEnabled = true
-                if tokencount == 3 {
-                    cet := crushEvalTokens(inbound.Tokens[2:])
-                    expr,ef := wrappedEval(ifs, cet, false)
-                    if ef || expr.evalError { break }
+                if inbound.TokenCount == 3 {
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                    if expr.evalError {
+                        parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",expr.errVal))
+                        finish(false, ERR_EVAL)
+                        break
+                    }
                     logFile = expr.result.(string)
                     vset(0, "@logsubject", "")
                 }
@@ -3437,10 +3411,13 @@ tco_reentry:
                 vset(globalspace, "@silentlog", false)
 
             case "accessfile":
-                if tokencount > 2 {
-                    cet := crushEvalTokens(inbound.Tokens[2:])
-                    expr,ef := wrappedEval(ifs, cet, true)
-                    if ef || expr.evalError { break }
+                if inbound.TokenCount > 2 {
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], true)
+                    if expr.evalError {
+                        parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",expr.errVal))
+                        finish(false, ERR_EVAL)
+                        break
+                    }
                     web_log_file=expr.result.(string)
                     // pf("accessfile changed to %v\n",web_log_file)
                     web_log_handle.Close()
@@ -3451,45 +3428,48 @@ tco_reentry:
                     }
                     web_logger = log.New(web_log_handle, "", log.LstdFlags) // no prepended text
                 } else {
-                    report(ifs,lastline, "No access file provided for LOGGING ACCESSFILE command.")
+                    parser.report( "No access file provided for LOGGING ACCESSFILE command.")
                     finish(false, ERR_SYNTAX)
                 }
 
             case "web":
-                if tokencount > 2 {
+                if inbound.TokenCount > 2 {
                     switch str.ToLower(inbound.Tokens[2].tokText) {
                     case "on","1","enable":
                         log_web=true
                     case "off","0","disable":
                         log_web=false
                     default:
-                        report(ifs,lastline, "Invalid state set for LOGGING WEB.")
+                        parser.report( "Invalid state set for LOGGING WEB.")
                         finish(false, ERR_EVAL)
                     }
                 } else {
-                    report(ifs,lastline, "No state provided for LOGGING WEB command.")
+                    parser.report( "No state provided for LOGGING WEB command.")
                     finish(false, ERR_SYNTAX)
                 }
 
             case "subject":
-                if tokencount == 3 {
-                    cet := crushEvalTokens(inbound.Tokens[2:])
-                    expr,ef := wrappedEval(ifs, cet, false)
-                    if ef || expr.evalError { break }
+                if inbound.TokenCount == 3 {
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                    if expr.evalError {
+                        parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",expr.errVal))
+                        finish(false, ERR_EVAL)
+                        break
+                    }
                     vset(0, "@logsubject", expr.result.(string))
                 } else {
                     vset(0, "@logsubject", "")
                 }
 
             default:
-                report(ifs, lastline, "LOGGING command malformed.")
+                parser.report( "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
             }
 
 
         case C_Cls:
 
-            if tokencount == 1 {
+            if inbound.TokenCount == 1 {
                 cls()
                 row = 1
                 col = 1
@@ -3510,15 +3490,15 @@ tco_reentry:
 
             // similar issues to INC+DEC with array elements. needs fixing when they get done right.
 
-            if tokencount == 2 {
+            if inbound.TokenCount == 2 {
                 if inbound.Tokens[1].tokType == Identifier {
                     vset(ifs, inbound.Tokens[1].tokText, 0)
                 } else {
-                    report(ifs,lastline,  "Not an identifier.")
+                    parser.report(  "Not an identifier.")
                     finish(false, ERR_SYNTAX)
                 }
             } else {
-                report(ifs,lastline,  "Missing identifier to reset.")
+                parser.report(  "Missing identifier to reset.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3527,12 +3507,12 @@ tco_reentry:
 
             var id string
 
-            if tokencount > 1 {
+            if inbound.TokenCount > 1 {
 
                 if inbound.Tokens[1].tokType == Identifier {
                     id = inbound.Tokens[1].tokText
                 } else {
-                    report(ifs,lastline,  "Not an identifier.")
+                    parser.report(  "Not an identifier.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -3542,7 +3522,7 @@ tco_reentry:
                 var endIncDec bool
                 var isArray bool
 
-                switch tokencount {
+                switch inbound.TokenCount {
                 case 2:
                     ampl = 1
                 default:
@@ -3555,7 +3535,7 @@ tco_reentry:
                         case int:
                             ampl = v
                         default:
-                            report(ifs,lastline, sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
+                            parser.report( sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                             break
@@ -3564,19 +3544,24 @@ tco_reentry:
                         var er bool
                         ampl,er = GetAsInt(inbound.Tokens[2].tokText)
                         if er { // else evaluate
-                            cet := crushEvalTokens(inbound.Tokens[2:])
-                            expr,ef := wrappedEval(ifs, cet, false)
-                            if ef || expr.evalError {
-                                endIncDec=true
+
+                            expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                            typ:="increment"
+                            if statement.tokType==C_Dec { typ="decrement" }
+                            if expr.evalError {
+                                parser.report( sf("could not evaluate amplitude in %v statement\n%+v",typ,expr.errVal))
+                                finish(false, ERR_EVAL)
                                 break
                             }
+
                             switch expr.result.(type) {
                             case int:
                                 ampl = expr.result.(int)
                             default:
-                                report(ifs,lastline, sf("%s does not result in an integer type.",str.ToUpper(inbound.Tokens[0].tokText)))
+                                parser.report( sf("%s does not result in an integer type.",str.ToUpper(inbound.Tokens[0].tokText)))
                                 finish(false,ERR_EVAL)
                             }
+
                         }
                     }
                 }
@@ -3616,7 +3601,7 @@ tco_reentry:
                         case uint8:
                             ival=int(val.(uint8))
                         default:
-                            report(ifs,lastline, sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
+                            parser.report( sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
                             finish(false,ERR_EVAL)
                             endIncDec=true
                         }
@@ -3654,7 +3639,7 @@ tco_reentry:
             } else {
                 typ:="increment"
                 if statement.tokType==C_Dec { typ="decrement" }
-                report(ifs, lastline, "Missing identifier in "+typ+" statement.")
+                parser.report( "Missing identifier in "+typ+" statement.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3662,19 +3647,19 @@ tco_reentry:
         case C_If:
 
             // lookahead
-            elsefound, elsedistance, er := lookahead(base, pc, 0, 1, C_Else, []int{C_If}, []int{C_Endif})
-            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endif, []int{C_If}, []int{C_Endif})
+            elsefound, elsedistance, er := lookahead(base, pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
+            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
 
             if er || !endfound {
-                report(ifs,lastline,  "Missing ENDIF for this IF")
+                parser.report(  "Missing ENDIF for this IF")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             // eval
-            expr, validated := EvalCrushRest(ifs, inbound.Tokens, 1)
-            if !validated {
-                report(ifs,lastline,  "Could not evaluate expression.")
+            expr, err := EvalCrushRest(parser,ifs, inbound.Tokens, 1)
+            if err!=nil {
+                parser.report(  "Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3696,12 +3681,12 @@ tco_reentry:
             // we already jumped to else+1 to deal with a failed IF test
             // so jump straight to the endif here
 
-            endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endif, []int{C_If}, []int{C_Endif})
+            endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
 
             if endfound {
                 pc += enddistance
             } else { // this shouldn't ever occur, as endif checked during C_If, but...
-                report(ifs, lastline, "ELSE without an ENDIF\n")
+                parser.report( "ELSE without an ENDIF\n")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3715,7 +3700,7 @@ tco_reentry:
 
             // local command assignment (child process call)
 
-            if tokencount > 1 { // ident "=|"
+            if inbound.TokenCount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
                     if len(inbound.Text) > 0 {
                         // get text after =|
@@ -3730,9 +3715,19 @@ tco_reentry:
                 }
             }
 
+            //
+            //
             // try to eval and assign
-            // cet := crushEvalTokens(inbound.Tokens)
-            if tmpres,_ := wrappedEval(ifs, crushEvalTokens(inbound.Tokens), true); tmpres.evalError { break }
+
+            if we:=wrappedEval(parser,ifs, inbound.Tokens, true); we.evalError {
+                parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
+                finish(false,ERR_EVAL)
+                break
+            }
+
+            //
+            //
+            //
 
         } // end-statements-case
 
@@ -3781,6 +3776,8 @@ tco_reentry:
         if lockSafety { calllock.Unlock() }
 
     }
+
+    callChain=callChain[:len(callChain)-1]
 
     return endFunc
 
@@ -3849,7 +3846,7 @@ func ShowDef(fn string) bool {
 }
 
 /// search token list for a given delimiter token type
-func findTokenDelim(tokens []Token, delim int, start int) (pos int) {
+func findTokenDelim(tokens []Token, delim uint8, start int) (pos int) {
     for p := start; p < len(tokens); p++ {
         if tokens[p].tokType == delim {
             return p

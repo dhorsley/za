@@ -4,11 +4,6 @@ import (
 	str "strings"
 )
 
-const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@{}"
-const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const numeric = "0123456789."
-
 // parse():
 //
 //   process an input string into separate lines of commands (Phrases). Each phrase is
@@ -37,11 +32,35 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
     var strPhrase str.Builder
     strPhrase.Grow(32)
 
+    // simple handler for parens nesting
+    var braceNestLevel  int     // round braces
+    var sbraceNestLevel int     // square braces
+
 	for ; pos < len(input); pos++ {
 
         // debug(15,"nt : (pos:%d) calling nextToken()\n",pos)
 		tempToken, eol, eof = nextToken(input, &curLine, pos, previousToken)
 		previousToken = tempToken.tokType
+
+        if previousToken==LParen {
+            braceNestLevel++
+        }
+        if previousToken==RParen {
+            braceNestLevel--
+        }
+        if previousToken==LeftSBrace {
+            sbraceNestLevel++
+        }
+        if previousToken==RightSBrace {
+            sbraceNestLevel--
+        }
+
+        if sbraceNestLevel>0 || braceNestLevel>0 {
+            if eol || previousToken==EOL {
+                // curLine++
+                continue
+            }
+        }
 
         // debug(15,"nt-t: (tokpos:%d) %v\n",tempToken.tokPos,tokNames[tempToken.tokType])
 
@@ -72,18 +91,17 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 		if eof || eol {
 
             // -- strip the eol
-            if eol { phrase.TokenCount-- }
+            if eol {
+                phrase.TokenCount--
+                phrase.Tokens=phrase.Tokens[:phrase.TokenCount]
+            }
 
 			// -- cleanup phrase text
 			phrase.Text = str.TrimRight(strPhrase.String(), " ")
-            // debug(15,"current phrase text = '%v'\n",phrase.Text)
 
 			// -- add original version
-			// if pos>0 { phrase.Original = input[lstart:pos+1] }
 			if pos>0 { phrase.Original = input[lstart:pos] }
 			lstart = pos + 1
-			// lstart = pos
-            // debug(15,"current phrase orig = '%v'\n",phrase.Original)
 
             // -- discard empty lines
             if phrase.TokenCount!=0 {

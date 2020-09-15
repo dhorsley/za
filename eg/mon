@@ -14,8 +14,8 @@
 
 logging on "/tmp/dh"
 
-define clear(start,end,column)
-    for f=start to end
+define clear(lstart,lend,column)
+    for f=lstart to lend
         clear_line(f,column)
     endfor
 enddef
@@ -101,7 +101,7 @@ define showMem()
     pane select "mem"
     pane redraw
 
-    if !getglob("access")
+    if !access
         at 2,1
         println "[#1]Slab information requires root access.[#-]"
         return
@@ -204,6 +204,7 @@ define showProcs(ct,uptime)
         on procstarttime==0 do continue
 
         # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
+
         if pid!=pid()
             putime=float(uptime-(procstarttime/ct))
             on putime==0 do continue
@@ -226,7 +227,7 @@ define showProcs(ct,uptime)
         sorted = uniq(lines(fieldsort(shellout,4,"n",true),":11"))
 
         # final list display
-        count=8
+        lcount=8
         comwidth=25
 
         at 1,1; print format (  "[#b2][#7][#bold]%2s %6s %6s %5s %5s %7s %-{comwidth}s[##][#-]",
@@ -235,14 +236,14 @@ define showProcs(ct,uptime)
         clear(2,10,1)
 
         foreach p in sorted
-            at 10-count,1
+            at 10-lcount,1
             fields(p," ")
             # skip low activity processes
             if float(F4)>0.2 || float(F5)>0.2
                 on len(F10)>=comwidth do F10=substr(F10,0,comwidth-1)
                 print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{comwidth-1}s[#-]",F1,int(F2),int(F3),float(F4),float(F5),float(F8),collapse(F10))
-                dec count
-                on count==0 do break
+                dec lcount
+                on lcount==0 do break
             endif
         endfor
 
@@ -322,7 +323,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             # now populate local prev from global prev
             foreach i in indexlist
                 if globkey("prev","{name}_{i}")
-                    g=getglob(`prev["{name}_{i}"]`)
+                    g=prev["{name}_{i}"]
                     if is_number(g)
                         prev_{i}=g
                     else
@@ -334,23 +335,23 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             endfor
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
-            if prev_total!=nil
+            if prev_total!=0
                 diff_total = float(_total-prev_total)
                 foreach i in partindexlist
                     if diff_total==0
                         diff_{i}=int(0)
                     else
-                        # if is_number(prev_{i})
+                        if is_number(prev_{i})
                             diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
-                        # endif
+                        endif
                     endif
                 endfor
 
                 # figure display total
                 disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest
             else
-                # at 2,2; print "[#invert]Checking previous CPU values.[#-]"
-                # break
+                at 2,2; print "[#invert]Checking previous CPU values.[#-]"
+                break
             endif
 
             # record for next iter
@@ -367,13 +368,11 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             endif
             
             # display
-
             if sample_start_in>0
                 sample_start_in=sample_start_in-1
             else
 
                 clear_line(row,1)
-
 
                 at row,1 ; print format("%5s ",name)
                 pos=7
@@ -445,8 +444,7 @@ define showHdd()
         disks=| df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
     endwhen
 
-    comwidth=23
-    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-{comwidth}s[#-][##]","path","size","used","avail","use%")
+    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use\%")
     row=2
 
     foreach d in disks
@@ -455,7 +453,8 @@ define showHdd()
             on kind(F1)!="string" do continue
             if !key("devices",F1)
                 devices[F1]=F6
-                at row,1; print format("%20s %5s %5s %5s [#6]%-{comwidth}s[#-]",F1,F2,F3,F4,F5)
+                F5=replace(F5,`%`,`%%`)
+                at row,1; print format(`%20s %5s %5s %5s %-23s`,F1,F2,F3,F4,F5)
                 inc row
             endif
         endif
@@ -496,24 +495,25 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
             terr    = float(F12)
 
             # diff from previous
+
             if net_sample_start_in>0
-                setglob prev_rbytes = rbytes
-                setglob prev_rerr = rerr
-                setglob prev_tbytes = tbytes
-                setglob prev_terr = terr
+                setglob prev_rbytes = 0
+                setglob prev_rerr = 0
+                setglob prev_tbytes = 0
+                setglob prev_terr = 0
             endif
 
-            drb=float(rbytes-getglob("prev_rbytes"))
-            dre=float(rerr-getglob("prev_rerr"))
-            dtb=float(tbytes-getglob("prev_tbytes"))
-            dte=float(terr-getglob("prev_terr"))
+            drb=rbytes-prev_rbytes
+            dre=rerr-prev_rerr
+            dtb=tbytes-prev_tbytes
+            dte=terr-prev_terr
 
             # shift left and append new to end
+            rblist=append(tail(rblist),drb)
+            relist=append(tail(relist),dre)
+            tblist=append(tail(tblist),dtb)
+            telist=append(tail(telist),dte)
 
-            rblist=append(tail(getglob("rblist")),drb)
-            relist=append(tail(getglob("relist")),dre)
-            tblist=append(tail(getglob("tblist")),dtb)
-            telist=append(tail(getglob("telist")),dte)
 
             # display using log scale up to log64(5).
             # using key_timeout as a rough scaler for the sampling period.
@@ -601,11 +601,11 @@ define redef_layout(cpu_count)
     setglob tblist = push_front(0.0)
     setglob telist = push_front(0.0)
 
-    for f=1 to getglob("net_sample_count")
-        setglob rblist = append(getglob("rblist"),0.0)
-        setglob relist = append(getglob("relist"),0.0)
-        setglob tblist = append(getglob("tblist"),0.0)
-        setglob telist = append(getglob("telist"),0.0)
+    for f=1 to net_sample_count
+        setglob rblist = append(rblist,0.0)
+        setglob relist = append(relist,0.0)
+        setglob tblist = append(tblist,0.0)
+        setglob telist = append(telist,0.0)
     endfor
 
     showEnv()
@@ -618,7 +618,7 @@ define redef_layout(cpu_count)
     print "[#6]"
     at midline,2
         # at midline,1+f; print graph_line
-    for f=1 to getglob("net_sample_count")
+    for f=1 to net_sample_count
         print graph_line
     endfor
     print "[#-]"

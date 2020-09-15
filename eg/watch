@@ -69,11 +69,11 @@ define check_dir(conf,d)
             of=lookup_old(conf,f.name)
             if of>-1
                 p_rec=cp[of]
-                if p_rec.mtime!=f.mtime
+                if p_rec.mtime != f.mtime
                     # println ": -- [#3]time diff[#-] in {p_rec.name}"
                     mod_files_time=append(mod_files_time,p_rec.name)
                 endif
-                if p_rec.size!=f.size
+                if p_rec.size != f.size
                     # println ": -- [#3]size diff[#-] in {p_rec.name}"
                     if !contains(mod_files_time,p_rec.name)
                         # only add to modified size files list if not

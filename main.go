@@ -56,6 +56,7 @@ var lockSafety bool=false       // enable mutices in variable handling functions
 
 // run-time
 
+
 var calltable = make([]call_s,CALL_CAP)             // open function calls
 var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
@@ -66,7 +67,7 @@ var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for e
 var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
 var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function id)
 var fairydust = make(map[string]string, FAIRY_CAP)  // ANSI colour code mappings (key: colour alias)
-var lastConstruct = make([][]int, SPACE_CAP)        // stores the active construct/loop types outer->inner for the break command
+var lastConstruct = make([][]uint8, SPACE_CAP)      // stores the active construct/loop types outer->inner for the break command
 var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN statements
 var wccount = make([]int, SPACE_CAP)                // count of active WHEN..ENDWHEN statements per function.
 
@@ -104,12 +105,11 @@ var dbpass string   //
 var elast int                                       // mainly for debugging eval routine. should only be used when locks are 
                                                     //  disabled. it contains the last line number executed.
 
-
 //
 // MAIN
 //
 
-var eval *Evaluator         // declaration for math evaluator
+// var eval *Evaluator         // declaration for math evaluator
 
 var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process in, out and error streams
@@ -192,7 +192,7 @@ func main() {
 
     runtime.GOMAXPROCS(runtime.NumCPU())
 
-    // setup winch handler receive channel to indicate a refresh is required, then check it in Call() before enact().
+    // setup winch handler receive channel to indicate a refresh is required, then check it in Call()
     sigs := make(chan os.Signal, 1)
 
     if runtime.GOOS!="windows" {
@@ -287,10 +287,8 @@ func main() {
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
-    lastConstruct[globalspace] = []int{}
+    lastConstruct[globalspace] = []uint8{}
 
-    // initialise math evaluator for re-use in ev()
-    eval = NewEvaluator()
 
     // read compile time arch info
     vset(0, "@glibc", false)
@@ -550,6 +548,12 @@ func main() {
 
     }
 
+
+    // initialise global parser
+    parser:=&leparser{}
+    parser.Init()
+
+
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
     signal.Notify(breaksig, syscall.SIGINT)
@@ -610,8 +614,8 @@ func main() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, ef, err := ev(globalaccess, a, false,true)
-                            if ef || err != nil {
+                            aval, err := ev(parser,globalaccess, a, false,true)
+                            if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
                                 finish(false, ERR_EVAL)
                                 break
@@ -623,23 +627,22 @@ func main() {
 
                 // build call
 
-                // vunset(globalaccess,"@temp")
                 loc,id := GetNextFnSpace(usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
-                calltable[loc] = call_s{fs: id, base: lmv, caller: globalaccess, retvar: "@temp"}
+                calltable[loc] = call_s{fs: id, base: lmv, caller: globalaccess, callline: 0,retvar: "@#"}
                 calllock.Unlock()
 
                 // execute call
-                Call(MODE_NEW, loc, iargs...)
+                Call(MODE_NEW, loc, ciTrap, iargs...)
 
-                if _, ok := VarLookup(globalaccess, "@temp"); ok {
-                    sigintreturn,_ := vget(globalaccess, "@temp")
+                if _, ok := VarLookup(globalaccess, "@#"); ok {
+                    sigintreturn,_ := vget(globalaccess, "@#")
                     switch sigintreturn.(type) {
                     case int:
                     default:
                         // pf("User interrupt handler must return an int or nothing!\n")
-                        // finish(true,124)
+                        finish(true,124)
                     }
                     if sigintreturn.(int)!=0 {
                         finish(true,sigintreturn.(int))
@@ -740,7 +743,6 @@ func main() {
 
 
         // further globals from bash
-        // cop, _ = Copper("hostname", true)
         h, _ := os.Hostname()
         vset(0, "@hostname", h)
 
@@ -829,7 +831,7 @@ func main() {
             parse("global", input, 0)
 
             // throw away break and continue positions in interactive mode
-            endFunc = Call(MODE_STATIC, globalspace)
+            endFunc = Call(MODE_STATIC, globalspace, ciRepl)
             if endFunc {
                 break
             }
@@ -898,7 +900,7 @@ func main() {
         input=string(data)
     }
 
-    // tokenise and parse the input
+    // tokenise and part-parse the input
     if len(input) > 0 {
         parse("main", input, 0)
 
@@ -907,12 +909,13 @@ func main() {
         cs.base = 1
         cs.fs = "main"
         cs.caller = 0
+        cs.callline = 0
 
         mainloc,_ := GetNextFnSpace("main")
         calllock.Lock()
         calltable[mainloc] = cs
         calllock.Unlock()
-        Call(MODE_NEW, mainloc)
+        Call(MODE_NEW, mainloc, ciMain)
     }
 
     // a little paranoia to finish things off...
