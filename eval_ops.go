@@ -7,10 +7,8 @@ import (
     "math"
     "net/http"
     "unsafe"
-//    "regexp"
     "reflect"
     "strconv"
-//    "strings"
 )
 
 
@@ -769,8 +767,6 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
 		        panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
 	        }
 		    switch obj:=obj.(type) {
-            case []interface{}:
-                if len(obj)>idx { return obj[idx] }
             case []int:
                 if len(obj)>idx { return obj[idx] }
             case []bool:
@@ -789,7 +785,11 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
                 if len(obj)>idx { return obj[idx] }
             case []string:
                 if len(obj)>idx { return obj[idx] }
+            case string:
+                if len(obj)>idx { return obj[idx] }
             case []float64:
+                if len(obj)>idx { return obj[idx] }
+            case []interface{}:
                 if len(obj)>idx { return obj[idx] }
             default:
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
@@ -908,6 +908,9 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case []string:
         isArr=true
         arl= len(v.([]string))
+    case string:
+        isArr=true
+        arl= len(v.(string))
     case []interface{}:
         isArr=true
         arl= len(v.([]interface{}))
@@ -978,6 +981,8 @@ func slice(v interface{}, from, to interface{}) interface{} {
 	    return v.([]uint64)[fromInt:toInt]
     case []string:
 	    return v.([]string)[fromInt:toInt]
+    case string:
+	    return v.(string)[fromInt:toInt]
     case []interface{}:
 	    return v.([]interface{})[fromInt:toInt]
     }

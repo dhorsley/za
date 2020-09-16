@@ -16,7 +16,7 @@ func buildMathLib() {
 	categories["math"] = []string{
 		"seed", "rand", "sqr", "sqrt", "pow","abs",
 		"sin", "cos", "tan", "asin", "acos", "atan","floor",
-		"ln", "log", "log2", "log10", "round", "rad2deg", "deg2rad",
+		"ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
 		"e", "pi", "phi", "ln2", "ln10","ibase",
         "ubin8","uhex32","numcomma",
 	}
@@ -129,8 +129,8 @@ func buildMathLib() {
 		return n, nil
 	}
 
-	slhelp["log"] = LibHelp{in: "number,base", out: "number", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
-	stdlib["log"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	slhelp["logn"] = LibHelp{in: "number,base", out: "number", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
+	stdlib["logn"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 2 {
 			return 0, errors.New("Bad args to log()")
 		}
