@@ -23,20 +23,20 @@ func (p *leparser) Init() {
 	p.table = [127]rule{
 		RParen        : {-1,p.ignore, nil},
 		RightSBrace   : {-1,p.ignore, nil},
-        LeftSBrace    : {45,p.array_concat,p.binaryLed},   // un: [ x,y,z ], bin: a[b], c[d]  sub-scripting
+        LeftSBrace    : {45,p.array_concat,p.binaryLed},    // un: [ x,y,z ], bin: a[b], c[d]  sub-scripting
         NumericLiteral: {-1,p.number, nil},
         StringLiteral : {-1,p.stringliteral,nil},
         Identifier    : {-1,p.identifier,nil},
         C_Assign      : {5,p.unary,p.binaryLed},
         C_Plus        : {30,nil,p.binaryLed},
-		C_Minus       : {30,p.unary,p.binaryLed},          // subtraction and unary minus 
+		C_Minus       : {30,p.unary,p.binaryLed},           // subtraction and unary minus 
 		C_Multiply    : {35,nil,p.binaryLed},
 		C_Divide      : {35,nil,p.binaryLed},
         C_Percent     : {35,nil,p.binaryLed},
 		C_Comma       : {-1,nil, nil},
         LParen        : {100,p.grouping, p.binaryLed},      // a(b), c(d)  calls
 		SYM_COLON     : {-1,nil, nil},
-        SYM_DOT       : {45,nil,p.binaryLed},              // a.b, c.d    field refs
+        SYM_DOT       : {45,nil,p.binaryLed},               // a.b, c.d    field refs
         EOF           : {-1,nil, nil},
         SYM_EQ        : {25,nil,p.binaryLed},
         SYM_NE        : {25,nil,p.binaryLed},
@@ -50,13 +50,11 @@ func (p *leparser) Init() {
         C_Caret       : {20,nil,p.binaryLed},  // XOR
         SYM_BOR       : {20,nil,p.binaryLed},  // OR
 		C_Pling       : {15,p.unary, nil},     // Logical Negation
-        SYM_PP        : {40,p.unary, nil},                 // ++x
-        SYM_MM        : {40,p.unary, nil},                 // --x
-        SYM_POW       : {40,nil,p.binaryLed},              // a**b
+        SYM_PP        : {40,p.unary, nil},     // ++x // not currently in use
+        SYM_MM        : {40,p.unary, nil},     // --x // not currently in use
+        SYM_POW       : {40,nil,p.binaryLed},  // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
-        C_Log         : {125,p.reserved,nil},
-        C_Contains    : {125,p.reserved,nil},
 	}
 
 }
@@ -64,11 +62,12 @@ func (p *leparser) Init() {
 func (p *leparser) reserved(token Token) (interface{}) {
 
     // this might change in the future:
-    /*
+
+    // check for keywords
     if token.tokType>=C_Zero && token.tokType<=C_On {
-        panic("identifiers and functions cannot share a name with keywords!")
+        panic(fmt.Errorf("statement names cannot be used as identifiers (%v)",token.tokText))
+        finish(true,ERR_SYNTAX)
     }
-    */
 
     return token.tokText
 
@@ -157,6 +156,13 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
     // pf("dparse query position: %+v\n",p.pos)
 
 	token:=p.next()
+
+    if token.tokType>=C_Zero && token.tokType<=C_On {
+        p.reserved(token)
+    }
+
+	dummy := p.table[token.tokType]
+    if dummy.prec==0 {}
 
 	left = p.table[token.tokType].nud(token)
 
@@ -267,7 +273,7 @@ func (p *leparser) accessField(left interface{},right Token) (interface{}) {
         tok:=p.next()
         return accessField(p.fs,left,tok.tokText)
 
-    case reflect.Slice:
+    case reflect.String,reflect.Slice:
 
         switch left:=left.(type) {
         case []bool:
@@ -373,8 +379,6 @@ func (p *leparser) accessField(left interface{},right Token) (interface{}) {
         } else {
 
             if p.peek().tokType!=RightSBrace {
-                // pf("in map peek: tokens [%#v]\n",p.tokens)
-                // pf("in map peek: tokpos [%v]\n",p.pos)
                 dp,err:=p.dparse(0)
                 if err!=nil {
                     panic(fmt.Errorf("map key could not be evaluated"))
@@ -563,34 +567,21 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // local lookup:
     // var names take priority over stdlib and user defined function names
-    inter,_:=interpolate(p.fs,token.tokText,false)
-    if val,there:=vget(p.fs,inter); there {
+    if val,there:=vget(p.fs,interpolate(p.fs,token.tokText)); there {
         return val
     }
 
     // global lookup:
-    inter,_=interpolate(p.fs,token.tokText,false)
-    if val,there:=vget(globalaccess,inter); there {
+    if val,there:=vget(globalaccess,interpolate(p.fs,token.tokText)); there {
         return val
     }
-
-    /* replaced by above 
-    if val,there:=vget(globalaccess,token.tokText); there {
-        // pf("identifier -> got value '%v' from vget with fs->%d and toktext->%s\n",val,p.fs,token.tokText)
-        return val,nil
-    }
-    */
-
-    // currently disabled as we want to permit bad id names in some stdlib funcs ( e.g. append() )
-    // panic(fmt.Errorf("'%v' is neither an identifier or a function.",token.tokText))
 
     return nil
 
 }
 
 func (p *leparser) stringliteral(token Token) (interface{}) {
-    ws,_:=interpolate(p.fs,stripBacktickQuotes(stripDoubleQuotes(token.tokText)),true)
-    return ws
+    return interpolate(p.fs,stripBacktickQuotes(stripDoubleQuotes(token.tokText)))
 }
 
 
@@ -608,12 +599,16 @@ func VarLookup(fs uint64, name string) (int, bool) {
     if lockSafety { vlock.RLock() }
 
     // more recent variables created should, on average, be higher numbered.
-    for k := varcount[fs]-1; k>=0 ; k-- {
+    // for k := varcount[fs]-1; k>=0 ; k-- {
+    k:=varcount[fs]-1
+    vl_repeat_point:
         if strcmp(ident[fs][k].IName,name) {
             if lockSafety { vlock.RUnlock() }
             return k, true
         }
-    }
+        k--
+    if k>=0 { goto vl_repeat_point }
+    // }
 
     if lockSafety { vlock.RUnlock() }
     return 0, false
@@ -1001,15 +996,15 @@ func escape(str string) string {
 
 
 /// convert variable placeholders in strings to their values
-func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
+func interpolate(fs uint64, s string) (string) {
 
     if no_interpolation {
-        return s,false
+        return s
     }
 
     // should finish sooner if no curly open brace in string.
     if str.IndexByte(s, '{') == -1 {
-        return s,false
+        return s
     }
 
     if lockSafety {
@@ -1083,7 +1078,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
                         parse:=&leparser{}
                         parse.Init()
                         // END BODGE #5000
-                        if aval, err := ev(parse,fs, s[p+1:p+q+1], false, shouldError); err==nil {
+                        if aval, err := ev(parse,fs, s[p+1:p+q+1], false); err==nil {
                             // pf("interpol - ev : %v -> %+v\n", s[p+1:p+q+1], aval)
                             switch val:=aval.(type) {
                             // a few special cases here which will operate faster
@@ -1112,7 +1107,7 @@ func interpolate(fs uint64, s string, shouldError bool) (string,bool) {
 
     // moved above:
     // if lockSafety { lastlock.RUnlock() }
-    return s,true
+    return s
 }
 
 /// find user defined functions in a token stream and evaluate them
@@ -1321,7 +1316,7 @@ func buildRhs(parser *leparser,ifs uint64, rhs []Token) ([]Token, bool) {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(parser,ifs, a, false, true)
+                            aval, err := ev(parser,ifs, a, false)
                             pf("brhs - ev : %v -> %v\n",a,aval)
                             if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err)
@@ -1413,14 +1408,13 @@ func fastConv(s string) interface{} {
 
 
 // evaluate an expression string using a modified version of the third-party goval lib
-func ev(p *leparser,fs uint64, ws string, interpol bool, shouldError bool) (result interface{}, err error) {
+func ev(p *leparser,fs uint64, ws string, interpol bool) (result interface{}, err error) {
 
     // pf("ev: received: %v\n",ws)
 
     // replace interpreted RHS vars with ident[fs] values
-    var didInterp bool
     if interpol {
-        ws,didInterp = interpolate(fs, ws, true)
+        ws = interpolate(fs, ws)
     }
 
     // build token list from string 'ws'
@@ -1428,7 +1422,7 @@ func ev(p *leparser,fs uint64, ws string, interpol bool, shouldError bool) (resu
     toks:=make([]Token,0,6)
     cl := 1
     for p := 0; p < len(ws); p++ {
-        t, eol, eof := nextToken(ws, &cl, p, tt)
+        t, eol, eof := nextToken(ws, &cl, p, tt, false)
         tt = t.tokType
         if t.tokPos != -1 {
             p = t.tokPos
@@ -1447,17 +1441,10 @@ func ev(p *leparser,fs uint64, ws string, interpol bool, shouldError bool) (resu
     }
     // pf("returned result [%T] '%+v'\n",result,result)
 
-
     if result==nil { // could not eval
-        if didInterp {
-            result=ws
-            err=nil
-        } else {
-            if err!=nil && shouldError {
-                p.report(sf("Error evaluating '%s'",ws))
-                // pf("[shouldError] di->%v result->%+v err->%+v\n",didInterp,result,err)
-                finish(false,ERR_EVAL)
-            }
+        if err!=nil {
+            p.report(sf("Error evaluating '%s'",ws))
+            finish(false,ERR_EVAL)
         }
     }
 
@@ -1562,7 +1549,7 @@ func tokenise(s string) (toks []Token) {
     tt := Error
     cl := 1
     for p := 0; p < len(s); p++ {
-        t, eol, eof := nextToken(s, &cl, p, tt)
+        t, eol, eof := nextToken(s, &cl, p, tt, false)
         tt = t.tokType
         if t.tokPos != -1 {
             p = t.tokPos
@@ -1626,12 +1613,11 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
 
     var err error
 
-    inter,_:=interpolate(rfs,tks[0].tokText,true)
 
     switch {
     case eqPos==1:
         // normal assignment
-        vset(lfs, inter, expr.result)
+        vset(lfs, interpolate(rfs,tks[0].tokText), expr.result)
 
     case eqPos>3:
         // array / map
@@ -1656,14 +1642,14 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
 
         switch element.(type) {
         case string:
-            vsetElement(lfs, inter, element.(string), expr.result)
+            vsetElement(lfs, interpolate(rfs,tks[0].tokText), element.(string), expr.result)
         case int:
             if element.(int)<0 {
                 expr.evalError=true
                 expr.errVal=err
                 return expr
             }
-            vsetElement(lfs, inter, strconv.Itoa(element.(int)), expr.result)
+            vsetElement(lfs, interpolate(rfs,tks[0].tokText), strconv.Itoa(element.(int)), expr.result)
         default:
             pf("\nunhandled element type!! [%T]\n",element)
             expr.evalError=true
@@ -1676,8 +1662,8 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
 
         if tks[1].tokType == SYM_DOT {
 
-            lhs_v:=inter
-            lhs_f,_:=interpolate(rfs,tks[2].tokText,true)
+            lhs_v:=interpolate(rfs,tks[0].tokText)
+            lhs_f:=interpolate(rfs,tks[2].tokText)
 
             var ts interface{}
             var found bool
@@ -1706,7 +1692,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
                             // write the copy back to the 'real' variable
                             vset(lfs,lhs_v,tmp.Interface())
                         } else {
-                            pf("cannot assign result (%T) to %v (%v)\n",expr.result,inter,tf.Type())
+                            pf("cannot assign result (%T) to %v (%v)\n",expr.result,interpolate(rfs,tks[0].tokText),tf.Type())
                             expr.evalError=true
                             expr.errVal=err
                             return expr

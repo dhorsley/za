@@ -237,6 +237,9 @@ func buildListLib() {
             case int64:
                 l := make([]int64, 0, 31)
                 return append(l, args[0].(int64)), nil
+            case nil:
+                l := make([]interface{}, 0, 31)
+                return l,nil
             case interface{}:
                 l := make([]interface{}, 0, 31)
                 return append(l, sf("%v", args[0].(interface{}))), nil
@@ -271,6 +274,8 @@ func buildListLib() {
             case string:
                  args[0] = make([]string, 0, 31)
             case interface{}:
+                 args[0] = make([]interface{}, 0, 31)
+            default:
                  args[0] = make([]interface{}, 0, 31)
             }
         }

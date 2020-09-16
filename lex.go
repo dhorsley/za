@@ -48,7 +48,7 @@ type TokenCache struct {
 
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int, start int, previousToken uint8) (carton Token, eol bool, eof bool) {
+func nextToken(input string, curLine *int, start int, previousToken uint8, newStatement bool) (carton Token, eol bool, eof bool) {
 
     var tokType uint8
     var word string
@@ -278,7 +278,6 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
                 carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
                 carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
-                carton.tokText=str.Replace(carton.tokText, `\%`, "%%", -1)
                 carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
                 carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
                 goto get_nt_exit_point
@@ -412,7 +411,6 @@ get_nt_eval_point:
 
     if tokType==0 {
         switch str.ToLower(word) {
-        // EscapeSequence
         case "zero":
             tokType = C_Zero
         case "inc":
@@ -549,3 +547,4 @@ get_nt_exit_point:
     return carton, eol, eof
 
 }
+

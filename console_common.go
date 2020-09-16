@@ -70,9 +70,12 @@ func pf(s string, va ...interface{}) {
 }
 
 /// apply ansi code translation to inbound strings
-func sparkle(a string) string {
-    a=fairyReplacer.Replace(a)
-    return (a)
+func sparkle(a interface{}) string {
+    switch a:=a.(type) {
+    case string:
+        return fairyReplacer.Replace(a)
+    }
+    return sf(`%v`,a)
 }
 
 /// logging output printer
@@ -104,7 +107,7 @@ func gpf(s string) {
 
 /// sprint with namespace
 func spf(ns uint64, s string) string {
-    s,_ = interpolate(ns, s,true)
+    s = interpolate(ns,s)
     return sf("%v", sparkle(s))
 }
 

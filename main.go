@@ -109,8 +109,6 @@ var elast int                                       // mainly for debugging eval
 // MAIN
 //
 
-// var eval *Evaluator         // declaration for math evaluator
-
 var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process in, out and error streams
 var po io.ReadCloser
@@ -191,6 +189,7 @@ func main() {
     }
 
     runtime.GOMAXPROCS(runtime.NumCPU())
+
 
     // setup winch handler receive channel to indicate a refresh is required, then check it in Call()
     sigs := make(chan os.Signal, 1)
@@ -614,7 +613,7 @@ func main() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(parser,globalaccess, a, false,true)
+                            aval, err := ev(parser,globalaccess,a,false)
                             if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
                                 finish(false, ERR_EVAL)
@@ -836,7 +835,7 @@ func main() {
                 break
             }
 
-            inter,_:=interpolate(globalspace, promptTemplate,true)
+            inter:=interpolate(globalspace, promptTemplate)
             vset(0, "@prompt", inter)
 
         }

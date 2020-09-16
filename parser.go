@@ -28,6 +28,7 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 
 	previousToken := Error
 	curLine := 1
+    newStatement:=true
 
     var strPhrase str.Builder
     strPhrase.Grow(32)
@@ -39,8 +40,9 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 	for ; pos < len(input); pos++ {
 
         // debug(15,"nt : (pos:%d) calling nextToken()\n",pos)
-		tempToken, eol, eof = nextToken(input, &curLine, pos, previousToken)
+		tempToken, eol, eof = nextToken(input, &curLine, pos, previousToken, newStatement)
 		previousToken = tempToken.tokType
+        newStatement=false
 
         if previousToken==LParen {
             braceNestLevel++
@@ -111,6 +113,8 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
                 if lockSafety { fspacelock.Unlock() }
             }
+
+            newStatement=true
 
 			// reset phrase
 			phrase = Phrase{}
