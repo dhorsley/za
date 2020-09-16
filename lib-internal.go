@@ -184,7 +184,7 @@ func buildInternalLib() {
             case string:
                 p:=&leparser{}
                 p.Init()
-                ret, err = ev(p,evalfs, args[0].(string), true,true)
+                ret, err = ev(p,evalfs, args[0].(string),true)
                 return ret, err
             }
         }
@@ -364,13 +364,13 @@ func buildInternalLib() {
             switch args[0].(type) {
             case string:
 
-                inp,_ :=interpolate(evalfs,args[0].(string),true)
+                inp :=interpolate(evalfs,args[0].(string))
 
                 p:=&leparser{}
                 p.Init()
 
                 globlock.RLock()
-                res,err:=ev(p,globalaccess,inp,true,true)
+                res,err:=ev(p,globalaccess,inp,true)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -391,13 +391,13 @@ func buildInternalLib() {
             switch args[0].(type) {
             case string:
 
-                inp,_ :=interpolate(evalfs,args[0].(string),true)
+                inp :=interpolate(evalfs,args[0].(string))
 
                 p:=&leparser{}
                 p.Init()
 
                 globlock.RLock()
-                res,err:=ev(p,globalaccess,inp,true,true)
+                res,err:=ev(p,globalaccess,inp,true)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -502,7 +502,7 @@ func buildInternalLib() {
             return false, nil
         }
 
-        key,_:=interpolate(evalfs,args[1].(string),true)
+        key:=interpolate(evalfs,args[1].(string))
 
         switch v:=v.(type) {
         case http.Header:
@@ -549,7 +549,7 @@ func buildInternalLib() {
         }
         globlock.RUnlock()
 
-        key,_:=interpolate(evalfs,args[1].(string),true)
+        key:=interpolate(evalfs,args[1].(string))
 
         switch v.(type) {
         case map[string]http.Header:
@@ -737,7 +737,7 @@ func buildInternalLib() {
         var toks []Token
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, eol, eof := nextToken(args[0].(string), &cl, p, tt)
+            t, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
             tt = t.tokType
             if t.tokPos != -1 {
                 p = t.tokPos
@@ -766,7 +766,7 @@ func buildInternalLib() {
         var toktypes []string
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, eol, eof := nextToken(args[0].(string), &cl, p, tt)
+            t, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
             tt = t.tokType
             if t.tokPos != -1 {
                 p = t.tokPos

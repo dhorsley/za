@@ -13,7 +13,7 @@ define handlebreak(e)
 enddef
 
 # does list 'hay' contain 'needle'?
-define contains(hay,needle)
+define has(hay,needle)
     foreach straw in hay
         on straw==needle do return true
     endfor

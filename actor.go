@@ -957,7 +957,7 @@ tco_reentry:
 
             var ce int
 
-            fid,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
+            fid := interpolate(ifs,inbound.Tokens[1].tokText)
 
             switch inbound.Tokens[3].tokType {
 
@@ -969,7 +969,6 @@ tco_reentry:
                     finish(false,ERR_EVAL)
                     break
                 }
-
                 var l int
                 switch lv:=expr.result.(type) {
                 case string:
@@ -1352,7 +1351,7 @@ tco_reentry:
             // @note: if loop counter is never used between here and C_Endfor, then don't vset the local var
 
             // store loop data
-            inter,_:=interpolate(ifs,inbound.Tokens[1].tokText,true)
+            inter:=interpolate(ifs,inbound.Tokens[1].tokText)
 
             if lockSafety { lastlock.Lock() }
             if lockSafety { looplock.Lock() }
@@ -1669,7 +1668,7 @@ tco_reentry:
                     break
                 }
 
-                cp, _ := ev(parser,ifs, inbound.Tokens[2].tokText, true,true)
+                cp, _ := ev(parser,ifs, inbound.Tokens[2].tokText, true)
 
                 switch cp:=cp.(type) {
                 case string:
@@ -2070,7 +2069,7 @@ tco_reentry:
                 break
             }
 
-            varname,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
+            varname := interpolate(ifs,inbound.Tokens[1].tokText)
             vartype := "assoc"
             if inbound.TokenCount>2 {
                 vartype = inbound.Tokens[2].tokText
@@ -2230,8 +2229,8 @@ tco_reentry:
                 break
             }
 
-            handles,_ := interpolate(ifs,inbound.Tokens[1].tokText,true)
-            call      := inbound.Tokens[2].tokText
+            handles := interpolate(ifs,inbound.Tokens[1].tokText)
+            call    := inbound.Tokens[2].tokText
 
             if inbound.Tokens[3].tokType!=LParen {
                 parser.report("could not find '(' in ASYNC function call.")
@@ -2263,7 +2262,7 @@ tco_reentry:
             if rparenloc!=inbound.TokenCount-1 {
                 var err error
                 keyString := crushEvalTokens(inbound.Tokens[rparenloc+1:]).text
-                nival,err = ev(parser,ifs,keyString,true,true)
+                nival,err = ev(parser,ifs,keyString,true)
                 if err!=nil {
                     parser.report(sf("could not evaluate handle key argument '%s' in ASYNC.",keyString))
                     finish(false,ERR_EVAL)
@@ -2285,7 +2284,7 @@ tco_reentry:
                 if argString.String() != "" {
                     argnames = str.Split(argString.String(), ",")
                     for k, a := range argnames {
-                        aval, err := ev(parser,ifs, a, false, true)
+                        aval, err := ev(parser,ifs, a, false)
                         if err != nil {
                             parser.report(sf("problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err))
                             finish(false, ERR_EVAL)
@@ -2584,7 +2583,7 @@ tco_reentry:
                             if len(va) == len(dargs) {
 
                                 for q, _ := range va {
-                                    expr, err := ev(parser,ifs, dargs[q], false, true)
+                                    expr, err := ev(parser,ifs, dargs[q], false)
                                     if expr==nil || err != nil {
                                         parser.report("Could not evaluate RETURN expression")
                                         finish(true,ERR_EVAL)
@@ -3102,7 +3101,7 @@ tco_reentry:
 
             if inbound.TokenCount>1 {
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                filter,_ = interpolate(ifs,cet.text,true)
+                filter = interpolate(ifs,cet.text)
             }
 
             for k,s:=range structmaps {
@@ -3201,8 +3200,8 @@ tco_reentry:
                         if evnest>0 { evphrase+=nt.tokText }
                     }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true,false)
-                        pf(sparkle(sf(`%v`,v)))
+                        v,_:=ev(parser,ifs,evphrase,true)
+                        pf(`%v`,sparkle(v))
                         evphrase=""
                         continue
                     }
@@ -3229,9 +3228,8 @@ tco_reentry:
                         if evnest>0 { evphrase+=nt.tokText }
                     }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true,false)
-                        pf( sf("%v",v) ) // sparkle( sf("%v",v) ) )
-                        // pf(sparkle(sf(`%v`,v)))
+                        v,_:=ev(parser,ifs,evphrase,true)
+                        pf(`%v`,sparkle(v))
                         evphrase=""
                         continue
                     }
@@ -3258,8 +3256,8 @@ tco_reentry:
                         if evnest>0 { evphrase+=nt.tokText }
                     }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true,false)
-                        plog_out += sparkle(sf(`%v`,v))
+                        v,_:=ev(parser,ifs,evphrase,true)
+                        plog_out += sf(`%v`,sparkle(v))
                         evphrase=""
                         continue
                     }
@@ -3288,12 +3286,12 @@ tco_reentry:
                 evrow := crushEvalTokens(inbound.Tokens[1:commaAt])
                 evcol := crushEvalTokens(inbound.Tokens[commaAt+1:])
 
-                expr_row, err := ev(parser,ifs, evrow.text, false,true)
+                expr_row, err := ev(parser,ifs, evrow.text, false)
                 if expr_row==nil || err != nil {
                     parser.report( sf("Evaluation error in %v", expr_row))
                 }
 
-                expr_col, err := ev(parser,ifs, evcol.text, false,true)
+                expr_col, err := ev(parser,ifs, evcol.text, false)
                 if expr_col==nil || err != nil {
                     parser.report(  sf("Evaluation error in %v", expr_col))
                 }
@@ -3338,7 +3336,7 @@ tco_reentry:
                     } else {
                         validator := ""
                         broken := false
-                        expr, prompt_ev_err := ev(parser,ifs, inbound.Tokens[2].tokText, true, true)
+                        expr, prompt_ev_err := ev(parser,ifs, inbound.Tokens[2].tokText, true)
                         if expr==nil {
                             parser.report( "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
@@ -3349,7 +3347,7 @@ tco_reentry:
                             processedPrompt := expr.(string)
                             echoMask,_:=vget(0,"@echomask")
                             if inbound.TokenCount == 4 {
-                                val_ex,val_ex_error := ev(parser,ifs, inbound.Tokens[3].tokText, true, true)
+                                val_ex,val_ex_error := ev(parser,ifs, inbound.Tokens[3].tokText, true)
                                 if val_ex_error != nil {
                                     parser.report("Validator invalid in PROMPT!")
                                     finish(false,ERR_EVAL)
@@ -3705,9 +3703,9 @@ tco_reentry:
                     if len(inbound.Text) > 0 {
                         // get text after =|
                         startPos := str.IndexByte(inbound.Original, '|') + 1
-                        cmd,_ := interpolate(ifs, inbound.Original[startPos:],true)
+                        cmd := interpolate(ifs, inbound.Original[startPos:])
                         out:=system(cmd,false)
-                        lhs_name,_ := interpolate(ifs, statement.tokText,true)
+                        lhs_name := interpolate(ifs, statement.tokText)
                         vset(ifs, lhs_name, out)
                     }
                     // skip normal eval below
@@ -3807,7 +3805,7 @@ func coprocCall(ifs uint64,s string) {
         }
         */
         cet = s[pipepos+1:]
-        inter,_ := interpolate(ifs,cet,true)
+        inter   := interpolate(ifs,cet)
         out, ec := Copper(inter, false)
         if ec==-1 || ec > 0 {
             pf("Error: [%d] in shell command '%s'\n", ec, str.TrimLeft(cet, " \t"))

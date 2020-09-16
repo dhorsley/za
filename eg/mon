@@ -444,7 +444,7 @@ define showHdd()
         disks=| df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
     endwhen
 
-    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use\%")
+    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use%")
     row=2
 
     foreach d in disks
@@ -453,7 +453,7 @@ define showHdd()
             on kind(F1)!="string" do continue
             if !key("devices",F1)
                 devices[F1]=F6
-                F5=replace(F5,`%`,`%%`)
+                # F5=replace(F5,`%`,`%`)
                 at row,1; print format(`%20s %5s %5s %5s %-23s`,F1,F2,F3,F4,F5)
                 inc row
             endif
@@ -534,7 +534,7 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
                 rsz=0
                 sample=int(rblist[f])
                 if sample!=0
-                    rsz=int(log(sample,64))
+                    rsz=int(logn(sample,64))
                     on rsz>full_magnitude do rsz=full_magnitude
                     if rsz>0 ; at midline-(rsz),1+f ; print load[rsz-1] ; endif
                 endif
@@ -545,7 +545,7 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
                 tsz=0
                 sample=int(tblist[f])
                 if sample!=0
-                    tsz=int(log(sample,64))
+                    tsz=int(logn(sample,64))
                     on tsz>full_magnitude do tsz=full_magnitude
                     if tsz>0 ; at midline+(tsz),1+f ; print load[tsz-1] ; endif
                 endif

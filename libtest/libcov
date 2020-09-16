@@ -74,6 +74,7 @@ foreach l in a
             words=tail(words)
         endif
 
+
         fname=words[0][:strpos(words[0],"(")]
         cc[curcat]=cc[curcat]+1
         cats[curcat]=append(cats[curcat],fname)

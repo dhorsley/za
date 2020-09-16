@@ -47,14 +47,14 @@ define check_dir(conf,d)
         # new files?
         new_files=[]
         foreach fn in new_names
-            on contains(old_names,fn) do continue
+            on has(old_names,fn) do continue
             new_files=append(new_files,fn)
         endfor
 
         # removed files?
         rem_files=[]
         foreach fn in old_names
-            on contains(new_names,fn) do continue
+            on has(new_names,fn) do continue
             rem_files=append(rem_files,fn)
         endfor
 
@@ -65,7 +65,7 @@ define check_dir(conf,d)
         mod_files_time=[]
         mod_files_size=[]
         foreach f in file_list
-            on !contains(old_names,f.name) do continue
+            on !has(old_names,f.name) do continue
             of=lookup_old(conf,f.name)
             if of>-1
                 p_rec=cp[of]
@@ -75,7 +75,7 @@ define check_dir(conf,d)
                 endif
                 if p_rec.size != f.size
                     # println ": -- [#3]size diff[#-] in {p_rec.name}"
-                    if !contains(mod_files_time,p_rec.name)
+                    if !has(mod_files_time,p_rec.name)
                         # only add to modified size files list if not
                         # already in modified times list.
                         mod_files_size=append(mod_files_size,p_rec.name)
