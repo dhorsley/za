@@ -28,10 +28,9 @@ type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, 
 // za variable
 type Variable struct {
     IName  string
-    _pad0  [15]uint64
-    IValue interface{}
-    ITyped bool
     IKind  string
+    ITyped bool
+    IValue interface{}
 }
 
 // holds a Token which forms part of a Phrase.
@@ -55,7 +54,6 @@ type call_s struct {
 	base        uint64      // the original functionspace location of the source
 	fs          string      // the text name of the calling party
     callline    int         // from whence it came
-    _pad0       [3]uint64
 	retvar      string      // the lhs var in the caller to be assigned back to
 }
 
