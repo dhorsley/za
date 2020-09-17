@@ -47,14 +47,10 @@ enddef
 define make_brick(n)
     brick_types=["hazard","shamrock","snowman","skull"]
     t=brick_types[n-1]
-    hazard   = "\u2623"
-    shamrock= "\u2618"
-    snowman = "\u2603"
-    skull  = "\u2620"
     side    = "\u2591"
-    left = "\u2559"
-    right = "\u255C"
-    mid = "\u2534"
+    left = "["
+    right = "]"
+    mid = "-"
     return " "+left+mid+mid+mid+mid+right+" "
 enddef
 

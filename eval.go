@@ -1032,14 +1032,14 @@ func interpolate(fs uint64, s string) (string) {
         return s
     }
 
-/*
-    if lockSafety {
-        lastlock.RLock()
-    }
-*/
+    parse:=&leparser{}
+    parse.Init()
+
+    orig:=s
 
     // we need the extra loops to deal with embedded indirection
     for {
+
         if lockSafety { vlock.RLock() }
         vc:=varcount[fs]
         os := s
@@ -1099,13 +1099,7 @@ func interpolate(fs uint64, s string) (string) {
 
         if os==s { break }
 
-    }   // this <-- should possibly include the block below. testing without it currently.
-        //  not convinced we need to allow for possibility of a func returning a var name
-        //  which then needs eval like in block above.
-
-/*
-    if lockSafety { lastlock.RUnlock() }
-*/
+    }
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         // if strcmp(os,s) {
@@ -1118,18 +1112,9 @@ func interpolate(fs uint64, s string) (string) {
                     if s[p]=='{' {
                         q:=str.IndexByte(s[p+1:],'}')
                         if q==-1 { break }
-                        // BODGE #5000
-                        // this really needs to come out - middle of a heavily used loop *sigh*
-                        //  it's a workaround so i don't have to pass the parser ref around
-                        //  in *everything* that may interpolate.
-                        //  we already pass the calling func's parser ref to eval routines,
-                        //  but doing it everywhere else too is rash, to say the least.
-                        //  will pull this when i think of an alternative.
-                        parse:=&leparser{}
-                        parse.Init()
-                        // END BODGE #5000
+
                         if aval, err := ev(parse,fs, s[p+1:p+q+1], false); err==nil {
-                            // pf("interpol - ev : %v -> %+v\n", s[p+1:p+q+1], aval)
+
                             switch val:=aval.(type) {
                             // a few special cases here which will operate faster
                             //  than waiting for fmt.sprintf() to execute.
@@ -1143,6 +1128,7 @@ func interpolate(fs uint64, s string) (string) {
                                 s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+2:]
                             default:
                                 s=s[:p]+sf("%v",val)+s[p+q+2:]
+
                             }
                             modified=true
                             break
@@ -1157,6 +1143,8 @@ func interpolate(fs uint64, s string) (string) {
 
     // moved above:
     // if lockSafety { lastlock.RUnlock() }
+    if s=="<nil>" { s=orig }
+
     return s
 }
 
