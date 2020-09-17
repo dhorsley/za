@@ -1049,7 +1049,9 @@ func buildStringLib() {
     stdlib["trim"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) < 2 || len(args)>3 { return "",errors.New("Bad arguments (count) to trim()") }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) in trim()") }
+        // if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) in trim()") }
+        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (#1 type) in trim()") }
+        if sf("%T",args[1])!="int"    { return "",errors.New(sf("Bad arguments (#2 type [%T]) in trim()",args[1])) }
 
         removals:=" \t"
         if len(args)==3 {

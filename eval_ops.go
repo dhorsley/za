@@ -646,7 +646,8 @@ func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}
 
     switch val.(type) {
     case map[string]interface{},map[string]string,int, float64, bool, interface{}:
-        vsetElement(evalfs, obj, sf("%v",s), val)
+        // vsetElement(evalfs, obj, sf("%v",s), val)
+        vsetElement(evalfs, obj, s, val)
     default:
         panic(fmt.Errorf("addobjmember cannot handle type %T for %v\n",val,key))
     }

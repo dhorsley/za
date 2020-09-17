@@ -146,6 +146,8 @@ const (
     SYM_COLON
     C_Comma
 	C_Tilde
+    START_STATEMENTS
+    C_Var
 	C_Assign
 	C_SetGlob
 	C_Zero

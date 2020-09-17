@@ -15,10 +15,13 @@ forenames=["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iri
 surnames =["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Copeland","Charles","Dylan","Mercury","Bowie","Jett",
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
-
+    
 for p=1 to 100
     init person_{p} s_person
 endfor
+
+# this will run really slowly, as interpolation is not quick at the best of times.
+# its just here to show the option. eg/struct2 and eg/struct3 are faster doing the same thing.
 
 for e=1 to 1000
     for p=1 to 100
@@ -27,7 +30,7 @@ for e=1 to 1000
         person_{p}.dob=date(rand(1546300800)) # 1970 to 2019
         # println format("%4v,%3v : %32s : %2d",e,p,person_{p}.name,person_{p}.age)
     endfor
-    # print
+    #print
 endfor
 
 println "1000 iterations of 100 struct init and populations."
