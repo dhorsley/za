@@ -207,7 +207,7 @@ endfor
 
 at 2,1; print pad("G A M E   O V E R",0,38," ")
 at 3,1; print pad(format("Score : [#bold]%05d[#boff]",score),0,38," ")
-pause 3000
+pause 1500
 pane off
 
 # clean up console a little
