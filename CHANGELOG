@@ -81,6 +81,23 @@ CHANGE LOG
             we can with little effort involved, but it is now quite fast enough for the intended use cases, i.e. shuffling data around
             in simple scripts that replace bash/perl/awk monstrosities.
 
+        * Performance difference between 1.0.9 and 1.0.10:
+
+            Measures below from FreeBSD. Ubuntu has similar gains. Windows/Alpine/others not checked yet.
+
+                                v1.0.9      v1.0.10
+            eg/long_loop        1.71s       1.2s        ( 100 million iterations, avg 3 runs )
+            eg/addition_loop    61.0s       15.1s       ( 40 million iterations, avg 3 runs )
+            eg/map_writes       55s         11s         ( 20 million iterations, avg 3 runs )
+
+
+    * Added language version comparison in REQUIRE command. 
+
+        usage: REQUIRE x.y.z
+
+        Compares the required semantic version to the version of the interpreter currently executing. Bails out with an error
+          if x.y.z is greater than the executing version.
+
 
     * Added command VAR: (experimental)
 
