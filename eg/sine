@@ -6,11 +6,13 @@ locks(true)
 
 fps=20
 input in_fps optarg 1
-on in_fps!="" do fps=int(in_fps)
+on kind(in_fps)!="string" do fps=int(in_fps)
 
-define calcWave(theta,width,dx,amplitude)
+
+define calcWave(dx,amplitude)
     setglob theta = theta + 0.2
-    x=float(theta)
+    x=theta
+    yvalues=[]
     for i = 0 to width-1
         yvalues = append(yvalues,sin(x)*amplitude)
         x=x+dx
@@ -58,13 +60,15 @@ async retmap async_waitkey()
 # display loop
 
 cursoroff()
+
 fps_pause=1000/fps
+
 while !quit
     lastyary=yvalues
-    yvalues=calcWave(theta,width,dx,amplitude)
+    yvalues=calcWave(dx,amplitude)
     renderWave(lastyary,height," ")
     renderWave(yvalues,height)
-    at 1,1; print "FPS : {fps}"
+    at 1,1; println "theta -> ",theta, "  "
     pause fps_pause
 endwhile
 

@@ -111,7 +111,8 @@ func (parser *leparser) report(s string) {
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
     // callChain=append(callChain,chainInfo{name:baseName,registrant:ciErr,loc:baseId,line:line})
-    line_content:=functionspaces[baseId][line+1]
+    line_content:=Phrase{}
+    if len(functionspaces[baseId])>0 { line_content=functionspaces[baseId][line+1] }
 
     pf( sparkle(sf(CTE+"\n[#bred]\n"+CTE+"\n"+CTE+"[#7]Error in %s (statement #%d) : %v\n"+CTE+"\n[##][#-]"+CTE+"%s\n"+CTE,
         baseName, line+1, line_content, s ) ) )

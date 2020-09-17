@@ -14,10 +14,10 @@ max_count=40000000
 input mc optarg 1
 on kind(mc)=="int" do max_count=int(mc)
 
-    # inc a f
-zero a
+    # a=a+f
+var a int
 for f=0 to max_count
-    a=a+f
+    inc a f
 endfor
 te=epoch_nano_time()
 

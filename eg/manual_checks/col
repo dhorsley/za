@@ -8,6 +8,7 @@
 
 input column param 1
 assert( is_number(column)   )
+column=int(column)
 assert( column>0            )
 
 
@@ -16,7 +17,7 @@ assert( column>0            )
 z=read_file("/etc/passwd")
 q=col(z,column,":")
 
-if length(q)>0
+if len(q)>0
     foreach a in q
         if a!=""
             s =| echo -n "{a}" | md5sum - | cut -f1 -d' '
