@@ -1,6 +1,8 @@
 
 # test - addition loop
 
+require 1.0.10
+
 define humansize(i,prec,unit)
     if i>=1e9; unit="Billion"+unit; i=float(i/1e9); endif
     if i>=1e6; unit="Million"+unit; i=float(i/1e6); endif
@@ -15,6 +17,7 @@ input mc optarg 1
 on kind(mc)=="int" do max_count=int(mc)
 
 var a int
+zero a
 for f=0 to max_count
     a=a+f
 endfor

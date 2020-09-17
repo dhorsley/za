@@ -323,11 +323,16 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 
     if tokType != 0 {
         if tokType==NumericLiteral {
-            if str.IndexByte(str.ToLower(word), 'e') != -1 || str.IndexByte(str.ToLower(word), '.') != -1 {
-                carton.tokVal,_=strconv.ParseFloat(word,64)
+            if str.Count(word,".")>1 || str.Count(word,"e")>1 {
+                tokType=StringLiteral
+                carton.tokVal=word
             } else {
-                carton.tokVal,_=strconv.ParseInt(word,10,0)
-                carton.tokVal=int(carton.tokVal.(int64))
+                if str.IndexByte(str.ToLower(word), 'e') != -1 || str.IndexByte(str.ToLower(word), '.') != -1 {
+                    carton.tokVal,_=strconv.ParseFloat(word,64)
+                } else {
+                    carton.tokVal,_=strconv.ParseInt(word,10,0)
+                    carton.tokVal=int(carton.tokVal.(int64))
+                }
             }
         }
         carton.tokPos = endPos - backtrack

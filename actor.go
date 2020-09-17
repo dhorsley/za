@@ -2381,25 +2381,40 @@ tco_reentry:
 
             var reqfeat string
             var reqvers int
+            var reqEnd bool
 
             switch inbound.TokenCount {
             case 2: // only by name
                 reqfeat = inbound.Tokens[1].tokText
+                _, e := vconvert(reqfeat)
+                if e==nil {
+                    // sem ver provided instead / compare to language version
+                    lver,_ :=vget(0,"@version")
+                    lcmp,_ :=vcmp(lver.(string),reqfeat)
+                    if lcmp==-1 { // lang ver is lower than required ver
+                        // error
+                        pf("Language version of '%s' is too low (%s<%s). Quitting.\n", lver, lver, reqfeat)
+                        finish(true, ERR_REQUIRE)
+                    }
+                    reqEnd=true
+                }
             case 3: // name + version
                 reqfeat = inbound.Tokens[1].tokText
                 reqvers, _ = strconv.Atoi(inbound.Tokens[2].tokText)
             }
 
-            if _, ok := features[reqfeat]; ok {
-                // feature exists
-                if features[reqfeat].version < reqvers {
-                    // version too low
-                    pf("Library version of '%s' is too low (%d<%d). Quitting.\n", reqfeat, features[reqfeat].version, reqvers)
+            if !reqEnd {
+                if _, ok := features[reqfeat]; ok {
+                    // feature exists
+                    if features[reqfeat].version < reqvers {
+                        // version too low
+                        pf("Library version of '%s' is too low (%d<%d). Quitting.\n", reqfeat, features[reqfeat].version, reqvers)
+                        finish(true, ERR_REQUIRE)
+                    }
+                } else {
+                    pf("Library does not contain feature '%s'.\n", reqfeat)
                     finish(true, ERR_REQUIRE)
                 }
-            } else {
-                pf("Library does not contain feature '%s'.\n", reqfeat)
-                finish(true, ERR_REQUIRE)
             }
 
 
