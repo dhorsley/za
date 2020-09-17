@@ -8,7 +8,6 @@ import (
     "bytes"
     "net/http"
     "os"
-//    "runtime"
     "sync"
     str "strings"
     "unsafe"
@@ -64,7 +63,7 @@ func (p *leparser) reserved(token Token) (interface{}) {
     // this might change in the future:
 
     // check for keywords
-    if token.tokType>=C_Zero && token.tokType<=C_On {
+    if token.tokType>START_STATEMENTS { // only EOL+EOF above statements
         panic(fmt.Errorf("statement names cannot be used as identifiers (%v)",token.tokText))
         finish(true,ERR_SYNTAX)
     }
@@ -81,15 +80,7 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
         if r := recover(); r != nil {
             CTE:="\033[0K"
             p.report(sf("\n"+CTE+"%v\n"+CTE,r))
-            /*
-                if _, ok := r.(runtime.Error); ok {
-                CTE:="\033[0K"
-                p.report(sf("\n"+CTE+"\n"+CTE+"*** %v\n"+CTE+"\n"+CTE,r))
-                finish(false,ERR_EVAL)
-                panic(r)
-            }
-            */
-            err = r.(error)
+            // err = r.(error)
             os.Exit(ERR_EVAL)
         }
     }()
@@ -138,15 +129,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         if r := recover(); r != nil {
             CTE:="\033[0K"
             p.report(sf("\n"+CTE+"%v\n"+CTE,r))
-            /*
-                if _, ok := r.(runtime.Error); ok {
-                CTE:="\033[0K"
-                p.report(sf("\n"+CTE+"\n"+CTE+"*** %v\n"+CTE+"\n"+CTE,r))
-                finish(false,ERR_EVAL)
-                panic(r)
-            }
-            */
-            err = r.(error)
+            //err = r.(error)
             os.Exit(ERR_EVAL)
         }
     }()
@@ -157,21 +140,18 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
 	token:=p.next()
 
-    if token.tokType>=C_Zero && token.tokType<=C_On {
+    if token.tokType>START_STATEMENTS {
         p.reserved(token)
     }
-
-	dummy := p.table[token.tokType]
-    if dummy.prec==0 {}
 
 	left = p.table[token.tokType].nud(token)
 
     for prec < p.table[p.peek().tokType].prec {
         token = p.next()
-            if p.table[token.tokType].led == nil {
-                return nil,errors.New("Token not defined in grammar")
-            }
-	        left = p.table[token.tokType].led(left,token)
+        if p.table[token.tokType].led == nil {
+            return nil,errors.New("Token not defined in grammar")
+        }
+	    left = p.table[token.tokType].led(left,token)
     }
 
     // pf("dparse result: %+v\n",left)
@@ -526,12 +506,18 @@ func (p *leparser) grouping(tok Token) (interface{}) {
 func (p *leparser) number(token Token) (interface{}) {
     var num interface{}
     var err error
-	num, err = strconv.ParseInt(token.tokText, 10, 0)
-	if err!=nil {
-        num, err = strconv.ParseFloat(token.tokText, 0)
+
+    if token.tokVal==nil {
+        num, err = strconv.ParseInt(token.tokText, 10, 0)
+        if err!=nil {
+            num, err = strconv.ParseFloat(token.tokText, 0)
+        } else {
+            num=int(num.(int64))
+        }
     } else {
-        num=int(num.(int64))
+        num=token.tokVal
     }
+
     if num==nil {
         panic(err)
     }
@@ -600,18 +586,25 @@ func VarLookup(fs uint64, name string) (int, bool) {
 
     // more recent variables created should, on average, be higher numbered.
     // for k := varcount[fs]-1; k>=0 ; k-- {
+
     k:=varcount[fs]-1
+
     vl_repeat_point:
+        if k<0 {
+            if lockSafety { vlock.RUnlock() }
+            return 0,false
+        }
         if strcmp(ident[fs][k].IName,name) {
             if lockSafety { vlock.RUnlock() }
             return k, true
         }
         k--
-    if k>=0 { goto vl_repeat_point }
+        goto vl_repeat_point
+
     // }
 
-    if lockSafety { vlock.RUnlock() }
-    return 0, false
+    // if lockSafety { vlock.RUnlock() }
+    //return 0, false
 }
 
 
@@ -710,20 +703,57 @@ func vdelete(fs uint64, name string, ename string) {
 
 
 
-func vset(fs uint64, name string, value interface{}) bool {
+func vset(fs uint64, name string, value interface{}) (vi int) {
 
-    if vi, ok := VarLookup(fs, name); ok {
+    var ok bool
+
+    if vi, ok = VarLookup(fs, name); ok {
+
         // set
         if lockSafety { vlock.Lock() }
-        ident[fs][vi].IValue = value
+
+        // check for conflict with previous VAR
+        if ident[fs][vi].ITyped {
+            var ok bool
+            switch ident[fs][vi].IKind {
+            case "bool":
+                _,ok=value.(bool)
+                if ok { ident[fs][vi].IValue = value.(bool) }
+            case "int":
+                _,ok=value.(int)
+                if ok { ident[fs][vi].IValue = value.(int) }
+            case "int64":
+                _,ok=value.(int64)
+                if ok { ident[fs][vi].IValue = value.(int64) }
+            case "uint":
+                _,ok=value.(uint64)
+                if ok { ident[fs][vi].IValue = value.(uint64) }
+            case "float":
+                _,ok=value.(float64)
+                if ok { ident[fs][vi].IValue = value.(float64) }
+            case "string":
+                _,ok=value.(string)
+                if ok { ident[fs][vi].IValue = value.(string) }
+            }
+            if !ok {
+                if lockSafety { vlock.Unlock() }
+                panic(fmt.Errorf("invalid assignation on '%v' [%v] of %v [%T]",name,ident[fs][vi].IKind,value,value))
+            }
+
+        } else {
+            ident[fs][vi].IValue = value
+        }
+
         if lockSafety { vlock.Unlock() }
+
     } else {
 
         // instantiate
 
         if lockSafety { vlock.Lock() }
 
-        if varcount[fs]==len(ident[fs]) {
+        vi=varcount[fs]
+        if vi==len(ident[fs]) {
 
             // append thread safety workaround
             newary:=make([]Variable,len(ident[fs]),len(ident[fs])*2)
@@ -732,7 +762,7 @@ func vset(fs uint64, name string, value interface{}) bool {
             ident[fs]=newary
 
         } else {
-            ident[fs][varcount[fs]] = Variable{IName: name, IValue: value}
+            ident[fs][vi] = Variable{IName: name, IValue: value}
         }
 
         varcount[fs]++
@@ -741,7 +771,7 @@ func vset(fs uint64, name string, value interface{}) bool {
 
     }
 
-    return true
+    return vi
 
 }
 
@@ -798,8 +828,8 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
 }
 
 // this could probably be faster. not a great idea duplicating the list like this...
-func vsetElement(fs uint64, name string, el string, value interface{}) {
-    // pf("vsetE: entered with %v[%v]=%v\n",name,el,value)
+
+func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
 
     var list interface{}
     var vi int
@@ -807,133 +837,128 @@ func vsetElement(fs uint64, name string, el string, value interface{}) {
 
     if vi, ok = VarLookup(fs, name); ok {
         list, _ = vget(fs, name)
-        // pf("::: found %v @ %d\n",name,vi)
     } else {
         list = make(map[string]interface{}, LIST_SIZE_CAP)
-        // pf("::: initialising %v\n",name)
+        vi=vset(fs,name,list)
     }
 
     if lockSafety { vlock.Lock() }
 
     switch list.(type) {
     case map[string]interface{}:
+
+        switch el.(type) {
+        case int:
+            el=strconv.FormatInt(int64(el.(int)), 10)
+        case int64:
+            el=strconv.FormatInt(el.(int64), 10)
+        case int32:
+            el=strconv.FormatInt(int64(el.(int32)), 10)
+        case float64:
+            el=strconv.FormatFloat(el.(float64), 'f', -1, 64)
+        case uint64:
+            el=strconv.FormatUint(el.(uint64), 10)
+        case uint8:
+            el=strconv.FormatUint(uint64(el.(uint8)), 10)
+        case uint32:
+            el=strconv.FormatUint(uint64(el.(uint32)), 10)
+        }
+
         if ok {
-            ident[fs][vi].IName= name
-            ident[fs][vi].IValue.(map[string]interface{})[el]= value
+            ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
         } else {
-            list.(map[string]interface{})[el] = value
+            ident[fs][vi].IName= name
+            ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
             if lockSafety { vlock.Unlock() }
-            vset(fs,name,list)
             return
         }
         if lockSafety { vlock.Unlock() }
         return
-    default:
-        // pf("vsetE: list type -> %T\n",list)
     }
 
-    numel,er:=strconv.Atoi(el)
+    numel:=el.(int)
 
-    if er==nil { // is an integer element id
-        barrierDivision:=1
-        newend:=0
-        switch list.(type) {
+    switch ident[fs][vi].IValue.(type) {
 
-        case []int:
-            sz:=cap(list.([]int))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]int,newend,newend)
-                copy(newar,list.([]int))
-                list=newar
-            }
-            list.([]int)[numel] = value.(int)
-
-        case []uint8:
-            sz:=cap(list.([]uint8))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]uint8,newend,newend)
-                copy(newar,list.([]uint8))
-                list=newar
-            }
-            list.([]uint8)[numel] = value.(uint8)
-
-        case []bool:
-            sz:=cap(list.([]bool))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]bool,newend,newend)
-                copy(newar,list.([]bool))
-                list=newar
-            }
-            list.([]bool)[numel] = value.(bool)
-
-        case []string:
-            sz:=cap(list.([]string))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]string,newend,newend)
-                copy(newar,list.([]string))
-                list=newar
-            }
-            list.([]string)[numel] = value.(string)
-
-        case []float64:
-            sz:=cap(list.([]float64))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]float64,newend,newend)
-                copy(newar,list.([]float64))
-                list=newar
-            }
-            list.([]float64)[numel],_ = GetAsFloat(value) // convertToFloat64(value)
-
-        case map[string]int:            // pass straight through to vset
-        case map[string]float64:        // pass straight through to vset
-        case map[string]bool:           // pass straight through to vset
-
-        case []interface{}:
-            sz:=cap(list.([]interface{}))
-            barrier:=sz/barrierDivision
-            if numel>=sz {
-                newend=sz*2
-                if numel>newend { newend=numel+barrier }
-            }
-            if newend!=0 {
-                newar:=make([]interface{},newend,newend)
-                copy(newar,list.([]interface{}))
-                list=newar
-            }
-            list.([]interface{})[numel] = value
-
-        default:
-            pf("DEFAULT: Unknown type %T for list %s\n",list,name)
-
+    case []int:
+        sz:=cap(ident[fs][vi].IValue.([]int))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]int,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]int))
+            ident[fs][vi].IValue=newar
         }
-        ident[fs][vi] = Variable{IName: name, IValue: list}
-        if lockSafety { vlock.Unlock() }
+        ident[fs][vi].IValue.([]int)[numel]=value.(int)
+
+    case []uint8:
+        sz:=cap(ident[fs][vi].IValue.([]uint8))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]uint8,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]uint8))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]uint8)[numel]=value.(uint8)
+
+    case []bool:
+        sz:=cap(ident[fs][vi].IValue.([]bool))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]bool,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]bool))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]bool)[numel]=value.(bool)
+
+    case []string:
+        sz:=cap(ident[fs][vi].IValue.([]string))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]string,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]string))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]string)[numel]=value.(string)
+
+    case []float64:
+        sz:=cap(ident[fs][vi].IValue.([]float64))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]float64,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]float64))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]float64)[numel],ok=GetAsFloat(value)
+        if !ok {
+            pf("Could not append to float array a value of type '%T'",value)
+            finish(false,ERR_EVAL)
+        }
+
+    case []interface{}:
+        sz:=cap(ident[fs][vi].IValue.([]interface{}))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]interface{},newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]interface{}))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]interface{})[numel]=value.(interface{})
+
+    default:
+        pf("DEFAULT: Unknown type %T for list %s\n",list,name)
+
     }
+
+    // final write
+
+    if lockSafety { vlock.Unlock() }
+
 }
 
 func vget(fs uint64, name string) (interface{}, bool) {
@@ -1007,9 +1032,11 @@ func interpolate(fs uint64, s string) (string) {
         return s
     }
 
+/*
     if lockSafety {
         lastlock.RLock()
     }
+*/
 
     // we need the extra loops to deal with embedded indirection
     for {
@@ -1022,27 +1049,48 @@ func interpolate(fs uint64, s string) (string) {
             v := ident[fs][k]
 
             if v.IValue != nil {
-                switch v.IValue.(type) {
-                case int:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.Itoa(v.IValue.(int)),-1)
-                case int64:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
-                case uint64:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
-                case int32:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int32)), 10),-1)
-                case uint8:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
-                case float32, float64, bool:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                case string:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                case interface{}:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                default:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
+
+                if v.ITyped {
+                    switch v.IKind {
+                    case "int":
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int)), 10),-1)
+                    case "int64":
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
+                    case "string":
+                        s = str.Replace(s, "{"+v.IName+"}", v.IValue.(string),-1)
+                    case "float":
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatFloat(v.IValue.(float64),'g',-1,64),-1)
+                    case "bool":
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatBool(v.IValue.(bool)),-1)
+                    case "uint":
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
+                    }
+
+                } else {
+
+                    switch v.IValue.(type) {
+                    case int:
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.Itoa(v.IValue.(int)),-1)
+                    case int64:
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
+                    case uint64:
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
+                    case int32:
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int32)), 10),-1)
+                    case uint8:
+                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
+                    case float32, float64, bool:
+                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                    case string:
+                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                    case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
+                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                    case interface{}:
+                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                    default:
+                        s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
+
+                    }
 
                 }
             }
@@ -1055,7 +1103,9 @@ func interpolate(fs uint64, s string) (string) {
         //  not convinced we need to allow for possibility of a func returning a var name
         //  which then needs eval like in block above.
 
+/*
     if lockSafety { lastlock.RUnlock() }
+*/
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
         // if strcmp(os,s) {
@@ -1564,14 +1614,13 @@ func tokenise(s string) (toks []Token) {
 
 
 /// the main call point for actor.go evaluation.
-/// this function handles boxing/unboxing around the ev() call
+/// this function handles boxing the ev() call
 
-func wrappedEval(p *leparser,fs uint64, tks []Token, interpol bool) (expr ExpressionCarton) {
+func wrappedEval(p *leparser,fs uint64, tks []Token) (expr ExpressionCarton) {
 
     // another bodge while testing new evaluator:
     // .Eval not currently returning an assignment flag, so check manually for it
     // will change when assignment moved into the evaluator.
-    // this currently won't deal with indirection in assignment and array refs/dotting/etc
 
     eqPos:=-1
     for k,_:=range tks {
@@ -1593,14 +1642,15 @@ func wrappedEval(p *leparser,fs uint64, tks []Token, interpol bool) (expr Expres
     }
 
     if expr.assign {
-        expr=p.doAssign(fs,fs,tks,expr,eqPos)
+        p.doAssign(fs,fs,tks,&expr,eqPos)
     }
 
     return expr
 
 }
 
-func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqPos int) (ExpressionCarton) {
+// func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eqPos int) (ExpressionCarton) {
+func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eqPos int) {
 
     // pull out pre eqPos tokens
 
@@ -1626,18 +1676,18 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
         // pf("In array / map assign\n")
 
         if tks[1].tokType != LeftSBrace || tks[eqPos-1].tokType != RightSBrace {
-            pf("\nsyntax error in assignment\n")
+            pf("syntax error in assignment")
             expr.evalError=true
             expr.errVal=err
-            return expr
+            // return expr
         }
 
         element, err := p.Eval(rfs,tks[2:eqPos-1])
         if err!=nil {
-            pf("\ncould not evaluate index or key in assignment\n")
+            pf("could not evaluate index or key in assignment")
             expr.evalError=true
             expr.errVal=err
-            return expr
+            // return expr
         }
 
         switch element.(type) {
@@ -1645,16 +1695,18 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
             vsetElement(lfs, interpolate(rfs,tks[0].tokText), element.(string), expr.result)
         case int:
             if element.(int)<0 {
+                pf("negative element index!! (%s[%v])\n",tks[0].tokText,element)
                 expr.evalError=true
                 expr.errVal=err
-                return expr
+                // return expr
             }
-            vsetElement(lfs, interpolate(rfs,tks[0].tokText), strconv.Itoa(element.(int)), expr.result)
+            // vsetElement(lfs, interpolate(rfs,tks[0].tokText), strconv.Itoa(element.(int)), expr.result)
+            vsetElement(lfs, interpolate(rfs,tks[0].tokText), element.(int), expr.result)
         default:
-            pf("\nunhandled element type!! [%T]\n",element)
+            pf("unhandled element type!! [%T]\n",element)
             expr.evalError=true
             expr.errVal=err
-            return expr
+            // return expr
         }
 
     case eqPos==3:
@@ -1692,48 +1744,48 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr ExpressionCarton,eqP
                             // write the copy back to the 'real' variable
                             vset(lfs,lhs_v,tmp.Interface())
                         } else {
-                            pf("cannot assign result (%T) to %v (%v)\n",expr.result,interpolate(rfs,tks[0].tokText),tf.Type())
+                            pf("cannot assign result (%T) to %v (%v)",expr.result,interpolate(rfs,tks[0].tokText),tf.Type())
                             expr.evalError=true
                             expr.errVal=err
-                            return expr
+                            // return expr
                         }
                     } else {
-                        pf("STRUCT field %v not found in %v\n",lhs_f,lhs_v)
+                        pf("STRUCT field %v not found in %v",lhs_f,lhs_v)
                         expr.evalError=true
                         expr.errVal=err
-                        return expr
+                        // return expr
                     }
 
                 } else {
-                    pf("variable %v is not a STRUCT\n",lhs_v)
+                    pf("variable %v is not a STRUCT",lhs_v)
                     expr.evalError=true
                     expr.errVal=err
-                    return expr
+                    // return expr
                 }
 
             } else {
-                pf("record variable %v not found\n",lhs_v)
+                pf("record variable %v not found",lhs_v)
                 expr.evalError=true
                 expr.errVal=err
-                return expr
+                // return expr
             }
 
         } else {
-            pf("assignment looks like it was missing a dot, or you broke it in another way\n")
+            pf("assignment looks like it was missing a dot, or you broke it in another way")
             expr.evalError=true
             expr.errVal=err
-            return expr
+            // return expr
         }
 
     default:
-        pf("syntax error in assignment\n")
+        pf("syntax error in assignment")
         expr.evalError=true
         expr.errVal=err
-        return expr
+        // return expr
 
     }
 
-    return expr
+    // return expr
 }
 
 

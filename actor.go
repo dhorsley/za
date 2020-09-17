@@ -470,26 +470,18 @@ func Call(varmode int, csloc uint64, registrant uint8, va ...interface{}) (endFu
     var inbound *Phrase
     var current_with_handle *os.File
 
-    defer func() {
-        if r := recover(); r != nil {
-
-            if _, ok := r.(runtime.Error); ok {
-                pf("Fatal error on: %v\n",inbound.Original)
-                pf(sparkle("[#2]Details:\n%v[#-]\n"),r)
-                if debug_level==0 {
-                    os.Exit(127)
-                }
-            }
-            setEcho(true)
-            err := r.(error)
-            pf("error : %v\n",err)
-            panic(r)
-        }
-    }()
-
     // set up evaluation parser
     parser:=&leparser{}
     parser.Init()
+
+    defer func() {
+        if r := recover(); r != nil {
+            CTE:="\033[0K"
+            parser.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            setEcho(true)
+            os.Exit(ERR_EVAL)
+        }
+    }()
 
     var breakIn uint8
     var pc int
@@ -710,25 +702,6 @@ tco_reentry:
             continue
         }
 
-        // tokencount  = inbound.TokenCount // length of phrase
-/*
-        if tokencount == 1 { // if the entire line is a placeholding non-statement then skip
-            switch inbound.Tokens[0].tokType {
-            case C_Semicolon, EOL, EOF:
-                continue
-            }
-        }
-
-        // remove trailing C_Semicolon token remnants
-        // if tokencount > 1 {
-            if inbound.Tokens[tokencount-1].tokType == C_Semicolon {
-                inbound.TokenCount--
-                tokencount--
-                inbound.Tokens = inbound.Tokens[:tokencount]
-            }
-        // }
-*/
-
         // finally... start processing the statement.
    ondo_reenter:
 
@@ -783,6 +756,62 @@ tco_reentry:
 
         switch statement.tokType {
 
+        case C_Var: // permit declaration with a default value
+
+            // check syntax
+            if inbound.TokenCount<3 {
+                parser.report("invalid VAR syntax\nUsage: VAR [#i1]variable type[#i0]")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            // check if name available
+
+            vn  := interpolate(ifs,crushEvalTokens(inbound.Tokens[1:2]).text)
+
+            _,found:=VarLookup(ifs,vn)
+            if found {
+                parser.report(sf("a variable already exists with the name '%v'",vn))
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            // get the required type
+            expr:= interpolate(ifs,crushEvalTokens(inbound.Tokens[2:]).text)
+
+            // this needs reworking, same as C_Init:
+
+            var tb bool
+            var tu64 uint64
+            var ti int
+            var ti64 int64
+            var tf64 float64
+            var ts string
+
+            // instantiate fields with an empty expected type:
+            typemap:=make(map[string]reflect.Type)
+            typemap["bool"]     = reflect.TypeOf(tb)
+            typemap["uint"]     = reflect.TypeOf(tu64)
+            typemap["int"]      = reflect.TypeOf(ti)
+            typemap["int64"]    = reflect.TypeOf(ti64)
+            typemap["float"]    = reflect.TypeOf(tf64)
+            typemap["string"]   = reflect.TypeOf(ts)
+
+            if _,found=typemap[expr]; found {
+                vset(ifs,vn,reflect.New(typemap[expr]).Elem().Interface())
+                vi,_:=VarLookup(ifs,vn)
+                if lockSafety { vlock.Lock() }
+                ident[ifs][vi].ITyped=true
+                ident[ifs][vi].IKind=expr
+                if lockSafety { vlock.Unlock() }
+
+            } else {
+                parser.report(sf("unknown data type requested '%v'",expr))
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+
         case C_While:
 
             endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
@@ -808,7 +837,7 @@ tco_reentry:
 
                 etoks=inbound.Tokens[1:]
 
-                expr := wrappedEval(parser,ifs, etoks, true)
+                expr := wrappedEval(parser,ifs, etoks)
                 if expr.evalError {
                     parser.report( "could not evaluate WHILE condition")
                     finish(false,ERR_EVAL)
@@ -851,7 +880,7 @@ tco_reentry:
             cond := loops[ifs][depth[ifs]]
 
             if cond.loopType != C_While {
-                parser.report(  "ENDWHILE outside of WHILE loop.")
+                parser.report("ENDWHILE outside of WHILE loop.")
                 finish(false, ERR_SYNTAX)
                 if lockSafety { looplock.Unlock() }
                 break
@@ -859,7 +888,6 @@ tco_reentry:
 
             // time to die?
             if breakIn == C_Endwhile {
-
                 if lockSafety { lastlock.Lock() }
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 depth[ifs]--
@@ -872,7 +900,7 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
 
             // eval
-            expr := wrappedEval(parser,ifs, cond.repeatCond, true)
+            expr := wrappedEval(parser,ifs,cond.repeatCond)
             if expr.evalError {
                 parser.report(sf("eval fault in ENDWHILE\n%+v\n",expr.errVal))
                 finish(false,ERR_EVAL)
@@ -923,7 +951,7 @@ tco_reentry:
             }
 
             // pos-1 because we have removed the setglob token at front:
-            expr=parser.doAssign(globalaccess,ifs,inbound.Tokens[1:],expr,pos-1)
+            parser.doAssign(globalaccess,ifs,inbound.Tokens[1:],&expr,pos-1)
 
             if expr.evalError {
                 parser.report(sf("error in SETGLOB assignment\n%+v\n",expr.errVal))
@@ -963,7 +991,7 @@ tco_reentry:
 
             case NumericLiteral, StringLiteral, LeftSBrace, Identifier, Expression, C_AssCommand:
 
-                expr := wrappedEval(parser,ifs, inbound.Tokens[3:], true)
+                expr := wrappedEval(parser,ifs, inbound.Tokens[3:])
                 if expr.evalError {
                     parser.report( sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
                     finish(false,ERR_EVAL)
@@ -1258,7 +1286,7 @@ tco_reentry:
 
             toAt := findDelim(inbound.Tokens, "to", 2)
             if toAt == -1 {
-                parser.report(  "TO not found in FOR")
+                parser.report("TO not found in FOR")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1271,7 +1299,7 @@ tco_reentry:
 
             var fstart, fend, fstep int
             var expr interface{}
-            // var validated bool
+
             var err error
 
             if toAt>3 {
@@ -1730,16 +1758,16 @@ tco_reentry:
                 }
 
                 var ptitle, pbox ExpressionCarton
-                pname  := wrappedEval(parser,ifs, inbound.Tokens[2:nameCommaAt], true)
-                py     := wrappedEval(parser,ifs, inbound.Tokens[nameCommaAt+1:YCommaAt], true)
-                px     := wrappedEval(parser,ifs, inbound.Tokens[YCommaAt+1:XCommaAt], true)
-                ph     := wrappedEval(parser,ifs, inbound.Tokens[XCommaAt+1:HCommaAt], true)
-                pw     := wrappedEval(parser,ifs, ew, true)
+                pname  := wrappedEval(parser,ifs, inbound.Tokens[2:nameCommaAt])
+                py     := wrappedEval(parser,ifs, inbound.Tokens[nameCommaAt+1:YCommaAt])
+                px     := wrappedEval(parser,ifs, inbound.Tokens[YCommaAt+1:XCommaAt])
+                ph     := wrappedEval(parser,ifs, inbound.Tokens[XCommaAt+1:HCommaAt])
+                pw     := wrappedEval(parser,ifs, ew)
                 if hasTitle {
-                    ptitle = wrappedEval(parser,ifs, etit, true)
+                    ptitle = wrappedEval(parser,ifs, etit)
                 }
                 if hasBox   {
-                    pbox   = wrappedEval(parser,ifs, ebox, true)
+                    pbox   = wrappedEval(parser,ifs, ebox)
                 }
 
                 if pname.evalError || py.evalError || px.evalError || ph.evalError || pw.evalError {
@@ -1800,7 +1828,7 @@ tco_reentry:
                 break
             }
 
-            expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+            expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
 
             if !expr.evalError {
 
@@ -1836,7 +1864,7 @@ tco_reentry:
                     for term := range inbound.Tokens[1:] {
                         if inbound.Tokens[term].tokType == C_Comma {
 
-                            expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:term], true)
+                            expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:term])
                             if expr.evalError {
                                 parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
                                 finish(false,ERR_EVAL)
@@ -1852,7 +1880,7 @@ tco_reentry:
 
                     if badval { break }
 
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:], true)
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:])
                     if expr.evalError {
                         parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
                         finish(false,ERR_EVAL)
@@ -1947,7 +1975,7 @@ tco_reentry:
                     // more tokens after the DO to form a command with?
                     if inbound.TokenCount >= doAt {
 
-                        expr := wrappedEval(parser,ifs, inbound.Tokens[1:doAt], true)
+                        expr := wrappedEval(parser,ifs, inbound.Tokens[1:doAt])
                         if expr.evalError {
                             parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",expr.text,expr.errVal))
                             finish(false,ERR_EVAL)
@@ -2000,7 +2028,7 @@ tco_reentry:
             } else {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+                expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
 
                 if expr.assign {
                     // someone typo'ed a condition 99.9999% of the time
@@ -2079,7 +2107,7 @@ tco_reentry:
 
             if inbound.TokenCount>3 {
 
-                expr := wrappedEval(parser,ifs, inbound.Tokens[3:], true)
+                expr := wrappedEval(parser,ifs, inbound.Tokens[3:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
                     finish(false,ERR_EVAL)
@@ -2611,7 +2639,7 @@ tco_reentry:
 
                     // normal return (non tco)
 
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true) // evaluate it
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[1:]) // evaluate it
                     if !expr.evalError {
                         retval = expr.result
                         if ifs<=2 {
@@ -2736,7 +2764,7 @@ tco_reentry:
             var expr ExpressionCarton
 
             if inbound.TokenCount > 1 {
-                expr = wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+                expr = wrappedEval(parser,ifs, inbound.Tokens[1:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in MODULE statement\n%+v",expr.errVal))
                     finish(false,ERR_MODULE)
@@ -2884,7 +2912,7 @@ tco_reentry:
                 break
             }
 
-            expr := wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+            expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
             if expr.evalError {
                 parser.report( sf("could not evaluate the WHEN condition\n%+v",expr.errVal))
                 finish(false, ERR_EVAL)
@@ -2926,7 +2954,7 @@ tco_reentry:
             var expr ExpressionCarton
 
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
-                expr = wrappedEval(parser,ifs, inbound.Tokens[1:], true)
+                expr = wrappedEval(parser,ifs, inbound.Tokens[1:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
                     finish(false, ERR_EVAL)
@@ -3317,7 +3345,7 @@ tco_reentry:
             // prompt variable assignment:
             if inbound.TokenCount > 1 { // um, should not do this but...
                 if inbound.Tokens[1].tokType == C_Assign {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], true)
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3392,7 +3420,7 @@ tco_reentry:
             case "on":
                 loggingEnabled = true
                 if inbound.TokenCount == 3 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3410,7 +3438,7 @@ tco_reentry:
 
             case "accessfile":
                 if inbound.TokenCount > 2 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], true)
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3448,7 +3476,7 @@ tco_reentry:
 
             case "subject":
                 if inbound.TokenCount == 3 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3543,7 +3571,7 @@ tco_reentry:
                         ampl,er = GetAsInt(inbound.Tokens[2].tokText)
                         if er { // else evaluate
 
-                            expr := wrappedEval(parser,ifs, inbound.Tokens[2:], false)
+                            expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
                             typ:="increment"
                             if statement.tokType==C_Dec { typ="decrement" }
                             if expr.evalError {
@@ -3696,7 +3724,7 @@ tco_reentry:
 
         default:
 
-            // local command assignment (child process call)
+            // local command assignment (child/parent process call)
 
             if inbound.TokenCount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
@@ -3717,7 +3745,7 @@ tco_reentry:
             //
             // try to eval and assign
 
-            if we:=wrappedEval(parser,ifs, inbound.Tokens, true); we.evalError {
+            if we:=wrappedEval(parser,ifs, inbound.Tokens); we.evalError {
                 parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
                 break

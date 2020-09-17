@@ -4,6 +4,7 @@ input N optarg 1
 on kind(N)=="string" do exit
 
 define f(n)
+    var i int
     for i = 0 to n-1
         d[i%1000]=i
     endfor

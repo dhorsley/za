@@ -358,6 +358,7 @@ func buildInternalLib() {
         return -1,errors.New("Bad argument in len()")
     }
 
+    // may soon be unnecessary (eval changes)
     slhelp["globlen"] = LibHelp{in: "name", out: "int", action: "Get the length of a global variable. Returns -1 on not found or error."}
     stdlib["globlen"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
@@ -385,6 +386,7 @@ func buildInternalLib() {
     }
 
 
+    // may soon be unnecessary (eval changes)
     slhelp["getglob"] = LibHelp{in: "name", out: "mixed", action: "Read a global variable."}
     stdlib["getglob"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
@@ -529,6 +531,7 @@ func buildInternalLib() {
         return false, nil
     }
 
+    // may soon be unnecessary (eval changes)
     slhelp["globkey"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
     stdlib["globkey"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 

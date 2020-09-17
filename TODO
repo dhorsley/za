@@ -8,89 +8,11 @@
     * review library features and REQUIRE functionality.
 
 
-1.0.10  new evaluator, bug fixes and documentation updates
-
-    * started work on pratt parser for eval.
-
-        * will eventually re-use existing token streams (except in interpolated sub expressions)
-            * currently retokenising from input string (mostly changed now to token streams)
-
-        * all of this work will need exhaustive testing before we migrate to it (if we even do)
-
-        * error capture - need to pass these back up to .Eval()/deval() uniformly
-            * done quite a lot of this - maybe a few small things outstanding.
-
-        * new evaluations from a given functionspace should re-use a parser instantiated at the
-            start of the function Call().
-            * the parser is passed through sub eval routines which require it.
-            * this saves on initialising the led/nud map repeatedly in many cases.
-                * will probably still happen in recursion,
-                * definitely will happen in interpolation and user eval() calls.
-                * need to work around the interpolation one definitely. i'm probably missing a trick here.
-                    * the problem is the map carries context for the owner of the operation (i.e. p.unary/binary)
-                    * can't use a global (i think) because of concurrency requirement.
-                    * can't keep rebuilding the rules on each eval (small array [int]rule struct with probably 20 rules in.
-
-        * currently, only does basic arithmetic (-+*/%). need to add:
-            * DONE? float support
-            * DONE? equality operators (==, !=, >, <, <=, >=)
-                * float comparison gets fuzzy around the 16th decimal place
-            * DONE? other operators (negation ! , bool && and ||)
-            * DONE - added shift left and right operators: << >> 
-            * DONE - added array literals: [ x,y,z ]
-
-            * DONE - identifier support - needs more testing but pulling sane values and types from scope so far.
-            * DONE - identifiers cannot be named the same as reserved keywords (and it doesn't crash now!)
-            * DONE - identifiers can share names with library functions or user-defined functions.
-
-            * DONE - bit-wise operator support - ^ (xor), & (and) and | (or)
-            * DONE - bool support - added true and false constants. some testing done. seems okay.
-            * DONE? string literal support
-
-            * DONE: power (**) operator.
-            * DONE: user-defined function integration
-            * DONE: standard library integration
-                * for both of these, still may be some clean up to do in order to reduce the number of chained
-                    function calls these pass through. (ev/udf/Call/interpolate/buildRhs/etc)
-                * however, the mutual recursion path is now broken (hurray! the profiler looks sane again)
-
-            * DONE: getglob() is now optional! globals are now checked for a match *after* local var names
-                have been checked. The SETGLOB keyword is still mandatory.
-
-            * DONE: array slicing [], [x], [x:], [:x]. [x:y]
-            * DONE: map key access: map["key"] 
-            * DONE: . can now be used as an alternative for map field references, i.e. m["k"] == m.k
-            * DONE? [] and . can now be mixed in evaluation of an identifier. not fully tested yet, but 
-                it seems fine so far. more testing needed.
-            * DONE: struct support ( dot . operator )
-                * l.h.s and r.h.s. done.
-
-            * TODO: clean up test/dead code for evals
-            * TODO: --x, ++x, prefix inc/dec. will be adding these now. still not convinced about [-+/*]= requirement.
-            * NOT DOING: assignment operator? ( may do later )
-            * NOT DOING: unary positive ( may do later )
-            * NOT DOING: multiple return values? ( may do later )
-            * double dotting? ( may do later, probably not though )
-
-        * a test build using this evaluator was made (as the primary evaluator):
-            * the new evaluator was quicker, (about twice the speed).
-            * it was allocating much less memory and did perform better.
-
-            * WE WILL BE ADOPTING THE NEW EVALUATOR ONCE IT IS FEATURE COMPLETE.
-
-        * when this is complete is should remove *a lot* of function hopping going on during
-            user-defined function eval and generally speed things up as we will be removing
-            from each evaluation:
-            * yylex objects, yyparse objects (and their instantiation)
-            * 2 or 3 function calls
-            * having to *always* retokenise the expression.
-
-        * the overall application size should drop to some degree also as we will be able to remove
-            a substantial package from the code base.
-
+1.0.10  new evaluator + VAR enforcement
 
 1.0.9   BSD port, STRUCT support, lower-level filing operations.
         bug fixes and documentation updates
+
 
 ---------------------------------------------------------------------------------------------
 

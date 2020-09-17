@@ -24,11 +24,14 @@ func (p Phrase) String() string {
 // ExpressionFunction can be called from within expressions.
 type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, error)
 
+
 // za variable
 type Variable struct {
     IName  string
     _pad0  [15]uint64
     IValue interface{}
+    ITyped bool
+    IKind  string
 }
 
 // holds a Token which forms part of a Phrase.
