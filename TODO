@@ -1,11 +1,17 @@
 
 
-1.1.0  bug fixes 
+1.0.11  bug fixes , library return value review, 
 
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
     * review library features and REQUIRE functionality.
+
+    * look through library for places to return better result types.
+
+        e.g. json_format() should return a struct instead of an array.
+
+ 
 
 
 1.0.10  new evaluator + VAR enforcement

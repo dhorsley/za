@@ -541,7 +541,7 @@ func Call(varmode int, csloc uint64, registrant uint8, va ...interface{}) (endFu
     // re-entry point for recursive tail calls
     //
 
-tco_reentry:
+// tco_reentry:
 
 
     if varmode == MODE_NEW {
@@ -633,12 +633,15 @@ tco_reentry:
     if lockSafety { vlock.RUnlock() }
     if lockSafety { looplock.Unlock() }
 
-   /* 
-    pf("in %v \n",fs)
+
+tco_reentry:
+
+    /*
+    pf("\n\nin %v \n",fs)
     pf("base  -> %v\n",base)
     pf("va    -> %#v\n",va)
     pf("fargs -> %#v\n",functionArgs[base])
-   */
+    */
 
     // assign value to local vars named in functionArgs (the call parameters) from each 
     // va value (functionArgs[] created at definition time from the call signature).
@@ -2556,28 +2559,28 @@ tco_reentry:
                 if str.Trim(cet.text, " \t") != "" { // found something
 
                     // tco goes here...
-                    //  this only deals with calls to same function we can do other options
-                    //  later. i think only difference would be recalculating the ifs+base 
-                    //  args from call. may be some other changes needed too.
 
-                    // if tokens had thisFunc in calls, *and*
+                    // if tokens have this funcs base name in call, *and*
                     // no other tokens except the call params
                     // then....
 
-                    tco_check:=false // disable until we check all is well
+                    tco_check:=false // deny tco until we check all is well
                     bname, _ := numlookup.lmget(base)
 
                     if inbound.TokenCount > 2 {
-                        // 0:RETURN 1:fn/var_name 2+:(expression)
-                        // if only a var_name, then inbound.TokenCount must be 2
+
+                        // if only a var_name/literal, then inbound.TokenCount must be 2
+                        // with lparam/param then return_0 name_1 (_2 ... )_x
 
                         // pf("This func is  -> <%v>\n",fs)
                         // pf("Base func is  -> <%v>\n",bname)
                         // pf("Call token is -> <%v>\n",inbound.Tokens[1].tokText)
 
                         if strcmp(bname,inbound.Tokens[1].tokText) {
+                            // pf("passed func same name check\n")
                             tco_check=true
                         }
+
                     }
 
                     if tco_check {
@@ -2586,36 +2589,51 @@ tco_reentry:
 
                         r,_:=userDefEval(parser,ifs,inbound.Tokens[1:])
 
-                        // until we have more logic in here, also skip if
-                        // there's *anything* left in the expression after
-                        // the initial func call
-                        cet := crushEvalTokens(r[2:])
-                        if cet.text != "" { skip_reentry=true }
+                        // r-> f_0 (_1 ...._2+
 
-                        // this will be re-enabled when we do more complex checking:
+                        // skip tco if there's *anything* left in the
+                        // expression after the initial func call
 
-                        // check no more calls with same func name:
-                        // if str.Contains(cet.text,bname) {
-                        //     skip_reentry=true
-                        // }
+                        rbraceAt := findDelim(r,")", 1)
+                        if rbraceAt==-1 {
+                            // pf("syntax error to deal with here.\n")
+                        // @todo: add a proper error when rbraceAt==-1
+                        }
+
+                        cet := crushEvalTokens(r[rbraceAt+1:])
+                        if cet.text != "" {
+                            skip_reentry=true
+                            // pf("failed args empty check\n")
+                        }
 
                         // now pick through r, setting each va in turn...
 
                         if !skip_reentry {
 
-                            // strip paren
-                            ex := stripOuter(r[1].tokText,'(')
-                            ex  = stripOuter(ex, ')')
-
                             // split by comma
-                            var dargs []string
 
-                            if len(ex)>0 {
-                                dargs = str.Split(ex, ",")
-                                for arg:=range dargs {
-                                    dargs[arg]=str.Trim(dargs[arg]," \t")
+                            var dargs []string
+                            evphrase:=""
+                            evnest:=0
+
+                            for term := range r[2:rbraceAt] {
+                                nt:=r[term+2]
+                                if nt.tokType==LParen { evnest++ }
+                                if nt.tokType==RParen { evnest-- }
+                                if nt.tokType!=C_Comma {
+                                    evphrase+=nt.tokText
+                                } else {
+                                    if evnest>0 { evphrase+=nt.tokText }
                                 }
-                            } else {
+                                if evnest==0 && nt.tokType==RParen { break }
+                                if evnest==0 && (term==len(r[2:rbraceAt])-1 || nt.tokType == C_Comma) {
+                                    dargs=append(dargs,evphrase)
+                                    evphrase=""
+                                }
+                            }
+
+                            if len(dargs)==0 {
+                                // pf("dargs len check 0 failure\n")
                                 skip_reentry=true // no args
                             }
 
@@ -2637,6 +2655,8 @@ tco_reentry:
                                 }
 
                             } else {
+                                // pf("len va and len dargs different, failed check\n")
+                                // pf("--> va %+v  , dargs %+v\n",va,dargs)
                                 skip_reentry=true
                             }
 
@@ -2649,6 +2669,7 @@ tco_reentry:
                             pc=-1
                             goto tco_reentry
                         }
+                        // pf("not tco capable\n")
 
                     }
 
@@ -3899,8 +3920,11 @@ func findTokenDelim(tokens []Token, delim uint8, start int) (pos int) {
 /// search token list for a given delimiter string
 func findDelim(tokens []Token, delim string, start int) (pos int) {
     delim = str.ToLower(delim)
+    n:=0
     for p := start; p < len(tokens); p++ {
-        if str.ToLower(tokens[p].tokText) == delim {
+        if tokens[p].tokType==LParen { n++ }
+        if tokens[p].tokType==RParen { n-- }
+        if n==0 && str.ToLower(tokens[p].tokText) == delim {
             return p
         }
     }
