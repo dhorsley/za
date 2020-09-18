@@ -2,7 +2,7 @@
 
 # test - additional loop
 
-target=4000000
+target=10000000
 a=0
 
 for (( f=0; f<=$target ; f++ ))
