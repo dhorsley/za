@@ -10,6 +10,8 @@ input reps optarg 1
 max_reps=1
 on reps!="" do max_reps=int(reps)
 
+cursoroff()
+
 cls
 h=term_h()
 w=term_w()
@@ -19,24 +21,24 @@ cy=int(h/2)
 
 seed(epoch_nano_time())
 
-col=rand(7)
 
 for nr=1 to max_reps
 
     for e=0 to cy-1
 
+        cb="[#b{rand(7)}]  "
         for r=0 to 359
             px=cx-1+2*e*sin(r)
             py=1.0+cy+e*cos(r)
             at py,px
-            print "[#b{col}]   "
+            print cb
         endfor
-        col=rand(7)
 
     endfor
 
 endfor
 
+cursoron()
 at h-4,1; print "[#default]"
 at h-5,1; println "h,w={h},{w}"
 
