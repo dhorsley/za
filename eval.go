@@ -80,7 +80,6 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
         if r := recover(); r != nil {
             CTE:="\033[0K"
             p.report(sf("\n"+CTE+"%v\n"+CTE,r))
-            // err = r.(error)
             os.Exit(ERR_EVAL)
         }
     }()
@@ -99,7 +98,8 @@ type leparser struct {
     tokens      []Token     // the thing getting evaluated
     pos         int         // distance through parse
     fs          uint64      // working function space
-    line        int         // shadows program counter (pc)
+    line        int         // shadows lexer source line
+    stmtline    int         // shadows program counter (pc)
 }
 
 
@@ -129,7 +129,6 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         if r := recover(); r != nil {
             CTE:="\033[0K"
             p.report(sf("\n"+CTE+"%v\n"+CTE,r))
-            //err = r.(error)
             os.Exit(ERR_EVAL)
         }
     }()

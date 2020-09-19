@@ -62,6 +62,8 @@ var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
 
+var fileMap = make(map[uint64]string)               // func space to source file name mappings
+
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
 var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for each defined function (key: function name)
 var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
@@ -827,7 +829,8 @@ func main() {
             }
             input += "\n"
 
-            parse("global", input, 0)
+            fileMap[globalspace]=exec_file_name
+            phraseParse("global", input, 0)
 
             // throw away break and continue positions in interactive mode
             endFunc = Call(MODE_STATIC, globalspace, ciRepl)
@@ -901,7 +904,8 @@ func main() {
 
     // tokenise and part-parse the input
     if len(input) > 0 {
-        parse("main", input, 0)
+        fileMap[1]=exec_file_name
+        phraseParse("main", input, 0)
 
         // initialise the main program
         cs := call_s{}

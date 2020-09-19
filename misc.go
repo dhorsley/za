@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+    "fmt"
 	"os"
 	"regexp"
 	str "strings"
@@ -97,7 +98,9 @@ func (parser *leparser) report(s string) {
 
     var baseId uint64
 
-    line:=parser.line-1
+    line:=parser.line
+    stmtline:=parser.stmtline
+
     ifs:=parser.fs
 
     CTE    := "\033[0K"
@@ -111,11 +114,20 @@ func (parser *leparser) report(s string) {
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
     // callChain=append(callChain,chainInfo{name:baseName,registrant:ciErr,loc:baseId,line:line})
-    line_content:=Phrase{}
-    if len(functionspaces[baseId])>0 { line_content=functionspaces[baseId][line+1] }
+    // line_content:=Phrase{}
+    var line_content string
 
-    pf( sparkle(sf(CTE+"\n[#bred]\n"+CTE+"\n"+CTE+"[#7]Error in %s (statement #%d) : %v\n"+CTE+"\n[##][#-]"+CTE+"%s\n"+CTE,
-        baseName, line+1, line_content, s ) ) )
+    if len(functionspaces[baseId])>0 {
+            // line_content=functionspaces[baseId][line].Original
+            line_content=functionspaces[baseId][stmtline].Original
+    }
+
+    fmt.Print( sparkle(
+            sf(CTE+"\n[#bred]\n"+CTE+"\n"+CTE+
+                "[#7]Error in %+v/%s (line #%d) : ", fileMap[baseId],baseName,line+1))+
+        line_content+"\n"+CTE+"\n"+
+        sparkle("[##][#-]"+CTE)+
+        sf("%s\n"+CTE, s))
 
     if !interactive {
         showCallChain(baseName)
