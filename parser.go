@@ -4,7 +4,7 @@ import (
 	str "strings"
 )
 
-// parse():
+// phraseParse():
 //
 //   process an input string into separate lines of commands (Phrases). Each phrase is
 //   built from successive calls to nextToken(). Input ends at end-of-string or earlier
@@ -16,7 +16,7 @@ import (
 //   functionspaces[] is a global.
 //
 
-func parse(fs string, input string, start int) (badword bool, eof bool) {
+func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
 	pos := start
 	lstart := start
@@ -27,7 +27,7 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 	var phrase = Phrase{}
 
 	previousToken := Error
-	curLine := 1
+	curLine := 0
     newStatement:=true
 
     var strPhrase str.Builder
@@ -37,11 +37,15 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
     var braceNestLevel  int     // round braces
     var sbraceNestLevel int     // square braces
 
+    lmv,_:=fnlookup.lmget(fs)
+
 	for ; pos < len(input); pos++ {
 
-        // debug(15,"nt : (pos:%d) calling nextToken()\n",pos)
+        // pf("nt : (pos:%d) calling nextToken()\n",pos)
 		tempToken, eol, eof = nextToken(input, &curLine, pos, previousToken, newStatement)
 		previousToken = tempToken.tokType
+        // pf("%d->"+tokNames[previousToken]+"\n",curLine)
+
         newStatement=false
 
         if previousToken==LParen {
@@ -59,7 +63,6 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 
         if sbraceNestLevel>0 || braceNestLevel>0 {
             if eol || previousToken==EOL {
-                // curLine++
                 continue
             }
         }
@@ -86,7 +89,7 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 		}
 
 		if tempToken.tokType == Error {
-			pf("Error found on line %d in %s\n", curLine, tempToken.tokText)
+			pf("Error found on line %d in %s\n", curLine+1, tempToken.tokText)
 			break
 		}
 
@@ -105,10 +108,11 @@ func parse(fs string, input string, start int) (badword bool, eof bool) {
 			if pos>0 { phrase.Original = input[lstart:pos] }
 			lstart = pos + 1
 
+            phrase.SourceLine=curLine-1
+
             // -- discard empty lines
             if phrase.TokenCount!=0 {
                 // -- add phrase to function
-                lmv,_:=fnlookup.lmget(fs)
                 if lockSafety { fspacelock.Lock() }
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
                 if lockSafety { fspacelock.Unlock() }

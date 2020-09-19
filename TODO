@@ -11,7 +11,7 @@
 
         e.g. json_format() should return a struct instead of an array.
 
- 
+    * get a fix in for source line numbers (in error reports and -t tests) 
 
 
 1.0.10  new evaluator + VAR enforcement

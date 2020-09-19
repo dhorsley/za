@@ -77,6 +77,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
     }
     skip = i
 
+/*
     // @note: will this ever be true?
     if skip == -1 {
         carton.tokPos = -1
@@ -85,11 +86,12 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
         carton.tokText = ""
         goto get_nt_exit_point
     }
+*/
 
     // bad endings...
     if skip>=li {
         carton.tokPos  = -1
-        carton.Line    = *curLine
+        //carton.Line    = *curLine
         carton.tokType = EOL
         carton.tokText = ""
         goto get_nt_exit_point
@@ -169,9 +171,10 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 
     switch firstChar {
     case '\n':
+    //    pf("<ding>\n")
         eol = true
         carton.tokPos = skip
-        carton.Line = *curLine
+        //carton.Line = *curLine
         (*curLine)++
         carton.tokType = EOL
         goto get_nt_exit_point
@@ -257,7 +260,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 
             if tokType == SingleComment {
                 carton.tokPos = endPos - backtrack
-                carton.Line = *curLine
+                //carton.Line = *curLine
                 carton.tokType = SingleComment
                 carton.tokText = ""
                 eol=true
@@ -265,12 +268,12 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
             }
 
             // flag another EOL in count
-            if input[i]=='\n' { (*curLine)++ }
+            // if input[i]=='\n' { (*curLine)++ }
 
             if matchQuote {
                 // get word and end, include terminal quote
                 carton.tokPos = endPos
-                carton.Line   = *curLine
+                //carton.Line   = *curLine
                 carton.tokType= StringLiteral
                 carton.tokText= input[skip:i+1]
                 // unescape escapes
@@ -296,7 +299,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
     if !matchQuote && input[endPos] == '\n' {
         eol = true
         carton.tokPos = endPos
-        carton.Line = *curLine
+        //carton.Line = *curLine
         carton.tokType = EOL
         carton.tokText = input[skip:endPos]
         goto get_nt_exit_point
@@ -304,7 +307,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 
     if tokType==SingleComment {
         carton.tokPos = endPos - backtrack
-        carton.Line = *curLine
+        //carton.Line = *curLine
         carton.tokType = SingleComment
         carton.tokText = input[skip:i]
         eol=true
@@ -336,7 +339,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
             }
         }
         carton.tokPos = endPos - backtrack
-        carton.Line = *curLine
+        //carton.Line = *curLine
         carton.tokType = tokType
         carton.tokText = word
         goto get_nt_exit_point
@@ -552,7 +555,7 @@ get_nt_eval_point:
 
     // box up the token
     carton.tokPos = endPos - backtrack
-    carton.Line = *curLine
+    //carton.Line = *curLine
     carton.tokType = tokType
     carton.tokText = word
 

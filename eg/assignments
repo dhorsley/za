@@ -40,7 +40,9 @@ test "5" group "assignments"
     test5a = last()
     assert test5a==1
     doc "  : Awk output capture.\n"
+    interpol(false) ## the {} after BEGIN
     test5b =| awk 'BEGIN{print"awk test!"}'
+    interpol(true)
     assert test5b=="awk test!"
 endtest
 

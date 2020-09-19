@@ -15,6 +15,8 @@ type Phrase struct {
 	Original   string  // entire string, unmodified for spaces
 	TokenCount int     // number of tokens generated for this phrase
 	Tokens     []Token // each token found
+   // FileRef    uint64  // maybe not needed, file can be derived from fs/token context
+    SourceLine int
 }
 
 func (p Phrase) String() string {
@@ -39,8 +41,8 @@ type Token struct {
 	tokType uint8         // token type from list in constants.go
     tokPos  int         // by character (from start of input)
     tokVal  interface{} // raw value storage
-	Line    int         // line in parsed string (1 based) of token
-	Col     int         // starting char position (from start of line) (not currently used)
+	//Line    int         // line in parsed string (1 based) of token
+	//Col     int         // starting char position (from start of line) (not currently used)
 	tokText string      // the content of the token
 }
 
