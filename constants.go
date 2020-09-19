@@ -12,7 +12,7 @@ const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 // maximum lib-net concurrent listener clients for http server
 const MAX_CLIENTS = 800
 
-const SPACE_CAP = 40000         // max user function instances ack(4,1) memoised uses ~16.5k
+const SPACE_CAP = 25000         // max user function instances ack(4,1) memoised uses ~16.5k
 const CALL_CAP = 10             // calltable (open calls) start capacity. scales up.
 const FUNC_CAP = 350            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 

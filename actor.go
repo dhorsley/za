@@ -677,13 +677,12 @@ tco_reentry:
     pf(">> fs[] sz : %d len %d\n",grso,len(functionspaces))
     */
 
-    var lastline int
     var statement Token
 
     for {
 
         pc++  // program counter, equates to each Phrase struct in the function
-        parser.line=pc
+        parser.stmtline=pc
 
         si=sig_int
 
@@ -698,7 +697,7 @@ tco_reentry:
 
         // get the next Phrase
         inbound     = &functionspaces[base][pc]
-        lastline    = inbound.Tokens[0].Line
+        parser.line=inbound.SourceLine
 
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
@@ -2066,9 +2065,9 @@ tco_reentry:
                             break
                         }
                         // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), lastline, expr.text)
+                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), parser.line, expr.text)
                         testsFailed++
-                        appendToTestReport(test_output_file,ifs, lastline, test_report)
+                        appendToTestReport(test_output_file,ifs, parser.line, test_report)
                         temp_test_assert := test_assert
                         if fail_override != "" {
                             temp_test_assert = fail_override
@@ -2082,7 +2081,7 @@ tco_reentry:
                         }
                     } else {
                         if under_test {
-                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), lastline, expr.text)
+                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), parser.line, expr.text)
                             testsPassed++
                             appendToTestReport(test_output_file,ifs, pc, test_report)
                         }
@@ -2894,7 +2893,8 @@ tco_reentry:
             farglock.Unlock()
 
             //.. parse and execute
-            parse("@mod_"+fom, string(mod), 0)
+            fileMap[loc]=moduleloc
+            phraseParse("@mod_"+fom, string(mod), 0)
 
             modcs := call_s{}
             modcs.base = loc
@@ -2907,15 +2907,17 @@ tco_reentry:
 
             Call(MODE_NEW, loc, ciMod)
 
-            calllock.Lock()
-            calltable[loc]=call_s{}
-            calllock.Unlock()
+            // @note: keeping the source for now, so we can lookup error
+            //          lines on faults.
 
+            // calllock.Lock()
+            // calltable[loc]=call_s{}
+            // calllock.Unlock()
 
             // purge the module source as the code has been executed
-            fspacelock.Lock()
-            functionspaces[loc]=[]Phrase{}
-            fspacelock.Unlock()
+            // fspacelock.Lock()
+            // functionspaces[loc]=[]Phrase{}
+            // fspacelock.Unlock()
 
 
         case C_When:
