@@ -102,6 +102,7 @@ const (
 	ERR_REQUIRE
 	ERR_UNSUPPORTED
 	ERR_ASSERT
+    ERR_LEX int = 127
 )
 
 const (
@@ -146,6 +147,8 @@ const (
     SYM_COLON
     C_Comma
 	C_Tilde
+    O_Sqr
+    O_Sqrt
     START_STATEMENTS
     C_Var
 	C_Assign

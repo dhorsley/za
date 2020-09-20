@@ -1,0 +1,163 @@
+#!/usr/bin/za
+
+struct t_body
+    sx float
+    sy float
+    sz float
+    vx float
+    vy float
+    vz float
+    mass float
+endstruct
+
+#
+# funcs
+#
+
+define offsetmomentum()
+    var px float
+    var py float
+    var pz float
+
+    for i=0 to N-1
+        px = px + (b[i].vx * b[i].mass)
+        py = py + (b[i].vy * b[i].mass)
+        pz = pz + (b[i].vz * b[i].mass)
+    endfor
+
+    setglob b[0].vx = -px / solarMass
+    setglob b[0].vy = -py / solarMass
+    setglob b[0].vz = -pz / solarMass
+
+enddef
+
+
+define energy()
+    var e float
+    for i = 0 to N-1
+        e=e+ ( 0.5 * b[i].mass * ( sqr b[i].vx + sqr b[i].vy + sqr b[i].vz ) )
+        for j=i+1 to N-1
+            dx = b[i].sx - b[j].sx
+            dy = b[i].sy - b[j].sy
+            dz = b[i].sz - b[j].sz
+            distance = sqrt ( sqr dx + sqr dy + sqr dz )
+            e=e-(b[i].mass*b[j].mass) / distance
+        endfor
+    endfor
+    return e
+enddef
+
+
+define advance(dt)
+    for i = 0 to N-1
+
+
+        _vx=b[i].vx
+        _vy=b[i].vy
+        _vz=b[i].vz
+
+        for j = i + 1 to N-1
+            dx = b[i].sx - b[j].sx
+            dy = b[i].sy - b[j].sy
+            dz = b[i].sz - b[j].sz
+            dSquared = sqr dx + sqr dy + sqr dz
+            distance = sqrt dSquared
+            mag = dt / (dSquared * distance)
+
+            _vx = _vx - dx * b[j].mass * mag
+            _vy = _vy - dy * b[j].mass * mag
+            _vz = _vz - dz * b[j].mass * mag
+
+            setglob b[j].vx = b[j].vx + dx * b[i].mass * mag
+            setglob b[j].vy = b[j].vy + dy * b[i].mass * mag
+            setglob b[j].vz = b[j].vz + dz * b[i].mass * mag
+
+        endfor
+
+        setglob b[i].vx = _vx
+        setglob b[i].vy = _vy
+        setglob b[i].vz = _vz
+
+    endfor
+
+    for i = 0 to N-1
+        setglob b[i].sx=b[i].sx+dt*b[i].vx
+        setglob b[i].sy=b[i].sy+dt*b[i].vy
+        setglob b[i].sz=b[i].sz+dt*b[i].vz
+    endfor
+
+enddef
+
+
+#
+# MAIN
+#
+
+# get argument
+iters=50000000
+input in_iters optarg 1
+on kind(in_iters)=="int" do iters=in_iters
+
+# set some constants
+pi = 3.141592653589793
+solarMass = 4 * sqr pi
+daysPerYear = 365.24
+N = 5
+body_list=["sun","jupiter","saturn","uranus","neptune"]
+
+init b mixed N
+foreach bn in body_list
+    init {bn} t_body
+endfor
+
+# TEST DATA
+
+sun.sx=0.0; sun.sy=0.0; sun.sz=0.0; sun.vx=0.0; sun.vy=0.0; sun.vz=0.0
+sun.mass=solarMass
+
+jupiter.sx  =  4.84143144246472090e+00
+jupiter.sy  = -1.16032004402742839e+00
+jupiter.sz  = -1.03622044471123109e-01
+jupiter.vx  =  1.66007664274403694e-03 * daysPerYear
+jupiter.vy  =  7.69901118419740425e-03 * daysPerYear
+jupiter.vz  = -6.90460016972063023e-05 * daysPerYear
+jupiter.mass=  9.54791938424326609e-04 * solarMass
+
+saturn.sx   =  8.34336671824457987e+00
+saturn.sy   =  4.12479856412430479e+00
+saturn.sz   = -4.03523417114321381e-01
+saturn.vx   = -2.76742510726862411e-03 * daysPerYear
+saturn.vy   =  4.99852801234917238e-03 * daysPerYear
+saturn.vz   =  2.30417297573763929e-05 * daysPerYear
+saturn.mass =  2.85885980666130812e-04 * solarMass
+
+uranus.sx   =  1.28943695621391310e+01
+uranus.sy   = -1.51111514016986312e+01
+uranus.sz   = -2.23307578892655734e-01
+uranus.vx   =  2.96460137564761618e-03 * daysPerYear
+uranus.vy   =  2.37847173959480950e-03 * daysPerYear
+uranus.vz   = -2.96589568540237556e-05 * daysPerYear
+uranus.mass =  4.36624404335156298e-05 * solarMass
+
+neptune.sx  =  1.53796971148509165e+01
+neptune.sy  = -2.59193146099879641e+01
+neptune.sz  =  1.79258772950371181e-01
+neptune.vx  =  2.68067772490389322e-03 * daysPerYear
+neptune.vy  =  1.62824170038242295e-03 * daysPerYear
+neptune.vz  = -9.51592254519715870e-05 * daysPerYear
+neptune.mass=  5.15138902046611451e-05 * solarMass
+
+foreach bn in body_list
+    b[key_bn]={bn}
+    println format("%2d : %15s",key_bn,bn)
+endfor
+
+offsetmomentum()
+
+println format("%.9f", energy())
+for i = 0 to iters-1
+    advance(0.01)
+endfor
+println format("%.9f", energy())
+
+

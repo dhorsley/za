@@ -125,10 +125,6 @@ func buildListLib() {
             if len(args[0].([]int)) == 0 {
                 return true, nil
             }
-        case []int32:
-            if len(args[0].([]int32)) == 0 {
-                return true, nil
-            }
         case []int64:
             if len(args[0].([]int64)) == 0 {
                 return true, nil
@@ -222,18 +218,12 @@ func buildListLib() {
             case uint8:
                 l := make([]uint8, 0, 31)
                 return append(l, args[0].(uint8)), nil
-            case uint32:
-                l := make([]uint32, 0, 31)
-                return append(l, args[0].(uint32)), nil
             case uint64:
                 l := make([]uint64, 0, 31)
                 return append(l, args[0].(uint64)), nil
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
-            case int32:
-                l := make([]int32, 0, 31)
-                return append(l, args[0].(int32)), nil
             case int64:
                 l := make([]int64, 0, 31)
                 return append(l, args[0].(int64)), nil
@@ -259,14 +249,10 @@ func buildListLib() {
                  args[0] = make([]int, 0, 31)
             case int64:
                  args[0] = make([]int64, 0, 31)
-            case int32:
-                 args[0] = make([]int32, 0, 31)
             case uint:
                  args[0] = make([]uint, 0, 31)
             case uint8:
                  args[0] = make([]uint8, 0, 31)
-            case uint32:
-                 args[0] = make([]uint32, 0, 31)
             case uint64:
                  args[0] = make([]uint64, 0, 31)
             case bool:
@@ -362,14 +348,6 @@ func buildListLib() {
             l = append(l, args[1].(bool))
             l = append(l, args[0].([]bool)...)
             return l, nil
-        case []int32:
-            if "int32" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push_front()")
-            }
-            l := make([]int32, 0, 31)
-            l = append(l, args[1].(int32))
-            l = append(l, args[0].([]int32)...)
-            return l, nil
         case []int64:
             if "int64" != sf("%T", args[1]) {
                 return nil, errors.New("data types must match in push_front()")
@@ -424,8 +402,6 @@ func buildListLib() {
         case []int:
             return a[len(a)-1],nil
         case []int64:
-            return a[len(a)-1],nil
-        case []int32:
             return a[len(a)-1],nil
         case []uint8:
             return a[len(a)-1],nil
@@ -1018,13 +994,6 @@ func buildListLib() {
                     float_list = append(float_list, v)
                 }
             }
-        case []int32:
-            for _, q := range args[0].([]int32) {
-                v, invalid := GetAsFloat(sf("%v", q))
-                if !invalid {
-                    float_list = append(float_list, v)
-                }
-            }
         case []int64:
             for _, q := range args[0].([]int64) {
                 v, invalid := GetAsFloat(sf("%v", q))
@@ -1066,8 +1035,6 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return args[0].([]int),nil
-        case []int32:
-            return args[0].([]int32),nil
         case []int64:
             return args[0].([]int64),nil
         case []float64:
@@ -1250,8 +1217,6 @@ func buildListLib() {
             return append(args[0].([]bool), args[1].([]bool)...), nil
         case []int:
             return append(args[0].([]int), args[1].([]int)...), nil
-        case []int32:
-            return append(args[0].([]int32), args[1].([]int32)...), nil
         case []int64:
             return append(args[0].([]int64), args[1].([]int64)...), nil
         case []uint8:
@@ -1290,7 +1255,7 @@ func buildListLib() {
             return false, errors.New("Argument 3 must be a string.")
         }
         switch args[3].(type) {
-        case int, int32, int64:
+        case int, int64:
         default:
             return false, errors.New("Argument 4 must be an integer.")
         }

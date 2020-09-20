@@ -24,8 +24,6 @@ enddef
 
 seed(epoch_nano_time())
 
-ansi(true)
-
 th=term_h()
 tw=term_w()
 

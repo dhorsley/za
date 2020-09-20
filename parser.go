@@ -36,13 +36,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     // simple handler for parens nesting
     var braceNestLevel  int     // round braces
     var sbraceNestLevel int     // square braces
+    var tokPos int
 
     lmv,_:=fnlookup.lmget(fs)
 
 	for ; pos < len(input); pos++ {
 
         // pf("nt : (pos:%d) calling nextToken()\n",pos)
-		tempToken, eol, eof = nextToken(input, &curLine, pos, previousToken, newStatement)
+		tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos, previousToken, newStatement)
 		previousToken = tempToken.tokType
         // pf("%d->"+tokNames[previousToken]+"\n",curLine)
 
@@ -67,7 +68,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             }
         }
 
-        // debug(15,"nt-t: (tokpos:%d) %v\n",tempToken.tokPos,tokNames[tempToken.tokType])
+        // debug(15,"nt-t: (tokpos:%d) %v\n",tokPos,tokNames[tempToken.tokType])
 
         if previousToken==SingleComment {
             // at this point we have returned the full comment, pos was backtracked to just before the EOL.
@@ -84,8 +85,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 		phrase.TokenCount++
         strPhrase.WriteString(tempToken.tokText+" ")
 
-		if tempToken.tokPos != -1 {
-			pos = tempToken.tokPos
+		if tokPos != -1 {
+			pos = tokPos
 		}
 
 		if tempToken.tokType == Error {
@@ -102,7 +103,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             }
 
 			// -- cleanup phrase text
-			phrase.Text = str.TrimRight(strPhrase.String(), " ")
+			// phrase.Text = str.TrimRight(strPhrase.String(), " ")
 
 			// -- add original version
 			if pos>0 { phrase.Original = input[lstart:pos] }

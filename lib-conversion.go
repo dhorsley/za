@@ -55,7 +55,7 @@ func m2s(m map[string]interface{}, rcvr interface{}) interface{} {
         rf  = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
         name:=rt.Field(i).Name
         switch tm:=m[name].(type) {
-        case bool,int,int32,int64,uint,uint8,uint32,uint64,float32,float64,string:
+        case bool,int,int64,uint,uint8,uint64,float64,string:
             rf.Set(reflect.ValueOf(tm))
         default:
             pf("unknown type in m2s '%T'\n",tm)
@@ -71,7 +71,7 @@ func buildConversionLib() {
 
 	features["conversion"] = Feature{version: 1, category: "os"}
 	categories["conversion"] = []string{
-        "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii","uint","int32",
+        "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii","uint",
         "is_number","base64e","base64d","json_decode","json_format",
         "write_struct","read_struct",
     }
@@ -318,18 +318,6 @@ func buildConversionLib() {
 			return uint64(i), nil
 		}
 		return uint64(0), errors.New(sf("could not convert [%T] (%v) to integer in uint()",args[0],args[0]))
-	}
-
-	slhelp["int32"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int32 type, or errors."}
-	stdlib["int32"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return -1, errors.New("invalid arguments provided to int32()")
-		}
-		i, invalid := GetAsInt32(args[0])
-		if !invalid {
-			return int32(i), nil
-		}
-		return int32(0), errors.New(sf("could not convert [%T] (%v) to integer in int32()",args[0],args[0]))
 	}
 
 	slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
