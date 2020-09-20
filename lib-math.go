@@ -14,7 +14,7 @@ func buildMathLib() {
 
 	features["math"] = Feature{version: 1, category: "math"}
 	categories["math"] = []string{
-		"seed", "rand", "sqr", "sqrt", "pow","abs",
+		"seed", "rand", "osqr", "osqrt", "pow","abs",
 		"sin", "cos", "tan", "asin", "acos", "atan","floor",
 		"ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
 		"e", "pi", "phi", "ln2", "ln10","ibase",
@@ -67,9 +67,7 @@ func buildMathLib() {
         switch args[0].(type) {
         case float64:
             return RenderFloat("#,###"+precString,args[0].(float64)),nil
-        case float32:
         case int:
-        case int32:
         case int64:
         default:
             return math.NaN,errors.New(sf("type '%T' is not supported by numcomma",args[0]))
@@ -88,7 +86,7 @@ func buildMathLib() {
 		}
 		var n float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			n, _ = GetAsFloat(args[0])
 			n = math.Log(n)
 		default:
@@ -104,7 +102,7 @@ func buildMathLib() {
 		}
 		var n float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			n, _ = GetAsFloat(args[0])
 			n = math.Log10(n)
 		default:
@@ -120,7 +118,7 @@ func buildMathLib() {
 		}
 		var n float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			n, _ = GetAsFloat(args[0])
 			n = math.Log2(n)
 		default:
@@ -136,13 +134,13 @@ func buildMathLib() {
 		}
 		var n, b float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			n, _ = GetAsFloat(args[0])
 		default:
 			return 0, errors.New("Data type not supported.")
 		}
 		switch args[1].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			b, _ = GetAsFloat(args[1])
 			if b <= 0 {
 				return 0, errors.New("Base must be positive in log()")
@@ -161,7 +159,7 @@ func buildMathLib() {
 		}
 		var radians float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			deg, _ := GetAsFloat(args[0])
 			radians = deg * (math.Pi / 180)
 		default:
@@ -177,7 +175,7 @@ func buildMathLib() {
 		}
 		var degrees float64
 		switch args[0].(type) {
-		case float64, float32, int32, int, int64:
+		case float64, int, int64:
 			rad, _ := GetAsFloat(args[0])
 			degrees = rad * (180 / math.Pi)
 		default:
@@ -195,8 +193,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -214,8 +210,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -233,8 +227,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -252,8 +244,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -271,8 +261,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -290,8 +278,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			r = float64(args[0].(int))
-		case float32:
-			r = float64(args[0].(float32))
 		case float64:
 			r = args[0].(float64)
 		default:
@@ -314,8 +300,6 @@ func buildMathLib() {
 		switch args[0].(type) {
 		case int:
 			p1 = float64(args[0].(int))
-		case float32:
-			p1 = float64(args[0].(float32))
 		case float64:
 			p1 = args[0].(float64)
 		default:
@@ -324,8 +308,6 @@ func buildMathLib() {
 		switch args[1].(type) {
 		case int:
 			p2 = float64(args[1].(int))
-		case float32:
-			p2 = float64(args[1].(float32))
 		case float64:
 			p2 = args[1].(float64)
 		default:
@@ -338,17 +320,13 @@ func buildMathLib() {
 		return math.Pow(p1, p2), err
 	}
 
-	slhelp["sqrt"] = LibHelp{in: "number", out: "number", action: "Calculate square root of [#i1]number[#i0]."}
-	stdlib["sqrt"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	slhelp["osqrt"] = LibHelp{in: "number", out: "number", action: "Calculate square root of [#i1]number[#i0]."}
+	stdlib["osqrt"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return math.NaN, errors.New("Bad args (count) to sqrt()") }
 		switch v := args[0].(type) {
 		case int:
 			return math.Sqrt(float64(v)), nil
-		case int32:
-			return math.Sqrt(float64(v)), nil
 		case int64:
-			return math.Sqrt(float64(v)), nil
-		case float32:
 			return math.Sqrt(float64(v)), nil
 		case float64:
 			return math.Sqrt(float64(v)), nil
@@ -366,10 +344,6 @@ func buildMathLib() {
             n := args[0].(int)
             y := n >> 63
             return (n ^ y) - y, nil
-		case int32:
-            n := args[0].(int32)
-            y := n >> 31
-            return (n ^ y) - y, nil
 		case int64:
             n := args[0].(int64)
             y := n >> 63
@@ -381,8 +355,8 @@ func buildMathLib() {
 		}
     }
 
-	slhelp["sqr"] = LibHelp{in: "number", out: "number", action: "Calculate square of [#i1]number[#i0]."}
-	stdlib["sqr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	slhelp["osqr"] = LibHelp{in: "number", out: "number", action: "Calculate square of [#i1]number[#i0]."}
+	stdlib["osqr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("sqr() only takes one argument.")
 		}
@@ -391,8 +365,6 @@ func buildMathLib() {
 			return args[0].(int) * args[0].(int), err
 		case float64:
 			return args[0].(float64) * args[0].(float64), err
-		case float32:
-			return args[0].(float32) * args[0].(float32), err
 		default:
 			return 0, errors.New("argument to sqr() must be a number.")
 		}

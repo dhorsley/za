@@ -207,8 +207,6 @@ func buildFileLib() {
                 omconv = uint64(args[2].(int))
             case uint:
                 omconv = uint64(args[2].(uint))
-            case int32:
-                omconv = uint64(args[2].(int32))
             case int64:
                 omconv = uint64(args[2].(int64))
             }

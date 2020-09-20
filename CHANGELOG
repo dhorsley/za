@@ -2,6 +2,18 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.11  
+        * added sqr and sqrt as unary operators
+            - issue with print output with these, but assignment okay
+
+        * added field deref on array elements (lhs+rhs), i.e. a[i].f=a[j].f
+            - issues:
+                - some bad smells around this: bi=b[i]; bi.f=x; b[i]=bi ...
+                - something seems amiss with the above, it broke the nbodies example trying it.
+                    - i removed the rcopy and r/w check in accessField while trying this, so
+                        it could be that too.
+
+
 1.0.10  new evaluator, bug fixes and documentation updates
 
     * New evaluator written for some small speed up and better integration with whole.
@@ -179,6 +191,8 @@ CHANGE LOG
 
     * eval lib updated (accessField processing and add/sum/mul/div/unaryminus/mod to
         handle other signed int types.
+
+    * added unary positive and improved lexing a little on scientific notation NumericLiteral cases.
 
     * removed a few more allocations in FOR..ENDFOR.
     * replaced a vset() call for direct var access when thread safety not required, in ENDFOR.

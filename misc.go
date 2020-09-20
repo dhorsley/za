@@ -52,14 +52,13 @@ func ShowSource(funcInstance string,start int,end int) bool {
         max:=len(functionspaces[baseId])-1
         if end+1>max { end=max-1 }
 
-        CTE:="\033[0K"
-        strOut:=CTE
+        strOut:="[#CTE]"
 
         for q := range functionspaces[baseId][start:end+1] {
-            strOut = strOut + sf("%5d : %s\n"+CTE, start+q, functionspaces[baseId][start+q].Original)
+            strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, functionspaces[baseId][start+q].Original)
         }
 
-        strOut = sf("\n"+CTE+"%s(%v)\n"+CTE, funcName, str.Join(functionArgs[baseId], ",")) + strOut
+        strOut = sf("\n[#CTE]%s(%v)\n[#CTE]", funcName, str.Join(functionArgs[baseId], ",")) + strOut
         pf(strOut)
 
     }
@@ -68,16 +67,14 @@ func ShowSource(funcInstance string,start int,end int) bool {
 
 func showCallChain(base string) {
 
-    CTE:="\033[0K"
-
     // show chain
-    pf(CTE+"[#5]")
+    pf("[#CTE][#5]")
     for k,v:=range callChain {
         if k==0 { continue }
         v.name=getReportFunctionName(v.loc,false)
         pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
     }
-    pf("-> [#6]"+base+"[#-]\n"+CTE)
+    pf("-> [#6]"+base+"[#-]\n[#CTE]")
 
     // show source lines
     for k,v:=range callChain {
@@ -103,7 +100,6 @@ func (parser *leparser) report(s string) {
 
     ifs:=parser.fs
 
-    CTE    := "\033[0K"
                                                     // ifs  -> id of failing func
     funcName    := getReportFunctionName(ifs,false) //      -> name of failing func
     if ifs==2 {
@@ -114,24 +110,22 @@ func (parser *leparser) report(s string) {
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
     // callChain=append(callChain,chainInfo{name:baseName,registrant:ciErr,loc:baseId,line:line})
-    // line_content:=Phrase{}
+
     var line_content string
 
     if len(functionspaces[baseId])>0 {
-            // line_content=functionspaces[baseId][line].Original
             line_content=functionspaces[baseId][stmtline].Original
     }
 
-    fmt.Print( sparkle(
-            sf(CTE+"\n[#bred]\n"+CTE+"\n"+CTE+
-                "[#7]Error in %+v/%s (line #%d) : ", fileMap[baseId],baseName,line+1))+
-        line_content+"\n"+CTE+"\n"+
-        sparkle("[##][#-]"+CTE)+
-        sf("%s\n"+CTE, s))
+    fmt.Print( sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
+        "[#7]Error in %+v/%s (line #%d) : ", fileMap[baseId],baseName,line+1))+
+        line_content+"\n"+
+        sparkle("[##][#-][#CTE]")+
+        sf("%s\n", s)+sparkle("[#CTE]"))
 
     if !interactive {
         showCallChain(baseName)
-        pf("\n"+CTE)
+        pf("\n[#CTE]")
     }
 
 }

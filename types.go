@@ -11,16 +11,14 @@ import (
 //
 // this type is for holding a complete statement from statement to EOL/Semicolon
 type Phrase struct {
-	Text       string  // entire tokenised string
 	Original   string  // entire string, unmodified for spaces
 	TokenCount int     // number of tokens generated for this phrase
 	Tokens     []Token // each token found
-   // FileRef    uint64  // maybe not needed, file can be derived from fs/token context
     SourceLine int
 }
 
 func (p Phrase) String() string {
-	return p.Text
+	return p.Original
 }
 
 // ExpressionFunction can be called from within expressions.
@@ -37,12 +35,8 @@ type Variable struct {
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
-    // name string
 	tokType uint8         // token type from list in constants.go
-    tokPos  int         // by character (from start of input)
     tokVal  interface{} // raw value storage
-	//Line    int         // line in parsed string (1 based) of token
-	//Col     int         // starting char position (from start of line) (not currently used)
 	tokText string      // the content of the token
 }
 
@@ -65,8 +59,6 @@ func (cs call_s) String() string {
 
 
 // chainInfo : used for passing debug info to error functions
-
-
 type chainInfo struct {
     loc         uint64
     name        string
@@ -75,7 +67,6 @@ type chainInfo struct {
 }
 
 
-//
 // holds mappings for feature->category in the standard library.
 type Feature struct {
 	version  int    // for standard library and REQUIRE statement support.
@@ -83,7 +74,6 @@ type Feature struct {
 }
 
 
-//
 // holds internal state for the WHEN command
 type whenCarton struct {
 	endLine   int         // where is the endWhen, so that we can break or skip to it
@@ -92,7 +82,6 @@ type whenCarton struct {
 }
 
 
-//
 // holds an expression to be evaluated and its result
 type ExpressionCarton struct {
 	assignVar string      // name of var to assign to
@@ -122,7 +111,6 @@ type s_loop struct {
 	repeatCond       []Token          // tested with wrappedEval() // used by while
 }
 
-// 
 // struct to support pseudo-windows in console
 type Pane struct {
 //	bg       string // currently unused, background colour

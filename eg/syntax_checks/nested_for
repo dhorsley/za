@@ -3,7 +3,7 @@
 
 for e=1 to 10000
     for f=500 to 1 step -1
-#        print "{e},{f}\n"
+        # print "{e},{f}\n"
     endfor
 endfor
 
