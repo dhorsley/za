@@ -34,8 +34,6 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case []int:
         return len(args),nil
-    case []int32:
-        return len(args),nil
     case []int64:
         return len(args),nil
     case []uint8:
@@ -51,8 +49,6 @@ func ulen(args interface{}) (int,error) {
     case map[string]int:
         return len(args),nil
     case map[string]bool:
-        return len(args),nil
-    case map[string]int32:
         return len(args),nil
     case map[string]int64:
         return len(args),nil
@@ -247,21 +243,21 @@ func buildInternalLib() {
         return v,nil
     }
 
-    slhelp["ansi"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable ANSI colour support at runtime."}
+    slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
     stdlib["ansi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 {
-            return nil,errors.New("ansi() accepts a boolean value only.")
+        lastam:=ansiMode
+        if len(args)==1 {
+            switch args[0].(type) {
+            case bool:
+                lastlock.Lock()
+                ansiMode=args[0].(bool)
+                lastlock.Unlock()
+            default:
+                return nil,errors.New("ansi() accepts a boolean value only.")
+            }
+            setupAnsiPalette()
         }
-        switch args[0].(type) {
-        case bool:
-            lastlock.Lock()
-            ansiMode=args[0].(bool)
-            lastlock.Unlock()
-        default:
-            return nil,errors.New("ansi() accepts a boolean value only.")
-        }
-        setupAnsiPalette()
-        return nil, nil
+        return lastam,nil
     }
 
     slhelp["interpol"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable string interpolation at runtime. This is useful for ensuring that braced phrases remain unmolested."}
@@ -515,8 +511,6 @@ func buildInternalLib() {
             if _, found = v[key];   found { return true, nil }
         case map[string]int64:
             if _, found = v[key];   found { return true, nil }
-        case map[string]int32:
-            if _, found = v[key];   found { return true, nil }
         case map[string]int:
             if _, found = v[key];   found { return true, nil }
         case map[string]bool:
@@ -563,8 +557,6 @@ func buildInternalLib() {
             if _, found = v.(map[string]uint8) [key];        found { return true, nil }
         case map[string]int64:
             if _, found = v.(map[string]int64) [key];        found { return true, nil }
-        case map[string]int32:
-            if _, found = v.(map[string]int32) [key];        found { return true, nil }
         case map[string]int:
             if _, found = v.(map[string]int) [key];          found { return true, nil }
         case map[string]bool:
@@ -740,10 +732,10 @@ func buildInternalLib() {
         var toks []Token
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
+            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
             tt = t.tokType
-            if t.tokPos != -1 {
-                p = t.tokPos
+            if tokPos != -1 {
+                p = tokPos
             }
             toks = append(toks, t)
             if eof || eol {
@@ -769,10 +761,10 @@ func buildInternalLib() {
         var toktypes []string
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
+            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
             tt = t.tokType
-            if t.tokPos != -1 {
-                p = t.tokPos
+            if tokPos != -1 {
+                p = tokPos
             }
             toks = append(toks, t.tokText)
             toktypes = append(toktypes, tokNames[tt])

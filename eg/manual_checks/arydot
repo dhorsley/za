@@ -1,0 +1,20 @@
+#!/usr/bin/za
+
+cls
+
+struct t; a int; b bool; c string; endstruct
+showstruct
+
+init q t
+q.a=42
+q.b=true
+q.c="test"
+m["one"]=q
+
+for e=1 to 42
+    m["one"].a=e
+    m["one"].b=!m["one"].b
+    m["one"].c="string {e}"
+    println "m one -> ",m["one"]
+endfor
+

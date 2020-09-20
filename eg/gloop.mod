@@ -45,9 +45,6 @@ define make_layer(n,bricks,mw)
 enddef
 
 define make_brick(n)
-    brick_types=["hazard","shamrock","snowman","skull"]
-    t=brick_types[n-1]
-    side    = "\u2591"
     left = "["
     right = "]"
     mid = "-"

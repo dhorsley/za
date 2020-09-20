@@ -6,6 +6,7 @@ import (
     "reflect"
     "strconv"
     "bytes"
+    "math"
     "net/http"
     "os"
     "sync"
@@ -27,7 +28,7 @@ func (p *leparser) Init() {
         StringLiteral : {-1,p.stringliteral,nil},
         Identifier    : {-1,p.identifier,nil},
         C_Assign      : {5,p.unary,p.binaryLed},
-        C_Plus        : {30,nil,p.binaryLed},
+        C_Plus        : {30,p.unary,p.binaryLed},
 		C_Minus       : {30,p.unary,p.binaryLed},           // subtraction and unary minus 
 		C_Multiply    : {35,nil,p.binaryLed},
 		C_Divide      : {35,nil,p.binaryLed},
@@ -54,6 +55,8 @@ func (p *leparser) Init() {
         SYM_POW       : {40,nil,p.binaryLed},  // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
+        O_Sqr         : {30,p.unary,nil},
+        O_Sqrt        : {30,p.unary,nil},
 	}
 
 }
@@ -78,8 +81,7 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
 
     defer func() {
         if r := recover(); r != nil {
-            CTE:="\033[0K"
-            p.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            p.report(sf("\nEVAL\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
@@ -96,8 +98,8 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
 type leparser struct {
     table       [127]rule   // null+left rules
     tokens      []Token     // the thing getting evaluated
-    pos         int         // distance through parse
     fs          uint64      // working function space
+    pos         int         // distance through parse
     line        int         // shadows lexer source line
     stmtline    int         // shadows program counter (pc)
 }
@@ -127,8 +129,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
     defer func() {
         if r := recover(); r != nil {
-            CTE:="\033[0K"
-            p.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            p.report(sf("\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
@@ -181,10 +182,10 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
     switch token.tokType {
     case LeftSBrace:
         return p.accessField(left,token)
-    case LParen:
-        return p.callFunction(left,token)
     case SYM_DOT:
         return p.accessField(left,token)
+    case LParen:
+        return p.callFunction(left,token)
     }
 
 	// left-associative
@@ -261,19 +262,13 @@ func (p *leparser) accessField(left interface{},right Token) (interface{}) {
             sz=len(left)
         case []int:
             sz=len(left)
-        case []int32:
-            sz=len(left)
         case []int64:
             sz=len(left)
         case []uint:
             sz=len(left)
         case []uint8:
             sz=len(left)
-        case []uint32:
-            sz=len(left)
         case []uint64:
-            sz=len(left)
-        case []float32:
             sz=len(left)
         case []float64:
             sz=len(left)
@@ -390,6 +385,8 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
     name:=left.(string)
 
+    // @note: this check may not be necessary now, check:
+
     // filter for functions here
     var isFunc bool
     if _, isFunc = stdlib[name]; !isFunc {
@@ -437,10 +434,16 @@ func (p *leparser) unary(token Token) (interface{}) {
 	switch token.tokType {
 	case C_Minus:
 		return unaryMinus(right)
+	case C_Plus:
+		return unaryPlus(right)
 	case C_Pling:
 		return unaryNegate(right)
 	case C_Assign:
 		panic(fmt.Errorf("assignment unsupported"))
+	case O_Sqr:
+        return unOpSqr(right)
+	case O_Sqrt:
+        return unOpSqrt(right)
     /* need the identifier for these, not the evaluated value
     case SYM_PP:
         return p.preInc(right)
@@ -451,6 +454,42 @@ func (p *leparser) unary(token Token) (interface{}) {
     */
 	}
 	return nil
+}
+
+func unOpSqr(n interface{}) interface{} {
+    switch n:=n.(type) {
+    case int:
+        return n*n
+    case int64:
+        return n*n
+    case uint:
+        return n*n
+    case uint64:
+        return n*n
+    case float64:
+        return n*n
+    default:
+        panic(fmt.Errorf("sqr does not support type '%T'",n))
+    }
+    return nil
+}
+
+func unOpSqrt(n interface{}) interface{} {
+    switch n:=n.(type) {
+    case int:
+        return math.Sqrt(float64(n))
+    case int64:
+        return math.Sqrt(float64(n))
+    case uint:
+        return math.Sqrt(float64(n))
+    case uint64:
+        return math.Sqrt(float64(n))
+    case float64:
+        return math.Sqrt(n)
+    default:
+        panic(fmt.Errorf("sqrt does not support type '%T'",n))
+    }
+    return nil
 }
 
 func (p *leparser) array_concat(tok Token) (interface{}) {
@@ -548,6 +587,8 @@ func (p *leparser) identifier(token Token) (interface{}) {
         if isFunc {
             return token.tokText
         }
+
+        panic(fmt.Errorf("function '%v' does not exist",token.tokText))
     }
 
     // local lookup:
@@ -673,9 +714,6 @@ func vdelete(fs uint64, name string, ename string) {
             delete(m,ename)
             vset(fs,name,m)
         case map[string]int:
-            delete(m,ename)
-            vset(fs,name,m)
-        case map[string]int32:
             delete(m,ename)
             vset(fs,name,m)
         case map[string]int64:
@@ -851,16 +889,12 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
             el=strconv.FormatInt(int64(el.(int)), 10)
         case int64:
             el=strconv.FormatInt(el.(int64), 10)
-        case int32:
-            el=strconv.FormatInt(int64(el.(int32)), 10)
         case float64:
             el=strconv.FormatFloat(el.(float64), 'f', -1, 64)
         case uint64:
             el=strconv.FormatUint(el.(uint64), 10)
         case uint8:
             el=strconv.FormatUint(uint64(el.(uint8)), 10)
-        case uint32:
-            el=strconv.FormatUint(uint64(el.(uint32)), 10)
         }
 
         if ok {
@@ -1049,47 +1083,29 @@ func interpolate(fs uint64, s string) (string) {
 
             if v.IValue != nil {
 
-                if v.ITyped {
-                    switch v.IKind {
-                    case "int":
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int)), 10),-1)
-                    case "int64":
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
-                    case "string":
-                        s = str.Replace(s, "{"+v.IName+"}", v.IValue.(string),-1)
-                    case "float":
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatFloat(v.IValue.(float64),'g',-1,64),-1)
-                    case "bool":
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatBool(v.IValue.(bool)),-1)
-                    case "uint":
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
-                    }
-
-                } else {
-
-                    switch v.IValue.(type) {
-                    case int:
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.Itoa(v.IValue.(int)),-1)
-                    case int64:
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
-                    case uint64:
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
-                    case int32:
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int32)), 10),-1)
-                    case uint8:
-                        s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
-                    case float32, float64, bool:
-                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                    case string:
-                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                    case []uint8, []uint64, []int64, []float32, []float64, []int, []bool, []interface{}, []string:
-                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                    case interface{}:
-                        s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                    default:
-                        s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
-
-                    }
+                switch v.IValue.(type) {
+                case int:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int)), 10),-1)
+                case int64:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
+                case float64:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatFloat(v.IValue.(float64),'g',-1,64),-1)
+                case bool:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatBool(v.IValue.(bool)),-1)
+                case string:
+                    s = str.Replace(s, "{"+v.IName+"}", v.IValue.(string),-1)
+                case uint64:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
+                case uint:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
+                case uint8:
+                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
+                case []uint8, []uint64, []int64, []float64, []int, []bool, []interface{}, []string:
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                case interface{}:
+                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
+                default:
+                    s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
 
                 }
             }
@@ -1459,10 +1475,10 @@ func ev(p *leparser,fs uint64, ws string, interpol bool) (result interface{}, er
     toks:=make([]Token,0,6)
     cl := 1
     for p := 0; p < len(ws); p++ {
-        t, eol, eof := nextToken(ws, &cl, p, tt, false)
+        t, tokPos, eol, eof := nextToken(ws, &cl, p, tt, false)
         tt = t.tokType
-        if t.tokPos != -1 {
-            p = t.tokPos
+        if tokPos != -1 {
+            p = tokPos
         }
         toks = append(toks, t)
         if eof || eol {
@@ -1586,10 +1602,10 @@ func tokenise(s string) (toks []Token) {
     tt := Error
     cl := 1
     for p := 0; p < len(s); p++ {
-        t, eol, eof := nextToken(s, &cl, p, tt, false)
+        t, tokPos, eol, eof := nextToken(s, &cl, p, tt, false)
         tt = t.tokType
-        if t.tokPos != -1 {
-            p = t.tokPos
+        if tokPos != -1 {
+            p = tokPos
         }
         toks = append(toks, Token{tokType: tt, tokText: t.tokText})
         if eof || eol {
@@ -1636,46 +1652,172 @@ func wrappedEval(p *leparser,fs uint64, tks []Token) (expr ExpressionCarton) {
 
 }
 
-// func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eqPos int) (ExpressionCarton) {
 func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eqPos int) {
 
-    // pull out pre eqPos tokens
+    // (left)  lfs is the function space to assign to
+    // (right) rfs is the function space to evaluate with (calculating indices expressions, etc)
 
-    // normal assign
-    //  a = ...
-    // array/map set
-    //  a [ b ] = ...
-    // field assignment
-    //  a . b = ...
+    // pf("doAssign called with tokens: %+v\n",tks)
 
     var err error
 
+    /*
+    determine where last rbrace and last dot are
+    if lastdot pos > last rbrace pos and rbrace exists, then mode is i[e].f=
+        in this case do the stuff below relative to dot position instead of equpos
+        then either assign or get field name and assign
+    */
+
+    dotAt:=-1
+    rbAt :=-1
+    var rbSet, dotSet bool
+    for dp:=eqPos-1;dp>0;dp-- {
+        if !rbSet  && tks[dp].tokType == RightSBrace    { rbAt=dp  ; rbSet=true }
+        if !dotSet && tks[dp].tokType == SYM_DOT        { dotAt=dp ; dotSet=true}
+    }
+
+    var dotMode bool
+    checkPos:=eqPos
+
+    if dotAt>rbAt && rbAt>0 {
+        dotMode=true
+        checkPos=dotAt
+    }
+
+    // pull out pre eqPos tokens
 
     switch {
     case eqPos==1:
+
+        ///////////// CHECK FOR a       /////////////////////////////////////////////
         // normal assignment
         vset(lfs, interpolate(rfs,tks[0].tokText), expr.result)
+        /////////////////////////////////////////////////////////////////////////////
 
     case eqPos>3:
-        // array / map
+
+        ///////////// CHECK FOR a[e]    /////////////////////////////////////////////
         // check for lbrace and rbrace
-
-        // pf("In array / map assign\n")
-
-        if tks[1].tokType != LeftSBrace || tks[eqPos-1].tokType != RightSBrace {
-            pf("syntax error in assignment")
+        if tks[1].tokType != LeftSBrace || tks[checkPos-1].tokType != RightSBrace {
+            expr.errVal=fmt.Errorf("syntax error in assignment")
             expr.evalError=true
-            expr.errVal=err
-            // return expr
+            return
         }
 
-        element, err := p.Eval(rfs,tks[2:eqPos-1])
+        // get the element name expr, eval it. element.(type) is used in switch below.
+        element, err := p.Eval(rfs,tks[2:checkPos-1])
         if err!=nil {
             pf("could not evaluate index or key in assignment")
             expr.evalError=true
             expr.errVal=err
-            // return expr
+            return
         }
+        /////////////////////////////////////////////////////////////////////////////
+
+
+        ///////////// CHECK FOR a[e].f= /////////////////////////////////////////////
+        if dotMode {
+            lhs_dotField:=""
+            if dotAt!=eqPos-2 {
+                expr.errVal=fmt.Errorf("Too much information in field name!")
+                expr.evalError=true
+                return
+            }
+            lhs_dotField=interpolate(rfs,tks[dotAt+1].tokText)
+
+            // do everything here and leave other cases alone, or it will get real messy
+
+            // have to vget from a[e] into tmp
+            //  then check element type like in normal fieldless switch case
+            //  then modify the tmp like we do in the eqpos==3 dotted case
+            //  and then write it back to storage
+            // feels like a really bad idea this...
+
+            // ( reckon i should be finding a memref of the base of the var, then
+            //   an offset for the ary element, then similar for field, but that would
+            //   mean writing proper variable handling, and proper memory management, and
+            //   i ain't going to that length for a prototype :D
+
+            // find stored variable and copy it:
+
+            var tempStore interface{}
+            var found bool
+            aryName := interpolate(rfs,tks[0].tokText)
+            var eleName string
+            switch element.(type) {
+            case int:
+                eleName = strconv.FormatInt(int64(element.(int)), 10)
+            case int64:
+                eleName = strconv.FormatInt(element.(int64), 10)
+            case string:
+                eleName = element.(string)
+            default:
+                eleName = sf("%v",element)
+            }
+
+            tempStore ,found = vgetElement(lfs,aryName,eleName)
+
+            if found {
+
+                // get type info about left/right side of assignment
+                val:=reflect.ValueOf(tempStore)
+                typ:=val.Type()
+                intyp:=reflect.ValueOf(expr.result).Type()
+
+                if typ.Kind()==reflect.Struct {
+
+                    // create temp copy of struct
+                    tmp:=reflect.New(val.Type()).Elem()
+                    tmp.Set(val)
+
+                    if _,exists:=typ.FieldByName(lhs_dotField); exists {
+
+                        // get the required struct field
+                        tf:=tmp.FieldByName(lhs_dotField)
+
+                        if intyp.AssignableTo(tf.Type()) {
+
+                            // make r/w then assign the new value into the copied field
+                            tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                            tf.Set(reflect.ValueOf(expr.result))
+
+                            ////////////////////////////////////////////////////////////////
+                            // write the copy back to the 'real' variable
+                            switch element.(type) {
+                            case int:
+                                vsetElement(lfs,aryName,element.(int),tmp.Interface())
+                            case string:
+                                vsetElement(lfs,aryName,element.(string),tmp.Interface())
+                            default:
+                                vsetElement(lfs,aryName,element.(string),tmp.Interface())
+                            }
+                            return
+                            ////////////////////////////////////////////////////////////////
+
+                        } else {
+                            expr.errVal=fmt.Errorf("cannot assign result (%T) to %v[%v] (%v)",expr.result,aryName,lhs_dotField,tf.Type())
+                            expr.evalError=true
+                            return
+                        }
+                    } else {
+                        expr.errVal=fmt.Errorf("STRUCT field %v not found in %v[%v]",lhs_dotField,aryName,eleName)
+                        expr.evalError=true
+                        return
+                    }
+                } else {
+                    expr.errVal=fmt.Errorf("variable %v[%v] is not a STRUCT (it's a %T)",aryName,eleName,typ.Kind())
+                    expr.evalError=true
+                    return
+                }
+            } else {
+                expr.errVal=fmt.Errorf("record variable %v[%v] not found",aryName,eleName)
+                expr.evalError=true
+                return
+            }
+
+        }
+        /////////////////////////////////////////////////////////////////////////////
+
 
         switch element.(type) {
         case string:
@@ -1685,20 +1827,18 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                 pf("negative element index!! (%s[%v])\n",tks[0].tokText,element)
                 expr.evalError=true
                 expr.errVal=err
-                // return expr
             }
-            // vsetElement(lfs, interpolate(rfs,tks[0].tokText), strconv.Itoa(element.(int)), expr.result)
             vsetElement(lfs, interpolate(rfs,tks[0].tokText), element.(int), expr.result)
         default:
             pf("unhandled element type!! [%T]\n",element)
             expr.evalError=true
             expr.errVal=err
-            // return expr
         }
 
     case eqPos==3:
-        // dotted
+        ///////////// CHECK FOR a.f=    /////////////////////////////////////////////
 
+        // dotted
         if tks[1].tokType == SYM_DOT {
 
             lhs_v:=interpolate(rfs,tks[0].tokText)
@@ -1763,6 +1903,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
             expr.errVal=err
             // return expr
         }
+        /////////////////////////////////////////////////////////////////////////////
 
     default:
         pf("syntax error in assignment")

@@ -76,19 +76,13 @@ func GetAsFloat(unk interface{}) (float64, bool) {
     switch i := unk.(type) {
     case float64:
         return i, false
-    case float32:
-        return float64(i), false
     case int:
-        return float64(i), false
-    case int32:
         return float64(i), false
     case int64:
         return float64(i), false
     case uint8:
         return float64(i), false
     case uint:
-        return float64(i), false
-    case uint32:
         return float64(i), false
     case uint64:
         return float64(i), false
@@ -103,21 +97,15 @@ func GetAsFloat(unk interface{}) (float64, bool) {
 // GetAsInt64 : converts a variety of types to int64
 func GetAsInt64(expr interface{}) (int64, bool) {
     switch i := expr.(type) {
-    case float32:
-        return int64(i), false
     case float64:
         return int64(i), false
     case uint:
         return int64(i), false
     case uint8:
         return int64(i), false
-    case uint32:
-        return int64(i), false
     case uint64:
         return int64(i), false
     case int:
-        return int64(i), false
-    case int32:
         return int64(i), false
     case int64:
         return i, false
@@ -130,51 +118,16 @@ func GetAsInt64(expr interface{}) (int64, bool) {
     return 0, true
 }
 
-// GetAsInt32 : converts a variety of types to int32
-func GetAsInt32(expr interface{}) (int32, bool) {
-    switch i := expr.(type) {
-    case float32:
-        return int32(i), false
-    case float64:
-        return int32(i), false
-    case uint:
-        return int32(i), false
-    case uint8:
-        return int32(i), false
-    case uint32:
-        return int32(i), false
-    case uint64:
-        return int32(i), false
-    case int:
-        return int32(i), false
-    case int64:
-        return int32(i), false
-    case int32:
-        return i, false
-    case string:
-        p, e := strconv.ParseFloat(i, 64)
-        if e == nil {
-            return int32(p), false
-        }
-    }
-    return 0, true
-}
 
 func GetAsInt(expr interface{}) (int, bool) {
     switch i := expr.(type) {
-    case float32:
-        return int(i), false
     case float64:
         return int(i), false
     case uint:
         return int(i), false
     case uint8:
         return int(i), false
-    case uint32:
-        return int(i), false
     case uint64:
-        return int(i), false
-    case int32:
         return int(i), false
     case int64:
         return int(i), false
@@ -187,57 +140,20 @@ func GetAsInt(expr interface{}) (int, bool) {
                 return int(p), false
             }
         }
-    default:
-        /*
-        // special case: these need rationalising eventually...
-        switch sf("%T",expr) {
-        case "float32":
-            return int(i.(float32)), false
-        case "float64":
-            return int(i.(float64)), false
-        case "uint":
-            return int(i.(uint)), false
-        case "uint8":
-            return int(i.(uint8)), false
-        case "uint32":
-            return int(i.(uint32)), false
-        case "uint64":
-            return int(i.(uint64)), false
-        case "int":
-            return int(i.(int)), false
-        case "int32":
-            return int(i.(int32)), false
-        case "int64":
-            return int(i.(int64)), false
-        case "string":
-            p,e:=strconv.ParseFloat(expr.(string),64)
-            if e==nil {
-                return int(p),false
-            }
-        default:
-            // pf("\n\n*debug* GetAsInt default on type %T\n\n",expr)
-        }
-        */
     }
     return 0, true
 }
 
 func GetAsUint(expr interface{}) (uint64, bool) {
     switch i := expr.(type) {
-    case float32:
-        return uint64(i), false
     case float64:
         return uint64(i), false
     case int:
         return uint64(i), false
     case uint8:
         return uint64(i), false
-    case uint32:
-        return uint64(i), false
     case uint64:
         return i, false
-    case int32:
-        return uint64(i), false
     case int64:
         return uint64(i), false
     case uint:
@@ -1007,8 +923,6 @@ tco_reentry:
                     l=len(lv)
                 case []int:
                     l=len(lv)
-                case []int32:
-                    l=len(lv)
                 case []int64:
                     l=len(lv)
                 case []float64:
@@ -1182,25 +1096,11 @@ tco_reentry:
                         ce = len(expr.result.([]int)) - 1
                     }
 
-                case []int32:
-                    if len(expr.result.([]int32)) > 0 {
-                        vset(ifs, "key_"+fid, 0)
-                        vset(ifs, fid, expr.result.([]int32)[0])
-                        ce = len(expr.result.([]int32)) - 1
-                    }
-
                 case []int64:
                     if len(expr.result.([]int64)) > 0 {
                         vset(ifs, "key_"+fid, 0)
                         vset(ifs, fid, expr.result.([]int64)[0])
                         ce = len(expr.result.([]int64)) - 1
-                    }
-
-                case []float32:
-                    if len(expr.result.([]float32)) > 0 {
-                        vset(ifs, "key_"+fid, 0)
-                        vset(ifs, fid, expr.result.([]float32)[0])
-                        ce = len(expr.result.([]float32)) - 1
                     }
 
                 case []string:
@@ -1403,6 +1303,12 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
             if lockSafety { lastlock.Unlock() }
 
+            // make sure start is not more than end, if it is, send it to the endfor
+            if fstart>fend {
+                pc=pc+enddistance-1
+                break
+            }
+
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
@@ -1460,18 +1366,12 @@ tco_reentry:
                         case []uint8:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
-                        case []int32:
-                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).counter])
                         case []int64:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
                         case []string:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
-                        case []float32:
-                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).counter])
                         case []float64:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
@@ -1993,7 +1893,7 @@ tco_reentry:
                                 p.Tokens = inbound.Tokens[doAt+1:]
                                 p.TokenCount = inbound.TokenCount - (doAt + 1)
                                 p.Original = inbound.Original
-                                p.Text = inbound.Text
+                                // p.Text = inbound.Text
                                 // we can ignore .Text and .Original for now - but shouldn't.
                                 // they are only used in *Command calls, and the input is chomped
                                 // from the front to the first pipe symbol so the 'ON expr DO' would
@@ -2117,7 +2017,7 @@ tco_reentry:
                 }
 
                 switch expr.result.(type) {
-                case int,int32,int64,uint8:
+                case int,int64,uint8:
                     strSize,invalid:=GetAsInt(expr.result)
                     if ! invalid {
                         size=strSize
@@ -2151,12 +2051,9 @@ tco_reentry:
                     // move this later:
                     var tb bool
                     var tu8 uint8
-                    var tu32 uint32
                     var tu64 uint64
                     var ti int
-                    var ti32 int32
                     var ti64 int64
-                    var tf32 float32
                     var tf64 float64
                     var ts string
                     var atint   []interface{}
@@ -2172,14 +2069,11 @@ tco_reentry:
                     typemap["bool"]     = reflect.TypeOf(tb)
                     typemap["byte"]     = reflect.TypeOf(tu8)
                     typemap["uint8"]    = reflect.TypeOf(tu8)
-                    typemap["uint32"]   = reflect.TypeOf(tu32)
                     typemap["uint64"]   = reflect.TypeOf(tu64)
                     typemap["int"]      = reflect.TypeOf(ti)
-                    typemap["int32"]    = reflect.TypeOf(ti32)
                     typemap["int64"]    = reflect.TypeOf(ti64)
                     typemap["float"]    = reflect.TypeOf(tf64)
                     typemap["float64"]  = reflect.TypeOf(tf64)
-                    typemap["float32"]  = reflect.TypeOf(tf32)
                     typemap["string"]   = reflect.TypeOf(ts)
                     /* only interface{} currently supported.
                     typemap["[]string"] = reflect.TypeOf(ats)
@@ -3594,7 +3488,7 @@ tco_reentry:
                     v,ok:=vget(ifs,inbound.Tokens[2].tokText)
                     if ok {
                         switch v:=v.(type) {
-                        case uint8,int32,int64,uint32,uint64:
+                        case uint8,int64,uint64:
                             ampl,_ = GetAsInt(v)
                         case int:
                             ampl = v
@@ -3658,8 +3552,6 @@ tco_reentry:
                             ival=val.(int)
                         case uint64:
                             ival=int(val.(uint64))
-                        case int32:
-                            ival=int(val.(int32))
                         case int64:
                             ival=int(val.(int64))
                         case uint8:
@@ -3766,7 +3658,8 @@ tco_reentry:
 
             if inbound.TokenCount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
-                    if len(inbound.Text) > 0 {
+                    // if len(inbound.Text) > 0 {
+                    if inbound.TokenCount > 2 {
                         // get text after =|
                         startPos := str.IndexByte(inbound.Original, '|') + 1
                         cmd := interpolate(ifs, inbound.Original[startPos:])

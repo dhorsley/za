@@ -183,25 +183,11 @@ func buildStringLib() {
                 r = append(r, args[0].([]int)[i])
             }
             return r, nil
-        case []int32:
-            ln := len(args[0].([]int32)) - 1
-            r := make([]int32, 0, ln+1)
-            for i := ln; i >= 0; i-- {
-                r = append(r, args[0].([]int32)[i])
-            }
-            return r, nil
         case []int64:
             ln := len(args[0].([]int64)) - 1
             r := make([]int64, 0, ln+1)
             for i := ln; i >= 0; i-- {
                 r = append(r, args[0].([]int64)[i])
-            }
-            return r, nil
-        case []float32:
-            ln := len(args[0].([]float32)) - 1
-            r := make([]float32, 0, ln+1)
-            for i := ln; i >= 0; i-- {
-                r = append(r, args[0].([]float32)[i])
             }
             return r, nil
         case []float64:

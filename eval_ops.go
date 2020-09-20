@@ -75,8 +75,6 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
     switch val1.(type) {
     case int:
         int1=val1.(int)
-    case int32:
-        int1=int(val1.(int32))
     case int64:
         int1=int(val1.(int64))
     default:
@@ -85,8 +83,6 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
     switch val2.(type) {
     case int:
         int2=val2.(int)
-    case int32:
-        int2=int(val2.(int32))
     case int64:
         int2=int(val2.(int64))
     default:
@@ -177,8 +173,6 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val1.(type) {
     case int:
         int1=i
-    case int32:
-        int1=int(i)
     case int64:
         int1=int(i)
     default:
@@ -187,8 +181,6 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val2.(type) {
     case int:
         int2=i
-    case int32:
-        int2=int(i)
     case int64:
         int2=int(i)
     default:
@@ -226,8 +218,6 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val1.(type) {
     case int:
         int1=i
-    case int32:
-        int1=int(i)
     case int64:
         int1=int(i)
     default:
@@ -236,8 +226,6 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val2.(type) {
     case int:
         int2=i
-    case int32:
-        int2=int(i)
     case int64:
         int2=int(i)
     default:
@@ -275,8 +263,6 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val1.(type) {
     case int:
         int1=i
-    case int32:
-        int1=int(i)
     case int64:
         int1=int(i)
     default:
@@ -285,8 +271,6 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val2.(type) {
     case int:
         int2=i
-    case int32:
-        int2=int(i)
     case int64:
         int2=int(i)
     default:
@@ -326,8 +310,6 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val1.(type) {
     case int:
         int1=i
-    case int32:
-        int1=int(i)
     case int64:
         int1=int(i)
     default:
@@ -336,8 +318,6 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val2.(type) {
     case int:
         int2=i
-    case int32:
-        int2=int(i)
     case int64:
         int2=int(i)
     default:
@@ -375,8 +355,6 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val1.(type) {
     case int:
         int1=i
-    case int32:
-        int1=int(i)
     case int64:
         int1=int(i)
     default:
@@ -385,8 +363,6 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
     switch i:=val2.(type) {
     case int:
         int2=i
-    case int32:
-        int2=int(i)
     case int64:
         int2=int(i)
     default:
@@ -423,9 +399,9 @@ func ev_shift_left(left,right interface{}) (interface{}) {
     var uint2 uint64
 
     switch i:=left.(type) {
-    case int,int32,int64:
+    case int,int64:
         int1,_=GetAsInt64(i)
-    case uint,uint8,uint32,uint64:
+    case uint,uint8,uint64:
         uint1,_=GetAsUint(i)
         uintInOne=true
     default:
@@ -433,7 +409,7 @@ func ev_shift_left(left,right interface{}) (interface{}) {
         intInOne=false
     }
     switch i:=right.(type) {
-    case uint,uint8,uint32,uint64,int,int32,int64:
+    case uint,uint8,uint64,int,int64:
         uint2,_=GetAsUint(i)
     default:
         uintInTwo=false
@@ -459,9 +435,9 @@ func ev_shift_right(left,right interface{}) (interface{}) {
     var uint2 uint64
 
     switch i:=left.(type) {
-    case int,int32,int64:
+    case int,int64:
         int1,_=GetAsInt64(i)
-    case uint,uint8,uint32,uint64:
+    case uint,uint8,uint64:
         uint1,_=GetAsUint(i)
         uintInOne=true
     default:
@@ -469,7 +445,7 @@ func ev_shift_right(left,right interface{}) (interface{}) {
         intInOne=false
     }
     switch i:=right.(type) {
-    case uint,uint8,uint32,uint64,int,int32,int64:
+    case uint,uint8,uint64,int,int64:
         uint2,_=GetAsUint(i)
     default:
         uintInTwo=false
@@ -494,14 +470,33 @@ func unaryNegate(val interface{}) (interface{}) {
     panic("cannot negate a non-bool")
 }
 
-func unaryMinus(val interface{}) (interface{}) {
+func unaryPlus(val interface{}) (interface{}) {
 
     var intVal int
     intInOne:=true
     switch i:=val.(type) {
     case int:
         intVal=int(i)
-    case int32:
+    case int64:
+        intVal=int(i)
+    default:
+        intInOne=false
+    }
+
+	if intInOne { return intVal }
+
+    floatVal, ok := val.(float64)
+	if ok { return floatVal }
+
+	panic(fmt.Errorf("type error: unary positive requires number, but was %s", typeOf(val)))
+}
+
+func unaryMinus(val interface{}) (interface{}) {
+
+    var intVal int
+    intInOne:=true
+    switch i:=val.(type) {
+    case int:
         intVal=int(i)
     case int64:
         intVal=int(i)
@@ -659,15 +654,7 @@ func convertToInt(ar interface{}) []int {
     var v interface{}
     var i int
     switch ar:=ar.(type) {
-    case []float32:
-        newar := make([]int, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsInt(v) }
-        return newar
     case []float64:
-        newar := make([]int, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int32:
         newar := make([]int, len(ar))
         for i, v = range ar { newar[i],_ = GetAsInt(v) }
         return newar
@@ -689,15 +676,7 @@ func convertToFloat64(ar interface{}) []float64 {
     var v interface{}
     var i int
     switch ar:=ar.(type) {
-    case []float32:
-        newar := make([]float64, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
-        return newar
     case []float64:
-        newar := make([]float64, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int32:
         newar := make([]float64, len(ar))
         for i, v = range ar { newar[i],_ = GetAsFloat(v) }
         return newar
@@ -723,39 +702,29 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
 
 func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
     // pf("gv-af: entered accessField with [%T] %v -> [%T], %v\n",obj,obj,field,field)
-    var ifield string
-
-    switch field.(type) {
-    case string:
-        ifield=field.(string)
-    case int:
-        ifield=sf("%v",field)
-    default:
-        // pf("field -> [%T] %+v\n",field)
-    }
 
 	// types
     switch obj:=obj.(type) {
     case string:
-        vg,_:=vgetElement(evalfs,obj,ifield)
+        vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
         return vg
 	case map[string]string:
-		return obj[ifield]
+		return obj[field.(string)]
 	case map[string]float64:
-		return obj[ifield]
+		return obj[field.(string)]
 	case map[string]int:
-		return obj[ifield]
+		return obj[field.(string)]
 	case map[string]uint8:
-		return obj[ifield]
+		return obj[field.(string)]
 	case map[string]interface{}:
-		return obj[ifield]
+		return obj[field.(string)]
     case http.Header:
         r := reflect.ValueOf(obj)
-        f := reflect.Indirect(r).FieldByName(ifield)
+        f := reflect.Indirect(r).FieldByName(field.(string))
         return f
     case webstruct:
         r := reflect.ValueOf(obj)
-        f := reflect.Indirect(r).FieldByName(ifield)
+        f := reflect.Indirect(r).FieldByName(field.(string))
         return f
     default:
 
@@ -763,57 +732,54 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
 
         switch r.Kind().String() {
         case "slice":
-	        idx, invalid := GetAsInt(ifield)
-	        if invalid || idx<0 {
-		        panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
-	        }
+	        // idx, invalid := field.(int)
+	        // if invalid || idx<0 {
+		    //     panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
+	        // }
 		    switch obj:=obj.(type) {
             case []int:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []bool:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []int64:
-                if len(obj)>idx { return obj[idx] }
-            case []int32:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []uint:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []uint8:
-                if len(obj)>idx { return obj[idx] }
-            case []uint32:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []uint64:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []string:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case string:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []float64:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             case []interface{}:
-                if len(obj)>idx { return obj[idx] }
+                if len(obj)>field.(int) { return obj[field.(int)] }
             default:
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            panic(errors.New(sf("element '%d' is out of range in '%v'",idx,obj)))
+            panic(errors.New(sf("element '%d' is out of range in '%v'",field.(int),obj)))
 
         case "struct":
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
 
-            rcopy := reflect.New(r.Type()).Elem()
-            rcopy.Set(r)
+            // rcopy := reflect.New(r.Type()).Elem()
+            // rcopy.Set(r)
 
             // get the required struct field and make a r/w copy
-            f := rcopy.FieldByName(ifield)
+            // f := rcopy.FieldByName(field.(string))
+            f := r.FieldByName(field.(string))
 
             if f.IsValid() {
 
-                if rcopy.Type().AssignableTo(f.Type()) {
-                    f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
-                }
+                // if rcopy.Type().AssignableTo(f.Type()) {
+                    // f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
+                // }
 
                 switch f.Type().Kind() {
                 case reflect.String:
@@ -822,22 +788,14 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
                     return f.Bool()
                 case reflect.Int:
                     return f.Int()
-                case reflect.Int32:
-                    return int32(f.Int())
                 case reflect.Int64:
                     return int64(f.Int())
-                case reflect.Float32:
-                    return float32(f.Float())
                 case reflect.Float64:
                     return f.Float()
                 case reflect.Uint:
                     return uint(f.Uint())
                 case reflect.Uint8:
                     return uint8(f.Uint())
-                case reflect.Uint16:
-                    return uint16(f.Uint())
-                case reflect.Uint32:
-                    return uint32(f.Uint())
                 case reflect.Uint64:
                     return uint64(f.Uint())
 
@@ -882,15 +840,9 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case []int:
         isArr=true
         arl= len(v.([]int))
-    case []int32:
-        isArr=true
-        arl= len(v.([]int32))
     case []int64:
         isArr=true
         arl= len(v.([]int64))
-    case []float32:
-        isArr=true
-        arl= len(v.([]float32))
     case []float64:
         isArr=true
         arl= len(v.([]float64))
@@ -900,9 +852,6 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case []uint8:
         isArr=true
         arl= len(v.([]uint8))
-    case []uint32:
-        isArr=true
-        arl= len(v.([]uint32))
     case []uint64:
         isArr=true
         arl= len(v.([]uint64))
@@ -964,20 +913,14 @@ func slice(v interface{}, from, to interface{}) interface{} {
 	    return v.([]bool)[fromInt:toInt]
     case []int:
 	    return v.([]int)[fromInt:toInt]
-    case []int32:
-	    return v.([]int32)[fromInt:toInt]
     case []int64:
 	    return v.([]int64)[fromInt:toInt]
-    case []float32:
-	    return v.([]float32)[fromInt:toInt]
     case []float64:
 	    return v.([]float64)[fromInt:toInt]
     case []uint:
 	    return v.([]uint)[fromInt:toInt]
     case []uint8:
 	    return v.([]uint8)[fromInt:toInt]
-    case []uint32:
-	    return v.([]uint32)[fromInt:toInt]
     case []uint64:
 	    return v.([]uint64)[fromInt:toInt]
     case []string:
