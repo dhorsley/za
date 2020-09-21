@@ -1,0 +1,25 @@
+#!/usr/bin/za
+
+
+struct q ; a float ; b float ; c float ; endstruct
+showstruct
+
+init a mixed 10
+init b q
+
+for e = 0 to 9
+    a[e]=b
+endfor
+println a
+
+println "random:"
+
+for e = 0 to 9
+    b=a[e]
+    b.b=float(rand(50))
+    a[e]=b
+endfor
+
+println a
+
+

@@ -64,6 +64,7 @@ var orow, ocol, ow, oh int                          // console cursor location a
 
 var fileMap = make(map[uint64]string)               // func space to source file name mappings
 
+var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
 var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for each defined function (key: function name)
 var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
