@@ -11,10 +11,10 @@ import (
 //
 // this type is for holding a complete statement from statement to EOL/Semicolon
 type Phrase struct {
-	Original   string  // entire string, unmodified for spaces
-	TokenCount int     // number of tokens generated for this phrase
 	Tokens     []Token // each token found
+	TokenCount int     // number of tokens generated for this phrase
     SourceLine int
+	Original   string  // entire string, unmodified for spaces ( only for ON..DO, =| and | commands )
 }
 
 func (p Phrase) String() string {
@@ -29,8 +29,8 @@ type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, 
 type Variable struct {
     IName  string
     IKind  string
-    ITyped bool
     IValue interface{}
+    ITyped bool
 }
 
 // holds a Token which forms part of a Phrase.
@@ -46,11 +46,11 @@ func (t Token) String() string {
 
 // holds the details of a function call.
 type call_s struct {
+	retvar      string      // the lhs var in the caller to be assigned back to
+	fs          string      // the text name of the calling party
 	caller      uint64      // the thing which made the call
 	base        uint64      // the original functionspace location of the source
-	fs          string      // the text name of the calling party
     callline    int         // from whence it came
-	retvar      string      // the lhs var in the caller to be assigned back to
 }
 
 func (cs call_s) String() string {
@@ -87,27 +87,27 @@ type ExpressionCarton struct {
 	assignVar string      // name of var to assign to
 	text      string      // total expression
 	result    interface{} // result of evaluation
+    errVal    error
 	assign    bool        // is this an assignment expression
 	evalError bool        // did the evaluation succeed
-    errVal    error
 }
 
 
 //
 // struct for loop internals
 type s_loop struct {
-	loopType         uint8            // C_For, C_Foreach, C_While
 	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
+    iterOverMap      *reflect.MapIter // stored iterator
+	iterOverArray    interface{}      // stored value to iterate over from start expression
+	loopType         uint8            // C_For, C_Foreach, C_While
+	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
+	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
 	repeatFrom       int              // line number
-	repeatAction     int              // enum: ACT_NONE, ACT_INC, ACT_DEC
 	repeatActionStep int              // size of repeatAction
 	forEndPos        int              // ENDFOR location
 	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
-	optNoUse         int              // for deciding if the local variable should reflect the loop counter
-    iterOverMap      *reflect.MapIter // stored iterator
-	iterOverArray    interface{}      // stored value to iterate over from start expression
 	repeatCond       []Token          // tested with wrappedEval() // used by while
 }
 

@@ -55,7 +55,8 @@ func ShowSource(funcInstance string,start int,end int) bool {
         strOut:="[#CTE]"
 
         for q := range functionspaces[baseId][start:end+1] {
-            strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, functionspaces[baseId][start+q].Original)
+            // strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, functionspaces[baseId][start+q].Original)
+            strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, sourceStore[baseId][start+q])
         }
 
         strOut = sf("\n[#CTE]%s(%v)\n[#CTE]", funcName, str.Join(functionArgs[baseId], ",")) + strOut
@@ -114,7 +115,8 @@ func (parser *leparser) report(s string) {
     var line_content string
 
     if len(functionspaces[baseId])>0 {
-            line_content=functionspaces[baseId][stmtline].Original
+            // line_content=functionspaces[baseId][stmtline].Original
+            line_content=sourceStore[baseId][stmtline]
     }
 
     fmt.Print( sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
