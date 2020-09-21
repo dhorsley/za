@@ -701,82 +701,42 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
 }
 
 func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
-    // pf("gv-af: entered accessField with [%T] %v -> [%T], %v\n",obj,obj,field,field)
 
-	// types
-    switch obj:=obj.(type) {
-    case string:
-        vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
-        return vg
-	case map[string]string:
-		return obj[field.(string)]
-	case map[string]float64:
-		return obj[field.(string)]
-	case map[string]int:
-		return obj[field.(string)]
-	case map[string]uint8:
-		return obj[field.(string)]
-	case map[string]interface{}:
-		return obj[field.(string)]
+    switch obj.(type) {
+
     case http.Header:
-        r := reflect.ValueOf(obj)
+        r := reflect.ValueOf(obj.(http.Header))
         f := reflect.Indirect(r).FieldByName(field.(string))
         return f
+
     case webstruct:
-        r := reflect.ValueOf(obj)
+        r := reflect.ValueOf(obj.(webstruct))
         f := reflect.Indirect(r).FieldByName(field.(string))
         return f
+
     default:
 
         r := reflect.ValueOf(obj)
 
         switch r.Kind().String() {
-        case "slice":
-	        // idx, invalid := field.(int)
-	        // if invalid || idx<0 {
-		    //     panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
-	        // }
-		    switch obj:=obj.(type) {
-            case []int:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []bool:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []int64:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []uint:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []uint8:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []uint64:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []string:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case string:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []float64:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []interface{}:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            default:
-                panic(fmt.Errorf("unhandled type %T in array access.",obj))
-            }
-
-            panic(errors.New(sf("element '%d' is out of range in '%v'",field.(int),obj)))
 
         case "struct":
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
 
+            // this part possibly avoidable, as all struct fields made r/w during init:
             // rcopy := reflect.New(r.Type()).Elem()
             // rcopy.Set(r)
 
             // get the required struct field and make a r/w copy
             // f := rcopy.FieldByName(field.(string))
+
             f := r.FieldByName(field.(string))
 
             if f.IsValid() {
 
+                // this part possibly avoidable, as all struct fields made r/w during init:
                 // if rcopy.Type().AssignableTo(f.Type()) {
                     // f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
                 // }
@@ -818,11 +778,70 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
                     return f.Interface()
                 }
             }
+        }
+
+    }
+
+    return nil
+}
+
+
+func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
+
+    switch obj:=obj.(type) {
+    case string:
+        vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
+        return vg
+	case map[string]string:
+		return obj[field.(string)]
+	case map[string]float64:
+		return obj[field.(string)]
+	case map[string]int:
+		return obj[field.(string)]
+	case map[string]uint8:
+		return obj[field.(string)]
+	case map[string]interface{}:
+		return obj[field.(string)]
+    default:
+
+        r := reflect.ValueOf(obj)
+
+        switch r.Kind().String() {
+        case "slice":
+	        // idx, invalid := field.(int)
+	        // if invalid || idx<0 {
+		    //     panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
+	        // }
+		    switch obj:=obj.(type) {
+            case []int:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []bool:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []int64:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []uint:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []uint8:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []uint64:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []string:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case string:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []float64:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []interface{}:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            default:
+                panic(fmt.Errorf("unhandled type %T in array access.",obj))
+            }
+
+            panic(errors.New(sf("element '%d' is out of range in '%v'",field.(int),obj)))
 
         }
 
 	} // end default case
-
 
     return nil
 

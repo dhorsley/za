@@ -14,10 +14,10 @@ const MAX_CLIENTS = 800
 
 const SPACE_CAP = 25000         // max user function instances ack(4,1) memoised uses ~16.5k
 const CALL_CAP = 10             // calltable (open calls) start capacity. scales up.
-const FUNC_CAP = 350            // max stdlib functions
+const FUNC_CAP = 300            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 
 const VAR_CAP = 20              // max vars per function (scales up)
-const FAIRY_CAP = 256           // max ansi mappings
+const FAIRY_CAP = 64            // max ansi mappings
 const LIST_SIZE_CAP = 16        // initial list size on construction
 
 const globalspace = uint64(0)   // global namespace
@@ -66,27 +66,27 @@ const (
 
 // used by C_Endfor statement:
 const (
-	Opt_LoopStart int = iota
+	Opt_LoopStart uint8 = iota
 	Opt_LoopSet
 	Opt_LoopIgnore
 )
 
 // used by Call() function. ENACT currently used by interactive mode.
 const (
-	MODE_CALL int = iota
+	MODE_CALL uint8 = iota
 	MODE_ENACT
 	MODE_NEW
 	MODE_STATIC
 )
 
 const (
-	ACT_NONE int = iota
+	ACT_NONE uint8 = iota
 	ACT_INC
 	ACT_DEC
 )
 
 const (
-	IT_LINE int = iota
+	IT_LINE uint8 = iota
 )
 
 const (

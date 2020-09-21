@@ -181,7 +181,7 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 
     switch token.tokType {
     case LeftSBrace:
-        return p.accessField(left,token)
+        return p.accessArray(left,token)
     case SYM_DOT:
         return p.accessField(left,token)
     case LParen:
@@ -244,14 +244,18 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 
 func (p *leparser) accessField(left interface{},right Token) (interface{}) {
 
+    // switch reflect.ValueOf(left).Kind() {
+        tok:=p.next()
+        return accessField(p.fs,left,tok.tokText)
+    // }
+}
+
+func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
+
     var sz,start,end int
     var hasStart,hasEnd,hasRange bool
 
     switch reflect.ValueOf(left).Kind() {
-
-    case reflect.Struct:
-        tok:=p.next()
-        return accessField(p.fs,left,tok.tokText)
 
     case reflect.String,reflect.Slice:
 
@@ -333,7 +337,7 @@ func (p *leparser) accessField(left interface{},right Token) (interface{}) {
 
         switch hasRange {
         case false:
-            return accessField(p.fs,left,start)
+            return accessArray(p.fs,left,start)
         case true:
             return slice(left,start,end)
         }
@@ -373,7 +377,7 @@ func (p *leparser) accessField(left interface{},right Token) (interface{}) {
 
         }
 
-        return accessField(p.fs,left,mkey)
+        return accessArray(p.fs,left,mkey)
 
     }
 
@@ -625,7 +629,6 @@ func VarLookup(fs uint64, name string) (int, bool) {
     if lockSafety { vlock.RLock() }
 
     // more recent variables created should, on average, be higher numbered.
-    // for k := varcount[fs]-1; k>=0 ; k-- {
 
     k:=varcount[fs]-1
 
@@ -639,12 +642,8 @@ func VarLookup(fs uint64, name string) (int, bool) {
             return k, true
         }
         k--
-        goto vl_repeat_point
+    goto vl_repeat_point
 
-    // }
-
-    // if lockSafety { vlock.RUnlock() }
-    //return 0, false
 }
 
 
@@ -673,12 +672,13 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
 func vunset(fs uint64, name string) {
 
+    ///////////////////////
     return
+    ///////////////////////
 
     // @note: if we intend to use this function then we should
     //  make sure that delete and other funcs update VarLookup
-    //  correctly first. this means not re-enabling vlcache 
-    //  also without some investigation first.
+    //  correctly first.
 
     loc, found := VarLookup(fs, name)
 
@@ -785,7 +785,7 @@ func vset(fs uint64, name string, value interface{}) (vi int) {
 
     } else {
 
-        // instantiate
+        // new variable instantiation
 
         if lockSafety { vlock.Lock() }
 
@@ -1117,51 +1117,47 @@ func interpolate(fs uint64, s string) (string) {
     }
 
         // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
-        // if strcmp(os,s) {
-            var modified bool
+        var modified bool
 
-            redo:=true
-            for ;redo; {
-                modified=false
-                for p:=0;p<len(s);p++ {
-                    if s[p]=='{' {
-                        q:=str.IndexByte(s[p+1:],'}')
-                        if q==-1 { break }
+        redo:=true
+        for ;redo; {
+            modified=false
+            for p:=0;p<len(s);p++ {
+                if s[p]=='{' {
+                    q:=str.IndexByte(s[p+1:],'}')
+                    if q==-1 { break }
 
-                        if aval, err := ev(parse,fs, s[p+1:p+q+1], false); err==nil {
+                    if aval, err := ev(parse,fs, s[p+1:p+q+1], false); err==nil {
 
-                            switch val:=aval.(type) {
-                            // a few special cases here which will operate faster
-                            //  than waiting for fmt.sprintf() to execute.
-                            case string:
-                                s=s[:p]+val+s[p+q+2:]
-                            case int:
-                                s=s[:p]+strconv.Itoa(val)+s[p+q+2:]
-                            case int64:
-                                s=s[:p]+strconv.FormatInt(val,10)+s[p+q+2:]
-                            case uint:
-                                s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+2:]
-                            default:
-                                s=s[:p]+sf("%v",val)+s[p+q+2:]
+                        switch val:=aval.(type) {
+                        // a few special cases here which will operate faster
+                        //  than waiting for fmt.sprintf() to execute.
+                        case string:
+                            s=s[:p]+val+s[p+q+2:]
+                        case int:
+                            s=s[:p]+strconv.Itoa(val)+s[p+q+2:]
+                        case int64:
+                            s=s[:p]+strconv.FormatInt(val,10)+s[p+q+2:]
+                        case uint:
+                            s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+2:]
+                        default:
+                            s=s[:p]+sf("%v",val)+s[p+q+2:]
 
-                            }
-                            modified=true
-                            break
                         }
-                        p=q+1
+                        modified=true
+                        break
                     }
+                    p=q+1
                 }
-                if !modified { redo=false }
             }
-            // break
-        // }
+            if !modified { redo=false }
+        }
 
-    // moved above:
-    // if lockSafety { lastlock.RUnlock() }
-    if s=="<nil>" { s=orig }
+        if s=="<nil>" { s=orig }
 
     return s
 }
+
 
 /// find user defined functions in a token stream and evaluate them
 func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
@@ -1175,8 +1171,6 @@ func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
     if tokens[0].tokType == C_Assign {
         return []Token{},true
     }
-
-    // pf("udf: toks %v\n",tokens)
 
     // check for assignment
     for t := range tokens {
@@ -1206,9 +1200,7 @@ func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
     var lfa int
     if !callOnly {
         lhsnum, _ := fnlookup.lmget(lhs.tokText)
-        // if lockSafety { farglock.RLock() }
         lfa=len(functionArgs[ifs][lhsnum])
-        // if lockSafety { farglock.RUnlock() }
     }
 
 
@@ -1519,7 +1511,7 @@ func ev(p *leparser,fs uint64, ws string, interpol bool) (result interface{}, er
 /// convert a token stream into a single expression struct
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
-    token := intoks[0]
+    // token := intoks[0]
 
     /* should never happen
     if token.tokType == SingleComment {
@@ -1527,14 +1519,22 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
     }
     */
 
-    var id str.Builder
-    id.Grow(16)
+    // var id str.Builder
+    // id.Grow(16)
     var crushedOpcodes str.Builder
     crushedOpcodes.Grow(16)
 
-    var assign bool
-    tc := len(intoks)
+    // var assign bool
 
+        for t:=range intoks {
+            crushedOpcodes.WriteString(intoks[t].tokText)
+        }
+
+        return ExpressionCarton{text: crushedOpcodes.String(), assign: false, assignVar: ""}
+
+}
+
+/*
     switch {
     case tc == 1:
         // definitely trying as an expression only
@@ -1595,6 +1595,8 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
     return ExpressionCarton{text: crushedOpcodes.String(), assign: assign, assignVar: id.String()}
 
 }
+
+*/
 
 
 // currently unused?

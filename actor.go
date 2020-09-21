@@ -372,7 +372,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode int, csloc uint64, registrant uint8, va ...interface{}) (endFunc bool) {
+func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (endFunc bool) {
 
     // if lockSafety { calllock.RLock() }
     // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
@@ -395,7 +395,7 @@ func Call(varmode int, csloc uint64, registrant uint8, va ...interface{}) (endFu
             CTE:="\033[0K"
             parser.report(sf("\n"+CTE+"%v\n"+CTE,r))
             setEcho(true)
-            os.Exit(ERR_EVAL)
+            // os.Exit(ERR_EVAL)
         }
     }()
 
@@ -1893,9 +1893,8 @@ tco_reentry:
                                 p.Tokens = inbound.Tokens[doAt+1:]
                                 p.TokenCount = inbound.TokenCount - (doAt + 1)
                                 p.Original = inbound.Original
-                                // p.Text = inbound.Text
-                                // we can ignore .Text and .Original for now - but shouldn't.
-                                // they are only used in *Command calls, and the input is chomped
+                                // we can ignore .Original for now - but shouldn't.
+                                // it is only used elsewhere in *Command calls, and the input is chomped
                                 // from the front to the first pipe symbol so the 'ON expr DO' would
                                 // be consumed. However, @todo: fix this.
 
@@ -2269,8 +2268,8 @@ tco_reentry:
 
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
-            if inbound.TokenCount < 2 || inbound.TokenCount > 3 {
-                parser.report(  "Malformed REQUIRE statement.")
+            if inbound.TokenCount < 2 {
+                parser.report("Malformed REQUIRE statement.")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -2282,21 +2281,24 @@ tco_reentry:
             switch inbound.TokenCount {
             case 2: // only by name
                 reqfeat = inbound.Tokens[1].tokText
-                _, e := vconvert(reqfeat)
+            case 3: // name + version
+                reqfeat = inbound.Tokens[1].tokText
+                reqvers, _ = strconv.Atoi(inbound.Tokens[2].tokText)
+            default: // check for semver
+                required := crushEvalTokens(inbound.Tokens[1:]).text
+                required=str.Replace(required," ","",-1)
+                _, e := vconvert(required)
                 if e==nil {
-                    // sem ver provided instead / compare to language version
+                    // sem ver provided / compare to language version
                     lver,_ :=vget(0,"@version")
-                    lcmp,_ :=vcmp(lver.(string),reqfeat)
+                    lcmp,_ :=vcmp(lver.(string),required)
                     if lcmp==-1 { // lang ver is lower than required ver
                         // error
-                        pf("Language version of '%s' is too low (%s<%s). Quitting.\n", lver, lver, reqfeat)
+                        pf("Language version of '%s' is too low (%s<%s). Quitting.\n", lver, lver, required)
                         finish(true, ERR_REQUIRE)
                     }
                     reqEnd=true
                 }
-            case 3: // name + version
-                reqfeat = inbound.Tokens[1].tokText
-                reqvers, _ = strconv.Atoi(inbound.Tokens[2].tokText)
             }
 
             if !reqEnd {
@@ -2479,6 +2481,9 @@ tco_reentry:
                     if tco_check {
 
                         skip_reentry:=false
+
+                        // @note: this may be the only remaining use of userDefEval.
+                        //   any alternative?
 
                         r,_:=userDefEval(parser,ifs,inbound.Tokens[1:])
 
@@ -3796,7 +3801,8 @@ func ShowDef(fn string) bool {
                 first = false
                 strOut = sf("\n%s(%v)\n\t\t ", fn, str.Join(functionArgs[ifn], ","))
             }
-            pf("%s%s\n", strOut, functionspaces[ifn][q].Original)
+            // pf("%s%s\n", strOut, functionspaces[ifn][q].Original)
+            pf("%s%s\n", strOut, sourceStore[ifn][q])
         }
     }
     return true

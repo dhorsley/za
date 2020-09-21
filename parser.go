@@ -40,6 +40,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     lmv,_:=fnlookup.lmget(fs)
 
+    sourceStore[lmv]=make([]string,40)
+
 	for ; pos < len(input); pos++ {
 
         // pf("nt : (pos:%d) calling nextToken()\n",pos)
@@ -106,7 +108,21 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 			// phrase.Text = str.TrimRight(strPhrase.String(), " ")
 
 			// -- add original version
-			if pos>0 { phrase.Original = input[lstart:pos] }
+			if pos>0 {
+                if phrase.TokenCount>0 {
+                    switch phrase.Tokens[0].tokType {
+                    case C_On,SYM_BOR:
+                        phrase.Original=input[lstart:pos]
+                    }
+                }
+                if phrase.TokenCount>1 {
+                    switch phrase.Tokens[1].tokType {
+                    case C_AssCommand:
+                        phrase.Original=input[lstart:pos]
+                    }
+                }
+                sourceStore[lmv]=append(sourceStore[lmv],input[lstart:pos])
+            }
 			lstart = pos + 1
 
             phrase.SourceLine=curLine-1
