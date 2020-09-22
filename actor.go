@@ -582,7 +582,6 @@ tco_reentry:
     var structNode []string         // struct builder
     var defining bool               // are we currently defining a function. takes priority over structmode.
     var definitionName string       // ... if we are, what is it called
-    var ampl int                    // sets amplitude of change in INC/DEC statements
     var vid int                     // VarLookup ID cache for FOR loops when !lockSafety
 
     pc = -1                         // program counter : increments to zero at start of loop
@@ -685,7 +684,8 @@ tco_reentry:
 
             // check if name available
 
-            vn  := interpolate(ifs,crushEvalTokens(inbound.Tokens[1:2]).text)
+            // vn  := interpolate(ifs,crushEvalTokens(inbound.Tokens[1:2]).text)
+            vn  := crushEvalTokens(inbound.Tokens[1:2]).text
 
             _,found:=VarLookup(ifs,vn)
             if found {
@@ -695,7 +695,8 @@ tco_reentry:
             }
 
             // get the required type
-            expr:= interpolate(ifs,crushEvalTokens(inbound.Tokens[2:]).text)
+            // expr:= interpolate(ifs,crushEvalTokens(inbound.Tokens[2:]).text)
+            expr:= crushEvalTokens(inbound.Tokens[2:]).text
 
             // this needs reworking, same as C_Init:
 
@@ -1186,14 +1187,14 @@ tco_reentry:
                 break
             }
 
-            toAt := findDelim(inbound.Tokens, "to", 2)
+            toAt := findDelim(inbound.Tokens, C_To, 2)
             if toAt == -1 {
                 parser.report("TO not found in FOR")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            stepAt := findDelim(inbound.Tokens, "step", toAt)
+            stepAt := findDelim(inbound.Tokens, C_Step, toAt)
             stepped := true
             if stepAt == -1 {
                 stepped = false
@@ -1619,12 +1620,12 @@ tco_reentry:
                 // Collect the expressions for each position
                 //      pane define name , y , x , h , w [ , title [ , border ] ]
 
-                nameCommaAt := findDelim(inbound.Tokens, ",", 3)
-                   YCommaAt := findDelim(inbound.Tokens, ",", nameCommaAt+1)
-                   XCommaAt := findDelim(inbound.Tokens, ",", YCommaAt+1)
-                   HCommaAt := findDelim(inbound.Tokens, ",", XCommaAt+1)
-                   WCommaAt := findDelim(inbound.Tokens, ",", HCommaAt+1)
-                   TCommaAt := findDelim(inbound.Tokens, ",", WCommaAt+1)
+                nameCommaAt := findDelim(inbound.Tokens, C_Comma, 3)
+                   YCommaAt := findDelim(inbound.Tokens, C_Comma, nameCommaAt+1)
+                   XCommaAt := findDelim(inbound.Tokens, C_Comma, YCommaAt+1)
+                   HCommaAt := findDelim(inbound.Tokens, C_Comma, XCommaAt+1)
+                   WCommaAt := findDelim(inbound.Tokens, C_Comma, HCommaAt+1)
+                   TCommaAt := findDelim(inbound.Tokens, C_Comma, WCommaAt+1)
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
                     parser.report(  "Bad delimiter in PANE DEFINE.")
@@ -1869,7 +1870,7 @@ tco_reentry:
 
             if inbound.TokenCount > 2 {
 
-                doAt := findDelim(inbound.Tokens, "do", 2)
+                doAt := findDelim(inbound.Tokens, C_Do, 2)
                 if doAt == -1 {
                     parser.report(  "DO not found in ON")
                     finish(false, ERR_SYNTAX)
@@ -2492,7 +2493,7 @@ tco_reentry:
                         // skip tco if there's *anything* left in the
                         // expression after the initial func call
 
-                        rbraceAt := findDelim(r,")", 1)
+                        rbraceAt := findDelim(r,RParen, 1)
                         if rbraceAt==-1 {
                             // pf("syntax error to deal with here.\n")
                         // @todo: add a proper error when rbraceAt==-1
@@ -3093,7 +3094,7 @@ tco_reentry:
                 break
             }
 
-            asAt := findDelim(inbound.Tokens, "as", 2)
+            asAt := findDelim(inbound.Tokens, C_As, 2)
             if asAt == -1 {
                 parser.report("AS not found in WITH")
                 finish(false, ERR_SYNTAX)
@@ -3241,7 +3242,7 @@ tco_reentry:
 
             // AT row ',' column
 
-            commaAt := findDelim(inbound.Tokens, ",", 1)
+            commaAt := findDelim(inbound.Tokens, C_Comma, 1)
 
             if commaAt == -1 || commaAt == inbound.TokenCount {
                 parser.report(  "Bad delimiter in AT.")
@@ -3449,162 +3450,6 @@ tco_reentry:
             }
 
 
-        case C_Zero:
-
-            // similar issues to INC+DEC with array elements. needs fixing when they get done right.
-
-            if inbound.TokenCount == 2 {
-                if inbound.Tokens[1].tokType == Identifier {
-                    vset(ifs, inbound.Tokens[1].tokText, 0)
-                } else {
-                    parser.report(  "Not an identifier.")
-                    finish(false, ERR_SYNTAX)
-                }
-            } else {
-                parser.report(  "Missing identifier to reset.")
-                finish(false, ERR_SYNTAX)
-            }
-
-
-        case C_Inc,C_Dec:
-
-            var id string
-
-            if inbound.TokenCount > 1 {
-
-                if inbound.Tokens[1].tokType == Identifier {
-                    id = inbound.Tokens[1].tokText
-                } else {
-                    parser.report(  "Not an identifier.")
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
-
-                // var ampl int
-                // var er bool
-                var endIncDec bool
-                var isArray bool
-
-                switch inbound.TokenCount {
-                case 2:
-                    ampl = 1
-                default:
-                    // is a var?
-                    v,ok:=vget(ifs,inbound.Tokens[2].tokText)
-                    if ok {
-                        switch v:=v.(type) {
-                        case uint8,int64,uint64:
-                            ampl,_ = GetAsInt(v)
-                        case int:
-                            ampl = v
-                        default:
-                            parser.report( sf("%s only works with integer types. (not this: %T)",str.ToUpper(inbound.Tokens[0].tokText),v))
-                            finish(false,ERR_EVAL)
-                            endIncDec=true
-                            break
-                        }
-                    } else { // is an int?
-                        var er bool
-                        ampl,er = GetAsInt(inbound.Tokens[2].tokText)
-                        if er { // else evaluate
-
-                            expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
-                            typ:="increment"
-                            if statement.tokType==C_Dec { typ="decrement" }
-                            if expr.evalError {
-                                parser.report( sf("could not evaluate amplitude in %v statement\n%+v",typ,expr.errVal))
-                                finish(false, ERR_EVAL)
-                                break
-                            }
-
-                            switch expr.result.(type) {
-                            case int:
-                                ampl = expr.result.(int)
-                            default:
-                                parser.report( sf("%s does not result in an integer type.",str.ToUpper(inbound.Tokens[0].tokText)))
-                                finish(false,ERR_EVAL)
-                            }
-
-                        }
-                    }
-                }
-                if !endIncDec {
-
-                    // look away in disgust, another bodge:
-                    //   check for square brace in id. if present, use vgetElement instead.
-                    //   we also remove quotes here, so only accepts literals for elements.
-                    //   obviously, this is not great. need to fix this filth soon.
-
-                    var val interface{}
-                    var sqPos int
-                    var elementComponents string
-                    var sqEndPos int
-                    var found bool
-
-                    if sqPos=str.IndexByte(id,'['); sqPos!=-1 {
-                        sqEndPos=str.IndexByte(id,']')
-                        elementComponents=stripOuter(id[sqPos+1:sqEndPos],'"')
-                        val, found = vgetElement(ifs,id[:sqPos],elementComponents)
-                        isArray = true
-                    } else {
-                        val, found = vget(ifs, id)
-                    }
-
-                    var ival int
-                    if found {
-                        switch val.(type) {
-                        case int:
-                            ival=val.(int)
-                        case uint64:
-                            ival=int(val.(uint64))
-                        case int64:
-                            ival=int(val.(int64))
-                        case uint8:
-                            ival=int(val.(uint8))
-                        default:
-                            parser.report( sf("%s only works with integer types. (*not this: %T with id:%v)",str.ToUpper(inbound.Tokens[0].tokText),val,id))
-                            finish(false,ERR_EVAL)
-                            endIncDec=true
-                        }
-                    }
-
-
-                    // if not found then will init with 0+ampl
-                    if !endIncDec {
-                        switch statement.tokType {
-                        case C_Inc:
-                            if isArray {
-                                vsetElement(ifs,id[:sqPos],elementComponents,ival+ampl)
-                            } else {
-                                if lockSafety {
-                                    vset(ifs, id, ival+ampl)
-                                } else {
-                                    vid, _ = VarLookup(ifs,id)
-                                    ident[ifs][vid].IValue = ival+ampl
-                                }
-                            }
-                        case C_Dec:
-                            if isArray {
-                                vsetElement(ifs,id[:sqPos],elementComponents,ival-ampl)
-                            } else {
-                                if lockSafety {
-                                    vset(ifs, id, ival-ampl)
-                                } else {
-                                    vid, _ = VarLookup(ifs,id)
-                                    ident[ifs][vid].IValue = ival-ampl
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                typ:="increment"
-                if statement.tokType==C_Dec { typ="decrement" }
-                parser.report( "Missing identifier in "+typ+" statement.")
-                finish(false, ERR_SYNTAX)
-            }
-
-
         case C_If:
 
             // lookahead
@@ -3769,6 +3614,7 @@ func coprocCall(ifs uint64,s string) {
         }
         */
         cet = s[pipepos+1:]
+        // @note: this interpolate may be unnecessary:
         inter   := interpolate(ifs,cet)
         out, ec := Copper(inter, false)
         if ec==-1 || ec > 0 {
@@ -3808,6 +3654,7 @@ func ShowDef(fn string) bool {
     return true
 }
 
+/*
 /// search token list for a given delimiter token type
 func findTokenDelim(tokens []Token, delim uint8, start int) (pos int) {
     for p := start; p < len(tokens); p++ {
@@ -3817,15 +3664,15 @@ func findTokenDelim(tokens []Token, delim uint8, start int) (pos int) {
     }
     return -1
 }
+*/
 
 /// search token list for a given delimiter string
-func findDelim(tokens []Token, delim string, start int) (pos int) {
-    delim = str.ToLower(delim)
+func findDelim(tokens []Token, delim uint8, start int) (pos int) {
     n:=0
     for p := start; p < len(tokens); p++ {
         if tokens[p].tokType==LParen { n++ }
         if tokens[p].tokType==RParen { n-- }
-        if n==0 && str.ToLower(tokens[p].tokText) == delim {
+        if n==0 && tokens[p].tokType == delim {
             return p
         }
     }

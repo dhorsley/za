@@ -7,7 +7,7 @@ while x<100
 
     println x
 
-    inc x
+    x=x+1
 
     if x==50
         for f = 100 to 51 step -1

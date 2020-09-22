@@ -3,6 +3,6 @@
 count=1
 while count<=5
     println count
-    inc count
+    count=count+1
 endwhile
 

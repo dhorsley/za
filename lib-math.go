@@ -616,18 +616,11 @@ func sum_inter(s []interface{}) (m float64) {
 }
 
 func floor(x float64) float64 {
-    /*if x<0 {
-        return math.Round(x)
-    }*/
     return math.Floor(x)
 }
 
 func round(x float64) float64 {
-    if x>0 {
-        return math.Round(x)
-    } else {
-        return math.Round(x)
-    }
+    return math.Round(x)
 }
 
 /*

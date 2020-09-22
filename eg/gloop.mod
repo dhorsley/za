@@ -21,7 +21,7 @@ define ball_lost()
     setglob box=0
     setglob boy=0
     l=getglob("lives")
-    dec l
+    l=l-1
     setglob lives=l
     setglob hs=setlivesicons(l)
 enddef

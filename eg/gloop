@@ -112,12 +112,12 @@ while !quit
     is "o"
         if px>3
             px=px-3
-            on !moving do dec bx 3
+            on !moving do bx=bx-3
         endif
     is "p"
         if px<tw-pw
             px=px+3
-            on !moving do inc bx 3
+            on !moving do bx=bx+3
         endif
     is "q"
         quit=true

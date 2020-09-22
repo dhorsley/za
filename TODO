@@ -1,18 +1,22 @@
 
 
-1.0.11  bug fixes , library return value review, 
+1.0.12  bug fixes , library return value review, 
 
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
-    * review library features and REQUIRE functionality.
 
     * look through library for places to return better result types.
-
         e.g. json_format() should return a struct instead of an array.
 
-    * get a fix in for source line numbers (in error reports and -t tests) 
 
+1.0.11  fixes and evaluator updates
+
+    * get a fix in for source line numbers (in error reports and -t tests) 
+        * some work done on this, it's right most of the time now :)
+
+    * review library features and REQUIRE functionality.
+        * added general Za version require option.
 
 1.0.10  new evaluator + VAR enforcement
 
