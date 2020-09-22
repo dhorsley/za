@@ -21,7 +21,7 @@ buf=""
 
 while i<n
 
-    inc k
+    k=k+1
     k2 = k*2.0 + 1
     acc = acc + num*2
     acc = k2 * acc
@@ -38,7 +38,7 @@ while i<n
     on d3 != d4 do continue
 
     buf=format("%v%v",buf,d3)
-    inc i
+    i=i+1
     on i % 10 == 0 do buf=format("%s\t:%v\n",buf,i)
 
     acc = acc - d3 * den

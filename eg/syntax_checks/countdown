@@ -2,32 +2,14 @@
 
 # long loop test - checks base FOR speed.
 
-define humansize(i,prec,unit)
-    if i>=1e9; unit="Billion"+unit; i=float(i/1e9); endif
-    if i>=1e6; unit="Million"+unit; i=float(i/1e6); endif
-    if i>=1e3; unit="Thousand"+unit; i=float(i/1e3); endif
-    return format( "%." + prec + "f %s" ,i,unit)
-enddef
-
-define report(ts,te,max_count,instructions)
-    dur=time_diff(te,ts)/1000000
-    println format("\nduration       [#5]%0.3f s[#-]",dur)
-    println format("iterations     %v",humansize(float(max_count),0,""))
-    rate=float(dur/max_count)
-    println format("avg iteration  %0.3f ns",rate*1e9)
-    hs=humansize(1/rate,3,"")
-    println format("its/sec        [#5]%s[#-]",hs)
-    hvis=humansize((1/rate)*instructions,3,"")
-    println format("vi/sec         [#5]%s[#-]\n",hvis)
-enddef
+module "../modules/timing.mod"
 
 #
 # START
 #
 
 max_count=1000000
-input mc optarg 1
-on mc!="" do max_count=int(mc)
+input max_count optarg 1
 
 instructions=3
 # cmp, inc, endwhile
@@ -35,7 +17,7 @@ instructions=3
 x=max_count
 ts=epoch_nano_time()
 while x!=0
-    dec x
+    x=x-1
 endwhile
 println "x:",x
 te=epoch_nano_time()

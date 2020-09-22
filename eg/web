@@ -172,7 +172,7 @@ while web_serve_up(suid)
         # refresh list of AWS IP address ranges
         downloadOkay=web_download("https://ip-ranges.amazonaws.com/ip-ranges.json",tmp)
         if downloadOkay
-            dec ipListRefreshCount
+            ipListRefreshCount=ipListRefreshCount-1
             s=epoch_nano_time()
             thisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
             println "Completed in ",time_diff(epoch_nano_time(),s)," us"

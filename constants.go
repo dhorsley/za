@@ -153,9 +153,6 @@ const (
     C_Var
 	C_Assign
 	C_SetGlob
-	C_Zero
-	C_Inc
-	C_Dec
 	C_AssCommand
 	C_RemoteCommand
 	C_Init
@@ -213,6 +210,10 @@ const (
 	C_Endtest
 	C_Assert
 	C_On
+    C_To
+    C_Step
+    C_As
+    C_Do
 	EOL
 	EOF // must remain at end of list
 )

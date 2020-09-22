@@ -24,9 +24,9 @@ foreach p in c
 endfor
 
 # display 'count' liness
-zero pos
+var pos int
 foreach wc in fieldsort(out,1,"n",true)
-    inc pos
+    pos=pos+1
     on pos>count do break
     println wc
 endfor
@@ -34,9 +34,6 @@ endfor
 
 #
 # yes, i'm aware its considerably longer than the bash equivalent. :)
-#
-# would have been shorter if i had remembered to permit arrays in inc/dec/zero commands :D
-# but even so, it's nothing like as short as the bash equivalent. 
 #
 # although, saying that, it is only one program and not six. i guess each of those must loop over the input too.
 # but those are somewhat hidden here, as fieldsort() tr() replace(), lower() all do the same in the background.

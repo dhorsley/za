@@ -1,22 +1,16 @@
+#!/usr/bin/za
+
 # test - addition loop
 
 require 1.0.10
 
-define humansize(i,prec,unit)
-    if i>=1e9; unit="Billion"+unit; i=float(i/1e9); endif
-    if i>=1e6; unit="Million"+unit; i=float(i/1e6); endif
-    if i>=1e3; unit="Thousand"+unit; i=float(i/1e3); endif
-    return format("%."+prec+"f %s",i,unit)
-enddef
-
-ts=epoch_nano_time()
+module "./modules/timing.mod"
 
 max_count=40000000
-input mc optarg 1
-on kind(mc)=="int" do max_count=int(mc)
+input max_count optarg 1
 
+ts=epoch_nano_time()
 var a int
-zero a
 for f=0 to max_count
     a=a+f
 endfor
@@ -24,13 +18,5 @@ te=epoch_nano_time()
 
 println "total {a} , loop-count {f}"
 
-dur=time_diff(te,ts)/1000000
-println format("\nduration       [#5]%0.3f s[#-]",dur)
-println format("iterations     %s",humansize(max_count,3,""))
-
-rate=float(dur/max_count)
-println format("avg iteration  %0.3f ns",rate*1e9)
-
-hs=humansize(1/rate,3,"")
-println format("its/sec        [#5]%s[#-]",hs)
+report(ts,te,max_count)
 

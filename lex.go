@@ -24,14 +24,14 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "SQR", "SQRT",
-    "START_STATEMENTS", "VAR", "ASSIGN", "SETGLOB", "ZERO", "INC", "DEC", "ASS_COMMAND",
+    "START_STATEMENTS", "VAR", "ASSIGN", "SETGLOB", "ASS_COMMAND",
     "R_COMMAND", "INIT", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "EOL", "EOF",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO", "EOL", "EOF",
 }
 
 
@@ -433,14 +433,8 @@ get_nt_eval_point:
 
     if tokType==0 {
         switch str.ToLower(word) {
-        case "zero":
-            tokType = C_Zero
         case "var":
             tokType = C_Var
-        case "inc":
-            tokType = C_Inc
-        case "dec":
-            tokType = C_Dec
         case "sqr":
             tokType = O_Sqr
         case "sqrt":
@@ -557,6 +551,14 @@ get_nt_eval_point:
             tokType = C_Assert
         case "on":
             tokType = C_On
+        case "to":
+            tokType = C_To
+        case "step":
+            tokType = C_Step
+        case "as":
+            tokType = C_As
+        case "do":
+            tokType = C_Do
         }
     }
 

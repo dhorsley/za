@@ -1,15 +1,13 @@
 #!/usr/bin/za
 
-zero calls
+var calls int
 
 define ackermann(m,n)
 
-    calls=getglob("calls")
-    inc calls
-    setglob calls = calls
+    setglob calls = calls + 1
 
     if globkey("memoA",`{m},{n}`)
-        return getglob("memoA[`{m},{n}`]")
+        return memoA[`{m},{n}`]
     endif
 
     on m==0 do return n+1

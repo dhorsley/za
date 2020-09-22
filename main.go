@@ -157,6 +157,8 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
+// interparse: parser reserved for use by interpolate function. has a lock around it when -l set.
+var interparse *leparser
 
 // for disabling the coprocess entirely:
 var no_shell bool
@@ -555,6 +557,9 @@ func main() {
     parser:=&leparser{}
     parser.Init()
 
+    // initialise parser used by the interpolate function
+    interparse=&leparser{}
+    interparse.Init()
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
