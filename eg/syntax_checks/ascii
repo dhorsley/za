@@ -6,7 +6,7 @@ row=10
 for a=32 to 127
     if (a-32)%16==0
         at 1+row,28; print 63+(row-11)*16
-        inc row
+        row=row+1
     endif
     at row,6; print 32+(row-11)*16
     at row,10+((a-32)%16)

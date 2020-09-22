@@ -49,7 +49,6 @@ define energy()
     return e
 enddef
 
-
 define advance(dt)
     for i = 0 to N-1
 
@@ -98,7 +97,6 @@ define advance(dt)
     endfor
 
 enddef
-
 
 #
 # MAIN
@@ -164,9 +162,8 @@ foreach bn in body_list
 endfor
 
 offsetmomentum()
-
 println format("%.9f", energy())
-for i = 0 to iters-1
+for k = 0 to iters-1
     advance(0.01)
 endfor
 println format("%.9f", energy())

@@ -17,7 +17,6 @@ func typeOf(val interface{}) string {
         return "nil"
     }
 
-
     kind := reflect.TypeOf(val).Kind()
     if kind.String()=="map" { return "map" }
 
@@ -700,27 +699,28 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
     return val,false
 }
 
-func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
+
+func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
 
     switch obj.(type) {
 
     case http.Header:
         r := reflect.ValueOf(obj.(http.Header))
-        f := reflect.Indirect(r).FieldByName(field.(string))
+        f := reflect.Indirect(r).FieldByName(field)
         return f
 
     case webstruct:
         r := reflect.ValueOf(obj.(webstruct))
-        f := reflect.Indirect(r).FieldByName(field.(string))
+        f := reflect.Indirect(r).FieldByName(field)
         return f
 
     default:
 
         r := reflect.ValueOf(obj)
 
-        switch r.Kind().String() {
+        switch r.Kind() {
 
-        case "struct":
+        case reflect.Struct:
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -732,7 +732,7 @@ func accessField(evalfs uint64, obj interface{}, field interface{}) (interface{}
             // get the required struct field and make a r/w copy
             // f := rcopy.FieldByName(field.(string))
 
-            f := r.FieldByName(field.(string))
+            f := r.FieldByName(field)
 
             if f.IsValid() {
 
@@ -802,6 +802,8 @@ func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}
 		return obj[field.(string)]
 	case map[string]interface{}:
 		return obj[field.(string)]
+    //case []interface{}:
+    //    return obj[field.(int)]
     default:
 
         r := reflect.ValueOf(obj)
@@ -952,6 +954,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
     return nil
 }
 
+/*
 func arrayContains(arr interface{}, val interface{}) bool {
 	a, ok := arr.([]interface{})
 	if !ok {
@@ -965,6 +968,7 @@ func arrayContains(arr interface{}, val interface{}) bool {
 	}
 	return false
 }
+*/
 
 func callFunction(evalfs uint64, callline int, name string, args []interface{}) (res interface{}) {
 

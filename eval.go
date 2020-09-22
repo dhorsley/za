@@ -23,20 +23,20 @@ func (p *leparser) Init() {
 	p.table = [127]rule{
 		RParen        : {-1,p.ignore, nil},
 		RightSBrace   : {-1,p.ignore, nil},
-        LeftSBrace    : {45,p.array_concat,p.binaryLed},    // un: [ x,y,z ], bin: a[b], c[d]  sub-scripting
+        LeftSBrace    : {45,p.array_concat,p.binaryLed},// un: [x,y,z], bin: a[b] sub-scripting
         NumericLiteral: {-1,p.number, nil},
         StringLiteral : {-1,p.stringliteral,nil},
         Identifier    : {-1,p.identifier,nil},
         C_Assign      : {5,p.unary,p.binaryLed},
         C_Plus        : {30,p.unary,p.binaryLed},
-		C_Minus       : {30,p.unary,p.binaryLed},           // subtraction and unary minus 
+		C_Minus       : {30,p.unary,p.binaryLed},       // subtraction and unary minus 
 		C_Multiply    : {35,nil,p.binaryLed},
 		C_Divide      : {35,nil,p.binaryLed},
         C_Percent     : {35,nil,p.binaryLed},
 		C_Comma       : {-1,nil, nil},
-        LParen        : {100,p.grouping, p.binaryLed},      // a(b), c(d)  calls
+        LParen        : {100,p.grouping, p.binaryLed},  // a(b), c(d)  calls
 		SYM_COLON     : {-1,nil, nil},
-        SYM_DOT       : {45,nil,p.binaryLed},               // a.b, c.d    field refs
+        SYM_DOT       : {45,nil,p.binaryLed},           // a.b, c.d    field refs
         EOF           : {-1,nil, nil},
         SYM_EQ        : {25,nil,p.binaryLed},
         SYM_NE        : {25,nil,p.binaryLed},
@@ -44,15 +44,15 @@ func (p *leparser) Init() {
         SYM_GT        : {25,nil,p.binaryLed},
         SYM_LE        : {25,nil,p.binaryLed},
         SYM_GE        : {25,nil,p.binaryLed},
-        SYM_LAND      : {15,nil,p.binaryLed},  // BOOLEAN AND
-        SYM_LOR       : {15,nil,p.binaryLed},  // BOOLEAN OR
-        SYM_BAND      : {20,nil,p.binaryLed},  // AND
-        C_Caret       : {20,nil,p.binaryLed},  // XOR
-        SYM_BOR       : {20,nil,p.binaryLed},  // OR
-		C_Pling       : {15,p.unary, nil},     // Logical Negation
-        SYM_PP        : {40,p.unary, nil},     // ++x // not currently in use
-        SYM_MM        : {40,p.unary, nil},     // --x // not currently in use
-        SYM_POW       : {40,nil,p.binaryLed},  // a**b
+        SYM_LAND      : {15,nil,p.binaryLed},           // BOOLEAN AND
+        SYM_LOR       : {15,nil,p.binaryLed},           // BOOLEAN OR
+        SYM_BAND      : {20,nil,p.binaryLed},           // AND
+        C_Caret       : {20,nil,p.binaryLed},           // XOR
+        SYM_BOR       : {20,nil,p.binaryLed},           // OR
+		C_Pling       : {15,p.unary, nil},              // Logical Negation
+        SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
+        SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
+        SYM_POW       : {40,nil,p.binaryLed},           // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
         O_Sqr         : {30,p.unary,nil},
@@ -81,7 +81,7 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
 
     defer func() {
         if r := recover(); r != nil {
-            p.report(sf("\nEVAL\n%v\n",r))
+            p.report(sf("\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
@@ -102,6 +102,7 @@ type leparser struct {
     pos         int         // distance through parse
     line        int         // shadows lexer source line
     stmtline    int         // shadows program counter (pc)
+    prev        Token       // bodge for post-fix operations
 }
 
 
@@ -111,6 +112,8 @@ func (p *leparser) next() Token {
     if p.pos == len(p.tokens) {
         return Token{tokType:EOF}
     }
+
+    if p.pos>0 { p.prev=p.tokens[p.pos-1] }
 
     p.pos++
     return p.tokens[p.pos-1]
@@ -186,9 +189,11 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
         return p.accessField(left,token)
     case LParen:
         return p.callFunction(left,token)
+    case SYM_PP:
+        return p.postIncDec(token)
+    case SYM_MM:
+        return p.postIncDec(token)
     }
-
-	// left-associative
 
 	right,err := p.dparse(p.table[token.tokType].prec + 1)
 
@@ -244,10 +249,8 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 
 func (p *leparser) accessField(left interface{},right Token) (interface{}) {
 
-    // switch reflect.ValueOf(left).Kind() {
-        tok:=p.next()
-        return accessField(p.fs,left,tok.tokText)
-    // }
+    // tok:=p.next()
+    return accessField(p.fs,left,p.next().tokText)
 }
 
 func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
@@ -255,107 +258,36 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
     var sz,start,end int
     var hasStart,hasEnd,hasRange bool
 
-    switch reflect.ValueOf(left).Kind() {
+    switch left:=left.(type) {
+    case []bool:
+        sz=len(left)
+    case []string:
+        sz=len(left)
+    case []int:
+        sz=len(left)
+    case []int64:
+        sz=len(left)
+    case []uint:
+        sz=len(left)
+    case []uint8:
+        sz=len(left)
+    case []uint64:
+        sz=len(left)
+    case []float64:
+        sz=len(left)
+    case []interface{}:
+        sz=len(left)
+    case string:
+        sz=len(left)
 
-    case reflect.String,reflect.Slice:
-
-        switch left:=left.(type) {
-        case []bool:
-            sz=len(left)
-        case []string:
-            sz=len(left)
-        case []int:
-            sz=len(left)
-        case []int64:
-            sz=len(left)
-        case []uint:
-            sz=len(left)
-        case []uint8:
-            sz=len(left)
-        case []uint64:
-            sz=len(left)
-        case []float64:
-            sz=len(left)
-        case []interface{}:
-            sz=len(left)
-        case string:
-            sz=len(left)
-        default:
-            panic(fmt.Errorf("unknown array type '%T'"))
-        }
-
-        end=sz
-
-        if p.peek().tokType!=RightSBrace { // ! == a[] - start+end unchanged
-
-            // check for start of range
-            if p.peek().tokType!=SYM_COLON {
-                dp,err:=p.dparse(0)
-                if err!=nil {
-                    panic(fmt.Errorf("array range start could not be evaluated"))
-                }
-                switch dp.(type) {
-                case int:
-                    start=dp.(int)
-                    hasStart=true
-                default:
-                    panic(fmt.Errorf("start of range must be an integer"))
-                }
-            }
-
-            // check for end of range
-            if p.peek().tokType==SYM_COLON {
-                p.next() // swallow colon
-                hasRange=true
-                if p.peek().tokType!=RightSBrace {
-                    dp,err:=p.dparse(0)
-                    if err!=nil {
-                        panic(fmt.Errorf("array range end could not be evaluated"))
-                    }
-                    switch dp.(type) {
-                    case int:
-                        end=dp.(int)
-                        hasEnd=true
-                    default:
-                        panic(fmt.Errorf("end of range must be an integer"))
-                    }
-                }
-            }
-
-            if p.peek().tokType!=RightSBrace {
-                panic(fmt.Errorf("end of range brace missing"))
-            }
-
-            // swallow brace
-            p.next()
-
-        }
-
-        if !hasRange && !hasStart && !hasEnd {
-            hasRange=true
-        }
-
-        switch hasRange {
-        case false:
-            return accessArray(p.fs,left,start)
-        case true:
-            return slice(left,start,end)
-        }
-
-
-    case reflect.Map:
+    case map[string]interface{}:
 
         // check for key
-
         var mkey string
-
         if right.tokType==SYM_DOT {
-
             t:=p.next()
-            mkey=sf("%v",t.tokText)
-
+            mkey=t.tokText
         } else {
-
             if p.peek().tokType!=RightSBrace {
                 dp,err:=p.dparse(0)
                 if err!=nil {
@@ -368,17 +300,76 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                     mkey=sf("%v",dp)
                 }
             }
-
             if p.peek().tokType!=RightSBrace {
                 panic(fmt.Errorf("end of map key brace missing"))
             }
             // swallow right brace
             p.next()
-
         }
-
         return accessArray(p.fs,left,mkey)
 
+        // end map case
+
+    default:
+        panic(fmt.Errorf("unknown map or array type '%T'"))
+    }
+
+    end=sz
+
+    if p.peek().tokType!=RightSBrace { // ! == a[] - start+end unchanged
+
+        // check for start of range
+        if p.peek().tokType!=SYM_COLON {
+            dp,err:=p.dparse(0)
+            if err!=nil {
+                panic(fmt.Errorf("array range start could not be evaluated"))
+            }
+            switch dp.(type) {
+            case int:
+                start=dp.(int)
+                hasStart=true
+            default:
+                panic(fmt.Errorf("start of range must be an integer"))
+            }
+        }
+
+        // check for end of range
+        if p.peek().tokType==SYM_COLON {
+            p.next() // swallow colon
+            hasRange=true
+            if p.peek().tokType!=RightSBrace {
+                dp,err:=p.dparse(0)
+                if err!=nil {
+                    panic(fmt.Errorf("array range end could not be evaluated"))
+                }
+                switch dp.(type) {
+                case int:
+                    end=dp.(int)
+                    hasEnd=true
+                default:
+                    panic(fmt.Errorf("end of range must be an integer"))
+                }
+            }
+        }
+
+        if p.peek().tokType!=RightSBrace {
+            panic(fmt.Errorf("end of range brace missing"))
+        }
+
+        // swallow brace
+        p.next()
+
+    }
+
+    if !hasRange && !hasStart && !hasEnd {
+        hasRange=true
+    }
+
+    switch hasRange {
+    case false:
+        return accessArray(p.fs,left,start)
+    case true:
+        return slice(left,start,end)
     }
 
     return nil
@@ -430,11 +421,18 @@ func (p *leparser) unary(token Token) (interface{}) {
 
 	// right-associative
 
-    // pf("dp from unary\n")
+    switch token.tokType {
+    case SYM_PP:
+        return p.preIncDec(token)
+    case SYM_MM:
+        return p.preIncDec(token)
+    }
+
 	right,err := p.dparse(38) // between grouping and other ops
     if err!=nil {
         panic(err)
     }
+
 	switch token.tokType {
 	case C_Minus:
 		return unaryMinus(right)
@@ -448,15 +446,8 @@ func (p *leparser) unary(token Token) (interface{}) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
-    /* need the identifier for these, not the evaluated value
-    case SYM_PP:
-        return p.preInc(right)
-        // : {p.unary, nil, 40},                 // ++x
-    case SYM_MM:
-        return p.preDec(right)
-        // : {p.unary, nil, 40},                 // --x
-    */
 	}
+
 	return nil
 }
 
@@ -524,13 +515,98 @@ func (p *leparser) array_concat(tok Token) (interface{}) {
 
 }
 
-func (p *leparser) preInc(tok Token) interface{} {
-    return nil
+//this one needs changing to a binop for pre-
+func (p *leparser) preIncDec(token Token) interface{} {
+
+    // get direction
+    ampl:=1
+    optype:="increment"
+    switch token.tokType {
+    case SYM_MM:
+        ampl=-1
+        optype="decrement"
+    }
+
+    // move parser to varname 
+    vartok:=p.next()
+
+    // exists?
+    val,there:=vget(p.fs,vartok.tokText)
+    if !there {
+        p.report(sf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
+        finish(false,ERR_EVAL)
+        return nil
+    }
+
+    // act according to var type
+    var n interface{}
+    switch v:=val.(type) {
+    case int:
+        n=v+ampl
+    case int64:
+        n=v+int64(ampl)
+    case uint:
+        n=v+uint(ampl)
+    case uint64:
+        n=v+uint64(ampl)
+    case uint8:
+        n=v+uint8(ampl)
+    case float64:
+        n=v+float64(ampl)
+    default:
+        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
+        finish(false,ERR_EVAL)
+        return nil
+    }
+    vset(p.fs,vartok.tokText,n)
+    return n
+
 }
 
-func (p *leparser) preDec(tok Token) interface{} {
-    return nil
+func (p *leparser) postIncDec(token Token) interface{} {
+
+    // get direction
+    ampl:=1
+    optype:="increment"
+    switch token.tokType {
+    case SYM_MM:
+        ampl=-1
+        optype="decrement"
+    }
+
+    // get var from parser context
+    vartok:=p.prev
+
+    // exists?
+    val,there:=vget(p.fs,vartok.tokText)
+    if !there {
+        p.report(sf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
+        finish(false,ERR_EVAL)
+        return nil
+    }
+
+    // act according to var type
+    switch v:=val.(type) {
+    case int:
+        vset(p.fs,vartok.tokText,v+ampl)
+    case int64:
+        vset(p.fs,vartok.tokText,v+int64(ampl))
+    case uint:
+        vset(p.fs,vartok.tokText,v+uint(ampl))
+    case uint64:
+        vset(p.fs,vartok.tokText,v+uint64(ampl))
+    case uint8:
+        vset(p.fs,vartok.tokText,v+uint8(ampl))
+    case float64:
+        vset(p.fs,vartok.tokText,v+float64(ampl))
+    default:
+        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
+        finish(false,ERR_EVAL)
+        return nil
+    }
+    return val
 }
+
 
 func (p *leparser) grouping(tok Token) (interface{}) {
 
@@ -595,14 +671,15 @@ func (p *leparser) identifier(token Token) (interface{}) {
         panic(fmt.Errorf("function '%v' does not exist",token.tokText))
     }
 
+    inter:=interpolate(p.fs,token.tokText)
+
     // local lookup:
-    // var names take priority over stdlib and user defined function names
-    if val,there:=vget(p.fs,interpolate(p.fs,token.tokText)); there {
+    if val,there:=vget(p.fs,inter); there {
         return val
     }
 
     // global lookup:
-    if val,there:=vget(globalaccess,interpolate(p.fs,token.tokText)); there {
+    if val,there:=vget(globalaccess,inter); there {
         return val
     }
 
@@ -910,6 +987,7 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
     }
 
     numel:=el.(int)
+    var fault bool
 
     switch ident[fs][vi].IValue.(type) {
 
@@ -966,10 +1044,10 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
             copy(newar,ident[fs][vi].IValue.([]float64))
             ident[fs][vi].IValue=newar
         }
-        ident[fs][vi].IValue.([]float64)[numel],ok=GetAsFloat(value)
-        if !ok {
-            pf("Could not append to float array a value of type '%T'",value)
-            finish(false,ERR_EVAL)
+        ident[fs][vi].IValue.([]float64)[numel],fault=GetAsFloat(value)
+        if fault {
+            panic(fmt.Errorf("Could not append to float array (ele:%v) a value '%+v' of type '%T'",numel,value,value))
+            // finish(false,ERR_EVAL)
         }
 
     case []interface{}:
@@ -1053,6 +1131,8 @@ func escape(str string) string {
 }
 
 
+var interlock = &sync.RWMutex{}
+
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint64, s string) (string) {
 
@@ -1065,8 +1145,7 @@ func interpolate(fs uint64, s string) (string) {
         return s
     }
 
-    parse:=&leparser{}
-    parse.Init()
+    if lockSafety { interlock.Lock() }
 
     orig:=s
 
@@ -1127,7 +1206,7 @@ func interpolate(fs uint64, s string) (string) {
                     q:=str.IndexByte(s[p+1:],'}')
                     if q==-1 { break }
 
-                    if aval, err := ev(parse,fs, s[p+1:p+q+1], false); err==nil {
+                    if aval, err := ev(interparse,fs, s[p+1:p+q+1], false); err==nil {
 
                         switch val:=aval.(type) {
                         // a few special cases here which will operate faster
@@ -1154,6 +1233,8 @@ func interpolate(fs uint64, s string) (string) {
         }
 
         if s=="<nil>" { s=orig }
+
+    if lockSafety { interlock.Unlock() }
 
     return s
 }
@@ -1189,7 +1270,7 @@ func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
         callOnly = false
         if !callOnly && splitPoint!=1 {
             if splitPoint == len(tokens)-1 {
-                p.report("Right-hand side is missing.\n")
+                p.report("Right-hand side is missing.")
             }
             finish(false, ERR_SYNTAX)
             return []Token{},true

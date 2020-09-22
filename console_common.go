@@ -737,6 +737,7 @@ func Copper(line string, squashErr bool) (string, int) {
         errorFile, err := ioutil.TempFile("", "copper.*.err")
         defer os.Remove(errorFile.Name())
         if err != nil {
+            os.Remove(errorFile.Name())
             log.Fatal(err)
         }
         vset(0, "@last", "0")

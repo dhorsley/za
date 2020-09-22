@@ -30,7 +30,7 @@ define wcw(str)
     foreach l in str
         l=tr(l,"s"," \t")
         fields(l)
-        inc wc NF
+        wc=wc+NF
     endfor
     return wc
 enddef

@@ -18,3 +18,9 @@ for e=1 to 42
     println "m one -> ",m["one"]
 endfor
 
+init w mixed 42
+for e=0 to 41
+    w[e]=m
+    println e, " -> ", w[e], " [].f -> ",w[e]["one"].a
+endfor
+

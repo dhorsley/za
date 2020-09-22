@@ -7,11 +7,19 @@ CHANGE LOG
             - issue with print output with these, but assignment okay
 
         * added field deref on array elements (lhs+rhs), i.e. a[i].f=a[j].f
-            - issues:
-                - some bad smells around this: bi=b[i]; bi.f=x; b[i]=bi ...
-                - something seems amiss with the above, it broke the nbodies example trying it.
-                    - i removed the rcopy and r/w check in accessField while trying this, so
-                        it could be that too.
+            * will only support one level of this (i.e. no multiple [] or . on lhs)
+
+        * removed ZERO, INC and DEC statements.
+            * these were becoming more troublesome than they were worth to maintain.
+            * ZERO was already effectively replaced with the more flexible VAR statement.
+            * commands replaced in eg/ code.
+
+        * added pre- and post-fix decrement and increment for numeric types ( (u)int(64),float64,uint8 )
+            * needs more testing
+                * added a bodge to the parser to keep hold of the previous token
+                    - not how it's supposed to be done, hence more testing. 
+                    - we only keep the accumulated left-hand value not the token normally.
+                    - bodge should allow us to add -=, +=, /=, *= and %= fairly easily now.
 
 
 1.0.10  new evaluator, bug fixes and documentation updates
