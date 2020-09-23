@@ -62,7 +62,9 @@ var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
 
-var fileMap = make(map[uint64]string)               // func space to source file name mappings
+var fileMap   = make(map[uint64]string)               // func space to source file name mappings
+var sourceMap = make(map[uint64]uint64)               // id of ifs which points to the source which contains
+                                                      // the DEFINE..ENDDEF for a defined functino.
 
 var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
@@ -560,6 +562,7 @@ func main() {
     // initialise parser used by the interpolate function
     interparse=&leparser{}
     interparse.Init()
+    // interparse.noStatementCheck=true
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)

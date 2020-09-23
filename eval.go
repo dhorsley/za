@@ -1,9 +1,10 @@
 package main
 
 import (
-    "errors"
+//     "errors"
     "fmt"
     "reflect"
+//    "runtime"
     "strconv"
     "bytes"
     "math"
@@ -65,11 +66,8 @@ func (p *leparser) reserved(token Token) (interface{}) {
 
     // this might change in the future:
 
-    // check for keywords
-    if token.tokType>START_STATEMENTS { // only EOL+EOF above statements
-        panic(fmt.Errorf("statement names cannot be used as identifiers (%v)",token.tokText))
-        finish(true,ERR_SYNTAX)
-    }
+    panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    finish(true,ERR_SYNTAX)
 
     return token.tokText
 
@@ -79,12 +77,14 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
 
     // pf("\n[ ev-query -> %+v p.fs -> %d ]\n",toks,p.fs)
 
+    /*
     defer func() {
         if r := recover(); r != nil {
             p.report(sf("\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
+    */
 
     p.tokens = toks
     p.pos    = 0
@@ -103,6 +103,7 @@ type leparser struct {
     line        int         // shadows lexer source line
     stmtline    int         // shadows program counter (pc)
     prev        Token       // bodge for post-fix operations
+    // postfix     bool        // was the last op a postfix? (for skipping next token rule)
 }
 
 
@@ -130,12 +131,14 @@ func (p *leparser) peek() Token {
 
 func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
+    /*
     defer func() {
         if r := recover(); r != nil {
             p.report(sf("\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
+    */
 
     // pf("dparse query tokens  : %#v\n",p.tokens)
     // pf("dparse query fs      : %+v\n",p.fs)
@@ -143,19 +146,22 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
 	token:=p.next()
 
-    if token.tokType>START_STATEMENTS {
-        p.reserved(token)
-    }
-
-	left = p.table[token.tokType].nud(token)
-
-    for prec < p.table[p.peek().tokType].prec {
-        token = p.next()
-        if p.table[token.tokType].led == nil {
-            return nil,errors.New("Token not defined in grammar")
+        if token.tokType>START_STATEMENTS {
+            p.reserved(token)
         }
-	    left = p.table[token.tokType].led(left,token)
-    }
+
+        left = p.table[token.tokType].nud(token)
+
+        for prec < p.table[p.peek().tokType].prec {
+            token = p.next()
+            if p.table[token.tokType].led == nil {
+                panic(sf("Token '%s' not defined in grammar",token.tokText))
+            }
+            // if !p.postfix {
+                left = p.table[token.tokType].led(left,token)
+            // }
+            // p.postfix=false
+        }
 
     // pf("dparse result: %+v\n",left)
     // pf("dparse error : %#v\n",err)
@@ -181,6 +187,20 @@ func (p *leparser) ignore(token Token) interface{} {
 }
 
 func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
+
+    /*
+    defer func() {
+        if r := recover(); r != nil {
+            if _,ok:=r.(runtime.Error); ok {
+                p.report(sf("\n%v\n",r))
+                os.Exit(ERR_EVAL)
+            }
+            err:=r.(error)
+            p.report(sf("\n%v\n",err))
+            os.Exit(ERR_EVAL)
+        }
+    }()
+    */
 
     switch token.tokType {
     case LeftSBrace:
@@ -280,7 +300,7 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
     case string:
         sz=len(left)
 
-    case map[string]interface{}:
+    case map[string]interface{},map[string]string:
 
         // check for key
         var mkey string
@@ -311,7 +331,7 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         // end map case
 
     default:
-        panic(fmt.Errorf("unknown map or array type '%T'"))
+        panic(fmt.Errorf("unknown map or array type '%T'",left))
     }
 
     end=sz
@@ -419,6 +439,12 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
 func (p *leparser) unary(token Token) (interface{}) {
 
+    defer func() {
+        if r := recover(); r != nil {
+            p.report(sf("\n%v\n",r))
+            os.Exit(ERR_EVAL)
+        }
+    }()
 	// right-associative
 
     switch token.tokType {
@@ -565,6 +591,8 @@ func (p *leparser) preIncDec(token Token) interface{} {
 
 func (p *leparser) postIncDec(token Token) interface{} {
 
+    // p.postfix=true
+
     // get direction
     ampl:=1
     optype:="increment"
@@ -579,28 +607,31 @@ func (p *leparser) postIncDec(token Token) interface{} {
 
     // exists?
     val,there:=vget(p.fs,vartok.tokText)
+    activeFS:=p.fs
     if !there {
-        p.report(sf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
-        finish(false,ERR_EVAL)
-        return nil
+        val,there=vget(globalaccess,vartok.tokText)
+        if !there {
+            panic(fmt.Errorf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
+        }
+        activeFS=globalaccess
     }
 
     // act according to var type
     switch v:=val.(type) {
     case int:
-        vset(p.fs,vartok.tokText,v+ampl)
+        vset(activeFS,vartok.tokText,v+ampl)
     case int64:
-        vset(p.fs,vartok.tokText,v+int64(ampl))
+        vset(activeFS,vartok.tokText,v+int64(ampl))
     case uint:
-        vset(p.fs,vartok.tokText,v+uint(ampl))
+        vset(activeFS,vartok.tokText,v+uint(ampl))
     case uint64:
-        vset(p.fs,vartok.tokText,v+uint64(ampl))
+        vset(activeFS,vartok.tokText,v+uint64(ampl))
     case uint8:
-        vset(p.fs,vartok.tokText,v+uint8(ampl))
+        vset(activeFS,vartok.tokText,v+uint8(ampl))
     case float64:
-        vset(p.fs,vartok.tokText,v+float64(ampl))
+        vset(activeFS,vartok.tokText,v+float64(ampl))
     default:
-        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
+        panic(fmt.Errorf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
         finish(false,ERR_EVAL)
         return nil
     }
@@ -655,6 +686,8 @@ func (p *leparser) identifier(token Token) (interface{}) {
         return nil
     }
 
+    var inter string
+
     // filter for functions here
 
     if p.peek().tokType == LParen {
@@ -671,7 +704,7 @@ func (p *leparser) identifier(token Token) (interface{}) {
         panic(fmt.Errorf("function '%v' does not exist",token.tokText))
     }
 
-    inter:=interpolate(p.fs,token.tokText)
+    inter=interpolate(p.fs,token.tokText)
 
     // local lookup:
     if val,there:=vget(p.fs,inter); there {
@@ -1202,25 +1235,25 @@ func interpolate(fs uint64, s string) (string) {
         for ;redo; {
             modified=false
             for p:=0;p<len(s);p++ {
-                if s[p]=='{' {
-                    q:=str.IndexByte(s[p+1:],'}')
+                if s[p]=='{' && s[p+1]=='=' {
+                    q:=str.IndexByte(s[p+2:],'}')
                     if q==-1 { break }
 
-                    if aval, err := ev(interparse,fs, s[p+1:p+q+1], false); err==nil {
+                    if aval, err := ev(interparse,fs, s[p+2:p+q+2], false); err==nil {
 
                         switch val:=aval.(type) {
                         // a few special cases here which will operate faster
                         //  than waiting for fmt.sprintf() to execute.
                         case string:
-                            s=s[:p]+val+s[p+q+2:]
+                            s=s[:p]+val+s[p+q+3:]
                         case int:
-                            s=s[:p]+strconv.Itoa(val)+s[p+q+2:]
+                            s=s[:p]+strconv.Itoa(val)+s[p+q+3:]
                         case int64:
-                            s=s[:p]+strconv.FormatInt(val,10)+s[p+q+2:]
+                            s=s[:p]+strconv.FormatInt(val,10)+s[p+q+3:]
                         case uint:
-                            s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+2:]
+                            s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+3:]
                         default:
-                            s=s[:p]+sf("%v",val)+s[p+q+2:]
+                            s=s[:p]+sf("%v",val)+s[p+q+3:]
 
                         }
                         modified=true
@@ -1443,7 +1476,7 @@ func buildRhs(parser *leparser,ifs uint64, rhs []Token) ([]Token, bool) {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
                             aval, err := ev(parser,ifs, a, false)
-                            pf("brhs - ev : %v -> %v\n",a,aval)
+                            // pf("brhs - ev : %v -> %v\n",a,aval)
                             if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err)
                                 finish(false, ERR_EVAL)
@@ -1534,42 +1567,40 @@ func fastConv(s string) interface{} {
 
 
 // evaluate an expression string using a modified version of the third-party goval lib
-func ev(p *leparser,fs uint64, ws string, interpol bool) (result interface{}, err error) {
+func ev(parser *leparser,fs uint64, ws string, interpol bool) (result interface{}, err error) {
 
     // pf("ev: received: %v\n",ws)
 
     // replace interpreted RHS vars with ident[fs] values
-    if interpol {
-        ws = interpolate(fs, ws)
-    }
+    // if interpol {
+    //     ws = interpolate(fs, ws)
+    // }
 
     // build token list from string 'ws'
     tt := Error
     toks:=make([]Token,0,6)
     cl := 1
-    for p := 0; p < len(ws); p++ {
-        t, tokPos, eol, eof := nextToken(ws, &cl, p, tt, false)
+    var p int
+    for p = 0; p < len(ws);  {
+        t, tokPos, _, _ := nextToken(ws, &cl, p, tt)
         tt = t.tokType
         if tokPos != -1 {
             p = tokPos
         }
         toks = append(toks, t)
-        if eof || eol {
-            break
-        }
     }
 
     // evaluate token list
 
     // pf("\n\n->> ev calling with '%v'\n : '%+v'\n",ws,toks)
     if len(toks)!=0 {
-        result, err = p.Eval(fs,toks)
+        result, err = parser.Eval(fs,toks)
     }
     // pf("returned result [%T] '%+v'\n",result,result)
 
     if result==nil { // could not eval
         if err!=nil {
-            p.report(sf("Error evaluating '%s'",ws))
+            parser.report(sf("Error evaluating '%s'",ws))
             finish(false,ERR_EVAL)
         }
     }
@@ -1685,7 +1716,7 @@ func tokenise(s string) (toks []Token) {
     tt := Error
     cl := 1
     for p := 0; p < len(s); p++ {
-        t, tokPos, eol, eof := nextToken(s, &cl, p, tt, false)
+        t, tokPos, eol, eof := nextToken(s, &cl, p, tt)
         tt = t.tokType
         if tokPos != -1 {
             p = tokPos

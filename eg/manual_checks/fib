@@ -1,9 +1,9 @@
 #!/usr/bin/za
 
 define fib(n)
-    setglob memo["calls"] = getglob(`memo["calls"]`)+1
+    setglob memo["calls"] = memo["calls"]+1
     if globkey("memo",string(n))
-        m=getglob("memo[{n}]")
+        m=memo[n]
     else
         m=fib(n-2)+fib(n-1)
         setglob memo[n] = m
@@ -30,7 +30,7 @@ println "Calls : ",memo["calls"]
 
 #for x=0 to 100
 #    on signum(fib(x))==-1 do break
-#    println "fib({x}) -> {fib(x)}"
+#    println "fib({x}) -> {=fib(x)}"
 #endfor
 
 

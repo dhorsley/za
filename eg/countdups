@@ -9,5 +9,5 @@ foreach l in lines
     on m<dups[l] do m=dups[l]
 endfor
 
-println "{len(dups)} {m}"
+println "{=len(dups)} {m}"
 

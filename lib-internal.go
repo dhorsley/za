@@ -455,7 +455,6 @@ func buildInternalLib() {
                 }
             }
         }
-
         return results,nil
     }
 
@@ -720,7 +719,6 @@ func buildInternalLib() {
 
     slhelp["hostname"] = LibHelp{in: "", out: "string", action: "Returns the current hostname."}
     stdlib["hostname"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        // z, _ := Copper("hostname", true)
         z, _ := os.Hostname()
         vset(0, "@hostname", z)
         return z, err
@@ -732,7 +730,7 @@ func buildInternalLib() {
         var toks []Token
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
+            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
             tt = t.tokType
             if tokPos != -1 {
                 p = tokPos
@@ -761,7 +759,7 @@ func buildInternalLib() {
         var toktypes []string
         cl := 1
         for p := 0; p < len(args[0].(string)); p++ {
-            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt, false)
+            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
             tt = t.tokType
             if tokPos != -1 {
                 p = tokPos

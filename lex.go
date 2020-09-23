@@ -16,7 +16,7 @@ const doubleterms = "<>=|&-+*"
 const soloChars   = "+-/*.^!%;<>~=|,():[]&"
 const expExpect="0123456789-+"
 
-var tokNames = [...]string{"ERROR", "ESCAPE",
+var tokNames = [...]string{"ERROR", "EOL", "EOF", "ESCAPE",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
     "EXPRESSION", "OPTIONAL_EXPRESSION", "OPERATOR",
     "S_COMMENT", "D_COMMENT", "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
@@ -31,76 +31,73 @@ var tokNames = [...]string{"ERROR", "ESCAPE",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO", "EOL", "EOF",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO",
 }
 
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int, start int, previousToken uint8, newStatement bool) (carton Token, tokPos int, eol bool, eof bool) {
+func nextToken(input string, curLine *int, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
 
     var tokType uint8
     var word string
-    var endPos int
     var matchQuote bool
-    var slashComment bool
-    var backtrack int // push back so that eol can be processed.
     var nonterm string
     var term string
     var firstChar byte
     var secondChar byte
-    var two bool
+    var twoChars bool
     var symword string
     var norepeat string
     var norepeatMap = make(map[byte]int)
-    var scientific,expectant bool
+    var badFloat, scientific,expectant bool
+
 
     beforeE := "."
-    // afterE  := "-+"
+    thisWordStart := -1
 
     // skip past whitespace
-    skip := -1
-
-    li:=len(input)
-    var i int
-    for i = start; i<li ; i++ {
-        if input[i] == ' ' || input[i]=='\r' || input[i] == '\t' {
+    lenInput:=len(input)
+    var currentChar int
+    for currentChar = start; currentChar<lenInput ; currentChar++ {
+        if input[currentChar] == ' ' || input[currentChar]=='\r' || input[currentChar] == '\t' {
             continue
         }
         break
     }
-    skip = i
+    thisWordStart = currentChar
 
-    // bad endings...
-    if skip>=li {
-        tokPos  = -1
-        //carton.Line    = *curLine
-        carton.tokType = EOL
+    // return \n as EOL - parser will figure the current line out for sourceStore[]
+    if input[thisWordStart]=='\n' {
+        carton.tokType=EOL
+        eol=true
+        startNextTokenAt=thisWordStart+1
+        goto get_nt_exit_point
+    }
+
+    // abrupt endings...
+    if currentChar>=lenInput {
+        startNextTokenAt  = -1
+        carton.tokType = EOF
+        eof=true
         carton.tokText = ""
         goto get_nt_exit_point
     }
 
     // set word terminator depending on first char
-    firstChar = input[skip]
-    if skip < (li-1) {
-        secondChar = input[skip+1]
-        two = true
+    firstChar = input[thisWordStart]
+    if thisWordStart < (lenInput-1) {
+        secondChar = input[thisWordStart+1]
+        twoChars = true
     }
 
     // comments
-    if two {
-        if (firstChar == '/') && (secondChar == '/') {
-            tokType = SingleComment
-            nonterm = ""
-            term = "\n"
-            backtrack = 1
-            slashComment=true
-        }
+    if twoChars {
 
         // some special cases
         c1 := str.IndexByte(doubleterms, firstChar)
         if c1!=-1 && firstChar==secondChar {
                     word = string(firstChar)+string(secondChar)
-                    endPos=skip+1
+                    startNextTokenAt=thisWordStart+2
                     goto get_nt_eval_point
         }
 
@@ -108,78 +105,69 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
         switch symword {
         case "!=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "<=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case ">=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "=|":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "=@":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "-=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "+=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "*=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "/=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "%=":
             word=symword
-            endPos=skip+1
+            startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         }
     }
 
-    switch firstChar {
-    case '\n':
-        eol = true
-        tokPos = skip
-        (*curLine)++
-        carton.tokType = EOL
-        goto get_nt_exit_point
-    case '#':
-            tokType = SingleComment
-            nonterm = ""
-            term = "\n"
-            backtrack = 1
+    if firstChar == '#' {
+        tokType = SingleComment
+        nonterm = ""
+        eol=true
+        term = "\n"
     }
 
     // number
     if str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
         nonterm = numeric+"eE"
+        // term = "\n;"
         term = ""
         norepeat= "eE."
 
     }
 
     // solo symbols
-    if !slashComment {
-        c := str.IndexByte(soloChars, firstChar)
-        if c != -1 {
-                word = string(firstChar)
-                endPos=skip
-                goto get_nt_eval_point
-        }
+    if str.IndexByte(soloChars, firstChar)!=-1 {
+        word = string(firstChar)
+        startNextTokenAt=thisWordStart+1
+        goto get_nt_eval_point
     }
 
     // identifier or statement
@@ -196,24 +184,19 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
         nonterm = ""
     }
 
-    // expression?
-    if tokType != SingleComment && term == "" && nonterm == "" {
-        tokType = Expression
-        term = ";\n"
-        backtrack = 1
-    }
 
-    for i = skip + 1; i < li; i++ {
+    // start looking for word endings, (terms+nonterms)
 
-        endPos = i
+    for currentChar = thisWordStart + 1; currentChar < lenInput; currentChar++ {
 
-        // check for repeats
+        // check numbers for illegal repeated chars
         if tokType==NumericLiteral {
             if expectant {
-                if str.IndexByte(expExpect,input[i])==-1 {
+                if str.IndexByte(expExpect,input[currentChar])==-1 {
                     // wanted a digit / + / - here, but didn't find
-                    backtrack=1
-                    word=input[skip:i]
+                    word=input[thisWordStart:currentChar]
+                    startNextTokenAt=currentChar
+                    badFloat=true
                     break
                 } else {
                     expectant=false
@@ -221,24 +204,16 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
                 }
             }
 
-            /*
-            if str.IndexByte(afterE,input[i])>=0 && !scientific {
-                // not an error, just end of word was already reached
-                backtrack=1
-                word = input[skip:i]
-                break
-            }
-            */
-
-            if str.IndexByte(beforeE,input[i])>=0 && scientific {
-                pf("Problem lexing character %c in '%s'\n",input[i],str.TrimRight(input,"\n"))
+            if str.IndexByte(beforeE,input[currentChar])>=0 && scientific {
+                pf("Problem lexing character %c in '%s'\n",input[currentChar],str.TrimRight(input,"\n"))
                 os.Exit(ERR_LEX)
             }
-            if str.IndexByte(norepeat,input[i])>=0 {
-                norepeatMap[input[i]]++
+
+            if str.IndexByte(norepeat,input[currentChar])>=0 {
                 var tu byte
+                tu=input[currentChar]
                 // special cases:
-                switch input[i] {
+                switch input[currentChar] {
                 case 'E':
                     scientific=true
                     expectant=true
@@ -246,47 +221,46 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
                     scientific=true
                     expectant=true
                     tu='E'
-                default:
-                    tu=input[i]
                 }
+                norepeatMap[input[currentChar]]++
                 if norepeatMap[tu]>1 {
                     // end word at char before
-                    word=input[skip:i]
-                    backtrack=1
+                    word=input[thisWordStart:currentChar]
+                    startNextTokenAt=currentChar
+                    badFloat=true
                     break
                 }
             }
         }
 
-        if matchQuote && input[i]=='\n' {
-            (*curLine)++
+        if matchQuote && input[currentChar]=='\n' {
+            // (*curLine)++
         }
 
-        if nonterm != "" && str.IndexByte(nonterm, input[i]) == -1 {
-                // didn't find a non-terminator, so get word and finish
-                // but don't increase skip as we need to continue the next
-                // search from immediately after the word.
-                word = input[skip:i]
-                endPos--
-                break
+        if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
+            // didn't find a non-terminator, so get word and finish, but don't
+            // increase word end position as we need to continue the next
+            // search from immediately after the word.
+            word = input[thisWordStart:currentChar]
+            startNextTokenAt=currentChar
+            break
         }
 
-        if term != "" && str.IndexByte(term, input[i]) != -1 {
+        if term != "" && str.IndexByte(term, input[currentChar]) != -1 {
             // found a terminator character
 
             if tokType == SingleComment {
-                tokPos = endPos - backtrack
                 carton.tokType = SingleComment
-                carton.tokText = ""
-                eol=true
+                carton.tokText = input[thisWordStart:currentChar]
+                startNextTokenAt=currentChar
                 goto get_nt_exit_point
             }
 
             if matchQuote {
                 // get word and end, include terminal quote
-                tokPos = endPos
+                startNextTokenAt=currentChar+1
                 carton.tokType= StringLiteral
-                carton.tokText= input[skip:i+1]
+                carton.tokText= input[thisWordStart:currentChar+1]
                 // unescape escapes
                 carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
@@ -298,34 +272,26 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
                 // found a terminator, so get word and end.
                 // we need to start next search on this terminator as
                 // it wasn't part of the previous word.
-                word = input[skip:i]
+                word = input[thisWordStart:currentChar]
+                startNextTokenAt=currentChar
                 break
             }
         }
 
     }
 
-    // catch any eol strays - these can come from non-terms above.
-    if !matchQuote && input[endPos] == '\n' {
-        eol = true
-        tokPos = endPos
-        carton.tokType = EOL
-        carton.tokText = input[skip:endPos]
-        goto get_nt_exit_point
+    // catch any eol strays
+    if currentChar<lenInput {
+        if !matchQuote && input[currentChar] == '\n' {
+            eol = true
+            startNextTokenAt=currentChar
+            carton.tokText = input[thisWordStart:currentChar]
+        }
     }
-
-    if tokType==SingleComment {
-        tokPos = endPos - backtrack
-        carton.tokType = SingleComment
-        carton.tokText = input[skip:i]
-        eol=true
-        goto get_nt_exit_point
-    }
-
 
     // skip past empty word results
     if word == "" {
-            word = input[skip:]
+        word = input[thisWordStart:]
         eof = true
     }
 
@@ -334,19 +300,23 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 
     if tokType != 0 {
         if tokType==NumericLiteral {
-            if str.Count(word,".")>1 || str.Count(word,"e")>1 {
+            if badFloat {
                 tokType=StringLiteral
                 carton.tokVal=word
             } else {
-                if str.IndexByte(str.ToLower(word), 'e') != -1 || str.IndexByte(str.ToLower(word), '.') != -1 {
+                tl:=str.ToLower(word)
+                switch {
+                case str.IndexByte(tl,'e')!=-1:
                     carton.tokVal,_=strconv.ParseFloat(word,64)
-                } else {
+                case str.IndexByte(tl,'.')!=-1:
+                    carton.tokVal,_=strconv.ParseFloat(word,64)
+                default:
                     carton.tokVal,_=strconv.ParseInt(word,10,0)
                     carton.tokVal=int(carton.tokVal.(int64))
                 }
             }
         }
-        tokPos = endPos - backtrack
+        startNextTokenAt = currentChar
         carton.tokType = tokType
         carton.tokText = word
         goto get_nt_exit_point
@@ -356,9 +326,6 @@ func nextToken(input string, curLine *int, start int, previousToken uint8, newSt
 get_nt_eval_point:
 
     // figure token type:
-    //  needs tidying.. some aren't used now.
-
-    // deal with symbols that don't require a case conversion first, saves some cycles
 
     switch word {
     case "+":
@@ -564,16 +531,21 @@ get_nt_eval_point:
 
     if tokType == 0 { // assume it was an identifier
         tokType = Identifier
+        startNextTokenAt=currentChar
     }
 
-    // box up the token
-    tokPos = endPos - backtrack
     carton.tokType = tokType
     carton.tokText = word
 
 get_nt_exit_point:
 
-    return carton, tokPos, eol, eof
+
+    // you have to set carton.tokType + startNextTokenAt by hand if you jump
+    // directly to this exit point.
+
+    if startNextTokenAt>=lenInput { eof=true }
+
+    return carton, startNextTokenAt, eol, eof
 
 }
 

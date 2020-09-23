@@ -75,7 +75,7 @@ test "release_name" group "internal"
     header(_test_name)
     rel=stripquotes(get_value(read_file("/etc/os-release"),"NAME"))
     | echo -en "{rel}" | hexdump -C
-    | echo -en "{release_name()}" | hexdump -C
+    | echo -en "{=release_name()}" | hexdump -C
     assert rel==release_name()
 endtest
 
@@ -189,7 +189,7 @@ endtest
 
 test "clktck" group "internal"
     header(_test_name)
-    doc "clock ticks retrieved = {clktck()}"
+    doc "clock ticks retrieved = {=clktck()}"
     assert is_number(clktck())
     assert clktck()>=50 && clktck()<=200
 endtest

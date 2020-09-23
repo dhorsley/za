@@ -540,7 +540,7 @@ func NewCoprocess(loc string,args ...string) (process *exec.Cmd, pi io.WriteClos
 
 // synchronous execution and capture
 func GetCommand(c string) (string, error) {
-    c=str.Trim(c," \t")
+    c=str.Trim(c," \t\n")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)
     var out bytes.Buffer

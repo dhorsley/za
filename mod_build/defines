@@ -5,8 +5,8 @@
 #
 
 define buildMusl(build_version,build_date,strip_opts,upx_enable)
-    GCLIMIT=getglob("GCLIMIT")
-    GCFLAGS=getglob("GCFLAGS")
+    GCLIMIT=GCLIMIT
+    GCFLAGS=GCFLAGS
     print "[#4]Alpine build[#-]\n"
     | GOOS=linux GOARCH=amd64 {GCLIMIT} go build {GCFLAGS} -ldflags '-d -s -w -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine"' -tags netgo -installsuffix netgo
     r=last()
@@ -24,8 +24,8 @@ define buildMusl(build_version,build_date,strip_opts,upx_enable)
 enddef
 
 define buildLibc(build_version,build_date)
-    GCLIMIT=getglob("GCLIMIT")
-    GCFLAGS=getglob("GCFLAGS")
+    GCLIMIT=GCLIMIT
+    GCFLAGS=GCFLAGS
     print "[#4]Libc build[#-]\n"
     | {GCLIMIT} go build {GCFLAGS} -ldflags '-s -w -extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
     r=last()
@@ -36,8 +36,8 @@ define buildLibc(build_version,build_date)
 enddef
 
 define buildFreeBSD(build_version,build_date)
-    GCLIMIT=getglob("GCLIMIT")
-    GCFLAGS=getglob("GCFLAGS")
+    GCLIMIT=GCLIMIT
+    GCFLAGS=GCFLAGS
     print "[#4]BSD build[#-]\n"
     | {GCLIMIT} go build {GCFLAGS} -ldflags '-s -w -extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
     r=last()
@@ -48,8 +48,8 @@ define buildFreeBSD(build_version,build_date)
 enddef
 
 define buildWin(build_version,build_date,strip_opts)
-    GCLIMIT=getglob("GCLIMIT")
-    GCFLAGS=getglob("GCFLAGS")
+    GCLIMIT=GCLIMIT
+    GCFLAGS=GCFLAGS
     print "[#4]Windows build[#-] ~ [#i1]experimental![#i0]\n"
     | GOOS="windows" GOARCH="amd64" {GCLIMIT} go build {GCFLAGS} -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows"' za
     r=last()

@@ -173,11 +173,6 @@ func GetAsUint(expr interface{}) (uint64, bool) {
 // EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
 // if no evalError then returns a "validated" true bool
 func EvalCrush(p *leparser, fs uint64, tok []Token, tstart int, tend int) (interface{}, error) {
-    /*
-    for k,v:=range tok {
-        pf("(%d) %+v\n",k,v)
-    }
-    */
     return p.Eval(fs,tok[tstart:tend+1])
 }
 
@@ -221,7 +216,7 @@ func searchToken(base uint64, start int, end int, sval string) bool {
             if v.Tokens[r].tokType == Identifier && v.Tokens[r].tokText == sval {
                 return true
             }
-            // c,heck for direct reference
+            // check for direct reference
             if str.Contains(v.Tokens[r].tokText, sval) {
                 return true
             }
@@ -331,6 +326,7 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
             if _, found := numlookup.lmget(q); !found { // unreserved
                 numlookup.lmset(q, newName)
                 fnlookup.lmset(newName,q)
+                // pf("reserving f.id %d for %s\n",q,newName)
                 // place a reservation in calltable:
                 // if we don't do this, then there is a small chance that the id [q]
                 //  will get re-used between the calls to GetNextFnSpace() and Call()
@@ -392,10 +388,16 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (end
 
     defer func() {
         if r := recover(); r != nil {
-            CTE:="\033[0K"
-            parser.report(sf("\n"+CTE+"%v\n"+CTE,r))
+            if _,ok:=r.(runtime.Error); ok {
+                parser.report(sf("\n%v\n",r))
+                if debug_level==20 { panic(r) }
+                os.Exit(ERR_EVAL)
+            }
+            err:=r.(error)
+            parser.report(sf("\n%v\n",err))
             setEcho(true)
-            // os.Exit(ERR_EVAL)
+            if debug_level==20 { panic(r) }
+            os.Exit(ERR_EVAL)
         }
     }()
 
@@ -429,17 +431,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (end
     }
 
     if lockSafety { farglock.RLock() }
-
-    // pf("va->%#v\n",va...)
-    // pf("fa->%#v\n",functionArgs[base])
-    /*
-    if len(va) > len(functionArgs[base]) {
-        parser.report("Syntax error: too many call arguments provided.")
-        finish(false,ERR_SYNTAX)
-        return
-    }
-    */
-
     // missing varargs in call result in empty string assignments:
     if functionArgs[base]!=nil {
         if len(functionArgs[base])>len(va) {
@@ -587,11 +578,6 @@ tco_reentry:
     pc = -1                         // program counter : increments to zero at start of loop
 
     var si bool
-    /*
-    grso,_:=getRealSizeOf(functionspaces)
-    pf(">> fs[] sz : %d len %d\n",grso,len(functionspaces))
-    */
-
     var statement Token
 
     for {
@@ -613,7 +599,6 @@ tco_reentry:
         // get the next Phrase
         inbound     = &functionspaces[base][pc]
         parser.line=inbound.SourceLine
-
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
             continue
@@ -1317,13 +1302,13 @@ tco_reentry:
             if lockSafety { lastlock.Lock() }
 
             if depth[ifs]==0 {
-                pf("*debug* trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs)
+                parser.report(sf("trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs))
                 finish(true,ERR_FATAL)
                 break
             }
 
             if lastConstruct[ifs][depth[ifs]-1]!=C_For && lastConstruct[ifs][depth[ifs]-1]!=C_Foreach {
-                parser.report( "ENDFOR without a FOR or FOREACH")
+                parser.report("ENDFOR without a FOR or FOREACH")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1599,7 +1584,7 @@ tco_reentry:
                     break
                 }
 
-                cp, _ := ev(parser,ifs, inbound.Tokens[2].tokText, true)
+                cp, _ := parser.Eval(ifs,inbound.Tokens[2:3])
 
                 switch cp:=cp.(type) {
                 case string:
@@ -1629,7 +1614,6 @@ tco_reentry:
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
                     parser.report(  "Bad delimiter in PANE DEFINE.")
-                    // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1689,7 +1673,6 @@ tco_reentry:
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
                     parser.report( "Could not use an argument in PANE DEFINE.")
-                    // pf("Toks -> [%+v]\n", inbound.Tokens)
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1759,36 +1742,22 @@ tco_reentry:
 
 
         case C_Doc:
-            var badval bool
+
             if testMode {
                 if inbound.TokenCount > 1 {
+                    evnest:=0
+                    newstart:=0
                     docout := ""
-                    previousterm := 1
                     for term := range inbound.Tokens[1:] {
-                        if inbound.Tokens[term].tokType == C_Comma {
-
-                            expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:term])
-                            if expr.evalError {
-                                parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
-                                finish(false,ERR_EVAL)
-                                badval=true
-                                break
-                            }
-
-                            docout += sparkle(sf(`%v`, expr.result))
-                            previousterm = term + 1
-
+                        nt:=inbound.Tokens[1+term]
+                        if nt.tokType==LParen { evnest++ }
+                        if nt.tokType==RParen { evnest-- }
+                        if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                            v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                            newstart=term+1
+                            docout += sparkle(sf(`%v`, v))
+                            continue
                         }
-                    }
-
-                    if badval { break }
-
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[previousterm:])
-                    if expr.evalError {
-                        parser.report( sf("bad value in DOC command\n%+v",expr.errVal))
-                        finish(false,ERR_EVAL)
-                    } else {
-                        docout += sparkle(sf(`%v`, expr.result))
                     }
 
                     appendToTestReport(test_output_file,ifs, pc, docout)
@@ -2162,33 +2131,30 @@ tco_reentry:
             }
 
             // get arguments
-            var argString str.Builder
-            var rparenloc int
-            for ap:=4; ap<inbound.TokenCount; ap++ {
+
+            var rightParenLoc int
+            for ap:=inbound.TokenCount; ap>3; ap-- {
                 if inbound.Tokens[ap].tokType==RParen {
-                    rparenloc=ap
+                    rightParenLoc=ap
                     break
                 }
-                if inbound.Tokens[ap].tokType==C_Comma {
-                    argString.WriteString(",")
-                    continue
-                }
-                argString.WriteString(inbound.Tokens[ap].tokText)
             }
 
-            if rparenloc<4 {
+            if rightParenLoc<4 {
                parser.report("could not find a valid ')' in ASYNC function call.")
                 finish(false,ERR_SYNTAX)
             }
 
+            resu,errs:=parser.evalCommaArray(ifs, inbound.Tokens[4:rightParenLoc])
+
             // find the optional key argument, for stipulating the key name to be used in handles
             var nival interface{}
-            if rparenloc!=inbound.TokenCount-1 {
+            if rightParenLoc!=inbound.TokenCount-1 {
                 var err error
-                keyString := crushEvalTokens(inbound.Tokens[rparenloc+1:]).text
-                nival,err = ev(parser,ifs,keyString,true)
+                nival,err = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
+                nival=sf("%v",nival)
                 if err!=nil {
-                    parser.report(sf("could not evaluate handle key argument '%s' in ASYNC.",keyString))
+                    parser.report(sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2199,6 +2165,7 @@ tco_reentry:
 
             if isfunc {
 
+                /*
                 // evaluate args
                 var iargs []interface{}
                 var argnames []string
@@ -2208,6 +2175,7 @@ tco_reentry:
                 if argString.String() != "" {
                     argnames = str.Split(argString.String(), ",")
                     for k, a := range argnames {
+                        aval, err := parser.Eval(ifs,a)
                         aval, err := ev(parser,ifs, a, false)
                         if err != nil {
                             parser.report(sf("problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err))
@@ -2219,6 +2187,22 @@ tco_reentry:
                     }
                 }
                 if fullBreak { break }
+                */
+
+                errClear:=true
+                for e:=0; e<len(errs); e++ {
+                    if errs[e]!=nil {
+                        // error
+                        pf("- arg %d: %+v\n",errs[e])
+                        errClear=false
+                    }
+                }
+
+                if !errClear {
+                    parser.report(sf("problem evaluating arguments in function call. (fs=%v)\n", ifs))
+                    finish(false, ERR_EVAL)
+                    break
+                }
 
                 // make Za function call
                 loc,id := GetNextFnSpace(call+"@")
@@ -2228,9 +2212,7 @@ tco_reentry:
                 calllock.Unlock()
 
                 // construct a go call that includes a normal Call
-                h:=task(ifs,loc,iargs...)
-
-                // pf("task returned channel id : %+v\n",h)
+                h:=task(ifs,loc,resu...)
 
                 // assign h to handles map
                 if nival==nil {
@@ -2360,14 +2342,6 @@ tco_reentry:
                             dargs[arg]=str.Trim(dargs[arg]," \t")
                         }
                     }
-                } else {
-                    /*
-                    if inbound.TokenCount != 2 {
-                        parser.report(  "Braced list of parameters not supplied!")
-                        finish(true, ERR_SYNTAX)
-                        break
-                    }
-                    */
                 }
 
                 defining = true
@@ -2387,14 +2361,15 @@ tco_reentry:
 
                 // error if it has already been user defined
                 if _, exists := fnlookup.lmget(definitionName); exists {
-                    parser.report(  "Function "+definitionName+" already exists.")
+                    parser.report("Function "+definitionName+" already exists.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
                 // debug(20,"[#3]DEFINE taking a space[#-]\n")
                 loc, _ := GetNextFnSpace(definitionName)
-
+                sourceMap[loc]=base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
+                // pf("added a source map entry for loc %d pointing to base %d\n",loc,base)
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
                 fspacelock.Unlock()
@@ -2532,7 +2507,6 @@ tco_reentry:
                             }
 
                             if len(dargs)==0 {
-                                // pf("dargs len check 0 failure\n")
                                 skip_reentry=true // no args
                             }
 
@@ -2554,8 +2528,6 @@ tco_reentry:
                                 }
 
                             } else {
-                                // pf("len va and len dargs different, failed check\n")
-                                // pf("--> va %+v  , dargs %+v\n",va,dargs)
                                 skip_reentry=true
                             }
 
@@ -2568,7 +2540,6 @@ tco_reentry:
                             pc=-1
                             goto tco_reentry
                         }
-                        // pf("not tco capable\n")
 
                     }
 
@@ -2694,7 +2665,6 @@ tco_reentry:
 
 
         case C_Module:
-            // MODULE <modname>                                - reads in state from a module file.
 
             var expr ExpressionCarton
 
@@ -2794,6 +2764,7 @@ tco_reentry:
 
             //.. parse and execute
             fileMap[loc]=moduleloc
+            // pf("module>> wrote file map entry : %d->%v fom:%v\n",loc,moduleloc,fom)
             phraseParse("@mod_"+fom, string(mod), 0)
 
             modcs := call_s{}
@@ -3034,7 +3005,6 @@ tco_reentry:
 
             structName=inbound.Tokens[1].tokText
             structMode=true
-            // pf("Building struct %v\n",structName)
 
         case C_Endstruct:
 
@@ -3050,9 +3020,6 @@ tco_reentry:
             // 
             // take definition and create a structmaps entry from it:
             structmaps[structName]=structNode[:]
-            // pf("Completing struct %v\n",structName)
-            // pf("structNode -> %v\n",structNode)
-            //
 
             structName=""
             structNode=[]string{}
@@ -3154,25 +3121,18 @@ tco_reentry:
         // as string expressions should be single string literal tokens.
         case C_Print:
             if inbound.TokenCount > 1 {
-                evphrase:=""
                 evnest:=0
+                newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
                     if nt.tokType==LParen { evnest++ }
                     if nt.tokType==RParen { evnest-- }
-                    if nt.tokType!=C_Comma {
-                        evphrase+=nt.tokText
-                    } else {
-                        if evnest>0 { evphrase+=nt.tokText }
-                    }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true)
+                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                        newstart=term+1
                         pf(`%v`,sparkle(v))
-                        evphrase=""
                         continue
                     }
-                    // should do something about evnest>0 here, but all this will
-                    // be cleansed eventually.
                 }
                 if interactive { pf("\n") }
             } else {
@@ -3182,21 +3142,16 @@ tco_reentry:
 
         case C_Println:
             if inbound.TokenCount > 1 {
-                evphrase:=""
                 evnest:=0
+                newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
                     if nt.tokType==LParen { evnest++ }
                     if nt.tokType==RParen { evnest-- }
-                    if evnest>0 || nt.tokType!=C_Comma {
-                        evphrase+=nt.tokText
-                    } else {
-                        if evnest>0 { evphrase+=nt.tokText }
-                    }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true)
+                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                        newstart=term+1
                         pf(`%v`,sparkle(v))
-                        evphrase=""
                         continue
                     }
                 }
@@ -3210,21 +3165,16 @@ tco_reentry:
 
             plog_out := ""
             if inbound.TokenCount > 1 {
-                evphrase:=""
                 evnest:=0
+                newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
                     if nt.tokType==LParen { evnest++ }
                     if nt.tokType==RParen { evnest-- }
-                    if nt.tokType!=C_Comma {
-                        evphrase+=nt.tokText
-                    } else {
-                        if evnest>0 { evphrase+=nt.tokText }
-                    }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                        v,_:=ev(parser,ifs,evphrase,true)
+                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                        newstart=term+1
                         plog_out += sf(`%v`,sparkle(v))
-                        evphrase=""
                         continue
                     }
                 }
@@ -3249,15 +3199,12 @@ tco_reentry:
                 finish(false, ERR_SYNTAX)
             } else {
 
-                evrow := crushEvalTokens(inbound.Tokens[1:commaAt])
-                evcol := crushEvalTokens(inbound.Tokens[commaAt+1:])
-
-                expr_row, err := ev(parser,ifs, evrow.text, false)
+                expr_row, err := parser.Eval(ifs,inbound.Tokens[1:commaAt])
                 if expr_row==nil || err != nil {
                     parser.report( sf("Evaluation error in %v", expr_row))
                 }
 
-                expr_col, err := ev(parser,ifs, evcol.text, false)
+                expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:])
                 if expr_col==nil || err != nil {
                     parser.report(  sf("Evaluation error in %v", expr_col))
                 }
@@ -3302,7 +3249,7 @@ tco_reentry:
                     } else {
                         validator := ""
                         broken := false
-                        expr, prompt_ev_err := ev(parser,ifs, inbound.Tokens[2].tokText, true)
+                        expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
                         if expr==nil {
                             parser.report( "Could not evaluate in PROMPT command.")
                             finish(false,ERR_EVAL)
@@ -3313,7 +3260,7 @@ tco_reentry:
                             processedPrompt := expr.(string)
                             echoMask,_:=vget(0,"@echomask")
                             if inbound.TokenCount == 4 {
-                                val_ex,val_ex_error := ev(parser,ifs, inbound.Tokens[3].tokText, true)
+                                val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:4])
                                 if val_ex_error != nil {
                                     parser.report("Validator invalid in PROMPT!")
                                     finish(false,ERR_EVAL)
@@ -3566,20 +3513,25 @@ tco_reentry:
         // pf("[#2]about to delete %v[#-]\n",fs)
         if lockSafety { calllock.Lock() }
 
-        calltable[ifs]=call_s{}
-        fnlookup.lmdelete(fs)
-        numlookup.lmdelete(ifs)
-        // pf("call disposing of ifs : %d\n",ifs)
+        // pf("about to enter call de-allocation with fs of '%s'\n",fs)
+        if !str.HasPrefix(fs,"@mod_") {
+            // pf("... did not skip.\n")
+            calltable[ifs]=call_s{}
+            fnlookup.lmdelete(fs)
+            numlookup.lmdelete(ifs)
+            // pf("call disposing of ifs : %d\n",ifs)
 
-        looplock.Lock()
-        depth[ifs]=0
-        loops[ifs]=nil
-        looplock.Unlock()
+            looplock.Lock()
+            depth[ifs]=0
+            loops[ifs]=nil
+            looplock.Unlock()
 
-        fspacelock.Lock()
-        if ifs>2 { functionspaces[ifs] = []Phrase{} }
-        fspacelock.Unlock()
-
+            fspacelock.Lock()
+            if ifs>2 { functionspaces[ifs] = []Phrase{} }
+            fspacelock.Unlock()
+        } else {
+            // pf("... skipped.\n")
+        }
         if lockSafety { calllock.Unlock() }
 
     }
@@ -3606,13 +3558,6 @@ func coprocCall(ifs uint64,s string) {
     if len(s) > 0 {
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
-        /*
-        if pipepos==-1 {
-            pf("syntax error in '%s'\n",s)
-            // @todo: handle this type of exit more gracefully, no rush, should be uncommon.
-            os.Exit(0)
-        }
-        */
         cet = s[pipepos+1:]
         // @note: this interpolate may be unnecessary:
         inter   := interpolate(ifs,cet)
@@ -3634,9 +3579,16 @@ func coprocCall(ifs uint64,s string) {
 /// print user-defined function definition(s) to stdout
 func ShowDef(fn string) bool {
     var ifn uint64
+    var baseId uint64
     var present bool
     if ifn, present = fnlookup.lmget(fn); !present {
         return false
+    }
+    funcName := getReportFunctionName(ifn,false)
+    if ifn==2 {
+        baseId=1
+    } else {
+        baseId,_    = fnlookup.lmget(funcName)
     }
 
     if ifn < uint64(len(functionspaces)) {
@@ -3647,8 +3599,7 @@ func ShowDef(fn string) bool {
                 first = false
                 strOut = sf("\n%s(%v)\n\t\t ", fn, str.Join(functionArgs[ifn], ","))
             }
-            // pf("%s%s\n", strOut, functionspaces[ifn][q].Original)
-            pf("%s%s\n", strOut, sourceStore[ifn][q])
+            pf("%s%s\n", strOut, sourceStore[baseId][q])
         }
     }
     return true
@@ -3677,6 +3628,34 @@ func findDelim(tokens []Token, delim uint8, start int) (pos int) {
         }
     }
     return -1
+}
+
+func (parser *leparser) evalCommaArray(ifs uint64, tokens []Token) (resu []interface{}, errs []error) {
+    evnest:=0
+    newstart:=0
+    if len(tokens)==0 { return resu,errs }
+    // @note: this needs rationalising a bit...
+    for term := range tokens {
+        nt:=tokens[term]
+        if nt.tokType==LParen { evnest++ }
+        if nt.tokType==RParen { evnest-- }
+        if evnest==0 {
+            if term==len(tokens)-1 {
+                v, e := parser.Eval(ifs,tokens[newstart:term+1])
+                resu=append(resu,v)
+                errs=append(errs,e)
+                newstart=term+1
+                continue
+            }
+            if nt.tokType == C_Comma {
+                v, e := parser.Eval(ifs,tokens[newstart:term])
+                resu=append(resu,v)
+                errs=append(errs,e)
+                newstart=term+1
+            }
+        }
+    }
+    return resu,errs
 }
 
 
