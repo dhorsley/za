@@ -16,7 +16,7 @@ define menu(p,opts)
 
     foreach p in opts
         at 4+key_p,10
-        print "[#b1][{1+key_p}][##] {p}"
+        print "[#b1][{=1+key_p}][##] {p}"
     endfor
 
     maxchoice=49+len(opts)

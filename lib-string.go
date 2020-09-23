@@ -498,6 +498,7 @@ func buildStringLib() {
     slhelp["pad"] = LibHelp{in: "string,justify,width[,padchar]", out: "string", action: "Return left (-1), centred (0) or right (1) justified, padded string."}
     stdlib["pad"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) < 3 || len(args) > 4 {
+            pf("pad args: %#v\n",args)
             return "", errors.New("bad argument count in pad()")
         }
         j, jbad := GetAsInt(args[1])

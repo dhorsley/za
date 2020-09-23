@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+define f()
+    a++
+enddef
+
+a=10
+f()
+println "a->",a
+

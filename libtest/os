@@ -71,7 +71,7 @@ test "umask" group "os"
     opm=format("%04s",ibase(8,pmask))
 
     # measured: get parent process umask from status file
-    dum=|cat /proc/{ppid()}/status
+    dum=|cat /proc/{=ppid()}/status
     parts=split(line_filter(dum,"^Umask:"),":")
     real_oct=trim(parts[1],0)
 

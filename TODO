@@ -14,6 +14,10 @@
 
     * get a fix in for source line numbers (in error reports and -t tests) 
         * some work done on this, it's right most of the time now :)
+            * still wrong quite often :) sometimes guesses the wrong source file too!
+
+    * amend library functions that return arrays to return structs where appropriate
+        * (dir and similar)
 
     * review library features and REQUIRE functionality.
         * added general Za version require option.

@@ -107,6 +107,8 @@ const (
 
 const (
 	Error uint8 = iota
+	EOL
+	EOF
 	EscapeSequence
 	StringLiteral
 	NumericLiteral
@@ -214,6 +216,4 @@ const (
     C_Step
     C_As
     C_Do
-	EOL
-	EOF // must remain at end of list
 )

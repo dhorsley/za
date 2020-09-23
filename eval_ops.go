@@ -726,19 +726,19 @@ func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
             // further down in switch.
 
             // this part possibly avoidable, as all struct fields made r/w during init:
-            // rcopy := reflect.New(r.Type()).Elem()
-            // rcopy.Set(r)
+            rcopy := reflect.New(r.Type()).Elem()
+            rcopy.Set(r)
 
             // get the required struct field and make a r/w copy
-            // f := rcopy.FieldByName(field.(string))
+            f := rcopy.FieldByName(field)
 
-            f := r.FieldByName(field)
+            // f := r.FieldByName(field)
 
             if f.IsValid() {
 
                 // this part possibly avoidable, as all struct fields made r/w during init:
                 // if rcopy.Type().AssignableTo(f.Type()) {
-                    // f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
+                //     f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
                 // }
 
                 switch f.Type().Kind() {
@@ -802,18 +802,12 @@ func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}
 		return obj[field.(string)]
 	case map[string]interface{}:
 		return obj[field.(string)]
-    //case []interface{}:
-    //    return obj[field.(int)]
     default:
 
         r := reflect.ValueOf(obj)
 
         switch r.Kind().String() {
         case "slice":
-	        // idx, invalid := field.(int)
-	        // if invalid || idx<0 {
-		    //     panic(fmt.Errorf("var error: not a valid element index. (ifield:%v)",ifield))
-	        // }
 		    switch obj:=obj.(type) {
             case []int:
                 if len(obj)>field.(int) { return obj[field.(int)] }

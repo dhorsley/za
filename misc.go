@@ -55,7 +55,6 @@ func ShowSource(funcInstance string,start int,end int) bool {
         strOut:="[#CTE]"
 
         for q := range functionspaces[baseId][start:end+1] {
-            // strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, functionspaces[baseId][start+q].Original)
             strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, sourceStore[baseId][start+q])
         }
 
@@ -97,30 +96,33 @@ func (parser *leparser) report(s string) {
     var baseId uint64
 
     line:=parser.line
-    stmtline:=parser.stmtline
-
     ifs:=parser.fs
-
                                                     // ifs  -> id of failing func
     funcName    := getReportFunctionName(ifs,false) //      -> name of failing func
     if ifs==2 {
         baseId=1
     } else {
-        baseId,_    = fnlookup.lmget(funcName)         //      -> id of base func  
+        baseId,_ = fnlookup.lmget(funcName)         //      -> id of base func  
     }
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
-    // callChain=append(callChain,chainInfo{name:baseName,registrant:ciErr,loc:baseId,line:line})
+    si:=1 // default source index
+    if sm,ok:=sourceMap[baseId]; ok {
+        // found a mapping for parent that created a func, and thus holds source
+        si=int(sm)
+    }
 
     var line_content string
-
     if len(functionspaces[baseId])>0 {
-            // line_content=functionspaces[baseId][stmtline].Original
-            line_content=sourceStore[baseId][stmtline]
+        if baseId!=0 {
+        line_content=sourceStore[si][line]
+        } else {
+            line_content="Interactive Mode"
+        }
     }
 
     fmt.Print( sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
-        "[#7]Error in %+v/%s (line #%d) : ", fileMap[baseId],baseName,line+1))+
+        "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
         line_content+"\n"+
         sparkle("[##][#-][#CTE]")+
         sf("%s\n", s)+sparkle("[#CTE]"))
