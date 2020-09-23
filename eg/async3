@@ -9,11 +9,10 @@ coproc(false)
 locks(true)
 
 
-define f(v)
+define f()
     # generally, do some work in here..
-    datecmd="date --rfc-3339=ns"
+    datecmd="/usr/bin/date --rfc-3339=ns"
     on start(os(),"freebsd") do datecmd="date"
-    println v,"->",has_shell()
     z =| {datecmd}
     pause rand(2000)
     return z
@@ -21,13 +20,13 @@ enddef
 
 # launch all in parallel
 for x=0 to 99
-    async hndmap f(x) x
+    async hndmap f() x
 endfor
 
 # collect results
 println "Waiting for task completions."
 res=await(hndmap,true)
 for e=0 to 99
-    println "{e} -> {res[e]}"
+    println "{e} -> ",res[e]
 endfor
 

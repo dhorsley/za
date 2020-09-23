@@ -32,12 +32,12 @@ input a param 1
 input b param 2
 a=int(a)
 b=int(b)
-println "A({a},{b}) = {ackermann(a,b)}"
+println "A({a},{b}) = {=ackermann(a,b)}"
 println "Calls : ",calls
 
 #for a = 0 to 4
 #    for b = 0 to 6
-#        println "A({a},{b}) = {ackermann(a,b)}"
+#        println "A({a},{b}) = {=ackermann(a,b)}"
 #    endfor
 #endfor
 

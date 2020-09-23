@@ -9,6 +9,23 @@ CHANGE LOG
         * added field deref on array elements (lhs+rhs), i.e. a[i].f=a[j].f
             * will only support one level of this (i.e. no multiple [] or . on lhs)
 
+
+        * separated interpolation into {...} for var substitution and {=...} for evaluation.
+            * if you need to read a global variable in substitution now, you should eval {=...} instead.
+                ( or read the variable locally and substitute as normal )
+
+            * the reason for the change was to permit such things as =| awk '{print $0}'
+                to work without the evaluator thinking you were trying to use a statement (PRINT)
+                as an identifier during eval.
+
+            * you could also have turned interpolation off temporarily around the command, but this
+                then meant you could not perform a secondary sub in the same command, e.g.
+                    a =| awk '{print $0}' <{file}
+                    # {file} would be ignored.
+
+            * will try to think of a better alternative before release.
+
+
         * removed ZERO, INC and DEC statements.
             * these were becoming more troublesome than they were worth to maintain.
             * ZERO was already effectively replaced with the more flexible VAR statement.

@@ -45,16 +45,16 @@ define showEnv()
     pane select "envs"
     pane redraw
     clear(2,11,1)
-    at  2,3; print "Hostname             : [#6]{hostname()}[#-]"
-    at  3,3; print "Bash Version         : [#6]{bash_version()}[#-]"
-    at  4,3; print "Bash Major Version   : [#6]{bash_versinfo()}[#-]"
-    at  5,3; print "User                 : [#6]{user()}[#-]"
-    at  6,3; print "OS                   : [#6]{os()}[#-]"
-    at  7,3; print "Home                 : [#6]{home()}[#-]"
-    at  8,3; print "Locale               : [#6]{lang()}[#-]"
-    at  9,3; print "Distribution         : [#6]{release_name()}[#-]"
-    at 10,3; print "Distribution ID      : [#6]{release_id()}[#-]"
-    at 11,3; print "Distribution Version : [#6]{release_version()}[#-]"
+    at  2,3; print "Hostname             : [#6]{=hostname()}[#-]"
+    at  3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
+    at  4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
+    at  5,3; print "User                 : [#6]{=user()}[#-]"
+    at  6,3; print "OS                   : [#6]{=os()}[#-]"
+    at  7,3; print "Home                 : [#6]{=home()}[#-]"
+    at  8,3; print "Locale               : [#6]{=lang()}[#-]"
+    at  9,3; print "Distribution         : [#6]{=release_name()}[#-]"
+    at 10,3; print "Distribution ID      : [#6]{=release_id()}[#-]"
+    at 11,3; print "Distribution Version : [#6]{=release_version()}[#-]"
 enddef
 
 
@@ -241,7 +241,7 @@ define showProcs(ct,uptime)
             # skip low activity processes
             if float(F4)>0.2 || float(F5)>0.2
                 on len(F10)>=comwidth do F10=substr(F10,0,comwidth-1)
-                print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{comwidth-1}s[#-]",F1,int(F2),int(F3),float(F4),float(F5),float(F8),collapse(F10))
+                print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F1,int(F2),int(F3),float(F4),float(F5),float(F8),collapse(F10))
                 on lcount--==0 do break
             endif
         endfor

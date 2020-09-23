@@ -46,9 +46,6 @@ if !start(os(),"freebsd")
         endif
     endwhen
 else
-    # r=buildFreeBSD(bvers,bdate)
-    # println "R::",r
-    # if r!=0
     if buildFreeBSD(bvers,bdate) != 0
         print "Failed to build bsd version.\n"
         exit 1
