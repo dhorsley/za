@@ -9,7 +9,7 @@ import (
     "bytes"
     "math"
     "net/http"
-    "os"
+//    "os"
     "sync"
     str "strings"
     "unsafe"
@@ -439,13 +439,14 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
 func (p *leparser) unary(token Token) (interface{}) {
 
+    /*
     defer func() {
         if r := recover(); r != nil {
             p.report(sf("\n%v\n",r))
             os.Exit(ERR_EVAL)
         }
     }()
-	// right-associative
+    */
 
     switch token.tokType {
     case SYM_PP:
