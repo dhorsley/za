@@ -248,7 +248,6 @@ var cmdpage string = `
 Available commands:
 [#5]DEFINE [#i1]name[#i0] ([#i1]arg1,...,argN[#i0])[#-]                     - create a function.
 [#5]ENDDEF[#-]                                          - end a function definition.
-[#5]SHOWDEF [ [#i1]name[#i0] ][#-]                                - display a single function definition, or all functions.
 [#5]RETURN [#i1]retval[#i0][#-]                                   - return from function, with value.
 [#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
@@ -286,7 +285,6 @@ Available commands:
 [#3]ENDTEST[#-]                                         - End a test definition
 [#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit. In test mode, asserts should instead be collected.
 [#3]DOC [ [#i1]function_name[#i0] ] [#i1]comment[#i0][#-]                   - Create an exportable comment, for the documentation generator.
-[#7]UNSET[#-] [#i1]var[#i0]                                       - destroy variable allocation for [#i1]var[#i0].
 [#7]INIT[#-] [#i1]var[#i0] [#i1]type[#i0] [[#i1]size[#i0]]                            - Dimension an array. Type can be bool, int, float, mixed or assoc.
 [#7]VAR[#-] [#i1]var type[#i0]                                    - declare an optional type.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.

@@ -56,7 +56,7 @@ syn match	Comment		"\s\zs//.*$"	contains=@CommentGroup
 " Identifiers: {{{1
 "=============
 syn match   folVarRHS           "{[\~#\&]\=[[:alnum:]_]\{-}}"hs=s+1,he=e-1
-syn keyword assignStatements    var setglob input zero inc dec nextgroup=folVarLHS skipwhite
+syn keyword assignStatements    var setglob input nextgroup=folVarLHS skipwhite
 syn match   folVarLHS           '\i\+' contained
 
 " Functions: {{{1
@@ -358,7 +358,7 @@ syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|unset\|while\|quiet\|pane\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\|pane\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(foreach\|version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"

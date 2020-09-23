@@ -19,14 +19,13 @@ import (
     "time"
 )
 
-var completions = []string{"ZERO", "INC", "DEC",
-    "INIT", "PAUSE",
+var completions = []string{"INIT", "PAUSE",
     "HELP", "NOP", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN",
+    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN",
     "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "PANE",
+    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "PANE","VAR",
     "TEST", "ENDTEST", "ASSERT",
 }
 
@@ -674,6 +673,7 @@ func Copper(line string, squashErr bool) (string, int) {
     if tr(line,DELETE,"| ") == "" {
         return "",-1
     }
+    line=str.TrimRight(line,"\n")
 
     var ns string  // output from coprocess
     var errint int // coprocess return code
@@ -756,7 +756,6 @@ func Copper(line string, squashErr bool) (string, int) {
         // get status code - cmd is not important for this, NextCopper just reads
         //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
-
         // pull cwd from /proc
         childProc,_:=vget(0,"@shellpid")
         pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
