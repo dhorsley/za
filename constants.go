@@ -179,7 +179,6 @@ const (
 	C_At
 	C_Define
 	C_Enddef
-	C_Showdef
 	C_Return
     C_Async
 	C_Lib

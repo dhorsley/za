@@ -27,7 +27,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF", "ESCAPE",
     "START_STATEMENTS", "VAR", "ASSIGN", "SETGLOB", "ASS_COMMAND",
     "R_COMMAND", "INIT", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "SHOWDEF", "RETURN", "ASYNC",
+    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
@@ -265,6 +265,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
                 carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
                 carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
+                carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
                 carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
                 carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
                 goto get_nt_exit_point
@@ -452,8 +453,6 @@ get_nt_eval_point:
             tokType = C_Define
         case "enddef":
             tokType = C_Enddef
-        case "showdef":
-            tokType = C_Showdef
         case "return":
             tokType = C_Return
         case "async":

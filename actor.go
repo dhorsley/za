@@ -2379,26 +2379,6 @@ tco_reentry:
                 farglock.Unlock()
             }
 
-        case C_Showdef:
-
-            if inbound.TokenCount == 2 {
-                fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
-                if _, exists := fnlookup.lmget(fn); exists {
-                    ShowDef(fn)
-                } else {
-                    parser.report( "Function not found.")
-                    finish(false, ERR_EVAL)
-                }
-            } else {
-                for oq := range fnlookup.smap {
-                    if fnlookup.smap[oq] < 2 {
-                        continue
-                    } // don't show global or main
-                    ShowDef(oq)
-                }
-                pf("\n")
-            }
-
         case C_Return:
 
             // tokens must not be braced
@@ -3555,6 +3535,7 @@ func system(cmd string, display bool) (string) {
 /// execute a command in the shell coprocess or parent
 func coprocCall(ifs uint64,s string) {
     cet := ""
+    s=str.TrimRight(s,"\n")
     if len(s) > 0 {
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
@@ -3575,47 +3556,6 @@ func coprocCall(ifs uint64,s string) {
     }
 }
 
-
-/// print user-defined function definition(s) to stdout
-func ShowDef(fn string) bool {
-    var ifn uint64
-    var baseId uint64
-    var present bool
-    if ifn, present = fnlookup.lmget(fn); !present {
-        return false
-    }
-    funcName := getReportFunctionName(ifn,false)
-    if ifn==2 {
-        baseId=1
-    } else {
-        baseId,_    = fnlookup.lmget(funcName)
-    }
-
-    if ifn < uint64(len(functionspaces)) {
-        first := true
-        for q := range functionspaces[ifn] {
-            strOut := "\t\t "
-            if first {
-                first = false
-                strOut = sf("\n%s(%v)\n\t\t ", fn, str.Join(functionArgs[ifn], ","))
-            }
-            pf("%s%s\n", strOut, sourceStore[baseId][q])
-        }
-    }
-    return true
-}
-
-/*
-/// search token list for a given delimiter token type
-func findTokenDelim(tokens []Token, delim uint8, start int) (pos int) {
-    for p := start; p < len(tokens); p++ {
-        if tokens[p].tokType == delim {
-            return p
-        }
-    }
-    return -1
-}
-*/
 
 /// search token list for a given delimiter string
 func findDelim(tokens []Token, delim uint8, start int) (pos int) {
