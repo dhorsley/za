@@ -19,7 +19,7 @@ print "? 52 == ",nv,"\n"
 
 # bash command
 
-cmd="ls -w"
+cmd="ls -w 80"
 on os()=="freebsd" do cmd="ls -CG"
 
 on answer==42 do | {cmd} /

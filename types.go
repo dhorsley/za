@@ -132,4 +132,19 @@ type Pane struct {
         isdir   bool
     }
 
+    type token_result struct {
+        tokens []string
+        types  []string
+    }
+
+    type zainfo struct {
+        version string
+        name    string
+        build   string
+    }
+
+    type web_info struct {
+        result  string
+        code    int
+    }
 

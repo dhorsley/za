@@ -128,6 +128,11 @@ const (
 	C_Semicolon
 	LeftSBrace
 	RightSBrace
+    SYM_PLE
+    SYM_MIE
+    SYM_MUE
+    SYM_DIE
+    SYM_MOE
     LParen
     RParen
 	SYM_EQ
