@@ -14,7 +14,7 @@ define s3_ls(bktpath,region,profile)
         on match(r,"PRE ") do continue
         fields(r)
         if NF==3 # dir
-            name=F3
+            name=F[3]
         else # file
             name=""
             for e=3 to NF-1

@@ -581,7 +581,7 @@ func (p *leparser) preIncDec(token Token) interface{} {
     case float64:
         n=v+float64(ampl)
     default:
-        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
+        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,val))
         finish(false,ERR_EVAL)
         return nil
     }
@@ -632,7 +632,7 @@ func (p *leparser) postIncDec(token Token) interface{} {
     case float64:
         vset(activeFS,vartok.tokText,v+float64(ampl))
     default:
-        panic(fmt.Errorf("post-%s not supported on type '%T' (%s)",optype,val,token.tokText))
+        panic(fmt.Errorf("post-%s not supported on type '%T' (%s)",optype,val,val))
         finish(false,ERR_EVAL)
         return nil
     }

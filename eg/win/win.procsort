@@ -1,3 +1,4 @@
+#!/usr/bin/za
 
 ansi(true)
 
@@ -10,8 +11,8 @@ endif
 
 foreach e in lines(l,"3:")
   fields(e)
-  on !key("tasks",F1) do tasks[F1]=0
-  tasks[F1] = tasks[F1] + 1
+  on !key("tasks",F[1]) do tasks[F[1]]=0
+  tasks[F[1]] = tasks[F[1]] + 1
 endfor
 
 st=""

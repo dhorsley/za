@@ -4,6 +4,6 @@
 chroot("/tmp")
 
 foreach f in dir("/")
-    println f["name"]
+    println f.name
 endfor
 

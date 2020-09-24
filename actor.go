@@ -893,7 +893,8 @@ tco_reentry:
 
             switch inbound.Tokens[3].tokType {
 
-            case NumericLiteral, StringLiteral, LeftSBrace, Identifier, Expression, C_AssCommand:
+            // cause evaluation of all terms following IN
+            case NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 expr := wrappedEval(parser,ifs, inbound.Tokens[3:])
                 if expr.evalError {
@@ -916,6 +917,8 @@ tco_reentry:
                 case []bool:
                     l=len(lv)
                 case []uint8:
+                    l=len(lv)
+                case []dirent:
                     l=len(lv)
                 case map[string]string:
                     l=len(lv)
@@ -1094,6 +1097,13 @@ tco_reentry:
                         vset(ifs, "key_"+fid, 0)
                         vset(ifs, fid, expr.result.([]string)[0])
                         ce = len(expr.result.([]string)) - 1
+                    }
+
+                case []dirent:
+                    if len(expr.result.([]dirent)) > 0 {
+                        vset(ifs, "key_"+fid, 0)
+                        vset(ifs, fid, expr.result.([]dirent)[0])
+                        ce = len(expr.result.([]dirent)) - 1
                     }
 
                 case []map[string]interface{}:
@@ -1358,6 +1368,9 @@ tco_reentry:
                         case []string:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
+                        case []dirent:
+                            vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
                         case []float64:
                             vset(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
