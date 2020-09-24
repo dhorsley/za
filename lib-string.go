@@ -583,13 +583,14 @@ func buildStringLib() {
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
-        ta := str.FieldsFunc(fstr, f)
+        ta := append([]string{""},str.FieldsFunc(fstr, f)...)
 
         // populate F array and F1..Fx variables
-        var c int
-        for c = 0; c < len(ta); c++ {
-            vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
-        }
+        // var c int
+        // for c = 0; c < len(ta); c++ {
+        //     vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
+        // }
+        c:=len(ta)-1
         vset(evalfs, "F", ta)
         vset(evalfs, "NF", c)
 

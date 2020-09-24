@@ -5,7 +5,6 @@
 #
 
 input filter optarg 1
-filter=string(filter)
 
 foreach l in funcs(filter,true)
 

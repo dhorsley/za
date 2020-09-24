@@ -6,6 +6,7 @@ package main
 
 import (
 	"reflect"
+    "time"
 )
 
 //
@@ -120,5 +121,15 @@ type Pane struct {
 	boxed    string // border type
 	title    string // window title
 }
+
+// stdlib types...
+
+    type dirent struct {
+        name    string
+        size    int64
+        mode    uint32
+        mtime   time.Time
+        isdir   bool
+    }
 
 

@@ -131,15 +131,15 @@ define showMem()
     if is_file("/proc/meminfo")
         foreach line in read_file("/proc/meminfo")
             fields(line)
-            if F2!=""
-                when F1
-                    is "MemTotal:";     mem_total=F2
-                    is "MemFree:";      mem_free=F2
-                    is "MemAvailable:"; mem_avail=F2
-                    is "Cached:";       mem_cached=F2
-                    is "Active:";       mem_active=F2
-                    is "SwapFree:";     mem_swap_free=F2
-                    is "SwapTotal:";    mem_swap_total=F2
+            if F[2]!=""
+                when F[1]
+                    is "MemTotal:";     mem_total=F[2]
+                    is "MemFree:";      mem_free=F[2]
+                    is "MemAvailable:"; mem_avail=F[2]
+                    is "Cached:";       mem_cached=F[2]
+                    is "Active:";       mem_active=F[2]
+                    is "SwapFree:";     mem_swap_free=F[2]
+                    is "SwapTotal:";    mem_swap_total=F[2]
                 endwhen
             endif
         endfor
@@ -192,11 +192,11 @@ define showProcs(ct,uptime)
 
         # split up
         fields(ps)
-        pid=int(F1)
+        pid=int(F[1])
 
-        state=F3; ppid=F4
-        utime=float(F14); stime=float(F15); cutime=float(F16); cstime=float(F17)
-        priority=F18; nice=F19; threads=F20; procstarttime=float(F22)
+        state=F[3]; ppid=F[4]
+        utime=float(F[14]); stime=float(F[15]); cutime=float(F[16]); cstime=float(F[17])
+        priority=F[18]; nice=F[19]; threads=F[20]; procstarttime=float(F[22])
 
         on kind(procstarttime)!="float64" || kind(utime)!="float64" || kind(stime)!="float64" do continue
         on kind(cstime)!="float64" || kind(cutime)!="float64" do continue
@@ -239,9 +239,9 @@ define showProcs(ct,uptime)
             at 10-lcount,1
             fields(p," ")
             # skip low activity processes
-            if float(F4)>0.2 || float(F5)>0.2
-                on len(F10)>=comwidth do F10=substr(F10,0,comwidth-1)
-                print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F1,int(F2),int(F3),float(F4),float(F5),float(F8),collapse(F10))
+            if float(F[4])>0.2 || float(F[5])>0.2
+                on len(F[10])>=comwidth do F[10]=substr(F[10],0,comwidth-1)
+                print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F[1],int(F[2]),int(F[3]),float(F[4]),float(F[5]),float(F[8]),collapse(F[10]))
                 on lcount--==0 do break
             endif
         endfor
@@ -290,7 +290,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         fields(line)
         on len(F)==0 do continue
 
-        name=F1
+        name=F[1]
         on kind(name)!="string" do continue
         on name=="cpu" do continue
 
@@ -448,11 +448,11 @@ define showHdd()
     foreach d in disks
         if d!=""
             fields(d)
-            on kind(F1)!="string" do continue
-            if !key("devices",F1)
-                devices[F1]=F6
-                # F5=replace(F5,`%`,`%`)
-                at row,1; print format(`%20s %5s %5s %5s %-23s`,F1,F2,F3,F4,F5)
+            on kind(F[1])!="string" do continue
+            if !key("devices",F[1])
+                devices[F[1]]=F[6]
+                # F[5]=replace(F[5],`%`,`%`)
+                at row,1; print format(`%20s %5s %5s %5s %-23s`,F[1],F[2],F[3],F[4],F[5])
                 row++
             endif
         endif
@@ -487,10 +487,10 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
         if start(int_name,interface)
 
             # current counters 
-            rbytes  = float(F2)
-            rerr    = float(F4)
-            tbytes  = float(F10)
-            terr    = float(F12)
+            rbytes  = float(F[2])
+            rerr    = float(F[4])
+            tbytes  = float(F[10])
+            terr    = float(F[12])
 
             # diff from previous
 

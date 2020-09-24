@@ -4,6 +4,6 @@
 
 foreach li in read_file("/etc/passwd")
     fields(gsub(li,":"," "))
-    println "{F1},{F4},{F5}"
+    println "{=F[1]},{=F[4]},{=F[5]}"
 endfor
 
