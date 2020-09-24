@@ -118,7 +118,9 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             }
 
             // -- add to source store
-            sourceStore[lmv]=append(sourceStore[lmv],str.TrimRight(input[lstart:pos]," \t\n"))
+            if tempToken.tokType!=C_Semicolon {
+                sourceStore[lmv]=append(sourceStore[lmv],str.TrimRight(input[lstart:pos]," \t\n"))
+            }
             phrase.SourceLine=curLine
             lstart = pos
 

@@ -20,7 +20,8 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF", "ESCAPE",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
     "EXPRESSION", "OPTIONAL_EXPRESSION", "OPERATOR",
     "S_COMMENT", "D_COMMENT", "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
-    "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE", "LPAREN", "RPAREN",
+    "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE", "PLUSEQ", "MINUSEQ",
+    "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "SQR", "SQRT",
@@ -90,15 +91,14 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
         twoChars = true
     }
 
-    // comments
+    // some special cases
     if twoChars {
 
-        // some special cases
         c1 := str.IndexByte(doubleterms, firstChar)
         if c1!=-1 && firstChar==secondChar {
-                    word = string(firstChar)+string(secondChar)
-                    startNextTokenAt=thisWordStart+2
-                    goto get_nt_eval_point
+            word = string(firstChar)+string(secondChar)
+            startNextTokenAt=thisWordStart+2
+            goto get_nt_eval_point
         }
 
         symword = string(firstChar)+string(secondChar)
@@ -123,23 +123,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
             word=symword
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
-        case "-=":
-            word=symword
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "+=":
-            word=symword
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "*=":
-            word=symword
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "/=":
-            word=symword
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "%=":
+        case "-=","+=","*=","/=","%=":
             word=symword
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
@@ -349,6 +333,16 @@ get_nt_eval_point:
         tokType = LeftSBrace
     case "]":
         tokType = RightSBrace
+    case "+=":
+        tokType = SYM_PLE
+    case "-=":
+        tokType = SYM_MIE
+    case "*=":
+        tokType = SYM_MUE
+    case "/=":
+        tokType = SYM_DIE
+    case "%=":
+        tokType = SYM_MOE
     case "(":
         tokType = LParen
     case ")":

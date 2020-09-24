@@ -344,7 +344,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 // make a client request
                 var content []byte
                 var down_code int = -1
-                // var header http.Header
 
                 switch method {
 
@@ -963,14 +962,14 @@ func buildNetLib() {
         return true,nil
     }
 
-    slhelp["web_get"] = LibHelp{in: "loc_string", out: "[]list", action: "Returns a [#i1]list[#i0] with content downloaded from [#i1]loc_string[#i0]. list[0] is the content string. list[1] is the header."}
+    slhelp["web_get"] = LibHelp{in: "loc_string", out: "structure", action: "Returns a [#i1]structure[#i0] with content downloaded from [#i1]loc_string[#i0]. [#i1].result[#i0] is the content string. [#i1].code[#i0] is the status code."}
     stdlib["web_get"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return false,errors.New("Bad args (count) to web_get()") }
-        s, down_code, header := download(args[0].(string))
+        s, down_code, _ := download(args[0].(string))
         if down_code>299 {
-            return "", nil
+            return web_info{result:"",code:int(down_code)}, nil
         }
-        return []interface{}{string(s),header}, nil
+        return web_info{result:string(s),code:int(down_code)},nil
     }
 
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}

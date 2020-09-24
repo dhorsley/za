@@ -3,12 +3,28 @@ CHANGE LOG
 =============================================================================================
 
 1.0.11  
+
+        * added +=, -=, *=, /= and %= for local scalars.
+            - won't be adding the same for globals if i can help it.
+            - only simple locals currently supported.
+                - eventually, these ops will be supported for array + field l.h.s. 
+                    assignments, but this will have to wait until we fully incorporate
+                    the assignment operator into the evaluator. It is currently still
+                    a separate beast.
+
         * added sqr and sqrt as unary operators
-            - issue with print output with these, but assignment okay
 
         * added field deref on array elements (lhs+rhs), i.e. a[i].f=a[j].f
             * will only support one level of this (i.e. no multiple [] or . on lhs)
 
+        * adjusted some functions to return structs instead:
+            - dir() tokens() zainfo() web_get()
+
+        * adjusted fields() to only return an array (F[])
+            - it was bogging down the var count per function when you used fields()
+                on a string with a large number of fields.
+
+        * removed deval() test function.
 
         * separated interpolation into {...} for var substitution and {=...} for evaluation.
             * if you need to read a global variable in substitution now, you should eval {=...} instead.
@@ -34,6 +50,7 @@ CHANGE LOG
         * added pre- and post-fix decrement and increment for numeric types ( (u)int(64),float64,uint8 )
             * needs more testing
                 * added a bodge to the parser to keep hold of the previous token
+                ( added another one for the pre-previous token too, for the compound assignment ops )
                     - not how it's supposed to be done, hence more testing. 
                     - we only keep the accumulated left-hand value not the token normally.
                     - bodge should allow us to add -=, +=, /=, *= and %= fairly easily now.
