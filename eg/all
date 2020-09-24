@@ -4,7 +4,7 @@ check_path="syntax_checks"
 er=false
 
 files=dir(check_path)
-print files
+println files
 
 foreach tf in files
 

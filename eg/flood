@@ -39,6 +39,6 @@ for nr=1 to max_reps
 endfor
 
 cursoron()
-at h-4,1; print "[#default]"
-at h-5,1; println "h,w={h},{w}"
+at h-3,1; print "[#default]"
+at h-2,1; println "h,w={h},{w}"
 

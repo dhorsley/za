@@ -2,12 +2,12 @@
 
 ip=web_get("https://api.ipify.org/?format=text")
 
-if len(ip)==0
-    println "Download error."
+if ip.code != 200
+    println "Download error. (code:{=ip.code})"
     exit 1
 endif
 
-octet=split(ip[0],".")
+octet=split(ip.result,".")
 println "octets : ",octet
 
 total=sum(list_int(octet))

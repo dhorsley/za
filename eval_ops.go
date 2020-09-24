@@ -544,6 +544,25 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 		if ok {
 			return typ1 == int2
 		}
+        intsixfour, ok := val2.(int64)
+        if ok {
+            return int64(typ1) == intsixfour
+        }
+		float2, ok := val2.(float64)
+		if ok {
+			return float64(typ1) == float2
+		}
+		return false
+
+	case int64:
+		int2, ok := val2.(int)
+		if ok {
+			return typ1 == int64(int2)
+		}
+        intsixfour, ok := val2.(int64)
+        if ok {
+            return typ1 == intsixfour
+        }
 		float2, ok := val2.(float64)
 		if ok {
 			return float64(typ1) == float2
@@ -702,17 +721,24 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
 
 func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
 
-    switch obj.(type) {
+    switch obj:=obj.(type) {
 
     case http.Header:
-        r := reflect.ValueOf(obj.(http.Header))
+        r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
         return f
 
-    case webstruct:
-        r := reflect.ValueOf(obj.(webstruct))
+    case token_result:
+        r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
         return f
+
+    case dirent:
+        r := reflect.ValueOf(obj)
+        f := reflect.Indirect(r).FieldByName(field)
+        return f
+
+
 
     default:
 
@@ -732,13 +758,11 @@ func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
             // get the required struct field and make a r/w copy
             f := rcopy.FieldByName(field)
 
-            // f := r.FieldByName(field)
-
             if f.IsValid() {
 
                 // this part possibly avoidable, as all struct fields made r/w during init:
                 // if rcopy.Type().AssignableTo(f.Type()) {
-                //     f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
+                //      f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
                 // }
 
                 switch f.Type().Kind() {
@@ -773,6 +797,7 @@ func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
 
                 case reflect.Interface:
                     return f.Interface()
+
                 default:
                     pf("default type in accessField is [%+v]",f.Type().Name())
                     return f.Interface()
@@ -826,6 +851,8 @@ func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}
             case string:
                 if len(obj)>field.(int) { return obj[field.(int)] }
             case []float64:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []dirent:
                 if len(obj)>field.(int) { return obj[field.(int)] }
             case []interface{}:
                 if len(obj)>field.(int) { return obj[field.(int)] }

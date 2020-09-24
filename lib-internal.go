@@ -75,20 +75,20 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "keypress", "deval", "tokens", "key", "clear_line","pid","ppid", "system",
+        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zinfo","getcores",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores",
     }
 
 
-    slhelp["zinfo"] = LibHelp{in: "", out: "[]string", action: "internal info [0]=language_version, [1]=language_name, [2]=build_time"}
-    stdlib["zinfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
+    stdlib["zainfo"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         v,_:=vget(0,"@version")
         l,_:=vget(0,"@language")
         c,_:=vget(0,"@ct_info")
-        return []string{v.(string),l.(string),c.(string)},nil
+        return zainfo{version:v.(string),name:l.(string),build:c.(string)},nil
     }
 
     slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant? This only works if the environmental variable LANG is available."}
@@ -724,31 +724,7 @@ func buildInternalLib() {
         return z, err
     }
 
-    slhelp["deval"] = LibHelp{in: "string", out: "result", action: "(debug) test evaluator."}
-    stdlib["deval"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
-        tt := Error
-        var toks []Token
-        cl := 1
-        for p := 0; p < len(args[0].(string)); p++ {
-            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
-            tt = t.tokType
-            if tokPos != -1 {
-                p = tokPos
-            }
-            toks = append(toks, t)
-            if eof || eol {
-                break
-            }
-        }
-
-        p:=&leparser{}
-        p.Init()
-        return p.Eval(evalfs,toks)
-
-    }
-
-
-    slhelp["tokens"] = LibHelp{in: "string", out: "[]string", action: "Returns a list of tokens in a string."}
+    slhelp["tokens"] = LibHelp{in: "string", out: "struct", action: "Returns a structure containing a list of tokens ([#i1].tokens[#i0]) in a string and a list ([#i1].types[#i0]) of token types."}
     stdlib["tokens"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return []string{},errors.New("No argument provided to tokens()") }
         if sf("%T",args[0])!="string" {
@@ -758,7 +734,7 @@ func buildInternalLib() {
         var toks []string
         var toktypes []string
         cl := 1
-        for p := 0; p < len(args[0].(string)); p++ {
+        for p := 0; p < len(args[0].(string)); {
             t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
             tt = t.tokType
             if tokPos != -1 {
@@ -770,7 +746,7 @@ func buildInternalLib() {
                 break
             }
         }
-        return append(toktypes,toks...), err
+        return token_result{tokens:toks,types:toktypes}, err
     }
 
     slhelp["release_version"] = LibHelp{in: "", out: "string", action: "Returns the OS version number."}

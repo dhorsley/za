@@ -53,6 +53,11 @@ func (p *leparser) Init() {
 		C_Pling       : {15,p.unary, nil},              // Logical Negation
         SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
         SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
+        SYM_PLE       : {5,nil,p.binaryLed},          // a+=b
+        SYM_MIE       : {5,nil,p.binaryLed},          // a-=b
+        SYM_MUE       : {5,nil,p.binaryLed},          // a*=b
+        SYM_DIE       : {5,nil,p.binaryLed},          // a/=b
+        SYM_MOE       : {5,nil,p.binaryLed},          // a%=b
         SYM_POW       : {40,nil,p.binaryLed},           // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
@@ -103,7 +108,7 @@ type leparser struct {
     line        int         // shadows lexer source line
     stmtline    int         // shadows program counter (pc)
     prev        Token       // bodge for post-fix operations
-    // postfix     bool        // was the last op a postfix? (for skipping next token rule)
+    preprev     Token
 }
 
 
@@ -114,6 +119,7 @@ func (p *leparser) next() Token {
         return Token{tokType:EOF}
     }
 
+    if p.pos>1 { p.preprev=p.prev }
     if p.pos>0 { p.prev=p.tokens[p.pos-1] }
 
     p.pos++
@@ -130,15 +136,6 @@ func (p *leparser) peek() Token {
 }
 
 func (p *leparser) dparse(prec int8) (left interface{},err error) {
-
-    /*
-    defer func() {
-        if r := recover(); r != nil {
-            p.report(sf("\n%v\n",r))
-            os.Exit(ERR_EVAL)
-        }
-    }()
-    */
 
     // pf("dparse query tokens  : %#v\n",p.tokens)
     // pf("dparse query fs      : %+v\n",p.fs)
@@ -157,10 +154,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             if p.table[token.tokType].led == nil {
                 panic(sf("Token '%s' not defined in grammar",token.tokText))
             }
-            // if !p.postfix {
-                left = p.table[token.tokType].led(left,token)
-            // }
-            // p.postfix=false
+            left = p.table[token.tokType].led(left,token)
         }
 
     // pf("dparse result: %+v\n",left)
@@ -187,20 +181,6 @@ func (p *leparser) ignore(token Token) interface{} {
 }
 
 func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
-
-    /*
-    defer func() {
-        if r := recover(); r != nil {
-            if _,ok:=r.(runtime.Error); ok {
-                p.report(sf("\n%v\n",r))
-                os.Exit(ERR_EVAL)
-            }
-            err:=r.(error)
-            p.report(sf("\n%v\n",err))
-            os.Exit(ERR_EVAL)
-        }
-    }()
-    */
 
     switch token.tokType {
     case LeftSBrace:
@@ -232,6 +212,31 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 		return ev_div(left,right)
 	case C_Percent:
 		return ev_mod(left,right)
+	case SYM_PLE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_add(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
+	case SYM_MIE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_sub(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
+	case SYM_MUE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_mul(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
+	case SYM_DIE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_div(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
+	case SYM_MOE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_mod(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
 	case SYM_EQ:
         return deepEqual(left,right)
 	case SYM_NE:
@@ -294,6 +299,8 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
     case []uint64:
         sz=len(left)
     case []float64:
+        sz=len(left)
+    case []dirent:
         sz=len(left)
     case []interface{}:
         sz=len(left)
@@ -438,15 +445,6 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 }
 
 func (p *leparser) unary(token Token) (interface{}) {
-
-    /*
-    defer func() {
-        if r := recover(); r != nil {
-            p.report(sf("\n%v\n",r))
-            os.Exit(ERR_EVAL)
-        }
-    }()
-    */
 
     switch token.tokType {
     case SYM_PP:
@@ -1184,13 +1182,53 @@ func interpolate(fs uint64, s string) (string) {
     orig:=s
 
     // we need the extra loops to deal with embedded indirection
+
+    vc:=varcount[fs]
+
+        // string replacer
+        rs := []string{}
+        typedlist:=[]int{}
+        for k := 0 ; k<vc; k++ {
+            if ident[fs][k].IValue!=nil && ident[fs][k].ITyped {
+                typedlist=append(typedlist,k)
+                if strcmp(ident[fs][k].IKind,"string") {
+                    rs = append(rs, "{"+ident[fs][k].IName+"}")
+                    rs = append(rs, ident[fs][k].IValue.(string))
+                }
+                if strcmp(ident[fs][k].IKind,"int")    {
+                    rs = append(rs, "{"+ident[fs][k].IName+"}")
+                    rs = append(rs, strconv.FormatInt(int64(ident[fs][k].IValue.(int)),10))
+                }
+                if strcmp(ident[fs][k].IKind,"float")  {
+                    rs = append(rs, "{"+ident[fs][k].IName+"}")
+                    rs = append(rs, strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64))
+                }
+                if strcmp(ident[fs][k].IKind,"bool")  {
+                    rs = append(rs, "{"+ident[fs][k].IName+"}")
+                    rs = append(rs, strconv.FormatBool(ident[fs][k].IValue.(bool)))
+                }
+            }
+        }
+        s = str.NewReplacer(rs...).Replace(s)
+        // end replacer
+
+    var skip bool
+    var i,k int
+    var os string
+
     for {
 
         if lockSafety { vlock.RLock() }
-        vc:=varcount[fs]
-        os := s
+        os = s
 
-        for k := 0; k < vc; k++ {
+        for k = 0; k < vc; k++ {
+
+            // already replaced above?
+            skip=false
+            for _,i=range typedlist {
+                if i==k { skip=true; break }
+            }
+            if skip { continue }
 
             v := ident[fs][k]
 
@@ -1222,6 +1260,7 @@ func interpolate(fs uint64, s string) (string) {
 
                 }
             }
+
         }
         if lockSafety { vlock.RUnlock() }
 

@@ -159,6 +159,7 @@ func StripCC(s string) string {
     return r.Replace(s)
 }
 
+
 func rlen(s string) int {
     return utf8.RuneCountInString(s)
 }
