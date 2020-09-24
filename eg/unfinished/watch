@@ -30,15 +30,15 @@ define check_dir(conf,d)
     # build current file list
     new_names=[]
     foreach f in dir(d,conf.filter)
-        on f["isdir"] do continue
+        on f.isdir do continue
         file_list=append(file_list,f)
-        new_names=append(new_names,f["name"])
+        new_names=append(new_names,f.name)
     endfor
 
     # build prev name list
     old_names=[]
     foreach f in conf.prev
-        old_names=append(old_names,f["name"])
+        old_names=append(old_names,f.name)
     endfor
 
     # allow for a warm up period to generate a previous sample.
@@ -65,15 +65,15 @@ define check_dir(conf,d)
         mod_files_time=[]
         mod_files_size=[]
         foreach f in file_list
-            on !has(old_names,f["name"]) do continue
-            of=lookup_old(conf,f["name"])
+            on !has(old_names,f.name) do continue
+            of=lookup_old(conf,f.name)
             if of>-1
                 p_rec=cp[of]
-                if p_rec.mtime != f["mtime"]
+                if p_rec.mtime != f.mtime
                     # println ": -- [#3]time diff[#-] in {p_rec.name}"
                     mod_files_time=append(mod_files_time,p_rec.name)
                 endif
-                if p_rec.size != f["size"]
+                if p_rec.size != f.size
                     # println ": -- [#3]size diff[#-] in {p_rec.name}"
                     if !has(mod_files_time,p_rec.name)
                         # only add to modified size files list if not

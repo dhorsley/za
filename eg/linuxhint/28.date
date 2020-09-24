@@ -5,8 +5,8 @@ d=date()
 
 fields(d,"T")
 
-date=F1
-time=F2
+date=F[1]
+time=F[2]
 
 println "Date : {date}"
 println "Time : {time}"
