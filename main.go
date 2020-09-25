@@ -822,24 +822,67 @@ func main() {
             pr, _ := vget(0, "@prompt")
             sparklePrompt := sparkle(pr.(string))
             echoMask,_:=vget(0,"@echomask")
-            input, eof, broken := getInput(globalspace, sparklePrompt, "global", row, col, pcol, true, true, echoMask.(string))
-            if eof || broken {
-                break
+            tempPrompt:=sparklePrompt
+            nestAccept:=0
+            totalInput:=""
+            var eof,broken bool
+            var input string
+
+            // accept loop point here?
+            for {
+
+                input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
+                if eof || broken { break }
+
+                row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
+                if row>MH { row=MH ; pf("\n") }
+
+                col = 1
+                at(row, col)
+
+                if input == "\n" {
+                    break // continue
+                }
+                input += "\n"
+
+                // collect input
+                totalInput+=input
+
+                // @note: should do this using nextToken loop, just testing for now:
+
+                temptok:=Error
+                cl:=0
+                breakOnCommand:=false
+                tokenIfPresent:=false
+                for p := 0; p < len(input);  {
+                    t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
+                    temptok = t.tokType
+                    if tokPos != -1 {
+                        p = tokPos
+                    }
+                    if t.tokType==C_If    { tokenIfPresent=true }
+                    if t.tokType==SYM_BOR && !tokenIfPresent { breakOnCommand=true }
+                    switch t.tokType {
+                    // adders
+                    case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
+                        nestAccept++
+                    // ladders
+                    case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endwhen, C_Endstruct, RParen, RightSBrace:
+                        nestAccept--
+                    }
+                }
+
+                if nestAccept==0 || breakOnCommand { break }
+                tempPrompt=promptContinuation
             }
 
-            row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
-            if row>MH { row=MH ; pf("\n") }
+            if eof || broken { break }
 
-            col = 1
-            at(row, col)
 
-            if input == "\n" {
-                continue
-            }
-            input += "\n"
+            // submit input
 
             fileMap[globalspace]=exec_file_name
-            phraseParse("global", input, 0)
+            phraseParse("global", totalInput, 0)
 
             // throw away break and continue positions in interactive mode
             endFunc = Call(MODE_STATIC, globalspace, ciRepl)
