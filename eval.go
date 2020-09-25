@@ -186,7 +186,8 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
     case LeftSBrace:
         return p.accessArray(left,token)
     case SYM_DOT:
-        return p.accessField(left,token)
+        // return p.accessField(left,token)
+        return p.accessFieldOrFunc(p.fs,left,p.next().tokText)
     case LParen:
         return p.callFunction(left,token)
     case SYM_PP:
@@ -275,7 +276,7 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 func (p *leparser) accessField(left interface{},right Token) (interface{}) {
 
     // tok:=p.next()
-    return accessField(p.fs,left,p.next().tokText)
+    return p.accessFieldOrFunc(p.fs,left,p.next().tokText)
 }
 
 func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
@@ -2045,6 +2046,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                 }
 
             } else {
+
                 pf("record variable %v not found",lhs_v)
                 expr.evalError=true
                 expr.errVal=err

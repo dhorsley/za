@@ -719,7 +719,7 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
 }
 
 
-func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
+func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field string) (interface{}) {
 
     switch obj:=obj.(type) {
 
@@ -737,8 +737,6 @@ func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
         return f
-
-
 
     default:
 
@@ -803,6 +801,46 @@ func accessField(evalfs uint64, obj interface{}, field string) (interface{}) {
                     return f.Interface()
                 }
             }
+
+        default:
+
+            // maybe try a function call here instead...
+            // lhs_v would become the first argument of func lhs_f
+
+            name:=field
+
+            // filter for functions here
+            var isFunc bool
+            if _, isFunc = stdlib[name]; !isFunc {
+                // check if exists in user defined function space
+                _, isFunc = fnlookup.lmget(name)
+            }
+
+            if !isFunc { panic(fmt.Errorf("chainable function or record field %v not found", field)) }
+
+            iargs:=[]interface{}{obj}
+            if p.peek().tokType==LParen {
+                p.next()
+                if p.peek().tokType!=RParen {
+                    for {
+                        dp,err:=p.dparse(0)
+                        if err!=nil {
+                            return nil
+                        }
+                        iargs=append(iargs,dp)
+                        if p.peek().tokType!=C_Comma {
+                            break
+                        }
+                        p.next()
+                    }
+                }
+                if p.peek().tokType==RParen {
+                    p.next() // consume rparen 
+                }
+            }
+            // pf("mock func call '%v' with args '%+v'\n",name,iargs)
+            return callFunction(p.fs,p.line,name,iargs)
+
         }
 
     }
