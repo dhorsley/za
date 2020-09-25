@@ -22,7 +22,8 @@ const LIST_SIZE_CAP = 16        // initial list size on construction
 
 const globalspace = uint64(0)   // global namespace
 
-const promptStringStartup = "[#bgreen][#0]>[#-][##] "
+const promptStringStartup = "[#b4][#0]>>[#-][##] "
+const promptContinuation  = "[#b6][#0]--[#-][##] "
 const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@pwd}[#-] > "
 const promptStringShort = "[#1]{@user}[#-] : [#invert]{@pwd}[#-] : "
 const promptColour = "[#6]"

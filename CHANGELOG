@@ -4,6 +4,11 @@ CHANGE LOG
 
 1.0.11  
 
+        * added basic multiline entry to repl
+            - checks for a few of the nesting token types and keeps accepting input
+                until they are resolved.
+            - changes to a continuation prompt during extended input
+
         * experimental - added result chaining
 
             * e.g. a.b.c.d : passes the result of expression 'a' as the first argument to b and so on.
