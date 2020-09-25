@@ -828,7 +828,7 @@ func main() {
             var eof,broken bool
             var input string
 
-            // accept loop point here?
+            // multi-line input loop
             for {
 
                 input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
@@ -848,12 +848,11 @@ func main() {
                 // collect input
                 totalInput+=input
 
-                // @note: should do this using nextToken loop, just testing for now:
-
                 temptok:=Error
                 cl:=0
                 breakOnCommand:=false
                 tokenIfPresent:=false
+                tokenOnPresent:=false
                 for p := 0; p < len(input);  {
                     t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
                     temptok = t.tokType
@@ -861,7 +860,9 @@ func main() {
                         p = tokPos
                     }
                     if t.tokType==C_If    { tokenIfPresent=true }
-                    if t.tokType==SYM_BOR && !tokenIfPresent { breakOnCommand=true }
+                    if t.tokType==C_On    { tokenOnPresent=true }
+                    // this is hardly fool-proof, but okay for:
+                    if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
                     switch t.tokType {
                     // adders
                     case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
