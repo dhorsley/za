@@ -6,21 +6,8 @@
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
 
-    * look through library for places to return better result types.
-        e.g. json_format() should return a struct instead of an array.
-
 
 1.0.11  fixes and evaluator updates
-
-    * get a fix in for source line numbers (in error reports and -t tests) 
-        * some work done on this, it's right most of the time now :)
-            * still wrong quite often :) sometimes guesses the wrong source file too!
-
-    * amend library functions that return arrays to return structs where appropriate
-        * (dir and similar)
-
-    * review library features and REQUIRE functionality.
-        * added general Za version require option.
 
 1.0.10  new evaluator + VAR enforcement
 
