@@ -4,6 +4,28 @@ CHANGE LOG
 
 1.0.11  
 
+        * experimental - added result chaining
+
+            * e.g. a.b.c.d : passes the result of expression 'a' as the first argument to b and so on.
+            *        a.b(x): makes a call like b(a,x)
+
+            * as function arg types are not checked this can cause silent failures currently.
+
+            * feature may be removed or amended at short notice before final release.
+            * this feature does not currently work *directly* with literals.
+
+                * in order to use with numeric literals they must be parenthesised, e.g.
+                    - define double(x); return x+x; enddef
+                    - print (3).double
+                    > 6
+                    - print ("test").double
+                    > testtest
+                    - print "test".double
+                    > testtest
+
+            * if a.b is a field reference 'b' of struct 'a' then it will take priority over chaining.
+
+
         * added +=, -=, *=, /= and %= for local scalars.
             - won't be adding the same for globals if i can help it.
             - only simple locals currently supported.

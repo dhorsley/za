@@ -289,7 +289,7 @@ Available commands:
 [#7]VAR[#-] [#i1]var type[#i0]                                    - declare an optional type.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]NOP[#-]                                             - dummy 100 millisecond command.
-[#7]STRUCT[#-] [#i1]name[#i0]                           - begin structure definition.
+[#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
 [#7]SHOWSTRUCT[#-]                                      - display structure definitions.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
