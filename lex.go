@@ -16,16 +16,16 @@ const doubleterms = "<>=|&-+*"
 const soloChars   = "+-/*.^!%;<>~=|,():[]&"
 const expExpect="0123456789-+"
 
-var tokNames = [...]string{"ERROR", "EOL", "EOF", "ESCAPE",
+var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
-    "EXPRESSION", "OPTIONAL_EXPRESSION", "OPERATOR",
-    "S_COMMENT", "D_COMMENT", "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
-    "CARET", "PLING", "PERCENT", "SEMICOLON", "LBRACE", "RBRACE", "PLUSEQ", "MINUSEQ",
-    "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
+    "OPERATOR", "S_COMMENT",
+    "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
+    "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "LBRACE", "RBRACE",
+    "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "SQR", "SQRT",
-    "START_STATEMENTS", "VAR", "ASSIGN", "SETGLOB", "ASS_COMMAND",
+    "START_STATEMENTS", "VAR", "SETGLOB",
     "R_COMMAND", "INIT", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN", "ASYNC",
@@ -218,7 +218,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
         }
 
         if matchQuote && input[currentChar]=='\n' {
-            // (*curLine)++
+            (*curLine)++
         }
 
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
@@ -314,21 +314,21 @@ get_nt_eval_point:
 
     switch word {
     case "+":
-        tokType = C_Plus
+        tokType = O_Plus
     case "-":
-        tokType = C_Minus
+        tokType = O_Minus
     case "/":
-        tokType = C_Divide
+        tokType = O_Divide
     case "*":
-        tokType = C_Multiply
+        tokType = O_Multiply
     case "%":
-        tokType = C_Percent
+        tokType = O_Percent
     case "^":
-        tokType = C_Caret
+        tokType = SYM_Caret
     case "!":
-        tokType = C_Pling
+        tokType = SYM_Pling
     case ";":
-        tokType = C_Semicolon
+        tokType = SYM_Semicolon
     case "[":
         tokType = LeftSBrace
     case "]":
@@ -348,11 +348,11 @@ get_nt_eval_point:
     case ")":
         tokType = RParen
     case ",":
-        tokType = C_Comma
+        tokType = O_Comma
     case "=":
-        tokType = C_Assign
+        tokType = O_Assign
     case "~":
-        tokType = C_Tilde
+        tokType = SYM_Tilde
     case "<":
         tokType = SYM_LT
     case ">":
@@ -388,9 +388,7 @@ get_nt_eval_point:
     case ":":
         tokType = SYM_COLON
     case "=|":
-        tokType = C_AssCommand
-    case "|@":
-        tokType = C_RemoteCommand
+        tokType = O_AssCommand
     }
 
     if tokType==0 {

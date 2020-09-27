@@ -30,9 +30,17 @@ func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
         defer close(r)
-        Call(MODE_NEW, loc, ciAsyn, iargs...)
-        v,_:=vget(caller,sf("@#@%v",loc))
-        r<-v
+        rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
+        switch rcount {
+        case 0:
+            r<-nil
+        case 1:
+            v,_:=vget(caller,sf("@#@%v",loc))
+            r<-v.([]interface{})[0]
+        default:
+            v,_:=vget(caller,sf("@#@%v",loc))
+            r<-v
+        }
     }()
     return r
 }
@@ -168,10 +176,7 @@ func GetAsUint(expr interface{}) (uint64, bool) {
     return uint64(0), true
 }
 
-// EvalCrush* used in C_If, C_Exit, C_For and C_Debug:
-
 // EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
-// if no evalError then returns a "validated" true bool
 func EvalCrush(p *leparser, fs uint64, tok []Token, tstart int, tend int) (interface{}, error) {
     return p.Eval(fs,tok[tstart:tend+1])
 }
@@ -368,7 +373,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (endFunc bool) {
+func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
 
     // if lockSafety { calllock.RLock() }
     // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
@@ -404,7 +409,8 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (end
     var breakIn uint8
     var pc int
     var retvar string
-    var retval interface{}
+    // var retval interface{}
+    var retvalues []interface{}
     var finalline int
     var fs string
     var caller uint64
@@ -541,7 +547,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (end
     if lockSafety { looplock.Unlock() }
 
 
-tco_reentry:
+//tco_reentry:
 
     /*
     pf("\n\nin %v \n",fs)
@@ -669,7 +675,6 @@ tco_reentry:
 
             // check if name available
 
-            // vn  := interpolate(ifs,crushEvalTokens(inbound.Tokens[1:2]).text)
             vn  := crushEvalTokens(inbound.Tokens[1:2]).text
 
             _,found:=VarLookup(ifs,vn)
@@ -680,7 +685,6 @@ tco_reentry:
             }
 
             // get the required type
-            // expr:= interpolate(ifs,crushEvalTokens(inbound.Tokens[2:]).text)
             expr:= crushEvalTokens(inbound.Tokens[2:]).text
 
             // this needs reworking, same as C_Init:
@@ -741,7 +745,7 @@ tco_reentry:
 
                 etoks=inbound.Tokens[1:]
 
-                expr := wrappedEval(parser,ifs, etoks)
+                expr := parser.wrappedEval(ifs, etoks)
                 if expr.evalError {
                     parser.report( "could not evaluate WHILE condition")
                     finish(false,ERR_EVAL)
@@ -804,7 +808,7 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
 
             // eval
-            expr := wrappedEval(parser,ifs,cond.repeatCond)
+            expr := parser.wrappedEval(ifs,cond.repeatCond)
             if expr.evalError {
                 parser.report(sf("eval fault in ENDWHILE\n%+v\n",expr.errVal))
                 finish(false,ERR_EVAL)
@@ -835,7 +839,7 @@ tco_reentry:
 
             pos:=-1
             for t:=1; t<inbound.TokenCount; t++ {
-                if inbound.Tokens[t].tokType==C_Assign { pos=t; break }
+                if inbound.Tokens[t].tokType==O_Assign { pos=t; break }
             }
 
             if pos==-1 || pos==inbound.TokenCount-1 || pos==1 {
@@ -896,7 +900,7 @@ tco_reentry:
             // cause evaluation of all terms following IN
             case NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
-                expr := wrappedEval(parser,ifs, inbound.Tokens[3:])
+                expr := parser.wrappedEval(ifs, inbound.Tokens[3:])
                 if expr.evalError {
                     parser.report( sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
                     finish(false,ERR_EVAL)
@@ -1597,7 +1601,7 @@ tco_reentry:
                     break
                 }
 
-                cp, _ := parser.Eval(ifs,inbound.Tokens[2:3])
+                cp,_ := parser.Eval(ifs,inbound.Tokens[2:3])
 
                 switch cp:=cp.(type) {
                 case string:
@@ -1618,12 +1622,12 @@ tco_reentry:
                 // Collect the expressions for each position
                 //      pane define name , y , x , h , w [ , title [ , border ] ]
 
-                nameCommaAt := findDelim(inbound.Tokens, C_Comma, 3)
-                   YCommaAt := findDelim(inbound.Tokens, C_Comma, nameCommaAt+1)
-                   XCommaAt := findDelim(inbound.Tokens, C_Comma, YCommaAt+1)
-                   HCommaAt := findDelim(inbound.Tokens, C_Comma, XCommaAt+1)
-                   WCommaAt := findDelim(inbound.Tokens, C_Comma, HCommaAt+1)
-                   TCommaAt := findDelim(inbound.Tokens, C_Comma, WCommaAt+1)
+                nameCommaAt := findDelim(inbound.Tokens, O_Comma, 3)
+                   YCommaAt := findDelim(inbound.Tokens, O_Comma, nameCommaAt+1)
+                   XCommaAt := findDelim(inbound.Tokens, O_Comma, YCommaAt+1)
+                   HCommaAt := findDelim(inbound.Tokens, O_Comma, XCommaAt+1)
+                   WCommaAt := findDelim(inbound.Tokens, O_Comma, HCommaAt+1)
+                   TCommaAt := findDelim(inbound.Tokens, O_Comma, WCommaAt+1)
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
                     parser.report(  "Bad delimiter in PANE DEFINE.")
@@ -1658,16 +1662,16 @@ tco_reentry:
                 }
 
                 var ptitle, pbox ExpressionCarton
-                pname  := wrappedEval(parser,ifs, inbound.Tokens[2:nameCommaAt])
-                py     := wrappedEval(parser,ifs, inbound.Tokens[nameCommaAt+1:YCommaAt])
-                px     := wrappedEval(parser,ifs, inbound.Tokens[YCommaAt+1:XCommaAt])
-                ph     := wrappedEval(parser,ifs, inbound.Tokens[XCommaAt+1:HCommaAt])
-                pw     := wrappedEval(parser,ifs, ew)
+                pname  := parser.wrappedEval(ifs, inbound.Tokens[2:nameCommaAt])
+                py     := parser.wrappedEval(ifs, inbound.Tokens[nameCommaAt+1:YCommaAt])
+                px     := parser.wrappedEval(ifs, inbound.Tokens[YCommaAt+1:XCommaAt])
+                ph     := parser.wrappedEval(ifs, inbound.Tokens[XCommaAt+1:HCommaAt])
+                pw     := parser.wrappedEval(ifs, ew)
                 if hasTitle {
-                    ptitle = wrappedEval(parser,ifs, etit)
+                    ptitle = parser.wrappedEval(ifs, etit)
                 }
                 if hasBox   {
-                    pbox   = wrappedEval(parser,ifs, ebox)
+                    pbox   = parser.wrappedEval(ifs, ebox)
                 }
 
                 if pname.evalError || py.evalError || px.evalError || ph.evalError || pw.evalError {
@@ -1727,7 +1731,7 @@ tco_reentry:
                 break
             }
 
-            expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
+            expr := parser.wrappedEval(ifs, inbound.Tokens[1:])
 
             if !expr.evalError {
 
@@ -1763,10 +1767,10 @@ tco_reentry:
                     docout := ""
                     for term := range inbound.Tokens[1:] {
                         nt:=inbound.Tokens[1+term]
-                        if nt.tokType==LParen { evnest++ }
-                        if nt.tokType==RParen { evnest-- }
-                        if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
-                            v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                        if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
+                        if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                        if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
+                            v,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                             newstart=term+1
                             docout += sparkle(sf(`%v`, v))
                             continue
@@ -1860,7 +1864,7 @@ tco_reentry:
                     // more tokens after the DO to form a command with?
                     if inbound.TokenCount >= doAt {
 
-                        expr := wrappedEval(parser,ifs, inbound.Tokens[1:doAt])
+                        expr := parser.wrappedEval(ifs, inbound.Tokens[1:doAt])
                         if expr.evalError {
                             parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",expr.text,expr.errVal))
                             finish(false,ERR_EVAL)
@@ -1912,7 +1916,7 @@ tco_reentry:
             } else {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
+                expr := parser.wrappedEval(ifs, inbound.Tokens[1:])
 
                 if expr.assign {
                     // someone typo'ed a condition 99.9999% of the time
@@ -1991,7 +1995,7 @@ tco_reentry:
 
             if inbound.TokenCount>3 {
 
-                expr := wrappedEval(parser,ifs, inbound.Tokens[3:])
+                expr := parser.wrappedEval(ifs, inbound.Tokens[3:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
                     finish(false,ERR_EVAL)
@@ -2146,7 +2150,7 @@ tco_reentry:
             // get arguments
 
             var rightParenLoc int
-            for ap:=inbound.TokenCount; ap>3; ap-- {
+            for ap:=inbound.TokenCount-1; ap>3; ap-- {
                 if inbound.Tokens[ap].tokType==RParen {
                     rightParenLoc=ap
                     break
@@ -2220,7 +2224,7 @@ tco_reentry:
                 // make Za function call
                 loc,id := GetNextFnSpace(call+"@")
                 calllock.Lock()
-                vset(ifs,sf("@#@%v",loc),nil)
+                vset(ifs,"@#@"+strconv.Itoa(int(loc)),nil)
                 calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline: pc, retvar: sf("@#@%v",loc)}
                 calllock.Unlock()
 
@@ -2318,7 +2322,7 @@ tco_reentry:
 
         case C_Exit:
             if inbound.TokenCount > 1 {
-                ec, err := EvalCrush(parser,ifs, inbound.Tokens, 1, inbound.TokenCount)
+                ec, err := EvalCrush(parser, ifs, inbound.Tokens, 1, inbound.TokenCount-1)
                 if err==nil && isNumber(ec) {
                     finish(true, ec.(int))
                 } else {
@@ -2394,35 +2398,62 @@ tco_reentry:
 
         case C_Return:
 
-            // tokens must not be braced
+            // TEST CODE
 
-            /*
-                this is kind of invalid now we don't pass (...) as a single expression token.
-                we could still do with a bounds check here of some form, but this is not it...
+            // split return args by comma in evaluable lumps
 
-            if inbound.TokenCount == 2 {
-                if hasOuterBraces(inbound.Tokens[1].tokText) {
-                    if inbound.Tokens[1].tokType == Expression {
-                        parser.report( "Cannot brace a RETURN value.")
-                        finish(true, ERR_SYNTAX)
-                        break
+            var rargs=make([][]Token,1)
+            var curArg uint8
+            evnest:=0
+            argtoks:=inbound.Tokens[1:]
+
+            rargs[0]=make([]Token,0)
+            for tok := range argtoks {
+                nt:=argtoks[tok]
+                if nt.tokType==LParen { evnest++ }
+                if nt.tokType==RParen { evnest-- }
+                if nt.tokType==LeftSBrace { evnest++ }
+                if nt.tokType==RightSBrace { evnest-- }
+                if nt.tokType!=O_Comma || evnest>0 {
+                    rargs[curArg]=append(rargs[curArg],nt)
+                }
+                if evnest==0 && (tok==len(argtoks)-1 || nt.tokType == O_Comma) {
+                    curArg++
+                    if int(curArg)>=len(rargs) {
+                        rargs=append(rargs,[]Token{})
                     }
                 }
             }
+            retval_count=curArg
 
-            */
+            // evaluate each expr and stuff the results in an array
+            // pf("\nProcessing %+v in call to %s\n\n",argtoks,fs)
+            var ev_er error
+            retvalues=make([]interface{},curArg)
+            for q:=0;q<int(curArg);q++ {
+                retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
+                if ev_er!=nil {
+                    // show error + halt
+                }
+                // pf("return arg found [%d of %d]\n q: %+v\n a: %+v\n",q,curArg,rargs[q],v)
+            }
+            // pf("value list -> %#v\n",retvalues)
 
+            // END TEST
+
+                    /* disabling tco_check for now, until we can rip userDefEval and buildRhs
+                        out of the code completely.
+                       can probably get what is needed below from the retvals just above here.
+                    */
+
+            /*
 
             if inbound.TokenCount != 1 {
-
-                // @todo: this should still work, but needs some updating to allow for full tokenisation
-                // needs to use Eval() or wrappedEval() instead of ev and process tokens instead of splitting
-                // strings all over the place.
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
                 if str.Trim(cet.text, " \t") != "" { // found something
 
-                    // tco goes here...
+                    // tail call recursion handling:
 
                     // if tokens have this funcs base name in call, *and*
                     // no other tokens except the call params
@@ -2447,6 +2478,7 @@ tco_reentry:
 
                     }
 
+                    /*
                     if tco_check {
 
                         skip_reentry:=false
@@ -2463,8 +2495,7 @@ tco_reentry:
 
                         rbraceAt := findDelim(r,RParen, 1)
                         if rbraceAt==-1 {
-                            // pf("syntax error to deal with here.\n")
-                        // @todo: add a proper error when rbraceAt==-1
+                            // @todo: add a proper error when rbraceAt==-1
                         }
 
                         cet := crushEvalTokens(r[rbraceAt+1:])
@@ -2487,13 +2518,13 @@ tco_reentry:
                                 nt:=r[term+2]
                                 if nt.tokType==LParen { evnest++ }
                                 if nt.tokType==RParen { evnest-- }
-                                if nt.tokType!=C_Comma {
+                                if nt.tokType!=O_Comma {
                                     evphrase+=nt.tokText
                                 } else {
                                     if evnest>0 { evphrase+=nt.tokText }
                                 }
                                 if evnest==0 && nt.tokType==RParen { break }
-                                if evnest==0 && (term==len(r[2:rbraceAt])-1 || nt.tokType == C_Comma) {
+                                if evnest==0 && (term==len(r[2:rbraceAt])-1 || nt.tokType == O_Comma) {
                                     dargs=append(dargs,evphrase)
                                     evphrase=""
                                 }
@@ -2536,9 +2567,14 @@ tco_reentry:
 
                     }
 
+                    */
+
+
                     // normal return (non tco)
 
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[1:]) // evaluate it
+
+                    /*       
+                    expr := parser.wrappedEval(ifs, inbound.Tokens[1:]) // evaluate it
                     if !expr.evalError {
                         retval = expr.result
                         if ifs<=2 {
@@ -2559,6 +2595,8 @@ tco_reentry:
                 }
 
             }
+                    */
+
             endFunc = true
 
 
@@ -2662,7 +2700,7 @@ tco_reentry:
             var expr ExpressionCarton
 
             if inbound.TokenCount > 1 {
-                expr = wrappedEval(parser,ifs, inbound.Tokens[1:])
+                expr = parser.wrappedEval(ifs, inbound.Tokens[1:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in MODULE statement\n%+v",expr.errVal))
                     finish(false,ERR_MODULE)
@@ -2814,7 +2852,7 @@ tco_reentry:
                 break
             }
 
-            expr := wrappedEval(parser,ifs, inbound.Tokens[1:])
+            expr := parser.wrappedEval(ifs, inbound.Tokens[1:])
             if expr.evalError {
                 parser.report( sf("could not evaluate the WHEN condition\n%+v",expr.errVal))
                 finish(false, ERR_EVAL)
@@ -2856,7 +2894,7 @@ tco_reentry:
             var expr ExpressionCarton
 
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
-                expr = wrappedEval(parser,ifs, inbound.Tokens[1:])
+                expr = parser.wrappedEval(ifs, inbound.Tokens[1:])
                 if expr.evalError {
                     parser.report( sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
                     finish(false, ERR_EVAL)
@@ -3118,9 +3156,9 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen { evnest++ }
-                    if nt.tokType==RParen { evnest-- }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
                         pf(`%v`,sparkle(v))
@@ -3139,9 +3177,9 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen { evnest++ }
-                    if nt.tokType==RParen { evnest-- }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
                         pf(`%v`,sparkle(v))
@@ -3162,9 +3200,9 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen { evnest++ }
-                    if nt.tokType==RParen { evnest-- }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == C_Comma) {
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
                         plog_out += sf(`%v`,sparkle(v))
@@ -3185,7 +3223,7 @@ tco_reentry:
 
             // AT row ',' column
 
-            commaAt := findDelim(inbound.Tokens, C_Comma, 1)
+            commaAt := findDelim(inbound.Tokens, O_Comma, 1)
 
             if commaAt == -1 || commaAt == inbound.TokenCount {
                 parser.report(  "Bad delimiter in AT.")
@@ -3222,8 +3260,8 @@ tco_reentry:
 
             // prompt variable assignment:
             if inbound.TokenCount > 1 { // um, should not do this but...
-                if inbound.Tokens[1].tokType == C_Assign {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
+                if inbound.Tokens[1].tokType == O_Assign {
+                    expr := parser.wrappedEval(ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3298,7 +3336,7 @@ tco_reentry:
             case "on":
                 loggingEnabled = true
                 if inbound.TokenCount == 3 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
+                    expr := parser.wrappedEval(ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3316,7 +3354,7 @@ tco_reentry:
 
             case "accessfile":
                 if inbound.TokenCount > 2 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
+                    expr := parser.wrappedEval(ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3354,7 +3392,7 @@ tco_reentry:
 
             case "subject":
                 if inbound.TokenCount == 3 {
-                    expr := wrappedEval(parser,ifs, inbound.Tokens[2:])
+                    expr := parser.wrappedEval(ifs, inbound.Tokens[2:])
                     if expr.evalError {
                         parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
@@ -3447,7 +3485,7 @@ tco_reentry:
             // local command assignment (child/parent process call)
 
             if inbound.TokenCount > 1 { // ident "=|"
-                if statement.tokType == Identifier && inbound.Tokens[1].tokType == C_AssCommand {
+                if statement.tokType == Identifier && inbound.Tokens[1].tokType == O_AssCommand {
                     // if len(inbound.Text) > 0 {
                     if inbound.TokenCount > 2 {
                         // get text after =|
@@ -3466,7 +3504,7 @@ tco_reentry:
             //
             // try to eval and assign
 
-            if we:=wrappedEval(parser,ifs, inbound.Tokens); we.evalError {
+            if we:=parser.wrappedEval(ifs, inbound.Tokens); we.evalError {
                 parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
                 break
@@ -3494,9 +3532,9 @@ tco_reentry:
     if !si {
 
         // populate return variable in the caller with retvals
-
-        if retval!=nil {
-            vset(caller, retvar, retval)
+        if retvalues!=nil {
+            // pf("call-end (%v) with retvalues : %+v\n",fs,retvalues)
+            vset(caller, retvar, retvalues)
         }
 
         // clean up
@@ -3531,7 +3569,7 @@ tco_reentry:
 
     callChain=callChain[:len(callChain)-1]
 
-    return endFunc
+    return retval_count,endFunc
 
 }
 
@@ -3600,7 +3638,7 @@ func (parser *leparser) evalCommaArray(ifs uint64, tokens []Token) (resu []inter
                 newstart=term+1
                 continue
             }
-            if nt.tokType == C_Comma {
+            if nt.tokType == O_Comma {
                 v, e := parser.Eval(ifs,tokens[newstart:term])
                 resu=append(resu,v)
                 errs=append(errs,e)

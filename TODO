@@ -9,6 +9,16 @@
 
 1.0.11  fixes and evaluator updates
 
+        add unary op: ^a
+            this will effectively be our pointer type
+            when encountered on r.h.s it will eval to a string "fsid.varname" of var a
+            when assigned it will be stored as the IValue of p in p=^a ("fsid.a")
+            when evaluated p will return its own IValue
+        add unary op: *p
+            when evaluated *p will return the content of a by dereferencing the IValue.
+            on the l.h.s *p will assign to the referenced var a.
+
+
 1.0.10  new evaluator + VAR enforcement
 
 1.0.9   BSD port, STRUCT support, lower-level filing operations.
