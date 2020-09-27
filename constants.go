@@ -110,23 +110,21 @@ const (
 	Error uint8 = iota
 	EOL
 	EOF
-	EscapeSequence
 	StringLiteral
 	NumericLiteral
 	Identifier
-	Expression
-	OptionalExpression
 	Operator
 	SingleComment
-	MultiComment
-	C_Plus
-	C_Minus
-	C_Divide
-	C_Multiply
-	C_Caret
-	C_Pling
-	C_Percent
-	C_Semicolon
+	O_Plus
+	O_Minus
+	O_Divide
+	O_Multiply
+	SYM_Caret
+	SYM_Pling
+	O_Percent
+	SYM_Semicolon
+	O_Assign
+	O_AssCommand
 	LeftSBrace
 	RightSBrace
     SYM_PLE
@@ -153,16 +151,13 @@ const (
     SYM_LSHIFT
     SYM_RSHIFT
     SYM_COLON
-    C_Comma
-	C_Tilde
+    O_Comma
+	SYM_Tilde
     O_Sqr
     O_Sqrt
     START_STATEMENTS
     C_Var
-	C_Assign
 	C_SetGlob
-	C_AssCommand
-	C_RemoteCommand
 	C_Init
 	C_Pause
 	C_Help

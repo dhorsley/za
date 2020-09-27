@@ -24,7 +24,8 @@ enddef
 
 define summary(cat,tests,total)
     println "\n\nFunction count in {cat} : {total}"
-    pcs=100.0*tests/total
+    pcs=0.0
+    on total!=0 do pcs=100.0*tests/total
     setglob sumtot[cat]=total
     setglob sumcount[cat]=tests
     println format("  Category has %d tests [%.2f%%]\n",tests,pcs)
@@ -42,7 +43,6 @@ foreach l in a
     on l=="" do continue
 
     if start(l,"Category:")
-
         if !first
             summary(curcat,hastest[curcat],cc[curcat])
         endif
@@ -65,7 +65,7 @@ foreach l in a
 
     fields(l," ")
 
-    if F1=="Function"
+    if F[1]=="Function"
 
         fnexpr=from(F,2," ")
         words=split(fnexpr)
@@ -108,7 +108,8 @@ tottests=0
 
 foreach c in sumcount
 
-    pc=100.0*sumcount[key_c]/sumtot[key_c]
+    pc=0.0
+    on sumtot[key_c]!=0 do pc=100.0*sumcount[key_c]/sumtot[key_c]
     clr="[#4]"
     on pc<thresh do clr="[#2]"
 
@@ -118,11 +119,13 @@ foreach c in sumcount
 
 endfor
 
-pc=100.0*totcount/tottests
+pc=0.0
+on tottests>0 do pc=100.0*totcount/tottests
+
 clr="[#4]"
 on pc<totthresh do clr="[#2]"
 
-println format("\n%30s : [#bold]%s%3.2f[#-] %%","TOTAL",clr,100.0*totcount/tottests)
+println format("\n%30s : [#bold]%s%3.2f[#-] %%","TOTAL",clr,pc)
 
 textline("--")
 

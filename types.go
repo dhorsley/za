@@ -36,7 +36,7 @@ type Variable struct {
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
-	tokType uint8         // token type from list in constants.go
+	tokType uint8       // token type from list in constants.go
     tokVal  interface{} // raw value storage
 	tokText string      // the content of the token
 }

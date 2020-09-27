@@ -1,0 +1,30 @@
+#!/usr/bin/za
+
+
+define z()
+    return
+enddef
+
+define a()
+    return 10+0
+enddef
+
+define b()
+    return 5+pi()
+enddef
+
+define c()
+    return 10,(20),("thirty"+" twelve"),20/2*3+(1+2)
+enddef
+
+define d()
+    return a(),b(),a()+b(),(c())
+enddef
+
+println "z -> ",z()
+println "a -> ",a()
+println "b -> ",b()
+println "c -> ",c()
+println "d -> ",d()
+println
+

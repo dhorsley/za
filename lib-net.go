@@ -509,12 +509,19 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calltable[loc] = call_s{fs: id, base: ifn, callline:-1, caller: local_lastfs, retvar: "@#"}
                 calllock.Unlock()
 
-                Call(MODE_NEW, loc, ciLnet, webcallstruct)
+                rcount,_:=Call(MODE_NEW, loc, ciLnet, webcallstruct)
 
                 _,ok := VarLookup(local_lastfs, "@#")
                 if ok {
                     tmp,_:=vget(local_lastfs,"@#")
-                    w.Write([]byte(sf("%v",tmp)))
+                    switch rcount {
+                    case 0:
+                        w.Write([]byte(""))
+                    case 1:
+                        w.Write([]byte(sf("%v",tmp)))
+                    default:
+                        w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
+                    }
                 }
 
                 serviced=true

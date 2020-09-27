@@ -1,7 +1,6 @@
 #!/usr/bin/za
 
-input N optarg 1
-on kind(N)=="string" do exit
+input N param 1
 
 define f(n)
     var i int

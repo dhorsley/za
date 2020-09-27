@@ -66,6 +66,7 @@ fps_pause=1000/fps
 while !quit
     lastyary=yvalues
     yvalues=calcWave(dx,amplitude)
+
     renderWave(lastyary,height," ")
     renderWave(yvalues,height)
     at 1,1; println "theta -> ",theta, "  "

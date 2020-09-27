@@ -28,6 +28,8 @@ const (
 
 func ulen(args interface{}) (int,error) {
     switch args:=args.(type) { // i'm getting fed up of typing these case statements!!
+    case nil:
+        return 0,nil
     case string:
         return utf8.RuneCountInString(args),nil
     case []string:
