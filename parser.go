@@ -46,7 +46,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     for ; pos < len(input); {
 
         tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos, tokenType)
-        // pf("temptoken [type : %s] -> %#v\n",tokNames[tempToken.tokType],tempToken)
+        // pf(" -( parser : %s,%d,eol:%v,eof:%v )- ",tokNames[tempToken.tokType],tokPos,eol,eof)
 
         // If we found something then move the cursor along to next word
         if tokPos != -1 { pos = tokPos }
@@ -89,7 +89,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             addToPhrase=false
         }
 
-        if tokenType==C_Semicolon || tokenType==EOL {
+        if tokenType==SYM_Semicolon || tokenType==EOL {
             addToPhrase=false
         }
 
@@ -99,7 +99,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             phrase.TokenCount++
         }
 
-        if tempToken.tokType == EOL || tempToken.tokType==C_Semicolon {
+        if tempToken.tokType == EOL || tempToken.tokType==SYM_Semicolon {
 
             // -- add original version
             if pos>0 {
@@ -111,14 +111,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 }
                 if phrase.TokenCount>1 {
                     switch phrase.Tokens[1].tokType {
-                    case C_AssCommand:
+                    case O_AssCommand:
                         phrase.Original=input[lstart:pos]
                     }
                 }
             }
 
             // -- add to source store
-            if tempToken.tokType!=C_Semicolon {
+            if tempToken.tokType!=SYM_Semicolon {
                 sourceStore[lmv]=append(sourceStore[lmv],str.TrimRight(input[lstart:pos]," \t\n"))
             }
             phrase.SourceLine=curLine

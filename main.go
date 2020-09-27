@@ -861,7 +861,7 @@ func main() {
                     }
                     if t.tokType==C_If    { tokenIfPresent=true }
                     if t.tokType==C_On    { tokenOnPresent=true }
-                    // this is hardly fool-proof, but okay for:
+                    // this is hardly fool-proof, but okay for now:
                     if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
                     switch t.tokType {
                     // adders
@@ -886,7 +886,7 @@ func main() {
             phraseParse("global", totalInput, 0)
 
             // throw away break and continue positions in interactive mode
-            endFunc = Call(MODE_STATIC, globalspace, ciRepl)
+            _,endFunc = Call(MODE_STATIC, globalspace, ciRepl)
             if endFunc {
                 break
             }

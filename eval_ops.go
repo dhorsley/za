@@ -369,7 +369,7 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
     }
 
 	if intInOne && intInTwo {
-		return math.Pow(float64(int1),float64(int2))
+		return int(math.Pow(float64(int1),float64(int2)))
 	}
 
 	float1, float1OK := val1.(float64)
@@ -828,7 +828,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                             return nil
                         }
                         iargs=append(iargs,dp)
-                        if p.peek().tokType!=C_Comma {
+                        if p.peek().tokType!=O_Comma {
                             break
                         }
                         p.next()
@@ -1043,11 +1043,19 @@ func callFunction(evalfs uint64, callline int, name string, args []interface{}) 
 			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
             if lockSafety { calllock.Unlock() }
 
-			Call(MODE_NEW, loc, ciEval, args...)
+			rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
 
 			// handle the returned result, if present.
             res, _ = vget(evalfs, "@#")
-            return res
+            switch rcount {
+            case 0:
+                return nil
+            case 1:
+                //	panic: interface conversion: interface {} is nil, not []interface {}
+                return res.([]interface{})[0]
+            default:
+                return res
+            }
 
 		} else {
 		    // no? now panic
@@ -1057,7 +1065,7 @@ func callFunction(evalfs uint64, callline int, name string, args []interface{}) 
         // call standard function
         res, err := f(evalfs,args...)
         if err != nil {
-            panic(fmt.Errorf("function error: %s", err))
+            panic(fmt.Errorf("function error: in %+v(%+v) %s", name, args, err))
         }
         return res
     }

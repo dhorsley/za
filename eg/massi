@@ -1,0 +1,12 @@
+#!/usr/bin/za
+
+define swap(x,y)
+  return y,x
+enddef
+ 
+a=10
+b=20
+println "pre  a:{a},b:{b}"
+a,b=swap(a,b)
+println "post a:{a},b:{b}"
+

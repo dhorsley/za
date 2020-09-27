@@ -2,7 +2,71 @@
 CHANGE LOG
 =============================================================================================
 
-1.0.11  
+1.0.11  SUMMARY
+        multiple return value handling
+        simple in-expression assignment
+        result chaining
+        multi-line REPL input
+        compound assignments and sqr,sqrt operators 
+        pre/post increment operators
+        split interpolation into local replacement and evaluation types.
+
+        DETAILS
+        * added simple scalar assignment in expressions.
+            - global variables are not supported.
+            - the value of the expression is the same as without the assignment involved.
+            - only simple direct assignment to locals is supported.
+                - i.e.  print a=10    # this is fine
+                -       print a[0]=10 # not good
+                -       print g=10    # not good if g is a global
+
+        * comma operator: tldr; there isn't one
+            - behaviour is, um, sporadic, at best. should try to avoid it currently.
+                - i.e.
+                  print b=a,a+=b    # this is fine, will work as expected because the statement
+                                    #   processes the commas.
+                  b=a,a+=b          # only b is assigned here (with initial value of a)
+                                    #  normal parsing of expressions considers a comma an end of expr.
+                                    #  so the a+=b would be ignored.
+            - this behaviour may change, it's a fairly simple amendment. but not sure that
+                the use cases would justify it yet. 
+
+        * return values:
+
+            - modified return command to return either a single value or an array of values depending
+                on the argument list provided to it.
+
+            - amended doAssign() to handle a comma separated list on l.h.s.
+                - rules are currently (but may change yet):
+                    - #lhsargs > #rhsargs : syntax error
+                    - #lhsargs < #rhsargs : all return values returned to lhs var as an array
+                    - otherwise, a direct left-to-right mapping.
+
+            - handling for multiple return assignment is pretty slow at the moment. still working on 
+                improving this, but should be working now.
+
+            - e.g.
+                define swap(a,b); return b,a; enddef
+                x=10; y=20; x,y=swap(x,y)
+                println x," ",y
+             >> 20 10
+
+            -   x=swap(x,y)
+                println x
+             >> 20 
+
+            -   x,y,z=swap(x,y)
+             >> Error in evaluation
+             >> not enough values to populate assignment
+
+            -   # with result chaining, mentioned below:
+                x=10
+                y=20
+                x,y=x.swap(y)
+                print x
+                20
+                print y
+                10
 
         * added basic multiline entry to repl
             - checks for a few of the nesting token types and keeps accepting input
@@ -27,6 +91,7 @@ CHANGE LOG
                     > testtest
                     - print "test".double
                     > testtest
+
 
             * if a.b is a field reference 'b' of struct 'a' then it will take priority over chaining.
 
