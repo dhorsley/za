@@ -46,7 +46,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     for ; pos < len(input); {
 
         tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos, tokenType)
-        // pf(" -( parser : %s,%d,eol:%v,eof:%v )- ",tokNames[tempToken.tokType],tokPos,eol,eof)
+        // pf(" -( parser : %s,%d,eol:%v,eof:%v )- \n",tokNames[tempToken.tokType],tokPos,eol,eof)
 
         // If we found something then move the cursor along to next word
         if tokPos != -1 { pos = tokPos }
@@ -132,14 +132,13 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if phrase.TokenCount!=0 {
                 // -- add phrase to function
                 if lockSafety { fspacelock.Lock() }
+                // pf("add phrase: %#v\n\n\n\n\n",phrase)
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
                 if lockSafety { fspacelock.Unlock() }
             }
 
             // reset phrase
             phrase = Phrase{}
-
-            // strPhrase.Reset()
 
         }
 

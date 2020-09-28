@@ -10,7 +10,7 @@ foreach tf in files
 
     filename=tf.name
 
-    println "[#fbgreen]Check : {filename} , Last Change : ",tf.mtime,"[#-]"
+    println "[#fbgreen]Check : {filename} , Last Change : ",date(tf.mtime),"[#-]"
 
     println "[#invert][#3]"+format("%-{=term_w()}s","{filename} starting.")+"[#-]"
     | za {check_path}/{filename}

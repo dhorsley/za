@@ -31,7 +31,7 @@ func (p *leparser) Init() {
         O_Assign      : {5,p.unary,p.binaryLed},
         O_Plus        : {30,p.unary,p.binaryLed},
 		O_Minus       : {30,p.unary,p.binaryLed},       // subtraction and unary minus 
-		O_Multiply    : {35,nil,p.binaryLed},
+		O_Multiply    : {35,p.unary,p.binaryLed},       // un: *p (deref p), bin: multiply
 		O_Divide      : {35,nil,p.binaryLed},
         O_Percent     : {35,nil,p.binaryLed},
 		O_Comma       : {-1,nil, nil},
@@ -48,7 +48,7 @@ func (p *leparser) Init() {
         SYM_LAND      : {15,nil,p.binaryLed},           // BOOLEAN AND
         SYM_LOR       : {15,nil,p.binaryLed},           // BOOLEAN OR
         SYM_BAND      : {20,nil,p.binaryLed},           // AND
-        SYM_Caret     : {20,nil,p.binaryLed},           // XOR
+        SYM_Caret     : {20,p.unary,p.binaryLed},       // un: address of, bin: XOR
         SYM_BOR       : {20,nil,p.binaryLed},           // OR
 		SYM_Pling     : {15,p.unary, nil},              // Logical Negation
         SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
@@ -437,6 +437,10 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.preIncDec(token)
     case SYM_MM:
         return p.preIncDec(token)
+    case SYM_Caret:
+        return p.unAddrOf(token)
+    case O_Multiply:
+        return p.unDeref(token)
     }
 
 	right,err := p.dparse(38) // between grouping and other ops
@@ -458,6 +462,68 @@ func (p *leparser) unary(token Token) (interface{}) {
 	}
 
 	return nil
+}
+
+func (p *leparser) unAddrOf(tok Token) interface{} {
+    fsnum:=p.fs
+    vartok:=p.next()
+    // is this a var?
+    inter:=interpolate(p.fs,vartok.tokText)
+    if _,there:=vget(p.fs,inter); !there {
+        if _,there:=vget(globalaccess,inter); !there {
+            return nil // no var to reference
+        }
+        fsnum=globalaccess
+    }
+    // build reference to var
+    fs, _ := numlookup.lmget(fsnum)
+    if fs=="" { fs="global" }
+    // return ref
+    return []string{fs,inter}
+}
+
+func (p *leparser) unDeref(tok Token) interface{} {
+
+    vartok:=p.next()
+
+    // is this an array?
+    var ref interface{}
+    var there bool
+    inter:=interpolate(p.fs,vartok.tokText)
+    if ref,there=vget(p.fs,inter); !there {
+        panic(sf("pointer '%v' does not exist",inter))
+    }
+    switch ref.(type) {
+    case []string:
+    default:
+        panic(sf("invalid reference (type) in '%v'",ref))
+        return nil
+    }
+
+    // ... with len 2?
+    if len(ref.([]string))!=2 {
+        panic(sf("invalid reference (length) in '%v'",ref))
+        return nil
+    }
+
+    // ... with valid fs->fsid? @ ary[0]
+    var fsid uint64
+    var valid bool
+    if ref.([]string)[0]=="global" {
+        fsid=0
+    } else {
+        fsid,valid=fnlookup.lmget(ref.([]string)[0])
+        if !valid {
+            panic(sf("invalid space reference in '%v'",ref))
+        }
+    }
+
+    // ... with active backing variable @ ary[1]
+    if val,there:=vget(fsid,ref.([]string)[1]); there {
+        return val
+    }
+    panic(sf("invalid name reference in '%v'",ref))
+    return nil
 }
 
 func unOpSqr(n interface{}) interface{} {
@@ -1891,6 +1957,51 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
             // normal assignment
             vset(lfs, interpolate(rfs,assignee[0].tokText), results[assno])
             /////////////////////////////////////////////////////////////////////////////
+
+        case len(assignee)==2:
+            // currently only *p pointer assignment, but check...
+            switch assignee[0].tokText {
+            case "*":
+
+                // ... check assignee[1] is a local var
+                if _,there:=VarLookup(rfs,assignee[1].tokText); !there {
+                    expr.errVal=fmt.Errorf("cannot find pointer in assignment")
+                    expr.evalError=true
+                    return
+                }
+
+                // ... check it is also a pointer
+                val,_:=vget(rfs,assignee[1].tokText)
+                switch val.(type) {
+                case []string:
+                    if len(val.([]string))!=2 {
+                        expr.errVal=fmt.Errorf("'%+v' doesn't look like a pointer",val)
+                        expr.evalError=true
+                        return
+                    }
+                default:
+                    expr.errVal=fmt.Errorf("'%+v' is not a pointer",val)
+                    expr.evalError=true
+                    return
+                }
+
+                // ... deref target fsid and varname from pointer[0] and pointer[1]
+                var fsid uint64
+                var valid bool
+                if val.([]string)[0]!="global" {
+                    fsid,valid=fnlookup.lmget(val.([]string)[0])
+                    if !valid {
+                        expr.errVal=fmt.Errorf("'%v' is not a valid function space",val.([]string)[0])
+                        expr.evalError=true
+                        return
+                    }
+                }
+                // @note: not checking validity of val[1] var name, may change this later.
+
+                // ... vset targets
+                vset(fsid,val.([]string)[1],results[assno])
+
+            }
 
         case len(assignee)>3:
 

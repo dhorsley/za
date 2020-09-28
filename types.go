@@ -6,7 +6,6 @@ package main
 
 import (
 	"reflect"
-    "time"
 )
 
 //
@@ -128,7 +127,7 @@ type Pane struct {
         name    string
         size    int64
         mode    uint32
-        mtime   time.Time
+        mtime   int64
         isdir   bool
     }
 
