@@ -1983,6 +1983,11 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                         expr.evalError=true
                         return
                     }
+                case nil:
+                    var v [2]string
+                    v[0]="nil"
+                    v[1]="nil"
+                    val=v[:]
                 default:
                     expr.errVal=fmt.Errorf("'%+v' is not a pointer",val)
                     expr.evalError=true
@@ -1992,12 +1997,15 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                 // ... deref target fsid and varname from pointer[0] and pointer[1]
                 var fsid uint64
                 var valid bool
-                if val.([]string)[0]!="global" {
-                    fsid,valid=fnlookup.lmget(val.([]string)[0])
-                    if !valid {
-                        expr.errVal=fmt.Errorf("'%v' is not a valid function space",val.([]string)[0])
-                        expr.evalError=true
-                        return
+                if len(val.([]string))==2 && val.([]string)[0]=="nil" && val.([]string)[1]=="nil" {
+                } else {
+                    if val.([]string)[0]!="global" {
+                        fsid,valid=fnlookup.lmget(val.([]string)[0])
+                        if !valid {
+                            expr.errVal=fmt.Errorf("'%v' is not a valid function space",val.([]string)[0])
+                            expr.evalError=true
+                            return
+                        }
                     }
                 }
                 // @note: not checking validity of val[1] var name, may change this later.
