@@ -18,7 +18,7 @@ func buildDateLib() {
 	stdlib["date"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 		var t time.Time
 		if len(args) == 1 {
-			when, invalid := GetAsInt(args[0])
+			when, invalid := GetAsInt64(args[0])
 			if invalid {
 				return nil, errors.New("Bad args (type) in date().")
 			}

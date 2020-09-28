@@ -6,17 +6,46 @@
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
 
-
 1.0.11  fixes and evaluator updates
 
+        DONE:
         add unary op: ^a
             this will effectively be our pointer type
-            when encountered on r.h.s it will eval to a string "fsid.varname" of var a
+            when encountered on r.h.s it will eval to a string "fs.varname" of var a
             when assigned it will be stored as the IValue of p in p=^a ("fsid.a")
             when evaluated p will return its own IValue
+
+        DONE:
         add unary op: *p
             when evaluated *p will return the content of a by dereferencing the IValue.
             on the l.h.s *p will assign to the referenced var a.
+
+        DONE:
+        add l.h.s. deref of *p for assigning indirectly... in doAssign()
+
+        DONE:
+        add pointer as a valid field type in structures
+            see eg/pointers
+            not much to this.. just added ^ as a field type (underlying type is []string)
+
+        TODO:
+        testing... more than the cursory stuff i did already!
+
+        NOT DOING:
+            any kind of pointer arithmetic
+
+        need a way to clean up dangling pointers? without it, fs.varname can potentially clash
+        under the scheme above. it's pretty damned unlikely as 'fs' contains the name of the 
+        function of locality plus a unique id of at least 31 bits in length. i would imagine that
+        you would need a fast running recursive call (or plain bad luck) to have a chance of
+        clashing, but this interpreter is never going to go that fast.
+
+        it will probably be enough to make sure we exit with an appropriate error if an attempt is
+        made to access the pointer content when the underlying variable has gone away.
+
+        speed is not a design goal for pointers, just the ability to mimic an unusual structure
+        when absolutely necessary. however, will review at some point as a clash is a possibility,
+        even if it is, in theory, very unlikely.
 
 
 1.0.10  new evaluator + VAR enforcement

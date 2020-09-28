@@ -2043,8 +2043,8 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                     var tf64 float64
                     var ts string
                     var atint   []interface{}
-                    /* not supported yet:
                     var ats     []string
+                    /* not supported yet:
                     var ati     []int
                     var atf     []float64
                     var atb     []bool
@@ -2068,6 +2068,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                     typemap["[]bool"]   = reflect.TypeOf(atb)
                     */
                     typemap["[]"]       = reflect.TypeOf(atint)
+                    typemap["^"]        = reflect.TypeOf(ats)
                     //
 
                     // check here for struct init by name
