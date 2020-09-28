@@ -513,13 +513,39 @@ func unaryMinus(val interface{}) (interface{}) {
 
 
 func deepEqual(val1 interface{}, val2 interface{}) (bool) {
+
+    // special case for ptr nil
+    var nilcmp1,nilcmp2 bool
+    switch v1:=val1.(type) {
+    case []string:
+        if len(v1)==2 && v1[0]=="nil" && v1[1]=="nil" {
+            nilcmp1=true
+            val1=nil
+        }
+    }
+    switch v2:=val2.(type) {
+    case []string:
+        if len(v2)==2 && v2[0]=="nil" && v2[1]=="nil" {
+            nilcmp2=true
+            val2=nil
+        }
+    }
+    if nilcmp1 || nilcmp2 {
+        if val1==val2 {
+            return true
+        }
+    }
+    // end bodge
+
 	switch typ1 := val1.(type) {
 
 	case []interface{}:
+
 		typ2, ok := val2.([]interface{})
 		if !ok || len(typ1) != len(typ2) {
 			return false
 		}
+
 		for idx := range typ1 {
 			if !deepEqual(typ1[idx], typ2[idx]) {
 				return false
@@ -789,7 +815,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                     slc:=f.Slice(0,f.Len())
 
                     switch f.Type().Elem().Kind() {
-                    case reflect.Interface:
+                    case reflect.Interface,reflect.String:
                         return slc.Interface()
                     default:
                         return []interface{}{}

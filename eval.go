@@ -509,6 +509,10 @@ func (p *leparser) unDeref(tok Token) interface{} {
     // ... with valid fs->fsid? @ ary[0]
     var fsid uint64
     var valid bool
+    if ref.([]string)[0]=="nil" && ref.([]string)[1]=="nil" {
+        return nil
+    }
+
     if ref.([]string)[0]=="global" {
         fsid=0
     } else {
@@ -2156,7 +2160,12 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
 
                     val:=reflect.ValueOf(ts)
                     typ:=reflect.ValueOf(ts).Type()
-                    intyp:=reflect.ValueOf(results[assno]).Type()
+
+                    var intyp reflect.Type
+                    // special case, nil
+                    if results[assno]!=nil {
+                        intyp=reflect.ValueOf(results[assno]).Type()
+                    }
 
                     if typ.Kind()==reflect.Struct {
 
@@ -2168,15 +2177,21 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                         // then assign the new value into the copied field
                         if _,exists:=typ.FieldByName(lhs_f); exists {
                             tf:=tmp.FieldByName(lhs_f)
-                            if intyp.AssignableTo(tf.Type()) {
+                            if results[assno]==nil {
                                 tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-                                tf.Set(reflect.ValueOf(results[assno]))
-                                // write the copy back to the 'real' variable
+                                tf.Set(reflect.ValueOf([]string{"nil","nil"}))
                                 vset(lfs,lhs_v,tmp.Interface())
                             } else {
-                                pf("cannot assign result (%T) to %v (%v)",results[assno],interpolate(rfs,assignee[0].tokText),tf.Type())
-                                expr.evalError=true
-                                expr.errVal=err
+                                if intyp.AssignableTo(tf.Type()) {
+                                    tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                                    tf.Set(reflect.ValueOf(results[assno]))
+                                    // write the copy back to the 'real' variable
+                                    vset(lfs,lhs_v,tmp.Interface())
+                                } else {
+                                    pf("cannot assign result (%T) to %v (%v)",results[assno],interpolate(rfs,assignee[0].tokText),tf.Type())
+                                    expr.evalError=true
+                                    expr.errVal=err
+                                }
                             }
                         } else {
                             pf("STRUCT field %v not found in %v",lhs_f,lhs_v)
