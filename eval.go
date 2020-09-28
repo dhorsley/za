@@ -1,18 +1,17 @@
 package main
 
 import (
-//     "errors"
     "fmt"
     "reflect"
-//    "runtime"
     "strconv"
     "bytes"
     "math"
     "net/http"
-//    "os"
     "sync"
     str "strings"
     "unsafe"
+//    "runtime"
+//    "os"
 )
 
 
@@ -68,13 +67,29 @@ func (p *leparser) Init() {
 }
 
 func (p *leparser) reserved(token Token) (interface{}) {
-    // this might change in the future:
     panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
     finish(true,ERR_SYNTAX)
     return token.tokText
 }
 
 func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
+
+    /*
+    defer func() {
+        if r := recover(); r != nil {
+            if _,ok:=r.(runtime.Error); ok {
+                p.report(sf("\n%v\n",r))
+                if debug_level==20 { panic(r) }
+                os.Exit(ERR_EVAL)
+            }
+            err:=r.(error)
+            p.report(sf("\n%v\n",err))
+            setEcho(true)
+            if debug_level==20 { panic(r) }
+            // os.Exit(ERR_EVAL)
+        }
+    }()
+    */
 
     p.tokens = toks
     p.pos    = 0
@@ -141,7 +156,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             token = p.next()
             /*
             if p.table[token.tokType].led == nil {
-                panic(sf("Token '%s' not defined in grammar",token.tokText))
+                panic(fmt.Errorf("Token '%s' not defined in grammar",token.tokText))
             }
             */
             left = p.table[token.tokType].led(left,token)
@@ -194,6 +209,7 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 	switch token.tokType {
 	case SYM_PLE:
         left,_:=vget(p.fs,p.preprev.tokText)
+        pf("PLE -> k %T\n",left)
         r:=ev_add(left,right)
         vset(p.fs,p.preprev.tokText,r)
         return r
@@ -459,6 +475,8 @@ func (p *leparser) unary(token Token) (interface{}) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
+    case O_Assign:
+        panic(fmt.Errorf("unary assignment makes no sense"))
 	}
 
 	return nil
@@ -491,18 +509,18 @@ func (p *leparser) unDeref(tok Token) interface{} {
     var there bool
     inter:=interpolate(p.fs,vartok.tokText)
     if ref,there=vget(p.fs,inter); !there {
-        panic(sf("pointer '%v' does not exist",inter))
+        panic(fmt.Errorf("pointer '%v' does not exist",inter))
     }
     switch ref.(type) {
     case []string:
     default:
-        panic(sf("invalid reference (type) in '%v'",ref))
+        panic(fmt.Errorf("invalid reference (type) in '%v'",ref))
         return nil
     }
 
     // ... with len 2?
     if len(ref.([]string))!=2 {
-        panic(sf("invalid reference (length) in '%v'",ref))
+        panic(fmt.Errorf("invalid reference (length) in '%v'",ref))
         return nil
     }
 
@@ -518,7 +536,7 @@ func (p *leparser) unDeref(tok Token) interface{} {
     } else {
         fsid,valid=fnlookup.lmget(ref.([]string)[0])
         if !valid {
-            panic(sf("invalid space reference in '%v'",ref))
+            panic(fmt.Errorf("invalid space reference in '%v'",ref))
         }
     }
 
@@ -526,7 +544,7 @@ func (p *leparser) unDeref(tok Token) interface{} {
     if val,there:=vget(fsid,ref.([]string)[1]); there {
         return val
     }
-    panic(sf("invalid name reference in '%v'",ref))
+    panic(fmt.Errorf("invalid name reference in '%v'",ref))
     return nil
 }
 
