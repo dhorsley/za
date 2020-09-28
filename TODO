@@ -8,6 +8,13 @@
 
 1.0.11  fixes and evaluator updates
 
+        TODO
+        eg/faulter not faulting!
+        add tail cail elimination back in
+
+        Pointer Operations
+        -------------------------------------------------------------------------------------------
+
         DONE:
         add unary op: ^a
             this will effectively be our pointer type
@@ -28,24 +35,25 @@
             see eg/pointers
             not much to this.. just added ^ as a field type (underlying type is []string)
 
-        TODO:
-        testing... more than the cursory stuff i did already!
-
         NOT DOING:
-            any kind of pointer arithmetic
+            any kind of pointer arithmetic or memory allocation pool.
 
-        need a way to clean up dangling pointers? without it, fs.varname can potentially clash
-        under the scheme above. it's pretty damned unlikely as 'fs' contains the name of the 
-        function of locality plus a unique id of at least 31 bits in length. i would imagine that
-        you would need a fast running recursive call (or plain bad luck) to have a chance of
-        clashing, but this interpreter is never going to go that fast.
-
-        it will probably be enough to make sure we exit with an appropriate error if an attempt is
-        made to access the pointer content when the underlying variable has gone away.
-
-        speed is not a design goal for pointers, just the ability to mimic an unusual structure
-        when absolutely necessary. however, will review at some point as a clash is a possibility,
-        even if it is, in theory, very unlikely.
+        -------------------------------------------------------------------------------------------
+        to make any use of this you'll probably end up having to create state in the global space.
+        because we don't spawn objects that live beyond the scope of their local function, pointers
+        will likely only be any use when reading state from a parent scope. you could conceivably
+        have a function holding space that async threads could access, but the use cases are few
+        and far between in any case.
+        -------------------------------------------------------------------------------------------
+        to make this more like you might expect would involve creating a memory allocator which 
+        works outside of normal variable allocation, and this just is not going to occur. it would
+        make pointers useful, but they are already at the very edge of what needs to be supported
+        in this language. arguably, they are already outside of the remit. the operators are only
+        in place because they were easy to reserve and they can have their functionality changed 
+        later. i just do not anticipate ever doing this.
+        -------------------------------------------------------------------------------------------
+        probably won't even be documenting this functionality for now.
+        -------------------------------------------------------------------------------------------
 
 
 1.0.10  new evaluator + VAR enforcement

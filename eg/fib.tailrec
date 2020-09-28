@@ -5,7 +5,7 @@ define fib(n)
 enddef
 
 define fib_tr(n, a, b) 
-    on !tco() do setglob calls = calls+1
+    on !tco() do setglob calls=calls+1
     on n==0 do return a
     on n==1 do return b
     return fib_tr(n-1,b,a+b)
