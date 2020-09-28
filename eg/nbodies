@@ -21,9 +21,9 @@ define offsetmomentum()
 
     for i=0 to N-1
         bi=b[i]
-        px = px + (bi.vx * bi.mass)
-        py = py + (bi.vy * bi.mass)
-        pz = pz + (bi.vz * bi.mass)
+        px = px + bi.vx * bi.mass
+        py = py + bi.vy * bi.mass
+        pz = pz + bi.vz * bi.mass
     endfor
 
     setglob b[0].vx = -px / solarMass
@@ -37,13 +37,13 @@ define energy()
     var e float
     for i = 0 to N-1
         bi=b[i]
-        e=e+ ( 0.5 * bi.mass * ( sqr bi.vx + sqr bi.vy + sqr bi.vz ) )
+        e= e + 0.5 * bi.mass * ( sqr bi.vx + sqr bi.vy + sqr bi.vz )
         for j=i+1 to N-1
             dx = bi.sx - b[j].sx
             dy = bi.sy - b[j].sy
             dz = bi.sz - b[j].sz
             distance = sqrt ( sqr dx + sqr dy + sqr dz )
-            e=e-(bi.mass*b[j].mass) / distance
+            e=e- ( (bi.mass*b[j].mass) / distance )
         endfor
     endfor
     return e
@@ -90,9 +90,9 @@ define advance(dt)
 
     for i = 0 to N-1
         bi=b[i]
-        bi.sx=bi.sx+dt*bi.vx
-        bi.sy=bi.sy+dt*bi.vy
-        bi.sz=bi.sz+dt*bi.vz
+        bi.sx=bi.sx + dt*bi.vx
+        bi.sy=bi.sy + dt*bi.vy
+        bi.sz=bi.sz + dt*bi.vz
         setglob b[i]=bi
     endfor
 
