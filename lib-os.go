@@ -65,7 +65,7 @@ func buildOsLib() {
             fs.name=file.Name()
             fs.size=file.Size()
             fs.mode=uint32(file.Mode())
-            fs.mtime=file.ModTime()
+            fs.mtime=file.ModTime().Unix()
             fs.isdir=file.IsDir()
             dl=append(dl,fs)
         }

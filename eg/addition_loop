@@ -12,7 +12,7 @@ input max_count optarg 1
 var a int
 ts=epoch_nano_time()
 for f=0 to max_count
-    a=a+f
+    a+=f
 endfor
 te=epoch_nano_time()
 

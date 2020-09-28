@@ -52,7 +52,6 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     var norepeatMap = make(map[byte]int)
     var badFloat, scientific,expectant bool
 
-
     beforeE := "."
     thisWordStart := -1
 
@@ -141,8 +140,8 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     if str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
         nonterm = numeric+"eE"
-        // term = "\n;"
-        term = ""
+        term = "\n;" // PIG
+        // term = ""
         norepeat= "eE."
 
     }
@@ -157,7 +156,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     // identifier or statement
     if str.IndexByte(alphaplus, firstChar) != -1 {
         nonterm = identifier_set
-        term = ""
+        term = "\n;" // PIG
     }
 
     // string literal
@@ -268,7 +267,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     // catch any eol strays
     if currentChar<lenInput {
         if !matchQuote && input[currentChar] == '\n' {
-            eol = true
+            // eol = true
             startNextTokenAt=currentChar
             carton.tokText = input[thisWordStart:currentChar]
         }

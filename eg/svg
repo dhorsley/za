@@ -43,11 +43,12 @@ svg_group_end(h)
 # test of other shape drawing commands
 svg_circle(h,250,250,120,circle_linestyle)
 svg_ellipse(h,250,250,300,60,default_linestyle)
-svg_polygon(h,
-            list_int([200,250,500,250]),
-            list_int([250,500,250,200]),
-            default_linestyle
+svg_polygon(h, 
+    list_int([200,250,500,250]), 
+    list_int([250,500,250,200]),
+    default_linestyle
 )
+
 lx=list_int([100,150,200,225,250,300])
 ly=list_int([400,410,390,400,350,400])
 svg_polyline(h,lx,ly,redline)

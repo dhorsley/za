@@ -733,10 +733,12 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
         f := reflect.Indirect(r).FieldByName(field)
         return f
 
+    /*
     case dirent:
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
         return f
+    */
 
     default:
 
