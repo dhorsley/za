@@ -409,7 +409,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     var breakIn uint8
     var pc int
     var retvar string
-    // var retval interface{}
     var retvalues []interface{}
     var finalline int
     var fs string
