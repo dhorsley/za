@@ -28,7 +28,7 @@ type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, 
 // za variable
 type Variable struct {
     IName  string
-    IKind  string
+    IKind  uint8
     IValue interface{}
     ITyped bool
 }

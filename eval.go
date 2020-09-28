@@ -917,28 +917,28 @@ func vset(fs uint64, name string, value interface{}) (vi int) {
         if ident[fs][vi].ITyped {
             var ok bool
             switch ident[fs][vi].IKind {
-            case "bool":
+            case kbool:
                 _,ok=value.(bool)
                 if ok { ident[fs][vi].IValue = value.(bool) }
-            case "int":
+            case kint:
                 _,ok=value.(int)
                 if ok { ident[fs][vi].IValue = value.(int) }
-            case "int64":
+            case kint64:
                 _,ok=value.(int64)
                 if ok { ident[fs][vi].IValue = value.(int64) }
-            case "uint":
+            case kuint:
                 _,ok=value.(uint64)
                 if ok { ident[fs][vi].IValue = value.(uint64) }
-            case "float":
+            case kfloat:
                 _,ok=value.(float64)
                 if ok { ident[fs][vi].IValue = value.(float64) }
-            case "string":
+            case kstring:
                 _,ok=value.(string)
                 if ok { ident[fs][vi].IValue = value.(string) }
             }
             if !ok {
                 if lockSafety { vlock.Unlock() }
-                panic(fmt.Errorf("invalid assignation on '%v' [%v] of %v [%T]",name,ident[fs][vi].IKind,value,value))
+                panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",name,value,value))
             }
 
         } else {
@@ -1240,32 +1240,36 @@ func interpolate(fs uint64, s string) (string) {
 
     vc:=varcount[fs]
 
-        // string replacer
-        rs := []string{}
-        typedlist:=[]int{}
-        for k := 0 ; k<vc; k++ {
-            if ident[fs][k].IValue!=nil && ident[fs][k].ITyped {
-                typedlist=append(typedlist,k)
-                if strcmp(ident[fs][k].IKind,"string") {
-                    rs = append(rs, "{"+ident[fs][k].IName+"}")
-                    rs = append(rs, ident[fs][k].IValue.(string))
-                }
-                if strcmp(ident[fs][k].IKind,"int")    {
-                    rs = append(rs, "{"+ident[fs][k].IName+"}")
-                    rs = append(rs, strconv.FormatInt(int64(ident[fs][k].IValue.(int)),10))
-                }
-                if strcmp(ident[fs][k].IKind,"float")  {
-                    rs = append(rs, "{"+ident[fs][k].IName+"}")
-                    rs = append(rs, strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64))
-                }
-                if strcmp(ident[fs][k].IKind,"bool")  {
-                    rs = append(rs, "{"+ident[fs][k].IName+"}")
-                    rs = append(rs, strconv.FormatBool(ident[fs][k].IValue.(bool)))
-                }
+    // string replacer
+    rs := []string{}
+    typedlist:=[]int{}
+    for k := 0 ; k<vc; k++ {
+        if ident[fs][k].IValue!=nil && ident[fs][k].ITyped {
+            typedlist=append(typedlist,k)
+            if ident[fs][k].IKind==kstring {
+                rs = append(rs, "{"+ident[fs][k].IName+"}")
+                rs = append(rs, ident[fs][k].IValue.(string))
+            }
+            if ident[fs][k].IKind==kint    {
+                rs = append(rs, "{"+ident[fs][k].IName+"}")
+                rs = append(rs, strconv.FormatInt(int64(ident[fs][k].IValue.(int)),10))
+            }
+            if ident[fs][k].IKind==kuint    {
+                rs = append(rs, "{"+ident[fs][k].IName+"}")
+                rs = append(rs, strconv.FormatUint(uint64(ident[fs][k].IValue.(uint)),10))
+            }
+            if ident[fs][k].IKind==kfloat  {
+                rs = append(rs, "{"+ident[fs][k].IName+"}")
+                rs = append(rs, strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64))
+            }
+            if ident[fs][k].IKind==kbool  {
+                rs = append(rs, "{"+ident[fs][k].IName+"}")
+                rs = append(rs, strconv.FormatBool(ident[fs][k].IValue.(bool)))
             }
         }
-        s = str.NewReplacer(rs...).Replace(s)
-        // end replacer
+    }
+    s = str.NewReplacer(rs...).Replace(s)
+    // end replacer
 
     var skip bool
     var i,k int

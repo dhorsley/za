@@ -106,6 +106,17 @@ const (
     ERR_LEX int = 127
 )
 
+// IKind
+const (
+    knil uint8 = iota
+    kbool
+    kint
+    kuint
+    kfloat
+    kstring
+    kint64
+)
+
 const (
 	Error uint8 = iota
 	EOL

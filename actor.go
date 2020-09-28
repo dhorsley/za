@@ -456,7 +456,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
 
 // tco_reentry:
 
-
     if varmode == MODE_NEW {
 
         // create the local variable storage for the function
@@ -546,8 +545,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     if lockSafety { vlock.RUnlock() }
     if lockSafety { looplock.Unlock() }
 
-
-//tco_reentry:
 
     /*
     pf("\n\nin %v \n",fs)
@@ -710,7 +707,22 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                 vi,_:=VarLookup(ifs,vn)
                 if lockSafety { vlock.Lock() }
                 ident[ifs][vi].ITyped=true
-                ident[ifs][vi].IKind=expr
+                switch expr {
+                case "nil":
+                    ident[ifs][vi].IKind=knil
+                case "bool":
+                    ident[ifs][vi].IKind=kbool
+                case "int":
+                    ident[ifs][vi].IKind=kint
+                case "uint":
+                    ident[ifs][vi].IKind=kuint
+                case "float":
+                    ident[ifs][vi].IKind=kfloat
+                case "string":
+                    ident[ifs][vi].IKind=kstring
+                case "int64":
+                    ident[ifs][vi].IKind=kint64
+                }
                 if lockSafety { vlock.Unlock() }
 
             } else {
@@ -2399,10 +2411,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
 
         case C_Return:
 
-            // TEST CODE
-
             // split return args by comma in evaluable lumps
-
             var rargs=make([][]Token,1)
             var curArg uint8
             evnest:=0
@@ -2428,175 +2437,61 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
             retval_count=curArg
 
             // evaluate each expr and stuff the results in an array
-            // pf("\nProcessing %+v in call to %s\n\n",argtoks,fs)
             var ev_er error
             retvalues=make([]interface{},curArg)
             for q:=0;q<int(curArg);q++ {
                 retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
                 if ev_er!=nil {
-                    // show error + halt
+                    parser.report("Could not evaluate RETURN arguments")
+                    finish(true,ERR_EVAL)
+                    break
                 }
                 // pf("return arg found [%d of %d]\n q: %+v\n a: %+v\n",q,curArg,rargs[q],v)
             }
-            // pf("value list -> %#v\n",retvalues)
 
-            // END TEST
 
-                    /* disabling tco_check for now, until we can rip userDefEval and buildRhs
-                        out of the code completely.
-                       can probably get what is needed below from the retvals just above here.
-                    */
+            /* CURRENTLY DISABLED - NEEDS ATTENTION!
+            // tail call recursion handling:
+            if inbound.TokenCount > 2 {
 
-            /*
+                var bname string
+                bname, _ = numlookup.lmget(base)
 
-            if inbound.TokenCount != 1 {
+                tco_check:=false // deny tco until we check all is well
 
-                cet := crushEvalTokens(inbound.Tokens[1:])
-                if str.Trim(cet.text, " \t") != "" { // found something
-
-                    // tail call recursion handling:
-
-                    // if tokens have this funcs base name in call, *and*
-                    // no other tokens except the call params
-                    // then....
-
-                    tco_check:=false // deny tco until we check all is well
-                    bname, _ := numlookup.lmget(base)
-
-                    if inbound.TokenCount > 2 {
-
-                        // if only a var_name/literal, then inbound.TokenCount must be 2
-                        // with lparam/param then return_0 name_1 (_2 ... )_x
-
-                        // pf("This func is  -> <%v>\n",fs)
-                        // pf("Base func is  -> <%v>\n",bname)
-                        // pf("Call token is -> <%v>\n",inbound.Tokens[1].tokText)
-
-                        if strcmp(bname,inbound.Tokens[1].tokText) {
-                            // pf("passed func same name check\n")
+                if inbound.Tokens[1].tokType==Identifier && inbound.Tokens[2].tokType==LParen {
+                    if strcmp(inbound.Tokens[1].tokText,bname) {
+                        // pf("passed func same name check\n")
+                        rbraceAt := findDelim(inbound.Tokens,RParen, 2)
+                        // pf("rb@%d tc %d\n",rbraceAt,inbound.TokenCount)
+                        if rbraceAt==inbound.TokenCount-1 {
                             tco_check=true
                         }
-
-                    }
-
-                    /*
-                    if tco_check {
-
-                        skip_reentry:=false
-
-                        // @note: this may be the only remaining use of userDefEval.
-                        //   any alternative?
-
-                        r,_:=userDefEval(parser,ifs,inbound.Tokens[1:])
-
-                        // r-> f_0 (_1 ...._2+
-
-                        // skip tco if there's *anything* left in the
-                        // expression after the initial func call
-
-                        rbraceAt := findDelim(r,RParen, 1)
-                        if rbraceAt==-1 {
-                            // @todo: add a proper error when rbraceAt==-1
-                        }
-
-                        cet := crushEvalTokens(r[rbraceAt+1:])
-                        if cet.text != "" {
-                            skip_reentry=true
-                            // pf("failed args empty check\n")
-                        }
-
-                        // now pick through r, setting each va in turn...
-
-                        if !skip_reentry {
-
-                            // split by comma
-
-                            var dargs []string
-                            evphrase:=""
-                            evnest:=0
-
-                            for term := range r[2:rbraceAt] {
-                                nt:=r[term+2]
-                                if nt.tokType==LParen { evnest++ }
-                                if nt.tokType==RParen { evnest-- }
-                                if nt.tokType!=O_Comma {
-                                    evphrase+=nt.tokText
-                                } else {
-                                    if evnest>0 { evphrase+=nt.tokText }
-                                }
-                                if evnest==0 && nt.tokType==RParen { break }
-                                if evnest==0 && (term==len(r[2:rbraceAt])-1 || nt.tokType == O_Comma) {
-                                    dargs=append(dargs,evphrase)
-                                    evphrase=""
-                                }
-                            }
-
-                            if len(dargs)==0 {
-                                skip_reentry=true // no args
-                            }
-
-                            // repopulate va with expression results from the return expressions
-
-                            full_break:=false
-
-                            if len(va) == len(dargs) {
-
-                                for q, _ := range va {
-                                    expr, err := ev(parser,ifs, dargs[q], false)
-                                    if expr==nil || err != nil {
-                                        parser.report("Could not evaluate RETURN expression")
-                                        finish(true,ERR_EVAL)
-                                        full_break=true
-                                        break
-                                    }
-                                    va[q]=expr
-                                }
-
-                            } else {
-                                skip_reentry=true
-                            }
-
-                            if full_break { break }
-
-                        }
-
-                        if !skip_reentry {
-                            vset(ifs,"@in_tco",true)
-                            pc=-1
-                            goto tco_reentry
-                        }
-
-                    }
-
-                    */
-
-
-                    // normal return (non tco)
-
-
-                    /*       
-                    expr := parser.wrappedEval(ifs, inbound.Tokens[1:]) // evaluate it
-                    if !expr.evalError {
-                        retval = expr.result
-                        if ifs<=2 {
-                            if exitCode,not_ok:=GetAsInt(expr.result); not_ok {
-                                parser.report( sf("could not evaluate RETURN parameter: %+v\n%+v", cet.text,expr.errVal))
-                                finish(true, ERR_EVAL)
-                                break
-                            } else {
-                                finish(true,exitCode)
-                                break
-                            }
-                        }
-                    } else {
-                        parser.report(  sf("could not evaluate RETURN parameter: %+v", cet.text))
-                        finish(true, ERR_EVAL)
-                        break
                     }
                 }
 
+                if tco_check {
+                    skip_reentry:=false
+                    resu,errs:=parser.evalCommaArray(ifs,rargs[0][2:len(rargs[0])-1])
+                    // populate var args for re-entry. should check errs here too...
+                    for q:=0; q<len(errs); q++ {
+                        va[q]=resu[q]
+                        if errs[q]!=nil { skip_reentry=true; break }
+                    }
+                    // no args/wrong arg count check
+                    if len(errs)!=len(va) {
+                        skip_reentry=true
+                    }
+
+                    // set tco flag if required, and perform.
+                    if !skip_reentry {
+                        vset(ifs,"@in_tco",true)
+                        pc=-1
+                        goto tco_reentry
+                    }
+                }
             }
-                    */
+            */
 
             endFunc = true
 
