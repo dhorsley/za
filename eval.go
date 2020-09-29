@@ -209,7 +209,6 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 	switch token.tokType {
 	case SYM_PLE:
         left,_:=vget(p.fs,p.preprev.tokText)
-        pf("PLE -> k %T\n",left)
         r:=ev_add(left,right)
         vset(p.fs,p.preprev.tokText,r)
         return r

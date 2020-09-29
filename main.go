@@ -834,9 +834,9 @@ func main() {
                 input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
                 if eof || broken { break }
 
-                row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
+                // row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
+                row++
                 if row>MH { row=MH ; pf("\n") }
-
                 col = 1
                 at(row, col)
 

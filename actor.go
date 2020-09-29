@@ -396,13 +396,15 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
             if _,ok:=r.(runtime.Error); ok {
                 parser.report(sf("\n%v\n",r))
                 if debug_level==20 { panic(r) }
-                os.Exit(ERR_EVAL)
+                finish(false,ERR_EVAL)
+                // os.Exit(ERR_EVAL)
             }
             err:=r.(error)
             parser.report(sf("\n%v\n",err))
             setEcho(true)
             if debug_level==20 { panic(r) }
-            os.Exit(ERR_EVAL)
+            finish(false,ERR_EVAL)
+            // os.Exit(ERR_EVAL)
         }
     }()
 

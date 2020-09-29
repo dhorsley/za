@@ -61,11 +61,17 @@ func pf(s string, va ...interface{}) {
 
     s = sf(sparkle(s), va...)
     if interactive {
-        c := str.Count(s, "\n")
-        row += c
-        col = 1
+        fmt.Print(s)
+        chpos:=0
+        c:=col
+        for ; chpos<len(s); c++ {
+            if c%MW==0          { row++; c=0 }
+            if s[chpos]=='\n'   { row++; c=0 }
+            chpos++
+        }
+    } else {
+        fmt.Print(s)
     }
-    fmt.Print(s)
 }
 
 /// apply ansi code translation to inbound strings
