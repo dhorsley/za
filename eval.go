@@ -1898,7 +1898,9 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
     }
 
     var largs=make([][]Token,1)
-    largs[0]=make([]Token,0)
+    // *sigh* think these makes can come out now. 
+    // will test for a while first though.
+    // largs[0]=make([]Token,0)
 
     if doMulti {
         curArg:=0
@@ -1924,7 +1926,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
         }
         largs=largs[:curArg]
     } else {
-        largs[0]=make([]Token,eqPos-1)
+        // largs[0]=make([]Token,eqPos-1)
         largs[0]=tks[:eqPos]
     }
 

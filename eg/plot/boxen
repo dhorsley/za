@@ -1,0 +1,19 @@
+#!/usr/bin/za
+
+mw=term_w()
+mh=term_h()
+xgap=4
+ygap=3
+edgetype="round"
+
+cls
+
+i=0
+x=0
+for y = 0 to (mh-1)/2 step ygap
+    pane define "{x_y}",y,x,mh-y*2,mw-x*2,"",edgetype
+    x=++i*xgap
+endfor
+
+at mh-1,1
+

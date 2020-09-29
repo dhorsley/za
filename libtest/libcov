@@ -7,16 +7,6 @@ test_path="."
 thresh=90
 totthresh=95
 
-# mash together remnant elements
-define from(ary,n,sep)
-    s=""
-    l=len(ary)
-    for e=n to l-1
-        s=s+ary[e]
-        on e<l-1 do s=s+sep
-    endfor
-    return s
-enddef
 
 define textline(s)
     println format("\n\n%s\n",pad(s,0,60,"-"))
@@ -67,13 +57,12 @@ foreach l in a
 
     if F[1]=="Function"
 
-        fnexpr=from(F,2," ")
+        fnexpr=join(F[3:]," ")
         words=split(fnexpr)
         if len(words)>2
             words=tail(words)
             words=tail(words)
         endif
-
 
         fname=words[0][:strpos(words[0],"(")]
         cc[curcat]=cc[curcat]+1

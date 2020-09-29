@@ -70,11 +70,11 @@ define check_dir(conf,d)
             if of>-1
                 p_rec=cp[of]
                 if p_rec.mtime != f.mtime
-                    # println ": -- [#3]time diff[#-] in {p_rec.name}"
+                    # println ": -- [#3]time diff[#-] in {=p_rec.name}"
                     mod_files_time=append(mod_files_time,p_rec.name)
                 endif
                 if p_rec.size != f.size
-                    # println ": -- [#3]size diff[#-] in {p_rec.name}"
+                    # println ": -- [#3]size diff[#-] in {=p_rec.name}"
                     if !has(mod_files_time,p_rec.name)
                         # only add to modified size files list if not
                         # already in modified times list.
@@ -105,13 +105,13 @@ define check_dir(conf,d)
         is "copy"
             # new
             foreach f in new_files
-                println "[COPY] NEW {f} to {conf.destination}"
+                println "[COPY] NEW {f} to {=conf.destination}"
                 on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
             # rem
             foreach f in rem_files
                 if conf.mirror
-                    println "[COPY] REM {f} from {conf.destination} (mirror mode)"
+                    println "[COPY] REM {f} from {=conf.destination} (mirror mode)"
                     if is_file(mkfn(conf.destination,f))
                         on !delete(mkfn(conf.destination,f)) do println ": error removing {f}"
                     endif
@@ -119,35 +119,35 @@ define check_dir(conf,d)
             endfor
             # mod time
             foreach f in mod_files_time
-                println "[COPY] MODT {f} to {conf.destination}"
+                println "[COPY] MODT {f} to {=conf.destination}"
                 on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
             # mod size
             foreach f in mod_files_size
-                println "[COPY] MODS {f} to {conf.destination}"
+                println "[COPY] MODS {f} to {=conf.destination}"
                 on !copy(mkfn(d,f),mkfn(conf.destination,f)) do println ": error copying {f}"
             endfor
         is "move"
             # new
             foreach f in new_files
-                println "[MOVE] NEW {f} to {conf.destination}"
+                println "[MOVE] NEW {f} to {=conf.destination}"
                 on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
             endfor
             # rem
             foreach f in rem_files
                 if conf.mirror
-                    println "[MOVE] REM {f} from {conf.destination} (mirror mode)"
+                    println "[MOVE] REM {f} from {=conf.destination} (mirror mode)"
                     on !delete(mkfn(conf.destination,f)) do println ": error removing {f}"
                 endif
             endfor
             # mod time
             foreach f in mod_files_time
-                println "[MOVE] MODT {f} to {conf.destination}"
+                println "[MOVE] MODT {f} to {=conf.destination}"
                 on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
             endfor
             # mod size
             foreach f in mod_files_size
-                println "[MOVE] MODS {f} to {conf.destination}"
+                println "[MOVE] MODS {f} to {=conf.destination}"
                 on !rename(mkfn(d,f),mkfn(conf.destination,f)) do println ": error moving {f}"
             endfor
         is "delete"
@@ -228,7 +228,7 @@ quit=false
 while !quit
 
     # md="{=time_dow()} {=time_hours()}:{=time_minutes()}.{=time_seconds()}"
-    # println "[watch] (freq:{c.freq}) : {md}"
+    # println "[watch] (freq:{=c.freq}) : {md}"
 
     foreach d in c.dirs
         c=check_dir(c,d)
