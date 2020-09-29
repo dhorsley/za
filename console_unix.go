@@ -18,7 +18,7 @@ func setEcho(s bool) {
         enableEcho()
     } else {
         disableEcho()
-    }    
+    }
 }
 
 func disableEcho() {
@@ -244,9 +244,11 @@ func GetCursorPos() (int,int) {
         return 0,0
     }
 
+    /*
     if ready,er:=tt.RTS(); !ready || er==nil {
         return 0,0
     }
+    */
 
     buf:=make([]byte,15,15)
     var r,c int
