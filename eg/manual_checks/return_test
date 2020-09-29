@@ -9,6 +9,6 @@ assert t()==pi()
 
 println "main function fs reference -> ",thisref()
 println "[#i1]echo $?[#i0] after exit should return 42"
-return 42
+exit 42
 
 
