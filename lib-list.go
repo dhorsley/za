@@ -266,7 +266,6 @@ func buildListLib() {
             }
         }
         switch args[0].(type) {
-        // @todo: some more need adding here...
         case []string:
             l := append(args[0].([]string), sf("%v", args[1]))
             return l, nil
@@ -287,6 +286,12 @@ func buildListLib() {
                 return nil, errors.New(sf("(l:uint8,a:%T) data types must match in append()", args[1]))
             }
             l := append(args[0].([]uint8), args[1].(uint8))
+            return l, nil
+        case []int64:
+            if "int64" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:int64,a:%T) data types must match in append()", args[1]))
+            }
+            l := append(args[0].([]int64), args[1].(int64))
             return l, nil
         case []int:
             if "int" != sf("%T", args[1]) {
@@ -1395,6 +1400,10 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return min_int(args[0].([]int)), nil
+        case []int64:
+            return min_int64(args[0].([]int64)), nil
+        case []uint:
+            return min_uint(args[0].([]uint)), nil
         case []float64:
             return min_float64(args[0].([]float64)), nil
         case []interface{}:
@@ -1411,6 +1420,10 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return max_int(args[0].([]int)), nil
+        case []int64:
+            return max_int64(args[0].([]int64)), nil
+        case []uint:
+            return max_uint(args[0].([]uint)), nil
         case []float64:
             return max_float64(args[0].([]float64)), nil
         case []interface{}:
@@ -1428,6 +1441,10 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             f = float64(avg_int(args[0].([]int)))
+        case []int64:
+            f = float64(avg_int64(args[0].([]int64)))
+        case []uint:
+            f = float64(avg_uint(args[0].([]uint)))
         case []float64:
             f = avg_float64(args[0].([]float64))
         case []interface{}:
@@ -1449,6 +1466,10 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             f = float64(sum_int(args[0].([]int)))
+        case []uint:
+            f = float64(sum_uint(args[0].([]uint)))
+        case []int64:
+            f = float64(sum_int64(args[0].([]int64)))
         case []float64:
             f = sum_float64(args[0].([]float64))
         case []interface{}:

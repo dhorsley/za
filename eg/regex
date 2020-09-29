@@ -8,7 +8,7 @@ enddef
 
 define runSubs(subs,seq)
     foreach v in subs
-        println `Sub for {v[0]},{v[1]}`
+        println `Sub for {=v[0]},{=v[1]}`
         seq=replace(seq,v[0],v[1])
     endfor
     return len(seq)

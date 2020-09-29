@@ -4,7 +4,7 @@ package main
 
 import (
 	"errors"
-//	"fmt"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -503,6 +503,24 @@ func min_int(s []int) (m int) {
 	return m
 }
 
+func min_int64(s []int64) (m int64) {
+	for i, e := range s {
+		if i == 0 || e < m {
+			m = e
+		}
+	}
+	return m
+}
+
+func min_uint(s []uint) (m uint) {
+	for i, e := range s {
+		if i == 0 || e < m {
+			m = e
+		}
+	}
+	return m
+}
+
 func min_float64(s []float64) (m float64) {
 	for i, e := range s {
 		if i == 0 || e < m {
@@ -523,6 +541,24 @@ func min_inter(s []interface{}) (m float64) {
 }
 
 func max_int(s []int) (m int) {
+	for i, e := range s {
+		if i == 0 || e > m {
+			m = e
+		}
+	}
+	return m
+}
+
+func max_int64(s []int64) (m int64) {
+	for i, e := range s {
+		if i == 0 || e > m {
+			m = e
+		}
+	}
+	return m
+}
+
+func max_uint(s []uint) (m uint) {
 	for i, e := range s {
 		if i == 0 || e > m {
 			m = e
@@ -560,7 +596,33 @@ func avg_int(s []int) (m int) {
 	if c != 0 {
 		return int(sum / c)
 	}
-	return -1
+	panic(fmt.Errorf("divide by zero generating an average"))
+}
+
+func avg_int64(s []int64) (m int64) {
+	c := float64(0)
+	sum := float64(0)
+	for _, e := range s {
+		sum += float64(e)
+		c++
+	}
+	if c != 0 {
+		return int64(sum / c)
+	}
+	panic(fmt.Errorf("divide by zero generating an average"))
+}
+
+func avg_uint(s []uint) (m uint) {
+	c := float64(0)
+	sum := float64(0)
+	for _, e := range s {
+		sum += float64(e)
+		c++
+	}
+	if c != 0 {
+		return uint(sum / c)
+	}
+	panic(fmt.Errorf("divide by zero generating an average"))
 }
 
 func avg_float64(s []float64) (m float64) {
@@ -573,7 +635,7 @@ func avg_float64(s []float64) (m float64) {
 	if c != 0 {
 		return sum / c
 	}
-	return -1
+	panic(fmt.Errorf("divide by zero generating an average"))
 }
 
 func avg_inter(s []interface{}) (m float64) {
@@ -587,7 +649,15 @@ func avg_inter(s []interface{}) (m float64) {
 	if c != 0 {
 		return sum / c
 	}
-	return -1
+	panic(fmt.Errorf("divide by zero generating an average"))
+}
+
+func sum_uint(s []uint) (m uint) {
+	sum := float64(0)
+	for _, e := range s {
+		sum += float64(e)
+	}
+	return uint(sum)
 }
 
 func sum_int(s []int) (m int) {
@@ -596,6 +666,14 @@ func sum_int(s []int) (m int) {
 		sum += float64(e)
 	}
 	return int(sum)
+}
+
+func sum_int64(s []int64) (m int64) {
+	sum := float64(0)
+	for _, e := range s {
+		sum += float64(e)
+	}
+	return int64(sum)
 }
 
 func sum_float64(s []float64) (m float64) {
