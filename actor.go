@@ -547,6 +547,8 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     if lockSafety { looplock.Unlock() }
 
 
+tco_reentry:
+
     /*
     pf("\n\nin %v \n",fs)
     pf("base  -> %v\n",base)
@@ -2437,21 +2439,9 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
             }
             retval_count=curArg
 
-            // evaluate each expr and stuff the results in an array
-            var ev_er error
-            retvalues=make([]interface{},curArg)
-            for q:=0;q<int(curArg);q++ {
-                retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
-                if ev_er!=nil {
-                    parser.report("Could not evaluate RETURN arguments")
-                    finish(true,ERR_EVAL)
-                    break
-                }
-                // pf("return arg found [%d of %d]\n q: %+v\n a: %+v\n",q,curArg,rargs[q],v)
-            }
+            // SECTION MOVED FROM HERE
+            // MOVED SECTION ENDED HERE
 
-
-            /* CURRENTLY DISABLED - NEEDS ATTENTION!
             // tail call recursion handling:
             if inbound.TokenCount > 2 {
 
@@ -2464,7 +2454,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                     if strcmp(inbound.Tokens[1].tokText,bname) {
                         // pf("passed func same name check\n")
                         rbraceAt := findDelim(inbound.Tokens,RParen, 2)
-                        // pf("rb@%d tc %d\n",rbraceAt,inbound.TokenCount)
                         if rbraceAt==inbound.TokenCount-1 {
                             tco_check=true
                         }
@@ -2492,7 +2481,20 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                     }
                 }
             }
-            */
+
+// MOVED SECTION STARTS HERE
+            // evaluate each expr and stuff the results in an array
+            var ev_er error
+            retvalues=make([]interface{},curArg)
+            for q:=0;q<int(curArg);q++ {
+                retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
+                if ev_er!=nil {
+                    parser.report("Could not evaluate RETURN arguments")
+                    finish(true,ERR_EVAL)
+                    break
+                }
+            }
+// MOVED SECTION ENDS HERE
 
             endFunc = true
 

@@ -147,6 +147,9 @@ CHANGE LOG
                     - we only keep the accumulated left-hand value not the token normally.
                     - bodge should allow us to add -=, +=, /=, *= and %= fairly easily now.
 
+        * fixed tail-call elimination (hopefully!) after the changes for multiple return 
+            values broke it. needs some more testing, but appears to be correct.
+
 
 1.0.10  new evaluator, bug fixes and documentation updates
 

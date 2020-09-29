@@ -1,0 +1,35 @@
+#!/usr/bin/za
+
+define draw()
+    x = 2*theta * cos(theta / pi)/8
+    y = theta * sin(theta / pi)/8
+    at cy+y,cx+x; print "[#"+int(c)+"]·"
+    setglob theta = theta + rotation
+    on x > width/2.0 do setglob theta = 0.0
+    setglob c=c+crate
+    on c>7 do setglob c=7
+    on c<1 do setglob c=1
+    setglob crate=(49-rand(100))/100.0
+enddef
+
+var theta     float
+var rotation  float
+
+rotation = 0.05
+width=term_w()
+height=term_h()
+cx=width/2
+cy=height/2
+pi=pi()
+c=rand(7)
+crate=0.1
+
+cls
+cursoroff()
+seed(epoch_nano_time())
+for e=0 to 2500
+    draw()
+endfor
+cursoron()
+at height-1,1
+
