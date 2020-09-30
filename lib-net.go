@@ -518,7 +518,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     case 0:
                         w.Write([]byte(""))
                     case 1:
-                        w.Write([]byte(sf("%v",tmp)))
+                        w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                     default:
                         w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                     }

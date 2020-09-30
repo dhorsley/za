@@ -98,11 +98,21 @@ CHANGE LOG
 
         * added +=, -=, *=, /= and %= for local scalars.
             - won't be adding the same for globals if i can help it.
-            - only simple locals currently supported.
-                - eventually, these ops will be supported for array + field l.h.s. 
-                    assignments, but this will have to wait until we fully incorporate
-                    the assignment operator into the evaluator. It is currently still
-                    a separate beast.
+            - (experimental) added support for array elements and struct field references
+                on the l.h.s. of the compound operators above.
+                - this is not added to -- or ++ yet.
+            - these operations are not yet supported by the SETGLOB statement.
+
+            * PLEASE NOTE! these operations are in fact slower than their long-hand equivalents.
+                a copy of the whole expression is made and then manipulated in order to
+                enable them. As the memory for the copy is allocated dynamically you should
+                avoid these operations where possibly, if you have any expectations of performance.
+
+                - these operations are in place mainly for expressiveness in code, not for
+                  performance.
+
+                - this may improve in the future, but for now, avoid where it matters.
+
 
         * added sqr and sqrt as unary operators
 
