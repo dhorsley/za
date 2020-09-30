@@ -3,7 +3,7 @@
 define draw()
     x = 2*theta * cos(theta / pi)/8
     y = theta * sin(theta / pi)/8
-    at cy+y,cx+x; print "[#"+int(c)+"]·"
+    at cy+y,cx+x; print "[#"+int(c)+"]ð"
     setglob theta = theta + rotation
     on x > width/2.0 do setglob theta = 0.0
     setglob c=c+crate

@@ -9,7 +9,19 @@
 1.0.11  fixes and evaluator updates
 
         TODO
-        add tail cail elimination back in
+        ----
+
+
+
+        Examine possibility for Icon-like generators
+
+          Now that we have multiple return values and they are returned as an array to be
+          processed we could possibly do something similar to the Icon language here. Possibly
+          not too - need to have a look. may need something 'yield'-like to permit it.
+
+
+        PARTIAL COMPLETION
+        ------------------
 
         Pointer Operations
         -------------------------------------------------------------------------------------------

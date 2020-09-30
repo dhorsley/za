@@ -52,11 +52,11 @@ func (p *leparser) Init() {
 		SYM_Pling     : {15,p.unary, nil},              // Logical Negation
         SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
         SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
-        SYM_PLE       : {5,nil,p.binaryLed},          // a+=b
-        SYM_MIE       : {5,nil,p.binaryLed},          // a-=b
-        SYM_MUE       : {5,nil,p.binaryLed},          // a*=b
-        SYM_DIE       : {5,nil,p.binaryLed},          // a/=b
-        SYM_MOE       : {5,nil,p.binaryLed},          // a%=b
+//        SYM_PLE       : {5,nil,p.binaryLed},          // a+=b
+//        SYM_MIE       : {5,nil,p.binaryLed},          // a-=b
+//        SYM_MUE       : {5,nil,p.binaryLed},          // a*=b
+//        SYM_DIE       : {5,nil,p.binaryLed},          // a/=b
+//        SYM_MOE       : {5,nil,p.binaryLed},          // a%=b
         SYM_POW       : {40,nil,p.binaryLed},           // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
@@ -73,23 +73,6 @@ func (p *leparser) reserved(token Token) (interface{}) {
 }
 
 func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
-
-    /*
-    defer func() {
-        if r := recover(); r != nil {
-            if _,ok:=r.(runtime.Error); ok {
-                p.report(sf("\n%v\n",r))
-                if debug_level==20 { panic(r) }
-                os.Exit(ERR_EVAL)
-            }
-            err:=r.(error)
-            p.report(sf("\n%v\n",err))
-            setEcho(true)
-            if debug_level==20 { panic(r) }
-            // os.Exit(ERR_EVAL)
-        }
-    }()
-    */
 
     p.tokens = toks
     p.pos    = 0
@@ -207,16 +190,7 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
     }
 
 	switch token.tokType {
-	case SYM_PLE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_add(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-	case SYM_MIE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_sub(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
+
 	case O_Plus:
         return ev_add(left,right)
 	case O_Minus:
@@ -227,6 +201,23 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 		return ev_div(left,right)
 	case O_Percent:
 		return ev_mod(left,right)
+
+    case O_Assign:
+        panic(fmt.Errorf("assignment is not a valid operation in expressions"))
+        // vset(p.fs,p.preprev.tokText,right)
+        // return right
+
+    /* handled by wrappedEval
+    case SYM_PLE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_add(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
+	case SYM_MIE:
+        left,_:=vget(p.fs,p.preprev.tokText)
+        r:=ev_sub(left,right)
+        vset(p.fs,p.preprev.tokText,r)
+        return r
 	case SYM_MUE:
         left,_:=vget(p.fs,p.preprev.tokText)
         r:=ev_mul(left,right)
@@ -242,6 +233,8 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
         r:=ev_mod(left,right)
         vset(p.fs,p.preprev.tokText,r)
         return r
+    */
+
 	case SYM_EQ:
         return deepEqual(left,right)
 	case SYM_NE:
@@ -270,9 +263,6 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 		return asInteger(left) ^ asInteger(right)
     case SYM_POW:
         return ev_pow(left,right)
-    case O_Assign:
-        vset(p.fs,p.preprev.tokText,right)
-        return right
 	}
 	return left
 }
@@ -1388,310 +1378,11 @@ func interpolate(fs uint64, s string) (string) {
     return s
 }
 
-/*
-/// find user defined functions in a token stream and evaluate them
-func userDefEval(p *leparser,ifs uint64, tokens []Token) ([]Token,bool) {
-
-    var splitPoint int
-    var callOnly bool
-    var lhs Token
-    var termsActive bool
-
-    // return immediately if malformed with = at start
-    if tokens[0].tokType == O_Assign {
-        return []Token{},true
-    }
-
-    // check for assignment
-    for t := range tokens {
-        if tokens[t].tokType == O_Assign {
-            splitPoint = t
-            break
-        }
-    }
-
-    // searching for equality, in all the wrong places...
-    if splitPoint==0 {
-        callOnly=true
-        splitPoint--  // reduce so that all of expr is used in for loop below
-    } else {
-        lhs = tokens[0]
-        callOnly = false
-        if !callOnly && splitPoint!=1 {
-            if splitPoint == len(tokens)-1 {
-                p.report("Right-hand side is missing.")
-            }
-            finish(false, ERR_SYNTAX)
-            return []Token{},true
-        }
-    }
-
-    // function argument lookup
-    var lfa int
-    if !callOnly {
-        lhsnum, _ := fnlookup.lmget(lhs.tokText)
-        lfa=len(functionArgs[ifs][lhsnum])
-    }
-
-
-    // now work through tokens beyond splitPoint
-    // if is ident followed by paramOpen, then look for the paramClose.
-
-    newTermList:=[]Token{}
-
-    for t:=range tokens[splitPoint+1:] {
-        if tokens[t].tokType==Identifier {
-            // brace next? or leave it be.
-            indent:=0
-            endOfList:=0 // if still 0 at end, then term list not completed correctly
-            for nt:=range tokens[t+1:] {
-                if termsActive && str.IndexByte(tokens[nt].tokText,'(') != -1 {
-                    indent++
-                    termsActive=true
-                }
-                if termsActive && str.IndexByte(tokens[nt].tokText,')') != -1 {
-                    if indent>0 {
-                        // still nested
-                        indent--
-                    } else {
-                        // reached end of term list
-                        endOfList=nt+1 // close param position, will take tokens up to endOfList-1
-                        break
-                    }
-                }
-            }
-
-            if indent>0 && endOfList==0 {
-                // something fishy.
-                p.report("unterminated function call?")
-                finish(false,ERR_SYNTAX)
-                return []Token{},true
-            }
-
-            // once close detected, evaluate each term inside params
-            // build a new list of terms
-
-            if indent==0 && endOfList!=0 {
-                // all should be well, fn found, terms found, properly terminated.
-                termList:=tokens[t+1:endOfList]
-                expectingComma:=false
-
-                for nt:=range termList {
-                    if nt>=lfa {
-                        p.report(sf("%s expected %d arguments and received at least %d arguments",lhs.tokText,lfa,nt))
-                        finish(false,ERR_SYNTAX)
-                        return []Token{},true
-                    }
-                    // eval each term and ensure comma between each
-                    if tokens[nt].tokType!=O_Comma {
-                        if expectingComma {
-                            // syntax error
-                            p.report("missing comma in parameter list")
-                            finish(false,ERR_SYNTAX)
-                            return []Token{},true
-                        } else {
-                            expectingComma=true
-                        }
-                    } else {
-                        if expectingComma {
-                            expectingComma=false
-                        } else {
-                            p.report("missing a term in parameter list")
-                            finish(false,ERR_SYNTAX)
-                            return []Token{},true
-                        }
-                    }
-                    // resolve down to list of terms with user functions all evaluated
-                    r,e:=userDefEval(p,ifs,tokens[t+2:t+nt+2])
-                    if e {
-                        p.report("deep error in user function evaluation.")
-                        finish(false,ERR_SYNTAX)
-                        return []Token{},true
-                    }
-                    newTermList=append(newTermList,r...)
-                } // for
-            } // if indent
-            t=endOfList+1
-        } else {
-            newTermList=append(newTermList,tokens[t])
-        } // if ident
-    }
-
-    // figure out what is on the RHS
-    //   we need to distinguish za functions (rather than stdlib calls),
-
-    var rhs []Token
-    var okay bool = false
-
-    // replace za defined function calls with their results...
-    if termsActive {
-        rhs, okay = buildRhs(p,ifs, newTermList)
-        if ! okay {
-            return []Token{},true
-        }
-    } else {
-        // no sign of a func call, so use original expression
-        rhs = tokens[splitPoint+1:]
-    }
-
-    // construct a result.
-
-    var combined []Token
-    if callOnly {
-        combined = append(combined, rhs...)
-    } else {
-        combined = append(combined, lhs)
-        combined = append(combined, Token{tokType: O_Assign, tokText: "="})
-        combined = append(combined, rhs...)
-    }
-
-    return combined,false
-
-}
-*/
-
-// buildRhs does not generate any result. it populates the original expression with
-// evaluated results from za functions. the final expression still needs to be evaluated
-// by the normal evaluator.
-
-/*
-func buildRhs(parser *leparser,ifs uint64, rhs []Token) ([]Token, bool) {
-
-    var new_rhs = [31]Token{}
-    rhs_tail := 0
-
-    var isfunc bool
-    var previous = Token{}
-    var argString string
-    for _, p := range rhs {
-
-        new_rhs[rhs_tail] = p
-        rhs_tail++
-
-        if p.tokType == Expression {
-            if previous.tokType == Identifier {
-                _, isfunc = fnlookup.lmget(previous.tokText)
-
-                if isfunc {
-
-                    if !hasOuterBraces(p.tokText) {
-                        pf("Error: functions must be called with a braced argument set.\n")
-                        finish(false, ERR_SYNTAX)
-                        return []Token{},false
-                    }
-
-                    argString = stripOuter(p.tokText, '(')
-                    argString = stripOuter(argString, ')')
-
-                    // evaluate args
-                    var iargs []interface{}
-                    var argnames []string
-
-                    // populate inbound parameters to the za function call, with evaluated versions of each.
-                    if argString != "" {
-                        argnames = str.Split(argString, ",")
-                        for k, a := range argnames {
-                            aval, err := ev(parser,ifs, a, false)
-                            // pf("brhs - ev : %v -> %v\n",a,aval)
-                            if err != nil {
-                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], ifs, err)
-                                finish(false, ERR_EVAL)
-                                return []Token{},false
-                            }
-                            iargs = append(iargs, aval)
-                        }
-                    }
-
-                    // make Za function call
-
-                    // debug(20,"gnfs called from buildRhs()\n")
-                    loc,id := GetNextFnSpace(previous.tokText+"@")
-                    if lockSafety { calllock.Lock() }
-                    lmv,_:=fnlookup.lmget(previous.tokText)
-
-                    calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline:parser.line, retvar: "@#"}
-                    if lockSafety { calllock.Unlock() }
-
-                    Call(MODE_NEW, loc, ciRhsb, iargs...)
-
-                    // handle the returned result
-                    if _, ok := VarLookup(ifs, "@#"); ok {
-
-                        new_tok := Token{}
-
-                        // replace the expression
-                        temp,_ := vget(ifs, "@#")
-                        switch temp.(type) {
-                        case bool:
-                            // true and false are both treated as identifiers.
-                            new_tok.tokType = Identifier
-                        }
-
-                        new_tok.tokVal = temp
-
-                        // replace tail with result, don't add expression to end.
-                        rhs_tail--
-                        new_rhs[rhs_tail-1] = new_tok
-
-                    } else {
-                        rhs_tail--
-                    }
-
-                }
-            }
-        }
-
-        previous = p
-
-    }
-
-    return new_rhs[:rhs_tail], true
-
-}
-*/
-
-/*
-func fastConv(s string) interface{} {
-
-    if len(s)==0 { return nil }
-
-    isfloat:=false
-    isneg:=false
-
-    if len(s)>1 && s[0]=='-' { isneg=true; s=s[1:] }
-
-    // this is not 100% effective, it's just meant to filter
-    // out some easy return values.
-
-    for _, v := range s {
-        if v=='.' { isfloat=true; continue }
-        if v=='e' { continue }
-        if v<'0' || v>'9' { break }
-    }
-
-    pn,e := strconv.ParseFloat(s,64)
-
-    // @note: not checking if is string here..
-    if e==nil {
-        if !isfloat {
-            if isneg { return int(-pn) }
-            return int(pn)
-        }
-        return pn
-    }
-    return s
-}
-*/
 
 // evaluate an expression string using a modified version of the third-party goval lib
 func ev(parser *leparser,fs uint64, ws string, interpol bool) (result interface{}, err error) {
 
     // pf("ev: received: %v\n",ws)
-
-    // replace interpreted RHS vars with ident[fs] values
-    // if interpol {
-    //     ws = interpolate(fs, ws)
-    // }
 
     // build token list from string 'ws'
     tt := Error
@@ -1709,11 +1400,9 @@ func ev(parser *leparser,fs uint64, ws string, interpol bool) (result interface{
 
     // evaluate token list
 
-    // pf("\n\n->> ev calling with '%v'\n : '%+v'\n",ws,toks)
     if len(toks)!=0 {
         result, err = parser.Eval(fs,toks)
     }
-    // pf("returned result [%T] '%+v'\n",result,result)
 
     if result==nil { // could not eval
         if err!=nil {
@@ -1740,110 +1429,15 @@ func ev(parser *leparser,fs uint64, ws string, interpol bool) (result interface{
 /// convert a token stream into a single expression struct
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
-    // token := intoks[0]
-
-    /* should never happen
-    if token.tokType == SingleComment {
-        return ExpressionCarton{}
-    }
-    */
-
-    // var id str.Builder
-    // id.Grow(16)
     var crushedOpcodes str.Builder
     crushedOpcodes.Grow(16)
 
-    // var assign bool
-
-        for t:=range intoks {
-            crushedOpcodes.WriteString(intoks[t].tokText)
-        }
-
-        return ExpressionCarton{text: crushedOpcodes.String(), assign: false, assignVar: ""}
-
-}
-
-/*
-    switch {
-    case tc == 1:
-        // definitely trying as an expression only
-        if token.tokVal==nil {
-            crushedOpcodes.WriteString(token.tokText)
-        } else {
-            crushedOpcodes.WriteString(sf("%v",token.tokVal))
-        }
-
-    case tc == 2:
-        // reform arg and try as expression
-        for t := range intoks[0:] {
-            token := intoks[t]
-            if token.tokVal==nil {
-                crushedOpcodes.WriteString(token.tokText)
-            } else {
-                crushedOpcodes.WriteString(sf("%v",token.tokVal))
-            }
-        }
-
-    case tc > 2:
-        // find assign pos
-        var eqPos int
-        for e:=1;e<tc;e++ {
-            if intoks[e].tokType==O_Assign {
-                eqPos=e
-                break
-            }
-        }
-
-        // check for identifier c_equals expression
-        // if eqPos>0 && intoks[eqPos].tokType == O_Assign {
-        if eqPos>0 {
-            assign = true
-            for t:=0;t<eqPos; t++ {
-                id.WriteString(intoks[t].tokText)
-            }
-            for t := range intoks[eqPos+1:] {
-                token := intoks[eqPos+1+t]
-                if token.tokVal==nil {
-                    crushedOpcodes.WriteString(token.tokText)
-                } else {
-                    crushedOpcodes.WriteString(sf("%v",token.tokVal))
-                }
-            }
-        } else {
-            for t := range intoks[0:] {
-                token := intoks[t]
-                if token.tokVal==nil {
-                    crushedOpcodes.WriteString(token.tokText)
-                } else {
-                    crushedOpcodes.WriteString(sf("%v",token.tokVal))
-                }
-            }
-        }
+    for t:=range intoks {
+        crushedOpcodes.WriteString(intoks[t].tokText)
     }
 
-    return ExpressionCarton{text: crushedOpcodes.String(), assign: assign, assignVar: id.String()}
+    return ExpressionCarton{text: crushedOpcodes.String(), assign: false, assignVar: ""}
 
-}
-
-*/
-
-
-// currently unused?
-func tokenise(s string) (toks []Token) {
-    tt := Error
-    cl := 1
-    for p := 0; p < len(s); p++ {
-        t, tokPos, eol, eof := nextToken(s, &cl, p, tt)
-        tt = t.tokType
-        if tokPos != -1 {
-            p = tokPos
-        }
-        toks = append(toks, Token{tokType: tt, tokText: t.tokText})
-        if eof || eol {
-            break
-        }
-    }
-    return toks
 }
 
 
@@ -1852,20 +1446,66 @@ func tokenise(s string) (toks []Token) {
 
 func (p *leparser) wrappedEval(fs uint64, tks []Token) (expr ExpressionCarton) {
 
-    // .Eval not currently returning an assignment flag, so check manually for it
+    // search for any assignment operator +=,-=,*=,/=,%=
+    // compound the terms beyond the assignment symbol and eval them.
 
     eqPos:=-1
+    var newEval []Token
+    var err error
+
+  floop1:
     for k,_:=range tks {
-        if tks[k].tokType==O_Assign {
-            expr.assign=true
+        switch tks[k].tokType {
+        // use whichever is encountered first
+        case O_Assign:
             eqPos=k
-            break
+            expr.result, err = p.Eval(fs,tks[k+1:])
+            break floop1
+        case SYM_PLE:
+            newEval=make([]Token,len(tks))
+            copy(newEval,tks)
+            newEval[k]=Token{tokType:O_Plus}
+            eqPos=k
+            expr.result, err = p.Eval(fs,newEval)
+            break floop1
+        case SYM_MIE:
+            newEval=make([]Token,len(tks))
+            copy(newEval,tks)
+            newEval[k]=Token{tokType:O_Minus}
+            expr.result, err = p.Eval(fs,newEval)
+            eqPos=k
+            break floop1
+        case SYM_MUE:
+            newEval=make([]Token,len(tks))
+            copy(newEval,tks)
+            newEval[k]=Token{tokType:O_Multiply}
+            expr.result, err = p.Eval(fs,newEval)
+            eqPos=k
+            break floop1
+        case SYM_DIE:
+            newEval=make([]Token,len(tks))
+            copy(newEval,tks)
+            newEval[k]=Token{tokType:O_Divide}
+            expr.result, err = p.Eval(fs,newEval)
+            eqPos=k
+            break floop1
+        case SYM_MOE:
+            newEval=make([]Token,len(tks))
+            copy(newEval,tks)
+            newEval[k]=Token{tokType:O_Percent}
+            tks[k]=Token{tokType:O_Percent}
+            expr.result, err = p.Eval(fs,newEval)
+            eqPos=k
+            break floop1
         }
     }
 
-    // compound the terms beyond the assignment symbol and eval them.
-    var err error
-    expr.result, err = p.Eval(fs,tks[eqPos+1:])
+    if eqPos!=-1 {
+        expr.assign=true
+    } else {
+        expr.result, err = p.Eval(fs,tks)
+    }
+
     if err!=nil {
         expr.evalError=true
         expr.errVal=err
@@ -1886,6 +1526,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
     // (right) rfs is the function space to evaluate with (calculating indices expressions, etc)
 
     // pf("doAssign called with tokens: %+v\n",tks)
+    // pf("doAssign inbound assign?   : %+v\n",expr.assign)
     // pf("doAssign inbound results   : %#v\n",expr.result)
 
     var err error
