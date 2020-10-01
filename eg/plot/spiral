@@ -1,9 +1,18 @@
 #!/usr/bin/za
 
+
+define waitkey()
+    keypress()
+    setglob quit=true
+enddef
+
 define draw()
     x = 2*theta * cos(theta / pi)/8
     y = theta * sin(theta / pi)/8
-    at cy+y,cx+x; print "[#"+int(c)+"]ð"
+    px=cx+x; py=cy+y
+    if px>0 && py>0 && px<width && py<height
+        at py,px; print "[#"+int(c)+"]·"
+    endif
     setglob theta = theta + rotation
     on x > width/2.0 do setglob theta = 0.0
     setglob c=c+crate
@@ -12,8 +21,8 @@ define draw()
     setglob crate=(49-rand(100))/100.0
 enddef
 
-var theta     float
 var rotation  float
+var theta     float
 
 rotation = 0.05
 width=term_w()
@@ -23,13 +32,26 @@ cy=height/2
 pi=pi()
 c=rand(7)
 crate=0.1
+bounce=0.025
+maxrot=13.0
 
 cls
-cursoroff()
 seed(epoch_nano_time())
-for e=0 to 2500
-    draw()
-endfor
+
+quit=false
+async whand waitkey()
+
+while !quit
+    cls
+    cursoroff()
+    theta=0.0
+    # at 1,1; print "[#b3][#6]Rotation ",rotation,"[##][#-]     "
+    for e=0 to 1800
+        draw()
+    endfor
+    rotation+=bounce*e()/5
+    on rotation>maxrot || rotation<0.0 do bounce=-bounce
+endwhile
 cursoron()
 at height-1,1
 

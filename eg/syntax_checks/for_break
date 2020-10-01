@@ -10,10 +10,13 @@ while x<100
     x=x+1
 
     if x==50
+        println "counting down..."
         for f = 100 to 51 step -1
             println f
         endfor
+        println "done."
         break
+        println "i should not be visible"
     endif
 
 endwhile

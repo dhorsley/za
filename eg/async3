@@ -11,7 +11,9 @@ locks(true)
 
 define f()
     # generally, do some work in here..
-    datecmd="/usr/bin/date --rfc-3339=ns"
+    datepath="/usr/bin"
+    on release_id()=="ubuntu" do datepath="/bin"
+    datecmd="{datepath}/date --rfc-3339=ns"
     on start(os(),"freebsd") do datecmd="date"
     z =| {datecmd}
     pause rand(2000)
