@@ -5,7 +5,7 @@ struct T
     b bool
     c string
     d float64
-    e uint64
+    e uint
 endstruct
 
 showstruct
