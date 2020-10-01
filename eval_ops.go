@@ -2,7 +2,7 @@
 package main
 
 import (
-    "errors"
+//    "errors"
     "fmt"
     "math"
     "net/http"
@@ -458,7 +458,7 @@ func ev_shift_right(left,right interface{}) (interface{}) {
 		return int1 >> uint2
 	}
 
-    panic("shift operations only work with integers")
+    panic(fmt.Errorf("shift operations only work with integers"))
 }
 
 func unaryNegate(val interface{}) (interface{}) {
@@ -466,7 +466,7 @@ func unaryNegate(val interface{}) (interface{}) {
     case bool:
         return !i
     }
-    panic("cannot negate a non-bool")
+    panic(fmt.Errorf("cannot negate a non-bool"))
 }
 
 func unaryPlus(val interface{}) (interface{}) {
@@ -612,7 +612,6 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
 	int1, int1OK := val1.(int)
 	int2, int2OK := val2.(int)
-
 	if int1OK && int2OK {
 		return compareInt(int1, int2, operation)
 	}
@@ -797,9 +796,9 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                 case reflect.Bool:
                     return f.Bool()
                 case reflect.Int:
-                    return f.Int()
+                    return int(f.Int())
                 case reflect.Int64:
-                    return int64(f.Int())
+                    return int(f.Int())
                 case reflect.Float64:
                     return f.Float()
                 case reflect.Uint:
@@ -926,7 +925,7 @@ func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            panic(errors.New(sf("element '%d' is out of range in '%v'",field.(int),obj)))
+            panic(fmt.Errorf("element '%d' is out of range in '%v'",field.(int),obj))
 
         }
 
