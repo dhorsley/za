@@ -1,0 +1,170 @@
+#!/usr/bin/za
+
+struct object
+    type    string
+    bg      int
+    fg      int
+    text    string
+    h       int
+    w       int
+    x       float
+    y       float
+    dx      float
+    dy      float
+    px      float
+    py      float
+endstruct
+
+define push(obj,direction,dist)
+    when direction
+    is "left"
+        obj.dx=float(-dist)
+    is "right"
+        obj.dx=float(dist)
+    is "down"
+        obj.dy=float(dist)
+    is "up"
+        obj.dy=float(-dist)
+    endwhen
+    return obj
+enddef
+
+define collides(o)
+    i=objects[o]
+    for e=0 to objects.len-1
+        on e==o || objects[e]==nil do continue
+        j=objects[e]
+        if i.x+i.dx>=objects[e].x     && i.x+i.dx<=objects[e].x+objects[e].w
+            if i.y+i.dy>=objects[e].y && i.y+i.dy<=objects[e].y+objects[e].h
+                return true
+            endif
+        endif
+    endfor
+    return false
+enddef 
+
+define moveall()
+    for e=0 to objects.len-1
+        on objects[e]==nil do continue
+        o=objects[e]
+        o.px=o.x; o.py=o.y
+        o.x+=o.dx
+        o.y+=o.dy
+        if collides(e)
+            if o.dx<o.dy
+                o.dx=-o.dx
+            else
+                o.dy=-o.dy
+            endif
+            on o.bg>0 do o.bg-=1
+        endif
+        if o.x<=1        ; o.dx=-o.dx; endif
+        if o.x>=term_w() ; o.dx=-o.dx; endif
+        if o.y<=1        ; o.dy=-o.dy; endif
+        if o.y>=term_h() ; o.dy=-o.dy; endif
+        setglob objects[e]=o
+    endfor
+enddef 
+
+define show(obj_list)
+    foreach o in obj_list
+        if o!=nil
+            at int(o.y),int(o.x)
+            print "[#b"+o.bg+"][#"+o.fg+"]"+o.text+"[#-][##]"
+        endif
+    endfor
+enddef
+
+define hide(obj_list)
+    foreach o in obj_list
+        if o!=nil
+            on int(o.px)==int(o.x) && int(o.py)==int(o.y) do continue
+            at int(o.py),int(o.px)
+            print pad(" ",-1,o.w," ")
+        endif
+    endfor
+enddef
+
+define object_add_text(n,label,x,y,bg,fg)
+    init obj object
+    obj.text=label
+    obj.fg=fg
+    obj.bg=int(bg)
+    obj.h=1
+    obj.w=label.len
+    obj.x=x.float
+    obj.y=y.float
+    obj.px=x.float
+    obj.py=y.float
+    setglob objects[n]=obj
+enddef
+
+define waitkey()
+    setglob quit=false
+    keypress()
+    setglob quit=true
+    at term_h(),1
+    cursoron()
+enddef
+
+
+#
+# MAIN
+#
+
+async retwait waitkey()
+
+init objects mixed 100
+
+cls
+cursoroff()
+
+# create some objects
+# object_add_text(0,"demo",1,1,6,2)
+# object_add_text(1,"·",term_w()/2,term_h()/2,3,7)
+# object_add_text(2,
+#     pad(" ",-1,term_w()," "),
+#     1,term_h()/2,
+#     rand(7),0
+# )
+# objects[0].dx=0.03
+# objects[0].dy=0.01
+# objects[1].dx=0.1
+# objects[1].dy=-0.02
+# objects[2].dx=0.0
+# objects[2].dy=0.1
+
+seed(epoch_nano_time())
+for e=50 to 99
+    object_add_text(e,chr(33+rand(10)),rand(term_w()),rand(term_h()),rand(7),rand(7))
+    objects[e].dx=(50-rand(100))/50.0
+    objects[e].dy=(50-rand(100))/100.0
+endfor
+
+
+# anim loop
+
+quit=false
+
+while !quit
+    objects.show
+    moveall()
+    objects.hide
+
+    # quit when everthing has collided
+    colbreak=true
+    for e=0 to objects.len-1
+        on objects[e]==nil do continue
+        o=objects[e]
+        if o.bg>0
+            colbreak=false
+            break
+        endif
+    endfor
+    on colbreak do quit=true
+
+endwhile
+
+at term_h(),1
+cursoron()
+

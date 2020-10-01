@@ -690,18 +690,19 @@ tco_reentry:
             // this needs reworking, same as C_Init:
 
             var tb bool
-            var tu64 uint64
+            // var tu64 uint64
+            var tu uint
             var ti int
-            var ti64 int64
+            // var ti64 int64
             var tf64 float64
             var ts string
 
             // instantiate fields with an empty expected type:
             typemap:=make(map[string]reflect.Type)
             typemap["bool"]     = reflect.TypeOf(tb)
-            typemap["uint"]     = reflect.TypeOf(tu64)
+            typemap["uint"]     = reflect.TypeOf(tu)
             typemap["int"]      = reflect.TypeOf(ti)
-            typemap["int64"]    = reflect.TypeOf(ti64)
+            // typemap["int64"]    = reflect.TypeOf(ti64)
             typemap["float"]    = reflect.TypeOf(tf64)
             typemap["string"]   = reflect.TypeOf(ts)
 
@@ -723,8 +724,8 @@ tco_reentry:
                     ident[ifs][vi].IKind=kfloat
                 case "string":
                     ident[ifs][vi].IKind=kstring
-                case "int64":
-                    ident[ifs][vi].IKind=kint64
+                // case "int64":
+                //     ident[ifs][vi].IKind=kint64
                 }
                 if lockSafety { vlock.Unlock() }
 
@@ -2052,27 +2053,21 @@ tco_reentry:
                     // move this later:
                     var tb bool
                     var tu8 uint8
-                    var tu64 uint64
+                    var tu uint
                     var ti int
-                    var ti64 int64
                     var tf64 float64
                     var ts string
                     var atint   []interface{}
                     var ats     []string
-                    /* not supported yet:
-                    var ati     []int
-                    var atf     []float64
-                    var atb     []bool
-                    */
 
                     // instantiate fields with an empty expected type:
                     typemap:=make(map[string]reflect.Type)
                     typemap["bool"]     = reflect.TypeOf(tb)
                     typemap["byte"]     = reflect.TypeOf(tu8)
                     typemap["uint8"]    = reflect.TypeOf(tu8)
-                    typemap["uint64"]   = reflect.TypeOf(tu64)
+                    typemap["uint64"]   = reflect.TypeOf(tu)
                     typemap["int"]      = reflect.TypeOf(ti)
-                    typemap["int64"]    = reflect.TypeOf(ti64)
+                    // typemap["int64"]    = reflect.TypeOf(ti64)
                     typemap["float"]    = reflect.TypeOf(tf64)
                     typemap["float64"]  = reflect.TypeOf(tf64)
                     typemap["string"]   = reflect.TypeOf(ts)
