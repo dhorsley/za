@@ -315,9 +315,9 @@ func buildConversionLib() {
 		}
 		i, invalid := GetAsUint(args[0])
 		if !invalid {
-			return uint64(i), nil
+			return i, nil
 		}
-		return uint64(0), errors.New(sf("could not convert [%T] (%v) to integer in uint()",args[0],args[0]))
+		return uint(0), errors.New(sf("could not convert [%T] (%v) to integer in uint()",args[0],args[0]))
 	}
 
 	slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}

@@ -152,28 +152,28 @@ func GetAsInt(expr interface{}) (int, bool) {
     return 0, true
 }
 
-func GetAsUint(expr interface{}) (uint64, bool) {
+func GetAsUint(expr interface{}) (uint, bool) {
     switch i := expr.(type) {
     case float64:
-        return uint64(i), false
+        return uint(i), false
     case int:
-        return uint64(i), false
+        return uint(i), false
     case uint8:
-        return uint64(i), false
+        return uint(i), false
     case uint64:
-        return i, false
+        return uint(i), false
     case int64:
-        return uint64(i), false
+        return uint(i), false
     case uint:
-        return uint64(i), false
+        return i, false
     case string:
         p, e := strconv.ParseFloat(i, 64)
         if e == nil {
-            return uint64(p), false
+            return uint(p), false
         }
     default:
     }
-    return uint64(0), true
+    return uint(0), true
 }
 
 // EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
@@ -451,12 +451,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
 
     tco:=false
 
-    //
-    // re-entry point for recursive tail calls
-    //
-
-// tco_reentry:
-
     if varmode == MODE_NEW {
 
         // create the local variable storage for the function
@@ -568,7 +562,6 @@ tco_reentry:
     }
     if lockSafety { farglock.RUnlock() }
 
-
     finalline = len(functionspaces[base])
 
     inside_test := false            // are we currently inside a test bock
@@ -589,11 +582,13 @@ tco_reentry:
     for {
 
         pc++  // program counter, equates to each Phrase struct in the function
+
+
         parser.stmtline=pc
 
-        si=sig_int
+        // si=sig_int // <-- this should have a lock around it, but it's only going to conflict at times we don't care about.
 
-        if pc >= finalline || endFunc || si {
+        if pc >= finalline || endFunc || sig_int {
             break
         }
 
@@ -610,10 +605,18 @@ tco_reentry:
             continue
         }
 
+    ///////////////////////////////////////////////////////////////////////////////////
+
         // finally... start processing the statement.
-   ondo_reenter:
+
+     ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
+                    //  we want to leave the program counter unaffected.
 
         statement = inbound.Tokens[0]
+
+    ///////////////////////////////////////////////////////////////////////////////////
+        // pf("[#b7][#2]%5d : %+v[##][#-]\n",pc,inbound.Tokens)
+    ///////////////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
         if defining && statement.tokType != C_Enddef {
@@ -690,10 +693,8 @@ tco_reentry:
             // this needs reworking, same as C_Init:
 
             var tb bool
-            // var tu64 uint64
             var tu uint
             var ti int
-            // var ti64 int64
             var tf64 float64
             var ts string
 
@@ -702,7 +703,6 @@ tco_reentry:
             typemap["bool"]     = reflect.TypeOf(tb)
             typemap["uint"]     = reflect.TypeOf(tu)
             typemap["int"]      = reflect.TypeOf(ti)
-            // typemap["int64"]    = reflect.TypeOf(ti64)
             typemap["float"]    = reflect.TypeOf(tf64)
             typemap["string"]   = reflect.TypeOf(ts)
 
@@ -724,8 +724,6 @@ tco_reentry:
                     ident[ifs][vi].IKind=kfloat
                 case "string":
                     ident[ifs][vi].IKind=kstring
-                // case "int64":
-                //     ident[ifs][vi].IKind=kint64
                 }
                 if lockSafety { vlock.Unlock() }
 
@@ -962,7 +960,7 @@ tco_reentry:
 
                 if l==0 {
                     // skip empty expressions
-                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_Foreach}, []uint8{C_Endfor})
+                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
                     if !endfound {
                         parser.report(  "Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
@@ -1166,9 +1164,9 @@ tco_reentry:
                 }
 
                 // figure end position
-                endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_Foreach}, []uint8{C_Endfor})
+                endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
                 if !endfound {
-                    parser.report(  "Cannot determine the location of a matching ENDFOR.")
+                    parser.report("Cannot determine the location of a matching ENDFOR.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -1225,12 +1223,12 @@ tco_reentry:
                 if err==nil && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
-                    parser.report(  "Could not evaluate start expression in FOR")
+                    parser.report("Could not evaluate start expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                parser.report( "Missing expression in FOR statement?")
+                parser.report("Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1244,12 +1242,12 @@ tco_reentry:
                 if err==nil && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
                 } else {
-                    parser.report(  "Could not evaluate end expression in FOR")
+                    parser.report("Could not evaluate end expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                parser.report( "Missing expression in FOR statement?")
+                parser.report("Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1276,7 +1274,7 @@ tco_reentry:
                 step = fstep
             }
             if step == 0 {
-                parser.report(  "This is a road to nowhere. (STEP==0)")
+                parser.report("This is a road to nowhere. (STEP==0)")
                 finish(true, ERR_EVAL)
                 break
             }
@@ -1287,9 +1285,9 @@ tco_reentry:
             }
 
             // figure end position
-            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For}, []uint8{C_Endfor})
+            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
             if !endfound {
-                parser.report(  "Cannot determine the location of a matching ENDFOR.")
+                parser.report("Cannot determine the location of a matching ENDFOR.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1310,7 +1308,6 @@ tco_reentry:
                 counter: fstart, condEnd: fend,
                 repeatAction: direction, repeatActionStep: step,
             }
-
             // store loop start condition
             vset(ifs, inter, fstart)
 
@@ -1320,9 +1317,17 @@ tco_reentry:
             if lockSafety { lastlock.Unlock() }
 
             // make sure start is not more than end, if it is, send it to the endfor
-            if fstart>fend {
-                pc=pc+enddistance-1
-                break
+            switch direction {
+            case ACT_INC:
+                if fstart>fend {
+                    pc=pc+enddistance-1
+                    break
+                }
+            case ACT_DEC:
+                if fstart<fend {
+                    pc=pc+enddistance-1
+                    break
+                }
             }
 
 
@@ -1332,7 +1337,7 @@ tco_reentry:
             if lockSafety { lastlock.Lock() }
 
             if depth[ifs]==0 {
-                parser.report(sf("trying to get lastConstruct when there isn't one in ifs->%v!\n",ifs))
+                parser.report(sf("trying to get lastConstruct when there isn't one in %s (ifs:%v)!\n",fs,ifs))
                 finish(true,ERR_FATAL)
                 break
             }
@@ -1520,7 +1525,6 @@ tco_reentry:
 
                 // jump calc, depending on break context
 
-                // var thisLoop *s_loop
                 thisLoop := &loops[ifs][depth[ifs]]
                 bmess := ""
 
@@ -2065,17 +2069,13 @@ tco_reentry:
                     typemap["bool"]     = reflect.TypeOf(tb)
                     typemap["byte"]     = reflect.TypeOf(tu8)
                     typemap["uint8"]    = reflect.TypeOf(tu8)
-                    typemap["uint64"]   = reflect.TypeOf(tu)
+                    typemap["uint"]     = reflect.TypeOf(tu)
                     typemap["int"]      = reflect.TypeOf(ti)
-                    // typemap["int64"]    = reflect.TypeOf(ti64)
                     typemap["float"]    = reflect.TypeOf(tf64)
                     typemap["float64"]  = reflect.TypeOf(tf64)
                     typemap["string"]   = reflect.TypeOf(ts)
-                    /* only interface{} currently supported.
                     typemap["[]string"] = reflect.TypeOf(ats)
-                    typemap["[]int"]    = reflect.TypeOf(ati)
-                    typemap["[]float"]  = reflect.TypeOf(atf)
-                    typemap["[]bool"]   = reflect.TypeOf(atb)
+                    /* only interface{} currently supported.
                     */
                     typemap["[]"]       = reflect.TypeOf(atint)
                     typemap["^"]        = reflect.TypeOf(ats)

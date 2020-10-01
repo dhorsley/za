@@ -393,9 +393,9 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
 func ev_shift_left(left,right interface{}) (interface{}) {
     // both must be integers
     intInOne:=true; uintInTwo:=true; uintInOne:=false
-    var uint1 uint64
+    var uint1 uint
     var int1 int64
-    var uint2 uint64
+    var uint2 uint
 
     switch i:=left.(type) {
     case int,int64:
@@ -429,9 +429,9 @@ func ev_shift_left(left,right interface{}) (interface{}) {
 func ev_shift_right(left,right interface{}) (interface{}) {
     // both must be integers
     intInOne:=true; uintInTwo:=true; uintInOne:=false
-    var uint1 uint64
+    var uint1 uint
     var int1 int64
-    var uint2 uint64
+    var uint2 uint
 
     switch i:=left.(type) {
     case int,int64:
@@ -805,6 +805,8 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                     return uint(f.Uint())
                 case reflect.Uint8:
                     return uint8(f.Uint())
+                case reflect.Uint32:
+                    return uint32(f.Uint())
                 case reflect.Uint64:
                     return uint64(f.Uint())
 

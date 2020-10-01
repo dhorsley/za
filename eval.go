@@ -930,12 +930,14 @@ func vset(fs uint64, name string, value interface{}) (vi int) {
             case kint:
                 _,ok=value.(int)
                 if ok { ident[fs][vi].IValue = value.(int) }
+            /*
             case kint64:
-                _,ok=value.(int64)
-                if ok { ident[fs][vi].IValue = value.(int64) }
+                _,ok=value.(int)
+                if ok { ident[fs][vi].IValue = value.(int) }
+            */
             case kuint:
-                _,ok=value.(uint64)
-                if ok { ident[fs][vi].IValue = value.(uint64) }
+                _,ok=value.(uint)
+                if ok { ident[fs][vi].IValue = value.(uint) }
             case kfloat:
                 _,ok=value.(float64)
                 if ok { ident[fs][vi].IValue = value.(float64) }
@@ -1062,6 +1064,8 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
             el=strconv.FormatInt(el.(int64), 10)
         case float64:
             el=strconv.FormatFloat(el.(float64), 'f', -1, 64)
+        case uint:
+            el=strconv.FormatUint(uint64(el.(uint)), 10)
         case uint64:
             el=strconv.FormatUint(el.(uint64), 10)
         case uint8:
@@ -1106,6 +1110,17 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
             ident[fs][vi].IValue=newar
         }
         ident[fs][vi].IValue.([]uint8)[numel]=value.(uint8)
+
+    case []uint:
+        sz:=cap(ident[fs][vi].IValue.([]uint))
+        if numel>=sz {
+            newend:=sz*2
+            if numel>newend { newend=numel+sz }
+            newar:=make([]uint,newend,newend)
+            copy(newar,ident[fs][vi].IValue.([]uint))
+            ident[fs][vi].IValue=newar
+        }
+        ident[fs][vi].IValue.([]uint)[numel]=value.(uint)
 
     case []bool:
         sz:=cap(ident[fs][vi].IValue.([]bool))

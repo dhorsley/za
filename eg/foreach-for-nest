@@ -1,0 +1,34 @@
+#!/usr/bin/za
+
+define f()
+
+  for q=0 to 3
+    foreach i in dir(".")
+
+        println "\n",i
+
+        if len(i.name)>3
+            for e=0 to 9
+                on e==2 do continue
+                print e, " "
+                if e==4 
+                    for w=0 to 9
+                        print "sub {w} "
+                        if w==2
+                            continue
+                        endif
+                        on w==5 do break
+                    endfor
+                    break
+                endif
+            endfor
+            println
+        endif
+
+    endfor
+  endfor
+
+enddef
+
+f()
+
