@@ -141,10 +141,19 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 
 	arr1, arr1OK := val1.([]interface{})
 	arr2, arr2OK := val2.([]interface{})
+	if arr1OK && arr2OK { return append(arr1, arr2...) }
 
-	if arr1OK && arr2OK {
-		return append(arr1, arr2...)
-	}
+	arrb1, arrb1OK := val1.([]bool)
+	arrb2, arrb2OK := val2.([]bool)
+	if arrb1OK && arrb2OK { return append(arrb1, arrb2...) }
+
+	arri1, arri1OK := val1.([]int)
+	arri2, arri2OK := val2.([]int)
+	if arri1OK && arri2OK { return append(arri1, arri2...) }
+
+	arrf1, arrf1OK := val1.([]float64)
+	arrf2, arrf2OK := val2.([]float64)
+	if arrf1OK && arrf2OK { return append(arrf1, arrf2...) }
 
 	obj1, obj1OK := val1.(map[string]interface{})
 	obj2, obj2OK := val2.(map[string]interface{})
