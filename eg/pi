@@ -6,44 +6,44 @@
 # We just don't have the precision without arbitrary length integers/floats
 # 
 
+require 1.0.11
 
 n=10000
-input str_n optarg 1
-on kind(str_n)=="int" do n=int(str_n)
+input n optarg 1
 
 i = 0
 k = 0
-acc = 0.0
+var acc float
 den = 1.0
 num = 1.0
 
-buf=""
+var buf string
 
 while i<n
 
-    k=k+1
+    k++
     k2 = k*2.0 + 1
-    acc = acc + num*2
-    acc = k2 * acc
-    den = float(k2 * den)
-    num = float(k * num)
+    acc += num*2
+    acc *= k2
+    den *= k2
+    num *= float(k)
 
     on num > acc do continue
 
     tmp = 3.0 * num + acc
     d3 = int(tmp / den)
-    tmp = tmp + num
+    tmp += num
     d4 = int(tmp / den)
 
     on d3 != d4 do continue
 
     buf=format("%v%v",buf,d3)
-    i=i+1
+    i++
     on i % 10 == 0 do buf=format("%s\t:%v\n",buf,i)
 
-    acc = acc - d3 * den
-    acc = 10 * acc
-    num = 10 * num
+    acc -= d3 * den
+    acc *= 10
+    num *= 10
 
 endwhile
 
