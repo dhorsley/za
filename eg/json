@@ -24,7 +24,7 @@ define pp(k,i,d)
     # set colour depth
     print "[#"+string((d+1)%7)+"]"
 
-    if start(kind(i),"map[")
+    if hasstart(kind(i),"map[")
         # map
         heading(k,d)
         foreach si in i
@@ -32,7 +32,7 @@ define pp(k,i,d)
         endfor 
     endif
 
-    if start(kind(i),"[map")
+    if hasstart(kind(i),"[map")
         # array of map
         heading(k,d)
         foreach si in i[0]
@@ -40,7 +40,7 @@ define pp(k,i,d)
         endfor
     endif
 
-    if start(kind(i),"[]")
+    if hasstart(kind(i),"[]")
         # array
         heading("[arr] "+k,d)
         if len(i)>0

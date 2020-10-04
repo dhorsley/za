@@ -20,7 +20,7 @@ import (
 func (p *leparser) Init() {
 
     // precedence table
-	p.table = [50]rule{
+	p.table = [60]rule{
 		RParen        : {-1,p.ignore, nil},
 		RightSBrace   : {-1,p.ignore, nil},
         LeftSBrace    : {45,p.array_concat,p.binaryLed},// un: [x,y,z], bin: a[b] sub-scripting
@@ -28,6 +28,7 @@ func (p *leparser) Init() {
         StringLiteral : {-1,p.stringliteral,nil},
         Identifier    : {-1,p.identifier,nil},
         O_Assign      : {5,p.unary,p.binaryLed},
+        C_In          : {27,nil,p.binaryLed},           // a in b (value lookup)
         O_Plus        : {30,p.unary,p.binaryLed},
 		O_Minus       : {30,p.unary,p.binaryLed},       // subtraction and unary minus 
 		O_Multiply    : {35,p.unary,p.binaryLed},       // un: *p (deref p), bin: multiply
@@ -84,7 +85,7 @@ func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
 
 
 type leparser struct {
-    table       [50]rule   // null+left rules
+    table       [60]rule   // null+left rules
     tokens      []Token     // the thing getting evaluated
     fs          uint64      // working function space
     pos         int         // distance through parse
@@ -207,34 +208,6 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
         // vset(p.fs,p.preprev.tokText,right)
         // return right
 
-    /* handled by wrappedEval
-    case SYM_PLE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_add(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-	case SYM_MIE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_sub(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-	case SYM_MUE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_mul(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-	case SYM_DIE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_div(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-	case SYM_MOE:
-        left,_:=vget(p.fs,p.preprev.tokText)
-        r:=ev_mod(left,right)
-        vset(p.fs,p.preprev.tokText,r)
-        return r
-    */
-
 	case SYM_EQ:
         return deepEqual(left,right)
 	case SYM_NE:
@@ -263,6 +236,8 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 		return asInteger(left) ^ asInteger(right)
     case SYM_POW:
         return ev_pow(left,right)
+	case C_In:
+		return ev_in(left,right)
 	}
 	return left
 }
@@ -448,18 +423,21 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.unDeref(token)
     }
 
-	right,err := p.dparse(38) // between grouping and other ops
-    if err!=nil {
-        panic(err)
+	switch token.tokType {
+    case SYM_Pling:
+	    right,err := p.dparse(24) // don't bind negate as tightly
+        if err!=nil { panic(err) }
+		return unaryNegate(right)
     }
+
+	right,err := p.dparse(38) // between grouping and other ops
+    if err!=nil { panic(err) }
 
 	switch token.tokType {
 	case O_Minus:
 		return unaryMinus(right)
 	case O_Plus:
 		return unaryPlus(right)
-	case SYM_Pling:
-		return unaryNegate(right)
 	case O_Sqr:
         return unOpSqr(right)
 	case O_Sqrt:
@@ -649,8 +627,6 @@ func (p *leparser) preIncDec(token Token) interface{} {
 
 func (p *leparser) postIncDec(token Token) interface{} {
 
-    // p.postfix=true
-
     // get direction
     ampl:=1
     optype:="increment"
@@ -690,8 +666,6 @@ func (p *leparser) postIncDec(token Token) interface{} {
         vset(activeFS,vartok.tokText,v+float64(ampl))
     default:
         panic(fmt.Errorf("post-%s not supported on type '%T' (%s)",optype,val,val))
-        finish(false,ERR_EVAL)
-        return nil
     }
     return val
 }
@@ -1459,7 +1433,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
 /// the main call point for actor.go evaluation.
 /// this function handles boxing the ev() call
 
-func (p *leparser) wrappedEval(fs uint64, tks []Token) (expr ExpressionCarton) {
+func (p *leparser) wrappedEval(lfs uint64, fs uint64, tks []Token) (expr ExpressionCarton) {
 
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
@@ -1467,6 +1441,15 @@ func (p *leparser) wrappedEval(fs uint64, tks []Token) (expr ExpressionCarton) {
     eqPos:=-1
     var newEval []Token
     var err error
+
+    if len(tks)==2 {
+        switch tks[1].tokType {
+        case SYM_PP,SYM_MM:
+            p.prev=tks[0]
+            p.postIncDec(tks[1])
+            return expr
+        }
+    }
 
   floop1:
     for k,_:=range tks {
@@ -1528,7 +1511,7 @@ func (p *leparser) wrappedEval(fs uint64, tks []Token) (expr ExpressionCarton) {
     }
 
     if expr.assign {
-        p.doAssign(fs,fs,tks,&expr,eqPos)
+        p.doAssign(lfs,fs,tks,&expr,eqPos)
     }
 
     return expr

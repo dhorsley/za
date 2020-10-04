@@ -147,7 +147,7 @@ while !quit
     #... ball on brick
 
     foreach s in sprites
-        on !start(key_s,"brick-") do continue
+        on !hasstart(key_s,"brick-") do continue
         brx=s[1]; bry=s[2]
         # hit?
         if bx>=brx && bx<=brx+8 && by==bry

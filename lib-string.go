@@ -6,7 +6,7 @@ import (
     "errors"
     "reflect"
     "regexp"
-    "unicode/utf8"
+    // "unicode/utf8"
     "runtime"
     "strconv"
     str "strings"
@@ -16,13 +16,14 @@ const ( // tr_actions
     COPY int = iota
     DELETE
     SQUEEZE
+    // TRANSLATE // not required, can be done several other ways
 )
 
 func tr(s string, action int, cases string) string {
 
     original := []byte(s)
     var lastChar byte
-    newStr := ""
+    var newStr str.Builder
     squeezing := false
 
     for _, v := range original {
@@ -39,22 +40,23 @@ func tr(s string, action int, cases string) string {
         case DELETE:
             // copy to new string if not found in delete list
             if str.IndexByte(cases, v) == -1 {
-                newStr = newStr + string(v)
+                newStr.WriteString(string(v))
             }
         case SQUEEZE:
             if str.IndexByte(cases, v) != -1 {
                 squeezing = true
                 lastChar = v
             }
-            newStr = newStr + string(v) // only copy char on first match
+            newStr.WriteString(string(v)) // only copy char on first match
         }
 
     }
-    return newStr
+    return newStr.String()
 
 }
 
 
+/* @deprecated?
 func runesToUTF8(runes []rune) []byte {
     sz := 0
     for _, r := range runes {
@@ -70,7 +72,7 @@ func runesToUTF8(runes []rune) []byte {
 
     return buf
 }
-
+*/
 
 func buildStringLib() {
 
@@ -84,30 +86,25 @@ func buildStringLib() {
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
 
-    // part of regex caching test - may be removed later.
     compileCache:=make(map[string]regexp.Regexp)
 
     slhelp["replace"] = LibHelp{in: "var,regex,replacement", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
     stdlib["replace"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
-            return "", errors.New("Error: invalid argument count.\n")
+            return "", errors.New("invalid arguments (count) in replace()")
         }
-        // @todo: type checks on args.
+
+        for e:=0; e<3; e++ {
+            switch args[e].(type) {
+            case string:
+            default:
+                return "",errors.New("invalid arguments (type) in replace()")
+            }
+        }
 
         src := args[0].(string)
         regex := args[1].(string)
         repl := args[2].(string)
-        // pf("debug : s %v , reg %v , repl %v\n",src,regex,repl)
-
-        // pf("compiling %#v\n",regex)
-
-        /*
-        // caching added as a test. 
-        // may be removed pre-release
-        //
-        // if it stays in it will also need a max cache size and expiry mechanism.
-        //
-        */
 
         var re regexp.Regexp
         if pre,found:=compileCache[regex];!found {
@@ -118,8 +115,6 @@ func buildStringLib() {
             re = pre
         }
 
-        // pf("compiled  %#v\n",re)
-
         s := re.ReplaceAllString(src, repl)
         return s, nil
     }
@@ -128,7 +123,7 @@ func buildStringLib() {
     stdlib["get_value"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 2 {
-            return "", errors.New("Error: invalid argument count.\n")
+            return "", errors.New("invalid arguments (count) in get_value()")
         }
 
         var search []string
@@ -143,7 +138,7 @@ func buildStringLib() {
         case []string:
             search = args[0].([]string)
         default:
-            return "", errors.New("Error: unsupported data type in get_value() source.")
+            return "", errors.New("unsupported data type in get_value() source")
         }
 
         key := args[1].(string)
@@ -164,7 +159,7 @@ func buildStringLib() {
         return "", nil // errors.New("Error: key '"+key+"' not found by get_value().")
     }
 
-    // reverse()
+
     slhelp["reverse"] = LibHelp{in: "list_or_string", out: "as_input", action: "Reverse the contents of a variable."}
     stdlib["reverse"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return "",errors.New("Bad arguments (count) to reverse()") }
@@ -204,6 +199,20 @@ func buildStringLib() {
                 r[ln-i] = args[0].([]string)[i]
             }
             return r, nil
+        case []uint:
+            ln := len(args[0].([]uint)) - 1
+            r := make([]uint, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]uint)[i])
+            }
+            return r, nil
+        case []bool:
+            ln := len(args[0].([]bool)) - 1
+            r := make([]bool, 0, ln+1)
+            for i := ln; i >= 0; i-- {
+                r = append(r, args[0].([]bool)[i])
+            }
+            return r, nil
         case []interface{}:
             ln := len(args[0].([]interface{})) - 1
             r := make([]interface{}, 0, ln+1)
@@ -228,7 +237,7 @@ func buildStringLib() {
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}
     stdlib["format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in format()") }
-        if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) (arg#1 not string) in format()") }
+        if !strcmp(sf("%T",args[0]),"string") { return "",errors.New("Bad arguments (type) (first argument is not a string) in format()") }
         if len(args) == 1 {
             return sf(args[0].(string)), nil
         }
@@ -242,14 +251,7 @@ func buildStringLib() {
         return sat(args[0].(int),args[1].(int)), nil
     }
 
-    // tr() - bad version of tr, that doesn't actually translate :)  really needs to not append with addition nor use bytes instead of runes. Probably quite slow.
-    // arg 0 -> input string
-    // arg 1 -> "d" delete
-    // arg 1 -> "s" squeeze
-    // arg 2 -> operand char set
-    // @note: we should probably add the character translate to this, needs an argument #3...
-
-    slhelp["tr"] = LibHelp{in: "string,action,case_string", out: "string", action: "delete (action 'd') or squeeze (action 's') extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]."}
+    slhelp["tr"] = LibHelp{in: "string,action,case_string", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0].`}
     stdlib["tr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return "", errors.New("Bad arguments to tr()")
@@ -633,7 +635,7 @@ func buildStringLib() {
             fs=args[1].(string)
         }
         // all okay...
-        return str.Join(ary[:], fs), nil
+        return str.Join(ary, fs), nil
     }
 
     slhelp["collapse"] = LibHelp{in: "string", out: "string", action: "Turns a newline separated string into a space separated string."}
@@ -1033,11 +1035,10 @@ func buildStringLib() {
         return str.Replace(args[0].(string), args[1].(string), args[2].(string), -1), err
     }
 
-    slhelp["trim"] = LibHelp{in: "string,int_type", out: "string", action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0]. -1 ltrim, 0 both, 1 rtrim."}
+    slhelp["trim"] = LibHelp{in: "string,int_type[,removal_list_string]", out: "string", action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0]. -1 ltrim, 0 both, 1 rtrim. By default, space (ASCII:32) and horizontal tabs (ASCII:9) are removed."}
     stdlib["trim"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) < 2 || len(args)>3 { return "",errors.New("Bad arguments (count) to trim()") }
-        // if sf("%T",args[0])!="string" || sf("%T",args[1])!="int" { return "",errors.New("Bad arguments (type) in trim()") }
         if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (#1 type) in trim()") }
         if sf("%T",args[1])!="int"    { return "",errors.New(sf("Bad arguments (#2 type [%T]) in trim()",args[1])) }
 
@@ -1062,24 +1063,25 @@ func buildStringLib() {
     }
 
 
-    slhelp["start"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] begin with [#i1]string2[#i0]?"}
-    stdlib["start"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["hasstart"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] begin with [#i1]string2[#i0]?"}
+    stdlib["hasstart"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
-        if len(args) != 2 { return "",errors.New("Bad arguments (count) to start()") }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in start()") }
+        if len(args) != 2 { return "",errors.New("Bad arguments (count) to hasstart()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in hasstart()") }
 
         return str.HasPrefix(args[0].(string), args[1].(string)), nil
 
     }
 
-    slhelp["end"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] end with [#i1]string2[#i0]?"}
-    stdlib["end"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    slhelp["hasend"] = LibHelp{in: "string1,string2", out: "bool", action: "Does [#i1]string1[#i0] end with [#i1]string2[#i0]?"}
+    stdlib["hasend"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
 
-        if len(args) != 2 { return "",errors.New("Bad arguments (count) to end()") }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in end()") }
+        if len(args) != 2 { return "",errors.New("Bad arguments (count) to hasend()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return "",errors.New("Bad arguments (type) in hasend()") }
 
         return str.HasSuffix(args[0].(string), args[1].(string)), err
 
     }
 
 }
+

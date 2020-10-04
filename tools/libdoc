@@ -21,7 +21,7 @@ style=`
     .ttab > div {display:table-cell}
     .ttableft   {width:90%;padding-left:16px;}
     .ttabright  {width:9%;}
-    .hdbg       {width:100%;background-color:#07b;}
+    .hdbg       {width:100%;background-color:#07b;line-height:0px;}
     .ilink      {width:100%;font-size:2.0rem; }
     a:link      {color:blue;background-color:transparent;text-decoration:none;}
     a:visited   {color:blue;background-color:transparent;text-decoration:none;}
@@ -63,6 +63,7 @@ enddef
 
 docpath="funpages"
 egpages="{docpath}/examples"
+headerpages="{docpath}/headers"
 
 var totfunc int
 
@@ -75,7 +76,9 @@ fd=func_descriptions()
 foreach c in func_categories()
 
     header=wh1()+"\n"
-    header=header+wh2("{key_c} functions") 
+    header+=wh2("{key_c} functions") 
+
+    on is_file("{headerpages}/{key_c}") do header+=wp(read_file("{headerpages}/{key_c}"))
 
     body=""
     pageindex=""
@@ -176,7 +179,7 @@ indexpage=wpage(
         whead(format(meta)+"<style>\n"+style+"\n</style>\n")+
         wbody(
             wdiv( wh1("Za Function Reference") )+
-            wdiv( wh2("Categories:") )+
+            wdiv( wh3("Please select a function category from below:") )+
             wdiv( wul(indices) , `class="ttab"` )
         )
 )

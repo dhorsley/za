@@ -9,6 +9,7 @@ import (
     "unsafe"
     "reflect"
     "strconv"
+    str "strings"
 )
 
 
@@ -62,6 +63,27 @@ func asInteger(val interface{}) int {
 
     i = int(f)
     return i
+}
+
+
+func ev_in(val1 interface{}, val2 interface{}) (bool) {
+    switch vl:=val2.(type) {
+    case []string:
+        for _, b := range vl { if b == val1 { return true } }
+    case []bool:
+        for _, b := range vl { if b == val1 { return true } }
+    case []int:
+        for _, b := range vl { if b == val1 { return true } }
+    case []uint:
+        for _, b := range vl { if b == val1 { return true } }
+    case []float64:
+        for _, b := range vl { if b == val1 { return true } }
+    case []interface{}:
+        for _, b := range vl { if b == val1 { return true } }
+    default:
+        panic(fmt.Errorf("IN operator requires a list to search"))
+    }
+    return false
 }
 
 
@@ -151,9 +173,17 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 	arri2, arri2OK := val2.([]int)
 	if arri1OK && arri2OK { return append(arri1, arri2...) }
 
+	arru1, arru1OK := val1.([]uint)
+	arru2, arru2OK := val2.([]uint)
+	if arru1OK && arru2OK { return append(arru1, arru2...) }
+
 	arrf1, arrf1OK := val1.([]float64)
 	arrf2, arrf2OK := val2.([]float64)
 	if arrf1OK && arrf2OK { return append(arrf1, arrf2...) }
+
+	arrs1, arrs1OK := val1.([]string)
+	arrs2, arrs2OK := val2.([]string)
+	if arrs1OK && arrs2OK { return append(arrs1, arrs2...) }
 
 	obj1, obj1OK := val1.(map[string]interface{})
 	obj2, obj2OK := val2.(map[string]interface{})
@@ -259,6 +289,13 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 	if float1OK && float2OK {
 		return float1 * float2
 	}
+
+    // int * string = repeat
+	str1, str1OK := val1.(string)
+	str2, str2OK := val2.(string)
+	if (intInOne && str2OK) && int1>=0 { return str.Repeat(str2,int1) }
+	if (intInTwo && str1OK) && int2>=0 { return str.Repeat(str1,int2) }
+
 	panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
