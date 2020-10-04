@@ -38,7 +38,7 @@ enddef
 
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
-    assert start(iip,"127.0.0.")
+    assert hasstart(iip,"127.0.0.")
 endtest
 
 define showEnv()
@@ -484,7 +484,7 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
 
         fields(int_filter)
 
-        if start(int_name,interface)
+        if hasstart(int_name,interface)
 
             # current counters 
             rbytes  = float(F[2])

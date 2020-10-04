@@ -170,6 +170,7 @@ const (
     C_Var
 	C_SetGlob
 	C_Init
+    C_In
 	C_Pause
 	C_Help
 	C_Nop
@@ -209,7 +210,6 @@ const (
 	C_When
 	C_Is
 	C_Contains
-	C_In
 	C_Or
 	C_Endwhen
     C_With

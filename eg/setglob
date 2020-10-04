@@ -1,0 +1,27 @@
+#!/usr/bin/za
+
+struct t
+    a int
+    b bool
+    c float
+    d string
+endstruct
+
+define q()
+    setglob a=true
+    setglob b["test"]=42
+    setglob m["one"].d="teststring"
+enddef
+
+init z t
+m["one"]=z
+println m
+println "call"
+q()
+
+println "m:",m
+println "a:",a
+println "b:",b
+println "z:",z
+
+

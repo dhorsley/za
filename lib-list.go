@@ -25,6 +25,11 @@ type sortStructInt struct {
     v int
 }
 
+type sortStructUint struct {
+    k string
+    v uint
+}
+
 type sortStructString struct {
     k string
     v string
@@ -102,8 +107,21 @@ func buildListLib() {
         "empty", "list_string", "list_float", "list_int","numcomp",
     }
 
-    slhelp["numcomp"] = LibHelp{in: "stringa,stringb", out: "bool", action: "Is a<b? a and b are strings of human readable numbers with units."}
+    slhelp["numcomp"] = LibHelp{in: "val_a,val_b", out: "bool", action: "Is a<b? [#i1]val_a[#i0] and [#i1]val_b[#i0] are string-convertable types of human readable numbers (with optional SI unit abbreviations in strings)."}
     stdlib["numcomp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=2 {
+            return nil,errors.New("invalid argument count in numcomp()")
+        }
+        switch args[0].(type) {
+        case string:
+        default:
+            args[0]=sf("%v",args[0])
+        }
+        switch args[1].(type) {
+        case string:
+        default:
+            args[1]=sf("%v",args[1])
+        }
         return human_numcompare(args[0].(string),args[1].(string)),nil
     }
 
@@ -127,6 +145,10 @@ func buildListLib() {
             }
         case []int64:
             if len(args[0].([]int64)) == 0 {
+                return true, nil
+            }
+        case []uint:
+            if len(args[0].([]uint)) == 0 {
                 return true, nil
             }
         case []uint8:
@@ -320,6 +342,12 @@ func buildListLib() {
             case bool:
                 l := make([]bool, 0, 31)
                 return append(l, args[0].(bool)), nil
+            case uint:
+                l := make([]uint, 0, 31)
+                return append(l, args[0].(uint)), nil
+            case int64:
+                l := make([]int64, 0, 31)
+                return append(l, args[0].(int64)), nil
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
@@ -410,6 +438,8 @@ func buildListLib() {
             return a[len(a)-1],nil
         case []uint8:
             return a[len(a)-1],nil
+        case []uint:
+            return a[len(a)-1],nil
         case []float64:
             return a[len(a)-1],nil
         case []bool:
@@ -440,6 +470,12 @@ func buildListLib() {
                 if ln := len(v.([]int)); ln > 0 {
                     r := v.([]int)[ln-1]
                     vset(evalfs, n, v.([]int)[:ln-1])
+                    return r, nil
+                }
+            case []uint:
+                if ln := len(v.([]uint)); ln > 0 {
+                    r := v.([]uint)[ln-1]
+                    vset(evalfs, n, v.([]uint)[:ln-1])
                     return r, nil
                 }
             case []uint8:
@@ -515,6 +551,14 @@ func buildListLib() {
             l = append(l, item.(int))
             l = append(l, args[0].([]int)[pos-1:]...)
             return l, nil
+        case []uint:
+            l := make([]uint, 0, 31)
+            if pos > 0 {
+                l = append(l, args[0].([]uint)[:pos-1]...)
+            }
+            l = append(l, item.(uint))
+            l = append(l, args[0].([]uint)[pos-1:]...)
+            return l, nil
         case []uint8:
             l := make([]uint8, 0, 31)
             if pos > 0 {
@@ -588,6 +632,14 @@ func buildListLib() {
             l = append(l, args[0].([]int)[:pos-1]...)
             l = append(l, args[0].([]int)[pos:]...)
             return l, nil
+        case []uint:
+            if pos > len(args[0].([]uint)) {
+                return nil, errors.New(sf("position (%v) out of range (int/high) in remove()", pos))
+            }
+            l := make([]uint, 0, 31)
+            l = append(l, args[0].([]uint)[:pos-1]...)
+            l = append(l, args[0].([]uint)[pos:]...)
+            return l, nil
         case []interface{}:
             if pos > len(args[0].([]interface{})) {
                 return nil, errors.New(sf("position (%v) out of range (interface/high) in remove()", pos))
@@ -620,6 +672,11 @@ func buildListLib() {
                 return []int{}, nil
             }
             return args[0].([]int)[0], nil
+        case []uint:
+            if len(args[0].([]uint)) == 0 {
+                return []uint{}, nil
+            }
+            return args[0].([]uint)[0], nil
         case []float64:
             if len(args[0].([]float64)) == 0 {
                 return []float64{}, nil
@@ -659,6 +716,11 @@ func buildListLib() {
                 return []int{}, nil
             }
             return args[0].([]int)[1:], nil
+        case []uint:
+            if len(args[0].([]uint)) == 0 {
+                return []uint{}, nil
+            }
+            return args[0].([]uint)[1:], nil
         case []float64:
             if len(args[0].([]float64)) == 0 {
                 return []float64{}, nil
@@ -691,7 +753,7 @@ func buildListLib() {
             }
             return true, nil
         default:
-            return false, errors.New("not a boolean list provided to all().")
+            return false, errors.New("not a boolean list provided to all()")
         }
     }
 
@@ -708,7 +770,7 @@ func buildListLib() {
             }
             return false, nil
         default:
-            return false, errors.New("not a boolean list provided to any().")
+            return false, errors.New("not a boolean list provided to any()")
         }
     }
 
@@ -842,7 +904,6 @@ func buildListLib() {
 
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
-    // the map[string]... sorts are just here for completeness. they are utterly pointless currently.
     slhelp["sort"] = LibHelp{in: "[]list[,bool_reverse]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order."}
     stdlib["sort"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 || len(args)>2 { return nil,errors.New("Bad args (count) to sort()") }
@@ -857,6 +918,8 @@ func buildListLib() {
         switch list.(type) {
         case []int:
             if len(list.([]int)) < 2        { return list, nil }
+        case []uint:
+            if len(list.([]uint)) < 2       { return list, nil }
         case []uint8:
             if len(list.([]uint8)) < 2      { return list, nil }
         case []float64:
@@ -881,6 +944,10 @@ func buildListLib() {
                 sort.SliceStable(list, func(i, j int) bool { return list.([]int)[i] < list.([]int)[j] })
                 return list, nil
 
+            case []uint:
+                sort.SliceStable(list, func(i, j int) bool { return list.([]uint)[i] < list.([]uint)[j] })
+                return list, nil
+
             case []uint8:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]uint8)[i] < list.([]uint8)[j] })
                 return list, nil
@@ -899,6 +966,7 @@ func buildListLib() {
 
             // placeholders until we can do something useful here...
             case map[string]interface{}:
+
                 var iter *reflect.MapIter
                 iter = reflect.ValueOf(list.(map[string]interface{})).MapRange()
                 iter.Next()
@@ -908,6 +976,12 @@ func buildListLib() {
                     for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInt{k:k,v:v.(int)}) }
                     sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
                     l:=make(map[string]int); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                case uint:
+                    kv:=make([]sortStructUint,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructUint{k:k,v:v.(uint)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
+                    l:=make(map[string]uint); for _,v:=range kv { l[v.k]=v.v }
                     return l,nil
                 case float64:
                     kv:=make([]sortStructFloat,0,len(list.(map[string]interface{})))
@@ -934,6 +1008,10 @@ func buildListLib() {
 
             case []int:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]int)[i] > list.([]int)[j] })
+                return list, nil
+
+            case []uint:
+                sort.SliceStable(list, func(i, j int) bool { return list.([]uint)[i] > list.([]uint)[j] })
                 return list, nil
 
             case []uint8:
@@ -963,6 +1041,12 @@ func buildListLib() {
                     for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInt{k:k,v:v.(int)}) }
                     sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
                     l:=make(map[string]int); for _,v:=range kv { l[v.k]=v.v }
+                    return kv,nil
+                case uint:
+                    kv:=make([]sortStructUint,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructUint{k:k,v:v.(uint)}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
+                    l:=make(map[string]uint); for _,v:=range kv { l[v.k]=v.v }
                     return kv,nil
                 case float64:
                     kv:=make([]sortStructFloat,0,len(list.(map[string]interface{})))
@@ -994,6 +1078,13 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             for _, q := range args[0].([]int) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, v)
+                }
+            }
+        case []uint:
+            for _, q := range args[0].([]uint) {
                 v, invalid := GetAsFloat(sf("%v", q))
                 if !invalid {
                     float_list = append(float_list, v)
@@ -1042,9 +1133,18 @@ func buildListLib() {
             return args[0].([]int),nil
         case []int64:
             return args[0].([]int64),nil
+        case []uint:
+            for _, q := range args[0].([]uint) {
+                v, invalid := GetAsInt(q)
+                if !invalid {
+                    int_list = append(int_list, v)
+                } else {
+                    return nil, errors.New(sf("could not treat %v as an integer.", q))
+                }
+            }
         case []float64:
             for _, q := range args[0].([]float64) {
-                v, invalid := GetAsInt(sf("%v", q))
+                v, invalid := GetAsInt(q)
                 if !invalid {
                     int_list = append(int_list, v)
                 } else {
@@ -1070,11 +1170,12 @@ func buildListLib() {
                 }
             }
         default:
-            return nil, errors.New("That's not a list of strings")
+            return nil, errors.New("That's not a useful list")
         }
         return int_list, nil
     }
 
+    // @todo: change sprintf for strconv funcs
     slhelp["list_string"] = LibHelp{in: "[]list", out: "[]string_list", action: "Returns [#i1]list[#i0] as a list of strings."}
     stdlib["list_string"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
         var string_list []string
@@ -1085,6 +1186,8 @@ func buildListLib() {
             for _, q := range args[0].([]float64) { string_list = append(string_list, sf("%v",q)) }
         case []int:
             for _, q := range args[0].([]int) { string_list = append(string_list, sf("%v",q)) }
+        case []uint:
+            for _, q := range args[0].([]uint) { string_list = append(string_list, sf("%v",q)) }
         case []uint8:
             for _, q := range args[0].([]uint8) { string_list = append(string_list, sf("%v",q)) }
         case []interface{}:
@@ -1186,6 +1289,23 @@ func buildListLib() {
                 return args[0].([]int), nil
             }
 
+        case []uint:
+            var newlist []uint
+            sort.SliceStable(args[0].([]uint), func(i, j int) bool { return args[0].([]uint)[i] < args[0].([]uint)[j] })
+            if len(args[0].([]uint)) > 1 {
+                newlist = append(newlist, args[0].([]uint)[0])
+                for p := 1; p < len(args[0].([]uint)); p++ {
+                    prev := args[0].([]uint)[p-1]
+                    if args[0].([]uint)[p] == prev {
+                        continue
+                    }
+                    newlist = append(newlist, args[0].([]uint)[p])
+                }
+                return newlist, nil
+            } else {
+                return args[0].([]uint), nil
+            }
+
         case []string:
             var newlist []string
             sort.SliceStable(args[0].([]string), func(i, j int) bool { return args[0].([]string)[i] < args[0].([]string)[j] })
@@ -1222,6 +1342,8 @@ func buildListLib() {
             return append(args[0].([]bool), args[1].([]bool)...), nil
         case []int:
             return append(args[0].([]int), args[1].([]int)...), nil
+        case []uint:
+            return append(args[0].([]uint), args[1].([]uint)...), nil
         case []int64:
             return append(args[0].([]int64), args[1].([]int64)...), nil
         case []uint8:
@@ -1245,7 +1367,7 @@ func buildListLib() {
             return false, errors.New("Incorrect number of arguments in esplit()")
         }
         switch args[0].(type) {
-        case []bool, []string, []uint8, []int, []float64:
+        case []bool, []string, []uint8, []int, []uint, []float64:
         default:
             return false, errors.New("Argument 1 must be a list.")
         }
@@ -1288,6 +1410,13 @@ func buildListLib() {
             }
             vset(evalfs, args[1].(string), args[0].([]int)[:pos-1])
             vset(evalfs, args[2].(string), args[0].([]int)[pos-1:])
+        case []uint:
+            if pos < 0 || pos > len(args[0].([]uint)) {
+                invalidPos = true
+                break
+            }
+            vset(evalfs, args[1].(string), args[0].([]uint)[:pos-1])
+            vset(evalfs, args[2].(string), args[0].([]uint)[pos-1:])
         case []uint8:
             if pos < 0 || pos > len(args[0].([]uint8)) {
                 invalidPos = true

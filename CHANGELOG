@@ -12,7 +12,19 @@ CHANGE LOG
         split interpolation into local replacement and evaluation types.
 
         DETAILS
-        * added simple scalar assignment in expressions.
+
+        * breaking change - renamed start() and end() to hasstart() and hasend()
+        * breaking change - adjusted some functions to return structs instead:
+            - dir() tokens() zainfo() web_get()
+        * breaking change - adjusted fields() to only return an array (F[])
+            - it was bogging down the var count per function when you used fields()
+                on a string with a large number of fields.
+
+        * added IN operator for arrays: a in b returns true if value a present in ary b
+            - can be negated thus: ! a in b
+                - operands bind less tightly to logical negation than IN.
+
+        * added simple scalar assignment in r.h.s. expressions.
             - global variables are not supported.
             - the value of the expression is the same as without the assignment involved.
             - only simple direct assignment to locals is supported.
@@ -28,6 +40,13 @@ CHANGE LOG
                   b=a,a+=b          # only b is assigned here (with initial value of a)
                                     #  normal parsing of expressions considers a comma an end of expr.
                                     #  so the a+=b would be ignored.
+
+                - this currently works:
+                    a,b,c=[1,2,3]
+
+                - ... but this won't:
+                    a=1,b,c=[2,3]
+
             - this behaviour may change, it's a fairly simple amendment. but not sure that
                 the use cases would justify it yet. 
 
@@ -96,39 +115,30 @@ CHANGE LOG
             * if a.b is a field reference 'b' of struct 'a' then it will take priority over chaining.
 
 
-        * added +=, -=, *=, /= and %= for local scalars.
-            - won't be adding the same for globals if i can help it.
+        * added +=, -=, *=, /= and %= for local and global scalars.
             - (experimental) added support for array elements and struct field references
                 on the l.h.s. of the compound operators above.
-                - this is not added to -- or ++ yet.
-            - these operations are not yet supported by the SETGLOB statement.
+            - also added for -- and ++. in expressions pre- and post-inc/dec are still supported.
+            - The SETGLOB statement must be used for global scope assignments
 
             * PLEASE NOTE! these operations are in fact slower than their long-hand equivalents.
                 a copy of the whole expression is made and then manipulated in order to
                 enable them. As the memory for the copy is allocated dynamically you should
-                avoid these operations where possibly, if you have any expectations of performance.
+                avoid these operations where possible, if you have any expectations of performance.
 
                 - these operations are in place mainly for expressiveness in code, not for
                   performance.
 
                 - this may improve in the future, but for now, avoid where it matters.
 
-
         * added sqr and sqrt as unary operators
 
         * added field deref on array elements (lhs+rhs), i.e. a[i].f=a[j].f
             * will only support one level of this (i.e. no multiple [] or . on lhs)
 
-        * adjusted some functions to return structs instead:
-            - dir() tokens() zainfo() web_get()
-
-        * adjusted fields() to only return an array (F[])
-            - it was bogging down the var count per function when you used fields()
-                on a string with a large number of fields.
-
         * removed deval() test function.
 
-        * separated interpolation into {...} for var substitution and {=...} for evaluation.
+        * breaking change - separated interpolation into {...} for var substitution and {=...} for evaluation.
             * if you need to read a global variable in substitution now, you should eval {=...} instead.
                 ( or read the variable locally and substitute as normal )
 
@@ -141,10 +151,8 @@ CHANGE LOG
                     a =| awk '{print $0}' <{file}
                     # {file} would be ignored.
 
-            * will try to think of a better alternative before release.
 
-
-        * removed ZERO, INC and DEC statements.
+        * breaking change - removed ZERO, INC and DEC statements.
             * these were becoming more troublesome than they were worth to maintain.
             * ZERO was already effectively replaced with the more flexible VAR statement.
             * commands replaced in eg/ code.
@@ -180,9 +188,8 @@ CHANGE LOG
                 * will probably still happen in recursion,
                 * definitely will happen in interpolation and user eval() calls.
                 * need to work around the interpolation one definitely. i'm probably missing a trick here.
-                    * the problem is the map carries context for the owner of the operation (i.e. p.unary/p.binary calls)
-                    * can't use a global (i think) because of concurrency requirement.
-                    * can't keep rebuilding the rules on each eval.
+                    * DONE, maybe? Added a separate parser instance just for the interpolation routine,
+                        and threw a mutex around it. should be good enough.
 
         * initially only supported basic arithmetic (-+*/%). But, we have now added:
 
