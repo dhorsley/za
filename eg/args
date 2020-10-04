@@ -55,7 +55,7 @@ println "working with these args: [#4][#i1]{av}[#i0][#7]"
 
 while !empty(av)
     arg=next()
-    if len(arg)>1 && start(arg,"-")
+    if len(arg)>1 && hasstart(arg,"-")
         opt=substr(arg,0,2)
         when opt
         is "-h"

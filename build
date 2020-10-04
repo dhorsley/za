@@ -28,7 +28,7 @@ upxfound=int(trim(upxfound,0))
 
 strip_opts="-s -w"
 
-if !start(os(),"freebsd")
+if !hasstart(os(),"freebsd")
     when lower(tgt)
     is "alpine"
         if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
@@ -53,7 +53,7 @@ else
     endif
 endif
 
-if !start(os(),"freebsd")
+if !hasstart(os(),"freebsd")
     if upxfound==1 && is_file("za")
         if tgt!="win"
             | strip {strip_opts} za

@@ -3,7 +3,6 @@ define gval()
     return "this is a test"
 enddef
 
-foreach t in tokens(gval())
-    println "* ",t
-endfor
+println "* ",gval().tokens.tokens
+println "# ",gval().tokens.types
 
