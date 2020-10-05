@@ -9,6 +9,7 @@ import (
     "log"
     "os"
     "path/filepath"
+    "path"
     "reflect"
     "regexp"
     "sync"
@@ -2359,7 +2360,7 @@ tco_reentry:
             if inbound.TokenCount > 1 {
 
                 if defining {
-                    parser.report( "Already defining a function. Nesting not permitted.")
+                    parser.report("Already defining a function. Nesting not permitted.")
                     finish(true, ERR_SYNTAX)
                     break
                 }
@@ -2397,11 +2398,21 @@ tco_reentry:
                 if exMatchStdlib { break }
 
                 // error if it has already been user defined
+                /* TEMPORARY REMOVAL, CHECKING FUNC NAMESPACE DOTTING
                 if _, exists := fnlookup.lmget(definitionName); exists {
                     parser.report("Function "+definitionName+" already exists.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
+                */
+
+                // register new func in funcmap
+                funcmap[currentModule+"."+definitionName]=Funcdef{
+                    name:definitionName,
+                    module:currentModule,
+                    fs:ifs,
+                }
+                // pf("user function list:\n%+v\n",funcmap)
 
                 // debug(20,"[#3]DEFINE taking a space[#-]\n")
                 loc, _ := GetNextFnSpace(definitionName)
@@ -2610,7 +2621,7 @@ tco_reentry:
                     break
                 }
             } else {
-                parser.report( "No module name provided.")
+                parser.report("No module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2618,7 +2629,7 @@ tco_reentry:
             fom := expr.result.(string)
 
             if strcmp(fom,"") {
-                parser.report(  "Empty module name provided.")
+                parser.report("Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -2696,6 +2707,9 @@ tco_reentry:
             functionArgs[loc] = []string{}
             farglock.Unlock()
 
+            oldModule:=currentModule
+            currentModule=path.Base(fom)
+
             //.. parse and execute
             fileMap[loc]=moduleloc
             // pf("module>> wrote file map entry : %d->%v fom:%v\n",loc,moduleloc,fom)
@@ -2711,6 +2725,8 @@ tco_reentry:
             calllock.Unlock()
 
             Call(MODE_NEW, loc, ciMod)
+
+            currentModule=oldModule
 
             // @note: keeping the source for now, so we can lookup error
             //          lines on faults.

@@ -11,4 +11,6 @@ define test_b()
     println "LB - s->{s}"
 enddef
 
-
+define testdef(q)
+    return q*3
+enddef
