@@ -882,24 +882,24 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
             // maybe try a function call here instead...
             // lhs_v would become the first argument of func lhs_f
 
+            var isFunc bool
             name:=field
 
             // parse the function call as module '.' funcname
-
-            activefs:=p.fs
             nonlocal:=false
-            var udf Funcdef
             var there bool
-            if udf,there=funcmap[p.preprev.tokText+"."+name] ; there {
-                activefs=udf.fs
+            if _,there=funcmap[p.preprev.tokText+"."+name] ; there {
                 nonlocal=true
+                name=p.preprev.tokText+"."+name
+                isFunc=true
             }
 
             // filter for functions here
-            var isFunc bool
-            if _, isFunc = stdlib[name]; !isFunc {
-                // check if exists in user defined function space
-                _, isFunc = fnlookup.lmget(name)
+            if !isFunc {
+                if _, isFunc = stdlib[name]; !isFunc {
+                    // check if exists in user defined function space
+                    _, isFunc = fnlookup.lmget(name)
+                }
             }
 
             if !isFunc { panic(fmt.Errorf("function or record field %v not found", field)) }
@@ -929,7 +929,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                 }
             }
             // pf("mock func call '%v' with args '%+v'\n",name,iargs)
-            return callFunction(activefs,p.line,name,iargs)
+            return callFunction(p.fs,p.line,name,iargs)
 
         }
 
@@ -1123,8 +1123,21 @@ func callFunction(evalfs uint64, callline int, name string, args []interface{}) 
 
 	if f, ok := stdlib[name]; !ok {
 
+        var lmv uint64
+        var isFunc bool
+        var fm Funcdef
+
+        if str.Contains(name,".") {
+            fm,isFunc = funcmap[name]
+            name=fm.name
+            if isFunc { lmv=fm.fs }
+            // pf("found dot. fm: %+v\nname->%v isFunc->%v lmv->%v\n",fm,name,isFunc,lmv)
+        } else {
+		    lmv, isFunc = fnlookup.lmget(name)
+        }
+
 		// check if exists in user defined function space
-		if lmv, isFunc := fnlookup.lmget(name); isFunc {
+		if isFunc {
 
 			// make Za function call
             loc,id := GetNextFnSpace(name+"@")

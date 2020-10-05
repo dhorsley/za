@@ -2406,16 +2406,16 @@ tco_reentry:
                 }
                 */
 
+                loc, _ := GetNextFnSpace(definitionName)
+
                 // register new func in funcmap
                 funcmap[currentModule+"."+definitionName]=Funcdef{
                     name:definitionName,
                     module:currentModule,
-                    fs:ifs,
+                    fs:loc,
                 }
                 // pf("user function list:\n%+v\n",funcmap)
 
-                // debug(20,"[#3]DEFINE taking a space[#-]\n")
-                loc, _ := GetNextFnSpace(definitionName)
                 sourceMap[loc]=base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
                 // pf("added a source map entry for loc %d pointing to base %d\n",loc,base)
                 fspacelock.Lock()
