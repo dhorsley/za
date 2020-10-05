@@ -13,13 +13,13 @@
 
         standard library cleanup
 
-6.          - add types support in places
+            - add types support in places
                 - lib-string, lib-list done
                 - others not as important, but will work through them over time.
 
         operators
 
-3.          - identify missing ops
+            - identify missing ops
 
                 - done: IN operator for array membership checking.
 
@@ -38,13 +38,14 @@
                     - should maybe only do this once a decision has been made about an
                         eventual JIT version, as the generated code might better optimise.
 
-2.          - add more type support in existing ops
+            - add more type support in existing ops
                 - DONE - added str*pos_int : repeat string
                 - DONE - added []string and []uint to + operator.
 
-1.          - extend compound ops (++,--,+=,-=,*=,/=,%=) to work with globals
+            - extend compound ops (++,--,+=,-=,*=,/=,%=) to work with globals
                 - DONE
                     - setglob now supports all of the above compound operators.
+                    - still only work for simple operands on l.h.s.
 
         dormant functions
 

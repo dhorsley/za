@@ -57,6 +57,12 @@ func (cs call_s) String() string {
 	return sf("~{ fs %v - caller %v - return var %v }~", cs.fs, cs.caller, cs.retvar)
 }
 
+type Funcdef struct {
+    name    string
+    module  string
+    fs      uint64
+    // add extra fields here later. could maybe move fargs in
+}
 
 // chainInfo : used for passing debug info to error functions
 type chainInfo struct {

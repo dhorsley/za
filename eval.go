@@ -37,7 +37,7 @@ func (p *leparser) Init() {
 		O_Comma       : {-1,nil, nil},
         LParen        : {100,p.grouping, p.binaryLed},  // a(b), c(d)  calls
 		SYM_COLON     : {-1,nil, nil},
-        SYM_DOT       : {45,nil,p.binaryLed},           // a.b, c.d    field refs
+        SYM_DOT       : {47,nil,p.binaryLed},           // a.b, c.d    field refs
         EOF           : {-1,nil, nil},
         SYM_EQ        : {25,nil,p.binaryLed},
         SYM_NE        : {25,nil,p.binaryLed},
@@ -53,11 +53,6 @@ func (p *leparser) Init() {
 		SYM_Pling     : {15,p.unary, nil},              // Logical Negation
         SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
         SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
-//        SYM_PLE       : {5,nil,p.binaryLed},          // a+=b
-//        SYM_MIE       : {5,nil,p.binaryLed},          // a-=b
-//        SYM_MUE       : {5,nil,p.binaryLed},          // a*=b
-//        SYM_DIE       : {5,nil,p.binaryLed},          // a/=b
-//        SYM_MOE       : {5,nil,p.binaryLed},          // a%=b
         SYM_POW       : {40,nil,p.binaryLed},           // a**b
         SYM_LSHIFT    : {23,nil,p.binaryLed},
         SYM_RSHIFT    : {23,nil,p.binaryLed},
@@ -205,8 +200,6 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 
     case O_Assign:
         panic(fmt.Errorf("assignment is not a valid operation in expressions"))
-        // vset(p.fs,p.preprev.tokText,right)
-        // return right
 
 	case SYM_EQ:
         return deepEqual(left,right)
@@ -371,8 +364,6 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
 func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
     name:=left.(string)
-
-    // @note: this check may not be necessary now, check:
 
     // filter for functions here
     var isFunc bool
@@ -711,17 +702,6 @@ func (p *leparser) identifier(token Token) (interface{}) {
     if strcmp(token.tokText,"true")  { return true }
     if strcmp(token.tokText,"false") { return false }
     if strcmp(token.tokText,"nil")   { return nil }
-
-    /*
-    switch token.tokText {
-    case "true":
-        return true
-    case "false":
-        return false
-    case "nil":
-        return nil
-    }
-    */
 
     // filter for functions here
 
@@ -1445,6 +1425,13 @@ func (p *leparser) wrappedEval(lfs uint64, fs uint64, tks []Token) (expr Express
     if len(tks)==2 {
         switch tks[1].tokType {
         case SYM_PP,SYM_MM:
+
+            // @note: naive, just takes the previous token, so cannot
+            //  address field or array operations on l.h.s.
+            //  okay for now, but could improve. e.g. if p.preprev 
+            //  == SYM_DOT || RBrace then work backwards to capture components.
+            //  would also depend on length of tks
+
             p.prev=tks[0]
             p.postIncDec(tks[1])
             return expr
@@ -1537,9 +1524,6 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
     }
 
     var largs=make([][]Token,1)
-    // *sigh* think these makes can come out now. 
-    // will test for a while first though.
-    // largs[0]=make([]Token,0)
 
     if doMulti {
         curArg:=0
@@ -1565,7 +1549,6 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
         }
         largs=largs[:curArg]
     } else {
-        // largs[0]=make([]Token,eqPos-1)
         largs[0]=tks[:eqPos]
     }
 

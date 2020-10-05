@@ -20,6 +20,20 @@ CHANGE LOG
             - it was bogging down the var count per function when you used fields()
                 on a string with a large number of fields.
 
+        * experimental - added partial support for module namespaces.
+            - modules must have filenames exactly matching their namespace name (i.e. no extensions)
+            - namespaces must follow conventional identifier rules (no hyphens, start with letter, etc)
+            - on function call, a reference such as namespace.funcname(q) will call function "funcname"
+               from module file "namespace" with args "q".
+            - without a namespace and dot a plain funcname should call the last defined version 
+               that it can find. (defined during execution of the current function space)
+
+            - no idea if this will work properly yet, but shouldn't interfere with current naming.
+            - see eg/func.namespaces for example.
+
+            - no plans to extend this into variables/struct at all. just a convenience facility.
+            - no plans for module aliases. this point may change though.
+
         * added IN operator for arrays: a in b returns true if value a present in ary b
             - can be negated thus: ! a in b
                 - operands bind less tightly to logical negation than IN.

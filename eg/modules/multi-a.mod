@@ -12,3 +12,7 @@ test "in_mod_a-t1" group "modules" assert fail
     assert getglob("s")=="the answer"
 endtest
 
+define testdef(q)
+    return q*2
+enddef
+
