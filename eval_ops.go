@@ -884,6 +884,17 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
 
             name:=field
 
+            // parse the function call as module '.' funcname
+
+            activefs:=p.fs
+            nonlocal:=false
+            var udf Funcdef
+            var there bool
+            if udf,there=funcmap[p.preprev.tokText+"."+name] ; there {
+                activefs=udf.fs
+                nonlocal=true
+            }
+
             // filter for functions here
             var isFunc bool
             if _, isFunc = stdlib[name]; !isFunc {
@@ -891,9 +902,13 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                 _, isFunc = fnlookup.lmget(name)
             }
 
-            if !isFunc { panic(fmt.Errorf("chainable function or record field %v not found", field)) }
+            if !isFunc { panic(fmt.Errorf("function or record field %v not found", field)) }
 
-            iargs:=[]interface{}{obj}
+            var iargs []interface{}
+            if !nonlocal {
+               iargs=[]interface{}{obj}
+            }
+
             if p.peek().tokType==LParen {
                 p.next()
                 if p.peek().tokType!=RParen {
@@ -914,7 +929,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
                 }
             }
             // pf("mock func call '%v' with args '%+v'\n",name,iargs)
-            return callFunction(p.fs,p.line,name,iargs)
+            return callFunction(activefs,p.line,name,iargs)
 
         }
 

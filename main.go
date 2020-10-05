@@ -80,6 +80,8 @@ var globalaccess uint64                             // number of functionspace w
 
 var varcount = make([]int, SPACE_CAP)                 // how many local variables are declared in each active function.
 
+var currentModule string                            // basename of module currently being processed.
+var funcmap = make(map[string]Funcdef)              // defined function list
 
 // variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
 var ident = make([][]Variable, SPACE_CAP)
@@ -640,6 +642,7 @@ func main() {
                 loc,id := GetNextFnSpace(usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
+                currentModule="main"
                 calltable[loc] = call_s{fs: id, base: lmv, caller: globalaccess, callline: 0,retvar: "@#"}
                 calllock.Unlock()
 
@@ -884,6 +887,7 @@ func main() {
 
             fileMap[globalspace]=exec_file_name
             phraseParse("global", totalInput, 0)
+            currentModule="main"
 
             // throw away break and continue positions in interactive mode
             _,endFunc = Call(MODE_STATIC, globalspace, ciRepl)
@@ -971,6 +975,7 @@ func main() {
         calllock.Lock()
         calltable[mainloc] = cs
         calllock.Unlock()
+        currentModule="main"
         Call(MODE_NEW, mainloc, ciMain)
     }
 

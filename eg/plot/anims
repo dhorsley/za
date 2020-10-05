@@ -18,30 +18,13 @@ struct object
     py      float
 endstruct
 
-define push(obj,direction,dist)
-    when direction
-    is "left"
-        obj.dx=float(-dist)
-    is "right"
-        obj.dx=float(dist)
-    is "down"
-        obj.dy=float(dist)
-    is "up"
-        obj.dy=float(-dist)
-    endwhen
-    return obj
-enddef
-
 define collides(o)
     i=objects[o]
     for e=0 to objects.len-1
         on e==o || objects[e]==nil do continue
         j=objects[e]
-        if i.x+i.dx>=objects[e].x     && i.x+i.dx<=objects[e].x+objects[e].w
-            if i.y+i.dy>=objects[e].y && i.y+i.dy<=objects[e].y+objects[e].h
-                return true
-            endif
-        endif
+        cmpx=i.x+i.dx ; cmpy=i.y+i.dy
+        on cmpx >= j.x && cmpx <= j.x+j.w do on cmpy >= j.y && cmpy <= j.y+j.h do return true
     endfor
     return false
 enddef 
@@ -61,10 +44,10 @@ define moveall()
             endif
             on o.bg>0 do o.bg-=1
         endif
-        if o.x<=1            ; o.dx=-o.dx; endif
-        if o.x+o.w>=term_w() ; o.dx=-o.dx; endif
-        if o.y<=1            ; o.dy=-o.dy; endif
-        if o.y+o.h>=term_h() ; o.dy=-o.dy; endif
+        on o.x<=1            do o.dx=-o.dx
+        on o.x+o.w>=term_w() do o.dx=-o.dx
+        on o.y<=1            do o.dy=-o.dy
+        on o.y+o.h>=term_h() do o.dy=-o.dy
         setglob objects[e]=o
     endfor
 enddef 
@@ -145,19 +128,6 @@ cls
 cursoroff()
 
 # create some objects
-# object_add_text(0,"demo",1,1,6,2)
-# object_add_text(1,"·",term_w()/2,term_h()/2,3,7)
-# object_add_text(2,
-#     pad(" ",-1,term_w()," "),
-#     1,term_h()/2,
-#     rand(7),0
-# )
-# objects[0].dx=0.03
-# objects[0].dy=0.01
-# objects[1].dx=0.1
-# objects[1].dy=-0.02
-# objects[2].dx=0.0
-# objects[2].dy=0.1
 
 object_add_box(4,"###",term_w()/2,term_h()/2,3,4,7)
 objects[4].dx=0.1
@@ -179,7 +149,7 @@ while !quit
     objects.show
     moveall()
 
-    # quit when everthing has collided
+    # quit when everything has collided
     colbreak=true
     for e=0 to objects.len-1
         on objects[e]==nil do continue
