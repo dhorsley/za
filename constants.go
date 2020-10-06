@@ -164,6 +164,8 @@ const (
     SYM_COLON
     O_Comma
 	SYM_Tilde
+	SYM_ITilde
+	SYM_FTilde
     O_Sqr
     O_Sqrt
     START_STATEMENTS
