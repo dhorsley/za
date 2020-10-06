@@ -362,7 +362,7 @@ func clearToEOPane(row int, col int, va ...int) {
         lines := va[0] / (p.w - 1)
         for ; lines >= 0; lines-- {
             at(row+lines-1, 1)
-            fmt.Print(rep(" ", int(p.w)))
+            fmt.Print(rep(" ",p.w-2))
         }
     } else {
         at(row, col)

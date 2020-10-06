@@ -37,6 +37,33 @@ CHANGE LOG
             - no plans to extend this into variables/struct at all. just a convenience facility.
             - no plans for module aliases. this point may change though.
 
+
+        * added regex operators:
+
+                ~  : direct match           (result:bool)       e.g. "abcd" ~ "d" => true
+                ~i : insensitive match      (result:bool)       e.g. "abCd" ~i "c" => true
+                ~f : filtering match        (result:[]string)   
+                    - e.g. "abcd" ~f "."    => [ "a", "b", "c", "d" ]
+                    - e.g. "abcd" ~f ".{2}" => [ "ab", "cd" ]
+
+                    - e.g. in iteration:
+                        >> foreach c in "abcdef" ~f "."
+                        --   println "__",c,"__"
+                        -- endfor
+                        __a__
+                        __b__
+                        __c__
+                        __d__
+                        __e__
+                        __f__
+                        >> foreach c in "abcdef" ~f ".{2}"
+                        --   println "__",c,"__"
+                        -- endfor
+                        __ab__
+                        __cd__
+                        __ef__
+
+    
         * added str * pos_int : repeat string operator
 
         * added []string and []uint to + operator.
