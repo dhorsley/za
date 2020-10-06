@@ -45,6 +45,8 @@ define showEnv()
     pane select "envs"
     pane redraw
     clear(2,11,1)
+    cursoroff()
+
     at  2,3; print "Hostname             : [#6]{=hostname()}[#-]"
     at  3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
     at  4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
@@ -60,6 +62,7 @@ enddef
 
 define showFiles()
 
+    cursoroff()
     if !winterm()
 
         open_fd=""
@@ -100,6 +103,8 @@ define showMem()
 
     pane select "mem"
     pane redraw
+
+    cursoroff()
 
     if !access
         at 2,1
@@ -159,7 +164,7 @@ define showMem()
     cs=8
     on count(slabs)<8 do cs=count(slabs)
 
-    comwidth=10
+    comwidth=6
     at 1,35; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
     if count(slabs)>0
@@ -178,6 +183,8 @@ define showProcs(ct,uptime)
 
     pane select "procs"
     pane redraw
+
+    cursoroff()
 
     # get filenames
     procs =| ls -1 /proc/*/stat
@@ -260,6 +267,8 @@ enddef
 
 
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
+
+    cursoroff()
 
     proc_file=""
     if is_file("/proc/stat")
@@ -396,12 +405,10 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 if showCpuBars
                     # fill cpu row background
                     at row,pos
-                    # cursorx(pos)
                     print pad(activity_indicator,-1,48,activity_indicator)
 
                     # populate with values
                     at row,pos
-                    #cursorx(pos)
                     print col_sys;      print pad(activity_indicator,1,w_sys,activity_indicator)
                     print col_user;     print pad(activity_indicator,1,w_user,activity_indicator)
                     print col_softirq;  print pad(activity_indicator,1,w_softirq,activity_indicator)
@@ -435,6 +442,8 @@ define showHdd()
     pane select "hdd"
     pane redraw
 
+    cursoroff()
+
     when release_id()
     is "alpine"
         disks=| df -h | tail -n+2 | egrep '^overlay' | sort -grk5
@@ -463,6 +472,8 @@ enddef
 
 define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
 
+    cursoroff()
+
     if !is_file("/proc/net/dev")
         return net_sample_start_in-1
     endif
@@ -474,8 +485,8 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
     print "Interface [{interface}] Address : {ipaddr}        "
 
     at pane_h()-3,2
-    print "Legend [#6]", load[0], "[#-] 64B-4KiB [#6]", load[1], "[#-] 4KiB-256KiB [#6]"
-    print load[2], "[#-] 256KiB-16MiB [#6]", load[3], "[#-] 16MiB-1GiB [#6]", load[4],"[#-] 1GiB-64GiB"
+    print "Legend [#6]", legload[0], "[#-] 64B-4KiB [#6]", legload[1], "[#-] 4KiB-256KiB [#6]"
+    print legload[2], "[#-] 256KiB-16MiB [#6]", legload[3], "[#-] 16MiB-1GiB [#6]", legload[4],"[#-] 1GiB-64GiB"
 
     foreach int_name in net_interfaces()
 
@@ -518,14 +529,16 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
             # skip displaying errors. just show in/out bytes
 
             full_magnitude=5
-            midline=7
+            midline=8
            
             # traffic plots
 
-            clear(3,6,1)
-            clear(8,11,1)
+            clear(4,7,1)
+            clear(9,12,1)
 
-            for f=1 to net_sample_count
+            block="☰"
+
+            for f=2 to net_sample_count
                 
                 # recv plot
                 print "[#invert][#4]"
@@ -534,7 +547,11 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
                 if sample!=0
                     rsz=int(logn(sample,64))
                     on rsz>full_magnitude do rsz=full_magnitude
-                    if rsz>0 ; at midline-(rsz),1+f ; print load[rsz-1] ; endif
+                    if rsz>0
+                        for brow=1 to rsz
+                            at midline-(brow),1+f ; print load[rsz-1]
+                        endfor
+                    endif
                 endif
                 print "[#-]"
 
@@ -545,11 +562,20 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
                 if sample!=0
                     tsz=int(logn(sample,64))
                     on tsz>full_magnitude do tsz=full_magnitude
-                    if tsz>0 ; at midline+(tsz),1+f ; print load[tsz-1] ; endif
+                    if tsz>0
+                        for brow=1 to tsz
+                            at midline+(brow),1+f ; print load[tsz-1]
+                        endfor
+                    endif
                 endif
 
                 print "[#-]"
 
+            endfor
+
+            for e=1 to len(legload)
+                at midline-e,1; print "[#4]",legload[e-1],"[#-]"
+                at midline+e,1; print "[#1]",legload[e-1],"[#-]"
             endfor
 
             # write history
@@ -586,13 +612,13 @@ define redef_layout(cpu_count)
     pane define "cpu",    1,            1,         cpu_count+1,  term_w(),     "[#b1] Internal [##]",    "none"
     pane define "hdd",    cpu_count+3,  2,              6,       64,           "[#b1] Disks [##]",       "round"
     pane define "procs",  cpu_count+10, 2,              11,      64,           "[#b1] Processes [##]",   "round"
-    pane define "net",    cpu_count+3,  66,             18,      term_w()-67,  "[#b1] Network [##]",     "none"
-    pane define "envs",   cpu_count+22, 1,              13,      50,           "[#b1] Environment [##]", "topline"
-    pane define "mem",    cpu_count+22, 51,             13,      70,           "[#b1] Memory [##]",      "topline"
-    pane define "files",  cpu_count+22, 121,            13,      term_w()-120, "[#b1] Files [##]",       "topline"
+    pane define "net",    cpu_count+3,  66,             18,      term_w()-75,  "[#b1] Network [##]",     "none"
+    pane define "envs",   cpu_count+22, 1,              13,      45,           "[#b1] Environment [##]", "topline"
+    pane define "mem",    cpu_count+22, 46,             13,      65,           "[#b1] Memory [##]",      "topline"
+    pane define "files",  cpu_count+22, 112,            13,      term_w()-120, "[#b1] Files [##]",       "topline"
     pane define "status", cpu_count+36, 1,              4,       term_w(),     "[#b1] Status [##]",      "none"
 
-    setglob net_sample_count = term_w()-71
+    setglob net_sample_count = term_w()-77
 
     setglob rblist = push_front(0.0)
     setglob relist = push_front(0.0)
@@ -612,10 +638,9 @@ define redef_layout(cpu_count)
     pane select "net"
     graph_line="-"
     on utf8supported() do graph_line="┈"
-    midline=7
+    midline=8
     print "[#6]"
     at midline,2
-        # at midline,1+f; print graph_line
     for f=1 to net_sample_count
         print graph_line
     endfor
@@ -678,7 +703,8 @@ prev_rerr=0
 prev_terr=0
 
 # network load icons
-load = [ "1", "2", "3", "4", "5" ]
+legload = [ "❶", "❷", "❸", "❹", "❺" ]
+load = [ "☰", "☰", "☰", "☰", "☰" ]
 
 # main loop
 ipaddr=interface_ip(interface)
@@ -720,7 +746,8 @@ while !quit
     print "[#b1]"
     clear(1,3,1)
 
-    d=|date
+    # d=|date
+    d=date_human()
     at 1,2; print "[#bold]",d
     timo=string(timeout)
     at 2,2; print "Current Timeout : {timo} ms"

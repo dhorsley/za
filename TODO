@@ -19,20 +19,6 @@
 
         operators
 
-            - identify missing ops
-
-                - done: IN operator for array membership checking.
-
-                - todo: add a regex operator
-                        ~  : direct match           (result:bool)
-                        ~i : insensitive match      (result:bool)
-                        ~f : filtering match        (result:[]string)
-                    - initially just support direct match then add variants after testing.
-                    - maybe requires a multiline match variant too.
-
-                    - not sure if these are required at all, as there are library equivalents.
-                        - not doing just yet, needs thinking about.
-    
                 - todo: three-way comparison for scalars and array of built-ins
                     - may be wasted effort for any benefit it would bring
                     - should maybe only do this once a decision has been made about an

@@ -9,7 +9,7 @@ import (
 )
 
 //
-// this type is for holding a complete statement from statement to EOL/Semicolon
+// this type is for holding a complete line from statement to EOL/Semicolon
 type Phrase struct {
 	Tokens     []Token // each token found
 	TokenCount int     // number of tokens generated for this phrase

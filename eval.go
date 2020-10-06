@@ -10,6 +10,7 @@ import (
     "sync"
     str "strings"
     "unsafe"
+    "regexp"
 //    "runtime"
 //    "os"
 )
@@ -50,6 +51,9 @@ func (p *leparser) Init() {
         SYM_BAND      : {20,nil,p.binaryLed},           // AND
         SYM_Caret     : {20,p.unary,p.binaryLed},       // un: address of, bin: XOR
         SYM_BOR       : {20,nil,p.binaryLed},           // OR
+        SYM_Tilde     : {25,nil,p.binaryLed},           // regex match
+        SYM_ITilde    : {25,nil,p.binaryLed},           // insensitive regex match
+        SYM_FTilde    : {25,nil,p.binaryLed},           // filtering regex match
 		SYM_Pling     : {15,p.unary, nil},              // Logical Negation
         SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
         SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
@@ -213,6 +217,14 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
         return compare(left,right,"<=")
 	case SYM_GE:
         return compare(left,right,">=")
+
+    case SYM_Tilde:
+        return p.rcompare(left,right,false,false)
+    case SYM_ITilde:
+        return p.rcompare(left,right,true,false)
+    case SYM_FTilde:
+        return p.rcompare(left,right,false,true)
+
     case SYM_LOR:
         return asBool(left) || asBool(right)
     case SYM_LAND:
@@ -235,6 +247,42 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 	return left
 }
 
+
+var cachelock = &sync.RWMutex{}
+
+func (p *leparser) rcompare (left interface{},right interface{},insensitive bool, multi bool) interface{} {
+
+    switch left.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("regex comparision requires strings"))
+    }
+
+    switch right.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("regex comparision requires strings"))
+    }
+
+    insenStr:=""
+    if insensitive { insenStr="(?i)" }
+
+    var re regexp.Regexp
+    cachelock.Lock()
+    if pre,found:=ifCompileCache[right.(string)];!found {
+        re = *regexp.MustCompile(insenStr+right.(string))
+        ifCompileCache[right.(string)]=re
+        // @note: yes, yes. i know. we aren't releasing 
+        //   these. still need to set an ejection policy.
+    } else {
+        re = pre
+    }
+    cachelock.Unlock()
+
+    if multi { return re.FindAllString(left.(string),-1) }
+
+	return re.MatchString(left.(string))
+}
 
 func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
 

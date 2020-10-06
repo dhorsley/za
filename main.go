@@ -15,6 +15,7 @@ import (
     "os"
     "os/exec"
     "os/signal"
+    "regexp"
     "runtime"
     str "strings"
     "syscall"
@@ -182,6 +183,7 @@ var keywordset map[string]struct{}
 
 // list of struct fields per struct type - used by INIT when defining a struct
 var structmaps map[string][]string
+var ifCompileCache map[string]regexp.Regexp
 
 // highest numbered vtable entry created
 var vtable_maxreached uint64
@@ -244,6 +246,9 @@ func main() {
 
     // create the struct map
     structmaps = make(map[string][]string)
+
+    // compile cache for regex operator : @note: usage requires a lock around it
+    ifCompileCache = make(map[string]regexp.Regexp)
 
     // global namespace
     vcreatetable(0, &vtable_maxreached, VAR_CAP)
