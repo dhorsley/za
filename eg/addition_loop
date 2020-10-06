@@ -18,5 +18,5 @@ te=epoch_nano_time()
 
 println "total {a} , loop-count {f}"
 
-report(ts,te,max_count)
+timing.report(ts,te,max_count)
 

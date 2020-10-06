@@ -906,7 +906,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
 
             var iargs []interface{}
             if !nonlocal {
-               iargs=[]interface{}{obj}
+                iargs=[]interface{}{obj}
             }
 
             if p.peek().tokType==LParen {

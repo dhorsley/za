@@ -2414,7 +2414,7 @@ tco_reentry:
                     module:currentModule,
                     fs:loc,
                 }
-                // pf("user function list:\n%+v\n",funcmap)
+                // pf("Define added func map entry : %+v\n",funcmap[currentModule+"."+definitionName])
 
                 sourceMap[loc]=base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
                 // pf("added a source map entry for loc %d pointing to base %d\n",loc,base)
@@ -2709,6 +2709,8 @@ tco_reentry:
 
             oldModule:=currentModule
             currentModule=path.Base(fom)
+            currentModule=str.TrimSuffix(currentModule,".mod")
+            // pf("MODULE '%v' set currentModule to %v\n",fom,currentModule)
 
             //.. parse and execute
             fileMap[loc]=moduleloc
