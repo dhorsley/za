@@ -19,5 +19,5 @@ assert x==max_count
 # END
 #
 
-report(ts,te,max_count)
+timing.report(ts,te,max_count)
 
