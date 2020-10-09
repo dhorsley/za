@@ -891,10 +891,11 @@ func buildInternalLib() {
         if s != "" {
             lmv,found:=fnlookup.lmget(s)
             if found {
-            vc:=varcount[lmv]
-            for q := 0; q < vc; q++ {
-                v := ident[lmv][q]
-                if v.IName[0]=='@' { continue }
+                vc:=varcount[lmv]
+                for q := 0; q < vc; q++ {
+                    v := ident[lmv][q]
+                    if v.IName=="" { continue }
+                    if v.IName[0]=='@' { continue }
                     pf("%s = %v\n", v.IName, v.IValue)
                 }
             } else {

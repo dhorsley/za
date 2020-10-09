@@ -22,7 +22,7 @@ init person s_person
 
 for e=1 to 1000
     for p=1 to 100
-        person.name=forenames[rand(len(forenames))-1]+" "+surnames[rand(len(surnames))-1]
+        person.name=forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1]
         person.age=rand(49)
         person.dob=date(rand(1546300800)) # 1970 to 2019
         people[p]=person

@@ -21,9 +21,9 @@ define offsetmomentum()
 
     for i=0 to N-1
         bi=b[i]
-        px = px + bi.vx * bi.mass
-        py = py + bi.vy * bi.mass
-        pz = pz + bi.vz * bi.mass
+        px += bi.vx * bi.mass
+        py += bi.vy * bi.mass
+        pz += bi.vz * bi.mass
     endfor
 
     setglob b[0].vx = -px / solarMass
@@ -43,7 +43,7 @@ define energy()
             dy = bi.sy - b[j].sy
             dz = bi.sz - b[j].sz
             distance = sqrt ( sqr dx + sqr dy + sqr dz )
-            e=e- ( (bi.mass*b[j].mass) / distance )
+            e-= ( (bi.mass*b[j].mass) / distance )
         endfor
     endfor
     return e
@@ -72,9 +72,9 @@ define advance(dt)
             _vy = _vy - dy * bj.mass * mag
             _vz = _vz - dz * bj.mass * mag
 
-            bj.vx = bj.vx + dx * bi.mass * mag
-            bj.vy = bj.vy + dy * bi.mass * mag
-            bj.vz = bj.vz + dz * bi.mass * mag
+            bj.vx += dx * bi.mass * mag
+            bj.vy += dy * bi.mass * mag
+            bj.vz += dz * bi.mass * mag
 
             setglob b[j]=bj
 
@@ -90,9 +90,9 @@ define advance(dt)
 
     for i = 0 to N-1
         bi=b[i]
-        bi.sx=bi.sx + dt*bi.vx
-        bi.sy=bi.sy + dt*bi.vy
-        bi.sz=bi.sz + dt*bi.vz
+        bi.sx+=dt*bi.vx
+        bi.sy+=dt*bi.vy
+        bi.sz+=dt*bi.vz
         setglob b[i]=bi
     endfor
 

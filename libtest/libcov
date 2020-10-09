@@ -32,10 +32,8 @@ foreach l in a
 
     on l=="" do continue
 
-    if start(l,"Category:")
-        if !first
-            summary(curcat,hastest[curcat],cc[curcat])
-        endif
+    if l ~ "^Category:"
+        on !first do summary(curcat,hastest[curcat],cc[curcat])
 
         curcat=field(l,2)
         print "\n[#5]{curcat}[#-]   "
@@ -60,8 +58,7 @@ foreach l in a
         fnexpr=join(F[3:]," ")
         words=split(fnexpr)
         if len(words)>2
-            words=tail(words)
-            words=tail(words)
+            words=words[2:]
         endif
 
         fname=words[0][:strpos(words[0],"(")]
@@ -90,7 +87,6 @@ summary(curcat,hastest[curcat],cc[curcat])
 
 
 # final summary
-
 textline("[#bold][#underline][#5]TEST SUMMARY[#default]")
 totcount=0
 tottests=0
@@ -103,8 +99,8 @@ foreach c in sumcount
     on pc<thresh do clr="[#2]"
 
     print format("%30s : %3d / %-3d  %s%06.02f %%[#-]\n",key_c,c,sumtot[key_c],clr,pc)
-    totcount=totcount+c
-    tottests=tottests+sumtot[key_c]
+    totcount+=c
+    tottests+=sumtot[key_c]
 
 endfor
 

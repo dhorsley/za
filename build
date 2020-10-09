@@ -17,9 +17,8 @@ on do_upx=="upx" do upx_enable=true
 
 GCLIMIT = "GOGC=250 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
-# GCFLAGS = "-gcflags='-B'"
 
-bvers =  "1.0.11"
+bvers =  "1.0.12"
 bdate =| date "+%d-%m-%Y %H:%M"
 
 
@@ -32,23 +31,23 @@ if !hasstart(os(),"freebsd")
     when lower(tgt)
     is "alpine"
         if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
-            print "Failed to build alpine version.\n"
+            println "Failed to build alpine version."
             exit 1
         endif
     is "libc"
         if buildLibc(bvers,bdate)!=0
-            print "Failed to build libc version.\n"
+            println "Failed to build libc version."
             exit 1
         endif
     is "win"
         if buildWin(bvers,bdate,strip_opts) != 0
-            print "Failed to build windows version.\n"
+            println "Failed to build windows version."
             exit 1
         endif
     endwhen
 else
     if buildFreeBSD(bvers,bdate) != 0
-        print "Failed to build bsd version.\n"
+        println "Failed to build bsd version."
         exit 1
     endif
 endif
@@ -60,13 +59,13 @@ if !hasstart(os(),"freebsd")
             on upx_enable do | upx za
         endif
     else
-        on is_file("za") do print "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]\n"
+        on is_file("za") do println "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]"
     endif
 endif
 
 when lower(tgt)
 is "libc"
-    print "[#4]Installing to /usr/bin/[#-]\n\n"
+    println "[#4]Installing to /usr/bin/[#-]\n"
     | sudo cp -f za /usr/bin
     | sudo chmod 755 /usr/bin/za
 endwhen

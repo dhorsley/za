@@ -822,6 +822,7 @@ func debug(level int, s string, va ...interface{}) {
         plog(sparkle(s),va...)
     }
     */
+
 }
 
 func restoreScreen() {

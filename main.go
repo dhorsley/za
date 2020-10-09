@@ -827,10 +827,7 @@ func main() {
             functionspaces[globalspace] = []Phrase{}
             fspacelock.Unlock()
 
-            pr, _ := vget(0, "@prompt")
-            sparklePrompt := sparkle(pr.(string))
             echoMask,_:=vget(0,"@echomask")
-            tempPrompt:=sparklePrompt
             nestAccept:=0
             totalInput:=""
             var eof,broken bool
@@ -838,6 +835,16 @@ func main() {
 
             // multi-line input loop
             for {
+
+                // set the prompt in the loop to ensure it updates regularly
+                var tempPrompt string
+                if nestAccept==0 {
+                    pr, _ := vget(0, "@prompt")
+                    sparklePrompt := sparkle(interpolate(globalspace,pr.(string)))
+                    tempPrompt=sparklePrompt
+                } else {
+                    tempPrompt=promptContinuation
+                }
 
                 input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
                 if eof || broken { break }
@@ -882,7 +889,7 @@ func main() {
                 }
 
                 if nestAccept==0 || breakOnCommand { break }
-                tempPrompt=promptContinuation
+
             }
 
             if eof || broken { break }

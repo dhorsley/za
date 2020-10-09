@@ -24,12 +24,12 @@ func typeOf(val interface{}) string {
     switch kind {
     case reflect.Bool:
         return "bool"
-    case reflect.Int, reflect.Float64:
+    case reflect.Uint, reflect.Int64, reflect.Int, reflect.Float64:
         return "number"
     case reflect.String:
         return "string"
     default:
-        // pf("[ kind %#v ]\n", kind.String())
+        pf("[ kind %#v ]\n", kind.String())
     }
 
     if _, ok := val.([]interface{}); ok {
@@ -52,17 +52,21 @@ func asBool(val interface{}) bool {
 }
 
 func asInteger(val interface{}) int {
-    i, ok := val.(int)
-    if ok {
-        return i
+    switch v:=val.(type) {
+    case int:
+        return int(v)
+    case int64:
+        return int(v)
+    case uint:
+        return int(v)
+    case uint64:
+        return int(v)
+    case uint8:
+        return int(v)
+    case float64:
+        return int(v)
     }
-    f, ok := val.(float64)
-    if !ok {
-        panic(fmt.Errorf("type error: required number of type integer, but was %s", typeOf(val)))
-    }
-
-    i = int(f)
-    return i
+    panic(fmt.Errorf("type error: required number of type integer, but '%+v' was %s", val, typeOf(val)))
 }
 
 

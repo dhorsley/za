@@ -2,7 +2,7 @@
 #
 # these are not intended to be real examples of any value... i know you can do a 
 # number of these in many other, probably simpler, ways. they are just examples
-# of how to shove Za into a pipe.
+# of how to shove Za into a pipe or redirect through it.
 #
 
 # simple awk-like : find lines containing "Name" and display their line number and content.
@@ -13,5 +13,8 @@ lsof +c 0 | za -e 'foreach l in read_file("/dev/stdin"); fields(l); if !key("tot
 
 # sort by human readable size
 ls -lh | tr -s ' ' | tail -n+2 | za -e 'print fieldsort(read_file("/dev/stdin"),5,"h",false)'
+
+# find all words in dictionary including the word "horse", generating a comma separated list.
+za -e 'println (read_file("/dev/stdin") ~f "horse.*").join(",")' </usr/share/dict/british-english
 
 

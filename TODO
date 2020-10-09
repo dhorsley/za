@@ -1,41 +1,26 @@
 
 
-1.0.12  bug fixes , library return value review, 
+1.0.12 fixes
 
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
 
-1.0.11  fixes and evaluator updates
 
-        TODO
-        ----
+---------------------------------------------------------------------------------------------
 
-        standard library cleanup
-
-            - add types support in places
-                - lib-string, lib-list done
-                - others not as important, but will work through them over time.
+LATER
+-----
 
         operators
-
                 - todo: three-way comparison for scalars and array of built-ins
                     - may be wasted effort for any benefit it would bring
                     - should maybe only do this once a decision has been made about an
                         eventual JIT version, as the generated code might better optimise.
 
-            - add more type support in existing ops
-                - DONE - added str*pos_int : repeat string
-                - DONE - added []string and []uint to + operator.
-
-            - extend compound ops (++,--,+=,-=,*=,/=,%=) to work with globals
-                - DONE
-                    - setglob now supports all of the above compound operators.
-                    - still only work for simple operands on l.h.s.
-
         dormant functions
 
-12.         - need a way to yield and make a function dormant and re-entrant.
+            - need a way to yield and make a function dormant and re-entrant.
                 - this would allow for generators and some other operations.
                 - there's no particular priority for this, just a nice to have.
 
@@ -89,64 +74,6 @@
                 performance (which is definitely good enough for what is required) unless a 
                 benevolent genius with time on their hands comes along and pimps it up.
 
-
-        PARTIAL COMPLETION
-        ------------------
-
-        Pointer Operations
-        -------------------------------------------------------------------------------------------
-
-        DONE: (not that this implementation is of much use for anything currently)
-        add unary op: ^a
-            this will effectively be our pointer type
-            when encountered on r.h.s it will eval to a string "fs.varname" of var a
-            when assigned it will be stored as the IValue of p in p=^a ("fsid.a")
-            when evaluated p will return its own IValue
-
-        DONE:
-        add unary op: *p
-            when evaluated *p will return the content of 'a' by dereferencing the IValue.
-            on the l.h.s *p will assign to the referenced var 'a'.
-
-        DONE: (partially anyway)
-        add l.h.s. deref of *p for assigning indirectly... in doAssign()
-
-        DONE:
-        add pointer as a valid field type in structures
-            see eg/pointers
-            not much to this.. just added ^ as a field type (underlying type is []string)
-
-        NOT DOING:
-            any kind of pointer arithmetic or memory allocation pool.
-
-        -------------------------------------------------------------------------------------------
-        to make any use of this you'll probably end up having to create state in the global space.
-        because we don't spawn objects that live beyond the scope of their local function, pointers
-        will likely only be any use when reading state from a parent scope. you could conceivably
-        have a function holding space that async threads could access, but the use cases are few
-        and far between in any case.
-        -------------------------------------------------------------------------------------------
-        to make this more like you might expect would involve creating a memory allocator which 
-        works outside of normal variable allocation, and this just is not going to occur. it would
-        make pointers useful, but they are already at the very edge of what needs to be supported
-        in this language. arguably, they are already outside of the remit. the operators are only
-        in place because they were easy to reserve and they can have their functionality changed 
-        later. i just do not anticipate ever doing this.
-        -------------------------------------------------------------------------------------------
-        probably won't even be documenting this functionality for now.
-        -------------------------------------------------------------------------------------------
-
-
-1.0.10  new evaluator + VAR enforcement
-
-1.0.9   BSD port, STRUCT support, lower-level filing operations.
-        bug fixes and documentation updates
-
-
----------------------------------------------------------------------------------------------
-
-LATER
------
 
 * windows keypress() (getch function):
 
