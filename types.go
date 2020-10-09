@@ -79,6 +79,11 @@ type Feature struct {
 	category string // for stdlib funcs() output splitting
 }
 
+// holds state about a while loop
+type WhileMarker struct {
+    pc          int
+    enddistance int
+}
 
 // holds internal state for the WHEN command
 type whenCarton struct {

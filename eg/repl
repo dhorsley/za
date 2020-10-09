@@ -1,0 +1,75 @@
+#!/usr/bin/za
+
+doc "Simple REPL loop example"
+
+
+define show_help()
+    at 1,1; print "Commands:"
+    at 2,1; print "help, echo, quit"
+enddef
+
+define clear(r1,r2,c)
+    for e=r1 to r2
+        clear_line(e,1)
+    endfor
+    at r1,1
+enddef
+
+define process(i)
+
+    on i=="" do return
+    fields(i)
+    on count(F)==0 do return
+
+    pane select "output"
+    pane redraw
+
+    clear(1,term_h())
+
+    statement=F[1]
+
+    # remove entire list + statement from fields:
+    F=tail(F); F=tail(F)
+ 
+    when lower(statement)
+    is "help"
+        show_help()
+    is "quit"
+        setglob term = true
+    is "echo"
+        foreach f in F
+            print eval(f)
+        endfor
+    or
+        println "Error - unknown command: ",statement
+    endwhen
+
+enddef
+
+
+#
+# MAIN
+#
+
+cls
+#           name        row col h   w           title   border
+pane define "input",    1,  1,  3,  term_w(),   "",     "topline"
+pane define "output",   5,  1,  20, term_w(),   "",     "topline"
+
+term=false
+while !term
+
+    pane select "input"
+    pane redraw
+
+    at 2,1
+    prompt inp "> "
+    process(inp)
+
+endwhile
+
+pane select "global"
+at 27,1
+
+exit 0
+

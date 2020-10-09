@@ -1,8 +1,6 @@
 package main
 
 import (
-    "bytes"
-    "encoding/gob"
     "io/ioutil"
     "math"
     "math/rand"
@@ -19,13 +17,6 @@ import (
     "time"
 )
 
-func getRealSizeOf(v interface{}) (int, error) {
-    b := new(bytes.Buffer)
-    if err := gob.NewEncoder(b).Encode(v); err != nil {
-        return 0, err
-    }
-    return b.Len(), nil
-}
 
 func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
@@ -187,7 +178,8 @@ func EvalCrushRest(p *leparser, fs uint64, tok []Token, tstart int) (interface{}
     return p.Eval(fs,tok[tstart:])
 }
 
-// check for value in slice
+
+// check for value in slice - used by lookahead()
 func InSlice(a uint8, list []uint8) bool {
     for _, b := range list {
         if b == a {
@@ -197,25 +189,20 @@ func InSlice(a uint8, list []uint8) bool {
     return false
 }
 
-func InStringSlice(a string, list []string) bool {
-    for _, b := range list {
-        if b == a {
-            return true
-        }
-    }
-    return false
-}
 
 //
 // LOOK-AHEAD FUNCTIONS
 //
 
+// searchToken is used by FOR to check for occurrences of the loop variable.
+//  @note: would also need to check for pointer references should we start taking those seriously.
 func searchToken(base uint64, start int, end int, sval string) bool {
 
     range_fs:=functionspaces[base][start:end]
 
     for _, v := range range_fs {
-        if len(v.Tokens) == 0 {
+        // if len(v.Tokens) == 0 {
+        if v.TokenCount == 0 {
             continue
         }
         for r := 0; r < len(v.Tokens); r++ {
@@ -235,11 +222,10 @@ func searchToken(base uint64, start int, end int, sval string) bool {
     return false
 }
 
+
 // used by if..else..endif and similar constructs for nesting
+func lookahead(fs uint64, startLine int, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
 
-func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
-
-    indent := startlevel
     range_fs:=functionspaces[fs][startLine:]
 
     for i, v := range range_fs {
@@ -248,13 +234,11 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term uint
             continue
         }
 
-        statement := v.Tokens[0].tokType
-
         // indents and dedents
-        if InSlice(statement, indenters) {
+        if InSlice(v.Tokens[0].tokType, indenters) {
             indent++
         }
-        if InSlice(statement, dedenters) {
+        if InSlice(v.Tokens[0].tokType, dedenters) {
             indent--
         }
         if indent < endlevel {
@@ -262,12 +246,12 @@ func lookahead(fs uint64, startLine int, startlevel int, endlevel int, term uint
         }
 
         // found search term?
-        if indent == endlevel && statement == term {
+        if indent == endlevel && v.Tokens[0].tokType == term {
             return true, i, false
         }
     }
 
-    // return found, distance, false
+    // return found, distance, nesting_fault_status
     return false, -1, false
 
 }
@@ -317,29 +301,23 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
             calltable=ncs
         }
 
-        var suf string
-
         // pf("-- entered reserving code--\n")
         for  ; ; {
 
             newName := requiredName
 
             if newName[len(newName)-1]=='@' {
-                suf=sf("%d",rand.Int())
-                newName+=suf
+                newName+=sf("%d",rand.Int())
             }
 
             if _, found := numlookup.lmget(q); !found { // unreserved
                 numlookup.lmset(q, newName)
                 fnlookup.lmset(newName,q)
-                // pf("reserving f.id %d for %s\n",q,newName)
                 // place a reservation in calltable:
                 // if we don't do this, then there is a small chance that the id [q]
                 //  will get re-used between the calls to GetNextFnSpace() and Call()
                 //  by fast spawning async tasks.
                 calltable[q]=call_s{fs:"@@reserved",caller:0,base:0,retvar:""}
-                // pf("-- leaving gnfs with %v,%v --\n\n",q,suf)
-                // calllock.Unlock()
                 return q,newName
             }
 
@@ -398,14 +376,12 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
                 parser.report(sf("\n%v\n",r))
                 if debug_level==20 { panic(r) }
                 finish(false,ERR_EVAL)
-                // os.Exit(ERR_EVAL)
             }
             err:=r.(error)
             parser.report(sf("\n%v\n",err))
             setEcho(true)
             if debug_level==20 { panic(r) }
             finish(false,ERR_EVAL)
-            // os.Exit(ERR_EVAL)
         }
     }()
 
@@ -438,8 +414,8 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
         }
     }
 
-    if lockSafety { farglock.RLock() }
     // missing varargs in call result in empty string assignments:
+    if lockSafety { farglock.RLock() }
     if functionArgs[base]!=nil {
         if len(functionArgs[base])>len(va) {
             for e:=0; e<(len(functionArgs[base])-len(va)); e++ {
@@ -450,7 +426,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     if lockSafety { farglock.RUnlock() }
 
 
-    tco:=false
+    tco:=false // tail call optimisation flag (TCE only)
 
     if varmode == MODE_NEW {
 
@@ -583,11 +559,7 @@ tco_reentry:
     for {
 
         pc++  // program counter, equates to each Phrase struct in the function
-
-
-        parser.stmtline=pc
-
-        // si=sig_int // <-- this should have a lock around it, but it's only going to conflict at times we don't care about.
+        parser.stmtline=pc  // reflects the pc for use in the evaluator
 
         if pc >= finalline || endFunc || sig_int {
             break
@@ -599,7 +571,7 @@ tco_reentry:
         }
 
         // get the next Phrase
-        inbound     = &functionspaces[base][pc]
+        inbound = &functionspaces[base][pc]
         parser.line=inbound.SourceLine
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
@@ -737,10 +709,12 @@ tco_reentry:
 
         case C_While:
 
-            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
+            var endfound bool
+            var enddistance int
 
+            endfound, enddistance, _ = lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
             if !endfound {
-                parser.report( "could not find an ENDWHILE")
+                parser.report("could not find an ENDWHILE")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -829,6 +803,7 @@ tco_reentry:
                 finish(false,ERR_EVAL)
                 break
             }
+            // pf("in While : expr -> %+v res: %+v\n", cond.repeatCond, expr.result)
 
             if expr.result.(bool) {
                 // while still true, loop 
@@ -858,37 +833,6 @@ tco_reentry:
                 break
             }
 
-            /*
-            pos:=-1
-            for t:=1; t<inbound.TokenCount; t++ {
-                if inbound.Tokens[t].tokType==O_Assign { pos=t; break }
-            }
-
-            if pos==-1 || pos==inbound.TokenCount-1 || pos==1 {
-                parser.report("SETGLOB syntax error")
-                finish(false,ERR_SYNTAX)
-                break
-            }
-
-            var expr ExpressionCarton
-            var err error
-
-            expr.result, err = parser.Eval(ifs,inbound.Tokens[pos+1:])
-            if err!=nil {
-                parser.report("could not evaluate expression in SETGLOB")
-                finish(false,ERR_SYNTAX)
-                break
-            }
-
-            // pos-1 because we have removed the setglob token at front:
-            parser.doAssign(globalaccess,ifs,inbound.Tokens[1:],&expr,pos-1)
-
-            if expr.evalError {
-                parser.report(sf("error in SETGLOB assignment\n%+v\n",expr.errVal))
-                finish(false,ERR_EVAL)
-                break
-            }
-            */
 
         case C_Foreach:
 
@@ -896,19 +840,19 @@ tco_reentry:
             // iterates over the result of expression expr as a list
 
             if inbound.TokenCount<4 {
-                parser.report( "bad argument length in FOREACH.")
+                parser.report("bad argument length in FOREACH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if str.ToLower(inbound.Tokens[2].tokText) != "in" {
-                parser.report(  "malformed FOREACH statement.")
+                parser.report("malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             if inbound.Tokens[1].tokType != Identifier {
-                parser.report(  "parameter 2 must be an identifier.")
+                parser.report("parameter 2 must be an identifier.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1153,8 +1097,6 @@ tco_reentry:
                         if iter.Next() {
                             vset(ifs, "key_"+fid, iter.Key().String())
                             vset(ifs, fid, iter.Value().Interface())
-                        } else {
-                            // empty
                         }
                         ce = len(expr.result.(map[string]interface{})) - 1
                     }
@@ -1196,11 +1138,11 @@ tco_reentry:
                     loopType: C_Foreach,
                 }
 
-
                 if lockSafety { lastlock.Unlock() }
                 if lockSafety { looplock.Unlock() }
 
             }
+
 
         case C_For: // loop over an int64 range
 
@@ -1485,6 +1427,7 @@ tco_reentry:
             if lockSafety { lastlock.Unlock() }
             if lockSafety { looplock.Unlock() }
 
+
         case C_Continue:
 
             // Continue should work with FOR, FOREACH or WHILE.
@@ -1560,7 +1503,7 @@ tco_reentry:
                     bmess = "out of WHEN:\n"
 
                 default:
-                    parser.report(  "A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
+                    parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
                     if lockSafety { lastlock.RUnlock() }
                     if lockSafety { looplock.RUnlock() }
@@ -1591,7 +1534,7 @@ tco_reentry:
             } else {
                 removee := inbound.Tokens[1].tokText
                 if _, ok := VarLookup(ifs, removee); ok {
-                    // vunset(ifs, removee)
+                    vunset(ifs, removee)
                 } else {
                     parser.report( sf("Variable %s does not exist.", removee))
                     finish(false, ERR_EVAL)

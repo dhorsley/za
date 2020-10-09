@@ -163,7 +163,7 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]{lower("{@language}")} [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-Q] [-S] \
+[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-Q] [-S] \
     [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
