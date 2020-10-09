@@ -1,7 +1,11 @@
 #!/usr/bin/za
 
-empty="[#3]·"
-full ="[#4]¤"
+
+empty=" "; full="[#4]o"
+if utf8supported()
+    empty="[#3]·"
+    full ="[#4]¤"
+endif
 
 mw=term_w()
 mh=term_h()

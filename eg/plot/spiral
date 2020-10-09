@@ -13,12 +13,12 @@ define draw()
     if px>0 && py>0 && px<width && py<height
         at py,px; print "[#b"+int(c)+"]·"
     endif
-    setglob theta = theta + rotation
+    setglob theta += rotation
     on x > width/2.0 do setglob theta = 0.0
-    setglob c=c+crate
+    setglob c+=crate
     on c>7 do setglob c=7
     on c<1 do setglob c=1
-    setglob crate=(49-rand(100))/30.0
+    setglob crate=(49-rand(100))/10.0
 enddef
 
 var rotation  float
@@ -35,17 +35,16 @@ crate=0.1
 bounce=0.025
 maxrot=13.0
 
-cls
 seed(epoch_nano_time())
 
 quit=false
 async whand waitkey()
 
+cursoroff()
+
 while !quit
     cls
-    cursoroff()
     theta=0.0
-    # at 1,1; print "[#b3][#6]Rotation ",rotation,"[##][#-]     "
     for e=0 to 5000
         draw()
     endfor

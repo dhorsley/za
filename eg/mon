@@ -612,11 +612,11 @@ define redef_layout(cpu_count)
     pane define "cpu",    1,            1,         cpu_count+1,  term_w(),     "[#b1] Internal [##]",    "none"
     pane define "hdd",    cpu_count+3,  2,              6,       64,           "[#b1] Disks [##]",       "round"
     pane define "procs",  cpu_count+10, 2,              11,      64,           "[#b1] Processes [##]",   "round"
-    pane define "net",    cpu_count+3,  66,             18,      term_w()-75,  "[#b1] Network [##]",     "none"
+    pane define "net",    cpu_count+3,  66,             18,      term_w()-65,  "[#b1] Network [##]",     "none"
     pane define "envs",   cpu_count+22, 1,              13,      45,           "[#b1] Environment [##]", "topline"
     pane define "mem",    cpu_count+22, 46,             13,      65,           "[#b1] Memory [##]",      "topline"
-    pane define "files",  cpu_count+22, 112,            13,      term_w()-120, "[#b1] Files [##]",       "topline"
-    pane define "status", cpu_count+36, 1,              4,       term_w(),     "[#b1] Status [##]",      "none"
+    pane define "files",  cpu_count+22, 111,            13,      30,           "[#b1] Files [##]",       "topline"
+    pane define "status", cpu_count+36, 1,              1,       term_w()-1,   "[#b1] Status [##]",      "none"
 
     setglob net_sample_count = term_w()-77
 
@@ -744,18 +744,17 @@ while !quit
     pane redraw
 
     print "[#b1]"
-    clear(1,3,1)
+    clear(1,1,1)
 
     # d=|date
     d=date_human()
-    at 1,2; print "[#bold]",d
     timo=string(timeout)
-    at 2,2; print "Current Timeout : {timo} ms"
+    at 1,1; print "[#bold]",d, "  Current Timeout : {timo} ms  "
 
     # get user input
     k=keypress(key_timeout)
 
-    at 2,1
+    at 1,30
     when chr(k)
     is "i"
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
@@ -771,11 +770,11 @@ while !quit
     is "q"
         quit=true
     is "h"
-        clear_line(2,1)
-        at 2,1; print "(h) help  (t) timeout  (i) interface  (q) quit"
-        at 3,1; print "(D) Cpu Details  (B) Cpu Bars  (T) Cpu Totals"
+        at 1,54
+        print "(h) help  (t) timeout  (i) interface  (q) quit  "
+        print "(D) Cpu Details  (B) Cpu Bars  (T) Cpu Totals"
         k=keypress(1500*1000)
-        clear_line(2,1)
+        clear_line(1,1)
     endwhen
 
     cursoroff()

@@ -9,13 +9,13 @@ doc :    and colourise the content by depth
 
 define heading(s1,d)
     spacing=""
-    on d>0 do spacing=format("%"+string((d*4))+"s"," ")
+    on d>0 do spacing=" "*d*4
     println format("%s%29s[][#-]:",spacing,s1)
 enddef
 
 define value(s1,s2,d)
     spacing=""
-    on d>0 do spacing=format("%"+string((d*4))+"s"," ")
+    on d>0 do spacing=" "*d*4
     println format("%s%30s : %v",spacing,s1,s2)
 enddef
 
@@ -24,7 +24,7 @@ define pp(k,i,d)
     # set colour depth
     print "[#"+string((d+1)%7)+"]"
 
-    if hasstart(kind(i),"map[")
+    if kind(i) ~ `^map\[`
         # map
         heading(k,d)
         foreach si in i
@@ -32,7 +32,7 @@ define pp(k,i,d)
         endfor 
     endif
 
-    if hasstart(kind(i),"[map")
+    if kind(i) ~ `^\[map`
         # array of map
         heading(k,d)
         foreach si in i[0]
@@ -40,7 +40,7 @@ define pp(k,i,d)
         endfor
     endif
 
-    if hasstart(kind(i),"[]")
+    if kind(i) ~ `\[\]`
         # array
         heading("[arr] "+k,d)
         if len(i)>0
@@ -50,7 +50,7 @@ define pp(k,i,d)
         endif
     endif
 
-    if ! match(kind(i),`\[`)
+    if ! kind(i) ~ `\[`
         # value
         value(k,i,d)
     endif

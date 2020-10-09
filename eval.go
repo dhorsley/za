@@ -845,25 +845,22 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
 func vunset(fs uint64, name string) {
 
-    ///////////////////////
-    return
-    ///////////////////////
-
-    // @note: if we intend to use this function then we should
-    //  make sure that delete and other funcs update VarLookup
-    //  correctly first.
+    // @note: this is obviously bad as it leaves a hole in the
+    //  variables list.
+    //  works for now, but needs improvement.
 
     loc, found := VarLookup(fs, name)
 
     if lockSafety { vlock.Lock() }
 
-    vc:=varcount[fs]
+    // vc:=varcount[fs]
     if found {
-        for pos := loc; pos < vc-1; pos++ {
-            ident[fs][pos] = ident[fs][pos+1]
-        }
-        ident[fs][vc] = Variable{}
-        varcount[fs]--
+        // for pos := loc; pos < vc-1; pos++ {
+        //     ident[fs][pos] = ident[fs][pos+1]
+        // }
+        // ident[fs][vc] = Variable{}
+        ident[fs][loc] = Variable{}
+        // varcount[fs]--
     }
 
     if lockSafety { vlock.Unlock() }
@@ -1478,8 +1475,10 @@ func (p *leparser) wrappedEval(lfs uint64, fs uint64, tks []Token) (expr Express
             //  address field or array operations on l.h.s.
             //  okay for now, but could improve. e.g. if p.preprev 
             //  == SYM_DOT || RBrace then work backwards to capture components.
-            //  would also depend on length of tks
+            //  would also depend on length of tks.
 
+            // override p.prev value as postIncDec uses it and we will be throwing 
+            //  away the p.* values shortly after this use.
             p.prev=tks[0]
             p.postIncDec(tks[1])
             return expr

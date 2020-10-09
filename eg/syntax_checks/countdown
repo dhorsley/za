@@ -1,7 +1,5 @@
 #!/usr/bin/za
 
-# long loop test - checks base FOR speed.
-
 module "../modules/timing.mod"
 
 #
