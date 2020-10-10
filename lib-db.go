@@ -21,7 +21,7 @@ func buildDbLib() {
 
 	// open a db connection
 	slhelp["db_init"] = LibHelp{in: "schema", out: "handle", action: "Returns a database connection [#i1]handle[#i0], based on inbound environmental variables."}
-	stdlib["db_init"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["db_init"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 1 {
 			return nil, errors.New("Bad args (count) in db_init()")
@@ -59,7 +59,7 @@ func buildDbLib() {
 
 	// close a db connection
 	slhelp["db_close"] = LibHelp{in: "handle", out: "", action: "Closes the database connection."}
-	stdlib["db_close"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["db_close"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 1 {
 			return nil, errors.New("Invalid argument count to db_close().")
@@ -76,7 +76,7 @@ func buildDbLib() {
 	}
 
 	slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: '|'`}
-	stdlib["db_query"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["db_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		var q string
 		var dbh *sql.DB

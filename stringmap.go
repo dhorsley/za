@@ -6,28 +6,26 @@ import (
 
 type Lmap struct {
     sync.RWMutex
-    smap    map[string]uint64
+    smap    map[string]uint32
 }
 
 func lmcreate(sz int) *Lmap {
-    return &Lmap{smap:make(map[string]uint64,sz)}
+    return &Lmap{smap:make(map[string]uint32,sz)}
 }
 
-func (u *Lmap) lmset(k string,v uint64) {
+func (u *Lmap) lmset(k string,v uint32) {
 	u.Lock()
     u.smap[k] = v
 	u.Unlock()
 }
 
-func (u *Lmap) lmget(k string) (uint64,bool) {
-    var tmp uint64
-    var ok bool
-	u.RLock()
+func (u *Lmap) lmget(k string) (tmp uint32,ok bool) {
+	if lockSafety { u.RLock() }
     if tmp,ok=u.smap[k]; ok {
-	    u.RUnlock()
+	    if lockSafety { u.RUnlock() }
         return tmp,true
     }
-	u.RUnlock()
+	if lockSafety { u.RUnlock() }
     return 0,false
 }
 

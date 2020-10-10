@@ -108,7 +108,7 @@ func buildListLib() {
     }
 
     slhelp["numcomp"] = LibHelp{in: "val_a,val_b", out: "bool", action: "Is a<b? [#i1]val_a[#i0] and [#i1]val_b[#i0] are string-convertable types of human readable numbers (with optional SI unit abbreviations in strings)."}
-    stdlib["numcomp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["numcomp"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 {
             return nil,errors.New("invalid argument count in numcomp()")
         }
@@ -126,7 +126,7 @@ func buildListLib() {
     }
 
     slhelp["empty"] = LibHelp{in: "list", out: "bool", action: "Is list empty?"}
-    stdlib["empty"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["empty"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return nil, errors.New("Incorrect argument count for empty()")
         }
@@ -172,7 +172,7 @@ func buildListLib() {
     }
 
     slhelp["col"] = LibHelp{in: "string_list,column,delimiter", out: "[]string", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string_list[#i0]."}
-    stdlib["col"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["col"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 3 {
             return nil, errors.New("Incorrect argument count for col()")
@@ -220,7 +220,7 @@ func buildListLib() {
 
     // append returns a[]+arg
     slhelp["append"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
-    stdlib["append"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["append"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         // should really do some kind of implicit conversion here (and elsewhere)
         // but not a high-priority, as with most things. 
         if len(args) == 1 {
@@ -330,7 +330,7 @@ func buildListLib() {
     }
 
     slhelp["push_front"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
-    stdlib["push_front"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["push_front"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
             switch args[0].(type) {
             case string:
@@ -425,7 +425,7 @@ func buildListLib() {
     }
 
     slhelp["peek"] = LibHelp{in: "list_name", out: "item", action: "Returns a copy of the last [#i1]item[#i0] in the list [#i1]list_name[#i0]. Returns an error if the list is empty."}
-    stdlib["peek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["peek"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return nil, errors.New("Invalid arguments to peek()")
         }
@@ -451,7 +451,7 @@ func buildListLib() {
     }
 
     slhelp["pop"] = LibHelp{in: "[]list_name", out: "item", action: "Removes and returns the last [#i1]item[#i0] in the named list [#i1]list_name[#i0]."}
-    stdlib["pop"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["pop"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return nil, errors.New("Invalid arguments to pop()")
         }
@@ -512,7 +512,7 @@ func buildListLib() {
     }
 
     slhelp["insert"] = LibHelp{in: "[]list,pos,item", out: "[]new_list", action: "Returns a [#i1]new_list[#i0] with [#i1]item[#i0] inserted in [#i1]list[#i0] at position [#i1]pos[#i0]. (1-based)"}
-    stdlib["insert"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["insert"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 3 {
             return nil, errors.New("Invalid arguments to insert()")
         }
@@ -580,7 +580,7 @@ func buildListLib() {
     }
 
     slhelp["remove"] = LibHelp{in: "[]list,pos", out: "[]new_list", action: "Returns a [#i1]new_list[#i0] with the item at position [#i1]pos[#i0] removed."}
-    stdlib["remove"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["remove"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         pos := args[1].(int)
 
@@ -654,7 +654,7 @@ func buildListLib() {
 
     // head(l) returns a[0]
     slhelp["head"] = LibHelp{in: "[]list", out: "item", action: "Returns the head element of a list."}
-    stdlib["head"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["head"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to head()") }
         switch args[0].(type) {
         case []bool:
@@ -698,7 +698,7 @@ func buildListLib() {
 
     // tail(l) returns a[1:]
     slhelp["tail"] = LibHelp{in: "[]list", out: "[]new_list", action: "Returns a new list containing all items in [#i1]list[#i0] except the head item."}
-    stdlib["tail"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["tail"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to tail()") }
         switch args[0].(type) {
         case []bool:
@@ -742,7 +742,7 @@ func buildListLib() {
 
     // all(l) returns bool true if a[:] all true (&&)
     slhelp["all"] = LibHelp{in: "[]list", out: "bool", action: "Returns true if all items in [#i1]list[#i0] evaluate to true."}
-    stdlib["all"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["all"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return false, errors.New("no list provided to all().") }
         switch args[0].(type) {
         case []bool:
@@ -759,7 +759,7 @@ func buildListLib() {
 
     // any(l) returns bool true if a[:] any true (||)
     slhelp["any"] = LibHelp{in: "list", out: "boolean", action: "Returns true if any item in [#i1]list[#i0] evaluates to true."}
-    stdlib["any"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["any"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 { return false, errors.New("no list provided to any().") }
         switch args[0].(type) {
         case []bool:
@@ -776,7 +776,7 @@ func buildListLib() {
 
     // fieldsort(s,f,dir) ascending or descending sorted version returned. (type dependant)
     slhelp["fieldsort"] = LibHelp{in: "nl_string,field[,sort_type][,bool_reverse]", out: "new_string", action: "Sorts a newline separated string [#i1]nl_string[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order on key [#i1]field[#i0]."}
-    stdlib["fieldsort"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fieldsort"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         var s string
         if len(args)==0 || len(args)>4 { return nil,errors.New("Bad args (count) to fieldsort()") }
@@ -905,7 +905,7 @@ func buildListLib() {
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
     slhelp["sort"] = LibHelp{in: "[]list[,bool_reverse]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order."}
-    stdlib["sort"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["sort"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)==0 || len(args)>2 { return nil,errors.New("Bad args (count) to sort()") }
 
         list := args[0]
@@ -1072,7 +1072,7 @@ func buildListLib() {
     }
 
     slhelp["list_float"] = LibHelp{in: "[]int_or_string_list", out: "[]float_list", action: "Returns [#i1]int_or_string_list[#i0] as a list of floats, with invalid items removed."}
-    stdlib["list_float"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_float"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to list_float()") }
         var float_list []float64
         switch args[0].(type) {
@@ -1125,7 +1125,7 @@ func buildListLib() {
     }
 
     slhelp["list_int"] = LibHelp{in: "[]float_or_string_list", out: "[]int_list", action: "Returns [#i1]float_or_string_list[#i0] as a list of integers. Invalid items will generate an error."}
-    stdlib["list_int"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_int"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to list_int()") }
         var int_list []int
         switch args[0].(type) {
@@ -1177,7 +1177,7 @@ func buildListLib() {
 
     // @todo: change sprintf for strconv funcs
     slhelp["list_string"] = LibHelp{in: "[]list", out: "[]string_list", action: "Returns [#i1]list[#i0] as a list of strings."}
-    stdlib["list_string"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_string"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         var string_list []string
         switch args[0].(type) {
         case []string:
@@ -1200,7 +1200,7 @@ func buildListLib() {
 
     // uniq(l) returns a sorted list with duplicates removed
     slhelp["uniq"] = LibHelp{in: "[]list", out: "[]new_list", action: "Returns [#i1]list[#i0] sorted with duplicate values removed."}
-    stdlib["uniq"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["uniq"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 1 { return nil, errors.New("Bad arguments (count) in uniq()") }
         if args[0]==nil { return nil, errors.New("Bad arguments (type) in uniq()") }
@@ -1330,7 +1330,7 @@ func buildListLib() {
 
     // concat(l1,l2) returns concatenated list of l1,l2
     slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "Concatenates two lists and returns the result."}
-    stdlib["concat"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["concat"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return nil, errors.New("Invalid arguments to concat()")
         }
@@ -1362,7 +1362,7 @@ func buildListLib() {
 
     // esplit(l,"a","b",match) recreates l with a[:match] and returns a[match:]
     slhelp["esplit"] = LibHelp{in: `[]list,"var1","var2",match`, out: "bool", action: "Split [#i1]list[#i0] at position [#i1]match[#i0] (1-based). Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]."}
-    stdlib["esplit"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["esplit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 4 {
             return false, errors.New("Incorrect number of arguments in esplit()")
         }
@@ -1448,7 +1448,7 @@ func buildListLib() {
     // @note: this one is deliberately removed. it has issues.
     // msplit(l,match) recreates l with a[:matching_element_pos_of(match)] and returns a[pos(match):]
     slhelp["msplit"] = LibHelp{in: `[]list,"var1","var2",match`, out: "bool", action: "Split [#i1]list[#i0] at first item matching [#i1]match[#i0]. Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]."}
-    stdlib["msplit"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["msplit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 4 {
             return false, errors.New("Incorrect number of arguments in msplit()")
@@ -1524,7 +1524,7 @@ func buildListLib() {
     }
 
     slhelp["min"] = LibHelp{in: "[]list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}
-    stdlib["min"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["min"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return 0,errors.New("Bad args (count) to min()") }
         switch args[0].(type) {
         case []int:
@@ -1544,7 +1544,7 @@ func buildListLib() {
     }
 
     slhelp["max"] = LibHelp{in: "[]list", out: "number", action: "Calculate the maximum value in a [#i1]list[#i0]."}
-    stdlib["max"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["max"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return 0,errors.New("Bad args (count) to max()") }
         switch args[0].(type) {
         case []int:
@@ -1564,7 +1564,7 @@ func buildListLib() {
     }
 
     slhelp["avg"] = LibHelp{in: "[]list", out: "number", action: "Calculate the average value in a [#i1]list[#i0]."}
-    stdlib["avg"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["avg"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return 0,errors.New("Bad args (count) to avg()") }
         var f float64
         switch args[0].(type) {
@@ -1589,7 +1589,7 @@ func buildListLib() {
 
     // sum(l)  return sum of a[:]
     slhelp["sum"] = LibHelp{in: "[]list", out: "number", action: "Calculate the sum of the values in [#i1]list[#i0]."}
-    stdlib["sum"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["sum"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return nil,errors.New("Bad args (count) to sum()") }
         var f float64
         switch args[0].(type) {
