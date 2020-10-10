@@ -17,7 +17,7 @@ func fexists(fp string) bool {
     return false
 }
 
-func getReportFunctionName(ifs uint64, full bool) string {
+func getReportFunctionName(ifs uint32, full bool) string {
 	nl,_ := numlookup.lmget(ifs)
     if !full && str.IndexByte(nl, '@') > -1 {
 		nl=nl[:str.IndexByte(nl, '@')]
@@ -28,7 +28,7 @@ func getReportFunctionName(ifs uint64, full bool) string {
 
 func ShowSource(funcInstance string,start int,end int) bool {
 
-    var funcInstanceId uint64
+    var funcInstanceId uint32
     var present bool
 
     // return if func instance doesn't exist
@@ -36,9 +36,9 @@ func ShowSource(funcInstance string,start int,end int) bool {
         return false
     }
 
-    if funcInstanceId < uint64(len(functionspaces)) {
+    if funcInstanceId < uint32(len(functionspaces)) {
 
-        var baseId uint64
+        var baseId uint32
 
         // convert instance to source function
         funcName := getReportFunctionName(funcInstanceId,false)    //      -> name of failing func converted to base name
@@ -93,7 +93,7 @@ func lookupChainName(n uint8) string {
 
 func (parser *leparser) report(s string) {
 
-    var baseId uint64
+    var baseId uint32
 
     line:=parser.line
     ifs:=parser.fs
@@ -135,7 +135,7 @@ func (parser *leparser) report(s string) {
 }
 
 
-func appendToTestReport(test_output_file string, ifs uint64, pos int, s string) {
+func appendToTestReport(test_output_file string, ifs uint32, pos int, s string) {
 
 	s = sparkle(s) + "\n"
 

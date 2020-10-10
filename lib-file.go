@@ -29,7 +29,7 @@ func buildFileLib() {
     }
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
-    stdlib["fopen"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fopen"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 {
             return nil,errors.New("Bad arguments (count) to fopen()")
         }
@@ -56,7 +56,7 @@ func buildFileLib() {
     }
 
     slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
-    stdlib["fseek"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fseek"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=3 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
             return nil,errors.New("Bad arguments to fseek()")
         }
@@ -67,7 +67,7 @@ func buildFileLib() {
     }
 
     slhelp["fread"] = LibHelp{in: "filehandle,delim", out: "string", action: "Reads a string from an open file until [#i1]delim[#i0] is encountered (or end-of-file)."}
-    stdlib["fread"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fread"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
             return nil,errors.New("Bad arguments to fread()")
         }
@@ -106,7 +106,7 @@ func buildFileLib() {
 
     // issues with race cond when file open in write-append mode?
     slhelp["feof"] = LibHelp{in: "filehandle", out: "bool", action: "Check if open file cursor is at end-of-file"}
-    stdlib["feof"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["feof"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
             return false,errors.New("Bad arguments to feof()")
         }
@@ -122,7 +122,7 @@ func buildFileLib() {
     }
 
     slhelp["fwrite"] = LibHelp{in: "filehandle,string", out: "", action: "Writes a string to an open file."}
-    stdlib["fwrite"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fwrite"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
             return nil,errors.New("Bad arguments to fwrite()")
         }
@@ -132,7 +132,7 @@ func buildFileLib() {
     }
 
     slhelp["fclose"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file."}
-    stdlib["fclose"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fclose"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
             return nil,errors.New("Bad arguments to fclose()")
         }
@@ -143,7 +143,7 @@ func buildFileLib() {
     }
 
 	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
-	stdlib["file_mode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["file_mode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_mode()")
 		}
@@ -158,7 +158,7 @@ func buildFileLib() {
 	}
 
 	slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
-	stdlib["file_size"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["file_size"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("invalid arguments provided to file_size()")
 		}
@@ -173,7 +173,7 @@ func buildFileLib() {
 	}
 
 	slhelp["read_file"] = LibHelp{in: "string", out: "string", action: "Returns the contents of the named file [#i1]string[#i0], or errors."}
-	stdlib["read_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["read_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return "", errors.New("invalid arguments provided to read_file()")
 		}
@@ -187,7 +187,7 @@ func buildFileLib() {
 	}
 
 	slhelp["write_file"] = LibHelp{in: "filename,variable[,mode_number_or_string]", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
-	stdlib["write_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["write_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var outVar string
 		var filename string
 		var outMode os.FileMode = 0600
@@ -225,7 +225,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
-	stdlib["is_file"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_file()")
 		}
@@ -242,7 +242,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a directory."}
-	stdlib["is_dir"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_dir"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_dir()")
 		}
@@ -259,7 +259,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
-	stdlib["is_soft"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_soft"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_soft()")
 		}
@@ -276,7 +276,7 @@ func buildFileLib() {
 	}
 
 	slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a named pipe."}
-	stdlib["is_pipe"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_pipe"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to is_pipe()")
 		}
@@ -293,7 +293,7 @@ func buildFileLib() {
 	}
 
 	slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
-	stdlib["perms"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["perms"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return false, errors.New("invalid arguments provided to perms()")
 		}

@@ -99,7 +99,7 @@ func buildPackageLib() {
     categories["package"] = []string{"install", "uninstall", "service", "vcmp","is_installed"}
 
     slhelp["install"] = LibHelp{in: "packages_string", out: "", action: "Installs the packages in [#i1]packages_string[#i0]."}
-    stdlib["install"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["install"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return false, errors.New("invalid argument count for install()")
         }
@@ -112,7 +112,7 @@ func buildPackageLib() {
     }
 
     slhelp["is_installed"] = LibHelp{in: "package_name", out: "bool", action: "Is package [#i1]package_name[#i0] installed?"}
-    stdlib["is_installed"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["is_installed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return false, errors.New("invalid argument count for is_installed()")
         }
@@ -125,7 +125,7 @@ func buildPackageLib() {
     }
 
     slhelp["uninstall"] = LibHelp{in: "packages_string", out: "", action: "Removes the packages in [#i1]packages_string[#i0]."}
-    stdlib["uninstall"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["uninstall"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return false, errors.New("invalid argument count for uninstall()")
         }
@@ -138,7 +138,7 @@ func buildPackageLib() {
     }
 
     slhelp["vcmp"] = LibHelp{in: "v1,v2", out: "int", action: "Returns -1, 0, or +1 depending on semantic version string [#i1]v1[#i0] being less than, equal to, or greater than version string [#i1]v2[#i0]."}
-    stdlib["vcmp"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["vcmp"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 2 {
             return 0, errors.New("Bad args (count) in vcmp()")
         }
@@ -149,7 +149,7 @@ func buildPackageLib() {
     }
 
     slhelp["service"] = LibHelp{in: "service_name,action", out: "success_flag", action: "Attempts to take the required [#i1]action[#i0] on service [#i1]service_name[#i0]. Returns true if successful."}
-    stdlib["service"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+    stdlib["service"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 2 {
             return false,errors.New("Bad args (count) in service().\n")

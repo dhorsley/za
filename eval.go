@@ -11,60 +11,8 @@ import (
     str "strings"
     "unsafe"
     "regexp"
-//    "runtime"
-//    "os"
 )
 
-
-
-
-func (p *leparser) Init() {
-
-    // precedence table
-	p.table = [60]rule{
-		RParen        : {-1,p.ignore, nil},
-		RightSBrace   : {-1,p.ignore, nil},
-        LeftSBrace    : {45,p.array_concat,p.binaryLed},// un: [x,y,z], bin: a[b] sub-scripting
-        NumericLiteral: {-1,p.number, nil},
-        StringLiteral : {-1,p.stringliteral,nil},
-        Identifier    : {-1,p.identifier,nil},
-        O_Assign      : {5,p.unary,p.binaryLed},
-        C_In          : {27,nil,p.binaryLed},           // a in b (value lookup)
-        O_Plus        : {30,p.unary,p.binaryLed},
-		O_Minus       : {30,p.unary,p.binaryLed},       // subtraction and unary minus 
-		O_Multiply    : {35,p.unary,p.binaryLed},       // un: *p (deref p), bin: multiply
-		O_Divide      : {35,nil,p.binaryLed},
-        O_Percent     : {35,nil,p.binaryLed},
-		O_Comma       : {-1,nil, nil},
-        LParen        : {100,p.grouping, p.binaryLed},  // a(b), c(d)  calls
-		SYM_COLON     : {-1,nil, nil},
-        SYM_DOT       : {47,nil,p.binaryLed},           // a.b, c.d    field refs
-        EOF           : {-1,nil, nil},
-        SYM_EQ        : {25,nil,p.binaryLed},
-        SYM_NE        : {25,nil,p.binaryLed},
-        SYM_LT        : {25,nil,p.binaryLed},
-        SYM_GT        : {25,nil,p.binaryLed},
-        SYM_LE        : {25,nil,p.binaryLed},
-        SYM_GE        : {25,nil,p.binaryLed},
-        SYM_LAND      : {15,nil,p.binaryLed},           // BOOLEAN AND
-        SYM_LOR       : {15,nil,p.binaryLed},           // BOOLEAN OR
-        SYM_BAND      : {20,nil,p.binaryLed},           // AND
-        SYM_Caret     : {20,p.unary,p.binaryLed},       // un: address of, bin: XOR
-        SYM_BOR       : {20,nil,p.binaryLed},           // OR
-        SYM_Tilde     : {25,nil,p.binaryLed},           // regex match
-        SYM_ITilde    : {25,nil,p.binaryLed},           // insensitive regex match
-        SYM_FTilde    : {25,nil,p.binaryLed},           // filtering regex match
-		SYM_Pling     : {15,p.unary, nil},              // Logical Negation
-        SYM_PP        : {45,p.unary, p.binaryLed},      // ++x x++
-        SYM_MM        : {45,p.unary, p.binaryLed},      // --x x--
-        SYM_POW       : {40,nil,p.binaryLed},           // a**b
-        SYM_LSHIFT    : {23,nil,p.binaryLed},
-        SYM_RSHIFT    : {23,nil,p.binaryLed},
-        O_Sqr         : {30,p.unary,nil},
-        O_Sqrt        : {30,p.unary,nil},
-	}
-
-}
 
 func (p *leparser) reserved(token Token) (interface{}) {
     panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
@@ -72,21 +20,18 @@ func (p *leparser) reserved(token Token) (interface{}) {
     return token.tokText
 }
 
-func (p *leparser) Eval (fs uint64, toks []Token) (ans interface{},err error) {
-
+func (p *leparser) Eval (fs uint32, toks []Token) (ans interface{},err error) {
     p.tokens = toks
+    // pf("tokens -> %+v\n",p.tokens)
     p.pos    = 0
     p.fs     = fs
-
     return p.dparse(0)
-
 }
 
 
 type leparser struct {
-    table       [60]rule   // null+left rules
     tokens      []Token     // the thing getting evaluated
-    fs          uint64      // working function space
+    fs          uint32      // working function space
     pos         int         // distance through parse
     line        int         // shadows lexer source line
     stmtline    int         // shadows program counter (pc)
@@ -98,12 +43,12 @@ type leparser struct {
 
 func (p *leparser) next() Token {
 
+    if p.pos>1 { p.preprev=p.prev }
+    if p.pos>0 { p.prev=p.tokens[p.pos-1] }
+
     if p.pos == len(p.tokens) {
         return Token{tokType:EOF}
     }
-
-    if p.pos>1 { p.preprev=p.prev }
-    if p.pos>0 { p.prev=p.tokens[p.pos-1] }
 
     p.pos++
     return p.tokens[p.pos-1]
@@ -120,12 +65,7 @@ func (p *leparser) peek() Token {
 
 func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
-    /*
-    pf("\n\ndparse query     : %+v\n",p.tokens)
-    pf("dparse query tokens  : %#v\n",p.tokens)
-    pf("dparse query fs      : %+v\n",p.fs)
-    pf("dparse query position: %+v\n",p.pos)
-    */
+    // pf("\n\ndparse query     : %+v\n",p.tokens)
 
 	token:=p.next()
 
@@ -133,20 +73,80 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             p.reserved(token)
         }
 
-        left = p.table[token.tokType].nud(token)
+            // unaries
 
-        for prec < p.table[p.peek().tokType].prec {
-            token = p.next()
-            /*
-            if p.table[token.tokType].led == nil {
-                panic(fmt.Errorf("Token '%s' not defined in grammar",token.tokText))
-            }
-            */
-            left = p.table[token.tokType].led(left,token)
+        switch token.tokType {
+		case O_Comma,SYM_COLON,EOF:         // nil rules, prec -1
+            left=nil
+        case RParen, RightSBrace:           // ignore, prec -1
+            left=p.ignore(token)
+        case NumericLiteral:                // prec -1
+            left=p.number(token)
+        case StringLiteral:                 // prec -1
+            left=p.stringliteral(token)
+        case Identifier:                    // prec -1
+            left=p.identifier(token)
+        case SYM_Pling, O_Sqr, O_Sqrt,O_Assign, O_Plus, O_Minus:      // prec variable
+            left=p.unary(token)
+        case O_Multiply, SYM_Caret:         // unary pointery stuff
+            left=p.unary(token)
+        case LParen:
+            left=p.grouping(token)
+        case SYM_PP, SYM_MM:
+            left=p.unary(token)
+        case LeftSBrace:
+            left=p.array_concat(token)
         }
 
-    // pf("dparse result: %+v\n",left)
-    // pf("dparse error : %#v\n",err)
+            // binaries
+
+        if p.peek().tokType!=EOF {
+
+            for {
+
+                ruleprec:=int8(-1)
+
+                switch p.peek().tokType {
+                case O_Assign:
+                    ruleprec=5
+                case SYM_LAND, SYM_LOR:
+                    ruleprec=15
+                case SYM_BAND, SYM_BOR, SYM_Caret:
+                    ruleprec=20
+                case SYM_LSHIFT, SYM_RSHIFT:
+                    ruleprec=23
+                case SYM_Tilde, SYM_ITilde, SYM_FTilde:
+                    ruleprec=25
+                case C_In:
+                    ruleprec=27
+                case SYM_EQ, SYM_NE, SYM_LT, SYM_GT, SYM_LE, SYM_GE:
+                    ruleprec=25
+                case O_Plus, O_Minus:
+                    ruleprec=30
+                case O_Divide, O_Percent, O_Multiply:
+                    ruleprec=35
+                case SYM_POW:
+                    ruleprec=40
+                case SYM_PP, SYM_MM, LeftSBrace:
+                    ruleprec=45
+                case SYM_DOT:
+                    ruleprec=47
+                case LParen:
+                    ruleprec=100
+                }
+
+                if prec >= ruleprec {
+                    break
+                }
+
+                token = p.next()
+                left = p.binaryLed(ruleprec,left,token)
+
+            }
+        }
+
+    // pf("dparse [%d] result: %+v\n",uid,left)
+    // pf("dparse [%d] error : %#v\n",uid,err)
 
 	return left,err
 }
@@ -159,16 +159,16 @@ type rule struct {
 }
 
 
-func (p *leparser) getRule(token Token) rule {
-	return p.table[token.tokType]
-}
 
 func (p *leparser) ignore(token Token) interface{} {
     p.next()
     return nil
 }
 
-func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
+func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interface{}) {
+
+    // pf("current parser state at start of binaryLed is (%#v)\n",p)
+    // pf("entered binaryLed with l->%+v and t->%+v\n",left,token)
 
     switch token.tokType {
     case SYM_PP:
@@ -183,7 +183,10 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
         return p.callFunction(left,token)
     }
 
-	right,err := p.dparse(p.table[token.tokType].prec + 1)
+    // pf("binary: current token list (len:%d) -> (%+v)\n",len(p.tokens),p.tokens)
+    // pf("binary sending tokens from position %d in (%+v) to right parse.\n",p.pos,p.tokens[p.pos:])
+	right,err := p.dparse(prec + 1)
+    // pf("binary returned from right parse with '%+v'\n",right)
 
     if err!=nil {
         return nil
@@ -208,6 +211,7 @@ func (p *leparser) binaryLed(left interface{}, token Token) (interface{}) {
 	case SYM_EQ:
         return deepEqual(left,right)
 	case SYM_NE:
+        // pf("SYM_NE calling deepequal with l:(%#v) and r:(%#v)\n",left,right)
         return !deepEqual(left,right)
 	case SYM_LT:
         return compare(left,right,"<")
@@ -466,6 +470,7 @@ func (p *leparser) unary(token Token) (interface{}) {
     case SYM_Pling:
 	    right,err := p.dparse(24) // don't bind negate as tightly
         if err!=nil { panic(err) }
+        // pf("pling negate with right side of (%+v)\n",right)
 		return unaryNegate(right)
     }
 
@@ -531,7 +536,7 @@ func (p *leparser) unDeref(tok Token) interface{} {
     }
 
     // ... with valid fs->fsid? @ ary[0]
-    var fsid uint64
+    var fsid uint32
     var valid bool
     if ref.([]string)[0]=="nil" && ref.([]string)[1]=="nil" {
         return nil
@@ -784,6 +789,7 @@ func (p *leparser) identifier(token Token) (interface{}) {
 }
 
 func (p *leparser) stringliteral(token Token) (interface{}) {
+    // pf("checked a string literal '%v'\n",token.tokText)
     return interpolate(p.fs,stripBacktickQuotes(stripDoubleQuotes(token.tokText)))
 }
 
@@ -797,7 +803,7 @@ func (p *leparser) stringliteral(token Token) (interface{}) {
 var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
-func VarLookup(fs uint64, name string) (int, bool) {
+func VarLookup(fs uint32, name string) (int, bool) {
 
     if lockSafety { vlock.RLock() }
 
@@ -820,7 +826,7 @@ func VarLookup(fs uint64, name string) (int, bool) {
 }
 
 
-func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
+func vcreatetable(fs uint32, vtable_maxreached * uint32, capacity int) {
 
     if lockSafety {
         vlock.Lock()
@@ -843,7 +849,7 @@ func vcreatetable(fs uint64, vtable_maxreached * uint64, capacity int) {
 
 }
 
-func vunset(fs uint64, name string) {
+func vunset(fs uint32, name string) {
 
     // @note: this is obviously bad as it leaves a hole in the
     //  variables list.
@@ -868,7 +874,7 @@ func vunset(fs uint64, name string) {
 }
 
 
-func vdelete(fs uint64, name string, ename string) {
+func vdelete(fs uint32, name string, ename string) {
 
     // no need for lock here as vget already locks and
     // we are working with a copy before vset writes.
@@ -910,7 +916,7 @@ func vdelete(fs uint64, name string, ename string) {
 
 
 
-func vset(fs uint64, name string, value interface{}) (vi int) {
+func vset(fs uint32, name string, value interface{}) (vi int) {
 
     var ok bool
 
@@ -985,7 +991,7 @@ func vset(fs uint64, name string, value interface{}) (vi int) {
 }
 
 
-func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
+func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
     // pf("vgetE: entered with %v[%v]\n",name,el)
     var v interface{}
     if _, ok := VarLookup(fs, name); ok {
@@ -1038,7 +1044,7 @@ func vgetElement(fs uint64, name string, el string) (interface{}, bool) {
 
 // this could probably be faster. not a great idea duplicating the list like this...
 
-func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
+func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
 
     var list interface{}
     var vi int
@@ -1180,7 +1186,7 @@ func vsetElement(fs uint64, name string, el interface{}, value interface{}) {
 
 }
 
-func vget(fs uint64, name string) (interface{}, bool) {
+func vget(fs uint32, name string) (interface{}, bool) {
 
     if vi, ok := VarLookup(fs, name); ok {
 
@@ -1194,7 +1200,7 @@ func vget(fs uint64, name string) (interface{}, bool) {
 
 }
 
-func getvtype(fs uint64, name string) (reflect.Type, bool) {
+func getvtype(fs uint32, name string) (reflect.Type, bool) {
     if vi, ok := VarLookup(fs, name); ok {
         if lockSafety {
             vlock.RLock()
@@ -1242,7 +1248,7 @@ func escape(str string) string {
 var interlock = &sync.RWMutex{}
 
 /// convert variable placeholders in strings to their values
-func interpolate(fs uint64, s string) (string) {
+func interpolate(fs uint32, s string) (string) {
 
     if no_interpolation {
         return s
@@ -1394,7 +1400,7 @@ func interpolate(fs uint64, s string) (string) {
 
 
 // evaluate an expression string using a modified version of the third-party goval lib
-func ev(parser *leparser,fs uint64, ws string, interpol bool) (result interface{}, err error) {
+func ev(parser *leparser,fs uint32, ws string, interpol bool) (result interface{}, err error) {
 
     // pf("ev: received: %v\n",ws)
 
@@ -1458,7 +1464,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
 /// the main call point for actor.go evaluation.
 /// this function handles boxing the ev() call
 
-func (p *leparser) wrappedEval(lfs uint64, fs uint64, tks []Token) (expr ExpressionCarton) {
+func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr ExpressionCarton) {
 
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
@@ -1552,7 +1558,7 @@ func (p *leparser) wrappedEval(lfs uint64, fs uint64, tks []Token) (expr Express
 
 }
 
-func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eqPos int) {
+func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eqPos int) {
 
     // (left)  lfs is the function space to assign to
     // (right) rfs is the function space to evaluate with (calculating indices expressions, etc)
@@ -1687,7 +1693,7 @@ func (p *leparser) doAssign(lfs,rfs uint64,tks []Token,expr *ExpressionCarton,eq
                 }
 
                 // ... deref target fsid and varname from pointer[0] and pointer[1]
-                var fsid uint64
+                var fsid uint32
                 var valid bool
                 if len(val.([]string))==2 && val.([]string)[0]=="nil" && val.([]string)[1]=="nil" {
                 } else {

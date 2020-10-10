@@ -5,6 +5,7 @@ package main
 //
 
 const MaxUint64 = ^uint64(0)
+const MaxUint32 = ^uint32(0)
 
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
@@ -20,7 +21,7 @@ const VAR_CAP = 20              // max vars per function (scales up)
 const FAIRY_CAP = 64            // max ansi mappings
 const LIST_SIZE_CAP = 16        // initial list size on construction
 
-const globalspace = uint64(0)   // global namespace
+const globalspace = uint32(0)   // global namespace
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "

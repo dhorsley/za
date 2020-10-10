@@ -22,28 +22,28 @@ func buildMathLib() {
 	}
 
 	slhelp["e"] = LibHelp{in: "", out: "number", action: "Returns the value of e."}
-	stdlib["e"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["e"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		return 2.71828182845904523536028747135266249775724709369995957496696763, nil
 	}
 	slhelp["pi"] = LibHelp{in: "", out: "number", action: "Returns the value of pi."}
-	stdlib["pi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["pi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		return 3.14159265358979323846264338327950288419716939937510582097494459, nil
 	}
 	slhelp["phi"] = LibHelp{in: "", out: "number", action: "Returns the value of phi."}
-	stdlib["phi"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["phi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		return 1.61803398874989484820458683436563811772030917980576286213544862, nil
 	}
 	slhelp["ln2"] = LibHelp{in: "", out: "number", action: "Returns the value of ln2."}
-	stdlib["ln2"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ln2"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		return 0.693147180559945309417232121458176568075500134360255254120680009, nil
 	}
 	slhelp["ln10"] = LibHelp{in: "", out: "number", action: "Returns the value of ln10."}
-	stdlib["ln10"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ln10"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		return 2.30258509299404568401799145468436420760110148862877297603332790, nil
 	}
 
 	slhelp["numcomma"] = LibHelp{in: "number[,precision]", out: "comma_number", action: "Returns formatted number."}
-	stdlib["numcomma"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["numcomma"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         var precString string
         switch len(args) {
@@ -80,7 +80,7 @@ func buildMathLib() {
 	}
 
 	slhelp["ln"] = LibHelp{in: "number", out: "number", action: "Calculate natural logarithm of [#i1]number[#i0]."}
-	stdlib["ln"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ln"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("Bad args to ln()")
 		}
@@ -96,7 +96,7 @@ func buildMathLib() {
 	}
 
 	slhelp["log10"] = LibHelp{in: "number", out: "number", action: "Calculate logarithm (base 10) of [#i1]number[#i0]."}
-	stdlib["log10"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["log10"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("Bad args to log10()")
 		}
@@ -112,7 +112,7 @@ func buildMathLib() {
 	}
 
 	slhelp["log2"] = LibHelp{in: "number", out: "number", action: "Calculate logarithm (base 2) of [#i1]number[#i0]."}
-	stdlib["log2"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["log2"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("Bad args to log2()")
 		}
@@ -128,7 +128,7 @@ func buildMathLib() {
 	}
 
 	slhelp["logn"] = LibHelp{in: "number,base", out: "number", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
-	stdlib["logn"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["logn"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 2 {
 			return 0, errors.New("Bad args to log()")
 		}
@@ -153,7 +153,7 @@ func buildMathLib() {
 	}
 
 	slhelp["deg2rad"] = LibHelp{in: "number", out: "number_radians", action: "Convert degrees to radians."}
-	stdlib["deg2rad"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["deg2rad"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("Bad args to deg2rad()")
 		}
@@ -169,7 +169,7 @@ func buildMathLib() {
 	}
 
 	slhelp["rad2deg"] = LibHelp{in: "number", out: "number_degrees", action: "Convert radians to degrees."}
-	stdlib["rad2deg"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["rad2deg"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("Bad args to rad2deg()")
 		}
@@ -185,7 +185,7 @@ func buildMathLib() {
 	}
 
 	slhelp["asin"] = LibHelp{in: "number", out: "arc_sine", action: "Calculate arc sine of [#i1]number[#i0]."}
-	stdlib["asin"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["asin"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("asin() takes one argument.")
@@ -202,7 +202,7 @@ func buildMathLib() {
 	}
 
 	slhelp["acos"] = LibHelp{in: "number", out: "arc_cosine", action: "Calculate arc cosine of [#i1]number[#i0]."}
-	stdlib["acos"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["acos"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("acos() takes one argument.")
@@ -219,7 +219,7 @@ func buildMathLib() {
 	}
 
 	slhelp["atan"] = LibHelp{in: "number", out: "arc_tangent", action: "Calculate arc tangent of [#i1]number[#i0]."}
-	stdlib["atan"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["atan"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("atan() takes one argument.")
@@ -236,7 +236,7 @@ func buildMathLib() {
 	}
 
 	slhelp["sin"] = LibHelp{in: "number", out: "sine", action: "Calculate sine of [#i1]number[#i0]."}
-	stdlib["sin"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["sin"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("sin() takes one argument.")
@@ -253,7 +253,7 @@ func buildMathLib() {
 	}
 
 	slhelp["cos"] = LibHelp{in: "number", out: "cosine", action: "Calculate cosine of [#i1]number[#i0]."}
-	stdlib["cos"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["cos"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("cos() takes one argument.")
@@ -270,7 +270,7 @@ func buildMathLib() {
 	}
 
 	slhelp["tan"] = LibHelp{in: "number", out: "tangent", action: "Calculate tangent of [#i1]number[#i0]."}
-	stdlib["tan"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["tan"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		var r float64
 		if len(args) != 1 {
 			return 0, errors.New("tan() takes one argument.")
@@ -287,7 +287,7 @@ func buildMathLib() {
 	}
 
 	slhelp["pow"] = LibHelp{in: "number,n", out: "number", action: "Calculate [#i1]number[#i0] raised to the power [#i1]n[#i0]."}
-	stdlib["pow"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["pow"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 2 {
 			return 0, errors.New("pow() takes two arguments.")
@@ -321,7 +321,7 @@ func buildMathLib() {
 	}
 
 	slhelp["osqrt"] = LibHelp{in: "number", out: "number", action: "Calculate square root of [#i1]number[#i0]."}
-	stdlib["osqrt"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["osqrt"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return math.NaN, errors.New("Bad args (count) to sqrt()") }
 		switch v := args[0].(type) {
 		case int:
@@ -335,7 +335,7 @@ func buildMathLib() {
 	}
 
 	slhelp["abs"] = LibHelp{in: "int", out: "positive_int", action: "Calculate absolute value of [#i1]int[#i0]."}
-	stdlib["abs"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["abs"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("abs() only takes one argument.")
 		}
@@ -356,7 +356,7 @@ func buildMathLib() {
     }
 
 	slhelp["osqr"] = LibHelp{in: "number", out: "number", action: "Calculate square of [#i1]number[#i0]."}
-	stdlib["osqr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["osqr"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return 0, errors.New("sqr() only takes one argument.")
 		}
@@ -372,7 +372,7 @@ func buildMathLib() {
 	}
 
 	slhelp["round"] = LibHelp{in: "float", out: "float", action: "Round float to nearest integer."}
-	stdlib["round"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["round"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 { return math.NaN, errors.New("Bad args (count) to round()") }
 		switch args[0].(type) {
 		case float64:
@@ -392,7 +392,7 @@ func buildMathLib() {
 	}
 
 	slhelp["floor"] = LibHelp{in: "float", out: "float", action: "Round float down to nearest integer."}
-	stdlib["floor"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["floor"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		switch args[0].(type) {
 		case float64:
 			switch len(args) {
@@ -409,7 +409,7 @@ func buildMathLib() {
 	}
 
 	slhelp["ubin8"] = LibHelp{in: "unsigned binary", out: "decimal", action: "unsigned binary to decimal. (8-bit)"}
-	stdlib["ubin8"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ubin8"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			finish(false, ERR_SYNTAX)
             return int(0),errors.New("ubin8() only takes one argument.")
@@ -422,7 +422,7 @@ func buildMathLib() {
 	}
 
 	slhelp["uhex32"] = LibHelp{in: "unsigned hexadecimal", out: "decimal", action: "unsigned hexadecimal to decimal. (16-bit)"}
-	stdlib["uhex32"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["uhex32"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			finish(false, ERR_SYNTAX)
             return int(0),errors.New("uhex32() only takes one argument.")
@@ -435,7 +435,7 @@ func buildMathLib() {
 	}
 
 	slhelp["ibase"] = LibHelp{in: "n,int", out: "string", action: "Returns a string holding a conversion of [#i1]int[#i0] to base [#i1]n[#i0]"}
-	stdlib["ibase"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ibase"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 2 {
 			finish(false, ERR_SYNTAX)
             return "",errors.New("ibase() only takes two arguments.")
@@ -453,7 +453,7 @@ func buildMathLib() {
     }
 
 	slhelp["rand"] = LibHelp{in: "positive_max_int", out: "integer", action: "Generate a random integer between 1 and [#i1]positive_max_int[#i0] inclusive."}
-	stdlib["rand"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["rand"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			pf("Error: rand() only takes one argument.\n")
 			finish(false, ERR_SYNTAX)
@@ -476,7 +476,7 @@ func buildMathLib() {
 	}
 
 	slhelp["seed"] = LibHelp{in: "number", out: "", action: "Set the random seed."}
-	stdlib["seed"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["seed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			finish(false, ERR_SYNTAX)
             return nil,errors.New("seed() only takes one argument.")

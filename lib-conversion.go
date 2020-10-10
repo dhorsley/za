@@ -77,7 +77,7 @@ func buildConversionLib() {
     }
 
 	slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
-	stdlib["write_struct"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["write_struct"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 2 { return 0, errors.New("invalid arguments (count) provided to write_struct()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
@@ -111,7 +111,7 @@ func buildConversionLib() {
     }
 
 	slhelp["read_struct"] = LibHelp{in: "filename,name_of_destination_struct", out: "success_flag", action: "Read a struct from a file."}
-	stdlib["read_struct"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["read_struct"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 2 { return 0, errors.New("invalid arguments (count) provided to read_struct()") }
         if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
@@ -159,7 +159,7 @@ func buildConversionLib() {
 
 
 	slhelp["chr"] = LibHelp{in: "int", out: "string", action: "Return a string representation of ASCII char [#i1]int[#i0]."}
-	stdlib["chr"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["chr"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
 		if len(args) != 1 {
 			return "", errors.New("invalid arguments provided to chr()")
@@ -187,7 +187,7 @@ func buildConversionLib() {
 
 	// @todo: fix this up when we support runes better.
 	slhelp["ascii"] = LibHelp{in: "string", out: "int", action: "Return a numeric representation of the first char in [#i1]string[#i0]."}
-	stdlib["ascii"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ascii"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to ascii()")
 		}
@@ -202,7 +202,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
-	stdlib["kind"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["kind"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to kind()")
 		}
@@ -210,7 +210,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
-	stdlib["base64e"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["base64e"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to base64e()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to base64e()") }
         enc:=base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
@@ -218,7 +218,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["base64d"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 decoding of [#i1]string[#i0]"}
-	stdlib["base64d"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["base64d"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to base64d()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to base64d()") }
         dec,e:=base64.StdEncoding.DecodeString(args[0].(string))
@@ -227,7 +227,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["json_decode"] = LibHelp{in: "string", out: "[]mixed", action: "Return a mixed type array representing a JSON string."}
-	stdlib["json_decode"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["json_decode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_decode()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_decode()") }
 
@@ -243,7 +243,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of [#i1]string[#i0], or an empty string on error."}
-	stdlib["json_format"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["json_format"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 { return -1, errors.New("invalid arguments (count) provided to json_format()") }
         if sf("%T",args[0])!="string" { return "",errors.New("invalid arguments (type) provided to json_format()") }
         var pj bytes.Buffer
@@ -254,7 +254,7 @@ func buildConversionLib() {
     }
 
 	slhelp["float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
-	stdlib["float"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["float"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to float()")
 		}
@@ -264,7 +264,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors. The type is still [#bold]int[#boff] however the bounds are limited between 0-255."}
-	stdlib["byte"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["byte"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to byte()")
 		}
@@ -281,7 +281,7 @@ func buildConversionLib() {
 
 
 	slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert [#i1]string[#i0] to a boolean value, or errors"}
-	stdlib["bool"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["bool"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to bool()")
 		}
@@ -297,7 +297,7 @@ func buildConversionLib() {
 
 
 	slhelp["int"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an integer, or errors."}
-	stdlib["int"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["int"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to int()")
 		}
@@ -309,7 +309,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["uint"] = LibHelp{in: "var", out: "unsigned_integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
-	stdlib["uint"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["uint"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to uint()")
 		}
@@ -321,7 +321,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
-	stdlib["int64"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["int64"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to int64()")
 		}
@@ -333,7 +333,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["string"] = LibHelp{in: "var", out: "string", action: "Converts [#i1]var[#i0] to a string."}
-	stdlib["string"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["string"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to string()")
 		}
@@ -342,7 +342,7 @@ func buildConversionLib() {
 	}
 
 	slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "Returns true if [#i1]expression[#i0] evaluates to a numeric value."}
-	stdlib["is_number"] = func(evalfs uint64,args ...interface{}) (ret interface{}, err error) {
+	stdlib["is_number"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
 			return -1, errors.New("invalid arguments provided to is_number()")
 		}

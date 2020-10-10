@@ -3,7 +3,7 @@ package main
 import (
     "io/ioutil"
     "math"
-    "math/rand"
+//    "math/rand"
     "log"
     "os"
     "path/filepath"
@@ -18,7 +18,7 @@ import (
 )
 
 
-func task(caller uint64, loc uint64, iargs ...interface{}) <-chan interface{} {
+func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
         defer close(r)
@@ -168,16 +168,6 @@ func GetAsUint(expr interface{}) (uint, bool) {
     return uint(0), true
 }
 
-// EvalCrush() : take all tokens from tok[] between tstart and tend inclusive, compact and return evaluated answer.
-func EvalCrush(p *leparser, fs uint64, tok []Token, tstart int, tend int) (interface{}, error) {
-    return p.Eval(fs,tok[tstart:tend+1])
-}
-
-// as evalCrush but operate over all remaining tokens from tstart onwards
-func EvalCrushRest(p *leparser, fs uint64, tok []Token, tstart int) (interface{}, error) {
-    return p.Eval(fs,tok[tstart:])
-}
-
 
 // check for value in slice - used by lookahead()
 func InSlice(a uint8, list []uint8) bool {
@@ -196,7 +186,7 @@ func InSlice(a uint8, list []uint8) bool {
 
 // searchToken is used by FOR to check for occurrences of the loop variable.
 //  @note: would also need to check for pointer references should we start taking those seriously.
-func searchToken(base uint64, start int, end int, sval string) bool {
+func searchToken(base uint32, start int, end int, sval string) bool {
 
     range_fs:=functionspaces[base][start:end]
 
@@ -224,7 +214,7 @@ func searchToken(base uint64, start int, end int, sval string) bool {
 
 
 // used by if..else..endif and similar constructs for nesting
-func lookahead(fs uint64, startLine int, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
+func lookahead(fs uint32, startLine int, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
 
     range_fs:=functionspaces[fs][startLine:]
 
@@ -257,19 +247,73 @@ func lookahead(fs uint64, startLine int, indent int, endlevel int, term uint8, i
 }
 
 
+// @csafe:
+func Uint32n(maxN uint32) uint32 {
+	x := Uint32()
+	return uint32((uint64(x) * uint64(maxN)) >> 32)
+}
+
+type RNG struct {
+	x uint32
+}
+
+var rngPool sync.Pool
+
+func (r *RNG) Uint32n(maxN uint32) uint32 {
+	x := r.Uint32()
+	return uint32((uint64(x) * uint64(maxN)) >> 32)
+}
+
+// @csafe:
+func Uint32() uint32 {
+	v := rngPool.Get()
+	if v == nil {
+		v = &RNG{}
+	}
+	r := v.(*RNG)
+	x := r.Uint32()
+	rngPool.Put(r)
+	return x
+}
+
+func getRandomUint32() uint32 {
+	x := time.Now().UnixNano()
+	return uint32((x >> 32) ^ x)
+}
+
+func (r *RNG) Uint32() uint32 {
+	for r.x == 0 {
+		r.x = getRandomUint32()
+	}
+	x := r.x
+	x ^= x << 13
+	x ^= x >> 17
+	x ^= x << 5
+	r.x = x
+	return x
+}
+
+func formatUint32(n uint32) string {
+    return strconv.FormatUint(uint64(n), 10)
+}
+
+func formatInt32(n int32) string {
+    return strconv.FormatInt(int64(n), 10)
+}
+
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
-func GetNextFnSpace(requiredName string) (uint64,string) {
+func GetNextFnSpace(requiredName string) (uint32,string) {
 
     calllock.Lock()
     defer calllock.Unlock()
 
     // find highest in list
 
-    top:=uint64(cap(calltable))
+    top:=uint32(cap(calltable))
     highest:=top
-    ccap:=uint64(CALL_CAP)
-    deallow:=top>uint64(ccap*2)
+    ccap:=uint32(CALL_CAP)
+    deallow:=top>uint32(ccap*2)
 
     for q:=top-1; q>(ccap*2) && q>(top/2)-ccap; q-- {
         if calltable[q]!=(call_s{}) { highest=q; break }
@@ -282,32 +326,34 @@ func GetNextFnSpace(requiredName string) (uint64,string) {
             ncs:=make([]call_s,len(calltable)/2,cap(calltable)/2)
             copy(ncs,calltable)
             calltable=ncs
-            top=uint64(cap(calltable))
+            top=uint32(cap(calltable))
         }
     }
 
     // we know at this point that if a dealloc occurred then highest was
     // already below new cap and a fresh alloc should not occur below
 
-    for q := uint64(1); q < top+1 ; q++ {
+    for q := uint32(1); q < top+1 ; q++ {
 
         if _, found := numlookup.lmget(q); found {
             continue
         }
 
-        for ; q>=uint64(cap(calltable)) ; {
+        for ; q>=uint32(cap(calltable)) ; {
             ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
             copy(ncs,calltable)
             calltable=ncs
         }
 
         // pf("-- entered reserving code--\n")
+        var r RNG
         for  ; ; {
 
             newName := requiredName
 
             if newName[len(newName)-1]=='@' {
-                newName+=sf("%d",rand.Int())
+                // newName+=sf("%d",rand.Int())
+                newName+=formatUint32(r.Uint32n(1e5))
             }
 
             if _, found := numlookup.lmget(q); !found { // unreserved
@@ -352,7 +398,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
+func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
 
     // if lockSafety { calllock.RLock() }
     // pf("Entered call -> %#v : va -> %+v\n",calltable[csloc],va)
@@ -368,7 +414,6 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
 
     // set up evaluation parser
     parser:=&leparser{}
-    parser.Init()
 
     defer func() {
         if r := recover(); r != nil {
@@ -391,8 +436,8 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     var retvalues []interface{}
     var finalline int
     var fs string
-    var caller uint64
-    var base uint64
+    var caller uint32
+    var base uint32
 
     // set up the function space
 
@@ -403,7 +448,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     base = (*ncs).base                      // the source code to be read for this function
     caller = (*ncs).caller                  // which func id called this code
     retvar = (*ncs).retvar                  // usually @#, the return variable name
-    ifs,_:=fnlookup.lmget(fs)               // the uint64 id attached to fs name
+    ifs,_:=fnlookup.lmget(fs)               // the uint32 id attached to fs name
     calllock.RUnlock()
 
     if base==0 {
@@ -431,7 +476,7 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     if varmode == MODE_NEW {
 
         // create the local variable storage for the function
-        var vtm uint64
+        var vtm uint32
         if ! tco {
 
             vlock.RLock()
@@ -481,12 +526,12 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
     // allocate loop storage space if not a repeat ifs value.
     if lockSafety { vlock.RLock() }
 
-    var top,highest,lscap uint64
+    var top,highest,lscap uint32
 
-    top=uint64(cap(loops))
+    top=uint32(cap(loops))
     highest=top
     lscap=LOOP_START_CAP
-    deallow:=top>uint64(lscap*2)
+    deallow:=top>uint32(lscap*2)
 
     for q:=top-1; q>(lscap*2) && q>(top/2)-lscap; q-- {
         if loops[q]!=nil { highest=q; break }
@@ -499,12 +544,12 @@ func Call(varmode uint8, csloc uint64, registrant uint8, va ...interface{}) (ret
             copy(nloops,loops)
             loops=nloops
             // pf("[#1]--[#-] loops-pre-dec  highest %d,len %d, cap %d\n",highest,lscap,top)
-            top=uint64(cap(loops))
+            top=uint32(cap(loops))
             // pf("[#1]--[#-] loops-post-dec highest %d,len %d, cap %d\n",highest,lscap,top)
         }
     }
 
-    for ; ifs>=uint64(cap(loops)) ; {
+    for ; ifs>=uint32(cap(loops)) ; {
             // increase
             // pf("[#2]++[#-] loops-pre-inc highest %d,len %d, cap %d\n",highest,lscap,top)
             nloops:=make([][]s_loop,len(loops)*2,cap(loops)*2)
@@ -588,7 +633,7 @@ tco_reentry:
         statement = inbound.Tokens[0]
 
     ///////////////////////////////////////////////////////////////////////////////////
-        // pf("[#b7][#2]%5d : %+v[##][#-]\n",pc,inbound.Tokens)
+         // pf("[#b7][#2]%5d : %+v[##][#-]\n",pc,inbound.Tokens)
     ///////////////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -1171,7 +1216,7 @@ tco_reentry:
             var err error
 
             if toAt>3 {
-                expr, err = EvalCrush(parser,ifs, inbound.Tokens, 3, toAt-1)
+                expr, err = parser.Eval(ifs, inbound.Tokens[3:toAt])
                 if err==nil && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
@@ -1187,9 +1232,9 @@ tco_reentry:
 
             if inbound.TokenCount>toAt+1 {
                 if stepAt>0 {
-                    expr, err = EvalCrush(parser,ifs, inbound.Tokens, toAt+1, stepAt-1)
+                    expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:stepAt])
                 } else {
-                    expr, err = EvalCrushRest(parser,ifs, inbound.Tokens, toAt+1)
+                    expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:])
                 }
                 if err==nil && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
@@ -1206,7 +1251,7 @@ tco_reentry:
 
             if stepped {
                 if inbound.TokenCount>stepAt+1 {
-                    expr, err := EvalCrushRest(parser,ifs, inbound.Tokens, stepAt+1)
+                    expr, err := parser.Eval(ifs, inbound.Tokens[stepAt+1:])
                     if err==nil && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
@@ -1831,7 +1876,7 @@ tco_reentry:
 
                 doAt := findDelim(inbound.Tokens, C_Do, 2)
                 if doAt == -1 {
-                    parser.report(  "DO not found in ON")
+                    parser.report("DO not found in ON")
                     finish(false, ERR_SYNTAX)
                 } else {
                     // more tokens after the DO to form a command with?
@@ -2217,7 +2262,7 @@ tco_reentry:
 
             } else {
 
-                dval, err := EvalCrush(parser,ifs, inbound.Tokens, 1, inbound.TokenCount)
+                dval, err := parser.Eval(ifs, inbound.Tokens[1:inbound.TokenCount])
                 if err==nil && isNumber(dval) {
                     debug_level = dval.(int)
                 } else {
@@ -2286,7 +2331,7 @@ tco_reentry:
 
         case C_Exit:
             if inbound.TokenCount > 1 {
-                ec, err := EvalCrush(parser, ifs, inbound.Tokens, 1, inbound.TokenCount-1)
+                ec, err := parser.Eval(ifs, inbound.Tokens[1:inbound.TokenCount])
                 if err==nil && isNumber(ec) {
                     finish(true, ec.(int))
                 } else {
@@ -2446,6 +2491,7 @@ tco_reentry:
             retvalues=make([]interface{},curArg)
             for q:=0;q<int(curArg);q++ {
                 retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
+                // pf("picked up retvalues : %+v\n",retvalues)
                 if ev_er!=nil {
                     parser.report("Could not evaluate RETURN arguments")
                     finish(true,ERR_EVAL)
@@ -2460,7 +2506,7 @@ tco_reentry:
         case C_Enddef:
 
             if !defining {
-                parser.report(  "Not currently defining a function.")
+                parser.report("Not currently defining a function.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3299,15 +3345,17 @@ tco_reentry:
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
 
             if er || !endfound {
-                parser.report(  "Missing ENDIF for this IF")
+                parser.report("Missing ENDIF for this IF")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             // eval
-            expr, err := EvalCrushRest(parser,ifs, inbound.Tokens, 1)
+            // pf("IF EXPR TOKENS : [%+v]\n",inbound.Tokens[1:])
+            expr, err := parser.Eval(ifs, inbound.Tokens[1:])
+            // pf("Expr result -> %+v\n",expr)
             if err!=nil {
-                parser.report(  "Could not evaluate expression.")
+                parser.report("Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3410,20 +3458,21 @@ tco_reentry:
 
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
         if !str.HasPrefix(fs,"@mod_") {
-            // pf("... did not skip.\n")
-            calltable[ifs]=call_s{}
-            fnlookup.lmdelete(fs)
-            numlookup.lmdelete(ifs)
-            // pf("call disposing of ifs : %d\n",ifs)
 
             looplock.Lock()
             depth[ifs]=0
             loops[ifs]=nil
             looplock.Unlock()
 
+            calltable[ifs]=call_s{}
+            fnlookup.lmdelete(fs)
+            numlookup.lmdelete(ifs)
+            // pf("call disposing of ifs : %d\n",ifs)
+
             fspacelock.Lock()
             if ifs>2 { functionspaces[ifs] = []Phrase{} }
             fspacelock.Unlock()
+
         } else {
             // pf("... skipped.\n")
         }
@@ -3448,7 +3497,7 @@ func system(cmd string, display bool) (string) {
 }
 
 /// execute a command in the shell coprocess or parent
-func coprocCall(ifs uint64,s string) {
+func coprocCall(ifs uint32,s string) {
     cet := ""
     s=str.TrimRight(s,"\n")
     if len(s) > 0 {
@@ -3485,7 +3534,7 @@ func findDelim(tokens []Token, delim uint8, start int) (pos int) {
     return -1
 }
 
-func (parser *leparser) evalCommaArray(ifs uint64, tokens []Token) (resu []interface{}, errs []error) {
+func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []interface{}, errs []error) {
     evnest:=0
     newstart:=0
     if len(tokens)==0 { return resu,errs }
