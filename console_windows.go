@@ -247,7 +247,7 @@ func setupAnsiPalette() {
 }
 
 /// get an input string from stdin, in raw mode
-func getInput(evalfs uint64, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     sprompt := sparkle(prompt)
 

@@ -22,7 +22,7 @@ func (p Phrase) String() string {
 }
 
 // ExpressionFunction can be called from within expressions.
-type ExpressionFunction = func(evalfs uint64,args ...interface{}) (interface{}, error)
+type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, error)
 
 
 // za variable
@@ -48,8 +48,8 @@ func (t Token) String() string {
 type call_s struct {
 	retvar      string      // the lhs var in the caller to be assigned back to
 	fs          string      // the text name of the calling party
-	caller      uint64      // the thing which made the call
-	base        uint64      // the original functionspace location of the source
+	caller      uint32      // the thing which made the call
+	base        uint32      // the original functionspace location of the source
     callline    int         // from whence it came
 }
 
@@ -60,13 +60,13 @@ func (cs call_s) String() string {
 type Funcdef struct {
     name    string
     module  string
-    fs      uint64
+    fs      uint32
     // add extra fields here later. could maybe move fargs in
 }
 
 // chainInfo : used for passing debug info to error functions
 type chainInfo struct {
-    loc         uint64
+    loc         uint32
     name        string
     line        int
     registrant  uint8

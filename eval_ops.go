@@ -514,6 +514,7 @@ func ev_shift_right(left,right interface{}) (interface{}) {
 func unaryNegate(val interface{}) (interface{}) {
     switch i:=val.(type) {
     case bool:
+        // pf("returning negative\n")
         return !i
     }
     panic(fmt.Errorf("cannot negate a non-bool"))
@@ -656,6 +657,7 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 		}
 		return false
 	}
+    // pf("D.E. default compare of (%v) against (%v)\n",val1,val2)
 	return val1 == val2
 }
 
@@ -720,14 +722,14 @@ func asObjectKey(key interface{}) (string) {
 	return s
 }
 
-func addMapMember(evalfs uint64, obj string, key, val interface{}) {
+func addMapMember(evalfs uint32, obj string, key, val interface{}) {
     // map key
 	s := asObjectKey(key)
 	vsetElement(evalfs, obj, s, val)
     return
 }
 
-func addObjectMember(evalfs uint64, obj string, key interface{}, val interface{}) {
+func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}) {
     // normal array
 	s,invalid := GetAsInt(key.(string))
     if invalid { panic(fmt.Errorf("type error: element must be an integer")) }
@@ -786,7 +788,7 @@ func convertToFloat64(ar interface{}) []float64 {
     }
 }
 
-func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
+func accessVar(evalfs uint32, varName string) (val interface{},found bool) {
 	if val, found = vget(evalfs, varName); !found {
         return val,true
     }
@@ -794,7 +796,7 @@ func accessVar(evalfs uint64, varName string) (val interface{},found bool) {
 }
 
 
-func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field string) (interface{}) {
+func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field string) (interface{}) {
 
     switch obj:=obj.(type) {
 
@@ -943,7 +945,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint64, obj interface{}, field strin
 }
 
 
-func accessArray(evalfs uint64, obj interface{}, field interface{}) (interface{}) {
+func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}) {
 
     switch obj:=obj.(type) {
     case string:
@@ -1123,11 +1125,11 @@ func arrayContains(arr interface{}, val interface{}) bool {
 }
 */
 
-func callFunction(evalfs uint64, callline int, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint32, callline int, name string, args []interface{}) (res interface{}) {
 
 	if f, ok := stdlib[name]; !ok {
 
-        var lmv uint64
+        var lmv uint32
         var isFunc bool
         var fm Funcdef
 
@@ -1158,7 +1160,6 @@ func callFunction(evalfs uint64, callline int, name string, args []interface{}) 
             case 0:
                 return nil
             case 1:
-                //	panic: interface conversion: interface {} is nil, not []interface {}
                 return res.([]interface{})[0]
             default:
                 return res

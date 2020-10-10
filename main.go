@@ -63,8 +63,8 @@ var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
 
-var fileMap   = make(map[uint64]string)               // func space to source file name mappings
-var sourceMap = make(map[uint64]uint64)               // id of ifs which points to the source which contains
+var fileMap   = make(map[uint32]string)               // func space to source file name mappings
+var sourceMap = make(map[uint32]uint32)               // id of ifs which points to the source which contains
                                                       // the DEFINE..ENDDEF for a defined functino.
 
 var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
@@ -77,7 +77,7 @@ var lastConstruct = make([][]uint8, SPACE_CAP)      // stores the active constru
 var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN statements
 var wccount = make([]int, SPACE_CAP)                // count of active WHEN..ENDWHEN statements per function.
 
-var globalaccess uint64                             // number of functionspace which is considered to be "global"
+var globalaccess uint32                             // number of functionspace which is considered to be "global"
 
 var varcount = make([]int, SPACE_CAP)                 // how many local variables are declared in each active function.
 
@@ -109,7 +109,7 @@ var dbuser string   //
 var dbpass string   //
 
 // not thread-safe: used during debug
-// var high_q uint64
+// var high_q uint32
 var elast int                                       // mainly for debugging eval routine. should only be used when locks are 
                                                     //  disabled. it contains the last line number executed.
 
@@ -186,7 +186,7 @@ var structmaps map[string][]string
 var ifCompileCache map[string]regexp.Regexp
 
 // highest numbered vtable entry created
-var vtable_maxreached uint64
+var vtable_maxreached uint32
 
 func main() {
 
@@ -564,12 +564,9 @@ func main() {
 
     // initialise global parser
     parser:=&leparser{}
-    parser.Init()
 
     // initialise parser used by the interpolate function
     interparse=&leparser{}
-    interparse.Init()
-    // interparse.noStatementCheck=true
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)

@@ -111,7 +111,7 @@ func gpf(s string) {
 }
 
 /// sprint with namespace
-func spf(ns uint64, s string) string {
+func spf(ns uint32, s string) string {
     s = interpolate(ns,s)
     return sf("%v", sparkle(s))
 }
