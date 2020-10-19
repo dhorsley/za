@@ -2,8 +2,26 @@
 CHANGE LOG
 =============================================================================================
 
-1.0.12  fixes
 
+1.0.13  fixes
+
+1.0.12  new model for identifier binding.
+
+        * finally replaced the identifier lookups with something approaching a name
+            binding scheme. the language should be somewhat faster now.
+
+            - BREAKING CHANGE: as part of this rework we have had to remove support 
+                for l.h.s. variable interpolation. it may be re-introduced later if
+                necessary, but it will always suffer from slower relative 
+                performance due to its nature.
+
+            - All functions, including global/main are now pre-parsed on first call
+                to tag identifiers with allocation slots in local storage.
+
+            - Where evaluation is, by necessity, more dynamic, lookups are still
+                performed instead. 
+
+        * some example code removed that required l.h.s. interpolation.
 
 
 1.0.11  SUMMARY

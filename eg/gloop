@@ -9,7 +9,7 @@ doc `
 
 `
 
-module "./gloop.mod"
+module "modules/gloop.mod"
 
 
 userSigIntHandler="intHandler()"

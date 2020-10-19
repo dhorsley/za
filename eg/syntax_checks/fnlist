@@ -4,6 +4,7 @@
 # returns a filtered list of function call examples
 #
 
+filter=".*"
 input filter optarg 1
 
 foreach l in funcs(filter,true)

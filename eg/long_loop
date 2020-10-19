@@ -5,8 +5,8 @@
 module "./modules/timing.mod"
 
 max_count=100000000
+println max_count
 input max_count optarg 1
-# on kind(mc)=="int" do max_count=int(mc)
 
 ts=epoch_nano_time()
 for x=1 to max_count

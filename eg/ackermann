@@ -1,6 +1,7 @@
 #!/usr/bin/za
 
 var calls int
+println kind(calls)
 
 define ackermann(m,n)
 
@@ -32,6 +33,10 @@ input a param 1
 input b param 2
 a=int(a)
 b=int(b)
+
+println a
+println b
+
 println "A({a},{b}) = {=ackermann(a,b)}"
 println "Calls : ",calls
 

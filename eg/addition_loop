@@ -2,8 +2,6 @@
 
 # test - addition loop
 
-require 1.0.11
-
 module "./modules/timing.mod"
 
 max_count=40000000

@@ -16,6 +16,7 @@ import (
 //   functionspaces[] is a global.
 //
 
+
 func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     pos := start
@@ -28,9 +29,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     tokenType := Error
     curLine := 0
-
-    // var strPhrase str.Builder
-    // strPhrase.Grow(32)
 
     // simple handler for parens nesting
     var braceNestLevel  int     // round braces
@@ -147,7 +145,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
     }
-
 
     return badword, eof
 

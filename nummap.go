@@ -7,10 +7,25 @@ import (
 type Nmap struct {
     sync.RWMutex
     nmap    map[uint32]string
+    recent  [80]uint32
 }
 
 func nlmcreate(sz int) *Nmap {
     return &Nmap{nmap:make(map[uint32]string,sz)}
+}
+
+func (u *Nmap) lmexists(k uint32) bool {
+
+    //for e:=0; e<80; e++ {
+    //    if u.recent[e]==k { return true }
+    //}
+
+    if _,ok:=u.nmap[k]; ok {
+    //    copy(u.recent[:], u.recent[1:])
+    //    u.recent[79]=k
+        return true
+    }
+    return false
 }
 
 func (u *Nmap) lmset(k uint32,v string) {
