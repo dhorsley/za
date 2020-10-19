@@ -736,7 +736,6 @@ func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}
 
     switch val.(type) {
     case map[string]interface{},map[string]string,int, float64, bool, interface{}:
-        // vsetElement(evalfs, obj, sf("%v",s), val)
         vsetElement(evalfs, obj, s, val)
     default:
         panic(fmt.Errorf("addobjmember cannot handle type %T for %v\n",val,key))
@@ -904,7 +903,8 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
             if !isFunc {
                 if _, isFunc = stdlib[name]; !isFunc {
                     // check if exists in user defined function space
-                    _, isFunc = fnlookup.lmget(name)
+                    // _, isFunc = fnlookup.lmget(name)
+                    isFunc = fnlookup.lmexists(name)
                 }
             }
 
@@ -947,6 +947,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
 
 func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}) {
 
+                // pf("-- slice obj -> %+v %+v\n",obj,field)
     switch obj:=obj.(type) {
     case string:
         vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))

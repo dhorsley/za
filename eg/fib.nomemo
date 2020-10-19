@@ -1,8 +1,7 @@
 #!/usr/bin/za
 
 define fib(n)
-    setglob calls++
-#    println thisref(), " ref and mem-> ", getmem()
+    setglob calls+=1
     on n<=1 do return n
     return fib(n-1)+fib(n-2)
 enddef

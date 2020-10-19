@@ -6,11 +6,10 @@
 # example use:
 # cat /usr/share/dict/words | eg/awkish "zest"
 
+file="/dev/stdin"
+expr=".*"
 input expr  optarg 1
 input file  optarg 2
-
-on file=="" do file="/dev/stdin"
-on expr=="" do expr=".*"
 
 # BEGIN{
 i=read_file(file)

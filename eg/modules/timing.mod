@@ -7,11 +7,11 @@ define humansize(i,prec,unit)
     return format( "%." + prec + "f %s" ,i,unit)
 enddef
 
-define report(ts,te,max_count)
-    dur=time_diff(te,ts)/1000000
+define report(its,ite,imax_count)
+    dur=time_diff(ite,its)/1000000
     println format("\nduration       [#5]%0.3f s[#-]",dur)
-    println format("iterations     %v",humansize(float(max_count),0,""))
-    rate=float(dur/max_count)
+    println format("iterations     %v",humansize(float(imax_count),0,""))
+    rate=float(dur/imax_count)
     println format("avg iteration  %0.3f ns",rate*1e9)
     hs=humansize(1/rate,3,"")
     println format("its/sec        [#5]%s[#-]\n",hs)

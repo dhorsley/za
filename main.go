@@ -63,13 +63,20 @@ var panes = make(map[string]Pane)                   // defined console panes.
 var features = make(map[string]Feature)             // list of stdlib categories.
 var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
 
-var fileMap   = make(map[uint32]string)               // func space to source file name mappings
-var sourceMap = make(map[uint32]uint32)               // id of ifs which points to the source which contains
-                                                      // the DEFINE..ENDDEF for a defined functino.
+var vmap    = make([]map[string]uint16,MAX_FUNCS)   // for converting vmap id to fn.id (for debugging/errors)
+var unvmap  = make([]map[uint16]string,MAX_FUNCS)   // for converting vmap id to fn.id (for debugging/errors)
+var identParsed = make([]bool,MAX_FUNCS)            // flag to indicate if source vars have been processed once
+
+var fileMap   = make(map[uint32]string)             // func space to source file name mappings
+var sourceMap = make(map[uint32]uint32)             // id of ifs which points to the source which contains
+                                                    // the DEFINE..ENDDEF for a defined functino.
 
 var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
-var functionArgs = make([][]string, SPACE_CAP)      // expected parameters for each defined function (key: function name)
+var functionArgs = make([]fa_s, SPACE_CAP)          // expected parameters for each defined function (key: function name)
+var functionidents  [MAX_FUNCS]uint16               // bodge job for storing found identifier counts in parsing
+var parsed          [MAX_FUNCS]bool
+
 var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
 var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function id)
 var fairydust = make(map[string]string, FAIRY_CAP)  // ANSI colour code mappings (key: colour alias)
@@ -78,8 +85,6 @@ var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN stat
 var wccount = make([]int, SPACE_CAP)                // count of active WHEN..ENDWHEN statements per function.
 
 var globalaccess uint32                             // number of functionspace which is considered to be "global"
-
-var varcount = make([]int, SPACE_CAP)                 // how many local variables are declared in each active function.
 
 var currentModule string                            // basename of module currently being processed.
 var funcmap = make(map[string]Funcdef)              // defined function list
@@ -220,6 +225,11 @@ func main() {
 
     var err error // generic error flag
 
+    vmap[0]=make(map[string]uint16,0) // global forward name resolution map
+    vmap[1]=make(map[string]uint16,0) // global forward name resolution map
+    unvmap[0]=make(map[uint16]string,0) // global reverse name resolution map
+    unvmap[1]=make(map[uint16]string,0) // global reverse name resolution map
+
     fnlookup.lmset("global",0)
     fnlookup.lmset("main",1)
     numlookup.lmset(0,"global")
@@ -231,8 +241,8 @@ func main() {
     calllock.Unlock()
 
     farglock.Lock()
-    functionArgs[0] = []string{} // initialise empty function argument lists for
-    functionArgs[1] = []string{} // global and main, as they cannot be called by user.
+    functionArgs[0].args = []string{} // initialise empty function argument lists for
+    functionArgs[1].args = []string{} // global and main, as they cannot be called by user.
     farglock.Unlock()
 
     // setup the funcs in the standard library. this must come before any use of vset()
@@ -251,7 +261,10 @@ func main() {
     ifCompileCache = make(map[string]regexp.Regexp)
 
     // global namespace
-    vcreatetable(0, &vtable_maxreached, VAR_CAP)
+    minvar:=functionidents[0]
+    if VAR_CAP>minvar { minvar=VAR_CAP }
+    vcreatetable(0, &vtable_maxreached, minvar)
+    // vcreatetable(0, &vtable_maxreached)
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
@@ -280,23 +293,6 @@ func main() {
     vset(0, "@echo", true)
     vset(0, "trapInt", "")// name of Za function that handles ctrl-c.
     vset(0, "@echomask", "*")
-
-
-    /*
-    // TESTING!!!
-
-    type t_ts struct {
-        A int
-        B bool
-        C string
-        D []string
-    }
-
-    ts:=t_ts{42,true,"something",[]string{"t1","t2","t3"}}
-    vset(0,"teststruct",ts) 
-
-    // END TESTING
-    */
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
@@ -628,7 +624,7 @@ func main() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(parser,globalaccess,a,false)
+                            aval, err := ev(parser,globalaccess,a)
                             if err != nil {
                                 pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
                                 finish(false, ERR_EVAL)
@@ -824,7 +820,13 @@ func main() {
             functionspaces[globalspace] = []Phrase{}
             fspacelock.Unlock()
 
-            echoMask,_:=vget(0,"@echomask")
+            var echoMask interface{}
+            var ok bool
+
+            if echoMask,ok=vget(0,"@echomask"); !ok {
+                echoMask=""
+            }
+
             nestAccept:=0
             totalInput:=""
             var eof,broken bool
@@ -846,7 +848,6 @@ func main() {
                 input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
                 if eof || broken { break }
 
-                // row=row+1+(int(displayedLen(pr.(string))+displayedLen(input))/MW)
                 row++
                 if row>MH { row=MH ; pf("\n") }
                 col = 1

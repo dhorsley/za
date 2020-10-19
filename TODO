@@ -12,6 +12,36 @@
 LATER
 -----
 
+        remove variable interpolation? 
+
+            If we ever want to speed up the language, then identifiers will have to be
+            able to be mapped directly to their offset/index at some point between lexing/parsing
+            and execution. While l.h.s. variable interpolation is permitted, this is not possible.
+
+            If we remove interpolation, then we can make use of the .offset field tied to each token
+            which, even without building a bytecode executor, would greatly speed up many points
+            within the run-time (both inside the expression evaluator and in normal statement
+            execution). 
+
+            We may also need to add some kind of .declared field also to permit VAR/INIT and similar
+            statements to continue working as expected, and also build something more stack-like 
+            per function call for variable storage.
+
+            This would remove a very large number of VarLookup() calls in the program, which, even
+            without the inherent function calls is a very slow algorithm anyway.
+
+            As we would then know in advance where each identifier mapped to as a (stack) offset, we
+            could probably start on bytecode representation (initially as an optional alongside normal
+            execution) and then eventually change Call() to initially check for an in-memory compiled
+            version, or generate one on the hoof when missing during first execution.
+
+            We would have to greatly simplify each statement's code ahead of that step though.
+
+            What we would end up with is certainly not a full byte code implementation, but it would
+            be much of the way there with only a few thorny things left like the way functionspaces 
+            are stored.
+
+
         operators
                 - todo: three-way comparison for scalars and array of built-ins
                     - may be wasted effort for any benefit it would bring

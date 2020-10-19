@@ -560,8 +560,8 @@ func buildStringLib() {
     stdlib["fields"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         // purge previous
-        vset(evalfs,"F",[]string{})
-        vset(evalfs,"NF",0)
+        //fno:=vset(evalfs,"F",[]string{})
+        //nfno:=vset(evalfs,"NF",0)
 
         // check arguments
         sep := " "
@@ -587,12 +587,9 @@ func buildStringLib() {
         }
         ta := append([]string{""},str.FieldsFunc(fstr, f)...)
 
-        // populate F array and F1..Fx variables
-        // var c int
-        // for c = 0; c < len(ta); c++ {
-        //     vset(evalfs, "F"+strconv.Itoa(c+1), ta[c])
-        // }
         c:=len(ta)-1
+        // vseti(evalfs, fno, ta)
+        // vseti(evalfs, nfno, c)
         vset(evalfs, "F", ta)
         vset(evalfs, "NF", c)
 
