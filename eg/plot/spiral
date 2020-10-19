@@ -13,7 +13,7 @@ define draw()
     if px>0 && py>0 && px<width && py<height
         at py,px; print "[#b"+int(c)+"]·"
     endif
-    setglob theta += rotation
+    setglob theta = theta + rotation
     on x > width/2.0 do setglob theta = 0.0
     setglob c+=crate
     on c>7 do setglob c=7

@@ -21,6 +21,13 @@ func (p Phrase) String() string {
 	return p.Original
 }
 
+
+type fa_s struct { // function args struct
+    module  int
+    args    []string
+}
+
+
 // ExpressionFunction can be called from within expressions.
 type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, error)
 
@@ -31,6 +38,7 @@ type Variable struct {
     IKind  uint8
     IValue interface{}
     ITyped bool
+    declared bool
 }
 
 // holds a Token which forms part of a Phrase.
@@ -38,11 +46,21 @@ type Token struct {
 	tokType uint8       // token type from list in constants.go
     tokVal  interface{} // raw value storage
 	tokText string      // the content of the token
+    fs      uint32      // used by interpolation
+    offset  uint16      // position in ident for this identifier
+
 }
 
 func (t Token) String() string {
 	return t.tokText
 }
+
+
+// holds info about a processed function space source
+// type funcheader struct {
+//     maxIdent    int
+// }
+
 
 // holds the details of a function call.
 type call_s struct {
@@ -108,6 +126,8 @@ type ExpressionCarton struct {
 // struct for loop internals
 type s_loop struct {
 	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
+    varoffset        uint16
+    varkeyoffset     uint16
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
     iterOverMap      *reflect.MapIter // stored iterator

@@ -181,7 +181,7 @@ func buildInternalLib() {
             switch args[0].(type) {
             case string:
                 p:=&leparser{}
-                ret, err = ev(p,evalfs, args[0].(string),true)
+                ret, err = ev(p,evalfs, args[0].(string))
                 return ret, err
             }
         }
@@ -367,7 +367,7 @@ func buildInternalLib() {
                 p:=&leparser{}
 
                 globlock.RLock()
-                res,err:=ev(p,globalaccess,inp,true)
+                res,err:=ev(p,globalaccess,inp)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -394,7 +394,7 @@ func buildInternalLib() {
                 p:=&leparser{}
 
                 globlock.RLock()
-                res,err:=ev(p,globalaccess,inp,true)
+                res,err:=ev(p,globalaccess,inp)
                 globlock.RUnlock()
 
                 if err==nil {
@@ -888,7 +888,7 @@ func buildInternalLib() {
         if s != "" {
             lmv,found:=fnlookup.lmget(s)
             if found {
-                vc:=varcount[lmv]
+                vc:=int(functionidents[lmv])
                 for q := 0; q < vc; q++ {
                     v := ident[lmv][q]
                     if v.IName=="" { continue }

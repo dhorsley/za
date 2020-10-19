@@ -25,5 +25,5 @@ assert(x==0)
 # END
 #
 
-report(ts,te,max_count,instructions)
+report(ts,te,max_count)
 

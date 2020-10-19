@@ -5,8 +5,7 @@
 locks(true)
 
 fps=20
-input in_fps optarg 1
-on kind(in_fps)!="string" do fps=int(in_fps)
+input fps optarg 1
 
 
 define calcWave(dx,amplitude)

@@ -58,7 +58,7 @@ func ShowSource(funcInstance string,start int,end int) bool {
             strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, sourceStore[baseId][start+q])
         }
 
-        strOut = sf("\n[#CTE]%s(%v)\n[#CTE]", funcName, str.Join(functionArgs[baseId], ",")) + strOut
+        strOut = sf("\n[#CTE]%s(%v)\n[#CTE]", funcName, str.Join(functionArgs[baseId].args, ",")) + strOut
         pf(strOut)
 
     }

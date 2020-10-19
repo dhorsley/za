@@ -5,10 +5,9 @@
 # isn't dragging it's heels...
 #
 
-input reps optarg 1
 
 max_reps=1
-on reps!="" do max_reps=int(reps)
+input max_reps optarg 1
 
 cursoroff()
 
