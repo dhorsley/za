@@ -935,17 +935,14 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
         // set
         if lockSafety { vlock.Lock() }
 
-        // check for conflict with previous VAR
         // fmt.Printf("vset:type checking:fs %d/%s (vl:%d):len %d:fi %d\n",fs,unvmap[fs][vi],vi,len(ident[fs]),functionidents[fs])
-        // fmt.Printf("unvmap: %+v\n",unvmap[fs])
-        // fmt.Printf("vmap: %+v\n",vmap[fs])
-        // fmt.Printf("ident : %#v\n",ident[fs])
 
         if len(ident[fs])<=int(vi) {
             identResize(fs,vi+1)
             functionidents[fs]=vi+1
         }
 
+        // check for conflict with previous VAR
         if ident[fs][vi].ITyped {
             var ok bool
             switch ident[fs][vi].IKind {
@@ -1634,6 +1631,12 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
                             return expr
                         }
                         vlock.RUnlock()
+                    } else {
+                        p.report("you may only amend existing variables outside of local scope")
+                        expr.evalError=true
+                        finish(false,ERR_SYNTAX)
+                        vlock.RUnlock()
+                        return expr
                     }
                 }
             }
@@ -1656,6 +1659,7 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
 
     if expr.assign {
         // pf("-- entering doAssign (lfs->%d,rfs->%d) with tokens : %+v\n",lfs,fs,tks)
+        // pf("-- entering doAssign (lfs->%d,rfs->%d) with value  : %+v\n",lfs,fs,expr.result)
         p.doAssign(lfs,fs,tks,&expr,eqPos)
         // pf("-- exited   doAssign (lfs->%d,rfs->%d) with idents of %+v\n",lfs,fs,ident[lfs])
     }
@@ -1772,8 +1776,11 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
             ///////////// CHECK FOR a       /////////////////////////////////////////////
             // normal assignment
             var vi uint16
+            var there bool
             if lfs!=rfs {
-                vi=vmap[lfs][assignee[0].tokText]
+                if vi,there=VarLookup(lfs,assignee[0].tokText); !there {
+                    vi=vset(lfs,assignee[0].tokText,nil)
+                }
             } else {
                 vi=assignee[0].offset
             }
@@ -1789,7 +1796,7 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
 
                 // ... check assignee[1] is a local var
                 if _,there:=VarLookup(rfs,assignee[1].tokText); !there {
-                    expr.errVal=fmt.Errorf("cannot find pointer in assignment")
+                    expr.errVal=fmt.Errorf("cannot find local pointer in assignment")
                     expr.evalError=true
                     return
                 }
