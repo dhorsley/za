@@ -16,6 +16,8 @@
 # FUNCTIONS
 #
 
+count=0
+
 logging on "/tmp/dh"
 
 define clear(lstart,lend,column)
@@ -134,7 +136,7 @@ define showMem()
     endif
 
     foreach f in ["total","free","avail","cached","active","swap_free","swap_total"]
-        mem_{f}=0
+        mem[f]=0
     endfor
 
     if is_file("/proc/meminfo")
@@ -239,9 +241,9 @@ define showProcs(ct,uptime)
 
         # final list display
         lcount=8
-        comwidth=25
+        comwidth=21
 
-        at 1,1; print format (  "[#b2][#7][#bold]%2s %6s %6s %5s %5s %7s %-{comwidth}s[##][#-]",
+        at 1,1; print format (  "[#b2][#7][#bold]%2s %8s %8s %5s %5s %7s %-{comwidth}s[##][#-]",
                                 "st","ppid","pid","user","sys","threads","command" )
 
         clear(2,10,1)
@@ -252,7 +254,7 @@ define showProcs(ct,uptime)
             # skip low activity processes
             if float(F[4])>0.2 || float(F[5])>0.2
                 on len(F[10])>=comwidth do F[10]=substr(F[10],0,comwidth-1)
-                print format("%2s %6d %6d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F[1],int(F[2]),int(F[3]),float(F[4]),float(F[5]),float(F[8]),collapse(F[10]))
+                print format("%2s %8d %8d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F[1],int(F[2]),int(F[3]),float(F[4]),float(F[5]),float(F[8]),collapse(F[10]))
                 on lcount--==0 do break
             endif
         endfor
@@ -288,7 +290,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     pane redraw
 
     activity_indicator="·"
-    on utf8supported()==false do activity_indicator="-"
+    on !utf8supported() do activity_indicator="-"
 
     row=1
 
@@ -315,20 +317,20 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             f=list_float(f)
 
             # read values from row
-            _total = sum(f)
+            vals["total"] = f.sum
             foreach i in partindexlist
-                if is_number(head(f))
-                    _{i}    = head(f)
+                if f.head.is_number
+                    vals[i]    = f.head
                 else
-                    _{i}    = float(0)
+                    vals[i]    = float(0)
                 endif
-                on len(f)>0 do f = tail(f)
+                on f.len>0 do f = f.tail
             endfor
 
             # set initial value for the global store
-            if !globkey("prev",string(name)+"_total")
+            if !globkey("prev","{name}_total")
                 foreach i in indexlist
-                    setglob prev["{name}_{i}"] = _{i}
+                    setglob prev["{name}_{i}"] = vals[i]
                 endfor
             endif
 
@@ -336,31 +338,35 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             foreach i in indexlist
                 if globkey("prev","{name}_{i}")
                     g=prev["{name}_{i}"]
-                    if is_number(g)
-                        prev_{i}=g
+                    if g.is_number
+                        one_prev[i]=g
                     else
-                        prev_{i}=0
+                        one_prev[i]=0
                     endif
                 else
-                    prev_{i}=0
+                    one_prev[i]=0
                 endif
             endfor
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
-            if prev_total!=0
-                diff_total = float(_total-prev_total)
+            if one_prev["total"]!=0
+                diff_total = float(vals["total"]-one_prev["total"])
                 foreach i in partindexlist
                     if diff_total==0
-                        diff_{i}=int(0)
+                        diff[i]=int(0)
                     else
-                        if is_number(prev_{i})
-                            diff_{i} = ((_{i}-int(prev_{i})) / diff_total ) * mult
+                        if is_number(one_prev[i])
+                            diff[i] = ((vals[i]-int(one_prev[i])) / diff_total ) * mult
                         endif
                     endif
                 endfor
 
                 # figure display total
-                disp_total=diff_user+diff_nice+diff_sys+diff_iowait+diff_irq+diff_softirq+diff_steal+diff_guest
+                subindexlist = ["user","nice","sys","iowait","irq","softirq","steal","guest"]
+                disp_total=0.0
+                foreach i in subindexlist
+                    disp_total+=diff[i]
+                endfor
             else
                 at 2,2; print "[#invert]Checking previous CPU values.[#-]"
                 break
@@ -368,14 +374,14 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
             # record for next iter
             foreach i in indexlist
-                setglob prev["{name}_{i}"] = _{i}
+                setglob prev["{name}_{i}"] = vals[i]
             endfor
 
             # ensure positive and bounded
-            if prev_total!=nil
+            if one_prev["total"]!=nil
                 foreach i in partindexlist
-                    on int(diff_{i})<0   do diff_{i}=0
-                    on int(diff_{i})>100 do diff_{i}=100
+                    on int(diff[i])<0   do diff[i]=0
+                    on int(diff[i])>100 do diff[i]=100
                 endfor
             endif
             
@@ -391,19 +397,20 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 if showCpuDetails
                     at row,pos; print format(
                                         "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
-                                        float(diff_user),float(diff_sys),float(diff_softirq),float(diff_irq),float(diff_guest),float(diff_steal),float(diff_iowait)
+                                        float(diff["user"]),float(diff["sys"]),float(diff["softirq"]),
+                                        float(diff["irq"]),float(diff["guest"]),float(diff["steal"]),float(diff["iowait"])
                                     )
                     pos=pos+59
                 endif
 
-                col_sys     = "[#b5]"; w_sys      = diff_sys/2
-                col_user    = "[#b4]"; w_user     = diff_user/2
-                col_idle    = "[#b0]"; w_idle     = diff_idle/2
-                col_softirq = "[#b1]"; w_softirq  = diff_softirq/2
-                col_irq     = "[#b7]"; w_irq      = diff_irq/2
-                col_guest   = "[#b3]"; w_guest    = diff_guest/2
-                col_steal   = "[#b2]"; w_steal    = diff_steal/2
-                col_iowait  = "[#b6]"; w_iowait   = diff_iowait/2
+                col_sys     = "[#b5]"; w_sys      = diff["sys"]/2
+                col_user    = "[#b4]"; w_user     = diff["user"]/2
+                col_idle    = "[#b0]"; w_idle     = diff["idle"]/2
+                col_softirq = "[#b1]"; w_softirq  = diff["softirq"]/2
+                col_irq     = "[#b7]"; w_irq      = diff["irq"]/2
+                col_guest   = "[#b3]"; w_guest    = diff["guest"]/2
+                col_steal   = "[#b2]"; w_steal    = diff["steal"]/2
+                col_iowait  = "[#b6]"; w_iowait   = diff["iowait"]/2
 
 
                 if showCpuBars
@@ -474,12 +481,13 @@ define showHdd()
 enddef
 
 
-define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
+define showNet(net_sc,load,ipaddr,interface,timeout)
 
     cursoroff()
 
     if !is_file("/proc/net/dev")
-        return net_sample_start_in-1
+        setglob net_sample_start_in-=1
+        return 
     endif
 
     pane select "net"
@@ -503,34 +511,18 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
 
             # current counters 
             rbytes  = float(F[2])
-            rerr    = float(F[4])
             tbytes  = float(F[10])
-            terr    = float(F[12])
 
             # diff from previous
-
-            if net_sample_start_in>0
-                setglob prev_rbytes = 0
-                setglob prev_rerr = 0
-                setglob prev_tbytes = 0
-                setglob prev_terr = 0
-            endif
-
             drb=rbytes-prev_rbytes
-            dre=rerr-prev_rerr
             dtb=tbytes-prev_tbytes
-            dte=terr-prev_terr
 
             # shift left and append new to end
-            rblist=append(tail(rblist),drb)
-            relist=append(tail(relist),dre)
-            tblist=append(tail(tblist),dtb)
-            telist=append(tail(telist),dte)
-
+            setglob rblist=rblist.tail.append(drb)
+            setglob tblist=tblist.tail.append(dtb)
 
             # display using log scale up to log64(5).
             # using key_timeout as a rough scaler for the sampling period.
-            # skip displaying errors. just show in/out bytes
 
             full_magnitude=5
             midline=8
@@ -540,35 +532,28 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
             clear(4,7,1)
             clear(9,12,1)
 
-            block="☰"
-
-            for f=2 to net_sample_count
-                
+            for f=2 to net_sc
                 # recv plot
-                print "[#invert][#4]"
-                rsz=0
-                sample=int(rblist[f])
+                sample=rblist[f-2].int
                 if sample!=0
-                    rsz=int(logn(sample,64))
+                    rsz=logn(sample,64).int
                     on rsz>full_magnitude do rsz=full_magnitude
                     if rsz>0
                         for brow=1 to rsz
-                            at midline-(brow),1+f ; print load[rsz-1]
+                            at midline-brow,1+f ; print load[brow-1]
                         endfor
                     endif
                 endif
                 print "[#-]"
 
                 # transmit plot
-                print "[#invert][#1]"
-                tsz=0
-                sample=int(tblist[f])
+                sample=tblist[f-2].int
                 if sample!=0
-                    tsz=int(logn(sample,64))
+                    tsz=logn(sample,64).int
                     on tsz>full_magnitude do tsz=full_magnitude
                     if tsz>0
                         for brow=1 to tsz
-                            at midline+(brow),1+f ; print load[tsz-1]
+                            at midline+brow,1+f ; print load[brow-1]
                         endfor
                     endif
                 endif
@@ -583,15 +568,8 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
             endfor
 
             # write history
-            setglob rblist = rblist
-            setglob relist = relist
-            setglob tblist = tblist
-            setglob telist = telist
-
             setglob prev_rbytes = rbytes
             setglob prev_tbytes = tbytes
-            setglob prev_rerr = rerr
-            setglob prev_terr = terr
 
             # avg over a second:
             drb=humansize((1000/float(timeout))*drb)
@@ -599,13 +577,14 @@ define showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeou
 
             clear_line(pane_h()-1,2)
             at pane_h()-1,2
-            print format("[#bbred][#7] %v [#-][##]  [#b4][#1] rx avg [#-][##] %v  [#b1][#3] tx avg [#-][##] %v", int_name, drb, dtb)
+            print format("[#bbred][#7] %v [#-][##]  [#4] rx avg [#-] %v  [#1] tx avg [#-] %v", int_name, drb, dtb)
 
         endif
 
     endfor
 
-    return net_sample_start_in-1
+    setglob net_sample_start_in-=1
+    return
 
 enddef
 
@@ -625,15 +604,11 @@ define redef_layout(cpu_count)
     setglob net_sample_count = term_w()-77
 
     setglob rblist = push_front(0.0)
-    setglob relist = push_front(0.0)
     setglob tblist = push_front(0.0)
-    setglob telist = push_front(0.0)
 
     for f=1 to net_sample_count
         setglob rblist = append(rblist,0.0)
-        setglob relist = append(relist,0.0)
         setglob tblist = append(tblist,0.0)
-        setglob telist = append(telist,0.0)
     endfor
 
     showEnv()
@@ -696,19 +671,16 @@ cpu_count=getcores()
 w=term_w()
 redef_layout(cpu_count)
 
-
 # cpu history setup
 init prev assoc
 
 # net graph setup
 prev_rbytes=0
 prev_tbytes=0
-prev_rerr=0
-prev_terr=0
 
 # network load icons
 legload = [ "❶", "❷", "❸", "❹", "❺" ]
-load = [ "☰", "☰", "☰", "☰", "☰" ]
+load = [ "[#4]|[#-]", "[#4]|[#-]", "[#6]|[#-]", "[#2]|[#-]", "[#2]|[#-]" ]
 
 # main loop
 ipaddr=interface_ip(interface)
@@ -737,7 +709,7 @@ while !quit
     # show panes
     sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     showHdd()
-    net_sample_start_in=showNet(net_sample_count,net_sample_start_in,load,ipaddr,interface,timeout)
+    showNet(net_sample_count,load,ipaddr,interface,timeout)
     showProcs(ct,uptime)
     showFiles()
     showMem()
