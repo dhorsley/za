@@ -1,10 +1,14 @@
 
 
-1.0.12 fixes
+1.0.13 fixes
 
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
+
+1.0.12 variable model
+        fixes
+        operator, documentation, code tidy passes
 
 
 ---------------------------------------------------------------------------------------------
@@ -12,114 +16,15 @@
 LATER
 -----
 
-        remove variable interpolation? 
-
-            If we ever want to speed up the language, then identifiers will have to be
-            able to be mapped directly to their offset/index at some point between lexing/parsing
-            and execution. While l.h.s. variable interpolation is permitted, this is not possible.
-
-            If we remove interpolation, then we can make use of the .offset field tied to each token
-            which, even without building a bytecode executor, would greatly speed up many points
-            within the run-time (both inside the expression evaluator and in normal statement
-            execution). 
-
-            We may also need to add some kind of .declared field also to permit VAR/INIT and similar
-            statements to continue working as expected, and also build something more stack-like 
-            per function call for variable storage.
-
-            This would remove a very large number of VarLookup() calls in the program, which, even
-            without the inherent function calls is a very slow algorithm anyway.
-
-            As we would then know in advance where each identifier mapped to as a (stack) offset, we
-            could probably start on bytecode representation (initially as an optional alongside normal
-            execution) and then eventually change Call() to initially check for an in-memory compiled
-            version, or generate one on the hoof when missing during first execution.
-
-            We would have to greatly simplify each statement's code ahead of that step though.
-
-            What we would end up with is certainly not a full byte code implementation, but it would
-            be much of the way there with only a few thorny things left like the way functionspaces 
-            are stored.
-
-
         operators
-                - todo: three-way comparison for scalars and array of built-ins
+*TODO*          - todo: three-way comparison for scalars and array of built-ins
                     - may be wasted effort for any benefit it would bring
-                    - should maybe only do this once a decision has been made about an
-                        eventual JIT version, as the generated code might better optimise.
 
-        dormant functions
+*TODO*  dormant functions
 
             - need a way to yield and make a function dormant and re-entrant.
                 - this would allow for generators and some other operations.
                 - there's no particular priority for this, just a nice to have.
-
-        variable allocation
-
-            - three issues with variables currently:
-                1. we cannot use maps for the 2nd dimension local storage as they are too slow
-                2. ... so we use arrays instead for backing storage, except we now spend half
-                    of our time looking up variable positions in the array with VarLookup()
-                3. variables are only stored in pseudo stacks per function and cannot persist
-                    beyond the duration of the function's life time.
-            - because of the above:
-                - a) variable access is sloooooow.
-                  b) pointers are pretty useless.
-                  c) we'll only ever have call-by-value functions.
-            - these are not big issues for the current use cases of the language, however, they
-                will be real stumbling blocks to expanding that scope or to building up to a
-                compiled or JITed version one day.
-            - this is more than highly unlikely in any event, but it would be good to remove 
-                this issue, even if just to speed up interpreted variable access.
-            - c) call-by-value was partially a design decision anyway. however, we could work 
-                around it, to some degree, by passing a more complete description of the var
-                in (including function space) and checking for expression/description at Call()
-                startup. It would be yet another layer of crap in the system though. Best just
-                to stick with the original design here for now. If we ever get to the point of
-                using properly allocated storage for vars then we could add a ref/addrOf type
-                symbol and handle this right.
-
-            - even if map access could be sped up (and it can, with general Go improvements over
-                time and by using an alternate hash key generator. we previously tried this one:
-                https://github.com/OneOfOne/xxhash and it performed great, but the basic premise
-                was still too slow. the algorithms need to change for var storage for any great
-                gains to be had.
-
-            - this is all further complicated due to the fact that we permit interpolation on
-                the l.h.s of assignments - it's gonna take someone much cleverer than me to 
-                figure out a way of caching name resolution with interpolation active.
-
-            - without thinking about it too much it seems like we need to:
-
-                - either have a 'proper' memory allocator and do the job properly, or
-                - find a way to cache the storage index as part of the token.
-                    - the caching has been tried already and is a hideous thing, full of edge
-                        cases and complications. just caching variables tied to tokens is
-                        pretty easy, it's handling identifiers in expression evaluation which
-                        is problematic. we would have to pass the tokenised source fully by
-                        reference and allow the evaluator and var access routines to modify
-                        the source tokens to make this work.
-
-            - with the above in mind it's more than likely we'll just have to accept the current
-                performance (which is definitely good enough for what is required) unless a 
-                benevolent genius with time on their hands comes along and pimps it up.
-
-
-* windows keypress() (getch function):
-
-    * working now, but modifier keys (shift, ctrl, etc) all throw a keypress into 
-        the input buffer, effectively triggering the Read. This leaves the go routine
-        hanging pending the second part of the keypress even after the timeout value
-        has been exceeded.
-
-    * it's not a big issue, but could do with a workaround. seems to be part of the 
-        way that ReadConsoleInput and PeekConsoleInput work in Windows. 
-
-    * still some timing issues to deal with. key debounce seems to be around 50-100ms minimum on windows.
-        this affects keypress use with a timeout specified, as a timeout may occur before key up and debounce complete.
-
-        * we either need to figure a way to make it wait patiently and report lag or put stricter limits in place.
-
 
 UNDECIDED
 ---------

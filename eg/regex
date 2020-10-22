@@ -11,7 +11,7 @@ define runSubs(subs,seq)
         println `Sub for {=v[0]},{=v[1]}`
         seq=replace(seq,v[0],v[1])
     endfor
-    return len(seq)
+    return seq.len
 enddef
 
 define perf_regex_dna()
@@ -28,17 +28,17 @@ define perf_regex_dna()
           "agggtaa[cgt]|[acg]ttaccct"
     ]
 
-    subs=append( subs, [ `tHa[Nt]`, `<4>`            ] )
-    subs=append( subs, [ `aND|caN|Ha[DS]|WaS`, `<3>` ] )
-    subs=append( subs, [ `a[NSt]|BY`, `<2>`          ] )
-    subs=append( subs, [ `<[^>]*>`, `|`              ] )
-    subs=append( subs, [ `\|[^|][^|]*\|`, `-`        ] )
+    subs=subs.append([ `tHa[Nt]`, `<4>`            ])
+    subs=subs.append([ `aND|caN|Ha[DS]|WaS`, `<3>` ])
+    subs=subs.append([ `a[NSt]|BY`, `<2>`          ])
+    subs=subs.append([ `<[^>]*>`, `|`              ])
+    subs=subs.append([ `\|[^|][^|]*\|`, `-`        ])
 
     seq = read_file("/dev/stdin")
-    l1 = len(seq)
+    l1 = seq.len
 
     seq = replace(seq, ">.*\n|\n", "")
-    l2 = len(seq)
+    l2 = seq.len
 
     foreach v in variants
         async ahandles runFilter(seq,v) "filter_{key_v}"
@@ -47,10 +47,10 @@ define perf_regex_dna()
     async ahandles runSubs(subs,seq) "subtot"
 
     # wait for completion
-    res=await(ahandles,true)
+    res=ahandles.await(true)
 
     # push to screen in same order they were sent for processing
-    for e=0 to len(res)-1
+    for e=0 to res.len-1
         on key("res","filter_{e}") do println format("%s",res["filter_{e}"])
     endfor
 

@@ -26,10 +26,12 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
         case 0:
             r<-nil
         case 1:
-            v,_:=vget(caller,sf("@#@%v",loc))
+            v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
+            // v,_:=vget(caller,sf("@#@%v",loc))
             r<-v.([]interface{})[0]
         default:
-            v,_:=vget(caller,sf("@#@%v",loc))
+            v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
+            // v,_:=vget(caller,sf("@#@%v",loc))
             r<-v
         }
     }()
@@ -416,7 +418,9 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // register call
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
+    calllock.Lock()
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,line:calltable[csloc].callline,registrant:registrant})
+    calllock.Unlock()
 
     var inbound *Phrase
     var current_with_handle *os.File
@@ -475,6 +479,9 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     //  which represent the array element to be looked up in ident[fs][uint16] to locate a Variable{}
 
     // reset the variable mappings if the source hasn't been parsed yet
+
+    vlock.Lock()
+
     if !identParsed[base] && varmode==MODE_NEW {
         functionidents[base]=0
         vmap[base]  =make(map[string]uint16,0) // local name->number forward name resolution map
@@ -487,11 +494,13 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         nextVarId=functionidents[base]
     }
 
+    vlock.Unlock()
 
     // range over all the tokens, adding offsets to the source tokens.
     // this must be done every call for MODE_STATIC, but only if unparsed for MODE_NEW
-
     if varmode==MODE_STATIC || !identParsed[base] {
+
+        vlock.Lock()
 
         defnest:=0
         for kph,ph:= range functionspaces[base] {
@@ -529,24 +538,23 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             functionidents[base]=nextVarId
         }
 
+        vlock.Unlock()
+
     } else {
         nextVarId=functionidents[base]
     }
-
 
     // in source vars processed, can now reserve a minimum space quota
     //  for this instance of the routine.
 
     if varmode==MODE_NEW {
-
         // create the local variable storage for the function
-        var vtm uint32
 
         vlock.RLock()
+        var vtm uint32
         vtm=vtable_maxreached
-        vlock.RUnlock()
-
         minvar:=nextVarId
+        vlock.RUnlock()
 
         if VAR_CAP>minvar { minvar=VAR_CAP }
         if ifs>=vtm {
@@ -564,17 +572,19 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         globlock.Unlock()
 
         // copy the base var mapping to this instance
+        vlock.Lock()
         unvmap[ifs] =make(map[uint16]string,0) // local number->name reverse name resolution map
         vmap[ifs]   =make(map[string]uint16,0) // local name->number forward name resolution map
         for e:=0; e<len(unvmap[base]); e++ {
             unvmap[ifs][uint16(e)] = unvmap[base][uint16(e)]
             vmap  [ifs][unvmap[base][uint16(e)]] = vmap[base][unvmap[base][uint16(e)]]
         }
+        vlock.Unlock()
 
         // add the call parameters as available variable mappings to the current function call
         for e:=0; e<len(va); e++ {
             nextFaArg:=functionArgs[base].args[e]
-            if vi,found:=vmap[ifs][nextFaArg] ; found {
+            if vi,found:=vmap[ifs][nextFaArg] ; found {  // <-- may cause concurrency issues
                 vseti(ifs,nextFaArg,vi,va[e])
             } else {
                 vseti(ifs,nextFaArg,nextVarId,va[e])
@@ -596,6 +606,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
        pf("whole unmap for ifs %d is\n%#v\n",ifs,unvmap[ifs])
        if ifs>0 { pf("all idents in this ifs (%d):\n%#v\n",ifs,ident[ifs]) }
     */
+
 
     // missing varargs in call result in empty string assignments:
     if lockSafety { farglock.RLock() }
@@ -684,7 +695,7 @@ tco_reentry:
     pf("fargs -> %#v\n",functionArgs[base].args)
     for qq:=range functionArgs[base].args {
         arg:=functionArgs[base].args[qq]
-        pf("unvmap  -> %s : %#v\n",arg,unvmap[base][qq])
+        pf("unvmap  -> %s : %#v\n",arg,unvmap[base][qq])  // <-- this would need a mutex
     }
     */
 
@@ -3584,7 +3595,9 @@ tco_reentry:
 
     }
 
+    calllock.Lock()
     callChain=callChain[:len(callChain)-1]
+    calllock.Unlock()
 
     return retval_count,endFunc
 

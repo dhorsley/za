@@ -1,13 +1,14 @@
 #!/usr/bin/za
 
-lines=read_file("/dev/stdin")
-
 m=0
-foreach l in lines
-    on !key("dups",l) do dups[l]=0
-    dups[l] = dups[l] + 1
+
+f=read_file("/dev/stdin")
+foreach l in f
+    # on !key("dups",l) do dups[l]=0
+    on dups[l]==nil do dups[l]=0
+    dups[l]+=1
     on m<dups[l] do m=dups[l]
 endfor
 
-println "{=len(dups)} {m}"
+println "{=dups.len} {m}"
 
