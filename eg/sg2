@@ -1,0 +1,11 @@
+
+define q(); setglob a++; enddef
+define w(); setglob a--; enddef
+
+a=20
+println "START  : ",a
+q()
+println "POST-INC : ",a
+w()
+println "POST-DEC : ",a
+

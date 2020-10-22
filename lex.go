@@ -329,7 +329,7 @@ get_nt_eval_point:
     case "^":
         tokType = SYM_Caret
     case "!":
-        tokType = SYM_Pling
+        tokType = SYM_Not
     case ";":
         tokType = SYM_Semicolon
     case "[":
@@ -492,6 +492,10 @@ get_nt_eval_point:
             tokType = C_In
         case "or":
             tokType = C_Or
+        case "and":
+            tokType = SYM_LAND
+        case "not":
+            tokType = SYM_Not
         case "endwhen":
             tokType = C_Endwhen
         case "with":

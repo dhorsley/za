@@ -23,6 +23,14 @@ CHANGE LOG
 
         * some example code removed that required l.h.s. interpolation.
 
+        * modified evaluator to not throw an immediate error on illegal array access.
+            - i.e. variable not found in v[e].
+            - this allows for comparing v[e]==nil (or nil==v[e]).
+                - this results in quicker empty element checks than !key("v","e")
+            - may change back yet, haven't figure out all the downsides yet.
+
+        * added and, or and not as synonyms for &&, || and !
+
 
 1.0.11  SUMMARY
         multiple return value handling

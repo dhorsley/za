@@ -565,6 +565,15 @@ func unaryMinus(val interface{}) (interface{}) {
 
 func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 
+    // special case for nil
+    if val1==nil && val2==nil {
+        return true
+    } else {
+        if val1==nil || val2==nil {
+            return false
+        }
+    }
+
     // special case for ptr nil
     var nilcmp1,nilcmp2 bool
     switch v1:=val1.(type) {
