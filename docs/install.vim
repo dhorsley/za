@@ -12,7 +12,7 @@ doc `
     set ft=za
 `
 
-if start(os(),"freebsd")
+if hasstart(os(),"freebsd")
     pth=| ls -d /usr/local/share/vim/vim8*
 else
     pth=| ls -d /usr/share/vim/vim8*

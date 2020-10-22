@@ -86,7 +86,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             left=p.stringliteral(token)
         case Identifier:                    // prec -1
             left=p.identifier(token)
-        case SYM_Pling, O_Sqr, O_Sqrt,O_Assign, O_Plus, O_Minus:      // prec variable
+        case SYM_Not, O_Sqr, O_Sqrt,O_Assign, O_Plus, O_Minus:      // prec variable
             left=p.unary(token)
         case O_Multiply, SYM_Caret:         // unary pointery stuff
             left=p.unary(token)
@@ -109,7 +109,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
                 switch p.peek().tokType {
                 case O_Assign:
                     ruleprec=5
-                case SYM_LAND, SYM_LOR:
+                case SYM_LAND, SYM_LOR, C_Or:
                     ruleprec=15
                 case SYM_BAND, SYM_BOR, SYM_Caret:
                     ruleprec=20
@@ -167,8 +167,7 @@ func (p *leparser) ignore(token Token) interface{} {
 
 func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interface{}) {
 
-    // pf("current parser state at start of binaryLed is (%#v)\n",p)
-    // pf("entered binaryLed with l->%+v and t->%+v\n",left,token)
+     // pf("entered binaryLed with l->%+v and t->%+v\n",left,token)
 
     switch token.tokType {
     case SYM_PP:
@@ -183,10 +182,12 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
         return p.callFunction(left,token)
     }
 
-    // pf("binary: current token list (len:%d) -> (%+v)\n",len(p.tokens),p.tokens)
-    // pf("binary sending tokens from position %d in (%+v) to right parse.\n",p.pos,p.tokens[p.pos:])
+     // pf("binary: current token list (len:%d) -> (%+v)\n",len(p.tokens),p.tokens)
+     // pf("binary sending tokens from position %d in (%+v) to right parse.\n",p.pos,p.tokens[p.pos:])
+
 	right,err := p.dparse(prec + 1)
-    // pf("binary returned from right parse with '%+v'\n",right)
+
+     // pf("binary returned from right parse with '%+v'\n",right)
 
     if err!=nil {
         return nil
@@ -229,7 +230,7 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
     case SYM_FTilde:
         return p.rcompare(left,right,false,true)
 
-    case SYM_LOR:
+    case SYM_LOR,C_Or:
         return asBool(left) || asBool(right)
     case SYM_LAND:
         return asBool(left) && asBool(right)
@@ -292,8 +293,11 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
 
     var sz,start,end int
     var hasStart,hasEnd,hasRange bool
+    var sendNil bool
 
     switch left:=left.(type) {
+    // case nil:
+    //     return nil
     case []bool:
         sz=len(left)
     case []string:
@@ -328,7 +332,8 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
             if p.peek().tokType!=RightSBrace {
                 dp,err:=p.dparse(0)
                 if err!=nil {
-                    panic(fmt.Errorf("map key could not be evaluated"))
+                    // panic(fmt.Errorf("map key could not be evaluated"))
+                    return nil
                 }
                 switch dp.(type) {
                 case string:
@@ -348,7 +353,9 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         // end map case
 
     default:
-        panic(fmt.Errorf("unknown map or array type '%T' (val : %#v) with %+v",left,left,right))
+        sendNil=true
+        // return nil
+        // panic(fmt.Errorf("unknown map or array type '%T' (val : %#v) with %+v",left,left,right))
     }
 
     end=sz
@@ -366,7 +373,9 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                 start=dp.(int)
                 hasStart=true
             default:
-                panic(fmt.Errorf("start of range must be an integer"))
+                if !sendNil {
+                    panic(fmt.Errorf("start of range must be an integer"))
+                }
             }
         }
 
@@ -384,7 +393,9 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                     end=dp.(int)
                     hasEnd=true
                 default:
-                    panic(fmt.Errorf("end of range must be an integer"))
+                    if !sendNil {
+                        panic(fmt.Errorf("end of range must be an integer"))
+                    }
                 }
             }
         }
@@ -397,6 +408,8 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         p.next()
 
     }
+
+    if sendNil { return nil }
 
     if !hasRange && !hasStart && !hasEnd {
         hasRange=true
@@ -470,7 +483,7 @@ func (p *leparser) unary(token Token) (interface{}) {
     }
 
 	switch token.tokType {
-    case SYM_Pling:
+    case SYM_Not:
 	    right,err := p.dparse(24) // don't bind negate as tightly
         if err!=nil { panic(err) }
 		return unaryNegate(right)
@@ -638,12 +651,31 @@ func (p *leparser) preIncDec(token Token) interface{} {
     // move parser position to varname 
     vartok:=p.next()
 
+/*
     // exists?
     val,there:=vgeti(p.fs,vartok.offset)
     if !there {
-        p.report(sf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
+        p.report(sf("invalid variable name in pre-%s '%s'",optype,vartok.tokText))
         finish(false,ERR_EVAL)
         return nil
+    }
+*/
+
+    // exists?
+    var vi uint16
+    var there bool
+    var val interface{}
+
+    vi,there=VarLookup(p.fs,vartok.tokText)
+    activeFS:=p.fs
+    if !there {
+        if vi,there=VarLookup(globalaccess,vartok.tokText); there {
+            val,_=vgeti(globalaccess,vi)
+            activeFS=globalaccess
+        }
+        if !there { panic(fmt.Errorf("invalid variable name in pre-%s '%s'",optype,vartok.tokText)) }
+    } else {
+        val,_=vgeti(p.fs,vartok.offset)
     }
 
     // act according to var type
@@ -662,11 +694,11 @@ func (p *leparser) preIncDec(token Token) interface{} {
     case float64:
         n=v+float64(ampl)
     default:
-        p.report(sf("post-%s not supported on type '%T' (%s)",optype,val,val))
+        p.report(sf("pre-%s not supported on type '%T' (%s)",optype,val,val))
         finish(false,ERR_EVAL)
         return nil
     }
-    vset(p.fs,vartok.tokText,n)
+    vset(activeFS,vartok.tokText,n)
     return n
 
 }
@@ -686,14 +718,20 @@ func (p *leparser) postIncDec(token Token) interface{} {
     vartok:=p.prev
 
     // exists?
-    val,there:=vgeti(p.fs,vartok.offset)
+    var vi uint16
+    var there bool
+    var val interface{}
+
+    vi,there=VarLookup(p.fs,vartok.tokText)
     activeFS:=p.fs
     if !there {
-        val,there=vgeti(globalaccess,vartok.offset)
-        if !there {
-            panic(fmt.Errorf("invalid variable name in post-%s '%s'",optype,vartok.tokText))
+        if vi,there=VarLookup(globalaccess,vartok.tokText); there {
+            val,_=vgeti(globalaccess,vi)
+            activeFS=globalaccess
         }
-        activeFS=globalaccess
+        if !there { panic(fmt.Errorf("invalid variable name in post-%s '%s'",optype,vartok.tokText)) }
+    } else {
+        val,_=vgeti(p.fs,vartok.offset)
     }
 
     // act according to var type
@@ -812,16 +850,19 @@ var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, name string) (uint16, bool) {
-
+    vlock.RLock()
     if vi,found:=vmap[fs][name]; found {
         if vi>functionidents[fs] {
             // pf("vl:read_overflow:%d:%s:%d of %d\n",fs,name,vi,functionidents[fs])
+            vlock.RUnlock()
             return 0,false
         }
         // fmt.Printf("vl:found:%d/%s:%d\n",fs,name,vmap[fs][name])
+        vlock.RUnlock()
         return vi,true
     }
     // fmt.Printf("vl:notfound:%d/%s\n",fs,name)
+    vlock.RUnlock()
     return 0,false
 
 }
@@ -829,9 +870,7 @@ func VarLookup(fs uint32, name string) (uint16, bool) {
 
 func vcreatetable(fs uint32, vtable_maxreached * uint32,sz uint16) {
 
-    if lockSafety {
-        vlock.Lock()
-    }
+    vlock.Lock()
 
     vtmr:=*vtable_maxreached
 
@@ -843,9 +882,7 @@ func vcreatetable(fs uint32, vtable_maxreached * uint32,sz uint16) {
         // fmt.Printf("vcreatetable: skipped allocation for [fs:%d] -> length:%v max_reached:%v\n",fs,len(ident),*vtable_maxreached)
     }
 
-    if lockSafety {
-        vlock.Unlock()
-    }
+    vlock.Unlock()
 
 }
 
@@ -857,9 +894,9 @@ func vunset(fs uint32, name string) {
 
     loc, found := VarLookup(fs, name)
 
-    if lockSafety { vlock.Lock() }
+    vlock.Lock()
     if found { ident[fs][loc] = Variable{declared:false} }
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 
 }
 
@@ -912,6 +949,8 @@ func identResize(fs uint32,sz uint16) {
 
 func vset(fs uint32, name string, value interface{}) (vi uint16) {
 
+    vlock.Lock()
+
     // create mapping entries for this name if it does not already exist
     if _,found:=vmap[fs][name]; !found {
         vmap[fs][name]=functionidents[fs]
@@ -921,11 +960,15 @@ func vset(fs uint32, name string, value interface{}) (vi uint16) {
         // fmt.Printf("-- vset fs %d - name %s - val %+v\n",fs,name,value)
     }
 
+    vlock.Unlock()
+
     // ... then forward to vseti
     return vseti(fs, name, vmap[fs][name], value)
 }
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
+
+    if lockSafety { vlock.Lock() }
 
      // fmt.Printf("** vset %s %+v\n",vi,value)
      // fmt.Printf("  -- len ident fs -> %d ident count of %d\n",len(ident[fs]), functionidents[fs])
@@ -933,7 +976,6 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
     if len(ident[fs])>=int(vi) {
                 // && vi < functionidents[fs] {
         // set
-        if lockSafety { vlock.Lock() }
 
         // fmt.Printf("vset:type checking:fs %d/%s (vl:%d):len %d:fi %d\n",fs,unvmap[fs][vi],vi,len(ident[fs]),functionidents[fs])
 
@@ -980,14 +1022,11 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
             }
         }
 
-        if lockSafety { vlock.Unlock() }
-
     } else {
 
         // fmt.Printf("vseti: new var %v\n",name)
 
         // new variable instantiation
-        if lockSafety { vlock.Lock() }
 
         // vi=functionidents[fs]
         if len(ident[fs])<=int(vi) {
@@ -999,9 +1038,9 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
         unvmap[fs][vi]=name
         functionidents[fs]++
 
-        if lockSafety { vlock.Unlock() }
-
     }
+
+    if lockSafety { vlock.Unlock() }
 
     return vi
 
@@ -1081,7 +1120,7 @@ func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
         // pf("vse:newlist:%s\n",name)
     }
 
-    if lockSafety { vlock.Lock() }
+    vlock.Lock()
 
     switch list.(type) {
     case map[string]interface{}:
@@ -1106,10 +1145,10 @@ func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
         } else {
             ident[fs][vi].IName= name
             ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
-            if lockSafety { vlock.Unlock() }
+            vlock.Unlock()
             return
         }
-        if lockSafety { vlock.Unlock() }
+        vlock.Unlock()
         return
     }
 
@@ -1185,7 +1224,6 @@ func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
         ident[fs][vi].IValue.([]float64)[numel],fault=GetAsFloat(value)
         if fault {
             panic(fmt.Errorf("Could not append to float array (ele:%v) a value '%+v' of type '%T'",numel,value,value))
-            // finish(false,ERR_EVAL)
         }
 
     case []interface{}:
@@ -1206,7 +1244,7 @@ func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
 
     // final write
 
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 
 }
 
@@ -1218,6 +1256,7 @@ func vget(fs uint32, name string) (interface{}, bool) {
             vlock.RLock()
             defer vlock.RUnlock()
         }
+
          // pf("-- vget returning value '%v' for %s\n",ident[fs][vi].IValue,name)
         if ident[fs][vi].declared {
             return ident[fs][vi].IValue , true
@@ -1253,10 +1292,8 @@ func vgeti(fs uint32, vi uint16) (interface{}, bool) {
 
 func getvtype(fs uint32, name string) (reflect.Type, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-        if lockSafety {
-            vlock.RLock()
-            defer vlock.RUnlock()
-        }
+        vlock.RLock()
+        defer vlock.RUnlock()
         return reflect.TypeOf(ident[fs][vi].IValue) , true
     }
     return nil, false
@@ -1264,7 +1301,6 @@ func getvtype(fs uint32, name string) (reflect.Type, bool) {
 
 func isBool(expr interface{}) bool {
 
-    // typeof := reflect.TypeOf(expr).Kind()
     switch reflect.TypeOf(expr).Kind() {
     case reflect.Bool:
         return true
@@ -1355,7 +1391,8 @@ func interpolate(fs uint32, s string) (string) {
 
     for {
 
-        if lockSafety { vlock.RLock() }
+        vlock.RLock()
+
         os = s
 
         for k = 0; k < vc; k++ {
@@ -1399,7 +1436,7 @@ func interpolate(fs uint32, s string) (string) {
             }
 
         }
-        if lockSafety { vlock.RUnlock() }
+        vlock.RUnlock()
 
         if os==s { break }
 
@@ -1619,8 +1656,8 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
         if !standardAssign {
             if lfs!=fs {
                 if newEval[0].tokType==Identifier {
+                    vlock.RLock()
                     if off,found:=vmap[lfs][newEval[0].tokText]; found {
-                        vlock.RLock()
                         if ident[lfs][off].declared {
                             newEval[0].offset=off
                         } else {
@@ -1630,7 +1667,6 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
                             vlock.RUnlock()
                             return expr
                         }
-                        vlock.RUnlock()
                     } else {
                         p.report("you may only amend existing variables outside of local scope")
                         expr.evalError=true
@@ -1638,6 +1674,7 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
                         vlock.RUnlock()
                         return expr
                     }
+                    vlock.RUnlock()
                 }
             }
             switch expr.result.(type) {

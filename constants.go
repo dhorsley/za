@@ -132,7 +132,7 @@ const (
 	O_Divide
 	O_Multiply
 	SYM_Caret
-	SYM_Pling
+	SYM_Not
 	O_Percent
 	SYM_Semicolon
 	O_Assign
