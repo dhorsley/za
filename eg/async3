@@ -29,6 +29,6 @@ endfor
 println "Waiting for task completions."
 res=await(hndmap,true)
 for e=0 to 99
-    println "{e} -> ",res[e]
+    println e," -> ",res[e]
 endfor
 

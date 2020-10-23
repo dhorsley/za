@@ -312,9 +312,9 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         if match(name,"^cpu")
 
             # split up row
-            f=tail(F)
+            f=F.tail
             # convert string values to floats
-            f=list_float(f)
+            f=f.list_float
 
             # read values from row
             vals["total"] = f.sum
@@ -349,7 +349,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             endfor
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
-            if one_prev["total"]!=0
+            if one_prev["total"]!=nil
                 diff_total = float(vals["total"]-one_prev["total"])
                 foreach i in partindexlist
                     if diff_total==0
@@ -602,6 +602,7 @@ define redef_layout(cpu_count)
     pane define "status", cpu_count+36, 1,              1,       term_w()-1,   "[#b1] Status [##]",      "none"
 
     setglob net_sample_count = term_w()-77
+    on net_sample_count>72 do setglob net_sample_count = 72
 
     setglob rblist = push_front(0.0)
     setglob tblist = push_front(0.0)

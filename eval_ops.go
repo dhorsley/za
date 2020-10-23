@@ -53,6 +53,8 @@ func asBool(val interface{}) bool {
 
 func asInteger(val interface{}) int {
     switch v:=val.(type) {
+    case nil:
+        return int(0)
     case int:
         return int(v)
     case int64:
@@ -133,6 +135,9 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 	if float1OK && float2OK {
 		return float1 + float2
 	}
+
+    if intInOne && val2==nil { return int1 }
+    if intInTwo && val1==nil { return int2 }
 
 	str1, str1OK := val1.(string)
 	str2, str2OK := val2.(string)
@@ -1136,6 +1141,13 @@ func arrayContains(arr interface{}, val interface{}) bool {
 */
 
 func callFunction(evalfs uint32, callline int, name string, args []interface{}) (res interface{}) {
+
+    for a:=0; a<len(args); a++ {
+        switch args[a].(type) {
+        case string:
+            args[a]=interpolate(evalfs,args[a].(string))
+        }
+    }
 
 	if f, ok := stdlib[name]; !ok {
 
