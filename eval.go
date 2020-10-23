@@ -514,7 +514,7 @@ func (p *leparser) unAddrOf(tok Token) interface{} {
     // is this a var?
     inter:=vartok.tokText
     if _,there:=vgeti(p.fs,tok.offset); !there {
-        if _,there:=vgeti(globalaccess,tok.offset); !there {
+        if _,there:=vget(globalaccess,tok.tokText); !there {
             return nil // no var to reference
         }
         fsnum=globalaccess
@@ -1028,7 +1028,6 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
         // new variable instantiation
 
-        // vi=functionidents[fs]
         if len(ident[fs])<=int(vi) {
            identResize(fs,vi+1)
         }
@@ -1046,12 +1045,21 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
 }
 
-
 func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
+    if vi,ok := VarLookup(fs,name); ok {
+        return vgetElementi(fs,name,vi,el)
+    }
+    return nil,false
+}
+
+// func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
+func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bool) {
     // pf("vgetE: entered with %v[%v]\n",name,el)
     var v interface{}
-    if _, ok := VarLookup(fs, name); ok {
-        v, ok = vget(fs, name)
+    var ok bool
+    // if _, ok := VarLookup(fs, name); ok {
+        // v, ok = vget(fs, name)
+        v, ok = vgeti(fs,vi)
         switch v:=v.(type) {
         case map[string]int:
             return v[el], ok
@@ -1093,32 +1101,38 @@ func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
                 iel--
             }
         }
-    }
+    // }
     // pf("vgetE: leaving %v[%v]\n",name,el)
     return nil, false
 }
 
 
-// this could probably be faster. not a great idea duplicating the list like this...
 func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
-
     var list interface{}
     var vi uint16
-    var ok bool
-
-    if vi, ok = VarLookup(fs, name); ok {
-        if list, ok = vgeti(fs, vi); ok {
-            // pf("vse:gotlist:%s:%#v\n",name,list)
-        } else {
-            list = make(map[string]interface{}, LIST_SIZE_CAP)
-            vi=vset(fs,name,list)
-            // pf("vse:undec_newlist:%s\n",name)
-        }
-    } else {
+    var declared bool
+    if vi, declared = VarLookup(fs, name); !declared {
         list = make(map[string]interface{}, LIST_SIZE_CAP)
         vi=vset(fs,name,list)
-        // pf("vse:newlist:%s\n",name)
     }
+    vsetElementi(fs,name,vi,el,value)
+}
+
+// this could probably be faster. not a great idea duplicating the list like this...
+// func vsetElementi(fs uint32, name string, el interface{}, value interface{}) {
+func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value interface{}) {
+
+    var list interface{}
+    var ok bool
+
+    list, ok = vgeti(fs, vi)
+    if !ok {
+       list = make(map[string]interface{}, LIST_SIZE_CAP)
+        vi=vset(fs,name,list)
+    }
+
+    // pf("ary %v[%v](elt:%T) with %+v -> %T -> %+v\n",name,el,el,value,list,list)
+    // pf("vi:%d vmap->\n%+v\n",vi,vmap[fs])
 
     vlock.Lock()
 
@@ -1349,138 +1363,97 @@ func interpolate(fs uint32, s string) (string) {
     if lockSafety { interlock.Lock() }
 
     orig:=s
+    r := regexp.MustCompile(`{([^{}]*)}`)
 
-    // we need the extra loops to deal with embedded indirection
-
-    vc:=int(functionidents[fs])
-
-    // string replacer
-    rs := []string{}
-    typedlist:=[]int{}
-    for k := 0 ; k<vc; k++ {
-        if ident[fs][k].declared && ident[fs][k].ITyped {
-            typedlist=append(typedlist,k)
-            if ident[fs][k].IKind==kstring {
-                rs = append(rs, "{"+ident[fs][k].IName+"}")
-                rs = append(rs, ident[fs][k].IValue.(string))
-            }
-            if ident[fs][k].IKind==kint    {
-                rs = append(rs, "{"+ident[fs][k].IName+"}")
-                rs = append(rs, strconv.FormatInt(int64(ident[fs][k].IValue.(int)),10))
-            }
-            if ident[fs][k].IKind==kuint    {
-                rs = append(rs, "{"+ident[fs][k].IName+"}")
-                rs = append(rs, strconv.FormatUint(uint64(ident[fs][k].IValue.(uint)),10))
-            }
-            if ident[fs][k].IKind==kfloat  {
-                rs = append(rs, "{"+ident[fs][k].IName+"}")
-                rs = append(rs, strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64))
-            }
-            if ident[fs][k].IKind==kbool  {
-                rs = append(rs, "{"+ident[fs][k].IName+"}")
-                rs = append(rs, strconv.FormatBool(ident[fs][k].IValue.(bool)))
-            }
-        }
-    }
-    s = str.NewReplacer(rs...).Replace(s)
-    // end replacer
-
-    var skip bool
-    var i,k int
-    var os string
+    vlock.RLock()
 
     for {
+        os:=s
 
-        vlock.RLock()
+        // generate list of matches of {...} in s
+        matches := r.FindAllStringSubmatch(s,-1)
 
-        os = s
+        // iterate:
+        for _, v := range matches {
 
-        for k = 0; k < vc; k++ {
+            //  lookup in vmap
+            if k,there:=vmap[fs][v[1]]; there {
 
-            // already replaced above?
-            skip=false
-            for _,i=range typedlist {
-                if i==k { skip=true; break }
-            }
-            if skip { continue }
+                if ident[fs][k].declared && ident[fs][k].IValue != nil {
 
-            v := ident[fs][k]
+                    switch ident[fs][k].IValue.(type) {
+                    case int:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatInt(int64(ident[fs][k].IValue.(int)), 10),-1)
+                    case int64:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatInt(ident[fs][k].IValue.(int64), 10),-1)
+                    case float64:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64),-1)
+                    case bool:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatBool(ident[fs][k].IValue.(bool)),-1)
+                    case string:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", ident[fs][k].IValue.(string),-1)
+                    case uint64:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(ident[fs][k].IValue.(uint64), 10),-1)
+                    case uint:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(uint64(ident[fs][k].IValue.(uint)), 10),-1)
+                    case uint8:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(uint64(ident[fs][k].IValue.(uint8)), 10),-1)
+                    case []uint8, []uint64, []int64, []float64, []int, []bool, []interface{}, []string:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", sf("%v",ident[fs][k].IValue),-1)
+                    case interface{}:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", sf("%v",ident[fs][k].IValue),-1)
+                    default:
+                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", sf("!%T!%v",ident[fs][k].IValue,ident[fs][k].IValue),-1)
 
-            if v.IValue != nil {
-
-                switch v.IValue.(type) {
-                case int:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(int64(v.IValue.(int)), 10),-1)
-                case int64:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatInt(v.IValue.(int64), 10),-1)
-                case float64:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatFloat(v.IValue.(float64),'g',-1,64),-1)
-                case bool:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatBool(v.IValue.(bool)),-1)
-                case string:
-                    s = str.Replace(s, "{"+v.IName+"}", v.IValue.(string),-1)
-                case uint64:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
-                case uint:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(v.IValue.(uint64), 10),-1)
-                case uint8:
-                    s = str.Replace(s, "{"+v.IName+"}", strconv.FormatUint(uint64(v.IValue.(uint8)), 10),-1)
-                case []uint8, []uint64, []int64, []float64, []int, []bool, []interface{}, []string:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                case interface{}:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("%v",v.IValue),-1)
-                default:
-                    s = str.Replace(s, "{"+v.IName+"}", sf("!%T!%v",v.IValue,v.IValue),-1)
-
+                    }
                 }
             }
-
         }
-        vlock.RUnlock()
 
         if os==s { break }
-
     }
 
-        // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
-        var modified bool
+    vlock.RUnlock()
 
-        redo:=true
-        for ;redo; {
-            modified=false
-            for p:=0;p<len(s);p++ {
-                if s[p]=='{' && s[p+1]=='=' {
-                    q:=str.IndexByte(s[p+2:],'}')
-                    if q==-1 { break }
+    // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
+    var modified bool
 
-                        // pf("( eval interpolation of %s ) ",s[p+2:p+q+2])
-                        if aval, err := ev(interparse,fs, s[p+2:p+q+2]); err==nil {
+    redo:=true
+    for ;redo; {
+        modified=false
+        for p:=0;p<len(s);p++ {
+            if s[p]=='{' && s[p+1]=='=' {
+                q:=str.IndexByte(s[p+2:],'}')
+                if q==-1 { break }
 
-                        switch val:=aval.(type) {
-                        // a few special cases here which will operate faster
-                        //  than waiting for fmt.sprintf() to execute.
-                        case string:
-                            s=s[:p]+val+s[p+q+3:]
-                        case int:
-                            s=s[:p]+strconv.Itoa(val)+s[p+q+3:]
-                        case int64:
-                            s=s[:p]+strconv.FormatInt(val,10)+s[p+q+3:]
-                        case uint:
-                            s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+3:]
-                        default:
-                            s=s[:p]+sf("%v",val)+s[p+q+3:]
+                    // pf("( eval interpolation of %s ) ",s[p+2:p+q+2])
+                    if aval, err := ev(interparse,fs, s[p+2:p+q+2]); err==nil {
 
-                        }
-                        modified=true
-                        break
+                    switch val:=aval.(type) {
+                    // a few special cases here which will operate faster
+                    //  than waiting for fmt.sprintf() to execute.
+                    case string:
+                        s=s[:p]+val+s[p+q+3:]
+                    case int:
+                        s=s[:p]+strconv.Itoa(val)+s[p+q+3:]
+                    case int64:
+                        s=s[:p]+strconv.FormatInt(val,10)+s[p+q+3:]
+                    case uint:
+                        s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+3:]
+                    default:
+                        s=s[:p]+sf("%v",val)+s[p+q+3:]
+
                     }
-                    p=q+1
+                    modified=true
+                    break
                 }
+                p=q+1
             }
-            if !modified { redo=false }
         }
+        if !modified { redo=false }
+    }
 
-        if s=="<nil>" { s=orig }
+    if s=="<nil>" { s=orig }
 
     if lockSafety { interlock.Unlock() }
 
@@ -1902,6 +1875,8 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
 
 
             ///////////// CHECK FOR a[e].f= /////////////////////////////////////////////
+            var vi uint16
+
             if dotMode {
                 lhs_dotField:=""
                 if dotAt!=len(assignee)-2 {
@@ -1923,7 +1898,15 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
 
                 var tempStore interface{}
                 var found bool
+                var there bool
                 aryName := assignee[0].tokText
+                if lfs!=rfs {
+                    if vi,there=VarLookup(lfs,assignee[0].tokText); !there {
+                        vi=vset(lfs,assignee[0].tokText,nil)
+                    }
+                } else {
+                    vi=assignee[0].offset
+                }
                 var eleName string
                 switch element.(type) {
                 case int:
@@ -1931,13 +1914,14 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 case int64:
                     eleName = strconv.FormatInt(element.(int64), 10)
                 case string:
-                    eleName = element.(string)
+                    eleName = interpolate(rfs,element.(string))
                 default:
                     eleName = sf("%v",element)
                 }
 
                 // pf("doassign:making tempStore\n")
-                tempStore ,found = vgetElement(lfs,aryName, eleName)
+                // tempStore ,found = vgetElement(lfs,aryName, eleName)
+                tempStore ,found = vgetElementi(lfs,aryName, vi, eleName)
                 // pf("doassign:tempStore:%#v\n",tempStore)
 
                 if found {
@@ -1968,11 +1952,11 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                                 // write the copy back to the 'real' variable
                                 switch element.(type) {
                                 case int:
-                                    vsetElement(lfs,aryName,element.(int),tmp.Interface())
+                                    vsetElementi(lfs,aryName,vi,element.(int),tmp.Interface())
                                 case string:
-                                    vsetElement(lfs,aryName,element.(string),tmp.Interface())
+                                    vsetElementi(lfs,aryName,vi,element.(string),tmp.Interface())
                                 default:
-                                    vsetElement(lfs,aryName,element.(string),tmp.Interface())
+                                    vsetElementi(lfs,aryName,vi,element.(string),tmp.Interface())
                                 }
                                 return
                                 ////////////////////////////////////////////////////////////////
@@ -2002,17 +1986,27 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
             /////////////////////////////////////////////////////////////////////////////
 
 
+            var there bool
+            if lfs!=rfs {
+                if vi,there=VarLookup(lfs,assignee[0].tokText); !there {
+                    vi=vset(lfs,assignee[0].tokText,nil)
+                }
+            } else {
+                vi=assignee[0].offset
+            }
+
             switch element.(type) {
             case string:
                 // pf("-- setting array element : %s [ %v ] with '%v'\n",assignee[0].tokText, element, results[assno])
-                vsetElement(lfs, assignee[0].tokText, element.(string), results[assno])
+                element = interpolate(rfs,element.(string))
+                vsetElementi(lfs, assignee[0].tokText, vi, element.(string), results[assno])
             case int:
                 if element.(int)<0 {
                     pf("negative element index!! (%s[%v])\n",assignee[0].tokText,element)
                     expr.evalError=true
                     expr.errVal=err
                 }
-                vsetElement(lfs, assignee[0].tokText, element.(int), results[assno])
+                vsetElementi(lfs, assignee[0].tokText, vi, element.(int), results[assno])
             default:
                 pf("unhandled element type!! [%T]\n",element)
                 expr.evalError=true

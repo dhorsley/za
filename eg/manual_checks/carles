@@ -13,7 +13,7 @@ print "Starting...", epoch_time()
 for il1 = 0 To 9
     for il2 = 0 To 31999
         for il3 = 0 To 31999
-            ic+=1
+            ic=ic+1
             on ic > 50 do ic=0
         endfor
     endfor
