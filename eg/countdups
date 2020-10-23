@@ -4,11 +4,9 @@ m=0
 
 f=read_file("/dev/stdin")
 foreach l in f
-    # on !key("dups",l) do dups[l]=0
-    on dups[l]==nil do dups[l]=0
-    dups[l]+=1
+    dups[l]=dups[l]+1
     on m<dups[l] do m=dups[l]
 endfor
 
-println "{=dups.len} {m}"
+println "{=len(dups)} {m}"
 

@@ -1921,6 +1921,7 @@ tco_reentry:
                         if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                             v,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                             newstart=term+1
+                            switch v.(type) { case string: v=interpolate(ifs,v.(string)) }
                             docout += sparkle(sf(`%v`, v))
                             continue
                         }
@@ -3173,8 +3174,8 @@ tco_reentry:
 
 
         // parsing for these is a mess, will clean up when new evaluator stable.
-        // i think we only need to worry about parens when scanning for commas
-        // as string expressions should be single string literal tokens.
+        // we should only need to worry about parens when scanning for commas
+        // as strings should be single string literal tokens.
         case C_Print:
             if inbound.TokenCount > 1 {
                 evnest:=0
@@ -3186,6 +3187,7 @@ tco_reentry:
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
+                        switch v.(type) { case string: v=interpolate(ifs,v.(string)) }
                         pf(`%v`,sparkle(v))
                         continue
                     }
@@ -3207,6 +3209,7 @@ tco_reentry:
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
+                        switch v.(type) { case string: v=interpolate(ifs,v.(string)) }
                         pf(`%v`,sparkle(v))
                         continue
                     }
@@ -3230,6 +3233,7 @@ tco_reentry:
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
+                        switch v.(type) { case string: v=interpolate(ifs,v.(string)) }
                         plog_out += sf(`%v`,sparkle(v))
                         continue
                     }
