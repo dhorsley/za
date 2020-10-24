@@ -72,6 +72,39 @@ func asInteger(val interface{}) int {
 }
 
 
+func ev_range(val1 interface{}, val2 interface{}) ([]int) {
+
+    if sf("%T",val1)!=sf("%T",val2) {
+        // error, types must match
+        return nil
+    }
+
+    switch val1.(type) {
+    case uint:
+        a:=make([]int, val2.(uint)-val1.(uint)+1)
+        for i := range a {
+            a[i] = int(val1.(uint) + uint(i))
+        }
+        return a
+    case int:
+        a:=make([]int, val2.(int)-val1.(int)+1)
+        for i := range a {
+            a[i] = val1.(int) + i
+        }
+        return a
+    case int64:
+        a:=make([]int, val2.(int64)-val1.(int64)+1)
+        for i := range a {
+            a[i] = int(val1.(int64) + int64(i))
+        }
+        return a
+    }
+
+    // unknown type
+    return nil
+
+}
+
 func ev_in(val1 interface{}, val2 interface{}) (bool) {
     switch vl:=val2.(type) {
     case []string:

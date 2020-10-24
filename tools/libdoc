@@ -42,20 +42,17 @@ hc[`\[#7]`] = `<span class='f7'>`
 hc[`\[#-]`] = `</span>`
 hc[`\[##]`] = `</span>`
 
-define clean(s)
 
+define clean(s)
     s=replace(s,`\[#i0]`,    `</span>`)
     s=replace(s,`\[#i1]`,    `<span class='ion'>`)
     s=replace(s,`\[#bold]`,  `<span class='boff'>`)
     s=replace(s,`\[#boff]`,  `</span>`)
     s=replace(s,`\n`,        `<br><br>`)
-
     foreach c in hc
         s=replace(s,key_c,c)
     endfor
-
     return s
-
 enddef
 
 
@@ -113,7 +110,11 @@ foreach c in func_categories()
         body=body+wp(`{desc}`)
 
         if is_file("{egpages}/{i}")
-            body=body+wp("<i>Example:</i><br><pre>"+html_escape(read_file("{egpages}/{i}"))+"</pre>")
+            f=read_file("{egpages}/{i}")
+            interpol(false)
+            f=f.html_escape.replace("{","&#123;").replace("}","&#125;")
+            interpol(true)
+            body=body+wp("<i>Example:</i><br><pre>"+f+"</pre>")
         endif
 
         body=body+"<br>\n"

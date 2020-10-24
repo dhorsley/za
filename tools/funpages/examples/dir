@@ -1,3 +1,5 @@
 
-foreach f in dir("/","^[Vv]"); println f["name"]; endfor
+foreach f in dir("/","^[Vv]")
+    println f.name
+endfor
 

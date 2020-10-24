@@ -15,7 +15,7 @@ on do_upx=="upx" do upx_enable=true
 GCLIMIT = "GOGC=250 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
-bvers =  "1.0.12"
+bvers =  "1.0.13"
 bdate =| date "+%d-%m-%Y %H:%M"
 
 

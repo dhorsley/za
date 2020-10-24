@@ -5,6 +5,48 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added HAS expression condition type to WHEN...ENDWHEN
+            - "HAS expression" clause causes the initial WHEN condition to be ignored and
+                a clause truth test is performed against the presented HAS expression instead.
+            - on falsehood, subsequent clauses are tested with the original condition,
+                except in the further HAS clauses of course.
+            - as before, WHEN clauses continue to match on a first come-first served basis.
+            - context help and manual still need updating for new clause type.
+            - the HAS clause essentially acts as our if..else if..else if..end method, but 
+                it also allows for some other alternative arrangements in conjunction with
+                IS, CONTAINS and OR clauses.
+
+            - the HAS keyword name may yet change for an alternative if we can think of 
+                anything suitable.  Things like SATISFIES, ADMITS, MEETS, CONCURS and a few other 
+                alternative were just too wordy... and yes, I know we have CONTAINS, but
+                that one is up for barter too.
+
+        * added s..e operator for generating an array range. value types of expressions
+            s and e must match each other, and the generated range is of the same value type.
+
+            - accepted types are currently int, int64 and uint.
+                - it would probably be a fairly simple task to extend this scheme.
+
+            - manual still needs updating for the new operator.
+
+        * forced, combined example:
+
+            a=rand(50)
+            when a
+            is 10
+                println "a is 10"
+            has a in 1..9
+                println "a is less than 10"
+            has a>10
+                println "a is between 11 and 50"
+            or
+                println "some other value"
+            endwhen
+
+
+        * lexer - forced numbers to end when followed by 2 dots
+
+
 1.0.12  new model for identifier binding.
 
         * finally replaced the identifier lookups with something approaching a name
