@@ -19,7 +19,7 @@ define offsetmomentum()
     var py float
     var pz float
 
-    for i=0 to N-1
+    foreach i in 0..N-1
         bi=b[i]
         px += bi.vx * bi.mass
         py += bi.vy * bi.mass
@@ -157,7 +157,7 @@ neptune.vz  = -9.51592254519715870e-05 * daysPerYear
 neptune.mass=  5.15138902046611451e-05 * solarMass
 
 foreach bn in body_list
-    b[key_bn]={bn}
+    b[key_bn]=local(bn)
     println format("%2d : %15s",key_bn,bn)
 endfor
 

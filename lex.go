@@ -11,8 +11,8 @@ const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@{}"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789."
-const identifier_set = alphanumeric + "_"
-const doubleterms = "<>=|&-+*"
+const identifier_set = alphanumeric + "_{}"
+const doubleterms = "<>=|&-+*."
 const soloChars   = "+-/*.^!%;<>~=|,():[]&"
 const expExpect="0123456789-+"
 
@@ -23,7 +23,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "LBRACE", "RBRACE",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
-    "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW",
+    "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
@@ -31,7 +31,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
+    "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO",
 }
 
@@ -217,6 +217,12 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
                     badFloat=true
                     break
                 }
+                // deal with . at end of number
+                if currentChar<len(input)-1 && input[currentChar]=='.' && input[currentChar+1]=='.' {
+                    word=input[thisWordStart:currentChar]
+                    startNextTokenAt=currentChar
+                    break
+                }
             }
         }
 
@@ -386,6 +392,8 @@ get_nt_eval_point:
         tokType = SYM_MM
     case "**":
         tokType = SYM_POW
+    case "..":
+        tokType = SYM_RANGE
     case ".":
         tokType = SYM_DOT
     case "<<":
@@ -488,6 +496,8 @@ get_nt_eval_point:
             tokType = C_Is
         case "contains":
             tokType = C_Contains
+        case "has":
+            tokType = C_Has
         case "in":
             tokType = C_In
         case "or":

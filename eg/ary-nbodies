@@ -28,9 +28,10 @@ define offsetmomentum()
     var pz float
 
     for i=0 to N-1
-        px = px + (b[i][vx] * b[i][mass])
-        py = py + (b[i][vy] * b[i][mass])
-        pz = pz + (b[i][vz] * b[i][mass])
+        println "bi -> ",b[i]
+        px += b[i][vx] * b[i][mass]
+        py += b[i][vy] * b[i][mass]
+        pz += b[i][vz] * b[i][mass]
     endfor
 
     bi=b[0]
@@ -169,7 +170,7 @@ neptune[vz]  = -9.51592254519715870e-05 * daysPerYear
 neptune[mass]=  5.15138902046611451e-05 * solarMass
 
 foreach bn in body_list
-    b[key_bn]={bn}
+    b[key_bn]=local(bn)
     println format("%2d : %15s",key_bn,bn)
 endfor
 

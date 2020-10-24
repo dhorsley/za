@@ -824,7 +824,7 @@ tco_reentry:
 
             // check if name available
 
-            vname := inbound.Tokens[1].tokText
+            vname := interpolate(ifs,inbound.Tokens[1].tokText)
 
             /*
             _,found:=VarLookup(ifs,vn)
@@ -2096,7 +2096,7 @@ tco_reentry:
 
                     if !expr.result.(bool) {
                         if !under_test {
-                            parser.report(  sf("Could not assert! ( %s )", expr.text))
+                            parser.report(sf("Could not assert! ( %s )", expr.text))
                             finish(false, ERR_ASSERT)
                             break
                         }
@@ -2110,10 +2110,10 @@ tco_reentry:
                         }
                         switch temp_test_assert {
                         case "fail":
-                            parser.report(  sf("Could not assert! (%s)", expr.text))
+                            parser.report(sf("Could not assert! (%s)", expr.text))
                             finish(false, ERR_ASSERT)
                         case "continue":
-                            parser.report(  sf("Assert failed (%s), but continuing.", expr.text))
+                            parser.report(sf("Assert failed (%s), but continuing.", expr.text))
                         }
                     } else {
                         if under_test {
@@ -2130,12 +2130,12 @@ tco_reentry:
         case C_Init: // initialise an array
 
             if inbound.TokenCount<2 {
-                parser.report( "Not enough arguments in INIT.")
+                parser.report("Not enough arguments in INIT.")
                 finish(false,ERR_EVAL)
                 break
             }
 
-            varname := inbound.Tokens[1].tokText
+            varname := interpolate(ifs,inbound.Tokens[1].tokText)
 
             vartype := "assoc"
             if inbound.TokenCount>2 {
@@ -2148,7 +2148,7 @@ tco_reentry:
 
                 expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
                 if expr.evalError {
-                    parser.report( sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
+                    parser.report(sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2160,7 +2160,7 @@ tco_reentry:
                         size=strSize
                     }
                 default:
-                    parser.report( "Array width must evaluate to an integer.")
+                    parser.report("Array width must evaluate to an integer.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2897,13 +2897,13 @@ tco_reentry:
             if lockSafety { looplock.Unlock() }
             if lockSafety { lastlock.Unlock() }
 
-        case C_Is, C_Contains, C_Or:
+        case C_Is, C_Has, C_Contains, C_Or:
 
             if lockSafety { lastlock.RLock() }
             if lockSafety { looplock.RLock() }
 
             if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
-                parser.report( "Not currently in a WHEN block.")
+                parser.report("Not currently in a WHEN block.")
                 finish(false,ERR_SYNTAX)
                 if lockSafety { looplock.RUnlock() }
                 if lockSafety { lastlock.RUnlock() }
@@ -2921,7 +2921,7 @@ tco_reentry:
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
                 expr = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
                 if expr.evalError {
-                    parser.report( sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
+                    parser.report(sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -2930,6 +2930,24 @@ tco_reentry:
             ramble_on := false // assume we'll need to skip to next when clause
 
             switch statement.tokType {
+
+            case C_Has: // <-- @note: this may change yet
+
+                // build expression from rest, ignore initial condition
+                switch expr.result.(type) {
+                case bool:
+                    if expr.result.(bool) {  // HAS truth
+                        carton.dodefault=false
+                        if lockSafety { looplock.Lock() }
+                        wc[wccount[ifs]] = carton
+                        if lockSafety { looplock.Unlock() }
+                        ramble_on = true
+                    }
+                default:
+                    parser.report(sf("HAS condition did not result in a boolean\n%+v",expr.errVal))
+                    finish(false, ERR_EVAL)
+                    break
+                }
 
             case C_Is:
                 if expr.result == carton.value { // matched IS value
@@ -2979,12 +2997,16 @@ tco_reentry:
             if ramble_on { // move on to next pc statement
             } else {
                 // skip to next WHEN clause:
-                isfound, isdistance, _ := lookahead(base, pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
-                orfound, ordistance, _ := lookahead(base, pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
-                cofound, codistance, _ := lookahead(base, pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
+                hasfound, hasdistance, _ := lookahead(base, pc+1, 0, 0, C_Has, []uint8{C_When}, []uint8{C_Endwhen})
+                isfound, isdistance, _   := lookahead(base, pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
+                orfound, ordistance, _   := lookahead(base, pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
+                cofound, codistance, _   := lookahead(base, pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
 
                 // add jump distances to list
                 distList := []int{}
+                if hasfound {
+                    distList = append(distList, hasdistance)
+                }
                 if isfound {
                     distList = append(distList, isdistance)
                 }
@@ -2995,7 +3017,7 @@ tco_reentry:
                     distList = append(distList, codistance)
                 }
 
-                if !(isfound || orfound || cofound) {
+                if !(isfound || hasfound || orfound || cofound) {
                     // must be an endwhen
                     loc = carton.endLine
                 } else {
