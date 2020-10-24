@@ -160,6 +160,7 @@ const (
     SYM_PP
     SYM_MM
     SYM_POW
+    SYM_RANGE
     SYM_LSHIFT
     SYM_RSHIFT
     SYM_COLON
@@ -213,6 +214,7 @@ const (
 	C_When
 	C_Is
 	C_Contains
+    C_Has
 	C_Or
 	C_Endwhen
     C_With

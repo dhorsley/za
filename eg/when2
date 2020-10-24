@@ -1,0 +1,13 @@
+
+a=40
+
+when a
+has a==42
+    println "a is 42"
+is 43
+    println "43 found"
+has a in 40..41
+    println "in range 40 to 41"
+endwhen
+
+

@@ -5,23 +5,25 @@
     * no new functionality!!!
     * more example code in library docs (pulldoc gen)
     * remove deprecated features and options (startup options, dead code, unused funcs)
-
-1.0.12 variable model
-        fixes
-        operator, documentation, code tidy passes
+    * investigate current Windows functionality: first test failed on:
+        - fixed - missing CTE code
+        - ENDFOR broken on basic FOR loop
 
 
 ---------------------------------------------------------------------------------------------
 
+1.0.12 variable model
+        fixes
+        operators
+        documentation
+
+---------------------------------------------------------------------------------------------
+
+
 LATER
 -----
 
-        operators
-*TODO*          - todo: three-way comparison for scalars and array of built-ins
-                    - may be wasted effort for any benefit it would bring
-
 *TODO*  dormant functions
-
             - need a way to yield and make a function dormant and re-entrant.
                 - this would allow for generators and some other operations.
                 - there's no particular priority for this, just a nice to have.
@@ -30,6 +32,8 @@ UNDECIDED
 ---------
 
 * WHEN...ENDWHEN
+    * add a range operator? x..y
+    * add a generic condition evaluator? 
     * multiple options in IS?
     * fall-through? veering towards "no" for this.
 

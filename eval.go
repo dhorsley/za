@@ -117,12 +117,14 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
                     ruleprec=23
                 case SYM_Tilde, SYM_ITilde, SYM_FTilde:
                     ruleprec=25
-                case C_In:
-                    ruleprec=27
                 case SYM_EQ, SYM_NE, SYM_LT, SYM_GT, SYM_LE, SYM_GE:
                     ruleprec=25
+                case C_In:
+                    ruleprec=27
+                case SYM_RANGE:
+                    ruleprec=29
                 case O_Plus, O_Minus:
-                    ruleprec=30
+                    ruleprec=31
                 case O_Divide, O_Percent, O_Multiply:
                     ruleprec=35
                 case SYM_POW:
@@ -246,6 +248,8 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
 		return asInteger(left) ^ asInteger(right)
     case SYM_POW:
         return ev_pow(left,right)
+    case SYM_RANGE:
+        return ev_range(left,right)
 	case C_In:
 		return ev_in(left,right)
 	}
