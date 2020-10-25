@@ -170,6 +170,8 @@ const (
 	SYM_FTilde
     O_Sqr
     O_Sqrt
+    O_Filter
+    O_Map
     START_STATEMENTS
     C_Var
 	C_SetGlob

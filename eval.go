@@ -109,6 +109,10 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
                 switch p.peek().tokType {
                 case O_Assign:
                     ruleprec=5
+                case O_Filter:
+                    ruleprec=9
+                case O_Map:
+                    ruleprec=7
                 case SYM_LAND, SYM_LOR, C_Or:
                     ruleprec=15
                 case SYM_BAND, SYM_BOR, SYM_Caret:
@@ -232,6 +236,11 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
     case SYM_FTilde:
         return p.rcompare(left,right,false,true)
 
+    case O_Filter:
+        return p.list_filter(left,right)
+    case O_Map:
+        return p.list_map(left,right)
+
     case SYM_LOR,C_Or:
         return asBool(left) || asBool(right)
     case SYM_LAND:
@@ -258,6 +267,164 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
 
 
 var cachelock = &sync.RWMutex{}
+
+func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
+
+    switch right.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("invalid condition string in filter"))
+    }
+
+    var reduceparser *leparser
+    reduceparser=&leparser{}
+
+    switch left.(type) {
+    case []int:
+        var new_list []int
+        for e:=0; e<len(left.([]int)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]int)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
+    case []uint:
+        var new_list []uint
+        for e:=0; e<len(left.([]uint)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]uint)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
+    case []float64:
+        var new_list []float64
+        for e:=0; e<len(left.([]float64)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]float64)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
+    case []bool:
+        var new_list []bool
+        for e:=0; e<len(left.([]bool)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatBool(left.([]bool)[e]),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]bool)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
+    default:
+        panic(fmt.Errorf("invalid list in filter"))
+    }
+    return nil
+}
+
+func (p *leparser) list_map(left interface{},right interface{}) interface{} {
+    // [...] -> "expr"
+    switch right.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("invalid expression string in map"))
+    }
+
+    var reduceparser *leparser
+    reduceparser=&leparser{}
+
+    switch left.(type) {
+    case []int:
+        var new_list []int
+        for e:=0; e<len(left.([]int)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case int:
+                new_list=append(new_list,val.(int))
+            default:
+                // panic for now, but should maybe put a default zero type value in instead.
+                panic(fmt.Errorf("invalid expression in map"))
+            }
+        }
+        return new_list
+
+    case []uint:
+        var new_list []uint
+        for e:=0; e<len(left.([]uint)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case uint:
+                new_list=append(new_list,val.(uint))
+            default:
+                panic(fmt.Errorf("invalid expression in map"))
+            }
+        }
+        return new_list
+
+    case []float64:
+        var new_list []float64
+        for e:=0; e<len(left.([]float64)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case float64:
+                new_list=append(new_list,val.(float64))
+            default:
+                panic(fmt.Errorf("invalid expression in map"))
+            }
+        }
+        return new_list
+
+    case []bool:
+        var new_list []bool
+        for e:=0; e<len(left.([]bool)); e++ {
+            new_right:=str.Replace(right.(string),"?",strconv.FormatBool(left.([]bool)[e]),-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                new_list=append(new_list,val.(bool))
+            default:
+                panic(fmt.Errorf("invalid expression in map"))
+            }
+        }
+        return new_list
+
+    default:
+        panic(fmt.Errorf("invalid list in map"))
+    }
+    return nil
+}
+
 
 func (p *leparser) rcompare (left interface{},right interface{},insensitive bool, multi bool) interface{} {
 
@@ -739,11 +906,8 @@ func (p *leparser) postIncDec(token Token) interface{} {
 func (p *leparser) grouping(tok Token) (interface{}) {
 
 	// right-associative
-
     val,err:=p.dparse(0)
-    if err!=nil {
-        panic(err)
-    }
+    if err!=nil { panic(err) }
     p.next() // consume RParen
     return val
 
