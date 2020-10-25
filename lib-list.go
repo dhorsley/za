@@ -99,12 +99,12 @@ func human_numcompare_reverse(astr,bstr string) (bool) {
 
 func buildListLib() {
 
-
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
         "append", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "concat", "esplit", "min", "max", "avg",
         "empty", "list_string", "list_float", "list_int","numcomp",
+        "map","reduce",
     }
 
     slhelp["numcomp"] = LibHelp{in: "val_a,val_b", out: "bool", action: "Is a<b? [#i1]val_a[#i0] and [#i1]val_b[#i0] are string-convertable types of human readable numbers (with optional SI unit abbreviations in strings)."}
@@ -691,6 +691,7 @@ func buildListLib() {
             return false, errors.New("not a boolean list provided to any()")
         }
     }
+
 
     // fieldsort(s,f,dir) ascending or descending sorted version returned. (type dependant)
     slhelp["fieldsort"] = LibHelp{in: "nl_string,field[,sort_type][,bool_reverse]", out: "new_string", action: "Sorts a newline separated string [#i1]nl_string[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order on key [#i1]field[#i0]."}

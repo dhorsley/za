@@ -50,6 +50,51 @@ CHANGE LOG
         * made WHEN condition optional ("when a" above could be "when"). the constant "true" is used when
             the condition is missing.
 
+        * added basic filter and map operators:
+
+            - filter is ?> and map is ->
+            - both accept a list on the l.h.s and a string on the r.h.s
+            - both accept a ? char in the string as a substitute for each l.h.s value
+            - both produce a list of the same type as input
+            - both accept lists of bool, uint, int or float
+            - filter has a slightly higher precedence than map
+
+            - example:
+
+         >> print 1..20
+            [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
+
+         >> print  1..20 ?> "?>5 and ?<15"
+            [6 7 8 9 10 11 12 13 14]
+
+         >> print  1..20 ?> "?>5 and ?<15" -> "?*3"
+            [18 21 24 27 30 33 36 39 42]
+
+         >> print ( 1..20 ?> "?>5 and ?<15" -> "?*3" ) ?> "?>29"
+            [30 33 36 39 42]
+
+         >> print ( (1..20 ?> "?>5 and ?<15" -> "?*3") ?> "?>29") . avg
+            36
+
+         >> print ( (1..20 ?> "?>5 and ?<15" -> "?*3") ?> "?>29") . max
+            42
+
+         >> print list_float(1..20) -> "sin(?)"
+            [0.8414709848078965 0.9092974268256816 0.1411200080598672 -0.7568024953079282 -0.9589242746631385 
+            -0.27941549819892586 0.6569865987187891 0.9893582466233817 0.4121184852417566 -0.5440211108893699 
+            -0.9999902065507035 -0.5365729180004349 0.4201670368266409 0.9906073556948702 0.6502878401571169 
+            -0.2879033166650653 -0.9613974918795569 -0.7509872467716762 0.14987720966295234 0.9129452507276277]
+
+            PLEASE NOTE:
+
+                These operators are very naive. They will consume a lot of memory if you let them. They do not
+                do anything clever with list manipulation, generators, yielding, comprehension or any other
+                single thing that would help lower resource cost. They just brute force over the lists.
+
+                This may improve in the future if heavily used. Likely not though. For now you can expect a
+                very long list of numbers (e.g. 100 million) to take a minute or two to filter or map. 
+                1 Million items will probably take a couple of seconds.
+
 
 1.0.12  new model for identifier binding.
 
