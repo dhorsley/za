@@ -886,6 +886,8 @@ func main() {
                     }
                 }
 
+                if nestAccept<0 { pf("Nesting error.\n") ; break }
+
                 if nestAccept==0 || breakOnCommand { break }
 
             }
@@ -895,14 +897,16 @@ func main() {
 
             // submit input
 
-            fileMap[globalspace]=exec_file_name
-            phraseParse("global", totalInput, 0)
-            currentModule="main"
+            if nestAccept==0 {
+                fileMap[globalspace]=exec_file_name
+                phraseParse("global", totalInput, 0)
+                currentModule="main"
 
-            // throw away break and continue positions in interactive mode
-            _,endFunc = Call(MODE_STATIC, globalspace, ciRepl)
-            if endFunc {
-                break
+                // throw away break and continue positions in interactive mode
+                _,endFunc = Call(MODE_STATIC, globalspace, ciRepl)
+                if endFunc {
+                    break
+                }
             }
 
             inter:=interpolate(globalspace, promptTemplate)

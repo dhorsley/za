@@ -46,7 +46,7 @@ type Token struct {
 	tokType uint8       // token type from list in constants.go
     tokVal  interface{} // raw value storage
 	tokText string      // the content of the token
-    fs      uint32      // used by interpolation
+//    fs      uint32      // used by interpolation
     offset  uint16      // position in ident for this identifier
 
 }
@@ -54,12 +54,6 @@ type Token struct {
 func (t Token) String() string {
 	return t.tokText
 }
-
-
-// holds info about a processed function space source
-// type funcheader struct {
-//     maxIdent    int
-// }
 
 
 // holds the details of a function call.

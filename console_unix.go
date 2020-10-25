@@ -411,9 +411,11 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
                 endLine = true
 
                 if s != "" {
-                    hist = append(hist, s)
-                    lastHist++
-                    histEmpty = false
+                    if len(hist)==0 || (len(hist)>0 && s!=hist[len(hist)-1]) {
+                        hist = append(hist, s)
+                        lastHist++
+                        histEmpty = false
+                    }
                 }
 
                 break
