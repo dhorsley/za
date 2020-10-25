@@ -81,11 +81,7 @@ func GetAsFloat(unk interface{}) (float64, bool) {
         return float64(i), false
     case int64:
         return float64(i), false
-    case uint8:
-        return float64(i), false
     case uint:
-        return float64(i), false
-    case uint64:
         return float64(i), false
     case string:
         p, e := strconv.ParseFloat(i, 64)
@@ -101,10 +97,6 @@ func GetAsInt64(expr interface{}) (int64, bool) {
     case float64:
         return int64(i), false
     case uint:
-        return int64(i), false
-    case uint8:
-        return int64(i), false
-    case uint64:
         return int64(i), false
     case int:
         return int64(i), false
@@ -126,10 +118,6 @@ func GetAsInt(expr interface{}) (int, bool) {
         return int(i), false
     case uint:
         return int(i), false
-    case uint8:
-        return int(i), false
-    case uint64:
-        return int(i), false
     case int64:
         return int(i), false
     case int:
@@ -150,8 +138,6 @@ func GetAsUint(expr interface{}) (uint, bool) {
     case float64:
         return uint(i), false
     case int:
-        return uint(i), false
-    case uint8:
         return uint(i), false
     case uint64:
         return uint(i), false
@@ -1055,23 +1041,29 @@ tco_reentry:
                     l=len(lv)
                 case []string:
                     l=len(lv)
-                case []int:
+                case []uint:
                     l=len(lv)
-                case []int64:
+                case []int:
                     l=len(lv)
                 case []float64:
                     l=len(lv)
                 case []bool:
                     l=len(lv)
-                case []uint8:
-                    l=len(lv)
                 case []dirent:
                     l=len(lv)
                 case map[string]string:
                     l=len(lv)
+                case map[string]uint:
+                    l=len(lv)
                 case map[string]int:
                     l=len(lv)
+                case map[string]float64:
+                    l=len(lv)
+                case map[string]bool:
+                    l=len(lv)
                 case map[string][]string:
+                    l=len(lv)
+                case map[string][]uint:
                     l=len(lv)
                 case map[string][]int:
                     l=len(lv)
@@ -1143,6 +1135,26 @@ tco_reentry:
                         ce = len(expr.result.(map[string]float64)) - 1
                     }
 
+                case map[string]bool:
+                    if len(expr.result.(map[string]bool)) > 0 {
+                        iter = reflect.ValueOf(expr.result.(map[string]bool)).MapRange()
+                        if iter.Next() {
+                            fkno=vset(ifs, "key_"+fid, iter.Key().String())
+                            vseti(ifs, fid, fno, iter.Value().Interface())
+                        }
+                        ce = len(expr.result.(map[string]bool)) - 1
+                    }
+
+                case map[string]uint:
+                    if len(expr.result.(map[string]uint)) > 0 {
+                        iter = reflect.ValueOf(expr.result.(map[string]uint)).MapRange()
+                        if iter.Next() {
+                            fkno=vset(ifs, "key_"+fid, iter.Key().String())
+                            vseti(ifs, fid, fno, iter.Value().Interface())
+                        }
+                        ce = len(expr.result.(map[string]uint)) - 1
+                    }
+
                 case map[string]int:
                     if len(expr.result.(map[string]int)) > 0 {
                         // get iterator for this map
@@ -1167,8 +1179,6 @@ tco_reentry:
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
-                        } else {
-                            // empty
                         }
                         ce = len(expr.result.(map[string]string)) - 1
                     }
@@ -1184,8 +1194,6 @@ tco_reentry:
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
-                        } else {
-                            // empty
                         }
                         ce = len(expr.result.(map[string][]string)) - 1
                     }
@@ -1206,11 +1214,11 @@ tco_reentry:
                         ce = len(expr.result.([]float64)) - 1
                     }
 
-                case []uint8:
-                    if len(expr.result.([]uint8)) > 0 {
+                case []uint:
+                    if len(expr.result.([]uint)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]uint8)[0])
-                        ce = len(expr.result.([]uint8)) - 1
+                        vseti(ifs, fid, fno, expr.result.([]uint)[0])
+                        ce = len(expr.result.([]uint)) - 1
                     }
 
                 case []bool:
@@ -1233,13 +1241,6 @@ tco_reentry:
                         fkno=vset(ifs, "key_"+fid, 0)
                         vseti(ifs, fid, fno, expr.result.([]int)[0])
                         ce = len(expr.result.([]int)) - 1
-                    }
-
-                case []int64:
-                    if len(expr.result.([]int64)) > 0 {
-                        fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]int64)[0])
-                        ce = len(expr.result.([]int64)) - 1
                     }
 
                 case []string:
@@ -1505,7 +1506,7 @@ tco_reentry:
                         switch (*thisLoop).iterOverArray.(type) {
 
                         // map ranges are randomly ordered!!
-                        case map[string]interface{}, map[string]int, map[string]float64, map[string]string, map[string][]string:
+                        case map[string]interface{}, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).iterOverMap.Key().String())
                                 vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverMap.Value().Interface())
@@ -1517,12 +1518,9 @@ tco_reentry:
                         case []int:
                             vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
                             vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
-                        case []uint8:
+                        case []uint:
                             vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
                             vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
-                        case []int64:
-                            vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
                         case []string:
                             vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
                             vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
@@ -2154,7 +2152,7 @@ tco_reentry:
                 }
 
                 switch expr.result.(type) {
-                case int,int64,uint8:
+                case int,int64:
                     strSize,invalid:=GetAsInt(expr.result)
                     if ! invalid {
                         size=strSize
@@ -2855,10 +2853,14 @@ tco_reentry:
             // after the above setup, we execute next source line as normal
 
             if inbound.TokenCount==1 {
-                parser.report( "Missing expression in WHEN statement")
+                inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,tokText:"true"})
+            }
+            /*
+                parser.report("Missing expression in WHEN statement")
                 finish(false,ERR_SYNTAX)
                 break
             }
+            */
 
             // lookahead
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})

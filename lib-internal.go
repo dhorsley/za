@@ -16,6 +16,7 @@ import (
     "sort"
     str "strings"
     "time"
+//    "unsafe"
 )
 
 
@@ -346,6 +347,15 @@ func buildInternalLib() {
         return nil, errors.New(sf("'%v' does not exist!", name))
     }
 
+/*
+    slhelp["sizeof"] = LibHelp{in: "var", out: "integer", action: "Returns size of object."}
+    stdlib["sizeof"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if len(args) == 1 {
+            return unsafe.Sizeof(args[0]),nil
+        }
+        return -1,errors.New("Bad argument in sizeof()")
+    }
+*/
 
     slhelp["len"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
     stdlib["len"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {

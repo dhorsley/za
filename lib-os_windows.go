@@ -39,7 +39,7 @@ func buildOsLib() {
 	features["os"] = Feature{version: 1, category: "os"}
 	categories["os"] = []string{"env", "get_env", "set_env", "cwd", "cd", "dir", "delete", "rename", "copy", }
 
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]array_structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir key-value pairs. These specify filename, file mode, file size, modification time and directory status respectively."}
+    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)>2 { return nil,errors.New("Bad arguments (count) in dir()") }
         dir:="."; filter:="^.*$"
@@ -58,15 +58,15 @@ func buildOsLib() {
         f.Close()
         if err != nil { return nil,errors.New("Could not complete directory listing in dir()") }
 
-        var dl []map[string]interface{}
+        var dl []dirent
         for _, file := range files {
-            fs:=make(map[string]interface{})
             if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
-            fs["name"]=file.Name()
-            fs["size"]=file.Size()
-            fs["mode"]=file.Mode()
-            fs["mtime"]=file.ModTime()
-            fs["isdir"]=file.IsDir()
+            var fs dirent
+            fs.name=file.Name()
+            fs.size=file.Size()
+            fs.mode=uint32(file.Mode())
+            fs.mtime=file.ModTime().Unix()
+            fs.isdir=file.IsDir()
             dl=append(dl,fs)
         }
 

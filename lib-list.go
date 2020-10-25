@@ -151,10 +151,6 @@ func buildListLib() {
             if len(args[0].([]uint)) == 0 {
                 return true, nil
             }
-        case []uint8:
-            if len(args[0].([]uint8)) == 0 {
-                return true, nil
-            }
         case []float64:
             if len(args[0].([]float64)) == 0 {
                 return true, nil
@@ -237,18 +233,9 @@ func buildListLib() {
             case uint:
                 l := make([]uint, 0, 31)
                 return append(l, args[0].(uint)), nil
-            case uint8:
-                l := make([]uint8, 0, 31)
-                return append(l, args[0].(uint8)), nil
-            case uint64:
-                l := make([]uint64, 0, 31)
-                return append(l, args[0].(uint64)), nil
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
-            case int64:
-                l := make([]int64, 0, 31)
-                return append(l, args[0].(int64)), nil
             case nil:
                 l := make([]interface{}, 0, 31)
                 return l,nil
@@ -269,14 +256,8 @@ func buildListLib() {
                  args[0] = make([]float64, 0, 31)
             case int:
                  args[0] = make([]int, 0, 31)
-            case int64:
-                 args[0] = make([]int64, 0, 31)
             case uint:
                  args[0] = make([]uint, 0, 31)
-            case uint8:
-                 args[0] = make([]uint8, 0, 31)
-            case uint64:
-                 args[0] = make([]uint64, 0, 31)
             case bool:
                  args[0] = make([]bool, 0, 31)
             case string:
@@ -302,18 +283,6 @@ func buildListLib() {
                 return nil, errors.New(sf("(l:bool,a:%T) data types must match in append()", args[1]))
             }
             l := append(args[0].([]bool), args[1].(bool))
-            return l, nil
-        case []uint8:
-            if "uint8" != sf("%T", args[1]) {
-                return nil, errors.New(sf("(l:uint8,a:%T) data types must match in append()", args[1]))
-            }
-            l := append(args[0].([]uint8), args[1].(uint8))
-            return l, nil
-        case []int64:
-            if "int64" != sf("%T", args[1]) {
-                return nil, errors.New(sf("(l:int64,a:%T) data types must match in append()", args[1]))
-            }
-            l := append(args[0].([]int64), args[1].(int64))
             return l, nil
         case []int:
             if "int" != sf("%T", args[1]) {
@@ -345,15 +314,9 @@ func buildListLib() {
             case uint:
                 l := make([]uint, 0, 31)
                 return append(l, args[0].(uint)), nil
-            case int64:
-                l := make([]int64, 0, 31)
-                return append(l, args[0].(int64)), nil
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
-            case uint8:
-                l := make([]uint8, 0, 31)
-                return append(l, args[0].(uint8)), nil
             case interface{}:
                 l := make([]interface{}, 0, 31)
                 return append(l, sf("%v", args[0].(interface{}))), nil
@@ -381,30 +344,21 @@ func buildListLib() {
             l = append(l, args[1].(bool))
             l = append(l, args[0].([]bool)...)
             return l, nil
-        case []int64:
-            if "int64" != sf("%T", args[1]) {
+        case []uint:
+            if "uint" != sf("%T", args[1]) {
                 return nil, errors.New("data types must match in push_front()")
             }
-            l := make([]int64, 0, 31)
-            l = append(l, args[1].(int64))
-            l = append(l, args[0].([]int64)...)
+            l := make([]uint, 0, 31)
+            l = append(l, args[1].(uint))
+            l = append(l, args[0].([]uint)...)
             return l, nil
         case []int:
             if "int" != sf("%T", args[1]) {
-                pf("found kind : [%T]\n",args[1])
                 return nil, errors.New("data types must match in push_front()")
             }
             l := make([]int, 0, 31)
             l = append(l, args[1].(int))
             l = append(l, args[0].([]int)...)
-            return l, nil
-        case []uint8:
-            if "uint8" != sf("%T", args[1]) {
-                return nil, errors.New("data types must match in push_front()")
-            }
-            l := make([]uint8, 0, 31)
-            l = append(l, args[1].(uint8))
-            l = append(l, args[0].([]uint8)...)
             return l, nil
         case []string:
             if "string" != sf("%T", args[1]) {
@@ -433,10 +387,6 @@ func buildListLib() {
         case []string:
             return a[len(a)-1],nil
         case []int:
-            return a[len(a)-1],nil
-        case []int64:
-            return a[len(a)-1],nil
-        case []uint8:
             return a[len(a)-1],nil
         case []uint:
             return a[len(a)-1],nil
@@ -476,12 +426,6 @@ func buildListLib() {
                 if ln := len(v.([]uint)); ln > 0 {
                     r := v.([]uint)[ln-1]
                     vset(evalfs, n, v.([]uint)[:ln-1])
-                    return r, nil
-                }
-            case []uint8:
-                if ln := len(v.([]uint8)); ln > 0 {
-                    r := v.([]uint8)[ln-1]
-                    vset(evalfs, n, v.([]uint8)[:ln-1])
                     return r, nil
                 }
             case []float64:
@@ -559,14 +503,6 @@ func buildListLib() {
             l = append(l, item.(uint))
             l = append(l, args[0].([]uint)[pos-1:]...)
             return l, nil
-        case []uint8:
-            l := make([]uint8, 0, 31)
-            if pos > 0 {
-                l = append(l, args[0].([]uint8)[:pos-1]...)
-            }
-            l = append(l, item.(uint8))
-            l = append(l, args[0].([]uint8)[pos-1:]...)
-            return l, nil
         case []interface{}:
             l := make([]interface{}, 0, 31)
             if pos > 0 {
@@ -616,14 +552,6 @@ func buildListLib() {
             l = append(l, args[0].([]bool)[:pos-1]...)
             l = append(l, args[0].([]bool)[pos:]...)
             return l, nil
-        case []uint8:
-            if pos > len(args[0].([]uint8)) {
-                return nil, errors.New(sf("position (%v) out of range (uint8/high) in remove()", pos))
-            }
-            l := make([]uint8, 0, 31)
-            l = append(l, args[0].([]uint8)[:pos-1]...)
-            l = append(l, args[0].([]uint8)[pos:]...)
-            return l, nil
         case []int:
             if pos > len(args[0].([]int)) {
                 return nil, errors.New(sf("position (%v) out of range (int/high) in remove()", pos))
@@ -662,11 +590,6 @@ func buildListLib() {
                 return []bool{}, nil
             }
             return args[0].([]bool)[0], nil
-        case []uint8:
-            if len(args[0].([]uint8)) == 0 {
-                return []uint8{}, nil
-            }
-            return args[0].([]uint8)[0], nil
         case []int:
             if len(args[0].([]int)) == 0 {
                 return []int{}, nil
@@ -706,11 +629,6 @@ func buildListLib() {
                 return []bool{}, nil
             }
             return args[0].([]bool)[1:], nil
-        case []uint8:
-            if len(args[0].([]uint8)) == 0 {
-                return []uint8{}, nil
-            }
-            return args[0].([]uint8)[1:], nil
         case []int:
             if len(args[0].([]int)) == 0 {
                 return []int{}, nil
@@ -920,8 +838,6 @@ func buildListLib() {
             if len(list.([]int)) < 2        { return list, nil }
         case []uint:
             if len(list.([]uint)) < 2       { return list, nil }
-        case []uint8:
-            if len(list.([]uint8)) < 2      { return list, nil }
         case []float64:
             if len(list.([]float64)) < 2    { return list, nil }
         case []string:
@@ -946,10 +862,6 @@ func buildListLib() {
 
             case []uint:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]uint)[i] < list.([]uint)[j] })
-                return list, nil
-
-            case []uint8:
-                sort.SliceStable(list, func(i, j int) bool { return list.([]uint8)[i] < list.([]uint8)[j] })
                 return list, nil
 
             case []float64:
@@ -1012,10 +924,6 @@ func buildListLib() {
 
             case []uint:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]uint)[i] > list.([]uint)[j] })
-                return list, nil
-
-            case []uint8:
-                sort.SliceStable(list, func(i, j int) bool { return list.([]uint8)[i] > list.([]uint8)[j] })
                 return list, nil
 
             case []float64:
@@ -1085,20 +993,6 @@ func buildListLib() {
             }
         case []uint:
             for _, q := range args[0].([]uint) {
-                v, invalid := GetAsFloat(sf("%v", q))
-                if !invalid {
-                    float_list = append(float_list, v)
-                }
-            }
-        case []int64:
-            for _, q := range args[0].([]int64) {
-                v, invalid := GetAsFloat(sf("%v", q))
-                if !invalid {
-                    float_list = append(float_list, v)
-                }
-            }
-        case []uint8:
-            for _, q := range args[0].([]uint8) {
                 v, invalid := GetAsFloat(sf("%v", q))
                 if !invalid {
                     float_list = append(float_list, v)
@@ -1188,8 +1082,6 @@ func buildListLib() {
             for _, q := range args[0].([]int) { string_list = append(string_list, sf("%v",q)) }
         case []uint:
             for _, q := range args[0].([]uint) { string_list = append(string_list, sf("%v",q)) }
-        case []uint8:
-            for _, q := range args[0].([]uint8) { string_list = append(string_list, sf("%v",q)) }
         case []interface{}:
             for _, q := range args[0].([]interface{}) { string_list = append(string_list, sf("%v",q)) }
         default:
@@ -1253,23 +1145,6 @@ func buildListLib() {
                 return newlist, nil
             } else {
                 return args[0].([]float64), nil
-            }
-
-        case []uint8:
-            var newlist []uint8
-            sort.SliceStable(args[0].([]uint8), func(i, j int) bool { return args[0].([]uint8)[i] < args[0].([]uint8)[j] })
-            if len(args[0].([]uint8)) > 1 {
-                newlist = append(newlist, args[0].([]uint8)[0])
-                for p := 1; p < len(args[0].([]uint8)); p++ {
-                    prev := args[0].([]uint8)[p-1]
-                    if args[0].([]uint8)[p] == prev {
-                        continue
-                    }
-                    newlist = append(newlist, args[0].([]uint8)[p])
-                }
-                return newlist, nil
-            } else {
-                return args[0].([]uint8), nil
             }
 
         case []int:
@@ -1344,10 +1219,6 @@ func buildListLib() {
             return append(args[0].([]int), args[1].([]int)...), nil
         case []uint:
             return append(args[0].([]uint), args[1].([]uint)...), nil
-        case []int64:
-            return append(args[0].([]int64), args[1].([]int64)...), nil
-        case []uint8:
-            return append(args[0].([]uint8), args[1].([]uint8)...), nil
         case []string:
             return append(args[0].([]string), args[1].([]string)...), nil
         case []float64:
@@ -1417,13 +1288,6 @@ func buildListLib() {
             }
             vset(evalfs, args[1].(string), args[0].([]uint)[:pos-1])
             vset(evalfs, args[2].(string), args[0].([]uint)[pos-1:])
-        case []uint8:
-            if pos < 0 || pos > len(args[0].([]uint8)) {
-                invalidPos = true
-                break
-            }
-            vset(evalfs, args[1].(string), args[0].([]uint8)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]uint8)[pos-1:])
         case []string:
             if pos < 0 || pos > len(args[0].([]string)) {
                 invalidPos = true
@@ -1529,8 +1393,6 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return min_int(args[0].([]int)), nil
-        case []int64:
-            return min_int64(args[0].([]int64)), nil
         case []uint:
             return min_uint(args[0].([]uint)), nil
         case []float64:
@@ -1549,8 +1411,6 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return max_int(args[0].([]int)), nil
-        case []int64:
-            return max_int64(args[0].([]int64)), nil
         case []uint:
             return max_uint(args[0].([]uint)), nil
         case []float64:
@@ -1570,8 +1430,6 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             f = float64(avg_int(args[0].([]int)))
-        case []int64:
-            f = float64(avg_int64(args[0].([]int64)))
         case []uint:
             f = float64(avg_uint(args[0].([]uint)))
         case []float64:
@@ -1597,8 +1455,6 @@ func buildListLib() {
             f = float64(sum_int(args[0].([]int)))
         case []uint:
             f = float64(sum_uint(args[0].([]uint)))
-        case []int64:
-            f = float64(sum_int64(args[0].([]int64)))
         case []float64:
             f = sum_float64(args[0].([]float64))
         case []interface{}:
