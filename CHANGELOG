@@ -24,6 +24,8 @@ CHANGE LOG
         * added s..e operator for generating an array range. value types of expressions
             s and e must match each other, and the generated range is of the same value type.
 
+            - s must be lower than e for all int types
+
             - accepted types are currently int, int64 and uint.
                 - it would probably be a fairly simple task to extend this scheme.
 
@@ -43,8 +45,10 @@ CHANGE LOG
                 println "some other value"
             endwhen
 
-
         * lexer - forced numbers to end when followed by 2 dots
+
+        * made WHEN condition optional ("when a" above could be "when"). the constant "true" is used when
+            the condition is missing.
 
 
 1.0.12  new model for identifier binding.

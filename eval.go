@@ -308,13 +308,7 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case []int:
         sz=len(left)
-    case []int64:
-        sz=len(left)
     case []uint:
-        sz=len(left)
-    case []uint8:
-        sz=len(left)
-    case []uint64:
         sz=len(left)
     case []float64:
         sz=len(left)
@@ -512,6 +506,8 @@ func (p *leparser) unary(token Token) (interface{}) {
 	return nil
 }
 
+
+// @note: this will probably get removed at some point - experiment
 func (p *leparser) unAddrOf(tok Token) interface{} {
     fsnum:=p.fs
     vartok:=p.next()
@@ -530,6 +526,7 @@ func (p *leparser) unAddrOf(tok Token) interface{} {
     return []string{fs,inter}
 }
 
+// @note: this will probably get removed at some point - experiment
 func (p *leparser) unDeref(tok Token) interface{} {
 
     vartok:=p.next()
@@ -582,11 +579,7 @@ func unOpSqr(n interface{}) interface{} {
     switch n:=n.(type) {
     case int:
         return n*n
-    case int64:
-        return n*n
     case uint:
-        return n*n
-    case uint64:
         return n*n
     case float64:
         return n*n
@@ -600,11 +593,7 @@ func unOpSqrt(n interface{}) interface{} {
     switch n:=n.(type) {
     case int:
         return math.Sqrt(float64(n))
-    case int64:
-        return math.Sqrt(float64(n))
     case uint:
-        return math.Sqrt(float64(n))
-    case uint64:
         return math.Sqrt(float64(n))
     case float64:
         return math.Sqrt(n)
@@ -687,14 +676,8 @@ func (p *leparser) preIncDec(token Token) interface{} {
     switch v:=val.(type) {
     case int:
         n=v+ampl
-    case int64:
-        n=v+int64(ampl)
     case uint:
         n=v+uint(ampl)
-    case uint64:
-        n=v+uint64(ampl)
-    case uint8:
-        n=v+uint8(ampl)
     case float64:
         n=v+float64(ampl)
     default:
@@ -742,14 +725,8 @@ func (p *leparser) postIncDec(token Token) interface{} {
     switch v:=val.(type) {
     case int:
         vset(activeFS,vartok.tokText,v+ampl)
-    case int64:
-        vset(activeFS,vartok.tokText,v+int64(ampl))
     case uint:
         vset(activeFS,vartok.tokText,v+uint(ampl))
-    case uint64:
-        vset(activeFS,vartok.tokText,v+uint64(ampl))
-    case uint8:
-        vset(activeFS,vartok.tokText,v+uint8(ampl))
     case float64:
         vset(activeFS,vartok.tokText,v+float64(ampl))
     default:
@@ -922,15 +899,6 @@ func vdelete(fs uint32, name string, ename string) {
         case map[string]int:
             delete(m,ename)
             vset(fs,name,m)
-        case map[string]int64:
-            delete(m,ename)
-            vset(fs,name,m)
-        case map[string]uint8:
-            delete(m,ename)
-            vset(fs,name,m)
-        case map[string]uint64:
-            delete(m,ename)
-            vset(fs,name,m)
         case map[string]float64:
             delete(m,ename)
             vset(fs,name,m)
@@ -951,7 +919,7 @@ func identResize(fs uint32,sz uint16) {
 }
 
 
-func vset(fs uint32, name string, value interface{}) (vi uint16) {
+func vset(fs uint32, name string, value interface{}) (uint16) {
 
     vlock.Lock()
 
@@ -963,11 +931,11 @@ func vset(fs uint32, name string, value interface{}) (vi uint16) {
         functionidents[fs]++
         // fmt.Printf("-- vset fs %d - name %s - val %+v\n",fs,name,value)
     }
-
+    ovi:=vmap[fs][name]
     vlock.Unlock()
 
     // ... then forward to vseti
-    return vseti(fs, name, vmap[fs][name], value)
+    return vseti(fs, name, ovi, value)
 }
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
@@ -994,19 +962,24 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
             switch ident[fs][vi].IKind {
             case kbool:
                 _,ok=value.(bool)
-                if ok { ident[fs][vi].IValue = value.(bool) }
+                // if ok { ident[fs][vi].IValue = value.(bool) }
+                if ok { ident[fs][vi].IValue = value }
             case kint:
                 _,ok=value.(int)
-                if ok { ident[fs][vi].IValue = value.(int) }
+                // if ok { ident[fs][vi].IValue = value.(int) }
+                if ok { ident[fs][vi].IValue = value }
             case kuint:
                 _,ok=value.(uint)
-                if ok { ident[fs][vi].IValue = value.(uint) }
+                // if ok { ident[fs][vi].IValue = value.(uint) }
+                if ok { ident[fs][vi].IValue = value }
             case kfloat:
                 _,ok=value.(float64)
-                if ok { ident[fs][vi].IValue = value.(float64) }
+                // if ok { ident[fs][vi].IValue = value.(float64) }
+                if ok { ident[fs][vi].IValue = value }
             case kstring:
                 _,ok=value.(string)
-                if ok { ident[fs][vi].IValue = value.(string) }
+                // if ok { ident[fs][vi].IValue = value.(string) }
+                if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
                 if lockSafety { vlock.Unlock() }
@@ -1058,11 +1031,8 @@ func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
 
 // func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
 func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bool) {
-    // pf("vgetE: entered with %v[%v]\n",name,el)
     var v interface{}
     var ok bool
-    // if _, ok := VarLookup(fs, name); ok {
-        // v, ok = vget(fs, name)
         v, ok = vgeti(fs,vi)
         switch v:=v.(type) {
         case map[string]int:
@@ -1105,8 +1075,6 @@ func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bo
                 iel--
             }
         }
-    // }
-    // pf("vgetE: leaving %v[%v]\n",name,el)
     return nil, false
 }
 
@@ -1146,16 +1114,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         switch el.(type) {
         case int:
             el=strconv.FormatInt(int64(el.(int)), 10)
-        case int64:
-            el=strconv.FormatInt(el.(int64), 10)
         case float64:
             el=strconv.FormatFloat(el.(float64), 'f', -1, 64)
         case uint:
             el=strconv.FormatUint(uint64(el.(uint)), 10)
-        case uint64:
-            el=strconv.FormatUint(el.(uint64), 10)
-        case uint8:
-            el=strconv.FormatUint(uint64(el.(uint8)), 10)
         }
 
         if ok {
@@ -1330,7 +1292,7 @@ func isBool(expr interface{}) bool {
 func isNumber(expr interface{}) bool {
     typeof := reflect.TypeOf(expr).Kind()
     switch typeof {
-    case reflect.Float32, reflect.Float64, reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint8, reflect.Uint32, reflect.Uint64:
+    case reflect.Float64, reflect.Int, reflect.Int64, reflect.Uint:
         return true
     }
     return false
@@ -1388,21 +1350,15 @@ func interpolate(fs uint32, s string) (string) {
                     switch ident[fs][k].IValue.(type) {
                     case int:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatInt(int64(ident[fs][k].IValue.(int)), 10),-1)
-                    case int64:
-                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatInt(ident[fs][k].IValue.(int64), 10),-1)
                     case float64:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatFloat(ident[fs][k].IValue.(float64),'g',-1,64),-1)
                     case bool:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatBool(ident[fs][k].IValue.(bool)),-1)
                     case string:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", ident[fs][k].IValue.(string),-1)
-                    case uint64:
-                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(ident[fs][k].IValue.(uint64), 10),-1)
                     case uint:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(uint64(ident[fs][k].IValue.(uint)), 10),-1)
-                    case uint8:
-                        s = str.Replace(s, "{"+ident[fs][k].IName+"}", strconv.FormatUint(uint64(ident[fs][k].IValue.(uint8)), 10),-1)
-                    case []uint8, []uint64, []int64, []float64, []int, []bool, []interface{}, []string:
+                    case []uint, []float64, []int, []bool, []interface{}, []string:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", sf("%v",ident[fs][k].IValue),-1)
                     case interface{}:
                         s = str.Replace(s, "{"+ident[fs][k].IName+"}", sf("%v",ident[fs][k].IValue),-1)
