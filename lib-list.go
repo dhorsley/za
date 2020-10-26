@@ -104,7 +104,6 @@ func buildListLib() {
         "append", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "concat", "esplit", "min", "max", "avg",
         "empty", "list_string", "list_float", "list_int","numcomp",
-        "map","reduce",
     }
 
     slhelp["numcomp"] = LibHelp{in: "val_a,val_b", out: "bool", action: "Is a<b? [#i1]val_a[#i0] and [#i1]val_b[#i0] are string-convertable types of human readable numbers (with optional SI unit abbreviations in strings)."}

@@ -164,6 +164,8 @@ define showMem()
     at 4,2; print "Cached    : [#6]{mem_cached} KB[#-]"
     at 5,2; print "Active    : [#6]{mem_active} KB[#-]"
     at 6,2; print "Free Swap : [#6]{mem_swap_free}/{mem_swap_total} KB[#-]"
+    at 8,2; print "Mon Heap  : [#6]{=getmem().alloc} MB[#-]"
+    at 9,2; print "Mon Total : [#6]{=getmem().system} MB[#-]"
 
     # display slab info
 

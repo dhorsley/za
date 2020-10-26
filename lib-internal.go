@@ -111,10 +111,10 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["getmem"] = LibHelp{in: "", out: "string", action: "Returns the current allocated memory and system memory usage in MB. Space separated values."}
+    slhelp["getmem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
     stdlib["getmem"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         a,s:=getMemUsage()
-        return sf("%d %d",a/1024/1024,s/1024/1024), nil
+        return struct{alloc uint64;system uint64}{a/1024/1024,s/1024/1024},nil 
     }
 
     slhelp["getcores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
