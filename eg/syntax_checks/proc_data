@@ -11,22 +11,6 @@ define now(then)
     print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," us\n\n"
 enddef
 
-doc ` currently disabled, as they require l.h.s. interpolation which has been removed.
-define listOp(list,v,expr)
-    foreach {v} in list
-        newlist=append(newlist,eval(expr))
-    endfor
-    return newlist
-enddef
-
-define reduce(list,v,expr)
-    foreach {v} in list
-        on eval(expr) do newlist=append(newlist,x)
-    endfor
-    return newlist
-enddef
-`
-
 # build list
 
 print "Building list.\n"
@@ -44,25 +28,20 @@ t=then(); print "[#4]Sum         : [#-]",sum(list),"\n"; now(t)
 t=then(); print "[#4]Avg         : [#-]",avg(list),"\n"; now(t)
 
 
-doc `currently disabled - l.h.s. interpolation
-
-t=then()
- nl=listOp(list,"x","x/2")
 println "[#4]Op (x/2)    : [#-]"
+println `: generated with nl=list -> "#/2"`
+t=then()
+ nl=list -> "#/2"
 now(t)
 println "list len nl -> ",len(nl)
 println "First 100   : ",nl[:100]
 
-reduce_expr="x>9899"
-println "[#4]Reduce, all {reduce_expr} :[#-]"
+println "\n[#4]Filter, all >9899 :[#-]"
+println `: generated with newlist=(list ?> "#>9899").uniq`
 t=then()
- newlist=uniq(list_int(reduce(list,"x",reduce_expr)))
+ newlist=(list ?> "#>9899").uniq
 now(t)
-print "New list,unique numbers :\n"
-print newlist,"\n"
-
-`
+println "New list,unique numbers :\n",newlist
 
 print
-
 
