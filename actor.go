@@ -3640,10 +3640,11 @@ tco_reentry:
 }
 
 func system(cmd string, display bool) (string) {
-    cmd = str.Trim(cmd," \t")
+    cmd = str.Trim(cmd," \t\n")
     if hasOuter(cmd,'`') {
         cmd=stripOuter(cmd,'`')
     }
+    pf("cmd:[%s]\n",cmd)
     out, _ := Copper(cmd, false)
     if display { pf("%s",out) }
     return out
