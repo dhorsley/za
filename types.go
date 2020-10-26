@@ -14,7 +14,7 @@ type Phrase struct {
 	Tokens     []Token // each token found
 	TokenCount int     // number of tokens generated for this phrase
     SourceLine int
-	Original   string  // entire string, unmodified for spaces ( only for ON..DO, =| and | commands )
+	Original   string  // entire string, unmodified for spaces
 }
 
 func (p Phrase) String() string {

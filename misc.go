@@ -25,7 +25,7 @@ func getReportFunctionName(ifs uint32, full bool) string {
     return nl
 }
 
-
+/*
 func ShowSource(funcInstance string,start int,end int) bool {
 
     var funcInstanceId uint32
@@ -64,6 +64,7 @@ func ShowSource(funcInstance string,start int,end int) bool {
     }
     return true
 }
+*/
 
 func showCallChain(base string) {
 
@@ -76,12 +77,14 @@ func showCallChain(base string) {
     }
     pf("-> [#6]"+base+"[#-]\n[#CTE]")
 
-    // show source lines
+    // show source lines - defunct
+    /*
     for k,v:=range callChain {
         if k==0 { continue }
         v.name=getReportFunctionName(v.loc,false)
         ShowSource(v.name,v.line,v.line)
     }
+    */
 }
 
 func lookupChainName(n uint8) string {
@@ -106,16 +109,17 @@ func (parser *leparser) report(s string) {
     }
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
-    si:=1 // default source index
-    if sm,ok:=sourceMap[baseId]; ok {
+    // si:=1 // default source index
+    //if sm,ok:=sourceMap[baseId]; ok {
         // found a mapping for parent that created a func, and thus holds source
-        si=int(sm)
-    }
+    //    si=int(sm)
+    //}
 
     var line_content string
     if len(functionspaces[baseId])>0 {
         if baseId!=0 {
-        line_content=sourceStore[si][line]
+            // line_content=sourceStore[si][line]
+            line_content=functionspaces[baseId][parser.stmtline].Original
         } else {
             line_content="Interactive Mode"
         }

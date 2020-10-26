@@ -1,7 +1,12 @@
 #!/usr/bin/za
 
 doc "Simple REPL loop example"
-
+doc `
+    absolutely unreliable :)
+    input not sanitised, so things like stray pipe symbols will
+    break the shell most of the time.
+    just a demo
+`
 
 define show_help()
     at 1,1; print "Commands:"

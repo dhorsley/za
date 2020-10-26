@@ -111,6 +111,14 @@ CHANGE LOG
                 or something similar. not sure about syntax for map[string]struct yet, but would likely be the same! )
 
 
+    * statement line calc (again!) (lex.go + actor.go)
+        - improved again - remains to be seen if it is actually correct now. needs more test data.
+        - disabled SourceStore allocation and use - shouldn't be needed now.
+        - just using the .Original text from phrase for reporting now.
+
+    * release_id() on windows now returns "windows"
+
+
 1.0.12  new model for identifier binding.
 
         * finally replaced the identifier lookups with something approaching a name

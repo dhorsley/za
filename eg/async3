@@ -15,6 +15,7 @@ define f()
     on release_id()=="ubuntu" do datepath="/bin"
     datecmd="{datepath}/date --rfc-3339=ns"
     on hasstart(os(),"freebsd") do datecmd="date"
+    on os()=="windows" do datecmd="date /T"
     z =| {datecmd}
     pause rand(2000)
     return z

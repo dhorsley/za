@@ -55,7 +55,6 @@ define clean(s)
     return s
 enddef
 
-
 # main
 
 docpath="funpages"
@@ -190,5 +189,4 @@ write_file(docpath+"/index.html",indexpage)
 println "Total functions : {totfunc}"
 
 exit 0
-
 
