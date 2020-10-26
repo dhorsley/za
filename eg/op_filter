@@ -6,7 +6,7 @@ m["d"]="blah"
 m["g"]="TYTYTYHT"
 println kind(m)
 println m
-println m ?> `upper(?)==upper("blah")`
+println m ?> `upper(#)==upper("blah")`
 
 m["a"]=8
 m["b"]=9
@@ -15,9 +15,9 @@ m["d"]=11
 m["g"]=15
 println kind(m)
 println m
-println m ?> `?>9`
+println m ?> `#>9`
 
 println "map op * 7 on above matches"
-println m ?> `?>9` -> "?*7"
+println m ?> `#>9` -> "#*7"
 
 

@@ -283,7 +283,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     case []int:
         var new_list []int
         for e:=0; e<len(left.([]int)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -298,7 +298,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     case []uint:
         var new_list []uint
         for e:=0; e<len(left.([]uint)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -313,7 +313,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     case []float64:
         var new_list []float64
         for e:=0; e<len(left.([]float64)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -328,7 +328,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     case []bool:
         var new_list []bool
         for e:=0; e<len(left.([]bool)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatBool(left.([]bool)[e]),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatBool(left.([]bool)[e]),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -343,7 +343,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     case map[string]string:
         var new_map = make(map[string]string)
         for k,v:=range left.(map[string]string) {
-            new_right:=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+            new_right:=str.Replace(right.(string),"#",`"`+v+`"`,-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -361,17 +361,17 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             var new_right string
             switch v:=v.(type) {
             case string:
-                new_right=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+                new_right=str.Replace(right.(string),"#",`"`+v+`"`,-1)
             case int:
-                new_right=str.Replace(right.(string),"?",strconv.FormatInt(int64(v),10),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatInt(int64(v),10),-1)
             case uint:
-                new_right=str.Replace(right.(string),"?",strconv.FormatUint(uint64(v),10),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatUint(uint64(v),10),-1)
             case float64:
-                new_right=str.Replace(right.(string),"?",strconv.FormatFloat(v,'g',-1,64),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatFloat(v,'g',-1,64),-1)
             case bool:
-                new_right=str.Replace(right.(string),"?",strconv.FormatBool(v),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatBool(v),-1)
             default:
-                new_right=str.Replace(right.(string),"?",sf("%+v",v),-1)
+                new_right=str.Replace(right.(string),"#",sf("%+v",v),-1)
             }
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
@@ -405,7 +405,7 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     case []int:
         var new_list []int
         for e:=0; e<len(left.([]int)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -421,7 +421,7 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     case []uint:
         var new_list []uint
         for e:=0; e<len(left.([]uint)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -436,7 +436,7 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     case []float64:
         var new_list []float64
         for e:=0; e<len(left.([]float64)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -451,7 +451,7 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     case []bool:
         var new_list []bool
         for e:=0; e<len(left.([]bool)); e++ {
-            new_right:=str.Replace(right.(string),"?",strconv.FormatBool(left.([]bool)[e]),-1)
+            new_right:=str.Replace(right.(string),"#",strconv.FormatBool(left.([]bool)[e]),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
             switch val.(type) {
@@ -469,17 +469,17 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
             var new_right string
             switch v:=v.(type) {
             case string:
-                new_right=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+                new_right=str.Replace(right.(string),"#",`"`+v+`"`,-1)
             case int:
-                new_right=str.Replace(right.(string),"?",strconv.FormatInt(int64(v),10),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatInt(int64(v),10),-1)
             case uint:
-                new_right=str.Replace(right.(string),"?",strconv.FormatUint(uint64(v),10),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatUint(uint64(v),10),-1)
             case float64:
-                new_right=str.Replace(right.(string),"?",strconv.FormatFloat(v,'g',-1,64),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatFloat(v,'g',-1,64),-1)
             case bool:
-                new_right=str.Replace(right.(string),"?",strconv.FormatBool(v),-1)
+                new_right=str.Replace(right.(string),"#",strconv.FormatBool(v),-1)
             default:
-                new_right=str.Replace(right.(string),"?",sf("%+v",v),-1)
+                new_right=str.Replace(right.(string),"#",sf("%+v",v),-1)
             }
             val,err:=ev(reduceparser,p.fs,new_right)
             if err!=nil { panic(err) }
