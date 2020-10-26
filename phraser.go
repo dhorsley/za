@@ -1,7 +1,7 @@
 package main
 
 import (
-    str "strings"
+//    str "strings"
 )
 
 // phraseParse():
@@ -38,7 +38,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     lmv,_:=fnlookup.lmget(fs)
 
     // pf("[parser] Placed source in store %d for fs '%s'\n",lmv,fs)
-    sourceStore[lmv]=make([]string,0,40)
+    // sourceStore[lmv]=make([]string,0,40)
     addToPhrase:=false
 
     for ; pos < len(input); {
@@ -82,12 +82,11 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
 
         if tokenType==SingleComment {
-            // at this point we have returned the full comment
-            // throw comment away, but put it in the sourceStore
+            // at this point we have returned the full comment so throw it away!
             addToPhrase=false
         }
 
-        if tokenType==SYM_Semicolon || tokenType==EOL {
+        if tokenType==SYM_Semicolon || tokenType==EOL { // ditto
             addToPhrase=false
         }
 
@@ -102,27 +101,39 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             // -- add original version
             if pos>0 {
                 if phrase.TokenCount>0 {
+                    phrase.Original=input[lstart:pos]
+                } else {
+                        phrase.Original=""
+                }
+
+                // to be removed?
+                /*
                     switch phrase.Tokens[0].tokType {
                     case C_On,SYM_BOR:
                         phrase.Original=input[lstart:pos]
                     }
                 }
+                */
+                /*
                 if phrase.TokenCount>1 {
                     switch phrase.Tokens[1].tokType {
                     case O_AssCommand:
-                        phrase.Original=input[lstart:pos]
+                    //    phrase.Original=input[lstart:pos]
                     }
                 }
+                */
+
             }
 
+            /*
             // -- add to source store
             if tempToken.tokType!=SYM_Semicolon {
                 sourceStore[lmv]=append(sourceStore[lmv],str.TrimRight(input[lstart:pos]," \t\n"))
             }
+            */
+
             phrase.SourceLine=curLine
             lstart = pos
-
-            // pf("phrase source line set to %d on line: %+q\n",phrase.SourceLine,input[lstart:pos])
 
             if tempToken.tokType==EOL { curLine++ }
 
@@ -130,7 +141,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if phrase.TokenCount!=0 {
                 // -- add phrase to function
                 if lockSafety { fspacelock.Lock() }
-                // pf("add phrase: %#v\n\n\n\n\n",phrase)
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
                 if lockSafety { fspacelock.Unlock() }
             }

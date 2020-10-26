@@ -3,35 +3,12 @@
 1.0.13 fixes
 
     * TODO remove deprecated features and options (startup options, dead code, unused funcs)
-
-    * investigate current Windows functionality: tests failed on:
-        - fixed - missing CTE code
-        - eg/plots/life: doesn't fail, but doesn't display either.. utf-8 issue probably.
-        - eg/async3: failed due to os detection + date commands probably.
-        - mon and others: release_id() doesn't work on windows. (probably other release type internal funcs too)
-
-    * TODO fix statement line calc (lex.go + actor.go)
-
     * TODO library function name review (for consistency)
-
     * TODO review startup defaults:
         - windows       - ansi on or off?
         - unix/linux    - startup a shell or not?
-        - all           - extra mutex locks on or off?
-    
     * TODO remove dead eg/examples, review rest.
-
-    * TODO update manual.
-        - range s..e doc
-            - high->low ranges are currently a syntax error
-        - when HAS clause doc
-        - when condition now optional. assumes "true" const value when missing.
-
     * TODO add more manual example code in tools/funpages/examples for more functions.
-
-    * TODO allow PRINT[LN] to be interrupted.
-
-    * TODO fix: PRINT against large object (e.g. [50000000]int ) takes a lot of time to de-allocate after completion.
 
 ---------------------------------------------------------------------------------------------
 
