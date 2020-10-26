@@ -384,6 +384,35 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
         }
         return new_map
 
+    case []interface{}:
+        var new_list []interface{}
+        for e:=0; e<len(left.([]interface{})); e++ {
+            var new_right string
+            switch v:=left.([]interface{})[e].(type) {
+            case string:
+                new_right=str.Replace(right.(string),"#",`"`+v+`"`,-1)
+            case int:
+                new_right=str.Replace(right.(string),"#",strconv.FormatInt(int64(v),10),-1)
+            case uint:
+                new_right=str.Replace(right.(string),"#",strconv.FormatUint(uint64(v),10),-1)
+            case float64:
+                new_right=str.Replace(right.(string),"#",strconv.FormatFloat(v,'g',-1,64),-1)
+            case bool:
+                new_right=str.Replace(right.(string),"#",strconv.FormatBool(v),-1)
+            default:
+                new_right=str.Replace(right.(string),"#",sf("%+v",v),-1)
+            }
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]interface{})[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
     default:
         panic(fmt.Errorf("invalid list in filter"))
     }
@@ -460,6 +489,30 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
             default:
                 panic(fmt.Errorf("invalid expression in map"))
             }
+        }
+        return new_list
+
+    case []interface{}:
+        var new_list []interface{}
+        for e:=0; e<len(left.([]interface{})); e++ {
+            var new_right string
+            switch v:=left.([]interface{})[e].(type) {
+            case string:
+                new_right=str.Replace(right.(string),"#",`"`+v+`"`,-1)
+            case int:
+                new_right=str.Replace(right.(string),"#",strconv.FormatInt(int64(v),10),-1)
+            case uint:
+                new_right=str.Replace(right.(string),"#",strconv.FormatUint(uint64(v),10),-1)
+            case float64:
+                new_right=str.Replace(right.(string),"#",strconv.FormatFloat(v,'g',-1,64),-1)
+            case bool:
+                new_right=str.Replace(right.(string),"#",strconv.FormatBool(v),-1)
+            default:
+                new_right=str.Replace(right.(string),"#",sf("%v",v),-1)
+            }
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            new_list=append(new_list,val)
         }
         return new_list
 
@@ -1746,6 +1799,7 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
             //  away the p.* values shortly after this use.
             p.prev=tks[0]
             p.postIncDec(tks[1])
+            expr.assign=true
             return expr
         }
     }

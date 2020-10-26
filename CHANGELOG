@@ -67,6 +67,9 @@ CHANGE LOG
                     transfers and result gens. 
                 - this is pretty far out of scope for the language so it will probably gather dust.
 
+            - update: added support for arrays and maps of simple interface{} types.
+                - this means that array literals should now be supported too.
+
             - examples:
 
          >> print 1..20
