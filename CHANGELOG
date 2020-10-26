@@ -58,8 +58,23 @@ CHANGE LOG
             - both produce a list of the same type as input
             - both accept lists of bool, uint, int or float
             - filter has a slightly higher precedence than map
+            - the ? char is subject to change. It will prevent us from nesting as is.
+                - alternatives to be considered: @, # and :
+                    - we may need colon in the future so should probably avoid that.
+                    - # would be better than @ except for the mixed use with comments.
+                    - if we decide to allow nesting, then will probably replace with @
+                - use of a double ?? may be better, as this could be promoted to a token type
+                    and also fits with the overall scheme of ?> ->
+            - reduction will probably not be implemented as it can be conveyed with 
+                a user-defined function or library call as with max() and avg() below.
 
-            - example:
+            - may be worth considering a way of auto-promoting larger filter and map operations
+                to parallel tasking by splitting the l.h.s. 
+                - would require some kind of local/remote pipeline and some resiliency on failed
+                    transfers and result gens. 
+                - this is pretty far out of scope for the language so it will probably gather dust.
+
+            - examples:
 
          >> print 1..20
             [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
@@ -79,11 +94,14 @@ CHANGE LOG
          >> print ( (1..20 ?> "?>5 and ?<15" -> "?*3") ?> "?>29") . max
             42
 
-         >> print list_float(1..20) -> "sin(?)"
-            [0.8414709848078965 0.9092974268256816 0.1411200080598672 -0.7568024953079282 -0.9589242746631385 
-            -0.27941549819892586 0.6569865987187891 0.9893582466233817 0.4121184852417566 -0.5440211108893699 
-            -0.9999902065507035 -0.5365729180004349 0.4201670368266409 0.9906073556948702 0.6502878401571169 
-            -0.2879033166650653 -0.9613974918795569 -0.7509872467716762 0.14987720966295234 0.9129452507276277]
+         >> print list_float(70..90) -> "deg2rad(?).sin"
+            [0.9396926207859084 0.9455185755993167 0.9510565162951535 0.9563047559630354 0.9612616959383188 
+             0.9659258262890683 0.9702957262759966 0.9743700647852352 0.9781476007338056 0.981627183447664 
+             0.9848077530122081 0.9876883405951377 0.9902680687415703 0.9925461516413221 0.9945218953682734 
+             0.9961946980917454 0.9975640502598242 0.9986295347545738 0.9993908270190958 0.9998476951563913 1]
+
+        * you may also filter against simple assoc array types with string keys and value types of bool, int, uint, 
+            float and string. see eg/op_filter for basic example of assoc array filter and map.
 
             PLEASE NOTE:
 
@@ -94,6 +112,10 @@ CHANGE LOG
                 This may improve in the future if heavily used. Likely not though. For now you can expect a
                 very long list of numbers (e.g. 100 million) to take a minute or two to filter or map. 
                 1 Million items will probably take a couple of seconds.
+
+                We will add support for []struct and map[string]struct later if required. (? would probably have 
+                to stand in for the variable name in the case of arrays. i.e. new_array = old_array ?> `?.name=="smith"`;
+                or something similar. not sure about syntax for map[string]struct yet, but would likely be the same! )
 
 
 1.0.12  new model for identifier binding.
