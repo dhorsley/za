@@ -71,6 +71,9 @@ var fileMap   = make(map[uint32]string)             // func space to source file
 var sourceMap = make(map[uint32]uint32)             // id of ifs which points to the source which contains
                                                     // the DEFINE..ENDDEF for a defined functino.
 
+//var tryShell bool                                   // default to evaluating as a shell command, when all 
+                                                    //    else has failed!
+
 // under review // var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
 var functionArgs = make([]fa_s, SPACE_CAP)          // expected parameters for each defined function (key: function name)
@@ -330,6 +333,7 @@ func main() {
     var a_shell         = flag.String("s", "", "path to coprocess shell")
     var a_shellrep      = flag.Bool("Q", false, "enables the shell info reporting")
     var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
+ //   var a_tryshell      = flag.Bool("x", false, "default to shell evaluation")
     var a_cmdsep        = flag.Int("U", 0x1e, "Command output separator byte.")
 
     flag.Parse()
@@ -407,6 +411,12 @@ func main() {
     if *a_debug != 0 {
         debug_level = *a_debug
     }
+
+    /*
+    if *a_tryshell {
+        tryShell = true
+    }
+    */
 
     // trace capture
     if *a_trace {

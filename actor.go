@@ -3560,9 +3560,17 @@ tco_reentry:
             // try to eval and assign
 
             if we:=parser.wrappedEval(ifs,ifs,inbound.Tokens); we.evalError {
-                parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
-                finish(false,ERR_EVAL)
                 break
+                /*
+                if interactive && !we.assign && tryShell {
+                    cmd := interpolate(ifs, inbound.Original)
+                    system(cmd,true)
+                } else {
+                    parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
+                    finish(false,ERR_EVAL)
+                    break
+                }
+                */
             }
 
             //
