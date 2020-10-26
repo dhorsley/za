@@ -3644,7 +3644,6 @@ func system(cmd string, display bool) (string) {
     if hasOuter(cmd,'`') {
         cmd=stripOuter(cmd,'`')
     }
-    pf("cmd:[%s]\n",cmd)
     out, _ := Copper(cmd, false)
     if display { pf("%s",out) }
     return out
