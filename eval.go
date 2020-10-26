@@ -340,6 +340,50 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
         }
         return new_list
 
+    case map[string]string:
+        var new_map = make(map[string]string)
+        for k,v:=range left.(map[string]string) {
+            new_right:=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_map[k]=v }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_map
+
+    case map[string]interface{}:
+        var new_map = make(map[string]interface{})
+        for k,v:=range left.(map[string]interface{}) {
+            var new_right string
+            switch v:=v.(type) {
+            case string:
+                new_right=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+            case int:
+                new_right=str.Replace(right.(string),"?",strconv.FormatInt(int64(v),10),-1)
+            case uint:
+                new_right=str.Replace(right.(string),"?",strconv.FormatUint(uint64(v),10),-1)
+            case float64:
+                new_right=str.Replace(right.(string),"?",strconv.FormatFloat(v,'g',-1,64),-1)
+            case bool:
+                new_right=str.Replace(right.(string),"?",strconv.FormatBool(v),-1)
+            default:
+                new_right=str.Replace(right.(string),"?",sf("%+v",v),-1)
+            }
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_map[k]=v }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_map
+
     default:
         panic(fmt.Errorf("invalid list in filter"))
     }
@@ -418,6 +462,30 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
             }
         }
         return new_list
+
+    case map[string]interface{}:
+        var new_map = make(map[string]interface{})
+        for k,v:=range left.(map[string]interface{}) {
+            var new_right string
+            switch v:=v.(type) {
+            case string:
+                new_right=str.Replace(right.(string),"?",`"`+v+`"`,-1)
+            case int:
+                new_right=str.Replace(right.(string),"?",strconv.FormatInt(int64(v),10),-1)
+            case uint:
+                new_right=str.Replace(right.(string),"?",strconv.FormatUint(uint64(v),10),-1)
+            case float64:
+                new_right=str.Replace(right.(string),"?",strconv.FormatFloat(v,'g',-1,64),-1)
+            case bool:
+                new_right=str.Replace(right.(string),"?",strconv.FormatBool(v),-1)
+            default:
+                new_right=str.Replace(right.(string),"?",sf("%+v",v),-1)
+            }
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            new_map[k]=val
+        }
+        return new_map
 
     default:
         panic(fmt.Errorf("invalid list in map"))
