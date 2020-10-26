@@ -1,41 +1,25 @@
 
 
-1.0.13 fixes
+LATER / UNDECIDED
+-----------------
 
-    * TODO remove deprecated features and options (startup options, dead code, unused funcs)
-    * TODO library function name review (for consistency)
-    * TODO review startup defaults:
-        - windows       - ansi on or off?
-        - unix/linux    - startup a shell or not?
-    * TODO remove dead eg/examples, review rest.
-    * TODO add more manual example code in tools/funpages/examples for more functions.
+*TODO*  remove deprecated features and options (startup options, dead code, unused funcs)
 
----------------------------------------------------------------------------------------------
+*TODO*  library function name review (for consistency)
 
-1.0.12 variable model
-        fixes
-        operators
-        documentation
+*TODO*  review startup defaults:
+    - windows       - ansi on or off?
+    - unix/linux    - startup a shell or not?
 
----------------------------------------------------------------------------------------------
+*TODO remove dead eg/examples, review rest.
+*TODO add more manual example code in tools/funpages/examples for more functions.
 
-
-LATER
------
+*TODO*  add support for structs in filter and map operations.
 
 *TODO*  dormant functions
             - need a way to yield and make a function dormant and re-entrant.
                 - this would allow for generators and some other operations.
                 - there's no particular priority for this, just a nice to have.
-
-UNDECIDED
----------
-
-* WHEN...ENDWHEN
-    * add a range operator? x..y
-    * add a generic condition evaluator? 
-    * multiple options in IS?
-    * fall-through? veering towards "no" for this.
 
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
     * as usual, really low priority on this. i only wanted it for £ symbols!
