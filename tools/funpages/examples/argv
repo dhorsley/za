@@ -3,34 +3,34 @@
 
 define next()
     lav=getglob("av")
-    arg=head(lav)
-    lav=tail(lav)
+    arg=lav.head
+    lav=lav.tail
     setglob av = lav
     return arg
 enddef    
 
 av=argv()
 
-while !empty(av)
+while !av.empty
     arg=next()
-    if len(arg)>1 && start(arg,"-")
+    if arg.len>1 && start(arg,"-")
         opt=substr(arg,0,2)
         when opt
         is "-h"
             println "Help requested."
         is "-s"
-            svar=string(next())
+            svar=next().string
         is "-b"
-            bvar=bool(next())
+            bvar=next().bool
         is "-n"
-            nvar=int(next())
+            nvar=next().int
         endwhen
     else
         println "unprocessed argument found: {arg}"
     endif
 endwhile
 
-println "string option : {svar} [{kind(svar)}]"
-println "bool option   : {bvar} [{kind(bvar)}]"
-println "number option : {nvar} [{kind(nvar)}]"
+println "string option : {svar} [{=kind(svar)}]"
+println "bool option   : {bvar} [{=kind(bvar)}]"
+println "number option : {nvar} [{=kind(nvar)}]"
 
