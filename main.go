@@ -71,7 +71,7 @@ var fileMap   = make(map[uint32]string)             // func space to source file
 var sourceMap = make(map[uint32]uint32)             // id of ifs which points to the source which contains
                                                     // the DEFINE..ENDDEF for a defined functino.
 
-var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
+// under review // var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
 var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
 var functionArgs = make([]fa_s, SPACE_CAP)          // expected parameters for each defined function (key: function name)
 var functionidents  [MAX_FUNCS]uint16               // bodge job for storing found identifier counts in parsing
@@ -531,8 +531,9 @@ func main() {
         vset(0, "@home", "")
         vset(0, "@lang", "")
         vset(0, "@wsl", "")
-        vset(0, "@release_name", "")
-        vset(0, "@release_version", "")
+        vset(0, "@release_id", "windows")
+        vset(0, "@release_name", "windows")
+        vset(0, "@release_version", "windows")
         vset(0, "@winterm", false)
         vset(0,"@runInWindowsParent",true)
     }
