@@ -2438,12 +2438,24 @@ tco_reentry:
 
         case C_Exit:
             if inbound.TokenCount > 1 {
-                ec, err := parser.Eval(ifs, inbound.Tokens[1:inbound.TokenCount])
-                if err==nil && isNumber(ec) {
-                    finish(true, ec.(int))
-                } else {
-                    parser.report( "Could not evaluate your EXIT expression")
-                    finish(true,ERR_EVAL)
+                resu,errs:=parser.evalCommaArray(ifs,inbound.Tokens[1:])
+                // ec, err := parser.Eval(ifs, inbound.Tokens[1:inbound.TokenCount])
+                errmsg:=""
+                if len(resu)>1 && errs[1]==nil {
+                    switch resu[1].(type) {
+                    case string:
+                        errmsg=sf("%v\n",resu[1])
+                    }
+                }
+                if len(resu)>0 && errs[0]==nil {
+                    ec:=resu[0]
+                    pf(errmsg)
+                    if isNumber(ec) {
+                        finish(true, ec.(int))
+                    } else {
+                        parser.report("Could not evaluate your EXIT expression")
+                        finish(true,ERR_EVAL)
+                    }
                 }
             } else {
                 finish(true, 0)
