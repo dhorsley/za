@@ -1,0 +1,30 @@
+#!/usr/bin/za
+
+# read a file line-by-line
+# test filter and map operators on it
+
+init words string
+var n int
+
+testfile="/usr/share/dict/american-english"
+
+if is_file(testfile)
+    q=fopen(testfile,"r")
+    while !feof(q)
+        words[n++]=fread(q,"\n")
+    endwhile
+    fclose(q)
+else
+    exit 1,"File not found. ({testfile})"
+endif
+
+println len(words)
+
+println "starting with z and len > 4:"
+w1 = words ?> "# ~ `^z` and #.len>4"
+println w1,"\n"
+
+println "mapped to upper then drop apostrophes and lose front and back char and get unique words:"
+println ( w1 -> `upper(#)` -> `#.tr("d","'")` -> "#[1:#.len-1]" ).uniq ,"\n"
+
+
