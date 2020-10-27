@@ -280,6 +280,21 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     reduceparser=&leparser{}
 
     switch left.(type) {
+    case []string:
+        var new_list []string
+        for e:=0; e<len(left.([]string)); e++ {
+            new_right:=str.Replace(right.(string),"#",`"`+left.([]string)[e]+`"`,-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]string)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression in filter"))
+            }
+        }
+        return new_list
+
     case []int:
         var new_list []int
         for e:=0; e<len(left.([]int)); e++ {
@@ -431,6 +446,21 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     reduceparser=&leparser{}
 
     switch left.(type) {
+    case []string:
+        var new_list []string
+        for e:=0; e<len(left.([]string)); e++ {
+            new_right:=str.Replace(right.(string),"#",`"`+left.([]string)[e]+`"`,-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case string:
+                new_list=append(new_list,val.(string))
+            default:
+                panic(fmt.Errorf("invalid expression in map"))
+            }
+        }
+        return new_list
+
     case []int:
         var new_list []int
         for e:=0; e<len(left.([]int)); e++ {
@@ -552,13 +582,13 @@ func (p *leparser) rcompare (left interface{},right interface{},insensitive bool
     switch left.(type) {
     case string:
     default:
-        panic(fmt.Errorf("regex comparision requires strings"))
+        panic(fmt.Errorf("regex comparison requires strings"))
     }
 
     switch right.(type) {
     case string:
     default:
-        panic(fmt.Errorf("regex comparision requires strings"))
+        panic(fmt.Errorf("regex comparison requires strings"))
     }
 
     insenStr:=""
