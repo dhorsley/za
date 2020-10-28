@@ -96,6 +96,8 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             left=p.unary(token)
         case LeftSBrace:
             left=p.array_concat(token)
+        case O_Query:                       // ternary
+            left=p.tern_if(token)
         }
 
             // binaries
@@ -446,6 +448,7 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
     reduceparser=&leparser{}
 
     switch left.(type) {
+
     case []string:
         var new_list []string
         for e:=0; e<len(left.([]string)); e++ {
@@ -919,6 +922,21 @@ func unOpSqrt(n interface{}) interface{} {
         panic(fmt.Errorf("sqrt does not support type '%T'",n))
     }
     return nil
+}
+
+func (p *leparser) tern_if(tok Token) (interface{}) {
+    // if expr tv fv
+    dp,err1:=p.dparse(0)
+    tv,err2:=p.dparse(0)
+    fv,err3:=p.dparse(0)
+    if err1!=nil || err2!=nil || err3!=nil {
+        panic(fmt.Errorf("malformed conditional in expression"))
+    }
+    switch dp.(type) {
+    case bool:
+        if dp.(bool) { return tv }
+    }
+    return fv
 }
 
 func (p *leparser) array_concat(tok Token) (interface{}) {

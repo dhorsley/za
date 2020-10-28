@@ -170,6 +170,7 @@ const (
 	SYM_FTilde
     O_Sqr
     O_Sqrt
+    O_Query
     O_Filter
     O_Map
     START_STATEMENTS

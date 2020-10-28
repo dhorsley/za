@@ -25,7 +25,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
-    "O_FILTER", "O_MAP",
+    "O_QUERY", "O_FILTER", "O_MAP",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -375,6 +375,8 @@ get_nt_eval_point:
         tokType = SYM_ITilde
     case "~f":
         tokType = SYM_FTilde
+    case "??":
+        tokType = O_Query
     case "?>":
         tokType = O_Filter
     case "->":

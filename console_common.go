@@ -677,7 +677,7 @@ func Copper(line string, squashErr bool) (string, int) {
     if str.HasSuffix(str.TrimRight(line," "),"|") {
         return "",-1
     }
-    if tr(line,DELETE,"| ") == "" {
+    if tr(line,DELETE,"| ","") == "" {
         return "",-1
     }
     line=str.TrimRight(line,"\n")
