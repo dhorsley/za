@@ -832,7 +832,7 @@ func restoreScreen() {
 
 func testStart(file string) {
     vos,_:=vget(0,"@os") ; stros:=vos.(string)
-    test_start := sf("\n[#6][#underline][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
+    test_start := sf("\n[#6][#ul][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
     appendToTestReport(test_output_file,0, 0, test_start)
 }
 

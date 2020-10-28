@@ -1,0 +1,31 @@
+#!/usr/bin/za
+
+#  you'll probably need to do this manually until i have the
+#  patience to write a generic script. feel free to contribute one!
+
+#
+# first time:
+#  you will need to add a stanza such as the one below to scripts.vim:
+doc `
+ Za shell scripts
+  elseif s:name =~# '^za\>'
+    set ft=za
+`
+
+if hasstart(os(),"freebsd")
+    pathRoot="/usr/local/share/vim"
+else
+    pathRoot="/usr/share/vim"
+endif
+
+newPath=| ls -d {pathRoot}/vim8*
+vnum=(newPath.split("\n") -> "#.substr(#.len-2,2)").list_float.max
+newPath=pathRoot+"/vim"+vnum
+
+println "PATH : |{newPath}|"
+
+| sudo cp -f za.vim {newPath}/ftplugin/
+| sudo cp -f za.vim {newPath}/syntax/
+| sudo chmod 755 {newPath}/{syntax,ftplugin}/za.vim
+
+

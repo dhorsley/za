@@ -4,13 +4,12 @@ println "\n[#fcyan]Za function defining[#default]"
 
 module "./math.mod"
 
-showdef
-
 println "\n[#4]factorial test[#-]"
-println "4! = ", factorial(4)
-println "7! = {=factorial(7)}"
+
+println "4!  = ", factorial(4)
+println "7!  = {=factorial(7)}"
 println "11! = {=factorial(11)}"
- println "15! = ", factorial(15)
+println "15! = ", factorial(15)
 
 
 test "recurse_1" group "functions" assert fail

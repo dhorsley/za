@@ -3,8 +3,7 @@
 ip=web_get("https://api.ipify.org/?format=text")
 
 if ip.code != 200
-    println "Download error. (code:{=ip.code})"
-    exit 1
+    exit 1, "Download error. (code:{=ip.code})"
 endif
 
 octet=split(ip.result,".")

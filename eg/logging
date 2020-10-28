@@ -21,10 +21,8 @@ count =| grep -c "not logged" {lf}
 print "count [{count}] should be zero... "
 
 if int(count)==0
-    println "[#4]okay[#-]"
-    exit 0
+    exit 0, "[#4]okay[#-]"
 endif
 
-println "[#2]not okay[#-]"
-exit 1
+exit 1, "[#2]not okay[#-]"
 

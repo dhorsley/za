@@ -30,6 +30,7 @@ import (
     "runtime/trace"
 )
 
+
 //
 // ALIASES
 //
@@ -38,106 +39,155 @@ var sf = fmt.Sprintf
 var pln = fmt.Println
 var fpf = fmt.Fprintln
 var fef = fmt.Errorf
+
+
 //
 // CONSTS AND GLOBALS
 //
 
-// connections
-var MAX_TIO time.Duration = 120000 // two minutes
+// co-proc connection timeout, in milli-seconds
+var MAX_TIO time.Duration = 120000
 
-// build-time
-
+// build-time constants made available at run-time
 var BuildComment string
 var BuildVersion string
 var BuildDate string
 
-// safety
+// thread-safety
 
-var lockSafety bool=false       // enable mutices in variable handling functions, for multi-threading.
+// enable mutices in variable handling functions
+var lockSafety bool=false
 
-// run-time
 
+// run-time declarations
 
-var calltable = make([]call_s,CALL_CAP)             // open function calls
-var panes = make(map[string]Pane)                   // defined console panes.
-var features = make(map[string]Feature)             // list of stdlib categories.
-var orow, ocol, ow, oh int                          // console cursor location and terminal dimensions.
+// open function calls
+var calltable = make([]call_s,CALL_CAP)
 
-var vmap    = make([]map[string]uint16,MAX_FUNCS)   // for converting vmap id to fn.id (for debugging/errors)
-var unvmap  = make([]map[uint16]string,MAX_FUNCS)   // for converting vmap id to fn.id (for debugging/errors)
-var identParsed = make([]bool,MAX_FUNCS)            // flag to indicate if source vars have been processed once
+// defined console panes.
+var panes = make(map[string]Pane)
 
-var fileMap   = make(map[uint32]string)             // func space to source file name mappings
-var sourceMap = make(map[uint32]uint32)             // id of ifs which points to the source which contains
-                                                    // the DEFINE..ENDDEF for a defined functino.
+// list of stdlib categories.
+var features = make(map[string]Feature)
 
-//var tryShell bool                                   // default to evaluating as a shell command, when all 
-                                                    //    else has failed!
+// console cursor location and terminal dimensions.
+var orow, ocol, ow, oh int
 
-// under review // var sourceStore = make([][]string, SPACE_CAP)       // where we shove processed source lines
-var functionspaces = make([][]Phrase, SPACE_CAP)    // tokenised function storage (key: function name)
-var functionArgs = make([]fa_s, SPACE_CAP)          // expected parameters for each defined function (key: function name)
-var functionidents  [MAX_FUNCS]uint16               // bodge job for storing found identifier counts in parsing
+// for converting vmap id to fn id (for debugging/errors)
+var vmap    = make([]map[string]uint16,MAX_FUNCS)
+
+// for converting fn id to vmap id (for debugging/errors)
+var unvmap  = make([]map[uint16]string,MAX_FUNCS)
+
+// flag to indicate if source vars have been processed once
+var identParsed = make([]bool,MAX_FUNCS)
+
+// func space to source file name mappings
+var fileMap   = make(map[uint32]string)
+
+// id of func space which points to the source which contains
+// the DEFINE..ENDDEF for a defined functino.
+var sourceMap = make(map[uint32]uint32)
+
+// tokenised function storage
+// this is where all the translated source ends up
+var functionspaces = make([][]Phrase, SPACE_CAP)
+
+// expected parameters for each defined function
+var functionArgs = make([]fa_s, SPACE_CAP)
+
+// for storing found identifier counts in parsing
+var functionidents  [MAX_FUNCS]uint16
+
+// marks pre-processed function spaces
 var parsed          [MAX_FUNCS]bool
 
-var loops = make([][]s_loop, LOOP_START_CAP)        // counters per function per loop type (keys: function, keyword-token id)
-var depth = make([]int, SPACE_CAP)                  // generic nesting indentation counters (key: function id)
-var fairydust = make(map[string]string, FAIRY_CAP)  // ANSI colour code mappings (key: colour alias)
-var lastConstruct = make([][]uint8, SPACE_CAP)      // stores the active construct/loop types outer->inner for the break command
-var wc = make([]whenCarton, SPACE_CAP)              // active WHEN..ENDWHEN statements
-var wccount = make([]int, SPACE_CAP)                // count of active WHEN..ENDWHEN statements per function.
+// counters per function per loop type
+var loops = make([][]s_loop, LOOP_START_CAP)
 
-var globalaccess uint32                             // number of functionspace which is considered to be "global"
+// generic nesting indentation counters
+var depth = make([]int, SPACE_CAP)
 
-var currentModule string                            // basename of module currently being processed.
-var funcmap = make(map[string]Funcdef)              // defined function list
+// ANSI colour code mappings (key: colour alias)
+var fairydust = make(map[string]string, FAIRY_CAP)
 
-// variable storage per function (indices: function space id for locality , table offset. offset calculated by VarLookup)
+// stores the active construct/loop types outer->inner
+//  for the break and continue statements
+var lastConstruct = make([][]uint8, SPACE_CAP)
+
+// active WHEN..ENDWHEN statements
+var wc = make([]whenCarton, SPACE_CAP)
+
+// count of active WHEN..ENDWHEN statements per function.
+var wccount = make([]int, SPACE_CAP)
+
+// number of functionspace which is considered to be "global"
+var globalaccess uint32
+
+// basename of module currently being processed.
+var currentModule string
+
+// defined function list
+var funcmap = make(map[string]Funcdef)
+
+// variable storage per function
+//  indices: function space id for locality, table offset.
+//  offset calculated by VarLookup
 var ident = make([][]Variable, SPACE_CAP)
 
-// lookup tables for converting between function name and functionspaces[] index.
+// lookup tables for converting between function name 
+//  and functionspaces[] index.
 var fnlookup = lmcreate(SPACE_CAP)
 var numlookup = nlmcreate(SPACE_CAP)
 
 // interactive mode and prompt handling
-var interactive bool                 // interactive mode flag
+// interactive mode flag
+var interactive bool
+
+// interactive mode prompt
 var promptTemplate string
 
 // storage for the standard library functions
 var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
 
-// firstInstallRun is used by the package management library calls for flagging an "update".
+// firstInstallRun is used by the package management 
+//  library calls for flagging an "update".
 var firstInstallRun bool = true
 
-// mysql connection variables - these should really be in the library (and done differently!)
-var dbhost string   //
-var dbengine string // these would normally be provided in ZA_DB_* environmental variables
-var dbport int      // and be initialised during db_init().
-var dbuser string   //
-var dbpass string   //
+// mysql connection variables 
+// - these should really be in the library 
+// these would normally be provided in ZA_DB_* environmental
+// variables and be initialised during db_init().
+var dbhost string
+var dbengine string
+var dbport int
+var dbuser string
+var dbpass string
 
-// not thread-safe: used during debug
-// var high_q uint32
-var elast int                                       // mainly for debugging eval routine. should only be used when locks are 
-                                                    //  disabled. it contains the last line number executed.
+// for debugging eval routines.
+// should only be used when locks are disabled.
+// it contains the last line number executed.
+var elast int
+
 
 //
 // MAIN
 //
 
 var bgproc *exec.Cmd        // holder for the coprocess
-var pi io.WriteCloser       // process in, out and error streams
-var po io.ReadCloser
-var pe io.ReadCloser
+var pi io.WriteCloser       // process input stream
+var po io.ReadCloser        // process output stream
+var pe io.ReadCloser        // process error stream
+
 var row, col int            // for pane + terminal use
 var MW, MH int              // for pane + terminal use
 var currentpane string      // for pane use
 
 var cmdargs []string        // cli args
 
-var no_interpolation bool   // true: disable string interpolation.
+var no_interpolation bool   // to disable string interpolation
 var tt * term.Term          // keystroke input receiver
-var ansiMode bool           // defaults to true. false disables ansi colour code output
+var ansiMode bool           // to disable ansi colour output
 
 // setup getInput() history for interactive mode
 var curHist int
@@ -145,20 +195,18 @@ var lastHist int
 var hist []string
 var histEmpty bool
 
-// setup logging
+// setup logging - could use better defaults
 var logFile string
 var loggingEnabled bool
 var log_web bool
 var web_log_file string = "/var/log/za_access.log"
 
-// trap handling (@note: this needs extending to handle user defined traps)
+// trap handling
 var sig_int bool       // ctrl-c pressed?
 var coproc_active bool // for resetting co-proc if interrupted
 
-
-// test related setup
-var testMode bool           // is TEST..ENDTEST functionality enabled this run? (this may change later for alternative run types)
-var docGen bool             // is DOC processing enabled this run? (now deprecated?)
+// test related setup, completely non thread safe
+var testMode bool
 var under_test bool
 var test_group string
 var test_name string
@@ -170,7 +218,8 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
-// interparse: parser reserved for use by interpolate function. has a lock around it when -l set.
+// parser reserved for use by the interpolate function.
+//  has a lock around it when -l startup arg set.
 var interparse *leparser
 
 // for disabling the coprocess entirely:
@@ -180,21 +229,24 @@ var shellrep bool
 // pane resize indicator
 var winching bool
 
-// 0:off, >0 max displayed level (not currently used too much. maybe eventually be removed).
+// 0:off, >0 max displayed debug level
+// - not currently used too much. may eventually be removed
 var debug_level int
 
-// 0:off, >0 line number to emit (used when producing source line debug output)
-// var slmon, elmon int
-
-// list of keywords for lookups (used in interactive mode TAB completion)
+// list of keywords for lookups
+// - used in interactive mode TAB completion
 var keywordset map[string]struct{}
 
-// list of struct fields per struct type - used by INIT when defining a struct
+// list of struct fields per struct type
+// - used by INIT when defining a struct
 var structmaps map[string][]string
+
+// compile cache for regex operator
 var ifCompileCache map[string]regexp.Regexp
 
-// highest numbered vtable entry created
+// highest numbered variable table entry created
 var vtable_maxreached uint32
+
 
 func main() {
 
@@ -207,10 +259,11 @@ func main() {
         }
     }
 
+    // set available CPUs
     runtime.GOMAXPROCS(runtime.NumCPU())
 
-
-    // setup winch handler receive channel to indicate a refresh is required, then check it in Call()
+    // setup winch handler receive channel to indicate a refresh
+    //  is required, then check it in Call()
     sigs := make(chan os.Signal, 1)
 
     if runtime.GOOS!="windows" {
@@ -226,48 +279,63 @@ func main() {
         }
     }()
 
-    var err error // generic error flag
+    // generic error flag - used through main
+    var err error
 
-    vmap[0]=make(map[string]uint16,0) // global forward name resolution map
-    vmap[1]=make(map[string]uint16,0) // global forward name resolution map
-    unvmap[0]=make(map[uint16]string,0) // global reverse name resolution map
-    unvmap[1]=make(map[uint16]string,0) // global reverse name resolution map
+    // global forward name resolution map
+    vmap[0]=make(map[string]uint16,0)
 
+    // main func forward name resolution map
+    vmap[1]=make(map[string]uint16,0)
+
+    // global reverse name resolution map
+    unvmap[0]=make(map[uint16]string,0)
+
+    // main func reverse name resolution map
+    unvmap[1]=make(map[uint16]string,0)
+
+    // create identifiers for global and main source caches
     fnlookup.lmset("global",0)
     fnlookup.lmset("main",1)
     numlookup.lmset(0,"global")
     numlookup.lmset(1,"main")
 
+    // reset call stacks for global and main
     calllock.Lock()
-    calltable[0] = call_s{} // reset call stacks for global and main
+    calltable[0] = call_s{}
     calltable[1] = call_s{}
     calllock.Unlock()
 
+    // initialise empty function argument lists for
+    // global and main, as they cannot be called by user.
     farglock.Lock()
-    functionArgs[0].args = []string{} // initialise empty function argument lists for
-    functionArgs[1].args = []string{} // global and main, as they cannot be called by user.
+    functionArgs[0].args = []string{}
+    functionArgs[1].args = []string{}
     farglock.Unlock()
 
-    // setup the funcs in the standard library. this must come before any use of vset()
+    // setup the functions in the standard library.
+    // - this must come before any use of vset()
     buildStandardLib()
 
-    // create lookup list for keywords - this must come before any use of vset()
+    // create lookup list for keywords
+    // - this must come before any use of vset()
     keywordset = make(map[string]struct{})
     for keyword := range completions {
         keywordset[completions[keyword]] = struct{}{}
     }
 
-    // create the struct map
+    // create the structure definition storage area
     structmaps = make(map[string][]string)
 
-    // compile cache for regex operator : @note: usage requires a lock around it
+    // compile cache for regex operator
+    // - usage requires a lock around it
     ifCompileCache = make(map[string]regexp.Regexp)
 
-    // global namespace
+    // global function space setup
     minvar:=functionidents[0]
     if VAR_CAP>minvar { minvar=VAR_CAP }
     vcreatetable(0, &vtable_maxreached, minvar)
-    // vcreatetable(0, &vtable_maxreached)
+
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
@@ -275,10 +343,18 @@ func main() {
     // turn debug mode off
     debug_level = 0
 
-    // run in parent flag
-    vset(0,"@cmdsep",byte(0x1e))        // command output unit separator
-    vset(0,"@runInParent",false)        // if -S opt or /bin/false specified for shell, then run commands in parent
-    vset(0,"@runInWindowsParent",false) // like -S, but insist upon it for Windows executions.
+    // start processing startup flags
+
+    // command output unit separator
+    vset(0,"@cmdsep",byte(0x1e))
+
+    // run in parent - if -S opt or /bin/false specified
+    //  for shell, then run commands in parent
+    vset(0,"@runInParent",false)
+
+    // like -S, but insist upon it for Windows executions.
+    vset(0,"@runInWindowsParent",false)
+
     // set available build info
     vset(0, "@language", "Za")
     vset(0, "@version", BuildVersion)
@@ -290,12 +366,24 @@ func main() {
     vset(0, "@startprompt", promptStringStartup)
     vset(0, "@bashprompt", promptBashlike)
 
+
     // set default behaviours
+
+    // - don't echo logging
     vset(0, "@silentlog", true)
+
+    // - don't show co-proc command progress
     vset(0, "mark_time", false)
+
+    // - name of Za function that handles ctrl-c.
+    vset(0, "trapInt", "")
+
+    // - show user stdin input
     vset(0, "@echo", true)
-    vset(0, "trapInt", "")// name of Za function that handles ctrl-c.
+
+    // - set character that can mask user stdin if enabled
     vset(0, "@echomask", "*")
+
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
@@ -310,31 +398,29 @@ func main() {
     vset(0, "@ct_info", BuildComment)
 
     // arg parsing
-    var a_help          = flag.Bool("h", false, "help page")
-    var a_version       = flag.Bool("v", false, "display the Za version")
-    var a_interactive   = flag.Bool("i", false, "run interactively")
-    var a_debug         = flag.Int("d", 0, "set debug level (0:off)")
-    var a_profile       = flag.Bool("p", false, "enable profiler")
-    var a_trace         = flag.Bool("P", false, "enable trace capture")
-    var a_test          = flag.Bool("t", false, "enable tests")
-    var a_test_file     = flag.String("o", "za_test.out", "set the test output filename")
-    var a_docgen        = flag.Bool("g", false, "enable documentation generator")
-    var a_filename      = flag.String("f", "", "input filename, when present. default is stdin")
-    var a_program       = flag.String("e", "", "program string")
-    var a_program_loop  = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like")
-    var a_program_fs    = flag.String("F", "", "provides a field separator for -r")
-    var a_test_override = flag.String("O", "continue", "test override value")
-    var a_test_group    = flag.String("G", "", "test group filter")
-    var a_time_out      = flag.Int("T", 0, "Co-process command time-out (ms)")
-    var a_mark_time     = flag.Bool("m", false, "Mark co-process command progress")
-    var a_ansi          = flag.Bool("c", false, "disable colour output")
-    var a_ansiForce     = flag.Bool("C", false, "enable colour output")
-    var a_lock_safety   = flag.Bool("l", false, "Enable variable mutex locking for multi-threaded use")
-    var a_shell         = flag.String("s", "", "path to coprocess shell")
-    var a_shellrep      = flag.Bool("Q", false, "enables the shell info reporting")
-    var a_noshell       = flag.Bool("S", false, "disables the coprocess shell")
- //   var a_tryshell      = flag.Bool("x", false, "default to shell evaluation")
-    var a_cmdsep        = flag.Int("U", 0x1e, "Command output separator byte.")
+    var a_help         =   flag.Bool("h",false,"help page")
+    var a_version      =   flag.Bool("v",false,"display the Za version")
+    var a_interactive  =   flag.Bool("i",false,"run interactively")
+    var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
+    var a_profile      =   flag.Bool("p",false,"enable profiler")
+    var a_trace        =   flag.Bool("P",false,"enable trace capture")
+    var a_test         =   flag.Bool("t",false,"enable tests")
+    var a_test_file    = flag.String("o","za_test.out","set the test output filename")
+    var a_filename     = flag.String("f","","input filename, when present. default is stdin")
+    var a_program      = flag.String("e","","program string")
+    var a_program_loop =   flag.Bool("r",false,"wraps a program string in a stdin loop - awk-like")
+    var a_program_fs   = flag.String("F","","provides a field separator for -r")
+    var a_test_override= flag.String("O","continue","test override value")
+    var a_test_group   = flag.String("G","","test group filter")
+    var a_time_out     =    flag.Int("T",0,"Co-process command time-out (ms)")
+    var a_mark_time    =   flag.Bool("m",false,"Mark co-process command progress")
+    var a_ansi         =   flag.Bool("c",false,"disable colour output")
+    var a_ansiForce    =   flag.Bool("C",false,"enable colour output")
+    var a_lock_safety  =   flag.Bool("l",false,"Enable variable mutex locking for multi-threaded use")
+    var a_shell        = flag.String("s","","path to coprocess shell")
+    var a_shellrep     =   flag.Bool("Q",false,"enables the shell info reporting")
+    var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
+    var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte.")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -349,7 +435,7 @@ func main() {
     // prepare ANSI colour mappings
     setupAnsiPalette()
 
-    // safety checks
+    // thread safety checks
     if *a_lock_safety {
         lockSafety = true
     }
@@ -359,7 +445,7 @@ func main() {
         interactive = true
     }
 
-    // filename
+    // source filename
     if *a_filename != "" {
         exec_file_name = *a_filename
     } else {
@@ -370,6 +456,7 @@ func main() {
         }
     }
 
+    // figure out correct source path and execution path
     fpath,_:=filepath.Abs(exec_file_name)
     fdir:=fpath
 
@@ -398,7 +485,7 @@ func main() {
         vset(0,"@cmdsep",byte(*a_cmdsep))
     }
 
-    // max timeout
+    // max co-proc command timeout
     if *a_time_out != 0 {
         MAX_TIO = time.Duration(*a_time_out)
     }
@@ -407,18 +494,11 @@ func main() {
         vset(0, "mark_time", true)
     }
 
-    // debug flag
     if *a_debug != 0 {
         debug_level = *a_debug
     }
 
-    /*
-    if *a_tryshell {
-        tryShell = true
-    }
-    */
-
-    // trace capture
+    // trace capture - not advertised.
     if *a_trace {
         tf, err := os.Create("trace.out")
         if err != nil {
@@ -434,12 +514,13 @@ func main() {
         }()
     }
 
-    // pprof
+    // pprof - not advertised.
     if *a_profile {
         go func() {
             log.Fatalln(http.ListenAndServe("localhost:6060", http.DefaultServeMux))
         }()
     }
+
 
     // test mode
     if *a_test {
@@ -454,6 +535,7 @@ func main() {
     _ = os.Remove(test_output_file)
 
     test_group_filter = *a_test_group
+
 
     // disable the coprocess command
     if *a_noshell {
@@ -472,13 +554,10 @@ func main() {
         default_shell=*a_shell
     }
 
-    // doc gen (deprecated)
-    if *a_docgen {
-        docGen = true
-    }
 
-
+    //
     // Primary activity below
+    //
 
     var data []byte // input buffering
 
@@ -489,8 +568,8 @@ func main() {
 
     vset(0,"@shelltype","")
 
+    // figure out the correct shell to use, with available info.
     if runtime.GOOS!="windows" {
-
         if !no_shell {
             if default_shell=="" {
                 coprocLoc, err = GetCommand("/usr/bin/which bash")
@@ -514,13 +593,16 @@ func main() {
                         }
                     }
                 }
-            } else {
+            } else { // not default shell
                 if !fexists(default_shell) {
                     pf("The chosen shell (%v) does not exist.\n",default_shell)
                     os.Exit(ERR_NOBASH)
                 }
                 coprocLoc=default_shell
                 shellname:=path.Base(coprocLoc)
+                // a few common shells require use of external printf
+                // for separating output using non-printables.
+                // - @todo: we should find a better way than this.
                 if shellname=="dash" || shellname=="ash" || shellname=="sh" {
                     // specify that NextCopper() should use external printf
                     // for generating \x1e (or other cmdsep) in output
@@ -530,8 +612,13 @@ func main() {
         }
 
     } else {
+
+        // windows run-time. requires that commands are sent
+        // individually through cmd.exe.
+        // @note: windows is still an afterthought. this will need much
+        // improvement if we ever take windows seriously.
+
         coprocLoc="C:/Windows/System32/cmd.exe"
-        // should figure out how to populate these properly:
         vset(0,"@noshell",true)
         vset(0,"@os","windows")
         vset(0, "@zsh_version", "")
@@ -574,6 +661,7 @@ func main() {
 
     // initialise parser used by the interpolate function
     interparse=&leparser{}
+
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
@@ -631,7 +719,8 @@ func main() {
                     // evaluate args
                     var argnames []string
 
-                    // populate inbound parameters to the za function call, with evaluated versions of each.
+                    // populate inbound parameters to the za function
+                    // call, with evaluated versions of each.
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
@@ -652,7 +741,13 @@ func main() {
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
                 currentModule="main"
-                calltable[loc] = call_s{fs: id, base: lmv, caller: globalaccess, callline: 0,retvar: "@#"}
+                calltable[loc] = call_s{
+                    fs: id,
+                    base: lmv,
+                    caller: globalaccess,
+                    callline: 0,
+                    retvar: "@#",
+                }
                 calllock.Unlock()
 
                 // execute call
@@ -663,7 +758,6 @@ func main() {
                     switch sigintreturn.(type) {
                     case int:
                     default:
-                        // pf("User interrupt handler must return an int or nothing!\n")
                         finish(true,124)
                     }
                     if sigintreturn.(int)!=0 {
@@ -681,19 +775,24 @@ func main() {
     var cop string
 
     // @note:
-    // some explanation is required here...
-    // there are two "global" concepts here. First, there is an internal global space, which is used for storing
-    // run-time state that may be needed by the standard library or the language itself.
-    // This global is always at index 0.
-    // Second, there is a user global. This one can potentially float around. It represents where global variables 
-    // are stored by a running za program. It will generally be at index 1 or 2.
-    // Where it is depends on if we are in interactive mode or not. 
-    // This is not very elegant, but then, nothing about this whole thing is! :)
-    // globals with a '@' sign are considered as nominally constant. The @ sign is not available to users in identifiers.
-    // however, the standard library functions may modify their values if needed.
+    // some explanation is required here..
 
-    // @note:
-    //  all of these Copper() calls need reworking to use internal info where possible. 
+    // There are two "global" concepts here. First, there is an internal
+    //  global space, which is used for storing run-time state that may 
+    //  be needed by the standard library or the language itself. This global
+    //  is always at index 0.
+
+    // Second, there is a user global. This one can potentially float around.
+    //  It represents where global variables are stored by a running Za 
+    //  program. It will generally be at index 1 or 2. Where it is depends
+    //  on if we are in interactive mode or not. 
+
+    // This is not very elegant, but then, nothing about this whole thing is!
+
+    // Globals starting with a '@' sign are considered as nominally constant.
+    //  However, the standard library functions may modify their values
+    //  if needed.
+
 
     // static globals from bash
     if runtime.GOOS!="windows" {
@@ -727,10 +826,14 @@ func main() {
         vset(0, "@release_name", "unknown")
         vset(0, "@release_version", "unknown")
 
+        // @todo: these ones *really* need re-doing. should not be calling
+        // grep/cut however common they are. i was just being lazy. we can
+        // do all of the work involved with stuff already available.
+
         if runtime.GOOS=="linux" {
-            tmp, _ = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true) // e.g. "Debian GNU/Linux"
+            tmp, _ = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true)
             vset(0, "@release_name", stripOuterQuotes(tmp, 1))
-            tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true) // e.g. "9"
+            tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true)
             vset(0, "@release_version", stripOuterQuotes(tmp, 1))
         }
 
@@ -743,7 +846,7 @@ func main() {
         }
         vset(0, "@release_version", vtmp)
 
-        tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true) // e.g. "debian"
+        tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true)
 
         // special cases for release id:
 
@@ -763,12 +866,11 @@ func main() {
 
         vset(0, "@release_id", tmp)
 
-
         // further globals from bash
         h, _ := os.Hostname()
         vset(0, "@hostname", h)
 
-    } // if not windows
+    } // endif not windows
 
     // special case: aliases in bash
     if shelltype=="bash" {
@@ -779,7 +881,6 @@ func main() {
         testStart(exec_file_name)
         defer testExit()
     }
-
 
     // reset counters:
     depth[globalspace] = 0
@@ -810,7 +911,6 @@ func main() {
 
         // state control
         endFunc := false
-        // breakOut:=Error
 
         curHist = 0
         lastHist = 0
@@ -865,7 +965,7 @@ func main() {
                 at(row, col)
 
                 if input == "\n" {
-                    break // continue
+                    break
                 }
                 input += "\n"
 
@@ -877,6 +977,7 @@ func main() {
                 breakOnCommand:=false
                 tokenIfPresent:=false
                 tokenOnPresent:=false
+
                 for p := 0; p < len(input);  {
                     t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
                     temptok = t.tokType
@@ -885,8 +986,10 @@ func main() {
                     }
                     if t.tokType==C_If    { tokenIfPresent=true }
                     if t.tokType==C_On    { tokenOnPresent=true }
+
                     // this is hardly fool-proof, but okay for now:
                     if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
+
                     switch t.tokType {
                     // adders
                     case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
@@ -904,7 +1007,6 @@ func main() {
             }
 
             if eof || broken { break }
-
 
             // submit input
 
@@ -932,12 +1034,6 @@ func main() {
     row,col=GetCursorPos()
     if runtime.GOOS=="windows" { row++ ; col++ }
 
-    // function spaces:
-    //
-    // global space is named 'global'
-    // main (entry point) function space is named 'main'
-    // defined functions are named according to their function name
-
     // if not in interactive mode, then get input from either file or stdin:
     if *a_program=="" {
         if exec_file_name != "" && exec_file_name != "-" {
@@ -962,6 +1058,7 @@ func main() {
         }
     }
 
+    // awk-like mode
     if *a_program_loop {
         s:= `NL=0` + "\n" +
             `foreach _line in read_file("/dev/stdin")` + "\n" +
@@ -974,7 +1071,6 @@ func main() {
         s += "\n" + *a_program + "\nendfor\n"
         *a_program=s
     }
-
 
     // source the program
     var input string
