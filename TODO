@@ -7,6 +7,11 @@ BUGS
 LATER / UNDECIDED
 -----------------
 
+*TODO*  automate setting of lockSafety flag, when:
+        * web service active
+        * async call active
+        * any other form of concurrency active
+
 *TODO*  remove deprecated features and options (startup options, dead code, unused funcs)
 
 *TODO*  library function name review (for consistency)

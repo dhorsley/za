@@ -2,7 +2,6 @@
 
 define runFilter(s,v)
     f=filter(s,v,-1)
-    # f=s ~f v
     println "filter [{v}] done."
     return format("%s %d", v, len(f))
 enddef

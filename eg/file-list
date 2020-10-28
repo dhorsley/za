@@ -25,6 +25,6 @@ w1 = words ?> "# ~ `^z` and #.len>4"
 println w1,"\n"
 
 println "mapped to upper then drop apostrophes and lose front and back char and get unique words:"
-println ( w1 -> `upper(#)` -> `#.tr("d","'")` -> "#[1:#.len-1]" ).uniq ,"\n"
+println ( w1 -> "upper(#)" -> `#.tr("d","'")` -> "#[1:#.len-1]" ).uniq ,"\n"
 
 

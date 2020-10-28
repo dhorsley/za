@@ -13,8 +13,7 @@ gridstyle           = `stroke:yellow;`
 # create an image file
 h=svg_start(loc,500,500)
 if h==nil
-    println "Invalid handle."
-    exit 1
+    exit 1, "Invalid handle."
 endif
 
 # meta tags

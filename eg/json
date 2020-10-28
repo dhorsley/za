@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 doc : test program for json handling
-doc :   this script will traverse a json file content
+doc :   this script will traverse json file content
 doc :    and colourise the content by depth
 
 
@@ -24,7 +24,7 @@ define pp(k,i,d)
     # set colour depth
     print "[#"+string((d+1)%7)+"]"
 
-    if kind(i) ~ `^map\[`
+    if i.kind ~ `^map\[`
         # map
         heading(k,d)
         foreach si in i
@@ -32,7 +32,7 @@ define pp(k,i,d)
         endfor 
     endif
 
-    if kind(i) ~ `^\[map`
+    if i.kind ~ `^\[map`
         # array of map
         heading(k,d)
         foreach si in i[0]
@@ -40,7 +40,7 @@ define pp(k,i,d)
         endfor
     endif
 
-    if kind(i) ~ `\[\]`
+    if i.kind ~ `\[\]`
         # array
         heading("[arr] "+k,d)
         if len(i)>0
@@ -50,7 +50,7 @@ define pp(k,i,d)
         endif
     endif
 
-    if ! kind(i) ~ `\[`
+    if ! i.kind ~ `\[`
         # value
         value(k,i,d)
     endif
@@ -65,8 +65,7 @@ enddef
 
 f=read_file("json-test.json")
 if f==nil
-    println "Error: could not read JSON file."
-    exit 1
+    exit 1,"Error: could not read JSON file."
 endif
 
 json=json_decode(f)

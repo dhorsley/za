@@ -12,14 +12,6 @@ define handlebreak(e)
     exit e
 enddef
 
-# does list 'hay' contain 'needle'?
-define has(hay,needle)
-    foreach straw in hay
-        on straw==needle do return true
-    endfor
-    return false
-enddef
-
 # find key in previous file list which matches 'n'
 define lookup_old(conf,n)
     foreach straw in conf.prev
