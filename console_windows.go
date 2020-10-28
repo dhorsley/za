@@ -167,6 +167,7 @@ func setupAnsiPalette() {
         fairydust["i0"] = "\033[23m"
         fairydust["default"] = "\033[0m"
         fairydust["underline"] = "\033[4m"
+        fairydust["ul"] = "\033[4m"
         fairydust["invert"] = "\033[7m"
         fairydust["bold"] = "\033[1m"
         fairydust["boff"] = "\033[22m"
@@ -225,7 +226,7 @@ func setupAnsiPalette() {
 
     } else {
         var ansiCodeList=[]string{"b0","b1","b2","b3","b4","b5","b6","b7","0","1","2","3","4","5","6","7","i1","i0",
-                "default","underline","invert","bold","boff","-","#","bdefault","bblack","bred",
+                "default","underline","ul","invert","bold","boff","-","#","bdefault","bblack","bred",
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
                 "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",

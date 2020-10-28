@@ -1,8 +1,8 @@
 " za syntax file
-" Language:		za (za)
-" Maintainer:	Daniel Horsley  <dhorsley@gmail.com>
-" Last Change:	June 13, 2020
-" Version:		6
+" Language:     za (za)
+" Maintainer:   Daniel Horsley  <dhorsley@gmail.com>
+" Last Change:  Oct 28, 2020
+" Version:      7
 
 " Version control
 
@@ -26,37 +26,34 @@ set bg&
 
 " Operators: {{{1
 " ==========
-syn match   Operator	"<<\|>>"		contained
-syn match   Operator	"[!&;|]"		contained
-syn match   Operator	"\[[[^:]\|\]]"		contained
+syn match   Operator    "<<\|>>"        contained
+syn match   Operator    "[!&;|]"        contained
+syn match   Operator    "\[[[^:]\|\]]"  contained
 
 
 " Misc: {{{1
 "======
 syn match   WrapLineOperator "\\$"
-" syn match   Escape	contained	'\%(^\)\@!\%(\\\\\)*\\.'
 
-syn match   Colon	'^\s*\zs:'
+syn match   Colon   '^\s*\zs:'
 
 
 " String And Character Constants: {{{1
 "================================
-syn match   Number	"\<\d\+\>#\="
-syn match   Number	"-\=\.\=\d\+\>#\="
-" syn match   CtrlSeq	"\\\d\d\d\|\\[\\abcfnrtv0]"		contained
-" syn match   CtrlSeq  contained "\\\([4-9]\d\|[0-3]\d\d\|[\"\\'ntbrf]\|u\x\{4\}\)"
+syn match   Number  "\<\d\+\>#\="
+syn match   Number  "-\=\.\=\d\+\>#\="
 
 " Comments: {{{1
 "==========
-syn match	Comment		"^\s*\zs#.*$"	contains=@CommentGroup
-syn match	Comment		"\s\zs#.*$"	    contains=@CommentGroup
-syn match	Comment		"^\s*\zs//.*$"	contains=@CommentGroup
-syn match	Comment		"\s\zs//.*$"	contains=@CommentGroup
+syn match   Comment     "^\s*\zs#.*$"   contains=@CommentGroup
+syn match   Comment     "\s\zs#.*$"     contains=@CommentGroup
+syn match   Comment     "^\s*\zs//.*$"  contains=@CommentGroup
+syn match   Comment     "\s\zs//.*$"    contains=@CommentGroup
 
 " Identifiers: {{{1
 "=============
 syn match   folVarRHS           "{[\~#\&]\=[[:alnum:]_]\{-}}"hs=s+1,he=e-1
-syn keyword assignStatements    var setglob input nextgroup=folVarLHS skipwhite
+syn keyword assignStatements    init var setglob input nextgroup=folVarLHS skipwhite
 syn match   folVarLHS           '\i\+' contained
 
 " Functions: {{{1
@@ -356,9 +353,9 @@ syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|loud\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\|pane\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(foreach\|version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"
@@ -367,49 +364,48 @@ syntax match statements "\(^\|\s\+\)\(accessfile\|showstruct\)\($\|\s\+\)"
 
 " Color Matching {{{1
 " ===============
-syntax match colour_b0 "\[#b0\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b1 "\[#b1\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b2 "\[#b2\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b3 "\[#b3\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b4 "\[#b4\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b5 "\[#b5\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b6 "\[#b6\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b7 "\[#b7\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b0 "\[#bblack\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b1 "\[#bblue\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b2 "\[#bred\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b3 "\[#bmagenta\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b4 "\[#bgreen\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b5 "\[#bcyan\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b6 "\[#byellow\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_b7 "\[#bwhite\]"hs=s+1,he=e-1 containedin=DoubleQuote
+syntax match colour_b0 "\[#b0\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b1 "\[#b1\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b2 "\[#b2\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b3 "\[#b3\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b4 "\[#b4\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b5 "\[#b5\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b6 "\[#b6\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b7 "\[#b7\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b0 "\[#bblack\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b1 "\[#bblue\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b2 "\[#bred\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b3 "\[#bmagenta\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b4 "\[#bgreen\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b5 "\[#bcyan\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b6 "\[#byellow\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_b7 "\[#bwhite\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 
-syntax match colour_f0 "\[#0\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f1 "\[#1\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f2 "\[#2\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f3 "\[#3\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f4 "\[#4\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f5 "\[#5\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f6 "\[#6\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f7 "\[#7\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f0 "\[#black\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f1 "\[#blue\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f2 "\[#red\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f3 "\[#magenta\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f4 "\[#green\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f5 "\[#cyan\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f6 "\[#yellow\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_f7 "\[#white\]"hs=s+1,he=e-1 containedin=DoubleQuote
+syntax match colour_f0 "\[#0\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f1 "\[#1\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f2 "\[#2\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f3 "\[#3\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f4 "\[#4\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f5 "\[#5\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f6 "\[#6\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f7 "\[#7\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f0 "\[#black\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f1 "\[#blue\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f2 "\[#red\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f3 "\[#magenta\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f4 "\[#green\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f5 "\[#cyan\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f6 "\[#yellow\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f7 "\[#white\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 
-syntax match colour_normal "\[##\]"hs=s+1,he=e-1 containedin=DoubleQuote
-syntax match colour_normal "\[#-\]"hs=s+1,he=e-1 containedin=DoubleQuote
+syntax match colour_normal "\[##\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_normal "\[#-\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 
 " Quoting: {{{1
 " ========
-syn match   cSpecial    display contained "\\\(x\x\+\|\o\{1,3}\|.\|$\)" containedin=DoubleQuote
+syn match   cSpecial    display contained "\\\(x\x\+\|\o\{1,3}\|.\|$\)" containedin=DoubleQuote,BacktkQuote
 syn region  DoubleQuote   start=+L\="+ skip=+\\\\\|\\"+ end=+"+ extend
-" syntax region DoubleQuote start=/\v"/ skip=+\\['"]+ end=/\v"/
-" syntax region DoubleQuote start=/\v`/ skip=+\\[`]+ end=/\v`/
+syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Extra Bracing: {{{1
 " ===================
@@ -419,29 +415,12 @@ syntax region sqBrace transparent start=/\v\[/ skip=+\\[\]]+ end=/\v\]/
 " Clusters: contains=@... clusters: {{{1
 "==================================
 syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,udf_functions
-" syn cluster ArithParenList  contains=Arithmetic,Comment,Escape,Number,Operator,SingleQuote,Variable,CtrlSeq,Special,Paren,Functions
 syn cluster ArithParenList  contains=Arithmetic,Comment,Number,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
 " =====================================
 syn region Paren start='[^$]\zs(\%(\ze[^(]\|$\)' end=')' contains=@ArithParenList
 
-
-" Unused: {{{1
-" =======
-" syntax region beMatches matchgroup=beMatchFor    start="\<foreach\|for\>" end="\<endfor\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchWith   start="\<with\>" end="\<endwith\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchWhen   start="\<when\>" end="\<endwhen\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchIf     start="\<if\>" end="\<endif\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchDefine start="\<define\>" end="\<enddef\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchWhile  start="\<while\>" end="\<endwhile\>" contains=ALL
-" syntax region beMatches matchgroup=beMatchTest   start="\<test\>" end="\<endtest\>" contains=ALL
-" hi beMatchFor cterm=bold ctermfg=yellow ctermbg=black
-" hi beMatchWhen cterm=bold ctermfg=yellow ctermbg=black
-" hi beMatchIf cterm=bold ctermfg=yellow ctermbg=black
-" hi beMatchDefine cterm=bold ctermfg=yellow ctermbg=black
-" hi beMatchWhile cterm=bold ctermfg=yellow ctermbg=black
-" hi beMatchTest cterm=bold ctermfg=yellow ctermbg=black
 
 " Synchronization: {{{1
 " ================
@@ -460,20 +439,21 @@ hi def link folVarGroup     colfolident
 
 " Default Highlighting: {{{1
 " =====================
-hi def link CaseDoubleQuote	DoubleQuote
-hi def link Quote	Operator
-hi def link CaseSingleQuote	SingleQuote
-hi def link Colon	Comment
-hi def link DoubleQuote	String
-hi def link Loop	statements
-hi def link NoQuote	DoubleQuote
-hi def link Pattern	String
-hi def link Paren	Arithmetic
-hi def link QuickComment	Comment
-hi def link Range	Operator
-hi def link SingleQuote	String
-hi def link SubShRegion	Operator
-hi def link WrapLineOperator	Operator
+"hi def link CaseDoubleQuote DoubleQuote
+hi def link Quote   Operator
+"hi def link CaseSingleQuote SingleQuote
+hi def link Colon   Comment
+hi def link DoubleQuote String
+hi def link BacktkQuote String
+hi def link Loop    statements
+hi def link NoQuote DoubleQuote
+hi def link Pattern String
+hi def link Paren   Arithmetic
+hi def link QuickComment    Comment
+hi def link Range   Operator
+hi def link SingleQuote String
+hi def link SubShRegion Operator
+hi def link WrapLineOperator    Operator
 hi def link time_functions functionlist
 hi def link list_functions functionlist
 hi def link conversion_functions functionlist
@@ -490,22 +470,21 @@ hi def link image_functions functionlist
 hi def link udf_functions userfunctionlist
 
 if !exists("g:sh_no_error")
- hi def link CondError		Error
- hi def link WhenError		Error
- hi def link IfError		Error
- hi def link InError		Error
+ hi def link CondError      Error
+ hi def link WhenError      Error
+ hi def link IfError        Error
+ hi def link InError        Error
 endif
 
-hi def link Arithmetic		    Special
-hi def link SnglCase		    statements
-hi def link Comment		        comment 
-hi def link Conditional	    	Conditional
-hi def link CtrlSeq		        Special
-hi def link ExprRegion	    	Delimiter
-hi def link Operator		    Operator
-hi def link Set		            statements
-hi def link assignStatements	statements
-hi def link StringLiteral		String
+hi def link Arithmetic          Special
+hi def link Comment             comment 
+hi def link Conditional         Conditional
+hi def link CtrlSeq             Special
+hi def link ExprRegion          Delimiter
+hi def link Operator            Operator
+hi def link Set                 statements
+hi def link assignStatements    statements
+hi def link StringLiteral       String
 hi def link folBash             colfolbash
 
 hi def link sqBrace MatchParen

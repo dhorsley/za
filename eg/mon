@@ -651,8 +651,7 @@ endif
 
 ct=clktck()
 if ct==0
-    println "Could not find clock ticks."
-    exit 1
+    exit 1, "Could not find clock ticks."
 endif
 
 cls

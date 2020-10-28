@@ -159,8 +159,7 @@ ipListRefreshCount=ipListRefreshMaxCount
 
 tmp=|mktemp
 if last()>0
-    println "Could not make a temporary file."
-    exit 1
+    exit 1, "Could not make a temporary file."
 endif
 
 region="eu-west-1"
