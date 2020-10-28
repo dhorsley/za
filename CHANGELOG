@@ -21,6 +21,21 @@ CHANGE LOG
                 alternative were just too wordy... and yes, I know we have CONTAINS, but
                 that one is up for barter too.
 
+        * added zip() and scan_left() list library functions.
+            - zip accepts arrays of bool, uint, int, float64, string and mixed (interface type)
+            - scan_left (currently) accepts int and float64
+            - zip will interleave the elements of two arrays
+            - scan_left performs a cumulative operation against each element of an array, with the resulting
+                value pushed into a new array. a seed value can be set to use against the head element.
+
+        * added "t" (translate) mode for tr() call. it is still nowhere near as useful as the full tr tool, but
+            it covers most basic requirements. still could do with a negation and upper/lower option.
+
+        * added ternary (query) operator:
+            - syntax: ?? expr true_expr false_expr
+            -   i.e.: ?? (ternary if) expr (then) true_expr (else) false_expr
+            - see eg/nestdepth for example in near functional style
+
         * added s..e operator for generating an array range. value types of expressions
             s and e must match each other, and the generated range is of the same value type.
 

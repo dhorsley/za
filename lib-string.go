@@ -16,10 +16,10 @@ const ( // tr_actions
     COPY int = iota
     DELETE
     SQUEEZE
-    // TRANSLATE // not required, can be done several other ways
+    TRANSLATE
 )
 
-func tr(s string, action int, cases string) string {
+func tr(s string, action int, cases string, xlates string) string {
 
     original := []byte(s)
     var lastChar byte
@@ -37,6 +37,13 @@ func tr(s string, action int, cases string) string {
         }
 
         switch action {
+        case TRANSLATE:
+            // get strpos in cases, append to new string xlates[strpos]
+            if p:=str.IndexByte(cases, v); p != -1 {
+                newStr.WriteString(string(xlates[p]))
+            } else {
+                newStr.WriteString(string(v))
+            }
         case DELETE:
             // copy to new string if not found in delete list
             if str.IndexByte(cases, v) == -1 {
@@ -251,23 +258,28 @@ func buildStringLib() {
         return sat(args[0].(int),args[1].(int)), nil
     }
 
-    slhelp["tr"] = LibHelp{in: "string,action,case_string", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0].`}
+    slhelp["tr"] = LibHelp{in: "string,action,case_string[,translation_string]", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]. translate (action "t") can be used, along with the optional [#i1]translation_string[#i0] to specify direct replacements for existing characters. Please note: this is a very restricted subset of the tr tool.`}
     stdlib["tr"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) != 3 {
+        if len(args) < 3 || len(args)>4 {
             return "", errors.New("Bad arguments to tr()")
+        }
+        translations:=""
+        if len(args)==4 {
+            translations=args[3].(string)
         }
         if reflect.TypeOf(args[0]).Name() != "string" || reflect.TypeOf(args[1]).Name() != "string" || reflect.TypeOf(args[2]).Name() != "string" {
             return "", errors.New("Bad arguments to tr()")
         }
-        action := COPY
         if args[1].(string) == "d" {
-            action = DELETE
+            return tr(args[0].(string), DELETE, args[2].(string), translations), nil
         }
         if args[1].(string) == "s" {
-            action = SQUEEZE
+            return tr(args[0].(string), SQUEEZE, args[2].(string), translations), nil
         }
-        cases := args[2].(string)
-        return tr(args[0].(string), action, cases), nil
+        if args[1].(string) == "t" {
+            return tr(args[0].(string), TRANSLATE, args[2].(string), translations), nil
+        }
+        return tr(args[0].(string), COPY, args[2].(string), translations), nil
     }
 
 	slhelp["addansi"] = LibHelp{in: "string", out: "ansi_string", action: "Return a string with za colour codes replaced with ANSI values."}
@@ -641,7 +653,7 @@ func buildStringLib() {
         if sf("%T",args[0])!="string" {
             return "",errors.New("Bad args (type) in collapse()")
         }
-        return str.TrimSpace(tr(str.Replace(args[0].(string), "\n", " ",-1),SQUEEZE," ")),nil
+        return str.TrimSpace(tr(str.Replace(args[0].(string), "\n", " ",-1),SQUEEZE," ","")),nil
     }
 
 

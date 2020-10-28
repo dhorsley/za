@@ -1,0 +1,27 @@
+#!/usr/bin/za
+
+define maxParenDepth(s)
+
+    # ~f filters regex matches to array
+    # -> maps
+    # ?? (ternary if) expr (then) true_expr (else) false_expr
+    #  # current value in map iteration
+    # list_int() converts a list to []int
+    # scan_left() accumulates from a seed value
+    # max returns highest number in array
+
+    return (
+     (
+     s ~f "[()]" 
+      -> "?? #==`(` `1` `-1`"
+     )
+     .list_int
+     .scan_left("+",0)
+     .max
+    )
+
+enddef
+
+input expression param 1
+println expression.string.maxParenDepth
+
