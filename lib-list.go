@@ -18,6 +18,7 @@ import (
     "regexp"
     "sort"
     str "strings"
+    "strconv"
 )
 
 type sortStructInt struct {
@@ -104,6 +105,191 @@ func buildListLib() {
         "append", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "concat", "esplit", "min", "max", "avg",
         "empty", "list_string", "list_float", "list_int","numcomp",
+        "scan_left","zip",
+    }
+
+    slhelp["scan_left"] = LibHelp{in: "numeric_list,op_string,start_seed", out: "list", action: "Creates a list from the intermediary values of processing [#i1]op_string[#i0] while iterating over [#i1]list[#i0]."}
+    stdlib["scan_left"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+
+        if len(args) != 3 {
+            return nil, errors.New("Incorrect argument count for scan_left()")
+        }
+
+        var op_string string
+        switch args[1].(type) {
+        case string:
+            op_string=args[1].(string)
+        default:
+            return nil, errors.New("operator must be a string")
+        }
+
+        var reduceparser *leparser
+        reduceparser=&leparser{}
+
+        switch args[0].(type) {
+        case []int:
+            var seed int
+            switch args[2].(type) {
+            case int:
+                seed=args[2].(int)
+            default:
+                return nil, errors.New("seed must be an int")
+            }
+            var new_list []interface{}
+            for q:=range args[0].([]int) {
+                expr:=strconv.Itoa(seed)+op_string+strconv.Itoa(args[0].([]int)[q])
+                res,err:=ev(reduceparser,evalfs,expr)
+                if err!=nil {
+                    return nil,errors.New("could not process list")
+                }
+                seed=res.(int)
+                new_list=append(new_list,res.(int))
+            }
+            return new_list,nil
+
+        case []float64:
+            var seed float64
+            switch args[2].(type) {
+            case float64:
+                seed=args[2].(float64)
+            default:
+                return nil, errors.New("seed must be a float64")
+            }
+            var new_list []interface{}
+            for q:=range args[0].([]float64) {
+                expr:=strconv.FormatFloat(seed,'f',-1,64)+op_string+strconv.FormatFloat(args[0].([]float64)[q],'f',-1,64)
+                res,err:=ev(reduceparser,evalfs,expr)
+                if err!=nil {
+                    return nil,errors.New("could not process list")
+                }
+                seed=res.(float64)
+                new_list=append(new_list,res.(float64))
+            }
+            return new_list,nil
+
+        default:
+            return nil,errors.New("unknown list type")
+        }
+
+    }
+
+    slhelp["zip"] = LibHelp{in: "list1,list2", out: "list", action: "Creates a list by combining each element of [#i1]list1[#i0] and [#i1]list2[#i0]."}
+    stdlib["zip"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+
+        if len(args) != 2 {
+            return nil, errors.New("Incorrect argument count for zip()")
+        }
+
+        switch args[0].(type) {
+        case []interface{},[]bool,[]uint,[]int,[]float64,[]string:
+        default:
+            return nil,errors.New(sf("could not process list1 of type %T in zip()",args[0]))
+        }
+
+        switch args[1].(type) {
+        case []interface{},[]bool,[]uint,[]int,[]float64,[]string:
+        default:
+            return nil,errors.New(sf("could not process list2 of type %T in zip()",args[1]))
+        }
+
+        if sf("%T",args[0]) != sf("%T",args[1]) {
+            return nil,errors.New(sf("lists must be of equal types in zip()"))
+        }
+
+        switch args[0].(type) {
+        case []bool:
+            mx:=max_int([]int{len(args[0].([]bool)),len(args[1].([]bool))})
+            var new_list []bool
+            for q:=0; q<mx; q++ {
+                var a bool
+                var b bool
+                if q<len(args[0].([]bool)) {
+                    a=args[0].([]bool)[q]
+                }
+                if q<len(args[1].([]bool)) {
+                    b=args[1].([]bool)[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        case []int:
+            mx:=max_int([]int{len(args[0].([]int)),len(args[1].([]int))})
+            var new_list []int
+            for q:=0; q<mx; q++ {
+                var a int
+                var b int
+                if q<len(args[0].([]int)) {
+                    a=args[0].([]int)[q]
+                }
+                if q<len(args[1].([]int)) {
+                    b=args[1].([]int)[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        case []uint:
+            mx:=max_int([]int{len(args[0].([]uint)),len(args[1].([]uint))})
+            var new_list []uint
+            for q:=0; q<mx; q++ {
+                var a uint
+                var b uint
+                if q<len(args[0].([]uint)) {
+                    a=args[0].([]uint)[q]
+                }
+                if q<len(args[1].([]uint)) {
+                    b=args[1].([]uint)[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        case []float64:
+            mx:=max_int([]int{len(args[0].([]float64)),len(args[1].([]float64))})
+            var new_list []float64
+            for q:=0; q<mx; q++ {
+                var a float64
+                var b float64
+                if q<len(args[0].([]float64)) {
+                    a=args[0].([]float64)[q]
+                }
+                if q<len(args[1].([]float64)) {
+                    b=args[1].([]float64)[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        case []string:
+            mx:=max_int([]int{len(args[0].([]string)),len(args[1].([]string))})
+            var new_list []string
+            for q:=0; q<mx; q++ {
+                var a string
+                var b string
+                if q<len(args[0].([]string)) {
+                    a=args[0].([]string)[q]
+                }
+                if q<len(args[1].([]string)) {
+                    b=args[1].([]string)[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        case []interface{}:
+            mx:=max_int([]int{len(args[0].([]interface{})),len(args[1].([]interface{}))})
+            var new_list []interface{}
+            for q:=0; q<mx; q++ {
+                var a interface{}
+                var b interface{}
+                if q<len(args[0].([]interface{})) {
+                    a=args[0].([]interface{})[q]
+                }
+                if q<len(args[1].([]interface{})) {
+                    b=args[1].([]interface{})[q]
+                }
+                new_list=append(new_list,a,b)
+            }
+            return new_list,nil
+        }
+
+    return nil,errors.New("unspecified error in zip()")
     }
 
     slhelp["numcomp"] = LibHelp{in: "val_a,val_b", out: "bool", action: "Is a<b? [#i1]val_a[#i0] and [#i1]val_b[#i0] are string-convertable types of human readable numbers (with optional SI unit abbreviations in strings)."}

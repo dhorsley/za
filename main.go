@@ -841,7 +841,7 @@ func main() {
 
         // case 1: centos/other non-semantic expansion
         vtmp, _ := vget(0, "@release_version")
-        if tr(vtmp.(string),DELETE,"0123456789.")=="" && !str.ContainsAny(vtmp.(string), ".") {
+        if tr(vtmp.(string),DELETE,"0123456789.","")=="" && !str.ContainsAny(vtmp.(string), ".") {
             vtmp = vtmp.(string) + ".0"
         }
         vset(0, "@release_version", vtmp)
