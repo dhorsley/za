@@ -11,14 +11,14 @@ doc `
 define show_help()
     at 1,1; print "Commands:"
     at 2,1; print "help, echo, quit"
-enddef
+end
 
 define clear(r1,r2,c)
     for e=r1 to r2
         clear_line(e,1)
     endfor
     at r1,1
-enddef
+end
 
 define process(i)
 
@@ -51,7 +51,7 @@ define process(i)
         | {i}
     endwhen
 
-enddef
+end
 
 
 #

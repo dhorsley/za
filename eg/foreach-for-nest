@@ -28,7 +28,7 @@ define f()
     endfor
   endfor
 
-enddef
+end
 
 f()
 

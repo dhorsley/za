@@ -18,7 +18,7 @@ else
     exit 1,"File not found. ({testfile})"
 endif
 
-println len(words)
+println words.len
 
 println "starting with z and len > 4:"
 w1 = words ?> "# ~ `^z` and #.len>4"

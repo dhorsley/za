@@ -40,7 +40,7 @@ define offsetmomentum()
     bi[vz] = -pz / solarMass
     setglob b[0]=bi
 
-enddef
+end
 
 
 define energy()
@@ -56,7 +56,7 @@ define energy()
         endfor
     endfor
     return e
-enddef
+end
 
 `
 define advance(dt)
@@ -106,7 +106,7 @@ define advance(dt)
         setglob b[i]=bi
     endfor
 
-enddef
+end
 `
 
 #

@@ -9,7 +9,7 @@ define show()
         *p=rand(50)
         println "changed to : ",e, " ", z[e], " -> ", *p
     endfor
-enddef
+end
 
 struct s_demo
     a bool

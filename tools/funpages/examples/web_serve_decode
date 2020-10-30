@@ -10,5 +10,5 @@ define dynamic_request(call)
 
     # ... rest of request handler
 
-enddef
+end
 

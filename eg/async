@@ -5,11 +5,10 @@ define q(val)
     println val
     pause delay*1000
     return string(val)
-enddef
+end
 
 # MAIN
 
-locks(true)
 coproc(false)
 
 println "Spinning async tasks"

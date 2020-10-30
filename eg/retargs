@@ -3,23 +3,23 @@
 
 define z()
     return
-enddef
+end
 
 define a()
     return 10+0
-enddef
+end
 
 define b()
     return 5+pi()
-enddef
+end
 
 define c()
     return 10,(20),("thirty"+" twelve"),20/2*3+(1+2)
-enddef
+end
 
 define d()
     return a(),b(),a()+b(),(c())
-enddef
+end
 
 println "z -> ",z()
 println "a -> ",a()

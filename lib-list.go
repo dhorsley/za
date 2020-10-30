@@ -135,7 +135,7 @@ func buildListLib() {
             default:
                 return nil, errors.New("seed must be an int")
             }
-            var new_list []interface{}
+            var new_list []int
             for q:=range args[0].([]int) {
                 expr:=strconv.Itoa(seed)+op_string+strconv.Itoa(args[0].([]int)[q])
                 res,err:=ev(reduceparser,evalfs,expr)
@@ -155,7 +155,7 @@ func buildListLib() {
             default:
                 return nil, errors.New("seed must be a float64")
             }
-            var new_list []interface{}
+            var new_list []float64
             for q:=range args[0].([]float64) {
                 expr:=strconv.FormatFloat(seed,'f',-1,64)+op_string+strconv.FormatFloat(args[0].([]float64)[q],'f',-1,64)
                 res,err:=ev(reduceparser,evalfs,expr)
@@ -164,6 +164,43 @@ func buildListLib() {
                 }
                 seed=res.(float64)
                 new_list=append(new_list,res.(float64))
+            }
+            return new_list,nil
+
+        case []interface{}:
+            var seed interface{}
+            var ok bool
+            switch args[2].(type) {
+            case string,uint,int:
+                seed,ok=GetAsFloat(args[2])
+                if !ok {
+                    return nil,errors.New("could not convert seed")
+                }
+            case float64:
+                seed=args[2].(float64)
+            default:
+                return nil, errors.New("unknown seed type")
+            }
+            var new_list []interface{}
+            switch args[0].(type) {
+            case []float64:
+                for q:=range args[0].([]interface{}) {
+                    gf,ok:=GetAsFloat(seed)
+                    if !ok {
+                        return nil,errors.New("bad seed")
+                    }
+                    gf2,ok:=GetAsFloat(args[0].([]interface{})[q])
+                    if !ok {
+                        return nil,errors.New("bad element")
+                    }
+                    expr:=strconv.FormatFloat(gf,'f',-1,64)+op_string+strconv.FormatFloat(gf2,'f',-1,64)
+                    res,err:=ev(reduceparser,evalfs,expr)
+                    if err!=nil {
+                        return nil,errors.New("could not process list")
+                    }
+                    seed=res
+                    new_list=append(new_list,res)
+                }
             }
             return new_list,nil
 

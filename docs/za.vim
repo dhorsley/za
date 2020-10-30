@@ -355,7 +355,7 @@ syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(end\|and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"

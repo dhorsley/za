@@ -1,7 +1,7 @@
 
 define gval()
     return "this is a test"
-enddef
+end
 
 println "* ",gval().tokens.tokens
 println "# ",gval().tokens.types

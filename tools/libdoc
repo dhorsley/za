@@ -53,7 +53,7 @@ define clean(s)
         s=replace(s,key_c,c)
     endfor
     return s
-enddef
+end
 
 # main
 

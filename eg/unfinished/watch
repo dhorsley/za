@@ -167,7 +167,7 @@ define check_dir(conf,d)
     conf.starting=false
     conf.prev=file_list
     return conf 
-enddef
+end
 
 
 #

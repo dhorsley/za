@@ -3,7 +3,7 @@
 define rectArea(w,h)
     area=float(w)*float(h)
     println "Area is {area}"
-enddef
+end
 
 rectArea(10,20)
 

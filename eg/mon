@@ -24,14 +24,14 @@ define clear(lstart,lend,column)
     for f=lstart to lend
         clear_line(f,column)
     endfor
-enddef
+end
 
 define interface_ip(in)
     addrline =| ip addr show dev {in}
     ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
     ipaddr=replace(ipaddr,"/","")
     return ipaddr
-enddef
+end
 
 define negreg(inp,matcher)
     out=""
@@ -40,7 +40,7 @@ define negreg(inp,matcher)
         out=out+l+"\n"
     endfor
     return out
-enddef
+end
 
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
@@ -63,7 +63,7 @@ define showEnv()
     at  9,3; print "Distribution         : [#6]{=release_name()}[#-]"
     at 10,3; print "Distribution ID      : [#6]{=release_id()}[#-]"
     at 11,3; print "Distribution Version : [#6]{=release_version()}[#-]"
-enddef
+end
 
 
 define showFiles()
@@ -102,7 +102,7 @@ define showFiles()
 
     endif
 
-enddef
+end
 
 
 define showMem()
@@ -184,7 +184,7 @@ define showMem()
             at 2+p,35; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
         endfor
     endif
-enddef
+end
 
 
 define showProcs(ct,uptime)
@@ -262,7 +262,7 @@ define showProcs(ct,uptime)
         endfor
 
     endif
-enddef
+end
 
 
 define humansize(i)
@@ -271,7 +271,7 @@ define humansize(i)
     if i>=1e6; unit="MB"; i=float(i/1e6); endif
     if i>=1e3; unit="KB"; i=float(i/1e3); endif
     return format("%.3f %s/sec",i,unit)
-enddef
+end
 
 
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
@@ -447,7 +447,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     return sample_start_in
 
-enddef
+end
 
 
 define showHdd()
@@ -480,7 +480,7 @@ define showHdd()
         endif
     endfor
 
-enddef
+end
 
 
 define showNet(net_sc,load,ipaddr,interface,timeout)
@@ -588,7 +588,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     setglob net_sample_start_in-=1
     return
 
-enddef
+end
 
 
 define redef_layout(cpu_count)
@@ -628,7 +628,7 @@ define redef_layout(cpu_count)
     endfor
     print "[#-]"
 
-enddef
+end
 
 
 #

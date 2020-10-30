@@ -21,6 +21,7 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
         defer close(r)
+        locks(true)
         rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
         switch rcount {
         case 0:
@@ -32,6 +33,7 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
             v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
             r<-v
         }
+        locks(false)
     }()
     return r
 }
@@ -643,7 +645,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     wccount[ifs] = 0
 
     // allocate loop storage space if not a repeat ifs value.
-    if lockSafety { vlock.RLock() }
+    vlock.RLock()
 
     var top,highest,lscap uint32
 
@@ -678,7 +680,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
 
-    if lockSafety { vlock.RUnlock() }
+    vlock.RUnlock()
     if lockSafety { looplock.Unlock() }
 
 

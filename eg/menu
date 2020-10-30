@@ -36,7 +36,7 @@ define menu(p,opts)
     cursoron()
     return n
 
-enddef
+end
 
 choice=menu( "Example Menu", [ "First", "Second", "Third" ] )
 
