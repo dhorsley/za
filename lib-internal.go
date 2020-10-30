@@ -299,9 +299,7 @@ func buildInternalLib() {
         }
         switch args[0].(type) {
         case bool:
-            globlock.Lock()
-            lockSafety=args[0].(bool)
-            globlock.Unlock()
+            locks(args[0].(bool))
         default:
             return nil,errors.New("locks() accepts a boolean value only.")
         }

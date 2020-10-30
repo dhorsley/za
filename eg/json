@@ -11,13 +11,13 @@ define heading(s1,d)
     spacing=""
     on d>0 do spacing=" "*d*4
     println format("%s%29s[][#-]:",spacing,s1)
-enddef
+end
 
 define value(s1,s2,d)
     spacing=""
     on d>0 do spacing=" "*d*4
     println format("%s%30s : %v",spacing,s1,s2)
-enddef
+end
 
 define pp(k,i,d)
 
@@ -58,7 +58,7 @@ define pp(k,i,d)
     # reset colour
     print "[#-]"
 
-enddef
+end
 
 
 # MAIN
@@ -71,15 +71,10 @@ endif
 json=json_decode(f)
 
 # drill down to right level
-res=json["Reservations"]
-groups=res[0]["Groups"]
-instances=res[0]["Instances"]
+instances=json["Reservations"][0]["Instances"]
 
 # deep iteration over pairs
 foreach i in instances[0]
     pp(key_i,i,0)
 endfor
-
-# you could start higher in the tree, e.g.
-# foreach i in json
 

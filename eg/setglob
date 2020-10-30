@@ -12,11 +12,11 @@ define q()
     setglob b["test"]=42
     println "SET LM1->"
     setglob m["one"].d="teststring"
-enddef
+end
 
 define w()
     setglob a=!a
-enddef
+end
 
 init z t
 m["one"]=z

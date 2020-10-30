@@ -1273,7 +1273,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
-    if lockSafety { vlock.Lock() }
+    vlock.Lock()
 
      // fmt.Printf("** vset %s %+v\n",vi,value)
      // fmt.Printf("  -- len ident fs -> %d ident count of %d\n",len(ident[fs]), functionidents[fs])
@@ -1315,7 +1315,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
                 if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
-                if lockSafety { vlock.Unlock() }
+                vlock.Unlock()
                 panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",vi,value,value))
             }
 
@@ -1349,7 +1349,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 
     return vi
 
@@ -1583,10 +1583,8 @@ func vget(fs uint32, name string) (interface{}, bool) {
 
 func vgeti(fs uint32, vi uint16) (interface{}, bool) {
 
-    if lockSafety {
         vlock.RLock()
         defer vlock.RUnlock()
-    }
 
     if int(vi)>=len(ident[fs]) {
         // pf("-- vgeti returning early.\n");

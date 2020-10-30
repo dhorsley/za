@@ -27,7 +27,7 @@ define collides(o)
         on cmpx >= j.x && cmpx <= j.x+j.w do on cmpy >= j.y && cmpy <= j.y+j.h do return true
     endfor
     return false
-enddef 
+end 
 
 define moveall()
     for e=0 to objects.len-1
@@ -50,7 +50,7 @@ define moveall()
         on o.y+o.h>=term_h() do o.dy=-o.dy
         setglob objects[e]=o
     endfor
-enddef 
+end 
 
 define show(obj_list)
     foreach o in obj_list
@@ -65,7 +65,7 @@ define show(obj_list)
             print "[#b"+o.bg+"][#"+o.fg+"]"+o.text+"[#-][##]"
         endif
     endfor
-enddef
+end
 
 define hide(obj_list)
     foreach o in obj_list
@@ -81,7 +81,7 @@ define hide(obj_list)
             print pad(" ",-1,o.w," ")
         endif
     endfor
-enddef
+end
 
 define object_add_text(n,label,x,y,bg,fg)
     init obj object
@@ -95,7 +95,7 @@ define object_add_text(n,label,x,y,bg,fg)
     obj.px=x.float
     obj.py=y.float
     setglob objects[n]=obj
-enddef
+end
 
 define object_add_box(n,label,x,y,h,bg,fg)
     init obj object
@@ -105,7 +105,7 @@ define object_add_box(n,label,x,y,h,bg,fg)
     obj.x=x.float   ; obj.y=y.float
     obj.px=x.float  ; obj.py=y.float
     setglob objects[n]=obj
-enddef
+end
 
 define waitkey()
     setglob quit=false
@@ -113,7 +113,7 @@ define waitkey()
     setglob quit=true
     at term_h(),1
     cursoron()
-enddef
+end
 
 
 #

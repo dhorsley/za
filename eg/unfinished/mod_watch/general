@@ -4,13 +4,13 @@
 define error(s,n)
     println "[#2]Error: {s}\n[#-]"
     exit n
-enddef
+end
 
 # interrupt handler
 define handlebreak(e)
     on e==0 do println "[#2]** user break **[#-]"
     exit e
-enddef
+end
 
 # find key in previous file list which matches 'n'
 define lookup_old(conf,n)
@@ -18,5 +18,5 @@ define lookup_old(conf,n)
         on straw.name == n do return key_straw
     endfor
     return -1
-enddef
+end
 

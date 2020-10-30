@@ -3,7 +3,7 @@
 define testbreak()
     println "\nUser break\n"
     return 42
-enddef
+end
 
 setglob trapInt = "testbreak"
 

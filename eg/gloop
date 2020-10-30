@@ -19,7 +19,7 @@ define intHandler()
     cursoron()
     at term_h()-1,1; print "[##][#-]"
     return 127
-enddef
+end
  
 
 seed(epoch_nano_time())

@@ -2,7 +2,7 @@
 
 define t()
     return pi()
-enddef
+end
 
 println t()
 assert t()==pi()

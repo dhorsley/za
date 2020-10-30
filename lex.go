@@ -473,7 +473,7 @@ get_nt_eval_point:
             tokType = C_At
         case "define":
             tokType = C_Define
-        case "enddef":
+        case "end","enddef":
             tokType = C_Enddef
         case "return":
             tokType = C_Return

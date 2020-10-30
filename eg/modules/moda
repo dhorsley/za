@@ -1,5 +1,5 @@
 
 define testdef(q)
     return q*2
-enddef
+end
 

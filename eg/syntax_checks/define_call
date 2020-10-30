@@ -5,7 +5,7 @@
 define mixtest2()
     println "\n\nInside call to test2()"
     return "two"
-enddef
+end
 
 define mixtest(a,b,c)
     println "hello, goat!"
@@ -13,7 +13,7 @@ define mixtest(a,b,c)
     w=mixtest2()
  	println "Return value is {w}"
     return [w,w]
-enddef
+end
 
 
 println "\n[#bold]Function call test[#-]"

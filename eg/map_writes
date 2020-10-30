@@ -8,7 +8,7 @@ define f(n)
         d[i%1000]=i
     endfor
     # println d
-enddef
+end
 
 f(N)
 

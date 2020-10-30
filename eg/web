@@ -1,7 +1,5 @@
 #!/usr/bin/za
 
-locks(true)
-
 module "web_modules/aws_handler"
 
 # GLOBALS
@@ -19,7 +17,7 @@ define interface_ip(in)
     ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
     ipaddr=replace(ipaddr,"/","")
     return ipaddr
-enddef
+end
 
 define negreg(inp,matcher)
     out=""
@@ -28,7 +26,7 @@ define negreg(inp,matcher)
         out=out+l+"\n"
     endfor
     return out
-enddef
+end
 
 # MAIN
 

@@ -4,7 +4,7 @@ define runFilter(s,v)
     f=filter(s,v,-1)
     println "filter [{v}] done."
     return format("%s %d", v, len(f))
-enddef
+end
 
 define runSubs(subs,seq)
     foreach v in subs
@@ -12,7 +12,7 @@ define runSubs(subs,seq)
         seq=replace(seq,v[0],v[1])
     endfor
     return seq.len
-enddef
+end
 
 define perf_regex_dna()
 
@@ -59,11 +59,10 @@ define perf_regex_dna()
     println l2
     println res["subtot"]
 
-enddef
+end
 
 # MAIN
 
-locks(true)
 perf_regex_dna()
 
 

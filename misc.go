@@ -8,6 +8,34 @@ import (
 	str "strings"
 )
 
+
+var openLocks int
+
+// enable or disable global locking
+func locks(b bool) {
+
+    globlock.Lock()
+
+    if b {
+        openLocks++
+        lockSafety=true
+        // pf("[ol] increased to %d\n",openLocks)
+    }
+    if !b && openLocks>0 {
+        openLocks--
+        // pf("[ol] reduced to %d\n",openLocks)
+    }
+
+    if openLocks==0 && !b {
+        lockSafety=false
+        // pf("[ol] locks off\n")
+    }
+
+    globlock.Unlock()
+
+}
+
+
 // does file exist?
 func fexists(fp string) bool {
     f,err:=os.Stat(fp)
@@ -251,7 +279,7 @@ func help(hargs string) {
 var cmdpage string = `
 Available commands:
 [#5]DEFINE [#i1]name[#i0] ([#i1]arg1,...,argN[#i0])[#-]                     - create a function.
-[#5]ENDDEF[#-]                                          - end a function definition.
+[#5]END[#-]                                             - end a function definition.
 [#5]RETURN [#i1]retval[#i0][#-]                                   - return from function, with value.
 [#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.

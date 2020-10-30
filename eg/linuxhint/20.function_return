@@ -3,7 +3,7 @@
 define greeting(name)
     v="Hello, {name}"
     return v            # return does not currently interpolate
-enddef
+end
 
 cls
 prompt name "Enter your name : "

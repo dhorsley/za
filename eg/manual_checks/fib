@@ -9,13 +9,13 @@ define fib(n)
         setglob memo[n] = m
     endif
     return m
-enddef
+end
 
 define signum(x)
     if x<0 ; return -1 ; endif
     if x>0 ; return 1 ; endif
     return 0
-enddef
+end
 
 # main
 

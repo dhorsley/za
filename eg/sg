@@ -11,7 +11,7 @@ define q()
     setglob z = append(tail(z),rand(50)+0.0)
     # .tail(getglob("z"))
     # .append(rand(50))
-enddef
+end
 
 q()
 
