@@ -45,7 +45,7 @@ define next()
     local_av=tail(local_av)
     setglob av = local_av
     return arg
-enddef    
+end    
 
 av=argv()
 ac=argc()

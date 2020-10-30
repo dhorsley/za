@@ -5,11 +5,11 @@ sz=9999
 
 define then()
     return epoch_nano_time()
-enddef
+end
 
 define now(then)
     print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," us\n\n"
-enddef
+end
 
 # build list
 

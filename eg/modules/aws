@@ -24,21 +24,21 @@ define s3_ls(bktpath,region,profile)
         out=out+trim(name,1)+"\n"
     endfor
     return out
-enddef
+end
 
 define s3_up(localpath,bktpath,region,profile)
     on region  != "" do region="--region {region}"
     on profile != "" do profile="--profile {profile}"
     nul=|aws s3 cp {profile} {region} {localpath} s3://{bktpath}
     return last()
-enddef
+end
 
 define s3_down(bktpath,localpath,region,profile)
     on region  != "" do region="--region {region}"
     on profile != "" do profile="--profile {profile}"
     nul=|aws s3 cp {profile} {region} s3://{bktpath} {localpath}
     return last()
-enddef
+end
 
 define s3_info(bktpath,region,profile)
 
@@ -63,7 +63,7 @@ define s3_info(bktpath,region,profile)
     # call head
     nul=| aws s3api {profile} {region} head-object --bucket {bucket} --key {path} 
 
-enddef
+end
 
 
 #

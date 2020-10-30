@@ -5,7 +5,7 @@ define humansize(i,prec,unit)
     if i>=1e6; unit="Million"+unit; i=float(i/1e6); endif
     if i>=1e3; unit="Thousand"+unit; i=float(i/1e3); endif
     return format( "%." + prec + "f %s" ,i,unit)
-enddef
+end
 
 define report(its,ite,imax_count)
     dur=time_diff(ite,its)/1000000
@@ -15,5 +15,5 @@ define report(its,ite,imax_count)
     println format("avg iteration  %0.3f ns",rate*1e9)
     hs=humansize(1/rate,3,"")
     println format("its/sec        [#5]%s[#-]\n",hs)
-enddef
+end
 

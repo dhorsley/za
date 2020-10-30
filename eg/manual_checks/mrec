@@ -9,12 +9,12 @@
 define F(n)
     on n == 0 do return 1
     return n-M(F(n-1))
-enddef
+end
 
 define M(n) 
     on n==0 do return 0
     return n-F(M(n-1))
-enddef
+end
 
 input c optarg 1
 

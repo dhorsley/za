@@ -2,7 +2,7 @@
 
 define f1()
     println "I 💜 Za"
-enddef
+end
 
 f1()
 

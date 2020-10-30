@@ -2,7 +2,7 @@
 
 define f()
     a++
-enddef
+end
 
 a=10
 f()

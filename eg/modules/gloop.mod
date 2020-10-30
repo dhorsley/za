@@ -1,16 +1,16 @@
 
 define setballcolour(x)
     return "[#{x}]o[#-]"
-enddef
+end
 
 define setplayercolour(x)
     return "[#{x}]^^^^^^^[#-]"
-enddef
+end
 
 define setlivesicons(x)
     hicons="♡ ♡ ♡ ♡ ♡        "
     return format("[#2]%-12s[#-]",substr(hicons,0,x*4))
-enddef
+end
 
 define ball_lost()
     setglob moving=false
@@ -24,7 +24,7 @@ define ball_lost()
     l=l-1
     setglob lives=l
     setglob hs=setlivesicons(l)
-enddef
+end
 
 define make_layer(n,bricks,mw)
     row=bricks["{n}-row"]
@@ -42,14 +42,14 @@ define make_layer(n,bricks,mw)
         endif
     endfor
     setglob sprites = sp
-enddef
+end
 
 define make_brick(n)
     left = "["
     right = "]"
     mid = "-"
     return " "+left+mid+mid+mid+mid+right+" "
-enddef
+end
 
 define newbricks(n,w)
     for f=1 to w/8
@@ -60,12 +60,12 @@ define newbricks(n,w)
     bricks["{n}-row"]=10+n
     bricks["{n}-type"]=make_brick(rand(4))
     return bricks
-enddef
+end
 
 define make_all_layers(n,mw)
     for e = 1 to n
         bricks=newbricks(e,mw)
         make_layer(e,bricks,mw)
     endfor
-enddef
+end
 

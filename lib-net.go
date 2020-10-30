@@ -794,6 +794,7 @@ func buildNetLib() {
                 weblock.RUnlock()
             }
             // store in lookup table
+            locks(true)
             weblock.Lock()
             web_handles[uid]=web_table_entry{srv:&srv,mux:mux,docroot:docroot,addr:addr,host:host,port:port}
             weblock.Unlock()
@@ -824,6 +825,7 @@ func buildNetLib() {
         weblock.Lock()
         delete(web_handles,uid)
         weblock.Unlock()
+        locks(false)
         return true,nil
     }
 

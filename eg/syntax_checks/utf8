@@ -3,7 +3,7 @@ define checkutf()
     print "testing\n"
     print utf8supported(),"\n"
     print "end\n"
-enddef
+end
 
 print "T1\n"
 checkutf()

@@ -2,7 +2,7 @@
 
 define swap(x,y)
   return y,x
-enddef
+end
  
 a=10
 b=20

@@ -7,5 +7,5 @@ define mkfn(d,f)
     else
         return d+"/"+f
     endif
-enddef
+end
 

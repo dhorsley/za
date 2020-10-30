@@ -4,25 +4,25 @@ define ll(dir)
     on dir=="" do dir="."
     out=|ls -l --color {dir}
     return out
-enddef
+end
 
 define dir(dir)
     on dir=="" do dir="."
     out=| dir --color {dir}
     return out
-enddef
+end
 
 define cat(file)
     out=| cat {file}
     return out
-enddef
+end
 
 # return each filename on a separate line
 define line_ls(dir)
     on dir=="" do dir="."
     out=|ls -1 {dir}
     return out
-enddef
+end
 
 # wc -w
 define wcw(str)
@@ -33,7 +33,7 @@ define wcw(str)
         wc=wc+NF
     endfor
     return wc
-enddef
+end
 
 # return all filenames on the same line, with a specific separator 
 define word_ls(dir,sep)
@@ -45,6 +45,6 @@ define word_ls(dir,sep)
         word_out=word_out+w+sep
     endfor
     return substr(word_out,0,len(word_out)-len(sep))
-enddef
+end
  
 

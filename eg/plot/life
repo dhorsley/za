@@ -36,7 +36,7 @@ define proc_resize()
             pause 1000
         endif
     endwhile
-enddef
+end
 
 define proc_input()
     while !quit
@@ -74,7 +74,7 @@ define proc_input()
         endwhen
         inputing=false
     endwhile
-enddef
+end
 
 define build_empty_cells()
     init grid mixed mh+2
@@ -84,7 +84,7 @@ define build_empty_cells()
         endfor
     endfor
     return grid
-enddef
+end
 
 define count_neighbours(r,b)
     var i int
@@ -103,7 +103,7 @@ define count_neighbours(r,b)
         on c<mw && grid[u][c]   do i++
     endif
     return i
-enddef
+end
 
 
 #

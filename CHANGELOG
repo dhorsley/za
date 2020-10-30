@@ -5,6 +5,19 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * automate setting of lockSafety flag:
+            - keeps a reference counter to locks() activations and only releases
+               the lock when the count drops to 0
+            * DONE - web service active
+            * DONE - async call active
+            * DONE - any other form of concurrency active (direct locks() call)
+            - the -l startup option should immediately raise the ref count to 1, effectively
+                ensuring it stays enabled so long as execution does not encounter an uncoupled
+                locks(false) call. 
+
+        * user variables access is always mutex locked regardless. lockSafety applies to other
+            things that may race, such as loops, system signals and function call setup.
+
         * added HAS expression condition type to WHEN...ENDWHEN
             - "HAS expression" clause causes the initial WHEN condition to be ignored and
                 a clause truth test is performed against the presented HAS expression instead.
@@ -23,7 +36,7 @@ CHANGE LOG
 
         * added zip() and scan_left() list library functions.
             - zip accepts arrays of bool, uint, int, float64, string and mixed (interface type)
-            - scan_left (currently) accepts int and float64
+            - scan_left (currently) accepts arrays of int and float64
             - zip will interleave the elements of two arrays
             - scan_left performs a cumulative operation against each element of an array, with the resulting
                 value pushed into a new array. a seed value can be set to use against the head element.

@@ -437,7 +437,7 @@ func main() {
 
     // thread safety checks
     if *a_lock_safety {
-        lockSafety = true
+        locks(true)
     }
 
     // check if interactive mode was desired

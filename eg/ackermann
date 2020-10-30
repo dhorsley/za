@@ -18,7 +18,7 @@ define ackermann(m,n)
 
     return o
 
-enddef
+end
 
 
 memoA[`0,0`] = 1

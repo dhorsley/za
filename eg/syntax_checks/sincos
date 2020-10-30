@@ -8,7 +8,7 @@ define signum(x)
     if x<0 ; return -1 ; endif
     if x>0 ; return 1 ; endif
     return 0
-enddef
+end
 
 cr=term_h()/2
 cw=term_w()/2

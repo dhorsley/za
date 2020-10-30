@@ -14,7 +14,7 @@ define leven(s, t)
 
     return 1 + min([ leven(s,t1), leven(s1,t), leven(s1,t1) ])
 
-enddef
+end
 
 input a optarg 1
 input b optarg 2
