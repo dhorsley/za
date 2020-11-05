@@ -21,7 +21,7 @@ if len(q)>0
     foreach a in q
         if a!=""
             s =| echo -n "{a}" | md5sum - | cut -f1 -d' '
-            println format("%32s %s",a,s) 
+            println format("%32s %s",a,s.out)
             continue
         endif
         println pad("-- Empty Input --",0,57," ")

@@ -17,7 +17,7 @@ define f()
     on os()=="windows" do datecmd="date /T"
     z =| {datecmd}
     pause rand(2000)
-    return z
+    return z.out
 end
 
 # launch all in parallel

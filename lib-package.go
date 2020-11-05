@@ -212,13 +212,13 @@ func isinstalled(pkg string) (bool) {
     err:=-1
     switch v.(string) {
     case "ubuntu", "debian":
-        _, err = Copper("dpkg -V "+pkg+" 2>/dev/null", true)
+        err = Copper("dpkg -V "+pkg+" 2>/dev/null", true).code
     case "opensuse":
-        _, err = Copper("rpm -q "+pkg+" 2>/dev/null", true)
+        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
     case "alpine":
-        _, err = Copper("apk info -e "+pkg+" 2>/dev/null", true)
+        err = Copper("apk info -e "+pkg+" 2>/dev/null", true).code
     case "fedora", "amzn", "centos", "rhel":
-        _, err = Copper("rpm -q "+pkg+" 2>/dev/null", true)
+        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
     default:
         return false
     }
@@ -268,7 +268,7 @@ func uninstall(pkgs string) (state int) {
 
     if firstInstallRun {
         pf("Updating repository.\n")
-        _, err := Copper(updateCommand, true)
+        err := Copper(updateCommand, true).code
         if err != 0 {
             pf("Problem performing system update!\n")
             finish(true, ERR_PACKAGE)
@@ -277,18 +277,18 @@ func uninstall(pkgs string) (state int) {
         firstInstallRun = false
     }
 
-    _, err := Copper(checkcmd1+pkgs+checkcmd2, true)
+    err := Copper(checkcmd1+pkgs+checkcmd2, true).code
     if err == 0 { // installed
         // remove
         removeCommand := sf("%s %s %s", pm, inopts, pkgs)
         pf("[rem] Executing: %s\n",removeCommand)
         pf("Removing: %v\n", pkgs)
-        out, err := Copper(removeCommand, true)
-        if err != 0 {
+        cop := Copper(removeCommand, true)
+        if !cop.okay {
             pf("\nPotential problem removing packages [%s]\n",pkgs)
-            pf(out)
+            pf(cop.out)
             finish(false,ERR_PACKAGE)
-            return err
+            return cop.code
         }
     } else {
         return -1
@@ -332,15 +332,15 @@ func install(pkgs string) (state int) {
         switch ext {
         case ".deb": // dpkg
             cmd := "dpkg -s "+pbname
-            out, errcode := Copper(cmd, true)
-            if errcode>0 || !str.Contains(out,"Status: install ok installed") { // not installed
+            cop := Copper(cmd, true)
+            if cop.code>0 || !str.Contains(cop.out,"Status: install ok installed") { // not installed
                 pf("[#3]%s not currently installed.[#-]\n",pbname)
             } else {
                 pf("[#3]%s already installed. Overwriting.[#-]\n",pbname)
             }
             cmd = "dpkg -i "+pkgs
-            out, errcode = Copper(cmd, true)
-            if errcode>0 {
+            cop = Copper(cmd, true)
+            if cop.code>0 {
                 pf("[#2]Error during package install! Do you have privileges?[#-]\n")
                 return -1
             }
@@ -405,14 +405,13 @@ func install(pkgs string) (state int) {
     if firstInstallRun {
         // do update
         pf("Updating repository.\n")
-        _, err := Copper(updateCommand, true)
+        err := Copper(updateCommand, true).code
         if err != 0 {
             pf("Problem performing system update!\n")
             finish(true, ERR_PACKAGE)
             return err
         }
         firstInstallRun = false
-        // pf(out + "\n\n")
     }
 
     // @note: doing it this way is bad if there are co-dependencies that
@@ -422,17 +421,17 @@ func install(pkgs string) (state int) {
     plist := str.Split(pkgs, ",")
     for _, p := range plist {
 
-        _, err := Copper(checkcmd1+p+checkcmd2, true)
+        err := Copper(checkcmd1+p+checkcmd2, true).code
         if err == 1 { // not installed
             // install
             installCommand := sf("%s %s %s", pm, inopts, p)
             pf("Installing: %v\n", p)
-            out, err := Copper(installCommand, true)
-            if err != 0 {
+            cop := Copper(installCommand, true)
+            if !cop.okay {
                 // pf("\nPotential problem installing packages [%s]\n",p)
-                pf(out)
+                pf(cop.out)
                 finish(false,ERR_PACKAGE)
-                return err
+                return cop.code
             }
         } else {
             // already there or invalid names. either way, do nothing...
@@ -453,8 +452,8 @@ func service(name string, action string) (bool, error) {
     v, _ = vget(0, "@release_version")
     rv := v.(string)
 
-    sys, err := Copper("ps -o comm= -q 1", true)
-    if err != 0 {
+    sys := Copper("ps -o comm= -q 1", true)
+    if !sys.okay {
         pf("Error: could not check process 1.\n")
         return false, errors.New("Could not check process 1.")
     }
@@ -518,42 +517,43 @@ func service(name string, action string) (bool, error) {
         finish(false, ERR_UNSUPPORTED)
     }
 
-    if sys != expected {
+    if sys.out != expected {
         pf("Warning: your current init system does not match the expected init system for this OS!\nContinuing execution, however, you may encounter issues.\n")
     }
 
     unknown := false
-    var out string
+    var cop struct{out string;err string;code int; okay bool}
+
     switch expected {
     case "systemd":
         switch action {
         case "stop":
-            out, err = Copper("systemctl stop "+name, true)
+            cop = Copper("systemctl stop "+name, true)
         case "start":
-            out, err = Copper("systemctl start "+name, true)
+            cop = Copper("systemctl start "+name, true)
         case "restart":
-            out, err = Copper("systemctl try-restart "+name, true)
+            cop = Copper("systemctl try-restart "+name, true)
         case "reload":
-            out, err = Copper("systemctl try-reload-or-restart "+name, true)
+            cop = Copper("systemctl try-reload-or-restart "+name, true)
         case "disable":
-            out, err = Copper("systemctl disable "+name, true)
+            cop = Copper("systemctl disable "+name, true)
         case "enable":
-            out, err = Copper("systemctl enable "+name, true)
+            cop = Copper("systemctl enable "+name, true)
         }
     case "upstart":
         switch action {
         case "stop":
-            out, err = Copper("service "+name+" stop", true)
+            cop = Copper("service "+name+" stop", true)
         case "start":
-            out, err = Copper("service "+name+" start", true)
+            cop = Copper("service "+name+" start", true)
         case "restart":
-            out, err = Copper("service "+name+" restart", true)
+            cop = Copper("service "+name+" restart", true)
         case "reload":
-            out, err = Copper("service "+name+" reload", true)
+            cop = Copper("service "+name+" reload", true)
         case "disable":
-            out, err = Copper("service "+name+" disable", true)
+            cop = Copper("service "+name+" disable", true)
         case "enable":
-            out, err = Copper("service "+name+" enable", true)
+            cop = Copper("service "+name+" enable", true)
         }
     default: // system V scripts? or something else. Either way, not supporting them!
         unknown = true
@@ -563,12 +563,12 @@ func service(name string, action string) (bool, error) {
         return false, errors.New("Error: We only support upstart and systemd.\n")
     }
 
-    if err != 0 {
+    if !cop.okay {
         pf("Error: the required service action '%s' on '%s' could not be completed successfully. Please investigate.\n", action, name)
         return false, errors.New("Error: could not complete the required action.")
     }
 
-    pf("%s\n", out)
+    pf("%s\n", cop.out)
     return true, nil
 
 }

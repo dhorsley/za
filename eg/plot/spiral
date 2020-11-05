@@ -11,7 +11,7 @@ define draw()
     y = theta * sin(theta / pi)/8
     px=cx+x; py=cy+y
     if px>0 && py>0 && px<width && py<height
-        at py,px; print "[#b"+int(c)+"]·"
+        at py,px; print "[#b"+int(c)+"] "
     endif
     setglob theta = theta + rotation
     on x > width/2.0 do setglob theta = 0.0
@@ -38,19 +38,18 @@ maxrot=13.0
 seed(epoch_nano_time())
 
 quit=false
-async wait_handle waitkey()
+async whand waitkey()
+
+cursoroff()
 
 while !quit
     cls
-    cursoroff()
     theta=0.0
     for e=0 to 5000
         draw()
-        at 1,1
-        print "[##][#6]θ ",theta.int, "[#-]"
     endfor
     rotation+=bounce
-    on rotation>maxrot || rotation<0.03 do bounce=-bounce
+    on rotation>maxrot or rotation<0.03 do bounce=-bounce
 endwhile
 cursoron()
 at height-1,1

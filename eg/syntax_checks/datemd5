@@ -4,13 +4,11 @@ println "\n[#fcyan]FOREACH in var with command.[#default]"
 
 lines =| grep ":[0-9]:" /etc/passwd 
 
-# we use system() and turn interpolation off + on below because of the awk braced {} command.
-# normally we would just capture output with =|
-
-foreach ln in lines
+foreach ln in lines.out
     z   =| date
-    sum = system(`echo "`+z+` `+ln+`" | md5sum - | awk '{print $1}'`,false)
-    println "{z} {ln} | {sum}"
+    # sum = system(`echo "`+z+` `+ln+`" | md5sum - | awk '{print $1}'`,false)
+    sum =| echo "{=z.out} {ln}" | md5sum - | awk '{print $1}'
+    println "{=z.out} {ln} | {=sum.out}"
 endfor
 
 print
