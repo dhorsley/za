@@ -20,30 +20,30 @@ bdate =| date "+%d-%m-%Y %H:%M"
 
 
 upxfound=| which upx | wc -l
-upxfound=int(trim(upxfound,0))
+upxfound=trim(upxfound.out,0).int
 
 strip_opts="-s -w"
 
 if ! os() ~ "^freebsd"
     when lower(tgt)
     is "alpine"
-        if buildMusl(bvers,bdate,strip_opts,upx_enable)!=0
+        if buildMusl(bvers,bdate.out,strip_opts,upx_enable)!=0
             println "Failed to build alpine version."
             exit 1
         endif
     is "libc"
-        if buildLibc(bvers,bdate)!=0
+        if buildLibc(bvers,bdate.out)!=0
             println "Failed to build libc version."
             exit 1
         endif
     is "win"
-        if buildWin(bvers,bdate,strip_opts) != 0
+        if buildWin(bvers,bdate.out,strip_opts) != 0
             println "Failed to build windows version."
             exit 1
         endif
     endwhen
 else
-    if buildFreeBSD(bvers,bdate) != 0
+    if buildFreeBSD(bvers,bdate.out) != 0
         println "Failed to build bsd version."
         exit 1
     endif

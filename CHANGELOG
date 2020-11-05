@@ -15,8 +15,14 @@ CHANGE LOG
                 ensuring it stays enabled so long as execution does not encounter an uncoupled
                 locks(false) call. 
 
-        * user variables access is always mutex locked regardless. lockSafety applies to other
-            things that may race, such as loops, system signals and function call setup.
+        * added btoi() and itob() lib calls for converting bool to/from int.
+
+        * changed system() and Copper() calls to cause assignation of struct instead of string when
+            using the =| operator. This allows for a slightly safer and occasionally more readable
+            use of =|. Returned struct fields are .out (stdout), .err (stderr), .code (command status
+            code) and .okay (summarised status).
+
+          The last() and last_out() lib calls still work as before should you need them.
 
         * added HAS expression condition type to WHEN...ENDWHEN
             - "HAS expression" clause causes the initial WHEN condition to be ignored and

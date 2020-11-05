@@ -2,26 +2,26 @@
 
 define ll(dir)
     on dir=="" do dir="."
-    out=|ls -l --color {dir}
-    return out
+    cmd=|ls -l --color {dir}
+    return cmd.out
 end
 
 define dir(dir)
     on dir=="" do dir="."
-    out=| dir --color {dir}
-    return out
+    cmd=| dir --color {dir}
+    return cmd.out
 end
 
 define cat(file)
-    out=| cat {file}
-    return out
+    cmd=| cat {file}
+    return cmd.out
 end
 
 # return each filename on a separate line
 define line_ls(dir)
     on dir=="" do dir="."
-    out=|ls -1 {dir}
-    return out
+    cmd=|ls -1 {dir}
+    return cmd.out
 end
 
 # wc -w
@@ -39,10 +39,10 @@ end
 define word_ls(dir,sep)
     on dir=="" do dir="."
     on sep=="" do sep=" "
-    strls=|ls -1 {dir}
+    ls=|ls -1 {dir}
     word_out=""
-    foreach w in strls
-        word_out=word_out+w+sep
+    foreach w in ls.out
+        word_out+=w+sep
     endfor
     return substr(word_out,0,len(word_out)-len(sep))
 end

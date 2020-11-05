@@ -74,6 +74,7 @@ func buildConversionLib() {
         "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii","uint",
         "is_number","base64e","base64d","json_decode","json_format",
         "write_struct","read_struct",
+        "btoi","itob",
     }
 
 	slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
@@ -199,6 +200,36 @@ func buildConversionLib() {
 			return int([]rune(args[0].(string))[0]), nil
 		}
 		return -1, err
+	}
+
+	slhelp["itob"] = LibHelp{in: "int", out: "bool", action: "Return a boolean which is set to true when [#i1]int[#i0] is non-zero."}
+	stdlib["itob"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return false, errors.New("invalid arguments provided to itob()")
+		}
+        switch args[0].(type) {
+        case int:
+		    return args[0].(int)!=0, nil
+        default:
+			return false, errors.New("invalid arguments provided to itob()")
+        }
+	}
+
+	slhelp["btoi"] = LibHelp{in: "bool", out: "int", action: "Return an int which is either 1 when [#i1]bool[#i0] is true or else 0 when [#i1]bool[#i0] is false. This function is mainly useful for performing branchless calculations, although the efficacy is low in an interpreter such as this."}
+	stdlib["btoi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+		if len(args) != 1 {
+			return false, errors.New("invalid arguments provided to btoi()")
+		}
+        switch args[0].(type) {
+        case bool:
+		    switch args[0].(bool) {
+            case true:
+                return 1,nil
+            }
+            return 0,nil
+        default:
+			return false, errors.New("invalid arguments provided to btoi()")
+        }
 	}
 
 	slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}

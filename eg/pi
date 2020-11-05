@@ -1,8 +1,10 @@
 #!/usr/bin/za
 
+#
 # An obviously bad example of pi calculation.
-# We just don't have the precision without higher bit-width integers/floats
-
+# 
+# We just don't have the precision without arbitrary length integers/floats
+# 
 
 require 1.0.11
 

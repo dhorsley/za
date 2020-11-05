@@ -645,7 +645,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     wccount[ifs] = 0
 
     // allocate loop storage space if not a repeat ifs value.
-    vlock.RLock()
+    if lockSafety { vlock.RLock() }
 
     var top,highest,lscap uint32
 
@@ -680,7 +680,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
 
-    vlock.RUnlock()
+    if lockSafety { vlock.RUnlock() }
     if lockSafety { looplock.Unlock() }
 
 
@@ -3559,9 +3559,9 @@ tco_reentry:
                         // get text after =|
                         startPos := str.IndexByte(inbound.Original, '|') + 1
                         cmd := interpolate(ifs, inbound.Original[startPos:])
-                        out:=system(cmd,false)
+                        cop:=system(cmd,false)
                         lhs_name := statement.tokText
-                        vset(ifs, lhs_name, out)
+                        vset(ifs, lhs_name, cop)
                     }
                     // skip normal eval below
                     break
@@ -3652,14 +3652,14 @@ tco_reentry:
 
 }
 
-func system(cmd string, display bool) (string) {
+func system(cmd string, display bool) (cop struct{out string; err string; code int; okay bool}) {
     cmd = str.Trim(cmd," \t\n")
     if hasOuter(cmd,'`') {
         cmd=stripOuter(cmd,'`')
     }
-    out, _ := Copper(cmd, false)
-    if display { pf("%s",out) }
-    return out
+    cop = Copper(cmd, false)
+    if display { pf("%s",cop.out) }
+    return cop
 }
 
 /// execute a command in the shell coprocess or parent
@@ -3672,15 +3672,15 @@ func coprocCall(ifs uint32,s string) {
         cet = s[pipepos+1:]
         // @note: this interpolate may be unnecessary:
         inter   := interpolate(ifs,cet)
-        out, ec := Copper(inter, false)
-        if ec==-1 || ec > 0 {
-            pf("Error: [%d] in shell command '%s'\n", ec, str.TrimLeft(cet, " \t"))
+        cop := Copper(inter, false)
+        if ! cop.okay {
+            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(cet," \t"))
         } else {
-            if len(out) > 0 {
-                if out[len(out)-1] != '\n' {
-                    out += "\n"
+            if len(cop.out) > 0 {
+                if cop.out[len(cop.out)-1] != '\n' {
+                    cop.out += "\n"
                 }
-                pf("%s", out)
+                pf("%s", cop.out)
             }
         }
     }

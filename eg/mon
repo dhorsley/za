@@ -28,7 +28,7 @@ end
 
 define interface_ip(in)
     addrline =| ip addr show dev {in}
-    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
+    ipaddr=replace(filter(addrline.out,"inet.*/"),"inet ","")
     ipaddr=replace(ipaddr,"/","")
     return ipaddr
 end
@@ -196,7 +196,7 @@ define showProcs(ct,uptime)
 
     # get filenames
     procs =| ls -1 /proc/*/stat
-    procs = line_filter(procs,"/[0-9]+/")
+    procs = line_filter(procs.out,"/[0-9]+/")
 
     foreach p in procs
         on !is_file(p) do break
@@ -467,7 +467,7 @@ define showHdd()
     at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use%")
     row=2
 
-    foreach d in disks
+    foreach d in disks.out
         if d!=""
             fields(d)
             on kind(F[1])!="string" do continue
@@ -646,7 +646,7 @@ if winterm()
     interface="eth0"
 else
     i =| ip -o -4 route show to default
-    interface=field(i,5)
+    interface=field(i.out,5)
 endif
 
 ct=clktck()
@@ -657,7 +657,10 @@ endif
 cls
 
 user=get_env("USER")
-on user=="" do user=|whoami
+if user==""
+    usercmd=|whoami
+    user=usercmd.out
+endif
 sudo=get_env("SUDO_USER")
 access=true
 
@@ -724,7 +727,6 @@ while !quit
     print "[#b1]"
     clear(1,1,1)
 
-    # d=|date
     d=date_human()
     timo=string(timeout)
     at 1,1; print "[#bold]",d, "  Current Timeout : {timo} ms  "
