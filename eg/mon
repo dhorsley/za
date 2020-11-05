@@ -47,6 +47,11 @@ test "fn_ip" group "mon" assert fail
     assert hasstart(iip,"127.0.0.")
 endtest
 
+define shorten(s,l)
+    on len(s)>=l do s=s[:l-2]+(?? utf8supported() "…","~")
+    return s
+end
+
 define showEnv()
     pane select "envs"
     pane redraw
@@ -474,7 +479,7 @@ define showHdd()
             if !key("devices",F[1])
                 devices[F[1]]=F[6]
                 # F[5]=replace(F[5],`%`,`%`)
-                at row,1; print format(`%20s %5s %5s %5s %-23s`,F[1],F[2],F[3],F[4],F[5])
+                at row,1; print format(`%20s %5s %5s %5s %-23s`,shorten(F[1],19),F[2],F[3],F[4],F[5])
                 row++
             endif
         endif
@@ -531,8 +536,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
            
             # traffic plots
 
-            clear(4,7,1)
-            clear(9,12,1)
+            clear(3,7,1)
+            clear(9,13,1)
 
             for f=2 to net_sc
                 # recv plot
