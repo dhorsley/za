@@ -925,9 +925,12 @@ func unOpSqrt(n interface{}) interface{} {
 }
 
 func (p *leparser) tern_if(tok Token) (interface{}) {
-    // if expr tv fv
+    // '??' expr tv [':'|','] fv
     dp,err1:=p.dparse(0)
     tv,err2:=p.dparse(0)
+    if p.peek().tokType==SYM_COLON || p.peek().tokType==O_Comma {
+        p.next()
+    }
     fv,err3:=p.dparse(0)
     if err1!=nil || err2!=nil || err3!=nil {
         panic(fmt.Errorf("malformed conditional in expression"))

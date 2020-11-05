@@ -4,7 +4,7 @@ define maxParenDepth(s)
 
     # ~f filters regex matches to array
     # -> maps
-    # ?? (ternary if) expr (then) true_expr (else) false_expr
+    # ?? (ternary if) expr (then) true_expr [:|,] (else) false_expr
     #  # current value in map iteration
     # list_int() converts a list to []int
     # scan_left() accumulates from a seed value
@@ -13,7 +13,7 @@ define maxParenDepth(s)
     return (
      (
      s ~f "[()]" 
-      -> "?? #==`(` `1` `-1`"
+      -> "?? #==`(` `1`,`-1`"
      )
      .list_int
      .scan_left("+",0)
