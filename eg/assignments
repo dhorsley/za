@@ -43,7 +43,7 @@ test "5" group "assignments"
     interpol(false) ## the {} after BEGIN
     test5b =| awk 'BEGIN{print"awk test!"}'
     interpol(true)
-    assert test5b=="awk test!"
+    assert test5b.out=="awk test!"
 endtest
 
 test "6" group "assignments"

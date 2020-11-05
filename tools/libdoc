@@ -91,9 +91,9 @@ foreach c in func_categories()
 
         pageindex=pageindex+wli(wa(i,`href="#{i}"`))+"\n"
 
-        in=clean(fi[i])
-        out=clean(fo[i])
-        desc=clean(html_escape(fd[i]))
+        in=fi[i].clean
+        out=fo[i].clean
+        desc=fd[i].html_escape.clean
 
         if out!=""
             fnline=clean(`[#7]{out} = {i}({in})[#-]`)
@@ -101,22 +101,23 @@ foreach c in func_categories()
             fnline=clean(`[#6]{i}({in})[#-]`)
         endif
 
-        body=body+wdiv(
+        body+=wdiv(
             wdiv( wa("",`id="{i}"`)+wh3(fnline) , `class="ttableft"` ) + 
             wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`,`class="ttabright"`)),
           `class="ttab hdbg"`
         )
-        body=body+wp(`{desc}`)
+
+        body+=wp(`{desc}`)
 
         if is_file("{egpages}/{i}")
             f=read_file("{egpages}/{i}")
             interpol(false)
             f=f.html_escape.replace("{","&#123;").replace("}","&#125;")
             interpol(true)
-            body=body+wp("<i>Example:</i><br><pre>"+f+"</pre>")
+            body+=wp("<i>Example:</i><br><pre>"+f+"</pre>")
         endif
 
-        body=body+"<br>\n"
+        body+="<br>\n"
 
     endfor
 
@@ -157,12 +158,12 @@ indices=""
 
 scat=[]
 foreach c in func_categories()
-    scat=append(scat,key_c)
+    scat=scat.append(key_c)
 endfor
 sort(scat)
 
 foreach c in scat
-    indices=indices+wli(
+    indices+=wli(
         wa(c,`href="{c}.html"`)+"\n",
         `class="ilink"`
     )

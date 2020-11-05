@@ -6,9 +6,9 @@
 ansi(true)                                           
                                                      
 a=|tasklist                                          
-proglist=col(lines(a,"3:"),1," ")                    
+proglist=col(lines(a.out,"3:"),1," ")                    
 foreach p in proglist                                
   print "** [#2]{p}[#-]\n"                           
-endfor                                               
-                                                     
+endfor
+
 

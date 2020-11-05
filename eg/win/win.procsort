@@ -9,7 +9,7 @@ if os()!="windows"
     exit 1
 endif
 
-foreach e in lines(l,"3:")
+foreach e in lines(l.out,"3:")
   fields(e)
   on !key("tasks",F[1]) do tasks[F[1]]=0
   tasks[F[1]] = tasks[F[1]] + 1

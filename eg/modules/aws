@@ -10,7 +10,7 @@ define s3_ls(bktpath,region,profile)
     on profile != "" do profile="--profile {profile}"
     d=|aws s3 ls {profile} {region} s3://{bktpath}
     out=""
-    foreach r in d
+    foreach r in d.out
         on match(r,"PRE ") do continue
         fields(r)
         if NF==3 # dir
@@ -30,14 +30,14 @@ define s3_up(localpath,bktpath,region,profile)
     on region  != "" do region="--region {region}"
     on profile != "" do profile="--profile {profile}"
     nul=|aws s3 cp {profile} {region} {localpath} s3://{bktpath}
-    return last()
+    return nul.code
 end
 
 define s3_down(bktpath,localpath,region,profile)
     on region  != "" do region="--region {region}"
     on profile != "" do profile="--profile {profile}"
     nul=|aws s3 cp {profile} {region} s3://{bktpath} {localpath}
-    return last()
+    return nul.code
 end
 
 define s3_info(bktpath,region,profile)

@@ -772,7 +772,7 @@ func main() {
         }
     }()
 
-    var cop string
+    var cop struct{out string; err string; code int; okay bool}
 
     // @note:
     // some explanation is required here..
@@ -797,29 +797,29 @@ func main() {
     // static globals from bash
     if runtime.GOOS!="windows" {
 
-        cop, _ = Copper("echo -n $WSL_DISTRO_NAME", true)
-        vset(0, "@wsl", cop)
+        cop = Copper("echo -n $WSL_DISTRO_NAME", true)
+        vset(0, "@wsl", cop.out)
 
         switch shelltype {
         case "zsh":
-            cop, _ = Copper("echo -n $ZSH_VERSION", true)
-            vset(0, "@zsh_version", cop)
+            cop = Copper("echo -n $ZSH_VERSION", true)
+            vset(0, "@zsh_version", cop.out)
         case "bash":
-            cop, _ = Copper("echo -n $BASH_VERSION", true)
-            vset(0, "@bash_version", cop)
-            cop, _ = Copper("echo -n $BASH_VERSINFO", true)
-            vset(0, "@bash_versinfo", cop)
-            cop, _ = Copper("echo -n $LANG", true)
-            vset(0, "@lang", cop)
+            cop = Copper("echo -n $BASH_VERSION", true)
+            vset(0, "@bash_version", cop.out)
+            cop = Copper("echo -n $BASH_VERSINFO", true)
+            vset(0, "@bash_versinfo", cop.out)
+            cop = Copper("echo -n $LANG", true)
+            vset(0, "@lang", cop.out)
         }
 
-        cop, _ = Copper("echo -n $USER", true)
-        vset(0, "@user", cop)
+        cop = Copper("echo -n $USER", true)
+        vset(0, "@user", cop.out)
 
         vset(0,"@os",runtime.GOOS)
 
-        cop, _ = Copper("echo -n $HOME", true)
-        vset(0, "@home", cop)
+        cop = Copper("echo -n $HOME", true)
+        vset(0, "@home", cop.out)
 
         var tmp string
 
@@ -831,10 +831,10 @@ func main() {
         // do all of the work involved with stuff already available.
 
         if runtime.GOOS=="linux" {
-            tmp, _ = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true)
-            vset(0, "@release_name", stripOuterQuotes(tmp, 1))
-            tmp, _ = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true)
-            vset(0, "@release_version", stripOuterQuotes(tmp, 1))
+            cop = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true)
+            vset(0, "@release_name", stripOuterQuotes(cop.out, 1))
+            cop = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true)
+            vset(0, "@release_version", stripOuterQuotes(cop.out, 1))
         }
 
         // special cases for release version:
@@ -846,12 +846,12 @@ func main() {
         }
         vset(0, "@release_version", vtmp)
 
-        tmp, _ = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true)
+        cop = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true)
+        tmp = stripOuterQuotes(cop.out, 1)
 
         // special cases for release id:
 
         // case 1: opensuse
-        tmp = stripOuterQuotes(tmp, 1)
         if str.HasPrefix(tmp, "opensuse-") {
             tmp = "opensuse"
         }
@@ -874,7 +874,7 @@ func main() {
 
     // special case: aliases in bash
     if shelltype=="bash" {
-        _, _ = Copper("shopt -s expand_aliases",true)
+        Copper("shopt -s expand_aliases",true)
     }
 
     if testMode {

@@ -668,23 +668,24 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
 
 // submit a command for coprocess execution
-func Copper(line string, squashErr bool) (string, int) {
+func Copper(line string, squashErr bool) struct{out string; err string; code int; okay bool} {
 
     // line         command to execute
     // squashErr    ignore errors in output
 
     // remove some bad conditions...
     if str.HasSuffix(str.TrimRight(line," "),"|") {
-        return "",-1
+        return struct{out string;err string;code int;okay bool}{"","",-1,false}
     }
     if tr(line,DELETE,"| ","") == "" {
-        return "",-1
+        return struct{out string;err string;code int;okay bool}{"","",-1,false}
     }
     line=str.TrimRight(line,"\n")
 
-    var ns string  // output from coprocess
-    var errint int // coprocess return code
-    var err error  // generic error handle
+    var ns string       // output from coprocess
+    var errout string   // stderr output
+    var errint int      // coprocess return code
+    var err error       // generic error handle
     var commandErr error
 
     riwp,_:=vget(0,"@runInWindowsParent")
@@ -789,8 +790,10 @@ func Copper(line string, squashErr bool) (string, int) {
 
         if len(b) > 0 {
             vset(0, "@last_out", b)
+            errout=string(b)
         } else {
             vset(0, "@last_out", []byte{0})
+            errout=""
         }
 
         os.Remove(errorFile.Name())
@@ -808,7 +811,7 @@ func Copper(line string, squashErr bool) (string, int) {
         }
     }
 
-    return ns, errint
+    return struct{out string;err string;code int;okay bool}{ns,errout,errint,errint==0}
 }
 
 func debug(level int, s string, va ...interface{}) {

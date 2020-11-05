@@ -18,9 +18,9 @@ logging off
 
 count =| grep -c "not logged" {lf}
 
-print "count [{count}] should be zero... "
+print "count [{=count.out}] should be zero... "
 
-if int(count)==0
+if int(count.out)==0
     exit 0, "[#4]okay[#-]"
 endif
 

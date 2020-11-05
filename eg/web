@@ -14,7 +14,7 @@ HOME_PATH="/home/daniel/www"
 
 define interface_ip(in)
     addrline =| ip addr show dev {in}
-    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
+    ipaddr=replace(filter(addrline.out,"inet.*/"),"inet ","")
     ipaddr=replace(ipaddr,"/","")
     return ipaddr
 end
@@ -146,8 +146,8 @@ web_serve_path(suid, "s", "^/(.*)/$", "http://{HOST}:61440/$1/index.html")
 # while k!=ascii("q") && web_serve_up(uid)
 #    k=keypress(POLL_TIMEOUT)
 #    if k>0 && k!="q"
-#        out=|netstat -apeen | egrep "{PORT}[ \t]+ESTABLISHED"
-#        print "Current connection count : ",count(out),"\n"
+#        cmd=|netstat -apeen | egrep "{PORT}[ \t]+ESTABLISHED"
+#        print "Current connection count : ",count(cmd.out),"\n"
 #    endif
 # endwhile
 
@@ -156,9 +156,10 @@ ipListRefreshMaxCount=12*60*24
 ipListRefreshCount=ipListRefreshMaxCount
 
 tmp=|mktemp
-if last()>0
+if !tmp.okay
     exit 1, "Could not make a temporary file."
 endif
+tmp=tmp.out
 
 region="eu-west-1"
 on get_env("AWS_DEFAULT_REGION")!="" do region=get_env("AWS_DEFAULT_REGION")
@@ -171,7 +172,10 @@ while web_serve_up(suid)
         if downloadOkay
             ipListRefreshCount=ipListRefreshCount-1
             s=epoch_nano_time()
-            thisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
+
+            cmdThisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
+            thisRegion=cmdThisRegion.out
+
             println "Completed in ",time_diff(epoch_nano_time(),s)," us"
             | rm -f {tmp}
         else
