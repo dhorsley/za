@@ -197,7 +197,7 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-l] [-Q] [-S] \
+[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S] \
     [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
@@ -216,7 +216,6 @@ func help(hargs string) {
     [#4]-U[#-] : Specify system command separator byte
     [#4]-c[#-] : Ignore colour code macros at startup
     [#4]-C[#-] : Enable colour code macros at startup
-    [#4]-l[#-] : Enable mutex locking for multi-threaded use
     [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-S[#-] : Disable the co-process shell
     [#4]-Q[#-] : Show shell command options

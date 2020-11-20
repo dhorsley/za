@@ -5,15 +5,12 @@ CHANGE LOG
 
 1.0.13  fixes
 
-        * automate setting of lockSafety flag:
-            - keeps a reference counter to locks() activations and only releases
-               the lock when the count drops to 0
-            * DONE - web service active
-            * DONE - async call active
-            * DONE - any other form of concurrency active (direct locks() call)
-            - the -l startup option should immediately raise the ref count to 1, effectively
-                ensuring it stays enabled so long as execution does not encounter an uncoupled
-                locks(false) call. 
+        * deprecated optional mutex locking.
+            * locks are now always enforced by default except in a few safe areas.
+            * the locks() library call and the -l startup option will be removed in 1.0.14
+            * this has obviously had a negative effect on the language speed, but it is a fairly
+                minor reduction in most cases. (<1%). It might get worse in hot code depending 
+                on the nature of operations, but it was worth the trade-off for operational safety.
 
         * added btoi() and itob() lib calls for converting bool to/from int.
 

@@ -292,7 +292,7 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["locks"] = LibHelp{in: "bool", out: "", action: "Enable or disable locks at runtime."}
+    slhelp["locks"] = LibHelp{in: "bool", out: "", action: "(deprecated) Enable or disable locks at runtime."}
     stdlib["locks"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 {
             return nil,errors.New("locks() accepts a boolean value only.")
