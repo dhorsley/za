@@ -1276,13 +1276,9 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
-    if lockSafety { vlock.Lock() }
-
-     // fmt.Printf("** vset %s %+v\n",vi,value)
-     // fmt.Printf("  -- len ident fs -> %d ident count of %d\n",len(ident[fs]), functionidents[fs])
+    vlock.Lock()
 
     if len(ident[fs])>=int(vi) {
-                // && vi < functionidents[fs] {
         // set
 
         // fmt.Printf("vset:type checking:fs %d/%s (vl:%d):len %d:fi %d\n",fs,unvmap[fs][vi],vi,len(ident[fs]),functionidents[fs])
@@ -1318,7 +1314,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
                 if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
-                if lockSafety { vlock.Unlock() }
+                vlock.Unlock()
                 panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",vi,value,value))
             }
 
@@ -1352,7 +1348,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
-    if lockSafety { vlock.Unlock() }
+    vlock.Unlock()
 
     return vi
 
@@ -1568,10 +1564,8 @@ func vget(fs uint32, name string) (interface{}, bool) {
 
     if vi, ok := VarLookup(fs, name); ok {
 
-        if lockSafety {
-            vlock.RLock()
-            defer vlock.RUnlock()
-        }
+        vlock.RLock()
+        defer vlock.RUnlock()
 
          // pf("-- vget returning value '%v' for %s\n",ident[fs][vi].IValue,name)
         if ident[fs][vi].declared {
@@ -1586,10 +1580,8 @@ func vget(fs uint32, name string) (interface{}, bool) {
 
 func vgeti(fs uint32, vi uint16) (interface{}, bool) {
 
-    if lockSafety {
-        vlock.RLock()
-        defer vlock.RUnlock()
-    }
+    vlock.RLock()
+    defer vlock.RUnlock()
 
     if int(vi)>=len(ident[fs]) {
         // pf("-- vgeti returning early.\n");
@@ -1662,8 +1654,7 @@ func interpolate(fs uint32, s string) (string) {
         return s
     }
 
-    var ilocked bool
-    if lockSafety { ilocked=true; interlock.Lock() }
+    interlock.Lock()
 
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
@@ -1752,7 +1743,7 @@ func interpolate(fs uint32, s string) (string) {
 
     if s=="<nil>" { s=orig }
 
-    if ilocked && lockSafety { interlock.Unlock() }
+    interlock.Unlock()
 
     return s
 }

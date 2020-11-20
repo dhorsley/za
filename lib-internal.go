@@ -686,8 +686,10 @@ func buildInternalLib() {
     slhelp["clear_line"] = LibHelp{in: "row,col", out: "", action: "Clear to the end of the line, starting at row,col in the current pane."}
     stdlib["clear_line"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=2 { return nil,errors.New("Bad arguments provided to clear_line()") }
+        atlock.Lock()
         row, rerr := GetAsInt(args[0])
         col, cerr := GetAsInt(args[1])
+        atlock.Unlock()
         if !(cerr || rerr) {
             clearToEOPane(row, col)
         }

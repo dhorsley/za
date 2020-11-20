@@ -184,12 +184,16 @@ func absat(row int, col int) {
     if col < 0 {
         col = 0
     }
+    atlock.Lock()
     pf("\033[%d;%dH", row, col)
+    atlock.Unlock()
 }
 
 /// move the console cursor
 func at(row int, col int) {
+    atlock.Lock()
     pf("\033[%d;%dH", orow+row, ocol+col)
+    atlock.Unlock()
 }
 
 func sat(row int,col int) string {
@@ -198,21 +202,29 @@ func sat(row int,col int) string {
 
 /// clear to end of line
 func clearToEOL() {
+    atlock.Lock()
     pf("\033[0K")
+    atlock.Unlock()
 }
 
 /// show the console cursor
 func showCursor() {
+    atlock.Lock()
     pf("\033[?12l\033[?25h\033[?8h")
+    atlock.Unlock()
 }
 
 /// hide the console cursor
 func hideCursor() {
+    atlock.Lock()
     pf("\033[?8l\033[?25l\033[?12h")
+    atlock.Unlock()
 }
 
 func cursorX(n int) {
+    atlock.Lock()
     pf("\033[%dG",n)
+    atlock.Unlock()
 }
 
 /// remove runes in string s before position pos
@@ -503,10 +515,12 @@ func paneUnbox(c string) {
 
 func setPane(c string) {
     if p, ok := panes[c]; ok {
+        atlock.Lock()
         orow = p.row
         ocol = p.col
         oh = p.h
         ow = p.w
+        atlock.Unlock()
     } else {
         pf("Pane '%s' not found! Ignoring.\n", c)
     }
@@ -815,16 +829,11 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 }
 
 func debug(level int, s string, va ...interface{}) {
-    if lockSafety { debuglock.RLock() }
+    debuglock.RLock()
     if debug_level >= level {
         pf(sparkle(s), va...)
     }
-    if lockSafety { debuglock.RUnlock() }
-    /*
-    if debug_level==20 {
-        plog(sparkle(s),va...)
-    }
-    */
+    debuglock.RUnlock()
 
 }
 

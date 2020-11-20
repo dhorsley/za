@@ -11,6 +11,8 @@ import (
 
 var openLocks int
 
+// deprecated: just locking everything now.
+
 // enable or disable global locking
 func locks(b bool) {
 
