@@ -115,12 +115,6 @@ var fairydust = make(map[string]string, FAIRY_CAP)
 //  for the break and continue statements
 var lastConstruct = make([][]uint8, SPACE_CAP)
 
-// active WHEN..ENDWHEN statements
-var wc = make([]whenCarton, SPACE_CAP)
-
-// count of active WHEN..ENDWHEN statements per function.
-var wccount = make([]int, SPACE_CAP)
-
 // number of functionspace which is considered to be "global"
 var globalaccess uint32
 

@@ -644,7 +644,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     if lockSafety { looplock.Lock() }
 
     // active WHEN..ENDWHEN statement meta info
-    var wc = make([]whenCarton, WHEN_START_CAP)
+    var wc = make([]whenCarton, WHEN_CAP)
 
     // count of active WHEN..ENDWHEN statements
     var wccount int
@@ -2856,6 +2856,12 @@ tco_reentry:
 
             // need to store the condition and result for the is/contains/has/or clauses
             // endwhen location should be calculated in advance for a direct jump to exit
+
+            if wccount==WHEN_CAP {
+                parser.report(sf("maximum WHEN nesting reached (%d)",WHEN_CAP))
+                finish(true,ERR_SYNTAX)
+                break
+            }
 
             if inbound.TokenCount==1 {
                 inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,tokText:"true"})
