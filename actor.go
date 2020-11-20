@@ -642,7 +642,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // initialise the loop positions: FOR, FOREACH, WHILE
 
     if lockSafety { looplock.Lock() }
-    wccount[ifs] = 0
+
+    // active WHEN..ENDWHEN statement meta info
+    var wc = make([]whenCarton, WHEN_START_CAP)
+
+    // count of active WHEN..ENDWHEN statements
+    var wccount int
 
     // allocate loop storage space if not a repeat ifs value.
     if lockSafety { vlock.RLock() }
@@ -760,7 +765,7 @@ tco_reentry:
         statement = inbound.Tokens[0]
 
     /////// LINE ////////////////////////////////////////////////////////////
-            // pf("[#b7][#2]%5d : %+v[##][#-]\n",pc,inbound.Tokens)
+            // pf("(%20s) [#b7][#2]%5d : %+v[##][#-]\n",fs,pc,inbound.Tokens)
     /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -1679,8 +1684,9 @@ tco_reentry:
                     bmess = "out of WHILE:\n"
 
                 case C_When:
-                    pc = wc[wccount[ifs]].endLine - 1
+                    pc = wc[wccount].endLine - 1
                     bmess = "out of WHEN:\n"
+                    pf("When Break encountered. pc set to %d\n",pc)
 
                 default:
                     parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
@@ -2845,40 +2851,19 @@ tco_reentry:
 
             currentModule=oldModule
 
-            // @note: keeping the source for now, so we can lookup error
-            //          lines on faults.
-
-            // calllock.Lock()
-            // calltable[loc]=call_s{}
-            // calllock.Unlock()
-
-            // purge the module source as the code has been executed
-            // fspacelock.Lock()
-            // functionspaces[loc]=[]Phrase{}
-            // fspacelock.Unlock()
-
 
         case C_When:
 
-            // need to store the condition and result for the is/contains/in/or clauses
+            // need to store the condition and result for the is/contains/has/or clauses
             // endwhen location should be calculated in advance for a direct jump to exit
-            // we need to calculate it anyway for nesting
-            // after the above setup, we execute next source line as normal
 
             if inbound.TokenCount==1 {
                 inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,tokText:"true"})
             }
-            /*
-                parser.report("Missing expression in WHEN statement")
-                finish(false,ERR_SYNTAX)
-                break
-            }
-            */
 
             // lookahead
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
-
-            // debug(6,"@%d : Endwhen lookahead set to line %d\n",pc+1,pc+1+enddistance)
+            // pf("@%d : Endwhen lookahead set to statement %d\n",pc+1,pc+1+enddistance)
 
             if er {
                 parser.report("Lookahead error!")
@@ -2899,18 +2884,19 @@ tco_reentry:
                 break
             }
 
-            // create a whenCarton and increase the nesting level
+            // create storage for WHEN details and increase the nesting level
 
             if lockSafety { lastlock.Lock() }
             if lockSafety { looplock.Lock() }
 
-            wccount[ifs]++
-            wc[wccount[ifs]] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true}
+            wccount++
+            wc[wccount] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true}
             depth[ifs]++
             lastConstruct[ifs] = append(lastConstruct[ifs], C_When)
 
             if lockSafety { looplock.Unlock() }
             if lockSafety { lastlock.Unlock() }
+
 
         case C_Is, C_Has, C_Contains, C_Or:
 
@@ -2925,12 +2911,11 @@ tco_reentry:
                 break
             }
 
-            carton := wc[wccount[ifs]]
+            carton := wc[wccount]
 
             if lockSafety { looplock.RUnlock() }
             if lockSafety { lastlock.RUnlock() }
 
-            // var cet, expr ExpressionCarton
             var expr ExpressionCarton
 
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
@@ -2952,24 +2937,17 @@ tco_reentry:
                 switch expr.result.(type) {
                 case bool:
                     if expr.result.(bool) {  // HAS truth
-                        carton.dodefault=false
-                        if lockSafety { looplock.Lock() }
-                        wc[wccount[ifs]] = carton
-                        if lockSafety { looplock.Unlock() }
+                        wc[wccount].dodefault = false
                         ramble_on = true
                     }
                 default:
                     parser.report(sf("HAS condition did not result in a boolean\n%+v",expr.errVal))
                     finish(false, ERR_EVAL)
-                    break
                 }
 
             case C_Is:
                 if expr.result == carton.value { // matched IS value
-                    carton.dodefault = false
-                    if lockSafety { looplock.Lock() }
-                    wc[wccount[ifs]] = carton
-                    if lockSafety { looplock.Unlock() }
+                    wc[wccount].dodefault = false
                     ramble_on = true
                 }
 
@@ -2978,18 +2956,12 @@ tco_reentry:
                 switch carton.value.(type) {
                 case string:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
-                        carton.dodefault = false
-                        if lockSafety { looplock.Lock() }
-                        wc[wccount[ifs]] = carton
-                        if lockSafety { looplock.Unlock() }
+                        wc[wccount].dodefault = false
                         ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
-                        carton.dodefault = false
-                        if lockSafety { looplock.Lock() }
-                        wc[wccount[ifs]] = carton
-                        if lockSafety { looplock.Unlock() }
+                        wc[wccount].dodefault = false
                         ramble_on = true
                     }
                 }
@@ -3035,8 +3007,10 @@ tco_reentry:
                 if !(isfound || hasfound || orfound || cofound) {
                     // must be an endwhen
                     loc = carton.endLine
+                    // pf("@%d : direct jump to endwhen at %d\n",pc,loc+1)
                 } else {
                     loc = pc + min_int(distList) + 1
+                    // pf("@%d : direct jump from distList to %d\n",pc,loc+1)
                 }
 
                 // jump to nearest following clause
@@ -3057,12 +3031,11 @@ tco_reentry:
             }
 
             breakIn = Error
-
             lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
             depth[ifs]--
-            wccount[ifs]--
+            wccount--
 
-            if wccount[ifs] < 0 {
+            if wccount < 0 {
                 parser.report("Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }

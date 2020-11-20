@@ -25,23 +25,23 @@ upxfound=trim(upxfound.out,0).int
 strip_opts="-s -w"
 
 if ! os() ~ "^freebsd"
-    when lower(tgt)
-    is "alpine"
+    when lower(tgt) #i15
+    is "alpine" #i16
         if buildMusl(bvers,bdate.out,strip_opts,upx_enable)!=0
             println "Failed to build alpine version."
             exit 1
         endif
-    is "libc"
+    is "libc" #i21
         if buildLibc(bvers,bdate.out)!=0
             println "Failed to build libc version."
             exit 1
         endif
-    is "win"
+    is "win" #i26
         if buildWin(bvers,bdate.out,strip_opts) != 0
             println "Failed to build windows version."
             exit 1
         endif
-    endwhen
+    endwhen #i31
 else
     if buildFreeBSD(bvers,bdate.out) != 0
         println "Failed to build bsd version."
@@ -60,7 +60,7 @@ if ! os() ~ "^freebsd"
     endif
 endif
 
-when lower(tgt)
+when lower(tgt) #i48
 is "libc"
     println "[#4]Installing to /usr/bin/[#-]\n"
     | sudo cp -f za /usr/bin
