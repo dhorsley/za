@@ -20,7 +20,12 @@ const LOOP_START_CAP = 8        // max loops per function
 const VAR_CAP = 8               // max vars per function (scales up)
 const FAIRY_CAP = 64            // max ansi mappings
 const LIST_SIZE_CAP = 16        // initial list size on construction
-const WHEN_START_CAP = 2        // how many initial placeholders to create for WHEN...ENDWHEN meta info per func
+const WHEN_CAP = 8              // how many placeholders to create for WHEN...ENDWHEN meta info per func
+                                // ... this is currently only bounds checked in actor.go
+                                // @todo: allow for it to expand dynamically. this will be an issue in 
+                                //  tail-call eliminated recursive calls that use WHEN...ENDWHEN
+                                //  if we ever perform optimisations that allow for the call to be anywhere
+                                //  except the final statement. (admittedly unlikely)
 
 const globalspace = uint32(0)   // global namespace
 
