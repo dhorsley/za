@@ -1662,7 +1662,8 @@ func interpolate(fs uint32, s string) (string) {
         return s
     }
 
-    if lockSafety { interlock.Lock() }
+    var ilocked bool
+    if lockSafety { ilocked=true; interlock.Lock() }
 
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
@@ -1751,7 +1752,7 @@ func interpolate(fs uint32, s string) (string) {
 
     if s=="<nil>" { s=orig }
 
-    if lockSafety { interlock.Unlock() }
+    if ilocked && lockSafety { interlock.Unlock() }
 
     return s
 }
