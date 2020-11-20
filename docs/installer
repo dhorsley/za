@@ -3,10 +3,7 @@
 #  you'll probably need to do this manually until i have the
 #  patience to write a generic script. feel free to contribute one!
 
-#
-# first time:
-#  you will need to add a stanza such as the one below to scripts.vim:
-doc `
+zahandler=`
  Za shell scripts
   elseif s:name =~# '^za\>'
     set ft=za
@@ -18,14 +15,36 @@ else
     pathRoot="/usr/share/vim"
 endif
 
-newPath=| ls -d {pathRoot}/vim8*
-vnum=(newPath.split("\n") -> "#.substr(#.len-2,2)").list_float.max
-newPath=pathRoot+"/vim"+vnum
+# where's vim at?
 
-println "PATH : |{newPath}|"
+foreach p in dir(pathRoot)
+    if hasstart(p.name,"vim8")
+        allPaths=append(allPaths,p.name)
+        break
+    endif
+endfor
 
-| sudo cp -f za.vim {newPath}/ftplugin/
-| sudo cp -f za.vim {newPath}/syntax/
-| sudo chmod 755 {newPath}/{syntax,ftplugin}/za.vim
+if allPaths.len>0
+
+    println "allpaths: ({allPaths})"
+    vnum=(allPaths -> "#.substr(#.len-2,2)").list_float.max
+    newPath=join([pathRoot,"vim"+vnum],"/")
+
+    println "working path: [{newPath}]"
+
+    # check for scripts.vim stanza
+    infile=read_file(join([newPath,"scripts.vim"],"/"))
+    if line_match(infile,"ft=za")
+        println "stanza found"
+    else
+        infile=line_add(infile,zahandler)
+        println "new scripts.vim:\n",infile,"\n"
+    endif
+
+    | sudo cp -f za.vim {newPath}/ftplugin/
+    | sudo cp -f za.vim {newPath}/syntax/
+    | sudo chmod 755 {newPath}/{syntax,ftplugin}/za.vim
+
+endif
 
 

@@ -5,6 +5,9 @@ BUGS
 
 lots, i'm sure.
 
+* still an issue when when..endwhen, it sometimes calculates endwhen position incorrectly.
+    - should avoid it for now, may even disable or rework entirely.
+
 
 TODO
 ----
