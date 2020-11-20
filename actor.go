@@ -38,6 +38,7 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     return r
 }
 
+var atlock = &sync.RWMutex{}
 var debuglock = &sync.RWMutex{}
 var siglock = &sync.RWMutex{}
 
@@ -52,9 +53,9 @@ func finish(hard bool, i int) {
         os.Exit(i)
     }
 
-    if lockSafety { siglock.Lock() }
+    siglock.Lock()
     sig_int = true
-    if lockSafety { siglock.Unlock() }
+    siglock.Unlock()
 
 }
 
@@ -381,9 +382,9 @@ var globlock   = &sync.RWMutex{}  // generic global related
 
 // identify the source storage id related to a specific instance id
 func baseof(fs uint32) (base uint32) {
-    if lockSafety { calllock.RLock() }
+    calllock.RLock()
     base = calltable[fs].base
-    if lockSafety { calllock.RUnlock() }
+    calllock.RUnlock()
     return
 }
 
@@ -607,13 +608,13 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
 
     // missing varargs in call result in empty string assignments:
-    if lockSafety { farglock.RLock() }
+    farglock.RLock()
     if len(functionArgs[base].args)>len(va) {
         for e:=0; e<(len(functionArgs[base].args)-len(va)); e++ {
             va=append(va,"")
         }
     }
-    if lockSafety { farglock.RUnlock() }
+    farglock.RUnlock()
 
 
     if varmode == MODE_NEW {
@@ -641,7 +642,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
 
-    if lockSafety { looplock.Lock() }
+    looplock.Lock()
 
     // active WHEN..ENDWHEN statement meta info
     var wc = make([]whenCarton, WHEN_CAP)
@@ -650,7 +651,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     var wccount int
 
     // allocate loop storage space if not a repeat ifs value.
-    if lockSafety { vlock.RLock() }
+    vlock.RLock()
 
     var top,highest,lscap uint32
 
@@ -685,8 +686,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
 
-    if lockSafety { vlock.RUnlock() }
-    if lockSafety { looplock.Unlock() }
+    vlock.RUnlock()
+    looplock.Unlock()
 
 
 tco_reentry:
@@ -707,7 +708,7 @@ tco_reentry:
     //  from each va value.
     // - functionArgs[] created at definition time from the call signature
 
-    if lockSafety { farglock.RLock() }
+    farglock.RLock()
     if len(va) > 0 {
         for q, v := range va {
             fa:=functionArgs[base].args[q]
@@ -715,7 +716,7 @@ tco_reentry:
             vset(ifs,fa,v)
         }
     }
-    if lockSafety { farglock.RUnlock() }
+    farglock.RUnlock()
 
     finalline = len(functionspaces[base])
 
@@ -743,7 +744,7 @@ tco_reentry:
         }
 
         // race condition: winching check
-        if !lockSafety && winching {
+        if winching {
             pane_redef()
         }
 
@@ -755,7 +756,7 @@ tco_reentry:
             continue
         }
 
-    /////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////
 
         // finally... start processing the statement.
 
@@ -764,9 +765,9 @@ tco_reentry:
 
         statement = inbound.Tokens[0]
 
-    /////// LINE ////////////////////////////////////////////////////////////
+        /////// LINE ////////////////////////////////////////////////////////////
             // pf("(%20s) [#b7][#2]%5d : %+v[##][#-]\n",fs,pc,inbound.Tokens)
-    /////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
         if defining && statement.tokType != C_Enddef {
@@ -925,13 +926,13 @@ tco_reentry:
 
             if isBool(res) && res {
                 // while cond is true, stack, then continue loop
-                if lockSafety { looplock.Lock() }
-                if lockSafety { lastlock.Lock() }
+                looplock.Lock()
+                lastlock.Lock()
                 depth[ifs]++
                 loops[ifs][depth[ifs]] = s_loop{repeatFrom: pc, whileContinueAt: pc + enddistance, repeatCond: etoks, loopType: C_While}
                 lastConstruct[ifs] = append(lastConstruct[ifs], C_While)
-                if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Unlock() }
+                lastlock.Unlock()
+                looplock.Unlock()
                 break
             } else {
                 // goto endwhile
@@ -943,29 +944,29 @@ tco_reentry:
 
             // re-evaluate, on true jump back to start, on false, destack and continue
 
-            if lockSafety { looplock.Lock() }
+            looplock.Lock()
 
             cond := loops[ifs][depth[ifs]]
 
             if cond.loopType != C_While {
                 parser.report("ENDWHILE outside of WHILE loop.")
                 finish(false, ERR_SYNTAX)
-                if lockSafety { looplock.Unlock() }
+                looplock.Unlock()
                 break
             }
 
             // time to die?
             if breakIn == C_Endwhile {
-                if lockSafety { lastlock.Lock() }
+                lastlock.Lock()
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 depth[ifs]--
-                if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Unlock() }
+                lastlock.Unlock()
+                looplock.Unlock()
                 breakIn = Error
                 break
             }
 
-            if lockSafety { looplock.Unlock() }
+            looplock.Unlock()
 
             // eval
             expr := parser.wrappedEval(ifs,ifs,cond.repeatCond)
@@ -981,12 +982,12 @@ tco_reentry:
                 pc = cond.repeatFrom
             } else {
                 // was false, so leave the loop
-                if lockSafety { looplock.Lock() }
-                if lockSafety { lastlock.Lock() }
+                looplock.Lock()
+                lastlock.Lock()
                 lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
                 depth[ifs]--
-                if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Unlock() }
+                lastlock.Unlock()
+                looplock.Unlock()
             }
 
 
@@ -1312,8 +1313,8 @@ tco_reentry:
                     break
                 }
 
-                if lockSafety { looplock.Lock() }
-                if lockSafety { lastlock.Lock() }
+                looplock.Lock()
+                lastlock.Lock()
 
                 depth[ifs]++
                 lastConstruct[ifs] = append(lastConstruct[ifs], C_Foreach)
@@ -1324,8 +1325,8 @@ tco_reentry:
                     loopType: C_Foreach,
                 }
 
-                if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Unlock() }
+                lastlock.Unlock()
+                looplock.Unlock()
 
             }
 
@@ -1437,8 +1438,8 @@ tco_reentry:
             inter:=inbound.Tokens[1].tokText
             fno:=inbound.Tokens[1].offset
 
-            if lockSafety { lastlock.Lock() }
-            if lockSafety { looplock.Lock() }
+            lastlock.Lock()
+            looplock.Lock()
 
             depth[ifs]++
             loops[ifs][depth[ifs]] = s_loop{
@@ -1455,8 +1456,8 @@ tco_reentry:
 
             lastConstruct[ifs] = append(lastConstruct[ifs], C_For)
 
-            if lockSafety { looplock.Unlock() }
-            if lockSafety { lastlock.Unlock() }
+            looplock.Unlock()
+            lastlock.Unlock()
 
             // make sure start is not more than end, if it is, send it to the endfor
             switch direction {
@@ -1475,8 +1476,11 @@ tco_reentry:
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
-            if lockSafety { looplock.Lock() }
-            if lockSafety { lastlock.Lock() }
+            // @note:
+            // mutex locks removed from endfor
+            // shouldn't be an issue but will flag during race checking
+            // the loops entries should never be re-allocated from under a working instance
+            // and we are generally reading from a pointer within the array.
 
             if depth[ifs]==0 {
                 parser.report(sf("trying to get lastConstruct when there isn't one in %s (ifs:%v)!\n",fs,ifs))
@@ -1606,15 +1610,12 @@ tco_reentry:
                 pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
             }
 
-            if lockSafety { lastlock.Unlock() }
-            if lockSafety { looplock.Unlock() }
-
 
         case C_Continue:
 
             // Continue should work with FOR, FOREACH or WHILE.
 
-            if lockSafety { looplock.RLock() }
+            looplock.RLock()
 
             if depth[ifs] == 0 {
                 parser.report("Attempting to CONTINUE without a valid surrounding construct.")
@@ -1627,7 +1628,7 @@ tco_reentry:
                 //  a minor speed bump. we should periodically review this 
                 //  as an optimisation in Go could make this unnecessary.
 
-                if lockSafety { lastlock.RLock() }
+                lastlock.RLock()
                 switch lastConstruct[ifs][depth[ifs]-1] {
 
                 case C_For, C_Foreach:
@@ -1638,10 +1639,10 @@ tco_reentry:
                     thisLoop = &loops[ifs][depth[ifs]]
                     pc = (*thisLoop).whileContinueAt - 1
                 }
-                if lockSafety { lastlock.RUnlock() }
+                lastlock.RUnlock()
 
             }
-            if lockSafety { looplock.RUnlock() }
+            looplock.RUnlock()
 
         case C_Break:
 
@@ -1653,8 +1654,8 @@ tco_reentry:
             // The surrounding construct should set the 
             //  lastConstruct[fs][depth] on entry.
 
-            if lockSafety { looplock.RLock() }
-            if lockSafety { lastlock.RLock() }
+            looplock.RLock()
+            lastlock.RLock()
 
             if depth[ifs] == 0 {
                 parser.report("Attempting to BREAK without a valid surrounding construct.")
@@ -1691,8 +1692,8 @@ tco_reentry:
                 default:
                     parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
-                    if lockSafety { lastlock.RUnlock() }
-                    if lockSafety { looplock.RUnlock() }
+                    lastlock.RUnlock()
+                    looplock.RUnlock()
                     break
                 }
 
@@ -1702,8 +1703,8 @@ tco_reentry:
 
             }
 
-            if lockSafety { lastlock.RUnlock() }
-            if lockSafety { looplock.RUnlock() }
+            lastlock.RUnlock()
+            looplock.RUnlock()
 
         case C_Unset: // remove a variable
 
@@ -1840,8 +1841,10 @@ tco_reentry:
                 }
 
                 name         := sf("%v",pname.result)
+                atlock.Lock()
                 col,invalid1 := GetAsInt(px.result)
                 row,invalid2 := GetAsInt(py.result)
+                atlock.Unlock()
                 w,invalid3   := GetAsInt(pw.result)
                 h,invalid4   := GetAsInt(ph.result)
                 if hasTitle { title = sf("%v",ptitle.result) }
@@ -2892,35 +2895,35 @@ tco_reentry:
 
             // create storage for WHEN details and increase the nesting level
 
-            if lockSafety { lastlock.Lock() }
-            if lockSafety { looplock.Lock() }
+            lastlock.Lock()
+            looplock.Lock()
 
             wccount++
             wc[wccount] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true}
             depth[ifs]++
             lastConstruct[ifs] = append(lastConstruct[ifs], C_When)
 
-            if lockSafety { looplock.Unlock() }
-            if lockSafety { lastlock.Unlock() }
+            looplock.Unlock()
+            lastlock.Unlock()
 
 
         case C_Is, C_Has, C_Contains, C_Or:
 
-            if lockSafety { lastlock.RLock() }
-            if lockSafety { looplock.RLock() }
+            lastlock.RLock()
+            looplock.RLock()
 
             if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
                 parser.report("Not currently in a WHEN block.")
                 finish(false,ERR_SYNTAX)
-                if lockSafety { looplock.RUnlock() }
-                if lockSafety { lastlock.RUnlock() }
+                looplock.RUnlock()
+                lastlock.RUnlock()
                 break
             }
 
             carton := wc[wccount]
 
-            if lockSafety { looplock.RUnlock() }
-            if lockSafety { lastlock.RUnlock() }
+            looplock.RUnlock()
+            lastlock.RUnlock()
 
             var expr ExpressionCarton
 
@@ -3026,13 +3029,13 @@ tco_reentry:
 
         case C_Endwhen:
 
-            if lockSafety { looplock.Lock() }
-            if lockSafety { lastlock.Lock() }
+            looplock.Lock()
+            lastlock.Lock()
 
             if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
                 parser.report( "Not currently in a WHEN block.")
-                if lockSafety { lastlock.Unlock() }
-                if lockSafety { looplock.Unlock() }
+                lastlock.Unlock()
+                looplock.Unlock()
                 break
             }
 
@@ -3046,8 +3049,8 @@ tco_reentry:
                 finish(false, ERR_SYNTAX)
             }
 
-            if lockSafety { lastlock.Unlock() }
-            if lockSafety { looplock.Unlock() }
+            lastlock.Unlock()
+            looplock.Unlock()
 
 
         case C_Struct:
@@ -3285,8 +3288,11 @@ tco_reentry:
                     parser.report(  sf("Evaluation error in %v", expr_col))
                 }
 
+                atlock.Lock()
                 row, _ = GetAsInt(expr_row)
                 col, _ = GetAsInt(expr_col)
+                atlock.Unlock()
+
                 at(row, col)
 
             }
@@ -3458,8 +3464,10 @@ tco_reentry:
 
             if inbound.TokenCount == 1 {
                 cls()
+                atlock.Lock()
                 row = 1
                 col = 1
+                atlock.Unlock()
                 currentpane = "global"
             } else {
                 if currentpane != "global" {
@@ -3467,8 +3475,10 @@ tco_reentry:
                     for l := 1; l < p.h; l++ {
                         clearToEOPane(l, 2)
                     }
+                    atlock.Lock()
                     row = 1
                     col = 1
+                    atlock.Unlock()
                 }
             }
 
@@ -3597,7 +3607,7 @@ tco_reentry:
         // pf("Leaving call with ifs of %d [fs:%s]\n\n",ifs,fs)
 
         // pf("[#2]about to delete %v[#-]\n",fs)
-        if lockSafety { calllock.Lock() }
+        calllock.Lock()
 
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
         if !str.HasPrefix(fs,"@mod_") {
@@ -3619,7 +3629,7 @@ tco_reentry:
         } else {
             // pf("... skipped.\n")
         }
-        if lockSafety { calllock.Unlock() }
+        calllock.Unlock()
 
     }
 

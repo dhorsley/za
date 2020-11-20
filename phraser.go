@@ -140,9 +140,9 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             // -- discard empty lines
             if phrase.TokenCount!=0 {
                 // -- add phrase to function
-                if lockSafety { fspacelock.Lock() }
+                fspacelock.Lock()
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
-                if lockSafety { fspacelock.Unlock() }
+                fspacelock.Unlock()
             }
 
             // reset phrase

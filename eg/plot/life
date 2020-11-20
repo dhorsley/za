@@ -1,6 +1,5 @@
 #!/usr/bin/za
 
-
 empty=" "; full="[#4]o"
 if os()!="windows" && utf8supported()
     empty="[#3]·"
@@ -119,7 +118,6 @@ async a_resize proc_resize()
 async a_input  proc_input()
 
 while !quit
-
 
     # status
     while resizing || helping || inputing ; endwhile
