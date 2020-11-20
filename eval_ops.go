@@ -1152,9 +1152,9 @@ func callFunction(evalfs uint32, callline int, name string, args []interface{}) 
 			// make Za function call
             loc,id := GetNextFnSpace(name+"@")
 
-            if lockSafety { calllock.Lock() }
+            calllock.Lock()
 			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
-            if lockSafety { calllock.Unlock() }
+            calllock.Unlock()
 
 			rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
 

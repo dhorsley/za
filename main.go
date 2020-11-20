@@ -55,6 +55,7 @@ var BuildDate string
 
 // thread-safety
 
+// @deprecated: leaving in place as not removed locks() func yet
 // enable mutices in variable handling functions
 var lockSafety bool=false
 
@@ -267,9 +268,9 @@ func main() {
     go func() {
         for {
             <-sigs
-            if lockSafety { globlock.Lock() }
+            globlock.Lock()
             winching = true
-            if lockSafety { globlock.Unlock() }
+            globlock.Unlock()
         }
     }()
 

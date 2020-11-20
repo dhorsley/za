@@ -36,12 +36,12 @@ func (u *Lmap) lmset(k string,v uint32) {
 }
 
 func (u *Lmap) lmget(k string) (tmp uint32,ok bool) {
-	if lockSafety { u.RLock() }
+	u.RLock()
     if tmp,ok=u.smap[k]; ok {
-	    if lockSafety { u.RUnlock() }
+	    u.RUnlock()
         return tmp,true
     }
-	if lockSafety { u.RUnlock() }
+	u.RUnlock()
     return 0,false
 }
 
