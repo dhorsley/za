@@ -5,19 +5,6 @@ BUGS
 
 lots, i'm sure.
 
-    * row,col globals will definitely cause race conditions.
-        * anything asynchronous that shifts the cursor position around rapidly
-            could break these. it is very fixable, just painful.
-        * we could use a better way of doing this. we need to hold state for the terminal
-            cursor globally as it is incredibly slow trying to pull this information from
-            the VT handlers directly. (It involves sending a command to the VT in an
-            out-of-band mode.)
-        * it shouldn't matter for "normal" use of the language, but anything that tries
-            to be clever with screen updates can race currently.
-        * don't want to do it, but may have to look at third-party atomic handlers if we
-            want a quick fix otherwise it means adding locking code in a rather large
-            number of areas.
-
 TODO
 ----
 
