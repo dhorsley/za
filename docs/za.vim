@@ -110,6 +110,7 @@ syntax match conversion_functions "\s*base64e\s*("he=e-1
 syntax match conversion_functions "\s*base64d\s*("he=e-1
 syntax match conversion_functions "\s*json_decode\s*("he=e-1
 syntax match conversion_functions "\s*json_format\s*("he=e-1
+syntax match conversion_functions "\s*json_query\s*("he=e-1
 syntax match conversion_functions "\s*write_struct\s*("he=e-1
 syntax match conversion_functions "\s*read_struct\s*("he=e-1
 
