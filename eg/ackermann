@@ -5,7 +5,6 @@ var calls int
 define ackermann(m,n)
 
     setglob calls = calls + 1
-
     if globkey("memoA",`{m},{n}`)
         return memoA[`{m},{n}`]
     endif
@@ -36,6 +35,8 @@ b=int(b)
 println a
 println b
 
-println "A({a},{b}) = {=ackermann(a,b)}"
+z=ackermann(a,b)
+# println "A({a},{b}) = {=ackermann(a,b)}"
+println "A({a},{b}) = {z}"
 println "Calls : ",calls
 
