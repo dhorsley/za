@@ -15,6 +15,7 @@ import (
     "strings"
     "unsafe"
     "encoding/gob"
+    "github.com/itchyny/gojq"
 )
 
 // struct to map
@@ -72,7 +73,7 @@ func buildConversionLib() {
 	features["conversion"] = Feature{version: 1, category: "os"}
 	categories["conversion"] = []string{
         "byte","int", "int64", "float", "bool", "string", "kind", "chr", "ascii","uint",
-        "is_number","base64e","base64d","json_decode","json_format",
+        "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
         "btoi","itob",
     }
@@ -284,6 +285,55 @@ func buildConversionLib() {
 		return string(pj.Bytes()),nil
     }
 
+	slhelp["json_query"] = LibHelp{in: "string,query_string[,map_flag]", out: "output_string", action: "Returns the result of processing [#i1]string[#i0] using the gojq library. [#i1]query_string[#i0] is a jq-like query to operate against [#i1]string[#i0]. If [#i1]map_flag[#i0] is false (default) then a string is returned, otherwise an iterable list is returned."}
+	stdlib["json_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+
+		if len(args) < 2 { return nil, errors.New("invalid arguments (count) provided to json_query()") }
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" { return nil,errors.New("invalid arguments (type) provided to json_query()") }
+        var complex bool
+        if len(args)==3 {
+            switch args[2].(type) {
+                case bool:
+                    complex=args[2].(bool)
+                default:
+                    return nil,errors.New("argument 3 must be a boolean when present in json_query()")
+            }
+        }
+
+        // first parse query string
+        q,e:=gojq.Parse(args[1].(string))
+        if e!=nil {
+            return "",errors.New("invalid query string in json_query()")
+        }
+
+        // then decode json to map suitable for gojq.Run
+        var iv map[string]interface{}
+        dec:=json.NewDecoder(strings.NewReader(args[0].(string)))
+        if err := dec.Decode(&iv); err!=nil {
+            return "",errors.New("could not convert JSON in json_query()")
+        }
+
+        // process query
+        var ns strings.Builder
+        var retlist []interface{}
+
+        iter:=q.Run(iv)
+
+        for {
+            v,ok:=iter.Next()
+            if !ok { break }
+            if complex {
+                retlist=append(retlist,v)
+            } else {
+                ns.WriteString(sf("%v\n",v))
+            }
+        }
+
+		if complex { return retlist, nil }
+        return ns.String(),nil
+
+    }
+
 	slhelp["float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
 	stdlib["float"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 		if len(args) != 1 {
@@ -317,7 +367,10 @@ func buildConversionLib() {
 			return -1, errors.New("invalid arguments provided to bool()")
 		}
         switch args[0].(type) {
+        case bool:
+            return args[0].(bool),nil
         case string:
+            if args[0]=="" { args[0]="false" }
             b, err := strconv.ParseBool(args[0].(string))
             if err==nil {
                 return b, nil

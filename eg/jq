@@ -1,0 +1,58 @@
+#!/usr/bin/za
+
+input cluster param 1
+input iterable optarg 2
+iterable=bool(iterable)
+
+# example 1: returning filtered instance details
+
+sn=|aws ec2 describe-instances --filter "Name=tag:cluster,Values={cluster}"
+
+result=sn.out.json_query(`
+    [ [.Reservations[].Instances[]|{state:.State.Name,type:.InstanceType}] |
+        group_by(.state)|.[]|
+        {state:.[0].state,types:[.[].type]}
+    ]
+`, iterable)
+
+if iterable
+    foreach i in result
+        println "iter {key_i}"
+        when kind(i)
+        is "[]interface {}"
+            foreach j in i
+                println "    - ({=kind(j)}) : ",j
+            endfor
+        endwhen
+    endfor
+else
+    println "Simple result:\n",result
+endif
+
+
+# example 2: snapshot count
+
+println "\nsimple query (snapshot count)"
+sn=|aws ec2 describe-snapshots --owner-ids self
+println sn.out.json_query(`
+    .Snapshots | length
+`)
+
+
+# example 3: numbering instances
+
+println "number running and preparing to operate instances"
+
+sn=| aws ec2 describe-instances --filter "Name=tag:cluster,Values={cluster}"
+
+result=sn.out.json_query(`
+    .[] | .[] | .Instances[] 
+        | select((.State.Name == "running") or (.State.Name == "pending"))
+        | .InstanceId
+`) . fieldsort(1)
+
+foreach i in result
+    println key_i+1, " ", i
+endfor
+
+
