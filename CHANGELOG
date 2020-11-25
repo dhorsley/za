@@ -5,6 +5,17 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added json_query() call. this is just a wrapper around gojq for simple queries:
+
+            https://github.com/itchyny/gojq
+
+            - pretty great software - saved me a ton of work! :)
+
+            - will have to see what impact this has on binary size, performance, etc before
+                deciding if we should just generate a more basic version of our own. I really
+                would like to keep this package in place though. it's going to help a lot when
+                using this language with cloud-based tooling (aws and similar).
+
         * deprecated optional mutex locking.
             * locks are now always enforced by default except in a few safe areas.
             * the locks() library call and the -l startup option will be removed in 1.0.14
