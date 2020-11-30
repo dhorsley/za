@@ -1261,7 +1261,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
 
     // create mapping entries for this name if it does not already exist
     if _,found:=vmap[fs][name]; !found {
-        vmap[fs][name]=functionidents[fs]
+        vmap[fs][name]=functionidents[fs]+1
         unvmap[fs][functionidents[fs]]=name
         identResize(fs,functionidents[fs]+1)
         functionidents[fs]++

@@ -466,7 +466,11 @@ func buildStringLib() {
     stdlib["line_replace"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
 
         if len(args) != 3 {
-            return "", errors.New("Error: invalid argument count.\n")
+            return "", errors.New("Error: invalid arguments (count) in line_replace().")
+        }
+
+        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" || sf("%T",args[2])!="string" {
+            return "", errors.New("Error: invalid arguments (type) in line_replace().")
         }
 
         src := args[0].(string)
