@@ -4,8 +4,13 @@ m=0
 
 f=read_file("/dev/stdin")
 foreach l in f
-    dups[l]=dups[l]+1
-    on m<dups[l] do m=dups[l]
+    # some 'l' values cannot represent keys, depending on nature of input
+    on dups[l]==nil do dups[l]=0
+    # only append if valid key was found
+    if kind(dups[l])==int
+        dups[l]=dups[l]+1
+        on m<dups[l] do m=dups[l]
+    endif
 endfor
 
 println "{=len(dups)} {m}"
