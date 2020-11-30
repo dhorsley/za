@@ -1041,7 +1041,7 @@ tco_reentry:
 
                 expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
                 if expr.evalError {
-                    parser.report( sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
+                    parser.report(sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1184,7 +1184,6 @@ tco_reentry:
 
                         // get iterator for this map
                         iter = reflect.ValueOf(expr.result.(map[string]string)).MapRange()
-
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
