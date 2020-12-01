@@ -1686,7 +1686,6 @@ tco_reentry:
                 case C_When:
                     pc = wc[wccount].endLine - 1
                     bmess = "out of WHEN:\n"
-                    pf("When Break encountered. pc set to %d\n",pc)
 
                 default:
                     parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
