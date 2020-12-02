@@ -60,6 +60,11 @@ var BuildDate string
 var lockSafety bool=false
 
 
+// initialise parser used by the interpolate function
+// this (and interlock) in ev() prevent recursive interpolation from working
+// @todo: need to see if there's a work around for this.
+var interparse *leparser
+
 // run-time declarations
 
 // open function calls
@@ -213,10 +218,6 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
-// parser reserved for use by the interpolate function.
-//  has a lock around it when -l startup arg set.
-var interparse *leparser
-
 // for disabling the coprocess entirely:
 var no_shell bool
 var shellrep bool
@@ -273,6 +274,9 @@ func main() {
             globlock.Unlock()
         }
     }()
+
+    // instantiate parser for interpolation
+    interparse=&leparser{}
 
     // generic error flag - used through main
     var err error
@@ -653,10 +657,6 @@ func main() {
 
     // initialise global parser
     parser:=&leparser{}
-
-    // initialise parser used by the interpolate function
-    interparse=&leparser{}
-
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
