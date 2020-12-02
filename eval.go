@@ -1709,17 +1709,18 @@ func interpolate(fs uint32, s string) (string) {
     redo:=true
     for ;redo; {
         modified=false
-        for p:=0;p<len(s);p++ {
+        for p:=0;p<len(s)-1;p++ {
             if s[p]=='{' && s[p+1]=='=' {
-                q:=str.IndexByte(s[p+2:],'}')
+                q:=str.IndexByte(s[p:],'}') // don't start at greater offset or have to make assumptions about len
                 if q==-1 { break }
 
-                    // pf("( eval interpolation of %s ) ",s[p+2:p+q+2])
-                    if aval, err := ev(interparse,fs, s[p+2:p+q+2]); err==nil {
-
+                // pf("( eval interpolation of %s ) ",s[p+2:p+q])
+                if aval, err := ev(interparse,fs,s[p+2:p+q]); err==nil {
+                    // pf("( eval interpolation returned with %+v ) ",aval)
                     switch val:=aval.(type) {
                     // a few special cases here which will operate faster
                     //  than waiting for fmt.sprintf() to execute.
+                    /* removed as test
                     case string:
                         s=s[:p]+val+s[p+q+3:]
                     case int:
@@ -1728,12 +1729,15 @@ func interpolate(fs uint32, s string) (string) {
                         s=s[:p]+strconv.FormatInt(val,10)+s[p+q+3:]
                     case uint:
                         s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+3:]
+                    */
                     default:
-                        s=s[:p]+sf("%v",val)+s[p+q+3:]
+                        s=s[:p]+sf("%v",val)+s[p+q+1:]
 
                     }
                     modified=true
                     break
+                } else {
+                    // pf("( eval interpolation error - returned with %+v ) ",err)
                 }
                 p=q+1
             }

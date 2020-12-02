@@ -7,6 +7,8 @@ lots, i'm sure.
 
 eg/ackermann (and others) : doesn't want to eval {=ackermann()}
     - is a recursive call, so probably something off with the logic in interpolate().
+    -   it's likely to do with interlock in interpolate() after initial check.
+    - also found an issue with trailing spaces inside {=...} interpolation. needs investigating.
 
 
 TODO

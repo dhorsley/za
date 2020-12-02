@@ -44,13 +44,13 @@ hc[`\[##]`] = `</span>`
 
 
 define clean(s)
-    s=replace(s,`\[#i0]`,    `</span>`)
-    s=replace(s,`\[#i1]`,    `<span class='ion'>`)
-    s=replace(s,`\[#bold]`,  `<span class='boff'>`)
-    s=replace(s,`\[#boff]`,  `</span>`)
-    s=replace(s,`\n`,        `<br><br>`)
+    s=s.replace(`\[#i0]`,    `</span>`)
+    s=s.replace(`\[#i1]`,    `<span class='ion'>`)
+    s=s.replace(`\[#bold]`,  `<span class='boff'>`)
+    s=s.replace(`\[#boff]`,  `</span>`)
+    s=s.replace(`\n`,        `<br><br>`)
     foreach c in hc
-        s=replace(s,key_c,c)
+        s=s.replace(key_c,c)
     endfor
     return s
 end
@@ -81,9 +81,9 @@ foreach c in func_categories()
 
     sfuncs=[]
     foreach i in c
-        sfuncs=append(sfuncs,i)
+        sfuncs=sfuncs.append(i)
     endfor
-    sort(sfuncs)
+    sfuncs=sfuncs.sort
 
     foreach i in sfuncs
 
@@ -189,5 +189,5 @@ write_file(docpath+"/index.html",indexpage)
 
 println "Total functions : {totfunc}"
 
-exit 0
+exit
 
