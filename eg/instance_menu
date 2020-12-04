@@ -1,0 +1,42 @@
+#!/usr/bin/za
+
+module "modules/menu"
+
+define filtered_menu(f)
+    capture=|aws ec2 describe-instances --filters "Name=tag:cluster,Values={f}"
+    instances=capture.out.json_query(
+        ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
+        true
+    )
+    foreach i in instances
+        iary=iary.append("[#2]%20s [#3]%16s [#4]%20s[#-]".format(i["iid"],i["itype"],i["iip"]))
+        iplist=iplist.append(i["iip"])
+    endfor
+    choice=menu("Select Server...", iary)
+    on choice==-1 do return
+    coproc(false)
+    capture_shell(false)
+    | ssh ec2-user@{=iplist[choice-1]}
+end
+ 
+
+# main menu
+
+choice=menu ("Server Type", [
+    "Cognos - Test",
+    "Cognos - Stage",
+    "Cognos - Live",
+    "Tomcat - Live - Old" ]
+)
+
+when choice
+is 4
+    filtered_menu("live-tomcat")
+endwhen
+
+# end
+
+println
+exit 0
+
+
