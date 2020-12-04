@@ -351,6 +351,10 @@ func main() {
     //  for shell, then run commands in parent
     vset(0,"@runInParent",false)
 
+    // should command output be captured?
+    // - when disabled, output is sent to stdout
+    vset(0,"@commandCapture",true)
+
     // like -S, but insist upon it for Windows executions.
     vset(0,"@runInWindowsParent",false)
 

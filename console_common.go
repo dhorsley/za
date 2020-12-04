@@ -559,15 +559,25 @@ func NewCoprocess(loc string,args ...string) (process *exec.Cmd, pi io.WriteClos
 
 
 // synchronous execution and capture
-func GetCommand(c string) (string, error) {
+func GetCommand(c string) (s string, err error) {
     c=str.Trim(c," \t\n")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)
     var out bytes.Buffer
-    cmd.Stdout = &out
-    err := cmd.Run()
+    cmd.Stdin  = os.Stdin
+    // cmd.Stderr = os.Stderr
+    capture,_:=vget(0,"@commandCapture")
+    if capture.(bool) {
+        cmd.Stdout = &out
+        err = cmd.Run()
+    } else {
+        cmd.Stdout = os.Stdout
+        err := cmd.Run()
+        return "", err
+    }
     return out.String(), err
 }
+
 
 type BashRead struct {
     S string

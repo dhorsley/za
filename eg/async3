@@ -7,7 +7,6 @@ doc `
 
 coproc(false)
 
-
 define f()
     # generally, do some work in here..
     datepath="/usr/bin"

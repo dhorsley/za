@@ -5,6 +5,11 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added capture_shell(bool) call. True (default) ensures output of commands in parent shell are captured.
+            - false will disable stdout capture so that commands such as ssh will operate correctly.
+            - this is currently limited to parent shell { coproc(false) } activity.
+            - in the normal child shell output will always be captured.
+
         * added json_query() call. this is just a wrapper around gojq for simple queries:
 
             https://github.com/itchyny/gojq
