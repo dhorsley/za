@@ -1,0 +1,20 @@
+#!/usr/bin/za
+
+module "aws/common"
+
+println "\n[#5]Account ID[#-]"
+println aws_account()
+
+println "\n[#5]Keypairs[#-]"
+foreach k in aws_keypairs()
+    println k
+endfor
+
+println "\n[#5]Instances[#-]"
+println "%20s %16s %20s".format("Instance Id","Instance Type","IP")
+foreach i in aws_instances()
+    println "[#2]%20s [#3]%16s [#4]%20s[#-]".format(i["iid"],i["itype"],i["iip"])
+endfor
+
+println
+

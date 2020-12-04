@@ -168,6 +168,7 @@ syntax match internal_functions "\s*getrow\s*("he=e-1
 syntax match internal_functions "\s*getcol\s*("he=e-1
 syntax match internal_functions "\s*unmap\s*("he=e-1
 syntax match internal_functions "\s*coproc\s*("he=e-1
+syntax match internal_functions "\s*capture_shell\s*("he=e-1
 syntax match internal_functions "\s*await\s*("he=e-1
 syntax match internal_functions "\s*getmem\s*("he=e-1
 syntax match internal_functions "\s*getcores\s*("he=e-1

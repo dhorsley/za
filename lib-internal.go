@@ -81,7 +81,7 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "ansi", "interpol", "shellpid", "has_shell",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores",
     }
 
@@ -288,6 +288,20 @@ func buildInternalLib() {
             vset(0,"@runInParent",!args[0].(bool))
         default:
             return nil,errors.New("coproc() accepts a boolean value only.")
+        }
+        return nil, nil
+    }
+
+    slhelp["capture_shell"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should capture output."}
+    stdlib["capture_shell"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 {
+            return nil,errors.New("capture_shell() accepts a boolean value only.")
+        }
+        switch args[0].(type) {
+        case bool:
+            vset(0,"@commandCapture",args[0].(bool))
+        default:
+            return nil,errors.New("capture_shell() accepts a boolean value only.")
         }
         return nil, nil
     }
