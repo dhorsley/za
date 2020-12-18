@@ -5,6 +5,9 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added support for cursor keys in keypress(). left, right, down, up return 8, 9, 10
+            and 11 respectively.
+
         * added capture_shell(bool) call. True (default) ensures output of commands in parent shell are captured.
             - false will disable stdout capture so that commands such as ssh will operate correctly.
             - this is currently limited to parent shell { coproc(false) } activity.

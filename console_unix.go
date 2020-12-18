@@ -85,6 +85,14 @@ func wrappedGetCh(p int) (i int) {
                     k = 163
                 case bytes.Equal(c, []byte{127}):
                     k = 127 // backspace
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+                    k = 10
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+                    k = 11
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
+                    k = 8
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
+                    k = 9
                 default:
                     if len(c) == 1 {
                         if c[0] > 31 {
