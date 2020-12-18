@@ -1,29 +1,65 @@
 
-# simple menu, only accepts up to 9 options
 define menu(p,opts)
+
     cls
     cursoroff()
 
     at 2,10
     print "[#b1]{p}[##]"
 
+    sel=0
+    ol=opts.len
+
+    # determine shortcut keys per option
+    when
+    has ol<10
+        key_range = "1".ascii .. "1".ascii+ol-1
+        break
+    has ol<30
+        key_range = ( "1".ascii .. "9".ascii ) + ( "a".ascii .. "a".ascii+ol-10 )
+        break
+    has ol>=30
+        key_range = nil
+    endwhen
+
+    # display menu
     foreach p in opts
-        at 4+key_p,10
-        print "[#b1][{=1+key_p}][##] {p}"
+        at 4+key_p,12
+        short_code=" "
+        on key_range!=nil do short_code=key_range[key_p].chr
+        print "[#b1][{=short_code}][##] {p}"
     endfor
 
     maxchoice=49+len(opts)
 
-    at 5+len(opts),10
+    at 5+opts.len,10
     print "[#b2][q][##] Quit menu"
 
+    # input loop
+    finished=false
     n=-1
-    while n==-1
+    while n==-1 and not finished
+
+        at 4+sel,10 ; print "[#invert]-[#-]"
         k=keypress()
+        at 4+sel,10 ; print " "
+
         if k>=49 && k<maxchoice
             n=k-48
         endif
+
         on chr(k)=="q" do break
+
+        when k
+        is 11
+            sel=sel-btoi(sel>0)
+        is 10
+            sel=sel+btoi(sel<opts.len-1)
+        is 13
+            n=sel+1
+            finished=true
+        endwhen
+
     endwhile
 
     cursoron()

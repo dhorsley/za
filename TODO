@@ -5,11 +5,14 @@ BUGS
 
 lots, i'm sure.
 
-eg/ackermann (and others) : doesn't want to eval {=ackermann()}
-    - is a recursive call, so probably something off with the logic in interpolate().
-    -   it's likely to do with interlock in interpolate() after initial check.
-    - also found an issue with trailing spaces inside {=...} interpolation. needs investigating.
+    - open braces in expressions. A missing closing parenthesis at end of expressions does not always
+      trigger a syntax error. 
 
+        - this may be more widely scoped than raised above. (square braces, quotes, etc).
+        - need to test around this problem and fix (i.e. add warnings and terminate).
+
+        - some kind of error is generally raised, but it's not always the relevent one...
+            - e.g. missing end* statements on subsequent lines.
 
 TODO
 ----
