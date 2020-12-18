@@ -3,7 +3,7 @@
 module "modules/menu"
 
 define filtered_menu(f)
-    capture=|aws ec2 describe-instances --filters "Name=tag:cluster,Values={f}"
+    capture=|aws --region eu-west-1 --profile itsupport ec2 describe-instances --filters "Name=tag:cluster,Values={f}"
     instances=capture.out.json_query(
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
         true
@@ -14,29 +14,40 @@ define filtered_menu(f)
     endfor
     choice=menu("Select Server...", iary)
     on choice==-1 do return
+
+    # start ssh
+    println "\n"
     coproc(false)
     capture_shell(false)
-    | ssh ec2-user@{=iplist[choice-1]}
+    | ssh -o StrictHostKeyChecking=no ec2-user@{=iplist[choice-1]}
+    println last_out()
 end
  
 
 # main menu
 
-choice=menu ("Server Type", [
-    "Cognos - Test",
-    "Cognos - Stage",
-    "Cognos - Live",
-    "Tomcat - Live - Old" ]
+choice=menu(
+    "Server Type", 
+    [
+        "Cognos - Test",
+        "Cognos - Stage",
+        "Cognos - Live"
+    ]
 )
 
 when choice
-is 4
-    filtered_menu("live-tomcat")
+  is 1
+    filtered_menu("_BI.Cognos11Test_")
+     break
+  is 2
+    filtered_menu("_BI.Cognos11Stage_")
+     break
+  is 3
+    filtered_menu("_BI.Cognos11_")
+    break
 endwhen
 
 # end
-
 println
 exit 0
-
 

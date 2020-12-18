@@ -1640,7 +1640,7 @@ func escape(str string) string {
 }
 
 
-var interlock = &sync.RWMutex{}
+// var interlock = &sync.RWMutex{}
 
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint32, s string) (string) {
@@ -1654,7 +1654,7 @@ func interpolate(fs uint32, s string) (string) {
         return s
     }
 
-    interlock.Lock()
+    // interlock.Lock()
 
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
@@ -1717,23 +1717,7 @@ func interpolate(fs uint32, s string) (string) {
                 // pf("( eval interpolation of %s ) ",s[p+2:p+q])
                 if aval, err := ev(interparse,fs,s[p+2:p+q]); err==nil {
                     // pf("( eval interpolation returned with %+v ) ",aval)
-                    switch val:=aval.(type) {
-                    // a few special cases here which will operate faster
-                    //  than waiting for fmt.sprintf() to execute.
-                    /* removed as test
-                    case string:
-                        s=s[:p]+val+s[p+q+3:]
-                    case int:
-                        s=s[:p]+strconv.Itoa(val)+s[p+q+3:]
-                    case int64:
-                        s=s[:p]+strconv.FormatInt(val,10)+s[p+q+3:]
-                    case uint:
-                        s=s[:p]+strconv.FormatUint(uint64(val),10)+s[p+q+3:]
-                    */
-                    default:
-                        s=s[:p]+sf("%v",val)+s[p+q+1:]
-
-                    }
+                    s=s[:p]+sf("%v",aval)+s[p+q+1:]
                     modified=true
                     break
                 } else {
@@ -1747,7 +1731,7 @@ func interpolate(fs uint32, s string) (string) {
 
     if s=="<nil>" { s=orig }
 
-    interlock.Unlock()
+    // interlock.Unlock()
 
     return s
 }
