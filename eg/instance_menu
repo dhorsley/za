@@ -2,7 +2,7 @@
 
 module "modules/menu"
 
-define filtered_menu(f)
+define ssh_menu(f)
     capture=|aws --region eu-west-1 --profile itsupport ec2 describe-instances --filters "Name=tag:cluster,Values={f}"
     instances=capture.out.json_query(
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
@@ -20,34 +20,47 @@ define filtered_menu(f)
     coproc(false)
     capture_shell(false)
     | ssh -o StrictHostKeyChecking=no ec2-user@{=iplist[choice-1]}
+
+    # report errors, wait for keypress
     println last_out()
+    println "\n[#4]Press a key to return to the main menu[#-]"
+    keypress(0)
+
 end
  
 
 # main menu
 
-choice=menu(
-    "Server Type", 
-    [
-        "Cognos - Test",
-        "Cognos - Stage",
-        "Cognos - Live"
-    ]
-)
+quitting=false
 
-when choice
-  is 1
-    filtered_menu("_BI.Cognos11Test_")
-     break
-  is 2
-    filtered_menu("_BI.Cognos11Stage_")
-     break
-  is 3
-    filtered_menu("_BI.Cognos11_")
-    break
-endwhen
+while not quitting
+
+    choice=menu(
+        "Server Type", 
+        [
+            "Cognos - Test",
+            "Cognos - Stage",
+            "Cognos - Live"
+        ]
+    )
+
+    when choice
+      is -1
+        quitting=true
+      is 1
+        ssh_menu("_BI.Cognos11Test_")
+         break
+      is 2
+        ssh_menu("_BI.Cognos11Stage_")
+         break
+      is 3
+        ssh_menu("_BI.Cognos11_")
+        break
+    endwhen
+
+endwhile
 
 # end
-println
+at 10,1
 exit 0
 
