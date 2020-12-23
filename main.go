@@ -92,7 +92,7 @@ var identParsed = make([]bool,MAX_FUNCS)
 var fileMap   = make(map[uint32]string)
 
 // id of func space which points to the source which contains
-// the DEFINE..ENDDEF for a defined functino.
+// the DEFINE..ENDDEF for a defined function
 var sourceMap = make(map[uint32]uint32)
 
 // tokenised function storage
@@ -976,6 +976,7 @@ func main() {
                 breakOnCommand:=false
                 tokenIfPresent:=false
                 tokenOnPresent:=false
+                helpRequest   :=false
 
                 for p := 0; p < len(input);  {
                     t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
@@ -983,20 +984,24 @@ func main() {
                     if tokPos != -1 {
                         p = tokPos
                     }
+                    if t.tokType==C_Help  { helpRequest   =true }
                     if t.tokType==C_If    { tokenIfPresent=true }
                     if t.tokType==C_On    { tokenOnPresent=true }
 
                     // this is hardly fool-proof, but okay for now:
                     if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
 
-                    switch t.tokType {
-                    // adders
-                    case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
-                        nestAccept++
-                    // ladders
-                    case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endwhen, C_Endstruct, RParen, RightSBrace:
-                        nestAccept--
+                    if !helpRequest {
+                        switch t.tokType {
+                        // adders
+                        case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
+                            nestAccept++
+                        // ladders
+                        case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endwhen, C_Endstruct, RParen, RightSBrace:
+                            nestAccept--
+                        }
                     }
+
                 }
 
                 if nestAccept<0 { pf("Nesting error.\n") ; break }
