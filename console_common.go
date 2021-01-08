@@ -35,7 +35,7 @@ var ansiReplacables []string
 var fairyReplacer *str.Replacer
 
 
-/// clear n chars
+/// clear n console chars
 func clearChars(row int,col int,l int) {
     at(row,col)
     fmt.Print(str.Repeat(" ",l))
@@ -196,6 +196,7 @@ func at(row int, col int) {
     atlock.Unlock()
 }
 
+/// return ansi codes for moving the console cursor
 func sat(row int,col int) string {
     return sf("\033[%d;%dH", orow+row, ocol+col)
 }
@@ -221,6 +222,7 @@ func hideCursor() {
     atlock.Unlock()
 }
 
+/// move to horizontal cursor position n
 func cursorX(n int) {
     atlock.Lock()
     pf("\033[%dG",n)
