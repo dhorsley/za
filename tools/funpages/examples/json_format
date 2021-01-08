@@ -1,7 +1,6 @@
 
 dl=web_get("https://zalang.org/files/eg/example.json")
-j=dl[0]
-println json_format(j)
+println dl.result.json_format
 
 `
 should generate this...

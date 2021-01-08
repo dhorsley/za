@@ -2,9 +2,14 @@
 
 # file handling functions
 
-q=fopen("/usr/share/dict/american-english","r")
-while !feof(q)
-    println fread(q,"\n")
-endwhile
-fclose(q)
+fhand=fopen("/usr/share/dict/american-english","r")
+if fhand!=nil
+    while !feof(fhand)
+        println fhand.fread("\n")
+    endwhile
+    fhand.fclose
+else
+    exit 1,"Could not open dictionary file."
+endif
+
 

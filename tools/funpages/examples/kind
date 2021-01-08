@@ -21,6 +21,6 @@ bool
 []interface {}
 
 Please Note : The underlying data type will always be Go-specific.
- You shouldn't always need this function, but it can be useful in
+ You shouldn't need this function often, but it can be useful in
  a few situations, such as trouble-shooting.
 `

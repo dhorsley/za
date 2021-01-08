@@ -187,8 +187,8 @@ func appendToTestReport(test_output_file string, ifs uint32, pos int, s string) 
 }
 
 func version() {
-	pf(spf(globalspace, "{@language} version {@version} - built for {@ct_info}\n"))
-    pf(spf(globalspace, "[#1]Last build: {@creation_date}[#-]\n"))
+	pf(spf(0, "{@language} version {@version} - built for {@ct_info}\n"))
+    pf(spf(0, "[#1]Last build: {@creation_date}[#-]\n"))
 
 }
 
@@ -197,7 +197,7 @@ func help(hargs string) {
 	switch len(hargs) {
 	case 0:
 		helppage := `
-[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S] \
+[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S]      \
     [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
     [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \

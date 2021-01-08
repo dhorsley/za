@@ -37,14 +37,11 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     lmv,_:=fnlookup.lmget(fs)
 
-    // pf("[parser] Placed source in store %d for fs '%s'\n",lmv,fs)
-    // sourceStore[lmv]=make([]string,0,40)
     addToPhrase:=false
 
     for ; pos < len(input); {
 
         tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos, tokenType)
-        // pf(" -( parser : %s,%d,eol:%v,eof:%v )- \n",tokNames[tempToken.tokType],tokPos,eol,eof)
 
         // If we found something then move the cursor along to next word
         if tokPos != -1 { pos = tokPos }
@@ -70,8 +67,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 continue
             }
         }
-
-        // debug(15,"nt-t: (tokpos:%d) %v\n",tokPos,tokNames[tempToken.tokType])
 
         if tempToken.tokType == Error {
             pf("Error found on line %d in %s\n", curLine+1, tempToken.tokText)
@@ -105,32 +100,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 } else {
                         phrase.Original=""
                 }
-
-                // to be removed?
-                /*
-                    switch phrase.Tokens[0].tokType {
-                    case C_On,SYM_BOR:
-                        phrase.Original=input[lstart:pos]
-                    }
-                }
-                */
-                /*
-                if phrase.TokenCount>1 {
-                    switch phrase.Tokens[1].tokType {
-                    case O_AssCommand:
-                    //    phrase.Original=input[lstart:pos]
-                    }
-                }
-                */
-
             }
-
-            /*
-            // -- add to source store
-            if tempToken.tokType!=SYM_Semicolon {
-                sourceStore[lmv]=append(sourceStore[lmv],str.TrimRight(input[lstart:pos]," \t\n"))
-            }
-            */
 
             phrase.SourceLine=curLine
             lstart = pos
@@ -159,3 +129,4 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     return badword, eof
 
 }
+
