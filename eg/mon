@@ -54,16 +54,14 @@ define showEnv()
     clear(2,11,1)
     cursoroff()
 
-    at  2,3; print "Hostname             : [#6]{=hostname()}[#-]"
-    at  3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
-    at  4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
-    at  5,3; print "User                 : [#6]{=user()}[#-]"
-    at  6,3; print "OS                   : [#6]{=os()}[#-]"
-    at  7,3; print "Home                 : [#6]{=home()}[#-]"
-    at  8,3; print "Locale               : [#6]{=lang()}[#-]"
-    at  9,3; print "Distribution         : [#6]{=release_name()}[#-]"
-    at 10,3; print "Distribution ID      : [#6]{=release_id()}[#-]"
-    at 11,3; print "Distribution Version : [#6]{=release_version()}[#-]"
+    at 2,3; print "Hostname             : [#6]{=hostname()}[#-]"
+    at 3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
+    at 4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
+    at 5,3; print "User                 : [#6]{=user()}[#-]"
+    at 6,3; print "OS                   : [#6]{=os()}[#-]"
+    at 7,3; print "Locale               : [#6]{=lang()}[#-]"
+    at 8,3; print "Distribution         : [#6]{=release_name()}[#-]"
+    at 9,3; print "Distribution Version : [#6]{=release_version()}[#-]"
 end
 
 

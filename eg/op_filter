@@ -17,7 +17,7 @@ println kind(m)
 println m
 println m ?> `#>9`
 
-println "map op * 7 on above matches"
+println "map op * 7 on above matches:"
 println m ?> `#>9` -> "#*7"
 
 

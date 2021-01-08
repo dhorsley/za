@@ -1,8 +1,6 @@
 
 dl=web_get("https://zalang.org/files/eg/example.json")
-j=dl[0]
-
-ary=json_decode(j)
+ary=dl.result.json_decode
 
 widget=ary["widget"]
 
@@ -11,10 +9,10 @@ foreach part in widget
     is "debug"
         println "Debug Mode : ",part
     is "window"
-        println "Window Title : {part["title"]}"
+        println "Window Title : {=part["title"]}"
     is "image"
     is "text"
-        println "Text Name : {part["name"]}"
+        println "Text Name : {=part["name"]}"
     endwhen 
 endfor
 

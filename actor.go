@@ -400,10 +400,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // register call
 
     calllock.Lock()
-
     // pf("Entered call -> %#v : va -> %#v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
-
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,line:calltable[csloc].callline,registrant:registrant})
     calllock.Unlock()
@@ -463,6 +461,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     calllock.RUnlock()
 
+    // @todo: remove this check at some point - should be redundant
     if base==0 {
         if !interactive {
             parser.report("Possible race condition. Please check. Base->0")
@@ -495,13 +494,9 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         nextVarId=functionidents[base]
     }
 
-    vlock.Unlock()
-
     // range over all the tokens, adding offsets to the source tokens.
     // this must be done every call for MODE_STATIC, but only if unparsed for MODE_NEW
     if varmode==MODE_STATIC || !identParsed[base] {
-
-        vlock.Lock()
 
         defnest:=0
         for kph,ph:= range functionspaces[base] {
@@ -538,11 +533,11 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             functionidents[base]=nextVarId
         }
 
-        vlock.Unlock()
-
     } else {
         nextVarId=functionidents[base]
     }
+
+    vlock.Unlock()
 
     // in source vars processed, can now reserve a minimum space quota
     //  for this instance of the routine.
@@ -585,7 +580,6 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         //  to the current function call
         for e:=0; e<len(va); e++ {
             nextFaArg:=functionArgs[base].args[e]
-            // @note: this may cause concurrency issues (vmap):
             if vi,found:=vmap[ifs][nextFaArg] ; found {
                 vseti(ifs,nextFaArg,vi,va[e])
             } else {
@@ -670,15 +664,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             nloops:=make([][]s_loop,len(loops)/2,cap(loops)/2)
             copy(nloops,loops)
             loops=nloops
-            // pf("[#1]--[#-] loops-pre-dec  highest %d,len %d, cap %d\n",highest,lscap,top)
             top=uint32(cap(loops))
-            // pf("[#1]--[#-] loops-post-dec highest %d,len %d, cap %d\n",highest,lscap,top)
         }
     }
 
     for ; ifs>=uint32(cap(loops)) ; {
-            // increase
-            // pf("[#2]++[#-] loops-pre-inc highest %d,len %d, cap %d\n",highest,lscap,top)
+            // realloc with increased cap
             nloops:=make([][]s_loop,len(loops)*2,cap(loops)*2)
             copy(nloops,loops)
             loops=nloops
@@ -702,7 +693,6 @@ tco_reentry:
         pf("unvmap  -> %s : %#v\n",arg,unvmap[base][qq]) 
     }
     */
-
 
     // assign value to local vars named in functionArgs (the call parameters)
     //  from each va value.
@@ -743,7 +733,7 @@ tco_reentry:
             break
         }
 
-        // race condition: winching check
+        // winching signal check
         if winching {
             pane_redef()
         }
@@ -3312,13 +3302,13 @@ tco_reentry:
                 if inbound.Tokens[1].tokType == O_Assign {
                     expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
                     if expr.evalError {
-                        parser.report( sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
+                        parser.report(sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
                     switch expr.result.(type) {
                     case string:
-                        promptTemplate = sparkle(expr.result.(string))
+                        PromptTemplate=stripOuterQuotes(inbound.Tokens[2].tokText,1)
                     }
                 } else {
                     // prompt command:
@@ -3396,10 +3386,10 @@ tco_reentry:
                 }
 
             case "quiet":
-                vset(globalspace, "@silentlog", true)
+                vset(0, "@silentlog", true)
 
             case "loud":
-                vset(globalspace, "@silentlog", false)
+                vset(0, "@silentlog", false)
 
             case "accessfile":
                 if inbound.TokenCount > 2 {

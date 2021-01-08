@@ -10,8 +10,7 @@ const MaxUint32 = ^uint32(0)
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 
-// maximum lib-net concurrent listener clients for http server
-const MAX_CLIENTS = 800
+const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 const MAX_FUNCS = 10000         // max source funcs (not max instances)
 const SPACE_CAP = 25000         // max user function instances ack(4,1) memoised uses ~16.5k
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
@@ -27,7 +26,7 @@ const WHEN_CAP = 8              // how many placeholders to create for WHEN...EN
                                 //  if we ever perform optimisations that allow for the call to be anywhere
                                 //  except the final statement. (admittedly unlikely)
 
-const globalspace = uint32(0)   // global namespace
+// const globalspace = uint32(0)   // global namespace
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "
@@ -79,24 +78,27 @@ const (
 	Opt_LoopIgnore
 )
 
-// used by Call() function. ENACT currently used by interactive mode.
+// used by Call() function. ENACT(main) currently used by interactive mode.
 const (
 	MODE_CALL uint8 = iota
-	MODE_ENACT
-	MODE_NEW
-	MODE_STATIC
+	MODE_ENACT              // execute named function, from start, without reinit'ing local variable storage
+	MODE_NEW                // instantiate and execute named function
+    MODE_STATIC             // @todo: MODE_ENACT with variable entry point?
 )
 
+// FOR loop counter direction:
 const (
 	ACT_NONE uint8 = iota
 	ACT_INC
 	ACT_DEC
 )
 
+// FOREACH string loop type. by-char deprecated.
 const (
-	IT_LINE uint8 = iota
+	IT_LINE uint8 = iota    // by line 
 )
 
+// fatal error exit codes
 const (
 	ERR_SYNTAX int = iota
 	ERR_FATAL
@@ -113,7 +115,7 @@ const (
     ERR_LEX int = 127
 )
 
-// IKind
+// IKind, used by VAR and INIT
 const (
     knil uint8 = iota
     kbool
@@ -124,6 +126,9 @@ const (
     kint64
 )
 
+// Lexeme values
+//  a few of these are unused now and some should probably be renamed.
+//  they should be checked and tidied next time there is any change to be done here.
 const (
 	Error uint8 = iota
 	EOL
@@ -242,3 +247,4 @@ const (
     C_As
     C_Do
 )
+

@@ -1,0 +1,38 @@
+#!/usr/bin/za
+
+
+mx=640
+my=480
+
+transparency_depth=4
+layers=1
+bp_col=4
+bpp = layers * ((bp_col*3)+transparency_depth)
+
+bitlen= bpp*mx*my
+bytes = int(1 + bitlen >> 3)
+
+init disp int bytes
+
+println "dimensions         : {mx} x {my}"
+println "layers             : ",layers
+println "bits per colour    : ",bp_col
+println "transparency depth : ",transparency_depth
+println "bits per pixel     : ",bpp
+println "bit length         : ",bitlen
+println "byte length        : ",bytes
+
+s=epoch_nano_time()
+for p=0 to bytes-1
+    disp[p]=1
+endfor
+e=epoch_nano_time()
+
+tt_fill=(e-s).numcomma(0)
+println "time to fill buffer with bytes : {tt_fill} ns"
+
+println "fps : ",1e9/(e-s)
+
+println
+
+

@@ -52,7 +52,10 @@ func buildFileLib() {
         var fw pfile
         fw.name=fn
         fw.hnd=f
-        return fw,nil
+        if f!=nil {
+            return fw,nil
+        }
+        return nil,nil
     }
 
     slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
