@@ -78,12 +78,12 @@ const (
 	Opt_LoopIgnore
 )
 
-// used by Call() function. ENACT(main) currently used by interactive mode.
+// used by Call() function. MODE_STATIC currently used by interactive mode.
 const (
 	MODE_CALL uint8 = iota
-	MODE_ENACT              // execute named function, from start, without reinit'ing local variable storage
 	MODE_NEW                // instantiate and execute named function
-    MODE_STATIC             // @todo: MODE_ENACT with variable entry point?
+    MODE_STATIC             // execute named function, from start, without reinit'ing local variable storage
+                            //   @todo: add a variable entry point capability to MODE_STATIC
 )
 
 // FOR loop counter direction:
