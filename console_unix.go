@@ -220,7 +220,7 @@ func setupAnsiPalette() {
     }
 }
 
-var bigbytelist = make([]byte,3*4096)
+var bigbytelist = make([]byte,6*4096)
 
 /// get a key press
 func getch(timeo int) ( []byte, bool, bool, string ) {
@@ -246,7 +246,7 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
     return bigbytelist[0:numRead], false, false, ""
 }
 
-// maybe deprecated
+// maybe deprecate soon
 func GetCursorPos() (int,int) {
 
     if tt==nil {
@@ -330,6 +330,7 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
         dispL   :=promptL+inputL
 
         // move start row back if multiline at bottom of window
+        // @note: MH and MW are globals which may change during a SIGWINCH event.
         rowLen:=int(dispL-1)/MW
         if srow>MH { srow=MH }
         if srow==MH { srow=srow-rowLen }
@@ -346,7 +347,6 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
         at(srow, scol)
         pf(sprompt)
 
-        // irow,icol=GetCursorPos() // @note: this is too slow. causing additional char buffering on key repeats.
         irow=srow+(int(scol+promptL-1)/MW)
         icol=((scol+promptL-1)%MW)+1
 
@@ -625,13 +625,13 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
             // utf8 is fine in program code and data, it's just too much effort
             // to support it on this limited input implementation.
 
+            /*
             case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
-               /* 
                 s = insertAt(s, cpos, '£')
                 cpos++
                 wordUnderCursor = getWord(s, cpos)
                 selectedStar = -1
-               */
+            */
 
             // ignore list
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
@@ -685,9 +685,6 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
                 }
             }
 
-            // if !startedContextHelp {
-            //    startedContextHelp = true
-            // }
 
             //.. build display string
 

@@ -763,63 +763,6 @@ func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}
 }
 
 
-/*
-func convertToInt(ar interface{}) []int {
-    var v interface{}
-    var i int
-    switch ar:=ar.(type) {
-    case []float64:
-        newar := make([]int, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int:
-        newar := make([]int, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsInt(v) }
-        return newar
-    case []int64:
-        newar := make([]int, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsInt(v) }
-        return newar
-    default:
-        panic(fmt.Errorf("type error: cannot convert from %T to int",ar))
-    }
-}
-*/
-
-
-/*
-func convertToFloat64(ar interface{}) []float64 {
-    var v interface{}
-    var i int
-    switch ar:=ar.(type) {
-    case []float64:
-        newar := make([]float64, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int:
-        newar := make([]float64, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
-        return newar
-    case []int64:
-        newar := make([]float64, len(ar))
-        for i, v = range ar { newar[i],_ = GetAsFloat(v) }
-        return newar
-    default:
-		panic(fmt.Errorf("type error: cannot convert from %T to float",ar))
-    }
-}
-*/
-
-
-/*
-func accessVar(evalfs uint32, varName string) (val interface{},found bool) {
-	if val, found = vget(evalfs, varName); !found {
-        return val,true
-    }
-    return val,false
-}
-*/
-
 func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field string) (interface{}) {
 
     switch obj:=obj.(type) {
@@ -853,11 +796,6 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
             f := rcopy.FieldByName(field)
 
             if f.IsValid() {
-
-                // this part possibly avoidable, as all struct fields made r/w during init:
-                // if rcopy.Type().AssignableTo(f.Type()) {
-                //      f=reflect.NewAt(f.Type(),unsafe.Pointer(f.UnsafeAddr())).Elem()
-                // }
 
                 switch f.Type().Kind() {
                 case reflect.String:
@@ -951,7 +889,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
                     p.next() // consume rparen 
                 }
             }
-            // pf("mock func call '%v' with args '%+v'\n",name,iargs)
+
             return callFunction(p.fs,p.line,name,iargs)
 
         }
@@ -964,7 +902,6 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
 
 func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}) {
 
-                // pf("-- slice obj -> %+v %+v\n",obj,field)
     switch obj:=obj.(type) {
     case string:
         vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
@@ -1106,21 +1043,6 @@ func slice(v interface{}, from, to interface{}) interface{} {
     return nil
 }
 
-/*
-func arrayContains(arr interface{}, val interface{}) bool {
-	a, ok := arr.([]interface{})
-	if !ok {
-		panic(fmt.Errorf("syntax error: in-operator requires array, but was %s", typeOf(arr)))
-	}
-
-	for _, v := range a {
-		if deepEqual(v, val) {
-			return true
-		}
-	}
-	return false
-}
-*/
 
 func callFunction(evalfs uint32, callline int, name string, args []interface{}) (res interface{}) {
 
@@ -1141,7 +1063,6 @@ func callFunction(evalfs uint32, callline int, name string, args []interface{}) 
             fm,isFunc = funcmap[name]
             name=fm.name
             if isFunc { lmv=fm.fs }
-            // pf("found dot. fm: %+v\nname->%v isFunc->%v lmv->%v\n",fm,name,isFunc,lmv)
         } else {
 		    lmv, isFunc = fnlookup.lmget(name)
         }
