@@ -25,12 +25,12 @@ memo[1]=1
 memo[2]=1
 
 input x param 1
-println fib(x)
-println "Calls : ",memo["calls"]
+#println fib(x)
+#println "Calls : ",memo["calls"]
 
-#for x=0 to 100
-#    on signum(fib(x))==-1 do break
-#    println "fib({x}) -> {=fib(x)}"
-#endfor
+for x=1 to x
+    on signum(fib(x))==-1 do break
+    println "fib({x}) -> {=fib(x)}"
+endfor
 
 

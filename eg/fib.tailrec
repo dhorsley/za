@@ -5,15 +5,16 @@ define fib(n)
 end
 
 define fib_tr(n, a, b) 
-    on !tco() do setglob calls=calls+1
     on n==0 do return a
     on n==1 do return b
     return fib_tr(n-1,b,a+b)
 end
 
-calls=0
 input x param 1
-println fib(x)
-println "calls -> {calls}"
+input y param 2
+
+for i=x to y
+    println i," ",fib(i)
+endfor
 
 

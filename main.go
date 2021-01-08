@@ -53,19 +53,13 @@ var BuildComment string
 var BuildVersion string
 var BuildDate string
 
-// thread-safety
-
-// @deprecated: leaving in place as not removed locks() func yet
 // enable mutices in variable handling functions
 var lockSafety bool=false
-
 
 // initialise parser used by the interpolate function
 // this (and interlock) in ev() prevent recursive interpolation from working
 // @todo: need to see if there's a work around for this.
 var interparse *leparser
-
-// run-time declarations
 
 // open function calls
 var calltable = make([]call_s,CALL_CAP)
@@ -140,12 +134,8 @@ var ident = make([][]Variable, SPACE_CAP)
 var fnlookup = lmcreate(SPACE_CAP)
 var numlookup = nlmcreate(SPACE_CAP)
 
-// interactive mode and prompt handling
-// interactive mode flag
+// interactive mode and prompt handling flag
 var interactive bool
-
-// interactive mode prompt
-var promptTemplate string
 
 // storage for the standard library functions
 var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
@@ -168,11 +158,6 @@ var dbpass string
 // should only be used when locks are disabled.
 // it contains the last line number executed.
 var elast int
-
-
-//
-// MAIN
-//
 
 var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process input stream
@@ -243,6 +228,14 @@ var ifCompileCache map[string]regexp.Regexp
 // highest numbered variable table entry created
 var vtable_maxreached uint32
 
+// repl prompt
+var PromptTemplate string
+
+
+//
+// MAIN
+//
+
 
 func main() {
 
@@ -262,6 +255,7 @@ func main() {
     //  is required, then check it in Call()
     sigs := make(chan os.Signal, 1)
 
+    // ... which is currently ignored in Windows
     if runtime.GOOS!="windows" {
         setWinchSignal(sigs)
     }
@@ -365,10 +359,9 @@ func main() {
     vset(0, "@creation_date", BuildDate)
 
     // set interactive prompt
-    vset(0, "@prompt", promptStringStartup)
     vset(0, "@startprompt", promptStringStartup)
     vset(0, "@bashprompt", promptBashlike)
-
+    PromptTemplate=promptStringStartup
 
     // set default behaviours
 
@@ -390,7 +383,7 @@ func main() {
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
-    lastConstruct[globalspace] = []uint8{}
+    lastConstruct[0] = []uint8{}
 
 
     // read compile time arch info
@@ -882,16 +875,15 @@ func main() {
     }
 
     // reset counters:
-    depth[globalspace] = 0
+    depth[0] = 0
 
-    promptTemplate = promptStringStartup
+    // for resetting the terminal to global pane
     panes["global"] = Pane{row: 0, col: 0, w: MW + 1, h: MH}
     currentpane = "global"
     orow = 0
     ocol = 0
     ow = MW + 1
-    oh = MH // for resetting the terminal to global pane
-
+    oh = MH
 
     // reset logging
     logFile = ""
@@ -927,7 +919,7 @@ func main() {
 
             sig_int = false
             fspacelock.Lock()
-            functionspaces[globalspace] = []Phrase{}
+            functionspaces[0] = []Phrase{}
             fspacelock.Unlock()
 
             var echoMask interface{}
@@ -948,14 +940,12 @@ func main() {
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
-                    pr, _ := vget(0, "@prompt")
-                    sparklePrompt := sparkle(interpolate(globalspace,pr.(string)))
-                    tempPrompt=sparklePrompt
+                    tempPrompt=sparkle(interpolate(0,PromptTemplate))
                 } else {
                     tempPrompt=promptContinuation
                 }
 
-                input, eof, broken = getInput(globalspace, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
+                input, eof, broken = getInput(0, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
                 if eof || broken { break }
 
                 row++
@@ -1015,19 +1005,16 @@ func main() {
             // submit input
 
             if nestAccept==0 {
-                fileMap[globalspace]=exec_file_name
+                fileMap[0]=exec_file_name
                 phraseParse("global", totalInput, 0)
                 currentModule="main"
 
                 // throw away break and continue positions in interactive mode
-                _,endFunc = Call(MODE_STATIC, globalspace, ciRepl)
+                _,endFunc = Call(MODE_STATIC, 0, ciRepl)
                 if endFunc {
                     break
                 }
             }
-
-            inter:=interpolate(globalspace, promptTemplate)
-            vset(0, "@prompt", inter)
 
         }
         pln("")
@@ -1066,7 +1053,7 @@ func main() {
     if *a_program_loop {
         s:= `NL=0` + "\n" +
             `foreach _line in read_file("/dev/stdin")` + "\n" +
-            `inc NL` + "\n"
+            `NL++` + "\n"
         if *a_program_fs=="" {
             s+=`fields(_line); `
         } else {

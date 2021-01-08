@@ -7,6 +7,7 @@ define dynamic_request(call)
     p=c.path
     r=c.remote
     m=c.method
+    d=c.data
 
     # ... rest of request handler
 

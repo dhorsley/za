@@ -67,7 +67,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     }
     thisWordStart = currentChar
 
-    // return \n as EOL - parser will figure the current line out for sourceStore[]
+    // return \n as EOL - parser will figure the current line out
     if input[thisWordStart]=='\n' {
         carton.tokType=EOL
         eol=true
@@ -169,7 +169,7 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     // identifier or statement
     if str.IndexByte(alphaplus, firstChar) != -1 {
         nonterm = identifier_set
-        term = "\n;" // PIG
+        term = "\n;"
     }
 
     // string literal
@@ -286,7 +286,6 @@ func nextToken(input string, curLine *int, start int, previousToken uint8) (cart
     // catch any eol strays
     if currentChar<lenInput {
         if !matchQuote && input[currentChar] == '\n' {
-            // eol = true
             startNextTokenAt=currentChar
             carton.tokText = input[thisWordStart:currentChar]
         }

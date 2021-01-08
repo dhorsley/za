@@ -107,7 +107,7 @@ func plog(s string, va ...interface{}) {
 
 /// special case printing for global var interpolation
 func gpf(s string) {
-    pf("%s\n", spf(globalspace, s))
+    pf("%s\n", spf(0, s))
 }
 
 /// sprint with namespace
