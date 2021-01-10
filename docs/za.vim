@@ -178,6 +178,7 @@ syntax match internal_functions "\s*func_outputs\s*("he=e-1
 syntax match internal_functions "\s*func_descriptions\s*("he=e-1
 syntax match internal_functions "\s*func_categories\s*("he=e-1
 syntax match internal_functions "\s*zinfo\s*("he=e-1
+syntax match internal_functions "\s*permit\s*("he=e-1
 
 syntax match image_functions "\s*svg_start\s*("he=e-1
 syntax match image_functions "\s*svg_end\s*("he=e-1
