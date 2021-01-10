@@ -3,6 +3,7 @@
 module "mod_build/defines"
 
 tgt="libc"
+strip_enable=false
 upx_enable=false
 input tgt optarg 1
 input do_upx optarg 2
@@ -52,8 +53,8 @@ endif
 if ! os() ~ "^freebsd"
     if upxfound==1 && is_file("za")
         if tgt!="win"
-            | strip {strip_opts} za
-            on upx_enable do | upx za
+            on strip_enable  do | strip {strip_opts} za
+            on upx_enable    do | upx za
         endif
     else
         on is_file("za") do println "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]"

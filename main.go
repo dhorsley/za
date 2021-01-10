@@ -121,6 +121,9 @@ var globalaccess uint32
 // basename of module currently being processed.
 var currentModule string
 
+// list of read in modules
+var modlist = make(map[string]bool)
+
 // defined function list
 var funcmap = make(map[string]Funcdef)
 
@@ -189,6 +192,13 @@ var web_log_file string = "/var/log/za_access.log"
 // trap handling
 var sig_int bool       // ctrl-c pressed?
 var coproc_active bool // for resetting co-proc if interrupted
+
+// behaviours
+var permit_uninit bool  // default:false, will evaluation cause a run-time failure if it
+                        //  encounters an uninitialised variable usage.
+                        //  this can be altered with the permit("uninit",bool) call
+var permit_dupmod bool  // default:false, ignore (true) or error (false) when a duplicate
+                        //  module import occurs.
 
 // test related setup, completely non thread safe
 var testMode bool

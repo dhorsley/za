@@ -6,6 +6,7 @@ define stddev(set)
 
     avg=avg(set)
 
+    deviances=[]
     foreach x in set
         deviances=append(deviances,x-avg)
     endfor
@@ -14,6 +15,7 @@ define stddev(set)
     # println "Mean             : ",avg
     # println "Deviances        : ",deviances
 
+    devsqr=[]
     foreach x in deviances
         devsqr=append(devsqr,x*x)
     endfor
