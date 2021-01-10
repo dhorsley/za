@@ -82,7 +82,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores","permit",
     }
 
 
@@ -243,6 +243,41 @@ func buildInternalLib() {
         v,_:=vget(0,"@echo")
 
         return v,nil
+    }
+
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "none", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports."}
+    stdlib["permit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if len(args)==2 {
+            switch args[0].(type) {
+            case string:
+                switch str.ToLower(args[0].(string)) {
+                case "uninit":
+                    switch args[1].(type) {
+                    case bool:
+                        lastlock.Lock()
+                        permit_uninit=args[1].(bool)
+                        lastlock.Unlock()
+                        return nil,nil
+                    default:
+                        return nil,errors.New("permit(uninit) accepts a boolean value only.")
+                    }
+                case "dupmod":
+                    switch args[1].(type) {
+                    case bool:
+                        lastlock.Lock()
+                        permit_dupmod=args[1].(bool)
+                        lastlock.Unlock()
+                        return nil,nil
+                    default:
+                        return nil,errors.New("permit(dupmod) accepts a boolean value only.")
+                    }
+                }
+                return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
+            default:
+                return nil,errors.New("permit() argument 1 accepts a string value only.")
+            }
+        }
+        return nil,nil
     }
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
