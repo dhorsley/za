@@ -5,6 +5,19 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added check for uninitialised variable use as identifiers in eval.go (fn identifier())
+            - an exception to this is module names that have been created during execution.
+
+        * added library call permit("flag_name",bool) to amend strictness of some run-time checks:
+            - permit("uninit",bool)         : uninitialised variable use warning.
+            - permit("dupmod",bool)         : duplicate module import warning.
+
+        * updated a couple of eg/ examples to reflect the uninitialised var change above.
+            - ( mainly initialising lists which are appended to )
+
+        * added default behaviour in interactive mode to print the result of submitted expressions
+            - this only happens when a) not an assignment, and b) no evaluation error occurred.
+
         * added support for cursor keys in keypress(). left, right, down, up return 8, 9, 10
             and 11 respectively.
 

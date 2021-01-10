@@ -15,6 +15,7 @@ end
 
 print "Building list.\n"
 t=then()
+list=[]
 for e=0 to llen-1
     list=append(list,rand(sz))
 endfor
@@ -39,7 +40,7 @@ println "First 100   : ",nl[:100]
 println "\n[#4]Filter, all >9899 :[#-]"
 println `: generated with newlist=(list ?> "#>9899").uniq`
 t=then()
- newlist=(list ?> "#>9899").uniq
+ newlist=(list.list_int ?> "#>9899").uniq
 now(t)
 println "New list,unique numbers :\n",newlist
 

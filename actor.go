@@ -2519,17 +2519,14 @@ tco_reentry:
                     module:currentModule,
                     fs:loc,
                 }
-                // pf("Define added func map entry : %+v\n",funcmap[currentModule+"."+definitionName])
 
                 sourceMap[loc]=base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
-                // pf("added a source map entry for loc %d pointing to base %d\n",loc,base)
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
                 fspacelock.Unlock()
 
                 farglock.Lock()
                 functionArgs[loc].args   = dargs
-                // pf("functionArgs in define loc %d -> %+v\n",loc,dargs)
                 farglock.Unlock()
 
             }
@@ -2799,49 +2796,49 @@ tco_reentry:
             // tokenise and parse into a new function space.
 
             //.. error if it has already been defined
-            // if _, exists := fnlookup.lmget("@mod_"+fom); exists {
-            if fnlookup.lmexists("@mod_"+fom) {
-                parser.report("Function @mod_"+fom+" already exists.")
+            if fnlookup.lmexists("@mod_"+fom) && !permit_dupmod {
+                parser.report("Module file "+fom+" already processed once.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            // debug(20,"[#3]MODULE taking a space[#-]\n")
-            loc, _ := GetNextFnSpace("@mod_"+fom)
+            if !fnlookup.lmexists("@mod_"+fom) {
 
-            calllock.Lock()
+                loc, _ := GetNextFnSpace("@mod_"+fom)
 
-            fspacelock.Lock()
-            functionspaces[loc] = []Phrase{}
-            fspacelock.Unlock()
+                calllock.Lock()
 
-            farglock.Lock()
-            functionArgs[loc].args  = []string{}
-            farglock.Unlock()
+                fspacelock.Lock()
+                functionspaces[loc] = []Phrase{}
+                fspacelock.Unlock()
 
-            oldModule:=currentModule
-            currentModule=path.Base(fom)
-            currentModule=str.TrimSuffix(currentModule,".mod")
-            // pf("MODULE '%v' set currentModule to %v\n",fom,currentModule)
+                farglock.Lock()
+                functionArgs[loc].args  = []string{}
+                farglock.Unlock()
 
-            //.. parse and execute
-            fileMap[loc]=moduleloc
-            // pf("module>> wrote file map entry : %d->%v fom:%v\n",loc,moduleloc,fom)
-            phraseParse("@mod_"+fom, string(mod), 0)
+                oldModule:=currentModule
+                currentModule=path.Base(fom)
+                currentModule=str.TrimSuffix(currentModule,".mod")
+                modlist[currentModule]=true
 
-            modcs := call_s{}
-            modcs.base = loc
-            modcs.caller = ifs
-            modcs.fs = "@mod_" + fom
-            modcs.callline = pc
-            calltable[loc] = modcs
+                //.. parse and execute
+                fileMap[loc]=moduleloc
+                phraseParse("@mod_"+fom, string(mod), 0)
 
-            calllock.Unlock()
+                modcs := call_s{}
+                modcs.base = loc
+                modcs.caller = ifs
+                modcs.fs = "@mod_" + fom
+                modcs.callline = pc
+                calltable[loc] = modcs
 
-            Call(MODE_NEW, loc, ciMod)
+                calllock.Unlock()
 
-            currentModule=oldModule
+                Call(MODE_NEW, loc, ciMod)
 
+                currentModule=oldModule
+
+            }
 
         case C_When:
 
@@ -3553,6 +3550,10 @@ tco_reentry:
                 parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
                 break
+            } else {
+                if interactive && !we.assign {
+                    pf("%#v\n",we.result)
+                }
             }
 
             //

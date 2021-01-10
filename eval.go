@@ -1054,7 +1054,16 @@ func (p *leparser) identifier(token Token) (interface{}) {
         }
     }
 
-    return nil
+    if permit_uninit {
+        return nil
+    }
+
+    // permit module names
+    if modlist[token.tokText]==true {
+        return nil
+    }
+
+    panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
 
 }
 
