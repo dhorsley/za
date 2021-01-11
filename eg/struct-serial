@@ -12,7 +12,7 @@ showstruct
 
 init a T
 
-file="struct-test-serial"
+file="test-file-struct-serial"
 
 a.a=42
 a.b=true
