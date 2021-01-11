@@ -245,7 +245,7 @@ func buildInternalLib() {
         return v,nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "none", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports."}
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports."}
     stdlib["permit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)==2 {
             switch args[0].(type) {
