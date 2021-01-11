@@ -28,6 +28,7 @@ define perf_regex_dna()
           "agggtaa[cgt]|[acg]ttaccct"
     ]
 
+    subs=[]
     subs=subs.append([ `tHa[Nt]`, `<4>`            ])
     subs=subs.append([ `aND|caN|Ha[DS]|WaS`, `<3>` ])
     subs=subs.append([ `a[NSt]|BY`, `<2>`          ])

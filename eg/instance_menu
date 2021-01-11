@@ -8,6 +8,8 @@ define ssh_menu(f)
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
         true
     )
+    iary=[]
+    iplist=[]
     foreach i in instances
         iary=iary.append("[#2]%20s [#3]%16s [#4]%20s[#-]".format(i["iid"],i["itype"],i["iip"]))
         iplist=iplist.append(i["iip"])

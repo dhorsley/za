@@ -52,6 +52,7 @@ define make_brick(n)
 end
 
 define newbricks(n,w)
+    fulllayer=[]
     for f=1 to w/8
         fulllayer=append(fulllayer,true)
     endfor

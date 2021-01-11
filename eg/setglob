@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+permit("uninit",true)
+
 struct t
     a int
     b bool
