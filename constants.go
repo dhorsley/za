@@ -246,5 +246,6 @@ const (
     C_Step
     C_As
     C_Do
+    C_Enum
 )
 
