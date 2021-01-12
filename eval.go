@@ -1063,6 +1063,11 @@ func (p *leparser) identifier(token Token) (interface{}) {
         return nil
     }
 
+    // permit enum names
+    if enum[token.tokText]!=nil {
+        return nil
+    }
+
     panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
 
 }

@@ -863,7 +863,13 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
                 }
             }
 
-            if !isFunc { panic(fmt.Errorf("function or record field %v not found", field)) }
+            if !isFunc {
+                // before failing, check if this is a valid enum reference
+                if enum[p.preprev.tokText]!=nil {
+                    return enum[p.preprev.tokText][name]
+                }
+                panic(fmt.Errorf("no function, enum or record field found for %v", field))
+            }
 
             var iargs []interface{}
             if !nonlocal {

@@ -16,7 +16,6 @@ import (
     "sort"
     str "strings"
     "time"
-//    "unsafe"
 )
 
 
@@ -73,6 +72,29 @@ func getMemUsage() (uint64,uint64) {
         return m.Alloc, m.Sys
 }
 
+func enum_names(e string) []string {
+    l:=[]string{}
+    if len(enum[e])==0 {
+        return l
+    }
+    for m := range enum[e] {
+        l=append(l,m)
+    }
+    return l
+}
+
+func enum_all(e string) []interface{} {
+    l:=[]interface{}{}
+    if len(enum[e])==0 {
+        return l
+    }
+    for _,m := range enum[e] {
+        l=append(l,m)
+    }
+    return l
+}
+
+
 func buildInternalLib() {
 
     features["internal"] = Feature{version: 1, category: "debug"}
@@ -83,8 +105,21 @@ func buildInternalLib() {
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores","permit",
+        "enum_names","enum_all",
     }
 
+
+    slhelp["enum_names"] = LibHelp{in: "enum", out: "[]string", action: "returns the name labels associated with enumeration [#i1]enum[#i0]"}
+    stdlib["enum_names"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 || sf("%T",args[0])!="string" { return nil, errors.New("enum_names requires a valid enum name argument") }
+        return enum_names(args[0].(string)),nil
+    }
+
+    slhelp["enum_all"] = LibHelp{in: "enum", out: "[]string", action: "returns the values associated with enumeration [#i1]enum[#i0]"}
+    stdlib["enum_all"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if len(args)!=1 || sf("%T",args[0])!="string" { return nil, errors.New("enum_all requires a valid enum name argument") }
+        return enum_all(args[0].(string)),nil
+    }
 
     slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     stdlib["zainfo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
