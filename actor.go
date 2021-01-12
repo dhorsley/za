@@ -1694,14 +1694,74 @@ tco_reentry:
             lastlock.RUnlock()
             looplock.RUnlock()
 
-        case C_Unset: // remove a variable
 
-            // @note: need to look at this...
-            //  unset on a map entry would be fine.
-            //  unset on an array element is pointless.
-            //  unset on a scalar should be fine.
-            //  basically, need to add more intelligence to this.
-            //  just keeping it from attempting the deletion for now.
+        case C_Enum:
+
+            if inbound.TokenCount<4 || inbound.Tokens[2].tokType!=LParen || inbound.Tokens[inbound.TokenCount-1].tokType!=RParen {
+                parser.report("Incorrect arguments supplied for ENUM.")
+                finish(false,ERR_SYNTAX)
+                break
+            }
+
+            resu:=parser.splitCommaArray(ifs, inbound.Tokens[3:inbound.TokenCount-1])
+
+            enum_name:=inbound.Tokens[1].tokText
+            enum[enum_name]=make(map[string]interface{})
+
+            // pf("enum %v args\n",enum_name)
+            var nextVal interface{}
+            nextVal=0   // auto incs to 1 for first default value
+            enum_loop:
+            for ea:=range resu {
+
+                if len(resu[ea])==1 {
+                    switch nextVal.(type) {
+                    case int:
+                        nextVal=nextVal.(int)+1
+                    case uint:
+                        nextVal=nextVal.(uint)+1
+                    case int64:
+                        nextVal=nextVal.(int64)+1
+                    case float64:
+                        nextVal=nextVal.(float64)+1
+                    default:
+                        // non-incremental error
+                        parser.report("Cannot increment default value in ENUM")
+                        finish(false,ERR_EVAL)
+                        break enum_loop
+                    }
+                    enum[enum_name][resu[ea][0].tokText]=nextVal
+                    // pf("id : %v  value : %+v\n",resu[ea][0].tokText,nextVal)
+
+                } else {
+                    // member [ = constant ]
+                    if len(resu[ea])==3 {
+                        if resu[ea][1].tokType==O_Assign {
+                            switch resu[ea][2].tokType {
+                            case NumericLiteral:
+                                nextVal=resu[ea][2].tokVal
+                            case StringLiteral:
+                                nextVal=stripOuterQuotes(resu[ea][2].tokText,1)
+                            default:
+                                parser.report("Invalid constant for assignment in ENUM")
+                                finish(false,ERR_EVAL)
+                                break enum_loop
+                            }
+                            enum[enum_name][resu[ea][0].tokText]=nextVal
+                            // pf("id : %v  value : %+v\n",resu[ea][0].tokText,nextVal)
+                        } else {
+                            // error
+                            parser.report("Missing assignment in ENUM")
+                            finish(false,ERR_SYNTAX)
+                            break enum_loop
+                        }
+                    }
+                }
+            }
+
+
+
+        case C_Unset: // remove a variable
 
             if inbound.TokenCount != 2 {
                 parser.report("Incorrect arguments supplied for UNSET.")
@@ -3670,17 +3730,53 @@ func findDelim(tokens []Token, delim uint8, start int) (pos int) {
     return -1
 }
 
-func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []interface{}, errs []error) {
+
+func (parser *leparser) splitCommaArray(ifs uint32, tokens []Token) (resu [][]Token) {
+
     evnest:=0
     newstart:=0
-    if len(tokens)==0 { return resu,errs }
-    // @note: this needs rationalising a bit...
+    lt:=0
+
+    if lt=len(tokens);lt==0 { return resu }
+
     for term := range tokens {
         nt:=tokens[term]
         if nt.tokType==LParen { evnest++ }
         if nt.tokType==RParen { evnest-- }
         if evnest==0 {
-            if term==len(tokens)-1 {
+            if term==lt-1 {
+                v := tokens[newstart:term+1]
+                resu=append(resu,v)
+                newstart=term+1
+                continue
+            }
+            if nt.tokType == O_Comma {
+                v := tokens[newstart:term]
+                resu=append(resu,v)
+                newstart=term+1
+            }
+        }
+    }
+    return resu
+
+}
+
+
+
+func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []interface{}, errs []error) {
+
+    evnest:=0
+    newstart:=0
+    lt:=0
+
+    if lt=len(tokens);lt==0 { return resu,errs }
+
+    for term := range tokens {
+        nt:=tokens[term]
+        if nt.tokType==LParen { evnest++ }
+        if nt.tokType==RParen { evnest-- }
+        if evnest==0 {
+            if term==lt-1 {
                 v, e := parser.Eval(ifs,tokens[newstart:term+1])
                 resu=append(resu,v)
                 errs=append(errs,e)
@@ -3696,6 +3792,7 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []inter
         }
     }
     return resu,errs
+
 }
 
 

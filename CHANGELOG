@@ -5,6 +5,32 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added statement ENUM
+            - enumerations can be defined in this way:
+                > enum colours ( red=1, green=2, blue=4, mask=7 )
+            - for numeric constant type values, when missing, they assume the previous value + 1
+            - the initial default value is int(1)
+            - string literals may also be used as values.
+            - strings and numeric types may be mixed within the same enum declaration.
+            - further examples,
+                > enum authors ( bill="William Shakespeare", george="George Orwell" )
+                > enum bitpos ( l0=1,l1=2,l2=4,l3=8,h0=16,h1=32 )
+                > enum rainbow ( red, orange, yellow, green, blue, indigo, violet )
+                > enum mixed ( one=1, two=2.0, three, pi=3.141, four=4, author="Orwell")
+                - the final mixed enum has these values:
+                    [ 1, 2.0, 3.0, 3.141, 4, "Orwell" ]
+
+        * added library calls:
+            - enum_names("enum_name")     : returns a list of labels for a given enumeration
+            - enum_all("enum_name")       : returns a list of values for a given enumeration
+
+        * enum addressing:
+            - an enumerated label may be dereferenced using the form:
+                > enum_name.enum_label
+                example:
+                > colours.blue
+                > 4
+
         * added check for uninitialised variable use as identifiers in eval.go (fn identifier())
             - an exception to this is module names that have been created during execution.
 

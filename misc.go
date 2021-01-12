@@ -129,8 +129,7 @@ func (parser *leparser) report(s string) {
     var baseId uint32
 
     line:=parser.line
-    ifs:=parser.fs
-                                                    // ifs  -> id of failing func
+    ifs:=parser.fs                                  // ifs  -> id of failing func
     funcName    := getReportFunctionName(ifs,false) //      -> name of failing func
     if ifs==2 {
         baseId=1
@@ -139,27 +138,32 @@ func (parser *leparser) report(s string) {
     }
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
-    // si:=1 // default source index
-    //if sm,ok:=sourceMap[baseId]; ok {
-        // found a mapping for parent that created a func, and thus holds source
-    //    si=int(sm)
-    //}
-
     var line_content string
     if len(functionspaces[baseId])>0 {
         if baseId!=0 {
-            // line_content=sourceStore[si][line]
             line_content=functionspaces[baseId][parser.stmtline].Original
         } else {
             line_content="Interactive Mode"
         }
     }
 
-    fmt.Print( sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
+    msg := sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
         "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
         line_content+"\n"+
         sparkle("[##][#-][#CTE]")+
-        sf("%s\n", s)+sparkle("[#CTE]"))
+        sf("%s\n", s)+sparkle("[#CTE]")
+
+    fmt.Print(msg)
+
+    if interactive {
+        chpos:=0
+        c:=col
+        for ; chpos<len(msg); c++ {
+            if c%MW==0          { row++; c=0 }
+            if msg[chpos]=='\n' { row++; c=0 }
+            chpos++
+        }
+    }
 
     if !interactive {
         showCallChain(baseName)
