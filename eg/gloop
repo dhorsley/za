@@ -2,9 +2,7 @@
 
 doc `
     really simple game loop
-
     just wanted to see if the console could manage basic stuff
-
     it absolutely won't work on windows.
 
 `
@@ -20,7 +18,46 @@ define intHandler()
     at term_h()-1,1; print "[##][#-]"
     return 127
 end
+
  
+define proc_input()
+
+    while !quit
+
+        while !drawing; endwhile
+        # at 1,1; print "[#invert]NOT DRAWING[#-]"
+
+        k=keypress()
+
+        when chr(k)
+        is " "
+            if !moving
+                # start ball moving (-3 to +3)
+                setglob box=0
+                while box==0
+                    setglob box=rand(7)-4.0
+                endwhile
+                setglob boy=-1
+                setglob moving=true
+            endif
+        is "o"
+            if px>3
+                setglob px=px-3
+                on !moving do setglob bx=bx-3
+            endif
+        is "p"
+            if px<tw-pw
+                setglob px=px+3
+                on !moving do setglob bx=bx+3
+            endif
+        is "q"
+            setglob quit=true
+        endwhen
+
+    endwhile
+
+end
+
 
 seed(epoch_nano_time())
 
@@ -65,7 +102,7 @@ cursoroff()
 echo(false)
 
 # frame_rate modulus in nanoseconds (60ms)
-f_rate=60000000
+f_rate=120000000
 last_time=epoch_nano_time()
 moving=false
 
@@ -73,64 +110,21 @@ at th-2,tw-60; print "th,tw=({th},{tw})    "
 
 first=true
 
+updating=false
+drawing=false
+
+async a_input proc_input()
+
 while !quit
 
-    at th-2,tw-40; print format("Score %5d  Lives ",score)
+    ## INPUT #####################################################################
 
-    if !moving
-        at th-1,20; print "(o) left  (p) right  (space) release  (q) quit"
-    else
-        clear_line(th-1,20)
-    endif
+    # gathered from async proc_input
 
-    # print sprites if redraw enabled
-    foreach n in sprites
-        if first || n[0]==1
-            cx=n[1]; cy=n[2]; cs=n[3]
-            at cy,cx; print cs
-        endif
-    endfor
 
-    first=false
+    ## UPDATE ####################################################################
 
-    # print info
-    at hy,hx; print hs
-
-    # get input 10ms max wait)
-    k=keypress(10000)
-    when chr(k)
-    is " "
-        if !moving
-            # start ball moving (-3 to +3)
-	        box=0
-            while box==0
-                box=float(rand(7)-4)
-            endwhile
-            boy=-1
-            moving=true
-        endif
-    is "o"
-        if px>3
-            px=px-3
-            on !moving do bx=bx-3
-        endif
-    is "p"
-        if px<tw-pw
-            px=px+3
-            on !moving do bx=bx+3
-        endif
-    is "q"
-        quit=true
-    endwhen
-
-    # ensure waiting after keypress until time slot is used up
-    last_time=int(epoch_nano_time() / f_rate) * f_rate
-    while epoch_nano_time()<(last_time+f_rate)
-        # delay 1ms
-        pause 1
-    endwhile
-
-    # update sprites
+    updating=true
 
     #.. keep moving
     if moving
@@ -142,10 +136,9 @@ while !quit
     on bx<2 || bx>tw-1 do box=-box
     on by<2 do boy=-boy
 
-    #.. collision detection goes here...
+    #.. some kind of collision detection goes here...
 
     #... ball on brick
-
     foreach s in sprites
         on !hasstart(key_s,"brick-") do continue
         brx=s[1]; bry=s[2]
@@ -188,6 +181,47 @@ while !quit
 
     sprites["player"]=[1,px,py,ps,pm]
     sprites["ball1"]=[1,bx,by,bs,bm]
+
+    updating=false
+
+    ## DRAW ######################################################################
+
+    drawing=true
+
+    # status
+
+    at th-2,tw-40; print format("Score %5d  Lives ",score)
+    if !moving
+        at th-1,20; print "(o) left  (p) right  (space) release  (q) quit"
+    else
+        clear_line(th-1,20)
+    endif
+
+    # print sprites if redraw enabled
+    foreach n in sprites
+        if first || n[0]==1
+            cx=n[1]; cy=n[2]; cs=n[3]
+            at cy,cx; print cs
+        endif
+    endfor
+
+    first=false
+
+    # print info
+    at hy,hx; print hs
+
+    drawing=false
+
+
+    ## SLOP ######################################################################
+
+    # ensure wait until time slot is used up
+
+    last_time=int(epoch_nano_time() / f_rate) * f_rate
+    while epoch_nano_time()<(last_time+f_rate)
+        # delay 1ms
+        pause 1
+    endwhile
 
 endwhile
 
