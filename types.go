@@ -114,6 +114,11 @@ type ExpressionCarton struct {
 	evalError bool        // did the evaluation succeed
 }
 
+// struct for enum members
+type enum_s struct {
+    ordered   []string
+    members   map[string]interface{}
+}
 
 //
 // struct for loop internals

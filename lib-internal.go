@@ -74,10 +74,10 @@ func getMemUsage() (uint64,uint64) {
 
 func enum_names(e string) []string {
     l:=[]string{}
-    if len(enum[e])==0 {
+    if len(enum[e].members)==0 {
         return l
     }
-    for m := range enum[e] {
+    for _,m := range enum[e].ordered {
         l=append(l,m)
     }
     return l
@@ -85,11 +85,11 @@ func enum_names(e string) []string {
 
 func enum_all(e string) []interface{} {
     l:=[]interface{}{}
-    if len(enum[e])==0 {
+    if len(enum[e].members)==0 {
         return l
     }
-    for _,m := range enum[e] {
-        l=append(l,m)
+    for _,m := range enum[e].ordered {
+        l=append(l,enum[e].members[m])
     }
     return l
 }
