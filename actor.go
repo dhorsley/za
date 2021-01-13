@@ -437,6 +437,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     var fs string                   // current function space
     var caller uint32               // function space which placed the call
     var base uint32                 // location of the translated source tokens
+    var thisLoop *s_loop            // pointer to loop information. used in FOR
 
     // set up the function space
 
@@ -726,10 +727,10 @@ tco_reentry:
 
     for {
 
-        pc++  // program counter, equates to each Phrase struct in the function
-        parser.stmtline=pc  // reflects the pc for use in the evaluator
+        pc++                    // program counter, equates to each Phrase struct in the function
+        parser.stmtline=pc      // reflects the pc for use in the evaluator
 
-        if pc >= finalline || endFunc || sig_int {
+        if pc >= finalline || sig_int {
             break
         }
 
@@ -741,6 +742,7 @@ tco_reentry:
         // get the next Phrase
         inbound = &functionspaces[base][pc]
         parser.line=inbound.SourceLine
+
         // .. skip comments and DOC statements
         if !testMode && inbound.Tokens[0].tokType == C_Doc {
             continue
@@ -818,7 +820,6 @@ tco_reentry:
             }
 
             // check if name available
-
             vname := interpolate(ifs,inbound.Tokens[1].tokText)
 
             // get the required type
@@ -1471,11 +1472,13 @@ tco_reentry:
             // the loops entries should never be re-allocated from under a working instance
             // and we are generally reading from a pointer within the array.
 
+            /*
             if depth[ifs]==0 {
                 parser.report(sf("trying to get lastConstruct when there isn't one in %s (ifs:%v)!\n",fs,ifs))
                 finish(true,ERR_FATAL)
                 break
             }
+            */
 
             if lastConstruct[ifs][depth[ifs]-1]!=C_For && lastConstruct[ifs][depth[ifs]-1]!=C_Foreach {
                 parser.report("ENDFOR without a FOR or FOREACH")
@@ -1484,7 +1487,7 @@ tco_reentry:
             }
 
             //.. take address of loop info store entry
-            thisLoop := &loops[ifs][depth[ifs]]
+            thisLoop = &loops[ifs][depth[ifs]]
 
             var loopEnd bool
 
@@ -1611,11 +1614,12 @@ tco_reentry:
                 finish(false, ERR_SYNTAX)
             } else {
 
-                var thisLoop *s_loop
+                // var thisLoop *s_loop
 
-                // ^^ we use indirect access here (and throughout loop code) for
-                //  a minor speed bump. we should periodically review this 
-                //  as an optimisation in Go could make this unnecessary.
+                // @note:
+                //  we use indirect access with thisLoop here (and throughout
+                //  loop code) for a minor speed bump. we should periodically
+                //  review this as an optimisation in Go could make this unnecessary.
 
                 lastlock.RLock()
                 switch lastConstruct[ifs][depth[ifs]-1] {
@@ -1653,7 +1657,8 @@ tco_reentry:
 
                 // jump calc, depending on break context
 
-                thisLoop := &loops[ifs][depth[ifs]]
+                // thisLoop := &loops[ifs][depth[ifs]]
+                thisLoop = &loops[ifs][depth[ifs]]
                 bmess := ""
 
                 switch lastConstruct[ifs][depth[ifs]-1] {
@@ -1706,11 +1711,13 @@ tco_reentry:
             resu:=parser.splitCommaArray(ifs, inbound.Tokens[3:inbound.TokenCount-1])
 
             enum_name:=inbound.Tokens[1].tokText
-            enum[enum_name]=make(map[string]interface{})
+            enum[enum_name]=&enum_s{}
+            enum[enum_name].members=make(map[string]interface{})
+            // var enum[enum_name].ordered = []
 
-            // pf("enum %v args\n",enum_name)
             var nextVal interface{}
-            nextVal=0   // auto incs to 1 for first default value
+            nextVal=0           // auto incs to 1 for first default value
+            var member string
             enum_loop:
             for ea:=range resu {
 
@@ -1730,8 +1737,11 @@ tco_reentry:
                         finish(false,ERR_EVAL)
                         break enum_loop
                     }
-                    enum[enum_name][resu[ea][0].tokText]=nextVal
-                    // pf("id : %v  value : %+v\n",resu[ea][0].tokText,nextVal)
+
+                    member=resu[ea][0].tokText
+                    enum[enum_name].members[member]=nextVal
+                    enum[enum_name].ordered=append(enum[enum_name].ordered,member)
+                    // enum[enum_name][resu[ea][0].tokText]=nextVal
 
                 } else {
                     // member [ = constant ]
@@ -1747,8 +1757,10 @@ tco_reentry:
                                 finish(false,ERR_EVAL)
                                 break enum_loop
                             }
-                            enum[enum_name][resu[ea][0].tokText]=nextVal
-                            // pf("id : %v  value : %+v\n",resu[ea][0].tokText,nextVal)
+                            member=resu[ea][0].tokText
+                            enum[enum_name].members[member]=nextVal
+                            enum[enum_name].ordered=append(enum[enum_name].ordered,member)
+                            // enum[enum_name][resu[ea][0].tokText]=nextVal
                         } else {
                             // error
                             parser.report("Missing assignment in ENUM")
@@ -2662,25 +2674,20 @@ tco_reentry:
                 }
             }
 
-// MOVED SECTION STARTS HERE
             // evaluate each expr and stuff the results in an array
             var ev_er error
             retvalues=make([]interface{},curArg)
-            // pf("retvalues processing of rargs... %+v\n",rargs)
             for q:=0;q<int(curArg);q++ {
                 retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
-                // pf("-- working rargs  %d -> %+v\n",q,rargs[q])
-                // pf("-- working retval %d -> %+v\n",q,retvalues[q])
                 if ev_er!=nil {
                     parser.report("Could not evaluate RETURN arguments")
                     finish(true,ERR_EVAL)
                     break
                 }
             }
-// MOVED SECTION ENDS HERE
 
             endFunc = true
-
+            break
 
         case C_Enddef:
 

@@ -324,6 +324,7 @@ Available commands:
 [#3]DOC [ [#i1]function_name[#i0] ] [#i1]comment[#i0][#-]                   - Create an exportable comment, for the documentation generator.
 [#7]INIT[#-] [#i1]var[#i0] [#i1]type[#i0] [[#i1]size[#i0]]                            - Dimension an array. Type can be bool, int, float, mixed or assoc.
 [#7]VAR[#-] [#i1]var type[#i0]                                    - declare an optional type.
+[#7]ENUM[#-] [#i1]name[#i0] ( member[=val][,...,memberN[=val]] )  - declare an enumeration.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]NOP[#-]                                             - dummy 100 millisecond command.
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.

@@ -116,7 +116,8 @@ var fairydust = make(map[string]string, FAIRY_CAP)
 var lastConstruct = make([][]uint8, SPACE_CAP)
 
 // enum storage
-var enum = make(map[string]map[string]interface{})
+// var enum = make(map[string]map[string]interface{})
+var enum = make(map[string]*enum_s)
 
 // number of functionspace which is considered to be "global"
 var globalaccess uint32

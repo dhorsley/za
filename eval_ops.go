@@ -866,7 +866,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
             if !isFunc {
                 // before failing, check if this is a valid enum reference
                 if enum[p.preprev.tokText]!=nil {
-                    return enum[p.preprev.tokText][name]
+                    return enum[p.preprev.tokText].members[name]
                 }
                 panic(fmt.Errorf("no function, enum or record field found for %v", field))
             }

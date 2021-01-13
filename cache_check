@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+
+f="$@"
+if [[ "$f" == "" ]]; then
+    f="eg/addition_loop 100000"
+fi
+
+valgrind --branch-sim=yes --tool=cachegrind za $f
