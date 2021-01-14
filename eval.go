@@ -1448,13 +1448,15 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
 func vget(fs uint32, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-
         vlock.RLock()
-        defer vlock.RUnlock()
-
+        v:=ident[fs][vi].IValue
+        // defer vlock.RUnlock()
         if ident[fs][vi].declared {
-            return ident[fs][vi].IValue , true
+            vlock.RUnlock()
+            return v,true
+            // return ident[fs][vi].IValue , true
         }
+        vlock.RUnlock()
     }
     return nil, false
 }
@@ -1463,15 +1465,20 @@ func vget(fs uint32, name string) (interface{}, bool) {
 func vgeti(fs uint32, vi uint16) (interface{}, bool) {
 
     vlock.RLock()
-    defer vlock.RUnlock()
+    v:=ident[fs][vi].IValue
+    // defer vlock.RUnlock()
 
     if int(vi)>=len(ident[fs]) {
+        vlock.RUnlock()
         return nil,false
     }
 
     if ident[fs][vi].declared {
-        return ident[fs][vi].IValue , true
+        vlock.RUnlock()
+        return v,true
+        // return ident[fs][vi].IValue , true
     }
+    vlock.RUnlock()
     return nil, false
 
 }

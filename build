@@ -19,7 +19,6 @@ GCFLAGS = "-gcflags='-B -l=4'"
 bvers =  "1.0.13"
 bdate =| date "+%d-%m-%Y %H:%M"
 
-
 upxfound=| which upx | wc -l
 upxfound=trim(upxfound.out,0).int
 

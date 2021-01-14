@@ -1,0 +1,11 @@
+#!/usr/bin/za
+
+enum errors ( okay=0, one, two, three )
+
+input ex_state param 1
+
+on ex_state>0 do exit ex_state, `ERROR #{ex_state} : {=enum_names("errors")[ex_state]}\n`
+
+exit errors.okay
+
+
