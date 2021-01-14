@@ -115,7 +115,7 @@ func buildInternalLib() {
         return enum_names(args[0].(string)),nil
     }
 
-    slhelp["enum_all"] = LibHelp{in: "enum", out: "[]string", action: "returns the values associated with enumeration [#i1]enum[#i0]"}
+    slhelp["enum_all"] = LibHelp{in: "enum", out: "[]mixed", action: "returns the values associated with enumeration [#i1]enum[#i0]"}
     stdlib["enum_all"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args)!=1 || sf("%T",args[0])!="string" { return nil, errors.New("enum_all requires a valid enum name argument") }
         return enum_all(args[0].(string)),nil
