@@ -730,7 +730,7 @@ tco_reentry:
         pc++                    // program counter, equates to each Phrase struct in the function
         parser.stmtline=pc      // reflects the pc for use in the evaluator
 
-        if pc >= finalline || sig_int {
+        if pc >= finalline || endFunc || sig_int {
             break
         }
 

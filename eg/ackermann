@@ -35,6 +35,6 @@ b=int(b)
 println a
 println b
 
-println "A({a},{b}) = {=ackermann (a,b)}"
+println "A({a},{b}) = ",ackermann(a,b)
 println "Calls : {=calls}"
 
