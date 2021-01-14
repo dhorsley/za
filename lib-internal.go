@@ -104,7 +104,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","getcores","permit",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","get_cores","permit",
         "enum_names","enum_all",
     }
 
@@ -152,8 +152,8 @@ func buildInternalLib() {
         return struct{alloc uint64;system uint64}{a/1024/1024,s/1024/1024},nil 
     }
 
-    slhelp["getcores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
-    stdlib["getcores"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    slhelp["get_cores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
+    stdlib["get_cores"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         return runtime.NumCPU(),nil
     }
 

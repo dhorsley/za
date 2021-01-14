@@ -262,11 +262,6 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
 var cachelock = &sync.RWMutex{}
 
 
-// @todo:
-// 
-// add []main.dirent support in list_filter and list_map as l.h.s. operand.
-//
-
 func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
 
     switch right.(type) {
@@ -521,6 +516,31 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
             }
         }
         return new_list
+
+    /*
+
+     * @todo: fix this: need to define both struct and data when reading a field like this.
+     *                   won't currently work without trawling through struct content for 
+     *                   a matching field (from #.*) then only returning the field (not a
+     *                   full struct reference).
+    
+    case []dirent:
+        var new_list []dirent
+        for e:=0; e<len(left.([]dirent)); e++ {
+            new_right:=str.Replace(right.(string),"#",sf("%#v",left.([]dirent)[e]),-1)
+            new_right="struct"+new_right[11:] // strip ^main.dirent
+            pf("new right : |%#v|\n",new_right)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case dirent:
+                new_list=append(new_list,val.(dirent))
+            default:
+                panic(fmt.Errorf("invalid expression (%s) in map",new_right))
+            }
+        }
+        return new_list
+    */
 
     case []interface{}:
         var new_list []interface{}

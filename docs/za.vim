@@ -1,8 +1,8 @@
 " za syntax file
 " Language:     za (za)
 " Maintainer:   Daniel Horsley  <dhorsley@gmail.com>
-" Last Change:  Oct 28, 2020
-" Version:      7
+" Last Change:  Jan 14, 2021
+" Version:      8
 
 " Version control
 
