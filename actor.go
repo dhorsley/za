@@ -1710,10 +1710,11 @@ tco_reentry:
 
             resu:=parser.splitCommaArray(ifs, inbound.Tokens[3:inbound.TokenCount-1])
 
+            globlock.Lock()
+
             enum_name:=inbound.Tokens[1].tokText
             enum[enum_name]=&enum_s{}
             enum[enum_name].members=make(map[string]interface{})
-            // var enum[enum_name].ordered = []
 
             var nextVal interface{}
             nextVal=0           // auto incs to 1 for first default value
@@ -1741,7 +1742,6 @@ tco_reentry:
                     member=resu[ea][0].tokText
                     enum[enum_name].members[member]=nextVal
                     enum[enum_name].ordered=append(enum[enum_name].ordered,member)
-                    // enum[enum_name][resu[ea][0].tokText]=nextVal
 
                 } else {
                     // member [ = constant ]
@@ -1760,7 +1760,6 @@ tco_reentry:
                             member=resu[ea][0].tokText
                             enum[enum_name].members[member]=nextVal
                             enum[enum_name].ordered=append(enum[enum_name].ordered,member)
-                            // enum[enum_name][resu[ea][0].tokText]=nextVal
                         } else {
                             // error
                             parser.report("Missing assignment in ENUM")
@@ -1771,6 +1770,7 @@ tco_reentry:
                 }
             }
 
+            globlock.Unlock()
 
 
         case C_Unset: // remove a variable

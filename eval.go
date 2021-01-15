@@ -1084,6 +1084,8 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // permit enum names
+    globlock.RLock()
+    defer globlock.RUnlock()
     if enum[token.tokText]!=nil {
         return nil
     }
