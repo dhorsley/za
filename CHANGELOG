@@ -9,24 +9,20 @@ CHANGE LOG
 
             - it ain't gonna get much better without replacing the entire ident map with a 
                 better mechanism. sync.map is slower and atomic map entries would likely be quite
-                problematic currently. shouldn't be using a map for the variable store at all really.
+                problematic currently. shouldn't be using a map of arrays for the variable store at all
 
             - this would all go away if i actually had the will to generate variables properly
                 and would definitely speed this implementation up considerably. not really a problem
                 though unless this language is getting (ab)used for things it was never meant for.
 
-            - if speed is a real concern there's probably equally large gains to be had by
-                finding a way to do a computed goto and building trace caches. there's a few minor
-                things that happen at the start of the main processing loop which would need amending
-                or removing but they could be dealt with, such as:
-                    - pc increment: move to end of each instruction
-                    - test mode flag handling: no idea off the top of my head!
-                    - procedure defining: move to inside C_Define instruction and cut down C_Enddef.
+            - if speed is a real concern there's probably equally large gains to be had in finding 
+                a way to do a computed goto.
 
             - saying all that, branch mispredictions are currently quite acceptable for an interpreter
                 written like this one is. should probably leave off trying to polish execution 
                 speed much further - it's quite unneeded.
 
+        * added description hint option in INPUT ... PARAM statement for error messages. (param #4)
 
         * added statement ENUM
             - enumerations can be defined in this way:
@@ -57,9 +53,10 @@ CHANGE LOG
         * added check for uninitialised variable use as identifiers in eval.go (fn identifier())
             - an exception to this is module names that have been created during execution.
 
-        * added library call permit("flag_name",bool) to amend strictness of some run-time checks:
+        * added library call permit("flag_name",bool) to amend strictness of some run-time behaviours:
             - permit("uninit",bool)         : uninitialised variable use warning.
             - permit("dupmod",bool)         : duplicate module import warning.
+            - permit("exitquiet",bool)      : smaller exit error messages
 
         * updated a couple of eg/ examples to reflect the uninitialised var change above.
             - ( mainly initialising lists which are appended to )

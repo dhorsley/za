@@ -5,7 +5,6 @@
 module "./modules/timing.mod"
 
 max_count=100000000
-println max_count
 input max_count optarg 1
 
 ts=epoch_nano_time()
