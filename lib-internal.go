@@ -310,6 +310,16 @@ func buildInternalLib() {
                     default:
                         return nil,errors.New("permit(dupmod) accepts a boolean value only.")
                     }
+                case "exitquiet":
+                    switch args[1].(type) {
+                    case bool:
+                        lastlock.Lock()
+                        permit_exitquiet=args[1].(bool)
+                        lastlock.Unlock()
+                        return nil,nil
+                    default:
+                        return nil,errors.New("permit(exitquiet) accepts a boolean value only.")
+                    }
                 }
                 return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
             default:

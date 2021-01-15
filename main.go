@@ -198,11 +198,12 @@ var sig_int bool       // ctrl-c pressed?
 var coproc_active bool // for resetting co-proc if interrupted
 
 // behaviours
-var permit_uninit bool  // default:false, will evaluation cause a run-time failure if it
-                        //  encounters an uninitialised variable usage.
-                        //  this can be altered with the permit("uninit",bool) call
-var permit_dupmod bool  // default:false, ignore (true) or error (false) when a duplicate
-                        //  module import occurs.
+var permit_uninit   bool    // default:false, will evaluation cause a run-time failure if it
+                            //  encounters an uninitialised variable usage.
+                            //  this can be altered with the permit("uninit",bool) call
+var permit_dupmod   bool    // default:false, ignore (true) or error (false) when a duplicate
+                            //  module import occurs.
+var permit_exitquiet bool   // default:false, squash (true) or display (false) err msg on exit
 
 // test related setup, completely non thread safe
 var testMode bool
