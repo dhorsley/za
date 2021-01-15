@@ -865,6 +865,8 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
 
             if !isFunc {
                 // before failing, check if this is a valid enum reference
+                globlock.RLock()
+                defer globlock.RUnlock()
                 if enum[p.preprev.tokText]!=nil {
                     return enum[p.preprev.tokText].members[name]
                 }

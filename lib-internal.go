@@ -73,6 +73,8 @@ func getMemUsage() (uint64,uint64) {
 }
 
 func enum_names(e string) []string {
+    globlock.RLock()
+    defer globlock.RUnlock()
     l:=[]string{}
     if len(enum[e].members)==0 {
         return l
@@ -84,6 +86,8 @@ func enum_names(e string) []string {
 }
 
 func enum_all(e string) []interface{} {
+    globlock.RLock()
+    defer globlock.RUnlock()
     l:=[]interface{}{}
     if len(enum[e].members)==0 {
         return l
