@@ -2703,14 +2703,15 @@ tco_reentry:
 
         case C_Input:
 
-            // INPUT <id> <type> <position>                    - set variable {id} from external value or exits.
+            // INPUT <id> <type> <position> [<hint>]
+            // - set variable {id} from external value or exits.
 
             // get C_Input arguments
 
-            if inbound.TokenCount != 4 {
-                usage  :=         "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0]\n"
-                usage   = usage + "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
-                parser.report( "Incorrect arguments supplied to INPUT.\n"+usage)
+            if inbound.TokenCount < 4 {
+                usage:= "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0] [ [#i1]error_hint[#i0] ]\n"
+                usage+= "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
+                parser.report("Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2718,6 +2719,14 @@ tco_reentry:
             id := inbound.Tokens[1].tokText
             typ := inbound.Tokens[2].tokText
             pos := inbound.Tokens[3].tokText
+
+            hint:=id
+            if inbound.TokenCount==5 {
+                expr:=parser.wrappedEval(ifs,ifs,inbound.Tokens[4:])
+                if !expr.evalError {
+                    hint=expr.result.(string)
+                }
+            }
 
             // eval
 
@@ -2739,7 +2748,7 @@ tco_reentry:
                             vset(ifs, id, cmdargs[d-1])
                         }
                     } else {
-                        parser.report(sf("Expected CLI parameter '%s' not provided at startup.", id))
+                        parser.report(sf("Expected CLI parameter [%s] not provided at startup.", hint))
                         finish(true, ERR_SYNTAX)
                     }
                 } else {

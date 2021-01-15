@@ -1,8 +1,10 @@
 #!/usr/bin/za
 
+permit("exitquiet",true)
+
 enum errors ( okay=0, one, two, three )
 
-input ex_state param 1
+input ex_state param 1 "exit status"
 
 on ex_state>0 do exit ex_state, `ERROR #{ex_state} : {=enum_names("errors")[ex_state]}\n`
 

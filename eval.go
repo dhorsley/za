@@ -796,6 +796,15 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
 }
 
+func (p *leparser) unAddrOf() *Variable {
+    vartok:=p.next()
+    if vi,there:=VarLookup(p.fs,vartok.tokText); there {
+        vlock.RLock()
+        defer vlock.RUnlock()
+        return &ident[p.fs][vi]
+    }
+    return nil
+}
 
 func (p *leparser) unary(token Token) (interface{}) {
 
@@ -804,9 +813,9 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.preIncDec(token)
     case SYM_MM:
         return p.preIncDec(token)
-    /*
     case SYM_Caret:
-        return p.unAddrOf(token)
+        return p.unAddrOf()
+    /*
     case O_Multiply:
         return p.unDeref(token)
     */
@@ -917,11 +926,9 @@ func (p *leparser) preIncDec(token Token) interface{} {
 
     // get direction
     ampl:=1
-    optype:="increment"
     switch token.tokType {
     case SYM_MM:
         ampl=-1
-        optype="decrement"
     }
 
     // move parser position to varname 
@@ -939,7 +946,7 @@ func (p *leparser) preIncDec(token Token) interface{} {
             val,_=vgeti(globalaccess,vi)
             activeFS=globalaccess
         }
-        if !there { panic(fmt.Errorf("invalid variable name in pre-%s '%s'",optype,vartok.tokText)) }
+        if !there { panic(fmt.Errorf("invalid variable name in pre-inc/dec '%s'",vartok.tokText)) }
     } else {
         val,_=vgeti(p.fs,vartok.offset)
     }
@@ -954,7 +961,7 @@ func (p *leparser) preIncDec(token Token) interface{} {
     case float64:
         n=v+float64(ampl)
     default:
-        p.report(sf("pre-%s not supported on type '%T' (%s)",optype,val,val))
+        p.report(sf("pre-inc/dec not supported on type '%T' (%s)",val,val))
         finish(false,ERR_EVAL)
         return nil
     }
@@ -967,11 +974,9 @@ func (p *leparser) postIncDec(token Token) interface{} {
 
     // get direction
     ampl:=1
-    optype:="increment"
     switch token.tokType {
     case SYM_MM:
         ampl=-1
-        optype="decrement"
     }
 
     // get var from parser context
@@ -989,7 +994,7 @@ func (p *leparser) postIncDec(token Token) interface{} {
             val,_=vgeti(globalaccess,vi)
             activeFS=globalaccess
         }
-        if !there { panic(fmt.Errorf("invalid variable name in post-%s '%s'",optype,vartok.tokText)) }
+        if !there { panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText)) }
     } else {
         val,_=vgeti(p.fs,vartok.offset)
     }
@@ -1003,7 +1008,7 @@ func (p *leparser) postIncDec(token Token) interface{} {
     case float64:
         vset(activeFS,vartok.tokText,v+float64(ampl))
     default:
-        panic(fmt.Errorf("post-%s not supported on type '%T' (%s)",optype,val,val))
+        panic(fmt.Errorf("post-inc/dec not supported on type '%T' (%s)",val,val))
     }
     return val
 }

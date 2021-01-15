@@ -20,6 +20,8 @@ TODO
 *TODO*  remove deprecated features and options (startup options, dead code, unused funcs)
 *TODO*  add more manual example code in tools/funpages/examples for more functions.
 
+*TODO*  check dump() is behaving properly wrt passed arg strings.
+
 
 LATER / UNDECIDED
 -----------------

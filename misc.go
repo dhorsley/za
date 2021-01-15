@@ -147,11 +147,16 @@ func (parser *leparser) report(s string) {
         }
     }
 
-    msg := sparkle( sf("[#CTE]\n[#bred]\n[#CTE]"+
-        "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
-        line_content+"\n"+
-        sparkle("[##][#-][#CTE]")+
-        sf("%s\n", s)+sparkle("[#CTE]")
+    var msg string
+    if !permit_exitquiet {
+        msg = sparkle(sf("[#CTE]\n[#bred]\n[#CTE]"+
+            "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
+            line_content+"\n"+
+            sparkle("[##][#-][#CTE]")+
+            sf("%s\n", s)+sparkle("[#CTE]")
+    } else {
+        msg = sparkle(sf("%s\n",s))+sparkle("[#CTE]")
+    }
 
     fmt.Print(msg)
 
@@ -165,7 +170,7 @@ func (parser *leparser) report(s string) {
         }
     }
 
-    if !interactive {
+    if !interactive && !permit_exitquiet {
         showCallChain(baseName)
         pf("\n[#CTE]")
     }

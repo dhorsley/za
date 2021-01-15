@@ -34,11 +34,12 @@ type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, 
 
 // za variable
 type Variable struct {
-    IName  string
-    IKind  uint8
-    IValue interface{}
-    ITyped bool
-    declared bool
+    IName       string
+    IKind       uint8
+    IValue      interface{}
+    Ptr         *interface{}
+    ITyped      bool
+    declared    bool
 }
 
 // holds a Token which forms part of a Phrase.
