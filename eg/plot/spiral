@@ -7,22 +7,23 @@ define waitkey()
 end
 
 define draw()
-    x = 2*theta * cos(theta / pi)/8
-    y = theta * sin(theta / pi)/8
+    x = 2*theta * cos(theta/pi)/8
+    y = theta * sin(theta/pi)/8
     px=cx+x; py=cy+y
-    if px>0 && py>0 && px<width && py<height
-        at py,px; print "[#b"+int(c)+"] "
+    if px>0 and py>0 and px<width and py<height
+        at py,px; print "[#"+int(c)+"]o"
     endif
     setglob theta = theta + rotation
     on x > width/2.0 do setglob theta = 0.0
-    setglob c+=crate
-    on c>7 do setglob c=7
-    on c<1 do setglob c=1
-    setglob crate=(49-rand(100))/10.0
+    setglob c=c+crate
+    on c>7 do setglob c=rand(7).float
 end
 
 var rotation  float
 var theta     float
+var c         float
+
+epoch_nano_time().seed
 
 rotation = 0.05
 width=term_w()
@@ -30,22 +31,21 @@ height=term_h()
 cx=width/2
 cy=height/2
 pi=pi()
-c=rand(7)
-crate=0.1
-bounce=0.025
+c=rand(7).float
+crate=0.01
+bounce=0.012
 maxrot=13.0
-
-seed(epoch_nano_time())
 
 quit=false
 async whand waitkey()
 
-cursoroff()
 
 while !quit
     cls
+    print "[#bold]"
     theta=0.0
-    for e=0 to 5000
+    for e=0 to 400
+        cursoroff()
         draw()
     endfor
     rotation+=bounce

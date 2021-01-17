@@ -223,7 +223,7 @@ var no_shell bool
 var shellrep bool
 
 // pane resize indicator
-var winching bool
+// var winching bool
 
 // 0:off, >0 max displayed debug level
 // - not currently used too much. may eventually be removed
@@ -283,7 +283,8 @@ func main() {
         for {
             <-sigs
             globlock.Lock()
-            winching = true
+            // winching = true
+            MW, MH, _ = GetSize(1)
             globlock.Unlock()
         }
     }()
