@@ -738,18 +738,17 @@ tco_reentry:
 
     for {
 
-        /* this is currently commented out because it's painfully slow.
-            it is necessary for resizing the terminal dimensions on resize dynamically.
-            we can live without it for now, and find a better place for it. should maybe
-            just find a way to safely manipulate the dimensions at the point of the resize
-            detection, instead of checking every instruction.
+        // *sigh*
+        //  turns out, pc++ is much slower than pc = pc + 1, at least on x64 test build
 
-        // winching signal check
-        if winching { pane_redef() }
+        //  pprof didn't capture this reliably (probably to do with sample rate)
+        //  however, if you check against eg/long_loop or eg/addition_loop over a sufficiently
+        //  large repetition count you will see there is a big difference in performance.
+        //  i guess it isn't optimising away at compile-time as easily as it should.
 
-        */
+        // pc += 1  // optimises correctly, but no better than explicit inc below
 
-        pc++                    // program counter, equates to each Phrase struct in the function
+        pc = pc + 1             // program counter, equates to each Phrase struct in the function
         parser.stmtline=pc      // reflects the pc for use in the evaluator
 
         if pc >= finalline || endFunc || sig_int {
@@ -773,7 +772,7 @@ tco_reentry:
         statement = inbound.Tokens[0]
 
         // .. skip comments and DOC statements
-        if !testMode && statement.tokType == C_Doc {
+        if statement.tokType == C_Doc && !testMode {
             continue
         }
 
