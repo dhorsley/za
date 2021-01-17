@@ -28,7 +28,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     var phrase = Phrase{}
 
     tokenType := Error
-    curLine := 0
+    curLine := int16(0)
 
     // simple handler for parens nesting
     var braceNestLevel  int     // round braces

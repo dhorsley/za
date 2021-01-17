@@ -8,13 +8,13 @@ import (
 	"reflect"
 )
 
-//
 // this type is for holding a complete line from statement to EOL/Semicolon
 type Phrase struct {
 	Tokens     []Token // each token found
-	TokenCount int     // number of tokens generated for this phrase
-    SourceLine int
 	Original   string  // entire string, unmodified for spaces
+    SourceLine int16
+	TokenCount int16   // number of tokens generated for this phrase
+//    _pad0      [20]byte
 }
 
 func (p Phrase) String() string {
@@ -35,20 +35,19 @@ type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, 
 // za variable
 type Variable struct {
     IName       string
-    IKind       uint8
     IValue      interface{}
-    Ptr         *interface{}
+//    Ptr         *interface{}
+    IKind       uint8
     ITyped      bool
     declared    bool
 }
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
-	tokType uint8       // token type from list in constants.go
     tokVal  interface{} // raw value storage
 	tokText string      // the content of the token
     offset  uint16      // position in ident for this identifier
-
+	tokType uint8       // token type from list in constants.go
 }
 
 func (t Token) String() string {
@@ -62,7 +61,7 @@ type call_s struct {
 	fs          string      // the text name of the calling party
 	caller      uint32      // the thing which made the call
 	base        uint32      // the original functionspace location of the source
-    callline    int         // from whence it came
+    callline    int16       // from whence it came
 }
 
 func (cs call_s) String() string {
@@ -80,7 +79,7 @@ type Funcdef struct {
 type chainInfo struct {
     loc         uint32
     name        string
-    line        int
+    line        int16
     registrant  uint8
 }
 
@@ -93,13 +92,13 @@ type Feature struct {
 
 // holds state about a while loop
 type WhileMarker struct {
-    pc          int
+    pc          int16
     enddistance int
 }
 
 // holds internal state for the WHEN command
 type whenCarton struct {
-	endLine   int         // where is the endWhen, so that we can break or skip to it
+	endLine   int16       // where is the endWhen, so that we can break or skip to it
 	dodefault bool        // set false when another clause has been active
 	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
 }
@@ -117,28 +116,30 @@ type ExpressionCarton struct {
 
 // struct for enum members
 type enum_s struct {
-    ordered   []string
     members   map[string]interface{}
+    ordered   []string
 }
 
-//
+
+// @todo: this need splitting up for several reasons. primarily though because it is over 64 bytes:
 // struct for loop internals
 type s_loop struct {
-	loopVar          string           // name of counter, populate ident[fs][loopVar] (float64) at start of each iteration. (C_Endfor)
-    varoffset        uint16
-    varkeyoffset     uint16
-	counter          int              // current position in loop
-	condEnd          int              // terminating position value
-    iterOverMap      *reflect.MapIter // stored iterator
-	iterOverArray    interface{}      // stored value to iterate over from start expression
+	loopVar          string           // name of counter
+    varoffset        uint16           // position of varname in vmap array.
+    varkeyoffset     uint16           // position in vmap that key_* will be placed.
+	forEndPos        int16            // ENDFOR location (statement number in functionspace)
 	loopType         uint8            // C_For, C_Foreach, C_While
 	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
+	counter          int              // current position in loop
+	condEnd          int              // terminating position value
+	iterOverArray    interface{}      // stored value to iterate over from start expression
+                                      // one day, we'll just add a reference here ^^ instead! maybe
+	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
+	repeatFrom       int16            // line number to restart block from
 	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
-	repeatFrom       int              // line number
 	repeatActionStep int              // size of repeatAction
-	forEndPos        int              // ENDFOR location
-	whileContinueAt  int              // if loop is WHILE, where is it's ENDWHILE
 	repeatCond       []Token          // tested with wrappedEval() // used by while
+    iterOverMap      *reflect.MapIter // stored iterator
 }
 
 // struct to support pseudo-windows in console

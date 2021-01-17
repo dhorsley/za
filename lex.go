@@ -38,7 +38,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
 
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
+func nextToken(input string, curLine *int16, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
 
     var tokType uint8
     var word string

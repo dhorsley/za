@@ -7,7 +7,6 @@ import (
 type Nmap struct {
     sync.RWMutex
     nmap    map[uint32]string
-    recent  [80]uint32
 }
 
 func nlmcreate(sz int) *Nmap {
