@@ -1052,7 +1052,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 }
 
 
-func callFunction(evalfs uint32, callline int, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint32, callline int16, name string, args []interface{}) (res interface{}) {
 
     for a:=0; a<len(args); a++ {
         switch args[a].(type) {
@@ -1085,7 +1085,9 @@ func callFunction(evalfs uint32, callline int, name string, args []interface{}) 
 			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
             calllock.Unlock()
 
+            concurrent_funcs++
 			rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
+            concurrent_funcs--
 
 			// handle the returned result, if present.
             res, _ = vget(evalfs, "@#")

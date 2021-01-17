@@ -178,7 +178,7 @@ func (parser *leparser) report(s string) {
 }
 
 
-func appendToTestReport(test_output_file string, ifs uint32, pos int, s string) {
+func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string) {
 
 	s = sparkle(s) + "\n"
 

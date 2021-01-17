@@ -20,6 +20,7 @@ import (
 func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
+        concurrent_funcs++
         defer close(r)
         locks(true)
         rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
@@ -34,6 +35,7 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
             r<-v
         }
         locks(false)
+        concurrent_funcs--
     }()
     return r
 }
@@ -174,7 +176,7 @@ func InSlice(a uint8, list []uint8) bool {
 //
 
 // searchToken is used by FOR to check for occurrences of the loop variable.
-func searchToken(base uint32, start int, end int, sval string) bool {
+func searchToken(base uint32, start int16, end int16, sval string) bool {
 
     range_fs:=functionspaces[base][start:end]
 
@@ -203,7 +205,7 @@ func searchToken(base uint32, start int, end int, sval string) bool {
 
 
 // lookahead used by if..else..endif and similar constructs for nesting
-func lookahead(fs uint32, startLine int, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int, bool) {
+func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int16, bool) {
 
     range_fs:=functionspaces[fs][startLine:]
 
@@ -226,7 +228,7 @@ func lookahead(fs uint32, startLine int, indent int, endlevel int, term uint8, i
 
         // found search term?
         if indent == endlevel && v.Tokens[0].tokType == term {
-            return true, i, false
+            return true, int16(i), false
         }
     }
 
@@ -430,10 +432,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // some tracking variables for this function call
     var breakIn uint8               // true during transition from break to outer.
-    var pc int                      // program counter
+    var pc int16                    // program counter
     var retvar string               // variables to allocate return vars to
     var retvalues []interface{}     // return values to be passed back
-    var finalline int               // tracks end of tokens in the function
+    var finalline int16             // tracks end of tokens in the function
     var fs string                   // current function space
     var caller uint32               // function space which placed the call
     var base uint32                 // location of the translated source tokens
@@ -709,7 +711,13 @@ tco_reentry:
     }
     farglock.RUnlock()
 
-    finalline = len(functionspaces[base])
+    if len(functionspaces[base])>32767 {
+        parser.report("function too long!")
+        finish(true,ERR_SYNTAX)
+        return
+    }
+
+    finalline = int16(len(functionspaces[base]))
 
     inside_test := false      // are we currently inside a test bock
     inside_with := false      // WITH cannot be nested and remains local in scope.
@@ -846,6 +854,7 @@ tco_reentry:
                 vlock.Lock()
                 vi:=inbound.Tokens[1].offset
                 ident[ifs][vi].ITyped=true
+                ident[ifs][vi].declared=true
                 switch expr {
                 case "nil":
                     ident[ifs][vi].IKind=knil
@@ -860,7 +869,6 @@ tco_reentry:
                 case "string":
                     ident[ifs][vi].IKind=kstring
                 }
-                ident[ifs][vi].declared=true
                 vlock.Unlock()
 
             } else {
@@ -873,7 +881,7 @@ tco_reentry:
         case C_While:
 
             var endfound bool
-            var enddistance int
+            var enddistance int16
 
             endfound, enddistance, _ = lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
             if !endfound {
@@ -2360,7 +2368,7 @@ tco_reentry:
 
             // get arguments
 
-            var rightParenLoc int
+            var rightParenLoc int16
             for ap:=inbound.TokenCount-1; ap>3; ap-- {
                 if inbound.Tokens[ap].tokType==RParen {
                     rightParenLoc=ap
@@ -2910,7 +2918,9 @@ tco_reentry:
 
                 calllock.Unlock()
 
+                concurrent_funcs++
                 Call(MODE_NEW, loc, ciMod)
+                concurrent_funcs--
 
                 currentModule=oldModule
 
@@ -3047,7 +3057,7 @@ tco_reentry:
 
             }
 
-            var loc int
+            var loc int16
 
             // jump to the next clause, continue to next line or skip to end.
 
@@ -3060,7 +3070,7 @@ tco_reentry:
                 cofound, codistance, _   := lookahead(base, pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
 
                 // add jump distances to list
-                distList := []int{}
+                distList := []int16{}
                 if hasfound {
                     distList = append(distList, hasdistance)
                 }
@@ -3079,7 +3089,7 @@ tco_reentry:
                     loc = carton.endLine
                     // pf("@%d : direct jump to endwhen at %d\n",pc,loc+1)
                 } else {
-                    loc = pc + min_int(distList) + 1
+                    loc = pc + min_int16(distList) + 1
                     // pf("@%d : direct jump from distList to %d\n",pc,loc+1)
                 }
 
@@ -3632,10 +3642,6 @@ tco_reentry:
                 }
             }
 
-            //
-            //
-            //
-
         } // end-statements-case
 
     } // end-pc-loop
@@ -3734,9 +3740,9 @@ func coprocCall(ifs uint32,s string) {
 
 
 /// search token list for a given delimiter string
-func findDelim(tokens []Token, delim uint8, start int) (pos int) {
+func findDelim(tokens []Token, delim uint8, start int16) (pos int16) {
     n:=0
-    for p := start; p < len(tokens); p++ {
+    for p := start; p < int16(len(tokens)); p++ {
         if tokens[p].tokType==LParen { n++ }
         if tokens[p].tokType==RParen { n-- }
         if n==0 && tokens[p].tokType == delim {

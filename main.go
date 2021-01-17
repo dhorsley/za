@@ -246,6 +246,10 @@ var vtable_maxreached uint32
 // repl prompt
 var PromptTemplate string
 
+// var access counts - debugging
+var vgetcount int
+var vgeticount int
+var concurrent_funcs uint32
 
 //
 // MAIN
@@ -394,7 +398,6 @@ func main() {
 
     // - set character that can mask user stdin if enabled
     vset(0, "@echomask", "*")
-
 
     // set global loop and nesting counters
     loops[0] = make([]s_loop, MAX_LOOPS)
@@ -977,7 +980,7 @@ func main() {
                 totalInput+=input
 
                 temptok:=Error
-                cl:=0
+                cl:=int16(0)
                 breakOnCommand:=false
                 tokenIfPresent:=false
                 tokenOnPresent:=false
@@ -1112,6 +1115,8 @@ func main() {
     if runtime.GOOS!="windows" {
         term_complete()
     }
+
+    debug(15,"var counts\nvget  : %d\nvgeti : %d\n",vgetcount,vgeticount)
 
 }
 
