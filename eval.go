@@ -31,9 +31,9 @@ func (p *leparser) Eval (fs uint32, toks []Token) (ans interface{},err error) {
 type leparser struct {
     tokens      []Token     // the thing getting evaluated
     fs          uint32      // working function space
+    line        int16       // shadows lexer source line
+    stmtline    int16       // shadows program counter (pc)
     pos         int         // distance through parse
-    line        int         // shadows lexer source line
-    stmtline    int         // shadows program counter (pc)
     prev        Token       // bodge for post-fix operations
     preprev     Token       //   and the same for assignment
 }
@@ -160,9 +160,9 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
 
 type rule struct {
-	prec int8
 	nud func(token Token) (interface{})
 	led func(left interface{}, token Token) (interface{})
+	prec int8
 }
 
 
@@ -1114,16 +1114,16 @@ var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, name string) (uint16, bool) {
-    vlock.RLock()
+    if concurrent_funcs>0 { vlock.RLock() }
     if vi,found:=vmap[fs][name]; found {
         if vi>functionidents[fs] {
-            vlock.RUnlock()
+            if concurrent_funcs>0 { vlock.RUnlock() }
             return 0,false
         }
-        vlock.RUnlock()
+        if concurrent_funcs>0 { vlock.RUnlock() }
         return vi,true
     }
-    vlock.RUnlock()
+    if concurrent_funcs>0 { vlock.RUnlock() }
     return 0,false
 
 }
@@ -1190,7 +1190,7 @@ func identResize(fs uint32,sz uint16) {
 
 func vset(fs uint32, name string, value interface{}) (uint16) {
 
-    vlock.Lock()
+    if concurrent_funcs>0 { vlock.Lock() }
 
     // create mapping entries for this name if it does not already exist
     if _,found:=vmap[fs][name]; !found {
@@ -1200,7 +1200,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
         functionidents[fs]++
     }
     ovi:=vmap[fs][name]
-    vlock.Unlock()
+    if concurrent_funcs>0 { vlock.Unlock() }
 
     // ... then forward to vseti
     return vseti(fs, name, ovi, value)
@@ -1208,7 +1208,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
-    vlock.Lock()
+    if concurrent_funcs>0 { vlock.Lock() }
 
     if len(ident[fs])>=int(vi) {
 
@@ -1238,7 +1238,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
                 if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
-                vlock.Unlock()
+                if concurrent_funcs>0 { vlock.Unlock() }
                 panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",vi,value,value))
             }
 
@@ -1267,7 +1267,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
-    vlock.Unlock()
+    if concurrent_funcs>0 { vlock.Unlock() }
 
     return vi
 
@@ -1280,7 +1280,6 @@ func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
     return nil,false
 }
 
-// func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
 func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bool) {
     var v interface{}
     var ok bool
@@ -1353,7 +1352,7 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         vi=vset(fs,name,list)
     }
 
-    vlock.Lock()
+    if concurrent_funcs>0 { vlock.Lock() }
 
     switch list.(type) {
     case map[string]interface{}:
@@ -1372,10 +1371,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         } else {
             ident[fs][vi].IName= name
             ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
-            vlock.Unlock()
+            if concurrent_funcs>0 { vlock.Unlock() }
             return
         }
-        vlock.Unlock()
+        if concurrent_funcs>0 { vlock.Unlock() }
         return
     }
 
@@ -1469,21 +1468,19 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
     }
 
-    vlock.Unlock()
+    if concurrent_funcs>0 { vlock.Unlock() }
 
 }
 
 func vget(fs uint32, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-        vlock.RLock()
+        if concurrent_funcs>0 { vlock.RLock() }
         v:=ident[fs][vi].IValue
-        // defer vlock.RUnlock()
         if ident[fs][vi].declared {
-            vlock.RUnlock()
+            if concurrent_funcs>0 { vlock.RUnlock() }
             return v,true
-            // return ident[fs][vi].IValue , true
         }
-        vlock.RUnlock()
+        if concurrent_funcs>0 { vlock.RUnlock() }
     }
     return nil, false
 }
@@ -1491,21 +1488,19 @@ func vget(fs uint32, name string) (interface{}, bool) {
 
 func vgeti(fs uint32, vi uint16) (interface{}, bool) {
 
-    vlock.RLock()
+    if concurrent_funcs>0 { vlock.RLock() }
     v:=ident[fs][vi].IValue
-    // defer vlock.RUnlock()
 
     if int(vi)>=len(ident[fs]) {
-        vlock.RUnlock()
+        if concurrent_funcs>0 { vlock.RUnlock() }
         return nil,false
     }
 
     if ident[fs][vi].declared {
-        vlock.RUnlock()
+        if concurrent_funcs>0 { vlock.RUnlock() }
         return v,true
-        // return ident[fs][vi].IValue , true
     }
-    vlock.RUnlock()
+    if concurrent_funcs>0 { vlock.RUnlock() }
     return nil, false
 
 }
@@ -1568,7 +1563,7 @@ func interpolate(fs uint32, s string) (string) {
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
 
-    vlock.RLock()
+    if concurrent_funcs>0 { vlock.RLock() }
 
     for {
         os:=s
@@ -1609,7 +1604,7 @@ func interpolate(fs uint32, s string) (string) {
         if os==s { break }
     }
 
-    vlock.RUnlock()
+    if concurrent_funcs>0 { vlock.RUnlock() }
 
     // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
     var modified bool
@@ -1645,7 +1640,7 @@ func ev(parser *leparser,fs uint32, ws string) (result interface{}, err error) {
     // build token list from string 'ws'
     tt := Error
     toks:=make([]Token,0,6)
-    cl := 1
+    cl := int16(1)
     var p int
     for p = 0; p < len(ws);  {
         t, tokPos, _, _ := nextToken(ws, &cl, p, tt)
@@ -1806,7 +1801,7 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
         if !standardAssign {
             if lfs!=fs {
                 if newEval[0].tokType==Identifier {
-                    vlock.RLock()
+                    if concurrent_funcs>0 { vlock.RLock() }
                     if off,found:=vmap[lfs][newEval[0].tokText]; found {
                         if ident[lfs][off].declared {
                             newEval[0].offset=off
@@ -1814,17 +1809,17 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
                             p.report("you may only amend declared variables outside of local scope")
                             expr.evalError=true
                             finish(false,ERR_SYNTAX)
-                            vlock.RUnlock()
+                            if concurrent_funcs>0 { vlock.RUnlock() }
                             return expr
                         }
                     } else {
                         p.report("you may only amend existing variables outside of local scope")
                         expr.evalError=true
                         finish(false,ERR_SYNTAX)
-                        vlock.RUnlock()
+                        if concurrent_funcs>0 { vlock.RUnlock() }
                         return expr
                     }
-                    vlock.RUnlock()
+                    if concurrent_funcs>0 { vlock.RUnlock() }
                 }
             }
             switch expr.result.(type) {

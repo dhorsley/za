@@ -509,6 +509,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calltable[loc] = call_s{fs: id, base: ifn, callline:-1, caller: local_lastfs, retvar: "@#"}
                 calllock.Unlock()
 
+                concurrent_funcs++
                 rcount,_:=Call(MODE_NEW, loc, ciLnet, webcallstruct)
 
                 _,ok := VarLookup(local_lastfs, "@#")
@@ -524,6 +525,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     }
                 }
 
+                concurrent_funcs--
                 serviced=true
             }
 

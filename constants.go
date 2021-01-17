@@ -6,6 +6,7 @@ package main
 
 const MaxUint64 = ^uint64(0)
 const MaxUint32 = ^uint32(0)
+const Maxint16  = ^int16(0)
 
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays

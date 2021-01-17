@@ -840,7 +840,7 @@ func buildInternalLib() {
         tt := Error
         var toks []string
         var toktypes []string
-        cl := 1
+        cl := int16(1)
         for p := 0; p < len(args[0].(string)); {
             t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
             tt = t.tokType

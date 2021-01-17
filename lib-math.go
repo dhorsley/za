@@ -494,6 +494,15 @@ func buildMathLib() {
 
 }
 
+func min_int16(s []int16) (m int16) {
+	for i, e := range s {
+		if i == 0 || e < m {
+			m = e
+		}
+	}
+	return m
+}
+
 func min_int(s []int) (m int) {
 	for i, e := range s {
 		if i == 0 || e < m {
@@ -535,6 +544,15 @@ func min_inter(s []interface{}) (m float64) {
 		ee, err := GetAsFloat(sf("%v", e))
 		if !err && (i == 0 || ee < m) {
 			m = ee
+		}
+	}
+	return m
+}
+
+func max_int16(s []int16) (m int16) {
+	for i, e := range s {
+		if i == 0 || e > m {
+			m = e
 		}
 	}
 	return m
