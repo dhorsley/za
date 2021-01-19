@@ -24,6 +24,8 @@ CHANGE LOG
 
         * added description hint option in INPUT ... PARAM statement for error messages. (param #4)
 
+        * added (very) simple max column wrap for panes.
+
         * added statement ENUM
             - enumerations can be defined in this way:
                 > enum colours ( red=1, green=2, blue=4, mask=7 )

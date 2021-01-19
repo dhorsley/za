@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+var z int
+
 nop 1
 nop 2
 a= =z

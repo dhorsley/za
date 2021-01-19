@@ -1,5 +1,76 @@
 
 Za Interpreter
-=======================
+==============
+
+Maintainer          : dhorsley@gmail.com
+Last Readme Update  : 18-01-2021
+
+Manual is here      : https://zalang.org/man/index.html
+
+
+These are the things I want to nail down before general release:
+
+    1. aggravating syntax - not looking for sweeping changes here, just what really causes confusion.
+        For example: are -> and ?> or the ternary operator completely wrong for you. Any keywords which
+        could do with better names, such as in the WHEN...ENDWHEN clauses.
+
+    2. bugs - both in the language implementation itself and in it's standard library. this would include
+        things such as unsupported types where they should reasonably be expected, incorrect results, etc.
+
+    3. missing library functions - things i forgot to include which would be considered basic requirements.
+        i'm not going to add much more in terms of function count, but will always look to add tools which
+        reduce calls out to a shell which are very wasteful.
+
+    4. obvious improvements - for anyone willing to dig through the source and contribute i'll look to 
+        include their improvements as long as they don't go against these basic principles:
+
+        a) the aim of the language is to be concise and clear for program maintainers.
+            (on a side note, about the implementation itself I'll only say, here be dragons! It's pretty ugly.)
+
+        b) nothing will be included that reduces the current speed of processing.
+
+        c) we will not be including functionality in the standard library unless it works
+            on all currently supported platforms. i.e. linux-variants, freebsd, windows 10, alpine and similar.
+
+        d) we will not be including vendor-specific functionality. i.e. no aws api support, no window support,
+            and such like. it would inflate the binary too much and really doesn't gel with the intended
+            purpose of the language.
+
+    5. things missing from the online manual page.
+
+    6. there's still a few bugs, especially around ASYNC locks. Working on them. They have to all be fixed
+        before the next version.
+
+
+Of course, I would be delighted to hear any other feedback too.
+
+I'm looking to get some stability in to the next few releases so that we aren't constantly pushing
+changes out and people can rely on it not breaking their scripts.
+
+Part of the intent of the language is that scripts should be able to provide a lot of functionality without
+very large scripts. Anything really complex still should be done with a "real" language.
+
+The nature of "modules" is that they should support your own script organisation but they are not intended
+to support a whole ecosystem of imports of other people's code from all corners of the world. The design is
+such that you should not ever need someone else's code except in the form of the occasional snippet. Again,
+if the problem is that complex, write it in a real language - or get someone else to!
+
+Modules are for internal sharing and organisation, they are not a distribution hierarchy. This is another
+reason we haven't gone overboard on namespace depth.
+
+I wanted a language which is readable and simple but expressive compared to shell scripts, but still gave you 
+many of the same benefits. It is an adjunct to a shell in this respect. 
+
+We currently have a far greater execution speed than you may expect from a shell whilst retaining a fairly
+easy method of reaching in to a shell for additional functionality outside of the language scope. For some
+things it's still going to be better to call out to AWK or grep or other bin/text utils. We just want to 
+eliminate the common cases of this.
+
+As the language is primarily for filthy hacked scripts which need to be maintained more easily than a shell
+script but are expected to be stable and quick I feel it is close to that goal. We may need some more tooling
+around verification and errors but most of the basic functionality is now in place, I think. I've probably 
+overlooked some key library functions, but the common stuff should be there.
+
+Anyway, please let me know if you have any thoughts!
 
 

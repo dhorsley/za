@@ -7,6 +7,7 @@ module "web_modules/aws_handler"
 HOST="127.0.0.1"
 PORT=8080
 HOME_PATH="/home/daniel/www"
+# POLL_TIMEOUT=5000*1000
 
 
 # FUNCTIONS
@@ -135,14 +136,30 @@ web_serve_path(suid, "s", "^/(.*)/$", "http://{HOST}:61440/$1/index.html")
 #  the stuff above in the web_serve_path()'s would be the controller.
 #  anything else is the web server itself.
 #
-#  You can build this however you want.
+#  You can build this however you want. Commented out is an example for a more interactive loop.
 #  In general though, if intended for longer term serving, you will probably want to
 #  daemonise it, in which case you'll need a loop like shown.
 #
 
+#print "Press 'q' to quit or any other key to show connection counts.\n"
+#k=0
+# while k!=ascii("q") && web_serve_up(uid)
+#    k=keypress(POLL_TIMEOUT)
+#    if k>0 && k!="q"
+#        cmd=|netstat -apeen | egrep "{PORT}[ \t]+ESTABLISHED"
+#        print "Current connection count : ",count(cmd.out),"\n"
+#    endif
+# endwhile
+
 # set refresh to once per day
 ipListRefreshMaxCount=12*60*24
 ipListRefreshCount=ipListRefreshMaxCount
+
+tmp=|mktemp
+if !tmp.okay
+    exit 1, "Could not make a temporary file."
+endif
+tmp=tmp.out
 
 region="eu-west-1"
 on get_env("AWS_DEFAULT_REGION")!="" do region=get_env("AWS_DEFAULT_REGION")
@@ -151,22 +168,19 @@ while web_serve_up(suid)
 
     if ipListRefreshCount == ipListRefreshMaxCount
         # refresh list of AWS IP address ranges
-        tmp=web_get("https://ip-ranges.amazonaws.com/ip-ranges.json")
-
-        if tmp.code==200
-
-            ipListRefreshCount--
+        downloadOkay=web_download("https://ip-ranges.amazonaws.com/ip-ranges.json",tmp)
+        if downloadOkay
+            ipListRefreshCount=ipListRefreshCount-1
             s=epoch_nano_time()
 
-            thisRegion = json_query(tmp.result, `.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix`)
+            cmdThisRegion =| jq -r '.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix' <{tmp}
+            thisRegion=cmdThisRegion.out
 
-            print "region :\n",thisRegion,"\n"
             println "Completed in ",time_diff(epoch_nano_time(),s)," us"
-
+            | rm -f {tmp}
         else
             println "Could not fetch ip ranges from AWS."
         endif
-
     endif
 
     on ipListRefreshCount == 0 do ipListRefreshCount = ipListRefreshMaxCount

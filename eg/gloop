@@ -4,6 +4,8 @@ doc `
     really simple game loop
     just wanted to see if the console could manage basic stuff
     it absolutely won't work on windows.
+    possibly not on linux either :)
+    i really need to handle fast input better.
 
 `
 
