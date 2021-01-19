@@ -1,0 +1,21 @@
+#!/usr/bin/za
+
+#doc `
+#check that word wrap at line end in non-global panes is working.
+#`
+
+
+bigs="37548956745865724058247yu5642853108572+3495752485674568465745yuhjn4t84tdrkfgjrgm,hgtm,nht648565"
+
+cls
+
+wrap(true)
+pane define "p1",20,40,8,40,"box p1"
+pane select "p1"
+at 1,1
+print bigs
+
+pane select "global"
+at 40,1
+
+

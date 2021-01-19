@@ -55,13 +55,54 @@ func max(a, b int) int {
     return b
 }
 
+func printWithNLRespect(s string,p Pane) {
+    var newStr str.Builder
+    for i:=0; i<len(s); i++ {
+        if col==p.w {
+            newStr.WriteString(sf("\n\033[%dG",ocol+1))
+            col=1 ; row++
+        }
+        switch s[i] {
+        case '\n':
+            newStr.WriteString(sf("\n\033[%dG",ocol+1))
+            col=1 ; row++
+        default:
+            newStr.WriteByte(s[i])
+            col++
+        }
+    }
+    fmt.Print(newStr.String())
+}
+
+// print with line wrap at non-global pane end
+// this function not currently used much as ANSI codes really kick it in the arse.
+// @todo: maybe add an arg for optional word wrap
+func printWithWrap(s string) {
+    // atlock.Lock()
+    // cannot use at() in here as it calls pf() which calls us
+    if currentpane!="global" {
+        if p, ok := panes[currentpane]; ok {
+             printWithNLRespect(s,p)
+        } else {
+            fmt.Print(s)
+        }
+    } else {
+        fmt.Print(s)
+    }
+    // atlock.Unlock()
+}
 
 /// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
 
     s = sf(sparkle(s), va...)
+
     if interactive {
-        fmt.Print(s)
+        if lineWrap {
+            printWithWrap(s)
+        } else {
+            fmt.Print(s)
+        }
         chpos:=0
         c:=col
         for ; chpos<len(s); c++ {
@@ -69,9 +110,16 @@ func pf(s string, va ...interface{}) {
             if s[chpos]=='\n'   { row++; c=0 }
             chpos++
         }
-    } else {
-        fmt.Print(s)
+        return
     }
+
+    if lineWrap {
+        printWithWrap(s)
+        return
+    }
+
+    fmt.Print(s)
+
 }
 
 /// apply ansi code translation to inbound strings
@@ -185,14 +233,14 @@ func absat(row int, col int) {
         col = 0
     }
     atlock.Lock()
-    pf("\033[%d;%dH", row, col)
+    fmt.Printf("\033[%d;%dH", row, col)
     atlock.Unlock()
 }
 
 /// move the console cursor
 func at(row int, col int) {
     atlock.Lock()
-    pf("\033[%d;%dH", orow+row, ocol+col)
+    fmt.Printf("\033[%d;%dH", orow+row, ocol+col)
     atlock.Unlock()
 }
 
@@ -455,26 +503,34 @@ func paneBox(c string) {
 
     // corners
     absat(p.row, p.col)
-    pf(tl)
+    // pf(tl)
+    fmt.Print(tl)
     absat(p.row, p.col+p.w-1)
-    pf(tr)
+    // pf(tr)
+    fmt.Print(tr)
     absat(p.row+p.h, p.col+p.w-1)
-    pf(br)
+    // pf(br)
+    fmt.Print(br)
     absat(p.row+p.h, p.col)
-    pf(bl)
+    // pf(bl)
+    fmt.Print(bl)
 
     // top, bottom
     absat(p.row, p.col+1)
-    pf(rep(tlr, int(p.w-2)))
+    // pf(rep(tlr, int(p.w-2)))
+    fmt.Print(rep(tlr, int(p.w-2)))
     absat(p.row+p.h, p.col+1)
-    pf(rep(blr, int(p.w-2)))
+    // pf(rep(blr, int(p.w-2)))
+    fmt.Print(rep(blr, int(p.w-2)))
 
     // left, right
     for r := p.row + 1; r < p.row+p.h; r++ {
         absat(r, p.col)
-        pf(ud)
+        // pf(ud)
+        fmt.Print(ud)
         absat(r, p.col+p.w-1)
-        pf(ud)
+        // pf(ud)
+        fmt.Print(ud)
     }
 
     // title

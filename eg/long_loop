@@ -4,11 +4,12 @@
 
 module "./modules/timing.mod"
 
-max_count=100000000
+max_count=25000000
 input max_count optarg 1
 
 ts=epoch_nano_time()
 for x=1 to max_count
+    nop ; nop ; nop ; nop
 endfor
 println "x: ",kind(x)," ",x
 te=epoch_nano_time()
@@ -18,5 +19,6 @@ assert x==max_count
 # END
 #
 
-timing.report(ts,te,max_count)
+# ops = 4*nop+1*endfor  ( FOR statement executes once only )
+timing.report(ts,te,max_count,5)
 

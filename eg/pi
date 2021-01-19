@@ -8,7 +8,7 @@
 
 require 1.0.11
 
-n=10000
+n=42
 input n optarg 1
 
 i = 0

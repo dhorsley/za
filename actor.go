@@ -610,7 +610,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     farglock.RLock()
     if len(functionArgs[base].args)>len(va) {
         for e:=0; e<(len(functionArgs[base].args)-len(va)); e++ {
-            va=append(va,"")
+            va=append(va,nil) // "")
         }
     }
     farglock.RUnlock()
@@ -1842,6 +1842,7 @@ tco_reentry:
 
                 switch cp:=cp.(type) {
                 case string:
+
                     setPane(cp)
                     currentpane = cp
 
@@ -2347,7 +2348,7 @@ tco_reentry:
 
 
         case C_Nop:
-            time.Sleep(1 * time.Microsecond)
+            // time.Sleep(1 * time.Microsecond)
 
 
         case C_Async:

@@ -498,8 +498,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     print "Interface [{interface}] Address : {ipaddr}        "
 
     at pane_h()-3,2
-    print "Legend [#6]", legload[0], "[#-] 64B-4KiB [#6]", legload[1], "[#-] 4KiB-256KiB [#6]"
-    print legload[2], "[#-] 256KiB-16MiB [#6]", legload[3], "[#-] 16MiB-1GiB [#6]", legload[4],"[#-] 1GiB-64GiB"
+    print "Legend [#6]", legload[0], "[#-] 64B-4Ki [#6]", legload[1], "[#-] 4Ki-256Ki [#6]"
+    print legload[2], "[#-] 256Ki-16Mi [#6]", legload[3], "[#-] 16Mi-1Gi [#6]", legload[4],"[#-] 1Gi-64Gi"
 
     foreach int_name in net_interfaces()
 

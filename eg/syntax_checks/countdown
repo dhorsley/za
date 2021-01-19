@@ -6,13 +6,15 @@ module "../modules/timing.mod"
 # START
 #
 
-max_count=1000000
+max_count=10000000
 input max_count optarg 1
 
 x=max_count
 ts=epoch_nano_time()
 while x!=0
+    nop
     x=x-1
+    nop
 endwhile
 println "x:",x
 te=epoch_nano_time()
@@ -22,5 +24,7 @@ assert(x==0)
 # END
 #
 
-report(ts,te,max_count)
+# instructions, 2*nop+while+incr+endwhile
+
+report(ts,te,max_count,5)
 

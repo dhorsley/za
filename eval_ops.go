@@ -840,7 +840,14 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
 
         default:
 
-            // maybe try a function call here instead...
+            // @todo: we should probably remove this outside of the switch,
+            //  so that we can handle function chaining for structs as like other
+            //  value types. It would mean massaging the code above a little too
+            //  to allow unhandled cases to fall through and skip chaining if
+            //  already handled above.
+            //  We would need to do this anyway if we ever add struct methods.
+
+            // try a function call..
             // lhs_v would become the first argument of func lhs_f
 
             var isFunc bool

@@ -108,7 +108,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","get_cores","permit",
+        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","get_cores","permit","wrap",
         "enum_names","enum_all",
     }
 
@@ -327,6 +327,23 @@ func buildInternalLib() {
             }
         }
         return nil,nil
+    }
+
+    slhelp["wrap"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable line wrap in panes. Returns the previous state."}
+    stdlib["wrap"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        lastwrap:=lineWrap
+        if len(args)==1 {
+            switch args[0].(type) {
+            case bool:
+                lastlock.Lock()
+                lineWrap=args[0].(bool)
+                lastlock.Unlock()
+            default:
+                return nil,errors.New("wrap() accepts a boolean value only.")
+            }
+            setupAnsiPalette()
+        }
+        return lastwrap,nil
     }
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
@@ -981,6 +998,7 @@ func buildInternalLib() {
         return funclist,nil
     }
 
+    // @todo: review this. we probably want to only have this available in interactive mode and then only for global scope.
     slhelp["dump"] = LibHelp{in: "function_name", out: "", action: "Displays variable list, or a specific entry."}
     stdlib["dump"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         s := ""

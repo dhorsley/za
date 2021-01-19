@@ -289,6 +289,9 @@ func GetCursorPos() (int,int) {
 /// get an input string from stdin, in raw mode
 func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
+    old_wrap := lineWrap
+    lineWrap = false
+
     sprompt := sparkle(prompt)
 
     // calculate real prompt length after ansi codes applied.
@@ -742,6 +745,9 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
         at(irow, icol) ; clearToEOL()
         fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
     }
+
+    lineWrap=old_wrap
+
     return s, eof, broken
 }
 
