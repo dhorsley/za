@@ -5,14 +5,9 @@ BUGS
 
 lots, i'm sure.
 
-    - open braces in expressions. A missing closing parenthesis at end of expressions does not always
-      trigger a syntax error. 
+    * unlock of unlocked mutex in eval.go/vseti
+        async call ending reduces concurrent_count to 0 while vseti in flight.
 
-        - this may be more widely scoped than raised above. (square braces, quotes, etc).
-        - need to test around this problem and fix (i.e. add warnings and terminate).
-
-        - some kind of error is generally raised, but it's not always the relevent one...
-            - e.g. missing end* statements on subsequent lines.
 
 TODO
 ----
@@ -20,11 +15,11 @@ TODO
 *TODO*  remove deprecated features and options (startup options, dead code, unused funcs)
 *TODO*  add more manual example code in tools/funpages/examples for more functions.
 
-*TODO*  check dump() is behaving properly wrt passed arg strings.
-
 
 LATER / UNDECIDED
 -----------------
+
+* look at imgui stuff?
 
 * library function name review (for consistency)
 

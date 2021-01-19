@@ -180,6 +180,7 @@ var cmdargs []string        // cli args
 var no_interpolation bool   // to disable string interpolation
 var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // to disable ansi colour output
+var lineWrap bool           // optional pane line wrap.
 
 // setup getInput() history for interactive mode
 var curHist int
@@ -986,21 +987,25 @@ func main() {
                 tokenIfPresent:=false
                 tokenOnPresent:=false
                 helpRequest   :=false
+                paneDefine    :=false
 
                 for p := 0; p < len(input);  {
+
                     t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
                     temptok = t.tokType
                     if tokPos != -1 {
                         p = tokPos
                     }
+
                     if t.tokType==C_Help  { helpRequest   =true }
+                    if t.tokType==C_Pane  { paneDefine    =true }
                     if t.tokType==C_If    { tokenIfPresent=true }
                     if t.tokType==C_On    { tokenOnPresent=true }
 
                     // this is hardly fool-proof, but okay for now:
                     if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
 
-                    if !helpRequest {
+                    if !helpRequest && !paneDefine {
                         switch t.tokType {
                         // adders
                         case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:

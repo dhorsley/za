@@ -2,14 +2,24 @@
 
 # file handling functions
 
-fhand=fopen("/usr/share/dict/american-english","r")
-if fhand!=nil
-    while !feof(fhand)
-        println fhand.fread("\n")
-    endwhile
-    fhand.fclose
+enum errors (okay,not_found,file_open)
+
+fn="/usr/share/dict/american-english"
+
+
+if is_file(fn)
+    fhand=fopen(fn,"r")
+    if fhand!=nil
+        while !feof(fhand)
+            println fread(fhand,"\n")
+        endwhile
+        fhand.fclose
+    else
+        exit errors.file_open,"Could not open dictionary file."
+    endif
 else
-    exit 1,"Could not open dictionary file."
+    exit errors.not_found,"File not found."
 endif
 
+exit errors.okay
 

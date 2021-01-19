@@ -14,7 +14,6 @@ type Phrase struct {
 	Original   string  // entire string, unmodified for spaces
     SourceLine int16
 	TokenCount int16   // number of tokens generated for this phrase
-//    _pad0      [20]byte
 }
 
 func (p Phrase) String() string {

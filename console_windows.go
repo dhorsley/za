@@ -251,6 +251,9 @@ func setupAnsiPalette() {
 /// get an input string from stdin, in raw mode
 func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
+    old_wrap:=lineWrap
+    lineWrap=false
+
     sprompt := sparkle(prompt)
 
     // calculate real prompt length after ansi codes applied.
@@ -642,6 +645,8 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
     at(irow, icol)
     clearToEOPane(irow, icol, displayedLen(s))
     if echo.(bool) { pf("%s", sparkle(recolour+StripCC(s)+"[#-]")) }
+
+    lineWrap=old_wrap
 
     return s, eof, broken
 }
