@@ -33,7 +33,7 @@ type leparser struct {
     fs          uint32      // working function space
     line        int16       // shadows lexer source line
     stmtline    int16       // shadows program counter (pc)
-    pos         int         // distance through parse
+    pos         int16       // distance through parse
     prev        Token       // bodge for post-fix operations
     preprev     Token       //   and the same for assignment
 }
@@ -45,7 +45,7 @@ func (p *leparser) next() Token {
     if p.pos>1 { p.preprev=p.prev }
     if p.pos>0 { p.prev=p.tokens[p.pos-1] }
 
-    if p.pos == len(p.tokens) {
+    if p.pos == int16(len(p.tokens)) {
         return Token{tokType:EOF}
     }
 
@@ -55,7 +55,7 @@ func (p *leparser) next() Token {
 
 func (p *leparser) peek() Token {
 
-     if p.pos == len(p.tokens) {
+     if p.pos == int16(len(p.tokens)) {
         return Token{tokType:EOF}
     }
 
@@ -66,37 +66,39 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
     // pf("\n\ndparse query     : %+v\n",p.tokens)
 
-	token:=p.next()
+	current:=p.next()
 
-        if token.tokType>START_STATEMENTS {
-            p.reserved(token)
+        if current.tokType>START_STATEMENTS {
+            p.reserved(current)
         }
 
         // unaries
 
-        switch token.tokType {
+        switch current.tokType {
 		case O_Comma,SYM_COLON,EOF:         // nil rules, prec -1
             left=nil
         case RParen, RightSBrace:           // ignore, prec -1
-            left=p.ignore(token)
+            left=p.ignore(current)
         case NumericLiteral:                // prec -1
-            left=p.number(token)
+            left=p.number(current)
         case StringLiteral:                 // prec -1
-            left=p.stringliteral(token)
+            left=p.stringliteral(current)
         case Identifier:                    // prec -1
-            left=p.identifier(token)
-        case SYM_Not, O_Sqr, O_Sqrt,O_Assign, O_Plus, O_Minus:      // prec variable
-            left=p.unary(token)
+            left=p.identifier(current)
+        case SYM_Not, O_Sqr, O_Sqrt, O_InFile:
+            left=p.unary(current)
+        case O_Assign, O_Plus, O_Minus:      // prec variable
+            left=p.unary(current)
         case O_Multiply, SYM_Caret:         // unary pointery stuff
-            left=p.unary(token)
+            left=p.unary(current)
         case LParen:
-            left=p.grouping(token)
+            left=p.grouping(current)
         case SYM_PP, SYM_MM:
-            left=p.unary(token)
+            left=p.unary(current)
         case LeftSBrace:
-            left=p.array_concat(token)
+            left=p.array_concat(current)
         case O_Query:                       // ternary
-            left=p.tern_if(token)
+            left=p.tern_if(current)
         }
 
         // binaries
@@ -146,8 +148,8 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
                     break
                 }
 
-                token = p.next()
-                left = p.binaryLed(ruleprec,left,token)
+                current = p.next()
+                left = p.binaryLed(ruleprec,left,current)
 
             }
         }
@@ -837,6 +839,8 @@ func (p *leparser) unary(token Token) (interface{}) {
 		return unaryMinus(right)
 	case O_Plus:
 		return unaryPlus(right)
+	case O_InFile:
+        return unaryFileInput(right)
 	case O_Sqr:
         return unOpSqr(right)
 	case O_Sqrt:
@@ -943,12 +947,16 @@ func (p *leparser) preIncDec(token Token) interface{} {
     activeFS:=p.fs
     if !there {
         if vi,there=VarLookup(globalaccess,vartok.tokText); there {
+            if concurrent_funcs>0 { vlock.RLock() }
             val,_=vgeti(globalaccess,vi)
+            if concurrent_funcs>0 { vlock.RUnlock() }
             activeFS=globalaccess
         }
         if !there { panic(fmt.Errorf("invalid variable name in pre-inc/dec '%s'",vartok.tokText)) }
     } else {
+        if concurrent_funcs>0 { vlock.RLock() }
         val,_=vgeti(p.fs,vartok.offset)
+        if concurrent_funcs>0 { vlock.RUnlock() }
     }
 
     // act according to var type
@@ -991,12 +999,16 @@ func (p *leparser) postIncDec(token Token) interface{} {
     activeFS:=p.fs
     if !there {
         if vi,there=VarLookup(globalaccess,vartok.tokText); there {
+            if concurrent_funcs>0 { vlock.RLock() }
             val,_=vgeti(globalaccess,vi)
+            if concurrent_funcs>0 { vlock.RUnlock() }
             activeFS=globalaccess
         }
         if !there { panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText)) }
     } else {
+        if concurrent_funcs>0 { vlock.RLock() }
         val,_=vgeti(p.fs,vartok.offset)
+        if concurrent_funcs>0 { vlock.RUnlock() }
     }
 
     // act according to var type
@@ -1068,15 +1080,21 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // local lookup:
+    if concurrent_funcs>0 { vlock.RLock() }
     if val,there:=vgeti(p.fs,token.offset); there {
+        if concurrent_funcs>0 { vlock.RUnlock() }
         return val
     }
+    if concurrent_funcs>0 { vlock.RUnlock() }
 
     // global lookup:
     if vi,there:=VarLookup(globalaccess,token.tokText); there {
+        if concurrent_funcs>0 { vlock.RLock() }
         if v,ok:=vgeti(globalaccess,vi); ok {
+            if concurrent_funcs>0 { vlock.RUnlock() }
             return v
         }
+        if concurrent_funcs>0 { vlock.RUnlock() }
     }
 
     if permit_uninit {
@@ -1190,7 +1208,7 @@ func identResize(fs uint32,sz uint16) {
 
 func vset(fs uint32, name string, value interface{}) (uint16) {
 
-    if concurrent_funcs>0 { vlock.Lock() }
+    vlock.Lock()
 
     // create mapping entries for this name if it does not already exist
     if _,found:=vmap[fs][name]; !found {
@@ -1200,7 +1218,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
         functionidents[fs]++
     }
     ovi:=vmap[fs][name]
-    if concurrent_funcs>0 { vlock.Unlock() }
+    vlock.Unlock()
 
     // ... then forward to vseti
     return vseti(fs, name, ovi, value)
@@ -1212,7 +1230,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     if len(ident[fs])>=int(vi) {
 
-        if len(ident[fs])<=int(vi) {
+        if len(ident[fs])==int(vi) {
             identResize(fs,vi+1)
             functionidents[fs]=vi+1
         }
@@ -1243,12 +1261,17 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
             }
 
         } else {
-            if !ident[fs][vi].declared { // exists, but not in use
-                if len(ident[fs])<=int(vi) { identResize(fs,vi+1) ; functionidents[fs]=vi+1 }
+            if !ident[fs][vi].declared {
+                // exists, but not in use
+                if len(ident[fs])<=int(vi) {
+                    identResize(fs,vi+1)
+                    functionidents[fs]=vi+1
+                }
                 ident[fs][vi]=Variable{IName:name,IValue:value,declared:true}
                 vmap[fs][name]=vi
                 unvmap[fs][vi]=name
-            } else { // declared so alter
+            } else {
+                // declared so alter
                 ident[fs][vi].IValue = value
             }
         }
@@ -1257,7 +1280,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
         // new variable instantiation
 
-        if len(ident[fs])<=int(vi) {
+        if len(ident[fs])<int(vi) {
            identResize(fs,vi+1)
         }
         ident[fs][vi]=Variable{IName:name,IValue:value,declared:true}
@@ -1283,48 +1306,52 @@ func vgetElement(fs uint32, name string, el string) (interface{}, bool) {
 func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bool) {
     var v interface{}
     var ok bool
-        v, ok = vgeti(fs,vi)
-        switch v:=v.(type) {
-        case map[string]int:
-            return v[el], ok
-        case map[string]float64:
-            return v[el], ok
-        case map[string][]string:
-            return v[el], ok
-        case map[string]string:
-            return v[el], ok
-        case map[string]bool:
-            return v[el], ok
-        case map[string]interface{}:
-            return v[el], ok
-        case http.Header:
-            return v[el], ok
-        case []int:
-            iel,_:=GetAsInt(el)
-            return v[iel],ok
-        case []bool:
-            iel,_:=GetAsInt(el)
-            return v[iel],ok
-        case []float64:
-            iel,_:=GetAsInt(el)
-            return v[iel],ok
-        case []string:
-            iel,_:=GetAsInt(el)
-            return v[iel],ok
-        case string:
-            iel,_:=GetAsInt(el)
-            return string(v[iel]),ok
-        case []interface{}:
-            iel,_:=GetAsInt(el)
-            return v[iel],ok
-        default:
-            // pf("Unknown type in %v[%v] (%T)\n",name,el,v)
-            iel,_:=GetAsInt(el)
-            for _,val:=range reflect.ValueOf(v).Interface().([]interface{}) {
-                if iel==0  { return val,true }
-                iel--
-            }
+
+    if concurrent_funcs>0 { vlock.RLock() }
+    v, ok = vgeti(fs,vi)
+    if concurrent_funcs>0 { vlock.RUnlock() }
+
+    switch v:=v.(type) {
+    case map[string]int:
+        return v[el], ok
+    case map[string]float64:
+        return v[el], ok
+    case map[string][]string:
+        return v[el], ok
+    case map[string]string:
+        return v[el], ok
+    case map[string]bool:
+        return v[el], ok
+    case map[string]interface{}:
+        return v[el], ok
+    case http.Header:
+        return v[el], ok
+    case []int:
+        iel,_:=GetAsInt(el)
+        return v[iel],ok
+    case []bool:
+        iel,_:=GetAsInt(el)
+        return v[iel],ok
+    case []float64:
+        iel,_:=GetAsInt(el)
+        return v[iel],ok
+    case []string:
+        iel,_:=GetAsInt(el)
+        return v[iel],ok
+    case string:
+        iel,_:=GetAsInt(el)
+        return string(v[iel]),ok
+    case []interface{}:
+        iel,_:=GetAsInt(el)
+        return v[iel],ok
+    default:
+        // pf("Unknown type in %v[%v] (%T)\n",name,el,v)
+        iel,_:=GetAsInt(el)
+        for _,val:=range reflect.ValueOf(v).Interface().([]interface{}) {
+            if iel==0  { return val,true }
+            iel--
         }
+    }
     return nil, false
 }
 
@@ -1346,7 +1373,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
     var list interface{}
     var ok bool
 
+    if concurrent_funcs>0 { vlock.RLock() }
     list, ok = vgeti(fs, vi)
+    if concurrent_funcs>0 { vlock.RUnlock() }
+
     if !ok {
        list = make(map[string]interface{}, LIST_SIZE_CAP)
         vi=vset(fs,name,list)
@@ -1486,22 +1516,19 @@ func vget(fs uint32, name string) (interface{}, bool) {
 }
 
 
-func vgeti(fs uint32, vi uint16) (interface{}, bool) {
+func vgeti(fs uint32, vi uint16) (v interface{}, s bool) {
 
-    if concurrent_funcs>0 { vlock.RLock() }
-    v:=ident[fs][vi].IValue
+    // if concurrent_funcs>0 { vlock.RLock() }
+    v=ident[fs][vi].IValue
 
-    if int(vi)>=len(ident[fs]) {
-        if concurrent_funcs>0 { vlock.RUnlock() }
-        return nil,false
+    if !ident[fs][vi].declared {
+        v=nil
+    } else {
+        s=true
     }
 
-    if ident[fs][vi].declared {
-        if concurrent_funcs>0 { vlock.RUnlock() }
-        return v,true
-    }
-    if concurrent_funcs>0 { vlock.RUnlock() }
-    return nil, false
+    // if concurrent_funcs>0 { vlock.RUnlock() }
+    return v, s
 
 }
 
@@ -1984,7 +2011,10 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 }
 
                 // ... check it is also a pointer
+                if concurrent_funcs>0 { vlock.RLock() }
                 val,_:=vgeti(rfs,assignee[1].offset)
+                if concurrent_funcs>0 { vlock.RUnlock() }
+
                 switch val.(type) {
                 case []string:
                     if len(val.([]string))!=2 {
@@ -2193,7 +2223,9 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 var ts interface{}
                 var found bool
 
+                if concurrent_funcs>0 { vlock.RLock() }
                 ts,found=vgeti(lfs,lhs_o)
+                if concurrent_funcs>0 { vlock.RUnlock() }
 
                 if found {
 

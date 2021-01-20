@@ -185,6 +185,7 @@ const (
     O_Query
     O_Filter
     O_Map
+    O_InFile
     START_STATEMENTS
     C_Var
 	C_SetGlob

@@ -1,16 +1,13 @@
 #!/usr/local/bin/gawk -f
 BEGIN {
-    n=1000000
-    if (ARGC==2) {
-        n=ARGV[1]
-    }
+    n=20000000
 
     for (i=0; i<ARGC; i++) printf "argv[%d]->%s\n",i,ARGV[i]
     printf "argc->%d\n",ARGC
     printf "   n->%d\n",n
 
     for (i=0; i<n; i++) {
-        d[i]=i
+        d[i%1000]=i
     }
 }
 

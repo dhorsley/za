@@ -5,9 +5,6 @@ BUGS
 
 lots, i'm sure.
 
-    * unlock of unlocked mutex in eval.go/vseti
-        async call ending reduces concurrent_count to 0 while vseti in flight.
-
 
 TODO
 ----
@@ -18,6 +15,8 @@ TODO
 
 LATER / UNDECIDED
 -----------------
+
+* bignum as a type and auto-promotion of results to bignum
 
 * look at imgui stuff?
 
@@ -33,7 +32,6 @@ LATER / UNDECIDED
             - need a way to yield and make a function dormant and re-entrant.
                 - this would allow for generators and some other operations.
                 - may be able to reuse MODE_STATIC with some work on it.
-                - there's no particular priority for this, just a nice to have.
 
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
     * as usual, really low priority on this. i only want it for £ symbols!

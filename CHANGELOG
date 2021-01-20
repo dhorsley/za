@@ -5,7 +5,17 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * added operator <-
+            - usage: <- file
+            - reads file content as a string literal
+            - can also be used for comparing files:
+                - e.g.  on <- "file1" == <- "file2" do print "same"
+
         * changed deferred unlocks around variable reads to immediate for small speed improvement.
+        * added function concurrency counter to lower lock requirements
+        * inlined vgeti: it's messy, but faster. still just polishing a turd though.
+        * changed statement in Call() to a pointer to Token inside the phrase.
+            - dropped from around 400ms in profiles over 8 secs to ~100ms.
 
             - it ain't gonna get much better without replacing the entire ident map with a 
                 better mechanism. sync.map is slower and atomic map entries would likely be quite
