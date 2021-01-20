@@ -25,7 +25,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
-    "O_QUERY", "O_FILTER", "O_MAP",
+    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -104,6 +104,10 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
         symword = string(firstChar)+string(secondChar)
         switch symword {
         case "?>": // list filter
+            word=symword
+            startNextTokenAt=thisWordStart+2
+            goto get_nt_eval_point
+        case "<-": // file read
             word=symword
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
@@ -380,6 +384,8 @@ get_nt_eval_point:
         tokType = O_Filter
     case "->":
         tokType = O_Map
+    case "<-":
+        tokType = O_InFile
     case "<":
         tokType = SYM_LT
     case ">":
