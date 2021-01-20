@@ -2,7 +2,7 @@
 package main
 
 import (
-//    "errors"
+    "io/ioutil"
     "fmt"
     "math"
     "net/http"
@@ -570,6 +570,19 @@ func unaryMinus(val interface{}) (interface{}) {
 	if ok { return -floatVal }
 
 	panic(fmt.Errorf("type error: unary minus requires number, but was %s", typeOf(val)))
+}
+
+
+func unaryFileInput(i interface{}) (string) {
+    switch i.(type) {
+    case string:
+        s, err := ioutil.ReadFile(i.(string))
+        if err!=nil {
+            panic(fmt.Errorf("error importing file '%s' as string",i.(string)))
+        }
+        return string(s)
+    }
+    panic(fmt.Errorf("error importing file as string"))
 }
 
 
