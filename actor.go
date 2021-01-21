@@ -3,6 +3,7 @@ package main
 import (
     "io/ioutil"
     "math"
+//    "math/big"
     "log"
     "os"
     "path/filepath"
@@ -10,6 +11,7 @@ import (
     "reflect"
     "regexp"
     "sync"
+    "sync/atomic"
     "strconv"
     "runtime"
     str "strings"
@@ -20,9 +22,9 @@ import (
 func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
     go func() {
-        concurrent_funcs++
         defer close(r)
-        locks(true)
+        atomic.AddInt32(&concurrent_funcs, 1)
+        // locks(true)
         rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
         switch rcount {
         case 0:
@@ -34,8 +36,8 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
             v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
             r<-v
         }
-        locks(false)
-        concurrent_funcs--
+        // locks(false)
+        atomic.AddInt32(&concurrent_funcs, -1)
     }()
     return r
 }
@@ -401,7 +403,6 @@ var callChain []chainInfo
 func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
 
     // register call
-
     calllock.Lock()
     // pf("Entered call -> %#v : va -> %#v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
@@ -484,6 +485,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // reset the variable mappings if the source hasn't been parsed yet
 
+    // ll:=false
+    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
     vlock.Lock()
 
     if !identParsed[base] && varmode==MODE_NEW {
@@ -527,6 +530,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
         if defnest!=0 {
             parser.report("definition nesting error!")
+            vlock.Unlock()
             finish(true,ERR_SYNTAX)
             return
         }
@@ -541,6 +545,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         nextVarId=functionidents[base]
     }
 
+    // if ll { vlock.Unlock() }
     vlock.Unlock()
 
     // in source vars processed, can now reserve a minimum space quota
@@ -561,7 +566,9 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             // pf("-- Created variable table [ifs:%d] with length of %d\n",ifs,minvar)
         } else {
             // reset existing ifs storage area
+            vlock.Lock()
             identResize(ifs,0)
+            vlock.Unlock()
         }
 
         globlock.Lock()
@@ -571,17 +578,22 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         globlock.Unlock()
 
         // copy the base var mapping to this instance
+        // ll=false
+        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
         vlock.Lock()
+
         unvmap[ifs] =make(map[uint16]string,0)
         vmap[ifs]   =make(map[string]uint16,0)
         for e:=0; e<len(unvmap[base]); e++ {
             unvmap[ifs][uint16(e)] = unvmap[base][uint16(e)]
             vmap  [ifs][unvmap[base][uint16(e)]] = vmap[base][unvmap[base][uint16(e)]]
         }
+        // if ll { vlock.Unlock() }
         vlock.Unlock()
 
         // add the call parameters as available variable mappings
         //  to the current function call
+        farglock.RLock()
         for e:=0; e<len(va); e++ {
             nextFaArg:=functionArgs[base].args[e]
             if vi,found:=vmap[ifs][nextFaArg] ; found {
@@ -591,6 +603,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
                 nextVarId++
             }
         }
+        farglock.RUnlock()
 
         functionidents[ifs]=nextVarId
     }
@@ -648,7 +661,9 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // allocate loop storage space if not a repeat ifs value.
 
-    // vlock.RLock()
+    // ll=false
+    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+    vlock.RLock()
 
     var top,highest,lscap uint32
 
@@ -680,7 +695,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
 
-    // vlock.RUnlock()
+    // if ll { vlock.RUnlock() }
+    vlock.RUnlock()
     lastlock.Unlock()
 
 
@@ -848,6 +864,7 @@ tco_reentry:
             var tu uint
             var ti int
             var tf64 float64
+//            var bf64 big.Float
             var ts string
 
             // instantiate fields with an empty expected type:
@@ -856,10 +873,13 @@ tco_reentry:
             typemap["uint"]     = reflect.TypeOf(tu)
             typemap["int"]      = reflect.TypeOf(ti)
             typemap["float"]    = reflect.TypeOf(tf64)
+//            typemap["big"]      = reflect.TypeOf(bf64)
             typemap["string"]   = reflect.TypeOf(ts)
 
             if _,found:=typemap[expr]; found {
                 vset(ifs,vname,reflect.New(typemap[expr]).Elem().Interface())
+                // ll:=false
+                // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
                 vlock.Lock()
                 vi:=inbound.Tokens[1].offset
                 ident[ifs][vi].ITyped=true
@@ -875,9 +895,14 @@ tco_reentry:
                     ident[ifs][vi].IKind=kuint
                 case "float":
                     ident[ifs][vi].IKind=kfloat
+                /*
+                case "big":
+                    ident[ifs][vi].IKind=kbig
+                */
                 case "string":
                     ident[ifs][vi].IKind=kstring
                 }
+                // if ll { vlock.Unlock() }
                 vlock.Unlock()
 
             } else {
@@ -1037,7 +1062,7 @@ tco_reentry:
             switch inbound.Tokens[3].tokType {
 
             // cause evaluation of all terms following IN
-            case NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
+            case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
                 if expr.evalError {
@@ -1472,7 +1497,8 @@ tco_reentry:
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
-            if concurrent_funcs>0 { lastlock.Lock() }
+            ll:=false
+            if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() ; ll=true }
 
             //.. take address of loop info store entry
             thisLoop = &loops[ifs][depth[ifs]]
@@ -1481,7 +1507,7 @@ tco_reentry:
                 if lastConstruct[ifs][depth[ifs]-1]!=C_Foreach && lastConstruct[ifs][depth[ifs]-1]!=C_For {
                     parser.report("ENDFOR without a FOR or FOREACH")
                     finish(false,ERR_SYNTAX)
-                    if concurrent_funcs>0 { lastlock.Unlock() }
+                    if ll { lastlock.Unlock() }
                     break
                 }
             }
@@ -1604,7 +1630,7 @@ tco_reentry:
                 pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
             }
 
-            if concurrent_funcs>0 { lastlock.Unlock() }
+            if ll { lastlock.Unlock() }
 
 
         case C_Continue:
@@ -2261,6 +2287,7 @@ tco_reentry:
                     var tu uint
                     var ti int
                     var tf64 float64
+                    // var bf64 big.Float
                     var ts string
                     var atint   []interface{}
                     var ats     []string
@@ -2274,6 +2301,7 @@ tco_reentry:
                     typemap["int"]      = reflect.TypeOf(ti)
                     typemap["float"]    = reflect.TypeOf(tf64)
                     typemap["float64"]  = reflect.TypeOf(tf64)
+                    // typemap["big"]      = reflect.TypeOf(bf64)
                     typemap["string"]   = reflect.TypeOf(ts)
                     typemap["[]string"] = reflect.TypeOf(ats)
                     /* only interface{} currently supported.
@@ -2907,9 +2935,9 @@ tco_reentry:
 
                 calllock.Unlock()
 
-                concurrent_funcs++
+                atomic.AddInt32(&concurrent_funcs, 1)
                 Call(MODE_NEW, loc, ciMod)
-                concurrent_funcs--
+                atomic.AddInt32(&concurrent_funcs, -1)
 
                 currentModule=oldModule
 
@@ -3217,9 +3245,13 @@ tco_reentry:
                 finish(true,ERR_SYNTAX)
                 break
             }
-            if concurrent_funcs>0 { vlock.RLock() }
+            // ll:=false
+            // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+            vlock.RLock()
             content,_:=vgeti(ifs,vid)
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            // if ll { vlock.RUnlock() }
+            vlock.RUnlock()
+
 		    ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
             inside_with=true
@@ -3250,6 +3282,7 @@ tco_reentry:
         // we should only need to worry about parens when scanning for commas
         // as strings should be single string literal tokens.
         case C_Print:
+
             if inbound.TokenCount > 1 {
                 evnest:=0
                 newstart:=0

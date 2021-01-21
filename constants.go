@@ -123,6 +123,7 @@ const (
     kint
     kuint
     kfloat
+    kbig
     kstring
     kint64
 )

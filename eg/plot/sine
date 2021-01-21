@@ -19,7 +19,7 @@ end
 
 define renderWave(yv,height,glyph)
     on len(yv)==0 do return
-    on glyph=="" do glyph="+"
+    on glyph==nil do glyph="+"
     for x = 0 to len(yv)-1
         y=int(height/2)+int(yv[x])
         at y,x+1

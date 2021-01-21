@@ -5,11 +5,14 @@ CHANGE LOG
 
 1.0.13  fixes
 
+        * updated vim syntax file
+
         * added operator <-
             - usage: <- file
             - reads file content as a string literal
             - can also be used for comparing files:
                 - e.g.  on <- "file1" == <- "file2" do print "same"
+            - added support for use in FOREACH
 
         * changed deferred unlocks around variable reads to immediate for small speed improvement.
         * added function concurrency counter to lower lock requirements

@@ -107,14 +107,6 @@ func showCallChain(base string) {
     }
     pf("-> [#6]"+base+"[#-]\n[#CTE]")
 
-    // show source lines - defunct
-    /*
-    for k,v:=range callChain {
-        if k==0 { continue }
-        v.name=getReportFunctionName(v.loc,false)
-        ShowSource(v.name,v.line,v.line)
-    }
-    */
 }
 
 func lookupChainName(n uint8) string {

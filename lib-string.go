@@ -523,7 +523,7 @@ func buildStringLib() {
         w, wbad := GetAsInt(args[2])
         if jbad || wbad {
             pf("[j%v,w%v] ", j, w)
-            return "", errors.New("bad args")
+            return "", errors.New("bad arguments in pad()")
         }
         if len(args) == 4 {
             return pad(args[0].(string), j, w, args[3].(string)), err
