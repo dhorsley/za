@@ -19,6 +19,7 @@ import (
     "html"
     "os"
     "sync"
+    "sync/atomic"
     "path/filepath"
     str "strings"
 )
@@ -509,7 +510,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calltable[loc] = call_s{fs: id, base: ifn, callline:-1, caller: local_lastfs, retvar: "@#"}
                 calllock.Unlock()
 
-                concurrent_funcs++
+                atomic.AddInt32(&concurrent_funcs, 1)
                 rcount,_:=Call(MODE_NEW, loc, ciLnet, webcallstruct)
 
                 _,ok := VarLookup(local_lastfs, "@#")
@@ -524,8 +525,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                     }
                 }
-
-                concurrent_funcs--
+                atomic.AddInt32(&concurrent_funcs, -1)
                 serviced=true
             }
 

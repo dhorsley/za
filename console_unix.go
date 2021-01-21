@@ -243,6 +243,7 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
         // treat as timeout.. separate later, but timeout is buried in here
         return nil, true, false, ""
     }
+    // debug(21,"%#v\n",bigbytelist[0:numRead])
     return bigbytelist[0:numRead], false, false, ""
 }
 
@@ -286,7 +287,15 @@ func GetCursorPos() (int,int) {
 
 }
 
-/// get an input string from stdin, in raw mode
+// get an input string from stdin, in raw mode
+
+//  it does have some issues with utf8 input when moving the cursor around.
+//  not likely to fix this unless it annoys me too much.. more likely to
+//  replace the input mechanism wholesale.
+
+// the issue is basically that we are not tracking where the code points start
+// for each char and moving the cursor to those instead of byte by byte.
+
 func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     old_wrap := lineWrap
@@ -623,18 +632,11 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
 
             // specials over 128 - don't do this.. too messy with runes.
 
-            // interactive mode *really* needs to just use readline lib instead.
-            // supporting utf8 input is not necessary yet. i only wanted it for £ symbol!
-            // utf8 is fine in program code and data, it's just too much effort
-            // to support it on this limited input implementation.
-
-            /*
             case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
                 s = insertAt(s, cpos, '£')
                 cpos++
                 wordUnderCursor = getWord(s, cpos)
                 selectedStar = -1
-            */
 
             // ignore list
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup

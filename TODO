@@ -34,6 +34,5 @@ LATER / UNDECIDED
                 - may be able to reuse MODE_STATIC with some work on it.
 
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
-    * as usual, really low priority on this. i only want it for £ symbols!
 
 

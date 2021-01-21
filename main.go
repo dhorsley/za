@@ -18,6 +18,7 @@ import (
     "regexp"
     "runtime"
     str "strings"
+//    "sync/atomic"
     "syscall"
     "time"
 )
@@ -250,7 +251,7 @@ var PromptTemplate string
 // var access counts - debugging
 var vgetcount int
 var vgeticount int
-var concurrent_funcs uint32
+var concurrent_funcs int32
 
 //
 // MAIN
