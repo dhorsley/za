@@ -8,6 +8,7 @@ import (
     "math"
     "net/http"
     "sync"
+    "sync/atomic"
     str "strings"
     "unsafe"
     "regexp"
@@ -798,15 +799,19 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
 }
 
+/*
 func (p *leparser) unAddrOf() *Variable {
     vartok:=p.next()
     if vi,there:=VarLookup(p.fs,vartok.tokText); there {
-        vlock.RLock()
-        defer vlock.RUnlock()
+        if atomic.LoadInt32(&concurrent_funcs)>0 {
+            vlock.RLock()
+            defer vlock.RUnlock()
+        }
         return &ident[p.fs][vi]
     }
     return nil
 }
+*/
 
 func (p *leparser) unary(token Token) (interface{}) {
 
@@ -815,9 +820,9 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.preIncDec(token)
     case SYM_MM:
         return p.preIncDec(token)
+    /*
     case SYM_Caret:
         return p.unAddrOf()
-    /*
     case O_Multiply:
         return p.unDeref(token)
     */
@@ -947,16 +952,18 @@ func (p *leparser) preIncDec(token Token) interface{} {
     activeFS:=p.fs
     if !there {
         if vi,there=VarLookup(globalaccess,vartok.tokText); there {
-            if concurrent_funcs>0 { vlock.RLock() }
+            ll:=false
+            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); ll=true }
             val,_=vgeti(globalaccess,vi)
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            if ll { vlock.RUnlock() }
             activeFS=globalaccess
         }
         if !there { panic(fmt.Errorf("invalid variable name in pre-inc/dec '%s'",vartok.tokText)) }
     } else {
-        if concurrent_funcs>0 { vlock.RLock() }
+        ll:=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
         val,_=vgeti(p.fs,vartok.offset)
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
     }
 
     // act according to var type
@@ -997,18 +1004,19 @@ func (p *leparser) postIncDec(token Token) interface{} {
 
     vi,there=VarLookup(p.fs,vartok.tokText)
     activeFS:=p.fs
+    ll:=false
     if !there {
         if vi,there=VarLookup(globalaccess,vartok.tokText); there {
-            if concurrent_funcs>0 { vlock.RLock() }
+            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
             val,_=vgeti(globalaccess,vi)
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            if ll { vlock.RUnlock() }
             activeFS=globalaccess
         }
         if !there { panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText)) }
     } else {
-        if concurrent_funcs>0 { vlock.RLock() }
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
         val,_=vgeti(p.fs,vartok.offset)
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
     }
 
     // act according to var type
@@ -1080,21 +1088,23 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // local lookup:
-    if concurrent_funcs>0 { vlock.RLock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
     if val,there:=vgeti(p.fs,token.offset); there {
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
         return val
     }
-    if concurrent_funcs>0 { vlock.RUnlock() }
+    if ll { vlock.RUnlock() }
 
     // global lookup:
+    ll=false
     if vi,there:=VarLookup(globalaccess,token.tokText); there {
-        if concurrent_funcs>0 { vlock.RLock() }
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
         if v,ok:=vgeti(globalaccess,vi); ok {
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            if ll { vlock.RUnlock() }
             return v
         }
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
     }
 
     if permit_uninit {
@@ -1132,16 +1142,17 @@ var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, name string) (uint16, bool) {
-    if concurrent_funcs>0 { vlock.RLock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
     if vi,found:=vmap[fs][name]; found {
         if vi>functionidents[fs] {
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            if ll { vlock.RUnlock() }
             return 0,false
         }
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
         return vi,true
     }
-    if concurrent_funcs>0 { vlock.RUnlock() }
+    if ll { vlock.RUnlock() }
     return 0,false
 
 }
@@ -1149,7 +1160,8 @@ func VarLookup(fs uint32, name string) (uint16, bool) {
 
 func vcreatetable(fs uint32, vtable_maxreached * uint32,sz uint16) {
 
-    vlock.Lock()
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
     vtmr:=*vtable_maxreached
 
@@ -1161,15 +1173,16 @@ func vcreatetable(fs uint32, vtable_maxreached * uint32,sz uint16) {
         // fmt.Printf("vcreatetable: skipped allocation for [fs:%d] -> length:%v max_reached:%v\n",fs,len(ident),*vtable_maxreached)
     }
 
-    vlock.Unlock()
+    if ll { vlock.Unlock() }
 
 }
 
 func vunset(fs uint32, name string) {
     loc, found := VarLookup(fs, name)
-    vlock.Lock()
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
     if found { ident[fs][loc] = Variable{declared:false} }
-    vlock.Unlock()
+    if ll { vlock.Unlock() }
 }
 
 func vdelete(fs uint32, name string, ename string) {
@@ -1208,9 +1221,10 @@ func identResize(fs uint32,sz uint16) {
 
 func vset(fs uint32, name string, value interface{}) (uint16) {
 
-    vlock.Lock()
-
     // create mapping entries for this name if it does not already exist
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+
     if _,found:=vmap[fs][name]; !found {
         vmap[fs][name]=functionidents[fs]+1
         unvmap[fs][functionidents[fs]]=name
@@ -1218,7 +1232,7 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
         functionidents[fs]++
     }
     ovi:=vmap[fs][name]
-    vlock.Unlock()
+    if ll { vlock.Unlock() }
 
     // ... then forward to vseti
     return vseti(fs, name, ovi, value)
@@ -1226,7 +1240,8 @@ func vset(fs uint32, name string, value interface{}) (uint16) {
 
 func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
-    if concurrent_funcs>0 { vlock.Lock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
     if len(ident[fs])>=int(vi) {
 
@@ -1256,8 +1271,8 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
                 if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
-                if concurrent_funcs>0 { vlock.Unlock() }
-                panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",vi,value,value))
+                if ll { vlock.Unlock() }
+                panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",name,value,value))
             }
 
         } else {
@@ -1290,7 +1305,7 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
-    if concurrent_funcs>0 { vlock.Unlock() }
+    if ll { vlock.Unlock() }
 
     return vi
 
@@ -1307,9 +1322,10 @@ func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bo
     var v interface{}
     var ok bool
 
-    if concurrent_funcs>0 { vlock.RLock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
     v, ok = vgeti(fs,vi)
-    if concurrent_funcs>0 { vlock.RUnlock() }
+    if ll { vlock.RUnlock() }
 
     switch v:=v.(type) {
     case map[string]int:
@@ -1373,16 +1389,18 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
     var list interface{}
     var ok bool
 
-    if concurrent_funcs>0 { vlock.RLock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
     list, ok = vgeti(fs, vi)
-    if concurrent_funcs>0 { vlock.RUnlock() }
+    if ll { vlock.RUnlock() }
 
     if !ok {
        list = make(map[string]interface{}, LIST_SIZE_CAP)
         vi=vset(fs,name,list)
     }
 
-    if concurrent_funcs>0 { vlock.Lock() }
+    ll=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
     switch list.(type) {
     case map[string]interface{}:
@@ -1401,10 +1419,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         } else {
             ident[fs][vi].IName= name
             ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
-            if concurrent_funcs>0 { vlock.Unlock() }
+            if ll { vlock.Unlock() }
             return
         }
-        if concurrent_funcs>0 { vlock.Unlock() }
+        if ll { vlock.Unlock() }
         return
     }
 
@@ -1498,36 +1516,37 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
     }
 
-    if concurrent_funcs>0 { vlock.Unlock() }
+    if ll { vlock.Unlock() }
 
 }
 
 func vget(fs uint32, name string) (interface{}, bool) {
     if vi, ok := VarLookup(fs, name); ok {
-        if concurrent_funcs>0 { vlock.RLock() }
+        ll:=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true}
         v:=ident[fs][vi].IValue
         if ident[fs][vi].declared {
-            if concurrent_funcs>0 { vlock.RUnlock() }
+            if ll { vlock.RUnlock() }
             return v,true
         }
-        if concurrent_funcs>0 { vlock.RUnlock() }
+        if ll { vlock.RUnlock() }
     }
     return nil, false
 }
 
 
+// we do not lock in here and perform the lock from the
+// outside so that vgeti may be inlined.
 func vgeti(fs uint32, vi uint16) (v interface{}, s bool) {
-
-    // if concurrent_funcs>0 { vlock.RLock() }
+    //ll:=false
+    //if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true}
     v=ident[fs][vi].IValue
-
     if !ident[fs][vi].declared {
         v=nil
     } else {
         s=true
     }
-
-    // if concurrent_funcs>0 { vlock.RUnlock() }
+    //if ll { vlock.RUnlock() }
     return v, s
 
 }
@@ -1590,7 +1609,8 @@ func interpolate(fs uint32, s string) (string) {
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
 
-    if concurrent_funcs>0 { vlock.RLock() }
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
 
     for {
         os:=s
@@ -1631,7 +1651,7 @@ func interpolate(fs uint32, s string) (string) {
         if os==s { break }
     }
 
-    if concurrent_funcs>0 { vlock.RUnlock() }
+    if ll { vlock.RUnlock() }
 
     // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
     var modified bool
@@ -1828,7 +1848,8 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
         if !standardAssign {
             if lfs!=fs {
                 if newEval[0].tokType==Identifier {
-                    if concurrent_funcs>0 { vlock.RLock() }
+                    ll:=false
+                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
                     if off,found:=vmap[lfs][newEval[0].tokText]; found {
                         if ident[lfs][off].declared {
                             newEval[0].offset=off
@@ -1836,17 +1857,17 @@ func (p *leparser) wrappedEval(lfs uint32, fs uint32, tks []Token) (expr Express
                             p.report("you may only amend declared variables outside of local scope")
                             expr.evalError=true
                             finish(false,ERR_SYNTAX)
-                            if concurrent_funcs>0 { vlock.RUnlock() }
+                            if ll { vlock.RUnlock() }
                             return expr
                         }
                     } else {
                         p.report("you may only amend existing variables outside of local scope")
                         expr.evalError=true
                         finish(false,ERR_SYNTAX)
-                        if concurrent_funcs>0 { vlock.RUnlock() }
+                        if ll { vlock.RUnlock() }
                         return expr
                     }
-                    if concurrent_funcs>0 { vlock.RUnlock() }
+                    if ll { vlock.RUnlock() }
                 }
             }
             switch expr.result.(type) {
@@ -2011,9 +2032,10 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 }
 
                 // ... check it is also a pointer
-                if concurrent_funcs>0 { vlock.RLock() }
+                ll:=false
+                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
                 val,_:=vgeti(rfs,assignee[1].offset)
-                if concurrent_funcs>0 { vlock.RUnlock() }
+                if ll { vlock.RUnlock() }
 
                 switch val.(type) {
                 case []string:
@@ -2223,9 +2245,10 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 var ts interface{}
                 var found bool
 
-                if concurrent_funcs>0 { vlock.RLock() }
+                ll:=false
+                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
                 ts,found=vgeti(lfs,lhs_o)
-                if concurrent_funcs>0 { vlock.RUnlock() }
+                if ll { vlock.RUnlock() }
 
                 if found {
 

@@ -63,7 +63,7 @@ end
 
 # MAIN
 
-f=read_file("json-test.json")
+f=<-"json-test.json"
 if f==nil
     exit 1,"Error: could not read JSON file."
 endif

@@ -1,8 +1,8 @@
 " za syntax file
 " Language:     za (za)
 " Maintainer:   Daniel Horsley  <dhorsley@gmail.com>
-" Last Change:  Jan 14, 2021
-" Version:      8
+" Last Change:  Jan 20, 2021
+" Version:      9
 
 " Version control
 
@@ -113,6 +113,8 @@ syntax match conversion_functions "\s*json_format\s*("he=e-1
 syntax match conversion_functions "\s*json_query\s*("he=e-1
 syntax match conversion_functions "\s*write_struct\s*("he=e-1
 syntax match conversion_functions "\s*read_struct\s*("he=e-1
+syntax match conversion_functions "\s*btoi\s*("he=e-1
+syntax match conversion_functions "\s*itob\s*("he=e-1
 
 syntax match internal_functions "\s*execpath\s*("he=e-1
 syntax match internal_functions "\s*last\s*("he=e-1
@@ -178,6 +180,7 @@ syntax match internal_functions "\s*func_outputs\s*("he=e-1
 syntax match internal_functions "\s*func_descriptions\s*("he=e-1
 syntax match internal_functions "\s*func_categories\s*("he=e-1
 syntax match internal_functions "\s*zinfo\s*("he=e-1
+syntax match internal_functions "\s*wrap\s*("he=e-1
 syntax match internal_functions "\s*permit\s*("he=e-1
 syntax match internal_functions "\s*enum_names\s*("he=e-1
 syntax match internal_functions "\s*enum_all\s*("he=e-1
@@ -361,7 +364,7 @@ syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| as \| in \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(end\|and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(foreach\|version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"

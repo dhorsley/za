@@ -22,6 +22,7 @@ while true
     println "[#2]Waiting...[#-]"
     res=await(handles,true)
     println "await() complete."
+#    println "len res=",res.len
 
     on len(res)==0 do break
 
