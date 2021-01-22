@@ -21,22 +21,38 @@ import (
 
 func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
+
+    /* @note:
+        I'm probably doing something wrong here, but it seems like the channel
+        requires some set up time in the background.
+        case 1 can return nil at random without this delay.
+        not tried many other delay settings, but 10us was too short and errors
+        still persisted. moving the sleep to other areas of the go func had
+        to effect.
+        I should probably be checking some form of ready signal before use.
+    */
+
+    dur, _ := time.ParseDuration("50us")
+    time.Sleep(dur)
+
     go func() {
         defer close(r)
         atomic.AddInt32(&concurrent_funcs, 1)
-        // locks(true)
         rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
         switch rcount {
         case 0:
             r<-nil
         case 1:
             v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
+            if v==nil {
+                r<-nil
+                break
+            }
             r<-v.([]interface{})[0]
         default:
             v,_:=vget(caller,"@#@"+strconv.FormatUint(uint64(loc), 10))
             r<-v
         }
-        // locks(false)
         atomic.AddInt32(&concurrent_funcs, -1)
     }()
     return r
@@ -485,9 +501,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // reset the variable mappings if the source hasn't been parsed yet
 
-    // ll:=false
-    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-    vlock.Lock()
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
     if !identParsed[base] && varmode==MODE_NEW {
         functionidents[base]=0
@@ -530,7 +545,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
         if defnest!=0 {
             parser.report("definition nesting error!")
-            vlock.Unlock()
+            if ll { vlock.Unlock() }
             finish(true,ERR_SYNTAX)
             return
         }
@@ -545,8 +560,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         nextVarId=functionidents[base]
     }
 
-    // if ll { vlock.Unlock() }
-    vlock.Unlock()
+    if ll { vlock.Unlock() }
 
     // in source vars processed, can now reserve a minimum space quota
     //  for this instance of the routine.
@@ -554,11 +568,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     if varmode==MODE_NEW {
         // create the local variable storage for the function
 
-        vlock.RLock()
+        ll=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
         var vtm uint32
         vtm=vtable_maxreached
         minvar:=nextVarId
-        vlock.RUnlock()
+        if ll { vlock.RUnlock() }
 
         if VAR_CAP>minvar { minvar=VAR_CAP }
         if ifs>=vtm {
@@ -566,9 +581,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             // pf("-- Created variable table [ifs:%d] with length of %d\n",ifs,minvar)
         } else {
             // reset existing ifs storage area
-            vlock.Lock()
+            ll=false
+            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
             identResize(ifs,0)
-            vlock.Unlock()
+            if ll { vlock.Unlock() }
         }
 
         globlock.Lock()
@@ -578,18 +594,16 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         globlock.Unlock()
 
         // copy the base var mapping to this instance
-        // ll=false
-        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-        vlock.Lock()
+        ll=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
-        unvmap[ifs] =make(map[uint16]string,0)
-        vmap[ifs]   =make(map[string]uint16,0)
-        for e:=0; e<len(unvmap[base]); e++ {
-            unvmap[ifs][uint16(e)] = unvmap[base][uint16(e)]
-            vmap  [ifs][unvmap[base][uint16(e)]] = vmap[base][unvmap[base][uint16(e)]]
+        unvmap[ifs] =make(map[uint16]string,len(unvmap[base]))
+        vmap[ifs]   =make(map[string]uint16,len(unvmap[base]))
+        for e:=uint16(0); e<uint16(len(unvmap[base])); e++ {
+            unvmap[ifs][e] = unvmap[base][e]
+            vmap  [ifs][unvmap[base][e]] = vmap[base][unvmap[base][e]]
         }
-        // if ll { vlock.Unlock() }
-        vlock.Unlock()
+        if ll { vlock.Unlock() }
 
         // add the call parameters as available variable mappings
         //  to the current function call
@@ -605,17 +619,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         }
         farglock.RUnlock()
 
+        ll=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
         functionidents[ifs]=nextVarId
+        if ll { vlock.Unlock() }
+
     }
-
-
-    /* // debug info
-       pf("## actor -- ident length %d\n",len(ident[ifs]))
-       pf("## identifier count for ifs %d now %d\n",ifs,functionidents[ifs])
-       pf("whole map for ifs %d is\n%#v\n",ifs,vmap[ifs])
-       pf("whole unmap for ifs %d is\n%#v\n",ifs,unvmap[ifs])
-       if ifs>0 { pf("all idents in this ifs (%d):\n%#v\n",ifs,ident[ifs]) }
-    */
 
 
     // missing varargs in call result in empty string assignments:
@@ -661,9 +670,8 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // allocate loop storage space if not a repeat ifs value.
 
-    // ll=false
-    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
-    vlock.RLock()
+    ll=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
 
     var top,highest,lscap uint32
 
@@ -695,23 +703,11 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     loops[ifs] = make([]s_loop, MAX_LOOPS)
 
-    // if ll { vlock.RUnlock() }
-    vlock.RUnlock()
+    if ll { vlock.RUnlock() }
     lastlock.Unlock()
 
 
 tco_reentry:
-
-    /* // DEBUG INFO
-    pf("\n\nin %v \n",fs)
-    pf("base  -> %v\n",base)
-    pf("va    -> %#v\n",va)
-    pf("fargs -> %#v\n",functionArgs[base].args)
-    for qq:=range functionArgs[base].args {
-        arg:=functionArgs[base].args[qq]
-        pf("unvmap  -> %s : %#v\n",arg,unvmap[base][qq]) 
-    }
-    */
 
     // assign value to local vars named in functionArgs (the call parameters)
     //  from each va value.
@@ -878,9 +874,8 @@ tco_reentry:
 
             if _,found:=typemap[expr]; found {
                 vset(ifs,vname,reflect.New(typemap[expr]).Elem().Interface())
-                // ll:=false
-                // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-                vlock.Lock()
+                ll:=false
+                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
                 vi:=inbound.Tokens[1].offset
                 ident[ifs][vi].ITyped=true
                 ident[ifs][vi].declared=true
@@ -902,8 +897,7 @@ tco_reentry:
                 case "string":
                     ident[ifs][vi].IKind=kstring
                 }
-                // if ll { vlock.Unlock() }
-                vlock.Unlock()
+                if ll { vlock.Unlock() }
 
             } else {
                 parser.report(sf("unknown data type requested '%v'",expr))
@@ -3245,12 +3239,10 @@ tco_reentry:
                 finish(true,ERR_SYNTAX)
                 break
             }
-            // ll:=false
-            // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
-            vlock.RLock()
+            ll:=false
+            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
             content,_:=vgeti(ifs,vid)
-            // if ll { vlock.RUnlock() }
-            vlock.RUnlock()
+            if ll { vlock.RUnlock() }
 
 		    ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())

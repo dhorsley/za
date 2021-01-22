@@ -323,6 +323,12 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 	if (intInOne && str2OK) && int1>=0 { return str.Repeat(str2,int1) }
 	if (intInTwo && str1OK) && int2>=0 { return str.Repeat(str1,int2) }
 
+    // int * struct = repeat
+    s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
+    s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
+	if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e++ { ary=append(ary,val2) }; return ary }
+	if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e++ { ary=append(ary,val1) }; return ary }
+
 	panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
 }
 

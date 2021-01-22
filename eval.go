@@ -1004,9 +1004,9 @@ func (p *leparser) postIncDec(token Token) interface{} {
 
     vi,there=VarLookup(p.fs,vartok.tokText)
     activeFS:=p.fs
-    ll:=false
     if !there {
         if vi,there=VarLookup(globalaccess,vartok.tokText); there {
+            ll:=false
             if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
             val,_=vgeti(globalaccess,vi)
             if ll { vlock.RUnlock() }
@@ -1014,6 +1014,7 @@ func (p *leparser) postIncDec(token Token) interface{} {
         }
         if !there { panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText)) }
     } else {
+        ll:=false
         if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
         val,_=vgeti(p.fs,vartok.offset)
         if ll { vlock.RUnlock() }
@@ -1538,15 +1539,12 @@ func vget(fs uint32, name string) (interface{}, bool) {
 // we do not lock in here and perform the lock from the
 // outside so that vgeti may be inlined.
 func vgeti(fs uint32, vi uint16) (v interface{}, s bool) {
-    //ll:=false
-    //if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true}
     v=ident[fs][vi].IValue
     if !ident[fs][vi].declared {
         v=nil
     } else {
         s=true
     }
-    //if ll { vlock.RUnlock() }
     return v, s
 
 }
@@ -1562,7 +1560,6 @@ func getvtype(fs uint32, name string) (reflect.Type, bool) {
 }
 
 func isBool(expr interface{}) bool {
-
     switch reflect.TypeOf(expr).Kind() {
     case reflect.Bool:
         return true
@@ -1910,10 +1907,6 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
 
     // (left)  lfs is the function space to assign to
     // (right) rfs is the function space to evaluate with (calculating indices expressions, etc)
-
-    // pf("doAssign called with tokens: %#v\n",tks)
-    // pf("doAssign inbound assign?   : %+v\n",expr.assign)
-    // pf("doAssign inbound results   : %#v\n",expr.result)
 
     var err error
 
