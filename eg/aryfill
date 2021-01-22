@@ -1,0 +1,38 @@
+#!/usr/bin/za
+
+maxc=1
+input maxc param 1 "count"
+
+init y mixed 540
+init xbar mixed 960
+init buf mixed 540
+
+struct point
+    r uint8
+    g uint8
+    b uint8
+    a uint8
+endstruct
+
+init p point
+
+# fill buffer with empty colour points
+for e=0 to 539
+    y[e]=p*960
+endfor
+
+println "maxc : ",maxc
+
+# repeatedly fill second buffer with line by line copies of first buf
+for c=0 to maxc
+    for e=0 to 539
+        buf[e]=y[e]
+    endfor
+endfor
+
+println "mem use : ",getmem().alloc
+
+doc `
+time za -S eg/aryfill 5000
+-> 0m0.918s
+`

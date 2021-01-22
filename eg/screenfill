@@ -1,0 +1,37 @@
+#!/usr/bin/za
+
+maxc=1
+input maxc param 1 "count"
+
+h=40
+w=80
+
+init y mixed h
+init xbar mixed w
+init buf mixed h
+
+# repeatedly fill second buffer with line by line copies of first buf
+cursoroff()
+for c=0 to maxc
+
+    # fill buffer with random char lines
+    for e=0 to h-1
+        y[e]=(rand(95)+31).chr * w
+    endfor
+
+    for e=0 to h-1
+        at e,1
+        print y[e]
+    endfor
+
+endfor
+
+cursoron()
+cls
+at h,1
+println "mem use : ",getmem().alloc
+
+doc `
+time za -S eg/aryfill 5000
+-> 0m0.918s
+`
