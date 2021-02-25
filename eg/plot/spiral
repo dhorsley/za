@@ -39,7 +39,6 @@ maxrot=13.0
 quit=false
 async whand waitkey()
 
-
 while !quit
     cls
     print "[#bold]"

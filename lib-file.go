@@ -3,11 +3,11 @@
 package main
 
 import (
-	"errors"
-	"io/ioutil"
+    "errors"
+    "io/ioutil"
     "io"
-	"os"
-	sc "strconv"
+    "os"
+    sc "strconv"
     str "strings"
 )
 
@@ -19,10 +19,10 @@ type pfile struct {
 
 func buildFileLib() {
 
-	// file handling
+    // file handling
 
-	features["file"] = Feature{version: 1, category: "os"}
-	categories["file"] = []string{
+    features["file"] = Feature{version: 1, category: "os"}
+    categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "is_soft", "is_pipe", "perms",
                         "fopen", "fclose","fseek","fread","fwrite","feof",
@@ -30,14 +30,11 @@ func buildFileLib() {
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
     stdlib["fopen"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 {
-            return nil,errors.New("Bad arguments (count) to fopen()")
-        }
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
-            return nil,errors.New("Bad arguments (type) to fopen()")
-        }
+        if ok,err:=expect_args("fopen",args,1,"2","string","string"); !ok { return nil,err }
+
         fn:=args[0].(string)
         mode:=str.ToLower(args[1].(string))
+
         var f *os.File
         switch mode {
         case "w":
@@ -60,9 +57,7 @@ func buildFileLib() {
 
     slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
     stdlib["fseek"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=3 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="int" || sf("%T",args[2])!="int" {
-            return nil,errors.New("Bad arguments to fseek()")
-        }
+        if ok,err:=expect_args("fseek",args,1,"3","main.pfile","int","int"); !ok { return nil,err }
         fw :=args[0].(pfile)
         off:=int64(args[1].(int))
         rel:=args[2].(int)
@@ -71,14 +66,15 @@ func buildFileLib() {
 
     slhelp["fread"] = LibHelp{in: "filehandle,delim", out: "string", action: "Reads a string from an open file until [#i1]delim[#i0] is encountered (or end-of-file)."}
     stdlib["fread"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
-            return nil,errors.New("Bad arguments to fread()")
-        }
+        if ok,err:=expect_args("fread",args,1,"2","main.pfile","string"); !ok { return nil,err }
+
         fw:=args[0].(pfile)
         de:=(args[1].(string))
+
         if len(de)==0 {
             return nil,errors.New("Empty delimiter in fread()")
         }
+
         deby:=byte(de[0])
         var s str.Builder
         b:=make([]byte,64)
@@ -102,7 +98,7 @@ func buildFileLib() {
             if done { break }
             if err==io.EOF { break }
         }
-        // does not currently handle a multi-char delim,
+        // @note: does not currently handle a multi-char delim,
         //  which means windows EOL files aren't exactly compatible without fudging.
         return s.String(),nil
     }
@@ -110,25 +106,17 @@ func buildFileLib() {
     // issues with race cond when file open in write-append mode?
     slhelp["feof"] = LibHelp{in: "filehandle", out: "bool", action: "Check if open file cursor is at end-of-file"}
     stdlib["feof"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
-            return false,errors.New("Bad arguments to feof()")
-        }
+        if ok,err:=expect_args("feof",args,1,"1","main.pfile"); !ok { return nil,err }
         fw:=args[0].(pfile)
-        // find a better way than this, it's presumably cripping read speeds in loops...
         cp,_:=fw.hnd.Seek(0,io.SeekCurrent)
-        // may be better to compare cp to file stat size here? or some other method.
         eps,_:=fw.hnd.Stat()
         ep:=eps.Size()
-        // ep,_:=fw.hnd.Seek(0,io.SeekEnd)
-        // fw.hnd.Seek(cp,io.SeekStart)
         return cp==ep,nil
     }
 
     slhelp["fwrite"] = LibHelp{in: "filehandle,string", out: "", action: "Writes a string to an open file."}
     stdlib["fwrite"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 || sf("%T",args[0])!="main.pfile" || sf("%T",args[1])!="string" {
-            return nil,errors.New("Bad arguments to fwrite()")
-        }
+        if ok,err:=expect_args("fwrite",args,1,"2","main.pfile","string"); !ok { return nil,err }
         fw:=args[0].(pfile)
         fw.hnd.WriteString(args[1].(string))
         return nil,nil
@@ -136,75 +124,54 @@ func buildFileLib() {
 
     slhelp["fclose"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file."}
     stdlib["fclose"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="main.pfile" {
-            return nil,errors.New("Bad arguments to fclose()")
-        }
+        if ok,err:=expect_args("fclose",args,1,"1","main.pfile"); !ok { return nil,err }
         fw:=args[0].(pfile)
         fw.hnd.Sync()
         fw.hnd.Close()
+        fw.hnd=nil
         return nil,nil
     }
 
-	slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
-	stdlib["file_mode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return 0, errors.New("invalid arguments provided to file_mode()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode(), err
-			}
-		}
-		return -1, err
-	}
+    slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
+    stdlib["file_mode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("file_mode",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil { return f.Mode(), err }
+        return -1, err
+    }
 
-	slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
-	stdlib["file_size"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return 0, errors.New("invalid arguments provided to file_size()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Size(), err
-			}
-		}
-		return -1, err
-	}
+    slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
+    stdlib["file_size"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("file_size",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil { return f.Size(), err }
+        return -1, err
+    }
 
-	slhelp["read_file"] = LibHelp{in: "string", out: "string", action: "Returns the contents of the named file [#i1]string[#i0], or errors."}
-	stdlib["read_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return "", errors.New("invalid arguments provided to read_file()")
-		}
-		switch args[0].(type) {
-		case string:
-			f := args[0].(string)
-			s, err := ioutil.ReadFile(f)
-			return string(s), err
-		}
-		return "", errors.New("Filename in read_file() must be a string.")
-	}
+    slhelp["read_file"] = LibHelp{in: "string", out: "string", action: "Returns the contents of the named file [#i1]string[#i0], or errors."}
+    stdlib["read_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("read_file",args,1,"1","string"); !ok { return nil,err }
+        s, err := ioutil.ReadFile(args[0].(string))
+        return string(s), err
+    }
 
-	slhelp["write_file"] = LibHelp{in: "filename,variable[,mode_number_or_string]", out: "bool", action: "Writes the contents of the string [#i1]variable[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
-	stdlib["write_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		var outVar string
-		var filename string
-		var outMode os.FileMode = 0600
-		var omconv uint64
-		var convErr error
-		switch len(args) {
-		case 2:
-			filename = args[0].(string)
-			outVar = args[1].(string)
-		case 3:
-			filename = args[0].(string)
-			outVar = args[1].(string)
+    slhelp["write_file"] = LibHelp{in: "filename,wstring[,mode_number_or_string]", out: "bool", action: "Writes the contents of [#i1]wstring[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
+    stdlib["write_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("write_file",args,2,
+            "3","string","string","string",
+            "2","string","string"); !ok { return nil,err }
+
+        var outMode os.FileMode = 0600
+        var omconv uint64
+        var convErr error
+
+        filename := args[0].(string)
+        outVar   := args[1].(string)
+
+        switch len(args) {
+        case 3:
             switch args[2].(type) {
-			case string:
+            case string:
                 omconv, convErr = sc.ParseUint(args[2].(string), 8, 32)
             case int:
                 omconv = uint64(args[2].(int))
@@ -213,104 +180,73 @@ func buildFileLib() {
             case int64:
                 omconv = uint64(args[2].(int64))
             }
-			if convErr != nil {
-				return false, errors.New("could not make an octal mode from the provided string.")
-			}
-			outMode = os.FileMode(omconv)
-		default:
-			return false, errors.New("Error: bad arguments supplied to write_file()")
-		}
-		err = ioutil.WriteFile(filename, []byte(outVar), outMode)
-		if err != nil {
-			return false, err
-		}
-		return true, err
-	}
+            if convErr != nil {
+                return false, errors.New("could not make an octal mode from the provided string.")
+            }
+            outMode = os.FileMode(omconv)
+        }
 
-	slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
-	stdlib["is_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return false, errors.New("invalid arguments provided to is_file()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode().IsRegular(), nil
-			} else {
-				return false, nil
-			}
-		}
-		return false, errors.New("argument to is_file() not a string.")
-	}
+        err = ioutil.WriteFile(filename, []byte(outVar), outMode)
+        if err != nil {
+            return false, err
+        }
+        return true, err
+    }
 
-	slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a directory."}
-	stdlib["is_dir"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return false, errors.New("invalid arguments provided to is_dir()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode().IsDir(), nil
-			} else {
-				return false, nil
-			}
-		}
-		return false, errors.New("argument to is_dir() not a string.")
-	}
+    slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
+    stdlib["is_file"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("is_file",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Mode().IsRegular(), nil
+        } else {
+            return false, nil
+        }
+    }
 
-	slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
-	stdlib["is_soft"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return false, errors.New("invalid arguments provided to is_soft()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode()&os.ModeSymlink != 0, err
-			} else {
-				return false, err
-			}
-		}
-		return false, errors.New("argument to is_soft() not a string.")
-	}
+    slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a directory."}
+    stdlib["is_dir"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("is_dir",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Mode().IsDir(), nil
+        } else {
+            return false, nil
+        }
+    }
 
-	slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a named pipe."}
-	stdlib["is_pipe"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return false, errors.New("invalid arguments provided to is_pipe()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode()&os.ModeNamedPipe != 0, err
-			} else {
-				return false, err
-			}
-		}
-		return false, errors.New("argument to is_pipe() not a string.")
-	}
+    slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
+    stdlib["is_soft"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("is_soft",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Mode()&os.ModeSymlink != 0, err
+        } else {
+            return false, err
+        }
+    }
 
-	slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
-	stdlib["perms"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-		if len(args) != 1 {
-			return false, errors.New("invalid arguments provided to perms()")
-		}
-		switch args[0].(type) {
-		case string:
-			f, err := os.Stat(args[0].(string))
-			if err == nil {
-				return f.Mode().Perm(), err
-			} else {
-				return 0, err
-			}
-		}
-		return 0, errors.New("argument to perms() not a string.")
-	}
+    slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a named pipe."}
+    stdlib["is_pipe"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("is_pipe",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Mode()&os.ModeNamedPipe != 0, err
+        } else {
+            return false, err
+        }
+    }
+
+    slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
+    stdlib["perms"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("perms",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Mode().Perm(), err
+        } else {
+            return 0, err
+        }
+    }
 
 }
 

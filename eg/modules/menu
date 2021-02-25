@@ -13,10 +13,10 @@ define menu(p,opts)
     # determine shortcut keys per option
     when
     has ol<10
-        key_range = "1".ascii .. "1".ascii+ol-1
+        key_range = "1".asc .. "1".asc+ol-1
         break
     has ol<30
-        key_range = ( "1".ascii .. "9".ascii ) + ( "a".ascii .. "a".ascii+ol-10 )
+        key_range = ( "1".asc .. "9".asc ) + ( "a".asc .. "a".asc+ol-10 )
         break
     has ol>=30
         key_range = nil
@@ -26,7 +26,7 @@ define menu(p,opts)
     foreach p in opts
         at 4+key_p,12
         short_code=" "
-        on key_range!=nil do short_code=key_range[key_p].chr
+        on key_range!=nil do short_code=key_range[key_p].char
         print "[#b1][{=short_code}][##] {p}"
     endfor
 
@@ -48,7 +48,7 @@ define menu(p,opts)
             n=k-48
         endif
 
-        on chr(k)=="q" do break
+        on char(k)=="q" do break
 
         when k
         is 11

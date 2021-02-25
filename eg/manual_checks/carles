@@ -5,21 +5,32 @@ var il2 int
 var il3 int
 var ic int
 
+doc `
+    this is slow!
+    not really the loop performance (~129 secs without calculations)
+    but instead is the evaluations (inc and cmp) which are slowing it
+    down so much. 
+
+    not exactly critical - hopefully Go optimisations will help out
+    over time!
+`
+
 println "Performance Test by Carles Mateo blog.carlesmateo.com"    
 println "Za Version: "
 
-print "Starting...", epoch_time()
+println "Starting...", epoch_time()
     
-for il1 = 0 To 9
+for il1 = 0 To 1
     for il2 = 0 To 31999
         for il3 = 0 To 31999
-            ic=ic+1
+            ic = ic + 1
             on ic > 50 do ic=0
         endfor
     endfor
+    print "\n",il1
 endfor
 
 println ic
-Print "End ", epoch_time() 
+println "End ", epoch_time() 
 
 

@@ -10,10 +10,11 @@ import (
 
 // this type is for holding a complete line from statement to EOL/Semicolon
 type Phrase struct {
-	Tokens     []Token // each token found
-	Original   string  // entire string, unmodified for spaces
-    SourceLine int16
-	TokenCount int16   // number of tokens generated for this phrase
+	Tokens      []Token // each token found
+	Original    string  // entire string, unmodified for spaces
+    pairLA      int16   // distance to next pc of end matching pair (0 is uncached)
+    SourceLine  int16
+	TokenCount  int16   // number of tokens generated for this phrase
 }
 
 func (p Phrase) String() string {
@@ -35,10 +36,10 @@ type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, 
 type Variable struct {
     IName       string
     IValue      interface{}
-//    Ptr         *interface{}
     IKind       uint8
     ITyped      bool
     declared    bool
+    // changed     bool
 }
 
 // holds a Token which forms part of a Phrase.
@@ -120,7 +121,7 @@ type enum_s struct {
 }
 
 
-// @todo: this need splitting up for several reasons. primarily though because it is over 64 bytes:
+// @todo: this need splitting up for several reasons. primarily though because of the size:
 // struct for loop internals
 type s_loop struct {
 	loopVar          string           // name of counter

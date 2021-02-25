@@ -11,6 +11,9 @@ input count param 1
 # read file in, lower case, remove non-words, squeeze, stuff words in array
 allwords=split( tr( replace( lower(read_file("/dev/stdin")),"[^a-zA-Z']"," "), "s"," "), " ")
 
+# alternatively:
+# allwords = <- "/dev/stdin" . lower . replace("[^a-zA-Z']"," ") . tr("s"," ") . split(" ")
+
 # count word occurrences
 foreach w in allwords
     on !key("c",w) do c[w]=0
@@ -23,14 +26,12 @@ foreach p in c
     out=format("%v%v %v\n",out,p,key_p)
 endfor
 
-# display 'count' liness
-var pos int
+# display 'count' lines
 foreach wc in fieldsort(out,1,"n",true)
-    pos=pos+1
-    on pos>count do break
+    count--
+    on count<0 do break
     println wc
 endfor
-
 
 #
 # yes, i'm aware its considerably longer than the bash equivalent. :)
@@ -38,5 +39,4 @@ endfor
 # although, saying that, it is only one program and not six. i guess each of those must loop over the input too.
 # but those are somewhat hidden here, as fieldsort() tr() replace(), lower() all do the same in the background.
 #
-
 

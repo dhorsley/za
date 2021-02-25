@@ -2,6 +2,7 @@
 
 module "mod_build/defines"
 
+
 tgt="libc"
 strip_enable=false
 upx_enable=false
@@ -16,7 +17,7 @@ on do_upx=="upx" do upx_enable=true
 GCLIMIT = "GOGC=250 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
-bvers =  "1.0.13"
+bvers =  "1.0.14"
 bdate =| date "+%d-%m-%Y %H:%M"
 
 upxfound=| which upx | wc -l
@@ -28,24 +29,22 @@ if ! os() ~ "^freebsd"
     when lower(tgt)
     is "alpine"
         if buildMusl(bvers,bdate.out,strip_opts,upx_enable)!=0
-            println "Failed to build alpine version."
-            exit 1
+            exit e.build,"Failed to build alpine version."
         endif
     is "libc"
         if buildLibc(bvers,bdate.out)!=0
-            println "Failed to build libc version."
-            exit 1
+            exit e.build,"Failed to build libc version."
         endif
     is "win"
         if buildWin(bvers,bdate.out,strip_opts) != 0
-            println "Failed to build windows version."
-            exit 1
+            exit e.build,"Failed to build windows version."
         endif
+    or
+        exit e.notfound,"Target type unknown."
     endwhen
 else
     if buildFreeBSD(bvers,bdate.out) != 0
-        println "Failed to build bsd version."
-        exit 1
+        exit e.build,"Failed to build bsd version."
     endif
 endif
 
@@ -66,6 +65,5 @@ is "libc"
     | sudo cp -f za /usr/bin
     | sudo chmod 755 /usr/bin/za
 endwhen
-
 
 

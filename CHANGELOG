@@ -2,248 +2,320 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.14
+======
 
-1.0.13  fixes
+    fixes
+    -----
 
-        * updated vim syntax file
+    * updated vim syntax file
+    * added 'f' suffix on numeric literals for enforcing float type.
+    * library function name review (for consistency)
+        - breaking changes: some function name changes have had underscores added/removed for consistency.
+    * added expect_args() to all standard library functions where it makes sense to.
+    * added { and } as outer delimiters for ENUM as well as ( and )
+    * altered ENUM to accept expressions in member assignments.
+        - this can contain circular references to earlier members such as:
+        > enum colours { r,g=10,b=colours.g*3,w }
+        > print ref colours.enum_all
+          [1 10 30 31]
 
-        * added operator <-
-            - usage: <- file
-            - reads file content as a string literal
-            - can also be used for comparing files:
-                - e.g.  on <- "file1" == <- "file2" do print "same"
-            - added support for use in FOREACH
+    * changed windows default ansi setting to true.
+    * removed -l option.
+    * removed -d option.
 
-        * changed deferred unlocks around variable reads to immediate for small speed improvement.
-        * added function concurrency counter to lower lock requirements
-        * inlined vgeti: it's messy, but faster. still just polishing a turd though.
-        * changed statement in Call() to a pointer to Token inside the phrase.
-            - dropped from around 400ms in profiles over 8 secs to ~100ms.
 
-            - it ain't gonna get much better without replacing the entire ident map with a 
-                better mechanism. sync.map is slower and atomic map entries would likely be quite
-                problematic currently. shouldn't be using a map of arrays for the variable store at all
+    language features
+    -----------------
 
-            - this would all go away if i actually had the will to generate variables properly
-                and would definitely speed this implementation up considerably. not really a problem
-                though unless this language is getting (ab)used for things it was never meant for.
+    PLEASE NOTE: this version currently only works (correctly) on Linux with certain
+    libraries installed and a particular level of OpenGL support (v3.3).
 
-            - if speed is a real concern there's probably equally large gains to be had in finding 
-                a way to do a computed goto.
+    This means that the Windows, FreeBSD, Alpine and several other builds are currently
+    either not working or compatibility work is in-progress.
 
-            - saying all that, branch mispredictions are currently quite acceptable for an interpreter
-                written like this one is. should probably leave off trying to polish execution 
-                speed much further - it's quite unneeded.
+        - Windows tested some more.. It kinda works now. Still working through tests.
 
-        * added description hint option in INPUT ... PARAM statement for error messages. (param #4)
+    Several changes are underway to support windowing features through opengl.
+    This will be done with a subset of the Pixel Go library.
 
-        * added (very) simple max column wrap for panes.
 
-        * added statement ENUM
-            - enumerations can be defined in this way:
-                > enum colours ( red=1, green=2, blue=4, mask=7 )
-            - for numeric constant type values, when missing, they assume the previous value + 1
-            - the initial default value is int(1)
-            - string literals may also be used as values.
-            - strings and numeric types may be mixed within the same enum declaration.
-            - further examples,
-                > enum authors ( bill="William Shakespeare", george="George Orwell" )
-                > enum bitpos ( l0=1,l1=2,l2=4,l3=8,h0=16,h1=32 )
-                > enum rainbow ( red, orange, yellow, green, blue, indigo, violet )
-                > enum mixed ( one=1, two=2.0, three, pi=3.141, four=4, author="Orwell")
-                - the final mixed enum has these values:
-                    [ 1, 2.0, 3.0, 3.141, 4, "Orwell" ]
+    library features
+    ----------------
 
-        * added library calls:
-            - enum_names("enum_name")     : returns a list of labels for a given enumeration
-            - enum_all("enum_name")       : returns a list of values for a given enumeration
+    Wrapper around Go Pixel library. Early stages, experimental.
+    The Pixel library gives us a massive amount of extra capability, but does come with
+    some performance issues around threading and supported platforms.
 
-        * enum addressing:
+    Eventually the hope is that it will all be switchable on each platform with the -u flag.
+
+    * added UI lib calls, so far:
+        - ui_init, ui_close,
+        - ui_closed (has the close button been pressed?)
+        - ui_handle (returns internal window id)
+        - ui_clear, ui_update
+        - ui_title, ui_text
+        - ui_new_draw (create a draw object)
+        - ui_draw_reset (clear object content)
+        - ui_batch (send draw object to update batch)
+        - ui_batch_clear (reset a draw object)
+        - ui_batch_draw
+        - ui_pp (create a point)
+        - ui_polygon (connect prior points), ui_circle (connect prior points)
+        - ui_rectangle, ui_circle_arc, ui_line, ui_bounds
+        - ui_colour, ui_set_smooth, pic_load, pic_bounds, ui_centre
+        - ui_new_sprite, ui_sprite_draw
+        - ui_new_matrix, ui_mat_move, ui_mat_rotate, ui_new_vector
+        - ui_get_code (find a button (keyboard/mouse) depression constant)
+        - ui_just_released, ui_just_pressed, ui_pressed
+        - ui_get_monitors, ui_primary_monitor, ui_set_full_screen, ui_windowed
+        - ui_w and ui_h
+
+    * other calls are in progress
+        - mainly will be wrappers around basic Pixel functionality
+            so that we have at least some support for windowed applications.
+        - we'll add a number of UI elements over time.
+
+    * added -u startup flag to indicate requirement for opengl access/windows.
+
+    * see eg/ui for example code loop.
+
+    * early testing of performance indicating reasonable results.
+        - for very low object count windows, frame rates anywhere between 150-1000
+        - low object count, around 100 fps.
+        - 30-60 fps achievable if the draw count is kept down with batches.
+        - you wouldn't ever want to try writing a game with this language, but it
+            should be able to keep up on simple GUIs if done right.
+
+    other stuff:
+
+    * added more strictness checking of types in almost all existing library calls.
+        - we have added some more generalised parameter checking for types in the
+            standard library. Where varargs are expected it is more relaxed.
+
+    * added randf (float between 0 and 1) function.
+
+
+1.0.13
+======
+
+    fixes
+    -----
+
+    * changed deferred unlocks around variable reads to immediate for small speed improvement.
+    * added function concurrency counter to lower lock requirements
+    * inlined vgeti: it's messy, but faster. still just polishing a turd though.
+    * changed statement in Call() to a pointer to Token inside the phrase.
+        - dropped from around 400ms in profiles over 8 secs to ~100ms.
+    * added check for uninitialised variable use as identifiers in eval.go (fn identifier())
+        - an exception to this is module and enum names that have been created during execution.
+    * updated a couple of eg/ examples to reflect the uninitialised var change above.
+        - ( mainly initialising lists which are appended to )
+    * added "t" (translate) mode for tr() call. it is still nowhere near as useful as the full tr tool, but
+        it covers most basic requirements. still could do with a negation and upper/lower option.
+    * deprecated optional mutex locking.
+        * locks are now always enforced by default except in a few safe areas.
+        * the locks() library call and the -l startup option will be removed in 1.0.14
+        * this has obviously had a negative effect on the language speed, but it is a fairly
+            minor reduction in most cases. (<1%). It might get worse in hot code depending 
+            on the nature of operations, but it was worth the trade-off for operational safety.
+    * changed system() and Copper() calls to cause assignation of struct instead of string when
+        using the =| operator. This allows for an occasionally more readable use of =|.
+        - Returned struct fields are .out (stdout), .err (stderr), .code (command status
+           code) and .okay (summarised status).
+        - The last() and last_out() lib calls still work as before should you need them.
+    * added default behaviour in interactive mode to print the result of submitted expressions
+        - this only happens when a) not an assignment, and b) no evaluation error occurred.
+    * added support for cursor keys in keypress(). left, right, down, up return 8, 9, 10
+        and 11 respectively.
+    * lexer - forced numbers to end when followed by 2 dots
+    * made WHEN condition optional ("when a" above could be "when"). the constant "true" is used when
+        the condition is missing.
+
+
+    language features
+    -----------------
+
+    * added operator <-
+        - usage: <- file
+        - reads file content as a string literal
+            - e.g.  on <- "text_file1" == <- "text_file2" do print "same"
+        - added support for use in FOREACH
+
+    * added description hint option in INPUT ... PARAM statement for error messages. (param #4)
+        - e.g.
+        > input mq param 1 "Maximum queue length"
+
+    * added (very) simple max column wrap for panes.
+
+    * added statement ENUM
+        - enumerations can be defined in this way:
+            > enum colours ( red=1, green=2, blue=4, mask=7 )
+        - for numeric constant type values, when missing, they assume the previous value + 1
+        - the initial default value is int(1)
+        - string literals may also be used as values.
+        - strings and numeric types may be mixed within the same enum declaration.
+        - further examples,
+            > enum authors ( bill="William Shakespeare", george="George Orwell" )
+            > enum bitpos ( l0=1,l1=2,l2=4,l3=8,h0=16,h1=32 )
+            > enum rainbow ( red, orange, yellow, green, blue, indigo, violet )
+            > enum mixed ( one=1, two=2.0, three, pi=3.141, four=4, author="Orwell")
+            - the final mixed enum has these values:
+                [ 1, 2.0, 3.0, 3.141, 4, "Orwell" ]
+        - enum addressing:
             - an enumerated label may be dereferenced using the form:
                 > enum_name.enum_label
-                example:
+                # example:
                 > colours.blue
                 > 4
 
-        * added check for uninitialised variable use as identifiers in eval.go (fn identifier())
-            - an exception to this is module names that have been created during execution.
+    * added HAS expression condition type to WHEN...ENDWHEN
+        - "HAS expression" clause causes the initial WHEN condition to be ignored and
+            a clause truth test is performed against the presented HAS expression instead.
+        - on falsehood, subsequent clauses are tested with the original condition,
+            except in the further HAS clauses of course.
+        - as before, WHEN clauses continue to match on a first come-first served basis.
+        - context help and manual still need updating for new clause type.
+        - the HAS clause essentially acts as our if..else if..else if..end method, but 
+            it also allows for some other alternative arrangements in conjunction with
+            IS, CONTAINS and OR clauses.
 
-        * added library call permit("flag_name",bool) to amend strictness of some run-time behaviours:
-            - permit("uninit",bool)         : uninitialised variable use warning.
-            - permit("dupmod",bool)         : duplicate module import warning.
-            - permit("exitquiet",bool)      : smaller exit error messages
+        - the HAS keyword name may yet change for an alternative if we can think of 
+            anything suitable.  Things like SATISFIES, ADMITS, MEETS, CONCURS and a few other 
+            alternative were just too wordy... and yes, I know we have CONTAINS, but
+            that one is up for barter too.
 
-        * updated a couple of eg/ examples to reflect the uninitialised var change above.
-            - ( mainly initialising lists which are appended to )
+    * added ternary (query) operator:
+        - syntax: ?? expr true_expr false_expr
+        -   i.e.: ?? (ternary if) expr (then) true_expr (else) false_expr
+        - see eg/nestdepth for example in near functional style
 
-        * added default behaviour in interactive mode to print the result of submitted expressions
-            - this only happens when a) not an assignment, and b) no evaluation error occurred.
+    * added s..e operator for generating an array range. value types of expressions
+        s and e must match each other, and the generated range is of the same value type.
+        - s must be lower than e for all int types
+        - accepted types are currently int, int64 and uint.
+            - it would probably be a fairly simple task to extend this scheme.
 
-        * added support for cursor keys in keypress(). left, right, down, up return 8, 9, 10
-            and 11 respectively.
+    * forced, combined example:
 
-        * added capture_shell(bool) call. True (default) ensures output of commands in parent shell are captured.
-            - false will disable stdout capture so that commands such as ssh will operate correctly.
-            - this is currently limited to parent shell { coproc(false) } activity.
-            - in the normal child shell output will always be captured.
+        a=rand(50)
+        when a
+        is 10
+            println "a is 10"
+        has a in 1..9
+            println "a is less than 10"
+        has a>10
+            println "a is between 11 and 50"
+        or
+            println "some other value"
+        endwhen
 
-        * added json_query() call. this is just a wrapper around gojq for simple queries:
+    * added basic filter and map operators:
 
-            https://github.com/itchyny/gojq
+        - filter is ?> and map is ->
+        - both accept a list on the l.h.s and a string on the r.h.s
+        - both accept a # char in the string as a substitute for each l.h.s value
+        - both produce a list of the same type as input
+        - both accept lists of bool, uint, int or float
+        - filter has a slightly higher precedence than map
+        - reduction will probably not be implemented as it can be conveyed with 
+            a user-defined function or library call as with max() and avg() below.
 
-            - pretty great software - saved me a ton of work! :)
+        - may be worth considering a way of auto-promoting larger filter and map operations
+            to parallel tasking by splitting the l.h.s. 
+            - would require some kind of local/remote pipeline and some resiliency on failed
+                transfers and result gens. 
+            - this is pretty far out of scope for the language so it will probably gather dust.
 
-            - will have to see what impact this has on binary size, performance, etc before
-                deciding if we should just generate a more basic version of our own. I really
-                would like to keep this package in place though. it's going to help a lot when
-                using this language with cloud-based tooling (aws and similar).
+        - update: added support for arrays and maps of simple interface{} types.
+            - this means that array literals should now be supported too.
 
-        * deprecated optional mutex locking.
-            * locks are now always enforced by default except in a few safe areas.
-            * the locks() library call and the -l startup option will be removed in 1.0.14
-            * this has obviously had a negative effect on the language speed, but it is a fairly
-                minor reduction in most cases. (<1%). It might get worse in hot code depending 
-                on the nature of operations, but it was worth the trade-off for operational safety.
+        - examples:
 
-        * added btoi() and itob() lib calls for converting bool to/from int.
+     >> print 1..20
+        [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
 
-        * changed system() and Copper() calls to cause assignation of struct instead of string when
-            using the =| operator. This allows for a slightly safer and occasionally more readable
-            use of =|. Returned struct fields are .out (stdout), .err (stderr), .code (command status
-            code) and .okay (summarised status).
+     >> print  1..20 ?> "#>5 and #<15"
+        [6 7 8 9 10 11 12 13 14]
 
-          The last() and last_out() lib calls still work as before should you need them.
+     >> print  1..20 ?> "#>5 and #<15" -> "#*3"
+        [18 21 24 27 30 33 36 39 42]
 
-        * added HAS expression condition type to WHEN...ENDWHEN
-            - "HAS expression" clause causes the initial WHEN condition to be ignored and
-                a clause truth test is performed against the presented HAS expression instead.
-            - on falsehood, subsequent clauses are tested with the original condition,
-                except in the further HAS clauses of course.
-            - as before, WHEN clauses continue to match on a first come-first served basis.
-            - context help and manual still need updating for new clause type.
-            - the HAS clause essentially acts as our if..else if..else if..end method, but 
-                it also allows for some other alternative arrangements in conjunction with
-                IS, CONTAINS and OR clauses.
+     >> print ( 1..20 ?> "#>5 and #<15" -> "#*3" ) ?> "#>29"
+        [30 33 36 39 42]
 
-            - the HAS keyword name may yet change for an alternative if we can think of 
-                anything suitable.  Things like SATISFIES, ADMITS, MEETS, CONCURS and a few other 
-                alternative were just too wordy... and yes, I know we have CONTAINS, but
-                that one is up for barter too.
+     >> print ( (1..20 ?> "#>5 and #<15" -> "#*3") ?> "#>29") . avg
+        36
 
-        * added zip() and scan_left() list library functions.
-            - zip accepts arrays of bool, uint, int, float64, string and mixed (interface type)
-            - scan_left (currently) accepts arrays of int and float64
-            - zip will interleave the elements of two arrays
-            - scan_left performs a cumulative operation against each element of an array, with the resulting
-                value pushed into a new array. a seed value can be set to use against the head element.
+     >> print ( (1..20 ?> "#>5 and #<15" -> "#*3") ?> "#>29") . max
+        42
 
-        * added "t" (translate) mode for tr() call. it is still nowhere near as useful as the full tr tool, but
-            it covers most basic requirements. still could do with a negation and upper/lower option.
+     >> print list_float(70..90) -> "deg2rad(#).sin"
+        [0.9396926207859084 0.9455185755993167 0.9510565162951535 0.9563047559630354 0.9612616959383188 
+         0.9659258262890683 0.9702957262759966 0.9743700647852352 0.9781476007338056 0.981627183447664 
+         0.9848077530122081 0.9876883405951377 0.9902680687415703 0.9925461516413221 0.9945218953682734 
+         0.9961946980917454 0.9975640502598242 0.9986295347545738 0.9993908270190958 0.9998476951563913 1]
 
-        * added ternary (query) operator:
-            - syntax: ?? expr true_expr false_expr
-            -   i.e.: ?? (ternary if) expr (then) true_expr (else) false_expr
-            - see eg/nestdepth for example in near functional style
+    * you may also filter against simple assoc array types with string keys and value types of bool, int, uint, 
+        float and string. see eg/op_filter for basic example of assoc array filter and map.
 
-        * added s..e operator for generating an array range. value types of expressions
-            s and e must match each other, and the generated range is of the same value type.
+        PLEASE NOTE:
 
-            - s must be lower than e for all int types
+            These operators are very naive. They will consume a lot of memory if you let them. They do not
+            do anything clever with list manipulation, generators, yielding, comprehension or any other
+            single thing that would help lower resource cost. They just brute force over the lists.
 
-            - accepted types are currently int, int64 and uint.
-                - it would probably be a fairly simple task to extend this scheme.
+            This may improve in the future if heavily used. Likely not though. For now you can expect a
+            very long list of numbers (e.g. 100 million) to take a minute or two to filter or map. 
+            1 Million items will probably take a couple of seconds.
 
-            - manual still needs updating for the new operator.
-
-        * forced, combined example:
-
-            a=rand(50)
-            when a
-            is 10
-                println "a is 10"
-            has a in 1..9
-                println "a is less than 10"
-            has a>10
-                println "a is between 11 and 50"
-            or
-                println "some other value"
-            endwhen
-
-        * lexer - forced numbers to end when followed by 2 dots
-
-        * made WHEN condition optional ("when a" above could be "when"). the constant "true" is used when
-            the condition is missing.
-
-        * added basic filter and map operators:
-
-            - filter is ?> and map is ->
-            - both accept a list on the l.h.s and a string on the r.h.s
-            - both accept a # char in the string as a substitute for each l.h.s value
-            - both produce a list of the same type as input
-            - both accept lists of bool, uint, int or float
-            - filter has a slightly higher precedence than map
-            - reduction will probably not be implemented as it can be conveyed with 
-                a user-defined function or library call as with max() and avg() below.
-
-            - may be worth considering a way of auto-promoting larger filter and map operations
-                to parallel tasking by splitting the l.h.s. 
-                - would require some kind of local/remote pipeline and some resiliency on failed
-                    transfers and result gens. 
-                - this is pretty far out of scope for the language so it will probably gather dust.
-
-            - update: added support for arrays and maps of simple interface{} types.
-                - this means that array literals should now be supported too.
-
-            - examples:
-
-         >> print 1..20
-            [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
-
-         >> print  1..20 ?> "#>5 and #<15"
-            [6 7 8 9 10 11 12 13 14]
-
-         >> print  1..20 ?> "#>5 and #<15" -> "#*3"
-            [18 21 24 27 30 33 36 39 42]
-
-         >> print ( 1..20 ?> "#>5 and #<15" -> "#*3" ) ?> "#>29"
-            [30 33 36 39 42]
-
-         >> print ( (1..20 ?> "#>5 and #<15" -> "#*3") ?> "#>29") . avg
-            36
-
-         >> print ( (1..20 ?> "#>5 and #<15" -> "#*3") ?> "#>29") . max
-            42
-
-         >> print list_float(70..90) -> "deg2rad(#).sin"
-            [0.9396926207859084 0.9455185755993167 0.9510565162951535 0.9563047559630354 0.9612616959383188 
-             0.9659258262890683 0.9702957262759966 0.9743700647852352 0.9781476007338056 0.981627183447664 
-             0.9848077530122081 0.9876883405951377 0.9902680687415703 0.9925461516413221 0.9945218953682734 
-             0.9961946980917454 0.9975640502598242 0.9986295347545738 0.9993908270190958 0.9998476951563913 1]
-
-        * you may also filter against simple assoc array types with string keys and value types of bool, int, uint, 
-            float and string. see eg/op_filter for basic example of assoc array filter and map.
-
-            PLEASE NOTE:
-
-                These operators are very naive. They will consume a lot of memory if you let them. They do not
-                do anything clever with list manipulation, generators, yielding, comprehension or any other
-                single thing that would help lower resource cost. They just brute force over the lists.
-
-                This may improve in the future if heavily used. Likely not though. For now you can expect a
-                very long list of numbers (e.g. 100 million) to take a minute or two to filter or map. 
-                1 Million items will probably take a couple of seconds.
-
-                We will add support for []struct and map[string]struct later if required. (# would probably have 
-                to stand in for the variable name in the case of arrays. i.e. new_array = old_array ?> `#.name=="smith"`;
-                or something similar. not sure about syntax for map[string]struct yet, but would likely be the same! )
-
+            We will add support for []struct and map[string]struct later if required. (# would probably have 
+            to stand in for the variable name in the case of arrays. i.e. new_array = old_array ?> `#.name=="smith"`;
+            or something similar. not sure about syntax for map[string]struct yet, but would likely be the same! )
 
     * statement line calc (again!) (lex.go + actor.go)
         - improved again - remains to be seen if it is actually correct now. needs more test data.
         - disabled SourceStore allocation and use - shouldn't be needed now.
         - just using the .Original text from phrase for reporting now.
+        - i think the line calc in TEST or ASSERT may still need adjusting. will fix in 1.0.14.
 
     * release_id() on windows now returns "windows"
+
+
+    library features
+    ----------------
+
+    * added library calls:
+        - enum_names("enum_name")     : returns a list of labels for a given enumeration
+        - enum_all("enum_name")       : returns a list of values for a given enumeration
+
+    * added library call permit("flag_name",bool) to amend strictness of some run-time behaviours:
+        - permit("uninit",bool)         : uninitialised variable use warning.
+        - permit("dupmod",bool)         : duplicate module import warning.
+        - permit("exitquiet",bool)      : smaller exit error messages
+
+    * added capture_shell(bool) call. True (default) ensures output of commands in parent shell are captured.
+        - false will disable stdout capture so that commands such as ssh will operate correctly.
+        - this is currently limited to parent shell { coproc(false) } activity.
+        - in the normal child shell output will always be captured.
+
+    * added json_query() call. this is just a wrapper around gojq for simple queries:
+        https://github.com/itchyny/gojq
+
+        - pretty great software - saved me a ton of work! :)
+        - will have to see what impact this has on binary size, performance, etc before
+            deciding if we should just generate a more basic version of our own. I really
+            would like to keep this package in place though. it's going to help a lot when
+            using this language with cloud-based tooling (aws and similar).
+
+    * added btoi() and itob() lib calls for converting bool to/from int.
+
+    * added zip() and scan_left() list library functions.
+        - zip accepts arrays of bool, uint, int, float64, string and mixed (interface type)
+        - scan_left (currently) accepts arrays of int and float64
+        - zip will interleave the elements of two arrays
+        - scan_left performs a cumulative operation against each element of an array, with the resulting
+            value pushed into a new array. a seed value can be set to use against the head element.
 
 
 1.0.12  new model for identifier binding.

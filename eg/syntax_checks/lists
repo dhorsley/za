@@ -38,10 +38,10 @@ println "push (front of q) -> ",q,"\n"
 println "w                 -> ",w
 println "concat(q,w)       -> ",concat(q,w),"\n"
 
-println "pop (of w)        -> ",pop("w")
+println "pop (of w)        -> ",pop(ref w)
 println "new w             &> ",w, "\n"
 
-println "esplit(q+w)@10   -> ",esplit(concat(q,w),"a","b",10)
+println "esplit(q+w)@10   -> ",esplit(concat(q,w), ref a, ref b, 10)
 println "            a> ",a
 println "            b> ",b,"\n"
 

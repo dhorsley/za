@@ -1,4 +1,4 @@
-//+build !test
+// +build !test
 
 package main
 
@@ -9,7 +9,6 @@ import (
     "io/ioutil"
     "os"
     "unicode/utf8"
-    "reflect"
     "net/http" // for key()
     "regexp"
     "runtime"
@@ -63,7 +62,7 @@ func ulen(args interface{}) (int,error) {
     case []interface{}:
         return len(args),nil
     }
-    return -1,errors.New(sf("Unknown type '%T'",args))
+    return -1,errors.New(sf("Cannot determine length of unknown type '%T' in len()",args))
 }
 
 func getMemUsage() (uint64,uint64) {
@@ -107,26 +106,27 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","locks", "coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","getrow","getcol","unmap","await","getmem","zainfo","get_cores","permit","wrap",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
+        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit","wrap",
         "enum_names","enum_all",
     }
 
 
     slhelp["enum_names"] = LibHelp{in: "enum", out: "[]string", action: "returns the name labels associated with enumeration [#i1]enum[#i0]"}
     stdlib["enum_names"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="string" { return nil, errors.New("enum_names requires a valid enum name argument") }
+        if ok,err:=expect_args("enum_names",args,1,"1","string"); !ok { return nil,err }
         return enum_names(args[0].(string)),nil
     }
 
     slhelp["enum_all"] = LibHelp{in: "enum", out: "[]mixed", action: "returns the values associated with enumeration [#i1]enum[#i0]"}
     stdlib["enum_all"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="string" { return nil, errors.New("enum_all requires a valid enum name argument") }
+        if ok,err:=expect_args("enum_all",args,1,"1","string"); !ok { return nil,err }
         return enum_all(args[0].(string)),nil
     }
 
     slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     stdlib["zainfo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("zainfo",args,0); !ok { return nil,err }
         v,_:=vget(0,"@version")
         l,_:=vget(0,"@language")
         c,_:=vget(0,"@ct_info")
@@ -135,11 +135,15 @@ func buildInternalLib() {
 
     slhelp["utf8supported"] = LibHelp{in: "", out: "bool", action: "Is the current language utf-8 compliant? This only works if the environmental variable LANG is available."}
     stdlib["utf8supported"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("utf8supported",args,0); !ok { return nil,err }
         return str.HasSuffix(str.ToLower(os.Getenv("LANG")),".utf-8") , nil
     }
 
     slhelp["wininfo"] = LibHelp{in: "", out: "int", action: "(windows only) Returns the console geometry."}
     stdlib["wininfo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("wininfo",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
         hnd:=1
         if len(args)==1 {
             switch args[0].(type) {
@@ -150,93 +154,88 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["getmem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
-    stdlib["getmem"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    slhelp["get_mem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
+    stdlib["get_mem"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("get_mem",args,0); !ok { return nil,err }
         a,s:=getMemUsage()
-        return struct{alloc uint64;system uint64}{a/1024/1024,s/1024/1024},nil 
+        return struct{alloc uint64;system uint64}{a/1024/1024,s/1024/1024},nil
     }
 
     slhelp["get_cores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
     stdlib["get_cores"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("get_cores",args,0); !ok { return nil,err }
         return runtime.NumCPU(),nil
     }
 
     slhelp["term_h"] = LibHelp{in: "", out: "int", action: "Returns the current terminal height."}
     stdlib["term_h"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("term_h",args,0); !ok { return nil,err }
         return MH, nil
     }
 
     slhelp["term_w"] = LibHelp{in: "", out: "int", action: "Returns the current terminal width."}
     stdlib["term_w"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("term_w",args,0); !ok { return nil,err }
         return MW, nil
     }
 
     slhelp["pane_h"] = LibHelp{in: "", out: "int", action: "Returns the current pane height."}
     stdlib["pane_h"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pane_h",args,0); !ok { return nil,err }
         return panes[currentpane].h, nil
     }
 
     slhelp["pane_w"] = LibHelp{in: "", out: "int", action: "Returns the current pane width."}
     stdlib["pane_w"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pane_w",args,0); !ok { return nil,err }
         return panes[currentpane].w, nil
     }
 
-    slhelp["system"] = LibHelp{in: "string,bool", out: "string", action: "Executes command [#i1]string[#i0] and returns (bool==false) or displays (bool==true) the output."}
+    slhelp["system"] = LibHelp{in: "string[,bool]", out: "string", action: "Executes command [#i1]string[#i0] and returns a command structure (bool==false) or displays (bool==true) the output."}
     stdlib["system"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("system",args,2,
+            "2","string","bool",
+            "1","string"); !ok { return nil,err }
 
-        cmd:=""
-        display:=false
-
-        if len(args)>0 {
-            switch args[0].(type) {
-            case string:
-                cmd=args[0].(string)
-            }
+        cmd:=args[0].(string)
+        if len(args)==2 && args[1]==true {
+            system(cmd,true)
+            return nil,nil
         }
 
-        if len(args)>1 {
-            switch args[1].(type) {
-            case bool:
-                display=args[1].(bool)
-            }
-        }
-
-        return system(cmd,display),nil
-
+        return system(cmd,false),nil
     }
 
     slhelp["argv"] = LibHelp{in: "", out: "[]string", action: "CLI arguments as an array."}
     stdlib["argv"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("argv",args,0); !ok { return nil,err }
         return cmdargs, nil
     }
 
     slhelp["argc"] = LibHelp{in: "", out: "int", action: "CLI argument count."}
     stdlib["argc"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("argc",args,0); !ok { return nil,err }
         return len(cmdargs), nil
     }
 
     slhelp["eval"] = LibHelp{in: "string", out: "[mixed]", action: "evaluate expression in [#i1]string[#i0]."}
     stdlib["eval"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            switch args[0].(type) {
-            case string:
-                p:=&leparser{}
-                ret, err = ev(p,evalfs, args[0].(string))
-                return ret, err
-            }
-        }
-        return nil, nil
+        if ok,err:=expect_args("eval",args,1,"1","string"); !ok { return nil,err }
+        p:=&leparser{}
+        return ev(p,evalfs, args[0].(string))
     }
 
-    slhelp["getrow"] = LibHelp{in: "", out: "int", action: "reads the row position of console text cursor."}
-    stdlib["getrow"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    slhelp["get_row"] = LibHelp{in: "", out: "int", action: "reads the row position of console text cursor."}
+    stdlib["get_row"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("get_row",args,0); !ok { return nil,err }
         r,_:=GetCursorPos()
         if runtime.GOOS=="windows" { r++ }
         return r, nil
     }
 
-    slhelp["getcol"] = LibHelp{in: "", out: "int", action: "reads the column position of console text cursor."}
-    stdlib["getcol"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    slhelp["get_col"] = LibHelp{in: "", out: "int", action: "reads the column position of console text cursor."}
+    stdlib["get_col"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("get_col",args,0); !ok { return nil,err }
         _,c:=GetCursorPos()
         if runtime.GOOS=="windows" { c++ }
         return c, nil
@@ -244,41 +243,25 @@ func buildInternalLib() {
 
     slhelp["echo"] = LibHelp{in: "[bool[,mask]]", out: "bool", action: "Optionally, enable or disable local echo. Optionally, set the mask character to be used during input. Current visibility state is returned."}
     stdlib["echo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)>2 {
-            return nil,errors.New("incorrect argument count for echo().")
-        }
+        if ok,err:=expect_args("echo",args,2,
+        "2","bool","string",
+        "1","bool"); !ok { return nil,err }
 
         se:=true
-        if len(args)>0 {
-            switch args[0].(type) {
-            case bool:
-                if args[0].(bool) {
-                    se=true
-                    vset(0, "@echo", true)
-                } else {
-                    se=false
-                    vset(0, "@echo", false)
-                }
-            default:
-                return nil,errors.New("echo() accepts a boolean value only.")
-            }
+        if args[0].(bool) {
+            vset(0, "@echo", true)
+        } else {
+            se=false
+            vset(0, "@echo", false)
         }
 
         mask,_:=vget(0,"@echomask")
         if len(args)>1 {
-            switch args[1].(type) {
-            case string:
-                mask=args[1].(string)
-            default:
-                return nil,errors.New("echo() accepts a string value for mask.")
-            }
+            mask=args[1].(string)
         }
 
-        if len(args)>0 {
-            setEcho(se)
-            vset(0,"@echomask", mask)
-        }
-
+        setEcho(se)
+        vset(0,"@echomask", mask)
         v,_:=vget(0,"@echo")
 
         return v,nil
@@ -286,177 +269,122 @@ func buildInternalLib() {
 
     slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports."}
     stdlib["permit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)==2 {
-            switch args[0].(type) {
-            case string:
-                switch str.ToLower(args[0].(string)) {
-                case "uninit":
-                    switch args[1].(type) {
-                    case bool:
-                        lastlock.Lock()
-                        permit_uninit=args[1].(bool)
-                        lastlock.Unlock()
-                        return nil,nil
-                    default:
-                        return nil,errors.New("permit(uninit) accepts a boolean value only.")
-                    }
-                case "dupmod":
-                    switch args[1].(type) {
-                    case bool:
-                        lastlock.Lock()
-                        permit_dupmod=args[1].(bool)
-                        lastlock.Unlock()
-                        return nil,nil
-                    default:
-                        return nil,errors.New("permit(dupmod) accepts a boolean value only.")
-                    }
-                case "exitquiet":
-                    switch args[1].(type) {
-                    case bool:
-                        lastlock.Lock()
-                        permit_exitquiet=args[1].(bool)
-                        lastlock.Unlock()
-                        return nil,nil
-                    default:
-                        return nil,errors.New("permit(exitquiet) accepts a boolean value only.")
-                    }
-                }
-                return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
+        if ok,err:=expect_args("permit",args,4,
+        "2","string","bool",
+        "2","string","int",
+        "2","string","float64",
+        "2","string","string"); !ok { return nil,err }
+
+        lastlock.Lock()
+        defer lastlock.Unlock()
+
+        switch str.ToLower(args[0].(string)) {
+        case "uninit":
+            switch args[1].(type) {
+            case bool:
+                permit_uninit=args[1].(bool)
+                return nil,nil
             default:
-                return nil,errors.New("permit() argument 1 accepts a string value only.")
+                return nil,errors.New("permit(uninit) accepts a boolean value only.")
+            }
+        case "dupmod":
+            switch args[1].(type) {
+            case bool:
+                permit_dupmod=args[1].(bool)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(dupmod) accepts a boolean value only.")
+            }
+        case "exitquiet":
+            switch args[1].(type) {
+            case bool:
+                permit_exitquiet=args[1].(bool)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(exitquiet) accepts a boolean value only.")
             }
         }
-        return nil,nil
+        return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
     }
 
     slhelp["wrap"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable line wrap in panes. Returns the previous state."}
     stdlib["wrap"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("wrap",args,1,"1","bool"); !ok { return nil,err }
         lastwrap:=lineWrap
-        if len(args)==1 {
-            switch args[0].(type) {
-            case bool:
-                lastlock.Lock()
-                lineWrap=args[0].(bool)
-                lastlock.Unlock()
-            default:
-                return nil,errors.New("wrap() accepts a boolean value only.")
-            }
-            setupAnsiPalette()
-        }
+        lastlock.Lock()
+        lineWrap=args[0].(bool)
+        lastlock.Unlock()
         return lastwrap,nil
     }
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
     stdlib["ansi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("ansi",args,1,"1","bool"); !ok { return nil,err }
         lastam:=ansiMode
-        if len(args)==1 {
-            switch args[0].(type) {
-            case bool:
-                lastlock.Lock()
-                ansiMode=args[0].(bool)
-                lastlock.Unlock()
-            default:
-                return nil,errors.New("ansi() accepts a boolean value only.")
-            }
-            setupAnsiPalette()
-        }
+        lastlock.Lock()
+        ansiMode=args[0].(bool)
+        lastlock.Unlock()
+        setupAnsiPalette()
         return lastam,nil
     }
 
     slhelp["interpol"] = LibHelp{in: "bool", out: "", action: "Enable (default) or disable string interpolation at runtime. This is useful for ensuring that braced phrases remain unmolested."}
     stdlib["interpol"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 {
-            return nil,errors.New("interpol() accepts a boolean value only.")
-        }
-        switch args[0].(type) {
-        case bool:
-            lastlock.Lock()
-            no_interpolation=!args[0].(bool)
-            lastlock.Unlock()
-        default:
-            return nil,errors.New("interpol() accepts a boolean value only.")
-        }
+        if ok,err:=expect_args("interpol",args,1,"1","bool"); !ok { return nil,err }
+        lastlock.Lock()
+        no_interpolation=!args[0].(bool)
+        lastlock.Unlock()
         return nil, nil
     }
 
     slhelp["coproc"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should execute in the coprocess (true) or the current Za process (false)."}
     stdlib["coproc"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 {
-            return nil,errors.New("coproc() accepts a boolean value only.")
-        }
-        switch args[0].(type) {
-        case bool:
-            vset(0,"@runInParent",!args[0].(bool))
-        default:
-            return nil,errors.New("coproc() accepts a boolean value only.")
-        }
+        if ok,err:=expect_args("bool",args,1,"1","bool"); !ok { return nil,err }
+        vset(0,"@runInParent",!args[0].(bool))
         return nil, nil
     }
 
     slhelp["capture_shell"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should capture output."}
     stdlib["capture_shell"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 {
-            return nil,errors.New("capture_shell() accepts a boolean value only.")
-        }
-        switch args[0].(type) {
-        case bool:
-            vset(0,"@commandCapture",args[0].(bool))
-        default:
-            return nil,errors.New("capture_shell() accepts a boolean value only.")
-        }
-        return nil, nil
-    }
-
-    slhelp["locks"] = LibHelp{in: "bool", out: "", action: "(deprecated) Enable or disable locks at runtime."}
-    stdlib["locks"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 {
-            return nil,errors.New("locks() accepts a boolean value only.")
-        }
-        switch args[0].(type) {
-        case bool:
-            locks(args[0].(bool))
-        default:
-            return nil,errors.New("locks() accepts a boolean value only.")
-        }
+        if ok,err:=expect_args("capture_shell",args,1,"1","bool"); !ok { return nil,err }
+        vset(0,"@commandCapture",args[0].(bool))
         return nil, nil
     }
 
     slhelp["funcref"] = LibHelp{in: "name", out: "func_ref_num", action: "Find a function handle."}
     stdlib["funcref"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 || sf("%T",args[0])!="string" { return nil,errors.New("Bad arguments provided to funcref()") }
+        if ok,err:=expect_args("funcref",args,1,"1","string"); !ok { return nil,err }
         lmv,_:=fnlookup.lmget(args[0].(string))
         return lmv, nil
     }
 
     slhelp["thisfunc"] = LibHelp{in: "", out: "string", action: "Find this function's name."}
     stdlib["thisfunc"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("thisfunc",args,0); !ok { return nil,err }
         nv,_:=numlookup.lmget(evalfs)
         return nv, nil
     }
 
     slhelp["thisref"] = LibHelp{in: "", out: "func_ref_num", action: "Find this function's handle."}
     stdlib["thisref"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("thisref",args,0); !ok { return nil,err }
         i,_:=GetAsInt(evalfs)
         return i,nil
     }
 
     slhelp["tco"] = LibHelp{in: "", out: "bool", action: "are we currently in a tail call loop?"}
     stdlib["tco"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("tco",args,0); !ok { return nil,err }
         b,_:=vget(evalfs,"@in_tco")
         return b.(bool), nil
     }
 
     slhelp["local"] = LibHelp{in: "string", out: "value", action: "Return this local variable's value."}
     stdlib["local"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        var name string
-        if len(args) == 1 {
-            switch args[0].(type) {
-            case string:
-                name = args[0].(string)
-                v, _ := vget(evalfs, name)
-                return v, nil
-            }
-        }
+        if ok,err:=expect_args("local",args,1,"1","string"); !ok { return nil,err }
+        name := args[0].(string)
+        v, found := vget(evalfs, name)
+        if found { return v, nil }
         return nil, errors.New(sf("'%v' does not exist!", name))
     }
 
@@ -470,90 +398,44 @@ func buildInternalLib() {
     }
 */
 
-    slhelp["len"] = LibHelp{in: "string", out: "integer", action: "Returns length of string or list."}
+    slhelp["len"] = LibHelp{in: "various_types", out: "integer", action: "Returns length of string or list."}
     stdlib["len"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            return ulen(args[0])
-        }
-        return -1,errors.New("Bad argument in len()")
+        if len(args)==1 { return ulen(args[0]) }
+        return nil,errors.New("Bad argument in len()")
+        /* @note: re-introduce this block (and comment line above) if len has issues with types...
+        if ok,err:=expect_args("len",args,18,
+            "1","nil",
+            "1","string",
+            "1","[]interface {}",
+            "1","[]string",
+            "1","[]int",
+            "1","[]int64",
+            "1","[]uint8",
+            "1","[]float64",
+            "1","[]bool",
+            "1","map[string]float64",
+            "1","map[string]string",
+            "1","map[string]int",
+            "1","map[string]bool",
+            "1","map[string]int64",
+            "1","map[string]uint8",
+            "1","[]map[string]interface {}",
+            "1","map[string]interface {}",
+            "1","[]interface {}"); !ok { return nil,err }
+        return ulen(args[0])
+        */
     }
 
-    // may soon be unnecessary (eval changes)
-    slhelp["globlen"] = LibHelp{in: "name", out: "int", action: "Get the length of a global variable. Returns -1 on not found or error."}
-    stdlib["globlen"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            switch args[0].(type) {
-            case string:
-
-                inp :=interpolate(evalfs,args[0].(string))
-
-                p:=&leparser{}
-
-                globlock.RLock()
-                res,err:=ev(p,globalaccess,inp)
-                globlock.RUnlock()
-
-                if err==nil {
-                    return ulen(res)
-                }
-
-            default:
-                return -1,errors.New(sf("Global variable must be expressed as a string."))
-            }
-        }
-        return -1, errors.New("Bad args to globlen()")
-    }
-
-
-    // may soon be unnecessary (eval changes)
-    slhelp["getglob"] = LibHelp{in: "name", out: "mixed", action: "Read a global variable."}
-    stdlib["getglob"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            switch args[0].(type) {
-            case string:
-
-                inp :=interpolate(evalfs,args[0].(string))
-
-                p:=&leparser{}
-
-                globlock.RLock()
-                res,err:=ev(p,globalaccess,inp)
-                globlock.RUnlock()
-
-                if err==nil {
-                    return res,nil
-                } else {
-                    return nil,errors.New(sf("Bad evaluation of '%s'",args[0].(string)))
-                }
-            default:
-                return nil,nil
-            }
-        }
-        return nil, errors.New("Bad args to getglob()")
-    }
-
-
-    slhelp["await"] = LibHelp{in: "handle_map,all_flag", out: "[]result", action: "Checks for async completion."}
+    slhelp["await"] = LibHelp{in: "handle_map[,all_flag]", out: "[]result", action: "Checks for async completion."}
     stdlib["await"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("await",args,2,
+            "2","map[string]interface {}","bool",
+            "1","map[string]interface {}"); !ok { return nil,err }
 
-        if len(args)==0 || len(args)>2 {
-            return nil,errors.New("bad argument count in await()")
-        }
-
-        var handleMap map[string]interface{}
-
-        if len(args)>0 {
-            if sf("%T",args[0])!="map[string]interface {}" {
-                return nil,errors.New("argument 1 must be a map")
-            }
-            handleMap=args[0].(map[string]interface{})
-        }
+        handleMap:=args[0].(map[string]interface{})
 
         waitForAll:=false
         if len(args)>1 {
-            if sf("%T",args[1])!="bool" {
-                return nil,errors.New("argument 2 must be a boolean if present")
-            }
             waitForAll=args[1].(bool)
         }
 
@@ -583,12 +465,8 @@ func buildInternalLib() {
 
     slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key. Returns true on successful removal."}
     stdlib["unmap"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args) != 2 {
-            return false, errors.New("bad argument count in unmap()")
-        }
-        if reflect.TypeOf(args[0]).Name() != "string" || reflect.TypeOf(args[1]).Name() != "string" {
-            return false, errors.New("arguments to unmap() must be strings.")
-        }
+        if ok,err:=expect_args("unmap",args,1,"2","string","string"); !ok { return nil,err }
+        // @note: mut candidate
 
         var v interface{}
         var found bool
@@ -605,14 +483,8 @@ func buildInternalLib() {
 
     slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]?"}
     stdlib["key"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
-        if len(args) != 2 {
-            return false, errors.New("bad argument count in key()")
-        }
-
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
-            return false, errors.New("arguments to key() must be strings.")
-        }
+        if ok,err:=expect_args("key",args,1,"2","string","string"); !ok { return nil,err }
+        // @note: ref candidate
 
         var v interface{}
         var found bool
@@ -623,6 +495,7 @@ func buildInternalLib() {
 
         key:=interpolate(evalfs,args[1].(string))
 
+        // @todo: check if other built-in types are needed here!
         switch v:=v.(type) {
         case http.Header:
             if _, found = v[key];   found { return true, nil }
@@ -646,17 +519,10 @@ func buildInternalLib() {
         return false, nil
     }
 
-    // may soon be unnecessary (eval changes)
+    // may soon be unnecessary (if ref added)
     slhelp["globkey"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
     stdlib["globkey"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
-        if len(args) != 2 {
-            return false, errors.New("bad argument count in globkey()")
-        }
-
-        if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
-            return false, errors.New("arguments to globkey() must be strings.")
-        }
+        if ok,err:=expect_args("globkey",args,1,"2","string","string"); !ok { return nil,err }
 
         var v interface{}
         var found bool
@@ -669,6 +535,7 @@ func buildInternalLib() {
 
         key:=interpolate(evalfs,args[1].(string))
 
+        // @todo: other built-in types needed here?
         switch v.(type) {
         case map[string]http.Header:
             if _, found = v.(http.Header)[key];   found { return true, nil }
@@ -694,6 +561,7 @@ func buildInternalLib() {
 
     slhelp["last"] = LibHelp{in: "", out: "int", action: "Returns the last received error code from a co-process command."}
     stdlib["last"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("last",args,0); !ok { return nil,err }
         v, found := vget(0, "@last")
         if found {
             i, bool_err := GetAsInt(v.(string))
@@ -707,12 +575,14 @@ func buildInternalLib() {
 
     slhelp["execpath"] = LibHelp{in: "", out: "string", action: "Returns the initial working directory."}
     stdlib["execpath"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("execpath",args,0); !ok { return nil,err }
         v, _ := vget(0, "@execpath")
         return string(v.(string)), err
     }
 
     slhelp["last_out"] = LibHelp{in: "", out: "string", action: "Returns the last received error text from the co-process."}
     stdlib["last_out"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("last_out",args,0); !ok { return nil,err }
         v, found := vget(0, "@last_out")
         if found {
             return string(v.([]byte)), err
@@ -722,35 +592,37 @@ func buildInternalLib() {
 
     slhelp["zsh_version"] = LibHelp{in: "", out: "string", action: "Returns the zsh version string if present."}
     stdlib["zsh_version"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("zsh_version",args,0); !ok { return nil,err }
         v, _ := vget(0, "@zsh_version")
         return v.(string), err
     }
 
     slhelp["bash_version"] = LibHelp{in: "", out: "string", action: "Returns the full release string of the Bash co-process."}
     stdlib["bash_version"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("bash_version",args,0); !ok { return nil,err }
         v, _ := vget(0, "@bash_version")
         return v.(string), err
     }
 
     slhelp["bash_versinfo"] = LibHelp{in: "", out: "string", action: "Returns the major version number of the Bash co-process."}
     stdlib["bash_versinfo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("bash_versinfo",args,0); !ok { return nil,err }
         v, _ := vget(0, "@bash_versinfo")
         return v.(string), err
     }
 
-    slhelp["keypress"] = LibHelp{in: "timeout_μs", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
+    slhelp["keypress"] = LibHelp{in: "[timeout_μs]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
     stdlib["keypress"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
+        if ok,err:=expect_args("keypress",args,1,
+        "1","int",
+        "0"); !ok { return nil,err }
         timeo := int64(0)
         if len(args) == 1 {
-
             switch args[0].(type) {
             case string, int:
                 ttmp, terr := GetAsInt(args[0])
                 timeo = int64(ttmp)
-                if terr {
-                    return "", errors.New("Invalid timeout value.")
-                }
+                if terr { return "", errors.New("Invalid timeout value.") }
             }
         }
 
@@ -767,40 +639,40 @@ func buildInternalLib() {
 
     slhelp["cursoroff"] = LibHelp{in: "", out: "", action: "Disables cursor display."}
     stdlib["cursoroff"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("cursoroff",args,0); !ok { return nil,err }
         hideCursor()
         return nil, nil
     }
 
     slhelp["cursorx"] = LibHelp{in: "n", out: "", action: "Moves cursor to horizontal position [#i1]n[#i0]."}
     stdlib["cursorx"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)==1 {
-            switch args[0].(type) {
-            case int:
-                cursorX(args[0].(int))
-            }
-        }
+        if ok,err:=expect_args("cursorx",args,1,"1","int"); !ok { return nil,err }
+        cursorX(args[0].(int))
         return nil, nil
     }
 
     slhelp["cursoron"] = LibHelp{in: "", out: "", action: "Enables cursor display."}
     stdlib["cursoron"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("cursoron",args,0); !ok { return nil,err }
         showCursor()
         return nil, nil
     }
 
     slhelp["ppid"] = LibHelp{in: "", out: "int", action: "Return the pid of parent process."}
     stdlib["ppid"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("ppid",args,0); !ok { return nil,err }
         return os.Getppid(), nil
     }
 
     slhelp["pid"] = LibHelp{in: "", out: "int", action: "Return the pid of the current process."}
     stdlib["pid"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pid",args,0); !ok { return nil,err }
         return os.Getpid(), nil
     }
 
     slhelp["clear_line"] = LibHelp{in: "row,col", out: "", action: "Clear to the end of the line, starting at row,col in the current pane."}
     stdlib["clear_line"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 { return nil,errors.New("Bad arguments provided to clear_line()") }
+        if ok,err:=expect_args("clear_line",args,1,"2","int","int"); !ok { return nil,err }
         atlock.Lock()
         row, rerr := GetAsInt(args[0])
         col, cerr := GetAsInt(args[1])
@@ -813,36 +685,42 @@ func buildInternalLib() {
 
     slhelp["user"] = LibHelp{in: "", out: "string", action: "Returns the parent user of the Bash co-process."}
     stdlib["user"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("user",args,0); !ok { return nil,err }
         v, _ := vget(0, "@user")
         return v.(string), err
     }
 
     slhelp["os"] = LibHelp{in: "", out: "string", action: "Returns the kernel version name as reported by the coprocess."}
     stdlib["os"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("os",args,0); !ok { return nil,err }
         v, _ := vget(0, "@os")
         return v.(string), err
     }
 
     slhelp["home"] = LibHelp{in: "", out: "string", action: "Returns the home directory of the user that launched Za as reported by the coprocess."}
     stdlib["home"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("home",args,0); !ok { return nil,err }
         v, _ := vget(0, "@home")
         return v.(string), err
     }
 
     slhelp["lang"] = LibHelp{in: "", out: "string", action: "Returns the locale name used within the coprocess."}
     stdlib["lang"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("lang",args,0); !ok { return nil,err }
         v, _ := vget(0, "@lang")
         return v.(string), err
     }
 
     slhelp["release_name"] = LibHelp{in: "", out: "string", action: "Returns the OS release name as reported by the coprocess."}
     stdlib["release_name"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("release_name",args,0); !ok { return nil,err }
         v, _ := vget(0, "@release_name")
         return v.(string), err
     }
 
     slhelp["hostname"] = LibHelp{in: "", out: "string", action: "Returns the current hostname."}
     stdlib["hostname"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("hostname",args,0); !ok { return nil,err }
         z, _ := os.Hostname()
         vset(0, "@hostname", z)
         return z, err
@@ -850,10 +728,7 @@ func buildInternalLib() {
 
     slhelp["tokens"] = LibHelp{in: "string", out: "struct", action: "Returns a structure containing a list of tokens ([#i1].tokens[#i0]) in a string and a list ([#i1].types[#i0]) of token types."}
     stdlib["tokens"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)==0 { return []string{},errors.New("No argument provided to tokens()") }
-        if sf("%T",args[0])!="string" {
-            return []string{},errors.New("Invalid argument provided to tokens()")
-        }
+        if ok,err:=expect_args("tokens",args,1,"1","string"); !ok { return nil,err }
         tt := Error
         var toks []string
         var toktypes []string
@@ -875,30 +750,35 @@ func buildInternalLib() {
 
     slhelp["release_version"] = LibHelp{in: "", out: "string", action: "Returns the OS version number."}
     stdlib["release_version"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("release_version",args,0); !ok { return nil,err }
         v, _ := vget(0, "@release_version")
         return v.(string), err
     }
 
     slhelp["release_id"] = LibHelp{in: "", out: "string", action: "Returns the /etc derived release name."}
     stdlib["release_id"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("release_id",args,0); !ok { return nil,err }
         v, _ := vget(0, "@release_id")
         return v.(string), err
     }
 
     slhelp["winterm"] = LibHelp{in: "", out: "bool", action: "Is this a WSL terminal?"}
     stdlib["winterm"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("winterm",args,0); !ok { return nil,err }
         v, _ := vget(0, "@winterm")
         return v.(bool), err
     }
 
     slhelp["commands"] = LibHelp{in: "", out: "", action: "Displays a list of keywords."}
     stdlib["commands"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("commands",args,0); !ok { return nil,err }
         commands()
         return nil, nil
     }
 
     slhelp["func_inputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function inputs."}
     stdlib["func_inputs"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("func_inputs",args,0); !ok { return nil,err }
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.in
@@ -908,6 +788,7 @@ func buildInternalLib() {
 
     slhelp["func_outputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function outputs."}
     stdlib["func_outputs"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("func_outputs",args,0); !ok { return nil,err }
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.out
@@ -917,6 +798,7 @@ func buildInternalLib() {
 
     slhelp["func_descriptions"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function descriptions."}
     stdlib["func_descriptions"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("func_descriptions",args,0); !ok { return nil,err }
         var fm = make(map[string]string)
         for k,i:=range slhelp {
             fm[k]=i.action
@@ -926,34 +808,27 @@ func buildInternalLib() {
 
     slhelp["func_categories"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library functions."}
     stdlib["func_categories"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("func_categories",args,0); !ok { return nil,err }
         return categories,nil
     }
 
     slhelp["funcs"] = LibHelp{in: "[partial_match[,bool_return]]", out: "string", action: "Returns a list of standard library functions."}
     stdlib["funcs"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("funcs",args,3,
+        "2","string","bool",
+        "1","string",
+        "0"); !ok { return nil,err }
 
         if len(args) == 0 {
             args = append(args, "")
         }
-        if len(args) > 2 {
-            return false, nil
-        }
 
         retstring:=false
-        if len(args)==2 {
-            switch args[1].(type) {
-            case bool:
-                retstring=args[1].(bool)
-            default:
-                return "",errors.New("Argument 2 in funcs() must be a boolean if present.")
-            }
-        }
+        if len(args)==2 { retstring=args[1].(bool) }
 
         regex := ""
         funclist := ""
-        if args[0].(string) != "" {
-            regex = args[0].(string)
-        }
+        if args[0].(string) != "" { regex = args[0].(string) }
 
         // sort the keys
         var keys []string
@@ -963,7 +838,6 @@ func buildInternalLib() {
         for _,k := range keys {
         c := k
         v := categories[k]
-        // for c, v := range categories {
             matchList := ""
             foundOne := false
             for _, q := range v {
@@ -1001,15 +875,13 @@ func buildInternalLib() {
     // @todo: review this. we probably want to only have this available in interactive mode and then only for global scope.
     slhelp["dump"] = LibHelp{in: "function_name", out: "", action: "Displays variable list, or a specific entry."}
     stdlib["dump"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("dump",args,2,
+        "1","string",
+        "0"); !ok { return nil,err }
         s := ""
         if len(args) == 0 { s="global" }
         if len(args) == 1 {
-            switch args[0].(type) {
-            case string:
-                s = args[0].(string)
-            default:
-                return false, err
-            }
+            s = args[0].(string)
         }
         if s != "" {
             lmv,found:=fnlookup.lmget(s)
@@ -1030,18 +902,21 @@ func buildInternalLib() {
 
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}
     stdlib["has_shell"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("has_shell",args,0); !ok { return nil,err }
         v, _ := vget(0,"@noshell")
         return !v.(bool), nil
     }
 
     slhelp["shellpid"] = LibHelp{in: "", out: "int", action: "Get process ID of the launched child co-process."}
     stdlib["shellpid"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("shellpid",args,0); !ok { return nil,err }
         v, _ := vget(0,"@shellpid")
         return v, nil
     }
 
     slhelp["clktck"] = LibHelp{in: "", out: "int", action: "Get clock ticks from aux file."}
     stdlib["clktck"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("clktck",args,0); !ok { return nil,err }
         return getclktck(), nil
     }
 
@@ -1077,3 +952,4 @@ func getclktck() int {
     }
     return int(_SYSTEM_CLK_TCK)
 }
+

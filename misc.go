@@ -9,35 +9,6 @@ import (
 )
 
 
-var openLocks int
-
-// deprecated: just locking everything now.
-
-// enable or disable global locking
-func locks(b bool) {
-
-    globlock.Lock()
-
-    if b {
-        openLocks++
-        lockSafety=true
-        // pf("[ol] increased to %d\n",openLocks)
-    }
-    if !b && openLocks>0 {
-        openLocks--
-        // pf("[ol] reduced to %d\n",openLocks)
-    }
-
-    if openLocks==0 && !b {
-        lockSafety=false
-        // pf("[ol] locks off\n")
-    }
-
-    globlock.Unlock()
-
-}
-
-
 // does file exist?
 func fexists(fp string) bool {
     f,err:=os.Stat(fp)
@@ -55,46 +26,6 @@ func getReportFunctionName(ifs uint32, full bool) string {
     return nl
 }
 
-/*
-func ShowSource(funcInstance string,start int,end int) bool {
-
-    var funcInstanceId uint32
-    var present bool
-
-    // return if func instance doesn't exist
-    if funcInstanceId, present = fnlookup.lmget(funcInstance); !present {
-        return false
-    }
-
-    if funcInstanceId < uint32(len(functionspaces)) {
-
-        var baseId uint32
-
-        // convert instance to source function
-        funcName := getReportFunctionName(funcInstanceId,false)    //      -> name of failing func converted to base name
-        if funcInstanceId==2 {
-            baseId=1
-        } else {
-            baseId,_    = fnlookup.lmget(funcName)                 //      -> id of base funcs source space 
-        }
-
-        if start<0 { start=0 }
-        max:=len(functionspaces[baseId])-1
-        if end+1>max { end=max-1 }
-
-        strOut:="[#CTE]"
-
-        for q := range functionspaces[baseId][start:end+1] {
-            strOut = strOut + sf("%5d : %s\n[#CTE]", start+q, sourceStore[baseId][start+q])
-        }
-
-        strOut = sf("\n[#CTE]%s(%v)\n[#CTE]", funcName, str.Join(functionArgs[baseId].args, ",")) + strOut
-        pf(strOut)
-
-    }
-    return true
-}
-*/
 
 func showCallChain(base string) {
 
@@ -188,9 +119,11 @@ func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string
 }
 
 func version() {
-	pf(spf(0, "{@language} version {@version} - built for {@ct_info}\n"))
-    pf(spf(0, "[#1]Last build: {@creation_date}[#-]\n"))
-
+    v,_:=vget(0,"@ct_info")
+    add:=""
+    if v.(string)!="glibc" { add=v.(string)+", " }
+	pf(spf(0,"[#6][#bold]{@language} version {@version}[#boff][#-]\n"))
+    pf(spf(0,"[#1]Last build:[#-] "+add+"{@creation_date}\n"))
 }
 
 func help(hargs string) {
@@ -207,7 +140,14 @@ func help(hargs string) {
     [#4]-v[#-] : Version
     [#4]-h[#-] : Help
     [#4]-f[#-] : Process script [#i1]input_file[#i0]
+    [#4]-e[#-] : Provide source code in a string for interpretation. Stdin becomes available for data input
+    [#4]-S[#-] : Disable the co-process shell
+    [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-i[#-] : Interactive mode
+    [#4]-c[#-] : Ignore colour code macros at startup
+    [#4]-C[#-] : Enable colour code macros at startup
+    [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields
+    [#4]-F[#-] : Provides a field separator character for -r
     [#4]-t[#-] : Test mode
     [#4]-O[#-] : Test override value [#i1]tval[#i0]
     [#4]-o[#-] : Name the test file [#i1]output_file[#i0]
@@ -215,14 +155,7 @@ func help(hargs string) {
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
     [#4]-m[#-] : Mark co-process command progress
     [#4]-U[#-] : Specify system command separator byte
-    [#4]-c[#-] : Ignore colour code macros at startup
-    [#4]-C[#-] : Enable colour code macros at startup
-    [#4]-s[#-] : Provide an alternative path for the co-process shell
-    [#4]-S[#-] : Disable the co-process shell
     [#4]-Q[#-] : Show shell command options
-    [#4]-e[#-] : Provide source code in a string for interpretation. Stdin becomes available for data input
-    [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields
-    [#4]-F[#-] : Provides a field separator character for -r
 
     Please consult the za-reference document or execute commands() for a command list.
     A list of library functions is available with the funcs(filter_string) call.
@@ -342,3 +275,4 @@ Available commands:
 func commands() {
 	gpf(cmdpage)
 }
+

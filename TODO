@@ -9,30 +9,134 @@ lots, i'm sure.
 TODO
 ----
 
-*TODO*  remove deprecated features and options (startup options, dead code, unused funcs)
-*TODO*  add more manual example code in tools/funpages/examples for more functions.
+    * need to build an alpine release of 1.0.14 that exludes all trace of the ui library features.
+        - the binary will not even start up on Alpine currently due to missing opengl and other
+          bits and pieces required by 1.0.14.
+
+        - it's a bit of a shame, but may have to push the UI features back on the queue again. 
+           alpine functionality was a big part of the design intent for the language and UI toys
+            certainly were not! 
+
+        - will give this some consideration for a while, but for now v1.0.13 is the last release 
+            currently working with Alpine.
+
+        - it is difficult to leave the features in place as pixel/opengl require control of the main
+            thread and things were re-wired to allow for this.
+
+        - i'm fairly certain i do not want to maintain two versions of the codebase and the UI pieces
+            cannot be made optional due to the main thread control issue.
+
+        - only glimmer of hope currently is distributing some dummy library files in a docker build
+            that stubbed for the missing opengl dependencies and other similar dodgy workarounds.
+
+
+    * possible optimisation for evaluations:
+
+        * tried the work below. it's far too slow. currently commented out.
+            - the string builder and map aes hashes just cripple it. could probably 
+                speed them up significantly, but just not worth the extra complexity
+                that would bring on. 
+
+            - there is also some conflict with the compound assignment and pre/post
+                increment/decrement operations. didn't get around to fixing as i had
+                decided to can the test due to performance anyway. it is fixable if
+                need be. (it was treating the first read after write as cached when
+                it shouldn't).
+
+            - the .changed field has remained in place for now. may come in useful for
+                other features. (doubtful, but not hurting performance left on.)
+                - will remove this before version update if still not required.
+
+ (done) - If we add to all variables in ident[] a field named .changed (bool), then
+            set it during vseti/doAssign.
+
+        - Then during evaluation follow these rules:
+     (done) - If eval tokens contain a function call then always evaluate.
+                - @note: also checking for SYM_DOT chained calls (or field references)
+     (done) - If eval tokens contains variables which are not .changed use cached result.
+                - i.e. if previously cached and variables not changed.
+            - before evaluation exit:
+        (done)  - cache the expression and result in evalCache[fs,expression]=result (type interface{})
+        (done)  - on all variables used in the expression, reset the .changed flag.
+
+        - all the stuff above needs some more thinking about for possible problems. however...
+            even if it is correct, and would speed up evaluations on average, we would need to
+                add another lock around the set of .changed flag resets which may nullify that
+                improvement. it does seem a fairly simple change to test though.
+
+        - would also need some kind of cache ejection policy eventually, but will check size of
+            evalCache for unwieldy growths before introducting that.
+
+
+    * make each platform binary not throw errors when opengl not available.
+
+        - Linux (Ubuntu, Redhat, Debian) : seems fine on recent versions.
+
+        - centos 7 and below have problems with V1.0.14 since the introduction
+            of the opengl stuff. they have a 2012 version of glibc as standard.
+
+        - Fedora        : tested. seems fine on fedora release 33.
+                           it's probably fine on a lot of older releases too.
+
+        - Windows 10    : UAC, binary stripping and a/v causing problems more
+                           so than the Za binary itself. more checks needed.
+
+        - Alpine        : to test
+        - FreeBSD       : to test
+        - AWS Linux 1+2 : to test
 
 
 LATER / UNDECIDED
 -----------------
 
-* bignum as a type and auto-promotion of results to bignum
+    * add ref and mut directives/operators for use in function calls?
 
-* look at imgui stuff?
+    In principle, we are generally trying to avoid passing variables by reference to allow for their
+    mutation in a call. However, it has proven useful at least a few times when constructing the
+    library to allow this. 
 
-* library function name review (for consistency)
+    The compromise, so far, was to indicate the variable name with the REF operator rather than
+    putting variable names in strings during the call. It makes clear the intent of the use while
+    still not mutating the variable during the call. We have no aspirations towards pure function calls,
+    however we did want to give clarity for readers of the code what was going on.
 
-* review startup defaults:
-    - windows       - ansi on or off?
-    - unix/linux    - startup a shell or not?
+    As we have needed to do this ourselves then surely normal programming with the language would
+    deem it necessary to allow for call-by-reference or call-by-copy-restore.  This may be the case, 
+    but we are still trying to avoid it. 
 
-* add support for structs in filter and map operators.
+    In case we do change our mind, then we will likely extend calls to make the REF and MUT operators 
+    both act as a literal reference to the variable name but to also pass a usage flag through the call:
 
-* dormant functions
-            - need a way to yield and make a function dormant and re-entrant.
-                - this would allow for generators and some other operations.
-                - may be able to reuse MODE_STATIC with some work on it.
+        REF n  : read-only reference to caller variable 'n'
+        MUT n  : reference to caller variable 'n'. Work with copy during call. On exit, write the result
+                    back to the caller variable 'n'.
 
+    To accomplish this we would need to:
+
+        - move the callFunction argument wrangling that happens everywhere to the start of the Call function.
+            - this is needed as the arguments are evaluated ahead of the functionArgs comparisions done
+                inside Call(). I.e. the required information is lost by that stage.
+            - it would also unify the various methods of processing args currently done all over the place.
+            - this would possibly also reduce the lock count at function call startup.
+
+        - add code in function arg processing to add a mutable field with "mut" operator (probably quite
+            a minor change code-wise as we already have a processing loop for this, we just need a case for
+            setting the 'mut' flag.)
+
+        - add code on function exit to mutate caller state with updated values (we already do this to 
+            a certain extent for the retval/retvar handling, so this would be an extension.)
+
+        - maybe other stuff i can't think of right now.
+
+    Without those additional changes, ref/mut are usuable as synonyms for ` "variable" `.
+
+    The above would quite clearly be a substantial structure change from how things are now. It's not 
+    a lot of code, but it would require much testing. It's made more problematic in that as soon as I start
+    ripping that code apart there's a few other changes that I would feel compelled to make while in there.
+
+
+* add more manual example code in tools/funpages/examples for more functions.
+* DONE : add this to the bash startup in interactive mode?  | alias ls="ls -x -w {=term_w()}"
 * ultimately, change interactive mode to use readline or similar with better utf-8 support.
 
 

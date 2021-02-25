@@ -21,10 +21,99 @@ func (p *leparser) reserved(token Token) (interface{}) {
     return token.tokText
 }
 
-func (p *leparser) Eval (fs uint32, toks []Token) (ans interface{},err error) {
-    p.tokens = toks
-    p.pos    = 0
+
+// move to types file
+type evalCacheKey struct {
+    fs uint32
+    toks string
+}
+
+// move to main file
+var evalCache = make(map[evalCacheKey]interface{},1024)
+var evalCacheMiss int
+var evalCacheHit int
+var maxLenEvalString int
+
+func (p *leparser) Eval(fs uint32, toks []Token) (cacheResult interface{},err error) {
+
     p.fs     = fs
+    p.tokens = toks
+    p.len    = int16(len(toks))
+    p.pos    = 0
+
+    /*
+    // eval caching goes here...
+    //
+    //   disabled for now, not playing nicely with compound assignments/pre/post-inc/dec.
+    //   also, it's incredibly slow, with the string build and locks and such like.
+    //   it's mainly the aes hashing which slows it down coupled with the string building.
+    //
+
+    var there bool
+
+    //.. build key struct element from token strings
+    //    find a quicker method post testing.
+    mustEval:=false
+    prevType:=Error
+
+    ll:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); ll=true }
+
+    var tstring str.Builder
+    tstring.Grow(4)
+
+    for i:=0;i<len(toks);i++ {
+        tstring.WriteString(toks[i].tokText)
+        if i>0 {
+            if prevType==Identifier {
+                switch toks[i].tokType {
+                case LParen,SYM_DOT:
+                    // function calls and field references must be evaluated.
+                    mustEval=true
+                    break
+                }
+            }
+        }
+
+        // check .changed rules here:
+        if toks[i].tokType==Identifier {
+            switch toks[i].tokText {
+            case "false","true","nil":
+            default:
+                vi,_:=vmap[fs][toks[i].tokText]
+                // reset changed flags here
+                ch:=ident[fs][vi].changed
+                ident[fs][vi].changed=false
+                if ch {
+                    // must evaluate
+                    mustEval=true
+                }
+            }
+        }
+                
+        prevType=toks[i].tokType
+
+    }
+    if ll { vlock.RUnlock() }
+
+    if len(tstring.String())>maxLenEvalString {
+        maxLenEvalString=len(tstring.String())
+    }
+
+    var key = evalCacheKey{fs:fs,toks:tstring.String()}
+
+    //.. check if in cache:
+    if cacheResult,there=evalCache[key]; !mustEval && there {
+        evalCacheHit++
+    } else {
+        cacheResult,err=p.dparse(0)
+        evalCache[key]=cacheResult
+        evalCacheMiss++
+    }
+
+    return cacheResult,err
+    */
+
     return p.dparse(0)
 }
 
@@ -32,6 +121,7 @@ func (p *leparser) Eval (fs uint32, toks []Token) (ans interface{},err error) {
 type leparser struct {
     tokens      []Token     // the thing getting evaluated
     fs          uint32      // working function space
+    len         int16       // assigned length to save calling len() during parsing
     line        int16       // shadows lexer source line
     stmtline    int16       // shadows program counter (pc)
     pos         int16       // distance through parse
@@ -46,7 +136,7 @@ func (p *leparser) next() Token {
     if p.pos>1 { p.preprev=p.prev }
     if p.pos>0 { p.prev=p.tokens[p.pos-1] }
 
-    if p.pos == int16(len(p.tokens)) {
+    if p.pos == p.len {
         return Token{tokType:EOF}
     }
 
@@ -56,7 +146,7 @@ func (p *leparser) next() Token {
 
 func (p *leparser) peek() Token {
 
-     if p.pos == int16(len(p.tokens)) {
+    if p.pos == p.len {
         return Token{tokType:EOF}
     }
 
@@ -69,91 +159,91 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
 	current:=p.next()
 
-        if current.tokType>START_STATEMENTS {
-            p.reserved(current)
-        }
+    if current.tokType>START_STATEMENTS {
+        p.reserved(current)
+    }
 
-        // unaries
+    // unaries
 
-        switch current.tokType {
-		case O_Comma,SYM_COLON,EOF:         // nil rules, prec -1
-            left=nil
-        case RParen, RightSBrace:           // ignore, prec -1
-            left=p.ignore(current)
-        case NumericLiteral:                // prec -1
-            left=p.number(current)
-        case StringLiteral:                 // prec -1
-            left=p.stringliteral(current)
-        case Identifier:                    // prec -1
-            left=p.identifier(current)
-        case SYM_Not, O_Sqr, O_Sqrt, O_InFile:
-            left=p.unary(current)
-        case O_Assign, O_Plus, O_Minus:      // prec variable
-            left=p.unary(current)
-        case O_Multiply, SYM_Caret:         // unary pointery stuff
-            left=p.unary(current)
+    switch current.tokType {
+    case O_Comma,SYM_COLON,EOF:         // nil rules, prec -1
+        left=nil
+    case RParen, RightSBrace:           // ignore, prec -1
+        left=p.ignore(current)
+    case NumericLiteral:                // prec -1
+        left=p.number(current)
+    case StringLiteral:                 // prec -1
+        left=p.stringliteral(current)
+    case Identifier:                    // prec -1
+        left=p.identifier(current)
+    case SYM_Not, O_Sqr, O_Sqrt, O_InFile:
+        left=p.unary(current)
+    case O_Ref,O_Mut:                   // reference and mutable
+        left=p.unary(current)
+    case O_Assign, O_Plus, O_Minus:      // prec variable
+        left=p.unary(current)
+    case O_Multiply, SYM_Caret:         // unary pointery stuff
+        left=p.unary(current)
+    case LParen:
+        left=p.grouping(current)
+    case SYM_PP, SYM_MM:
+        left=p.unary(current)
+    case LeftSBrace:
+        left=p.array_concat(current)
+    case O_Query:                       // ternary
+        left=p.tern_if(current)
+    }
+
+    // binaries
+
+    binloop1:
+    for {
+        ruleprec:=int8(-1)
+
+        switch p.peek().tokType {
+        case EOF:
+            break binloop1
+        case O_Assign:
+            ruleprec=5
+        case O_Filter:
+            ruleprec=9
+        case O_Map:
+            ruleprec=7
+        case SYM_LAND, SYM_LOR, C_Or:
+            ruleprec=15
+        case SYM_BAND, SYM_BOR, SYM_Caret:
+            ruleprec=20
+        case SYM_LSHIFT, SYM_RSHIFT:
+            ruleprec=23
+        case SYM_Tilde, SYM_ITilde, SYM_FTilde:
+            ruleprec=25
+        case SYM_EQ, SYM_NE, SYM_LT, SYM_GT, SYM_LE, SYM_GE:
+            ruleprec=25
+        case C_In:
+            ruleprec=27
+        case SYM_RANGE:
+            ruleprec=29
+        case O_Plus, O_Minus:
+            ruleprec=31
+        case O_Divide, O_Percent, O_Multiply:
+            ruleprec=35
+        case SYM_POW:
+            ruleprec=40
+        case SYM_PP, SYM_MM, LeftSBrace:
+            ruleprec=45
+        case SYM_DOT:
+            ruleprec=47
         case LParen:
-            left=p.grouping(current)
-        case SYM_PP, SYM_MM:
-            left=p.unary(current)
-        case LeftSBrace:
-            left=p.array_concat(current)
-        case O_Query:                       // ternary
-            left=p.tern_if(current)
+            ruleprec=100
         }
 
-        // binaries
-
-        if p.peek().tokType!=EOF {
-
-            for {
-
-                ruleprec:=int8(-1)
-
-                switch p.peek().tokType {
-                case O_Assign:
-                    ruleprec=5
-                case O_Filter:
-                    ruleprec=9
-                case O_Map:
-                    ruleprec=7
-                case SYM_LAND, SYM_LOR, C_Or:
-                    ruleprec=15
-                case SYM_BAND, SYM_BOR, SYM_Caret:
-                    ruleprec=20
-                case SYM_LSHIFT, SYM_RSHIFT:
-                    ruleprec=23
-                case SYM_Tilde, SYM_ITilde, SYM_FTilde:
-                    ruleprec=25
-                case SYM_EQ, SYM_NE, SYM_LT, SYM_GT, SYM_LE, SYM_GE:
-                    ruleprec=25
-                case C_In:
-                    ruleprec=27
-                case SYM_RANGE:
-                    ruleprec=29
-                case O_Plus, O_Minus:
-                    ruleprec=31
-                case O_Divide, O_Percent, O_Multiply:
-                    ruleprec=35
-                case SYM_POW:
-                    ruleprec=40
-                case SYM_PP, SYM_MM, LeftSBrace:
-                    ruleprec=45
-                case SYM_DOT:
-                    ruleprec=47
-                case LParen:
-                    ruleprec=100
-                }
-
-                if prec >= ruleprec {
-                    break
-                }
-
-                current = p.next()
-                left = p.binaryLed(ruleprec,left,current)
-
-            }
+        if prec >= ruleprec {
+            break
         }
+
+        left = p.binaryLed(ruleprec,left,p.next())
+
+    }
 
      // pf("dparse result: %+v\n",left)
      // pf("dparse error : %#v\n",err)
@@ -178,14 +268,12 @@ func (p *leparser) ignore(token Token) interface{} {
 func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interface{}) {
 
     switch token.tokType {
-    case SYM_PP:
-        return p.postIncDec(token)
-    case SYM_MM:
+    case SYM_PP,SYM_MM:
         return p.postIncDec(token)
     case LeftSBrace:
         return p.accessArray(left,token)
     case SYM_DOT:
-        return p.accessFieldOrFunc(p.fs,left,p.next().tokText)
+        return p.accessFieldOrFunc(left,p.next().tokText)
     case LParen:
         return p.callFunction(left,token)
     }
@@ -209,9 +297,6 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
 	case O_Percent:
 		return ev_mod(left,right)
 
-    case O_Assign:
-        panic(fmt.Errorf("assignment is not a valid operation in expressions"))
-
 	case SYM_EQ:
         return deepEqual(left,right)
 	case SYM_NE:
@@ -225,6 +310,11 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
 	case SYM_GE:
         return compare(left,right,">=")
 
+    case SYM_LOR,C_Or:
+        return asBool(left) || asBool(right)
+    case SYM_LAND:
+        return asBool(left) && asBool(right)
+
     case SYM_Tilde:
         return p.rcompare(left,right,false,false)
     case SYM_ITilde:
@@ -237,26 +327,26 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
     case O_Map:
         return p.list_map(left,right)
 
-    case SYM_LOR,C_Or:
-        return asBool(left) || asBool(right)
-    case SYM_LAND:
-        return asBool(left) && asBool(right)
     case SYM_BAND: // bitwise-and
-        return asInteger(left) & asInteger(right)
+        return as_integer(left) & as_integer(right)
     case SYM_BOR: // bitwise-or
-        return asInteger(left) | asInteger(right)
+        return as_integer(left) | as_integer(right)
 	case SYM_LSHIFT:
         return ev_shift_left(left,right)
 	case SYM_RSHIFT:
         return ev_shift_right(left,right)
 	case SYM_Caret: // XOR
-		return asInteger(left) ^ asInteger(right)
+		return as_integer(left) ^ as_integer(right)
     case SYM_POW:
         return ev_pow(left,right)
     case SYM_RANGE:
         return ev_range(left,right)
 	case C_In:
 		return ev_in(left,right)
+
+    case O_Assign:
+        panic(fmt.Errorf("assignment is not a valid operation in expressions"))
+
 	}
 	return left
 }
@@ -287,7 +377,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]string)[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -302,7 +392,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]int)[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -317,7 +407,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]uint)[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -332,7 +422,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]float64)[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -347,7 +437,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]bool)[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -362,7 +452,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_map[k]=v }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_map
@@ -391,7 +481,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_map[k]=v }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_map
@@ -420,7 +510,7 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
             case bool:
                 if val.(bool) { new_list=append(new_list,left.([]interface{})[e]) }
             default:
-                panic(fmt.Errorf("invalid expression (%s) in filter",new_right))
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right))
             }
         }
         return new_list
@@ -519,31 +609,6 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
             }
         }
         return new_list
-
-    /*
-
-     * @todo: fix this: need to define both struct and data when reading a field like this.
-     *                   won't currently work without trawling through struct content for 
-     *                   a matching field (from #.*) then only returning the field (not a
-     *                   full struct reference).
-    
-    case []dirent:
-        var new_list []dirent
-        for e:=0; e<len(left.([]dirent)); e++ {
-            new_right:=str.Replace(right.(string),"#",sf("%#v",left.([]dirent)[e]),-1)
-            new_right="struct"+new_right[11:] // strip ^main.dirent
-            pf("new right : |%#v|\n",new_right)
-            val,err:=ev(reduceparser,p.fs,new_right)
-            if err!=nil { panic(err) }
-            switch val.(type) {
-            case dirent:
-                new_list=append(new_list,val.(dirent))
-            default:
-                panic(fmt.Errorf("invalid expression (%s) in map",new_right))
-            }
-        }
-        return new_list
-    */
 
     case []interface{}:
         var new_list []interface{}
@@ -799,19 +864,20 @@ func (p *leparser) callFunction(left interface{},right Token) (interface{}) {
 
 }
 
-/*
-func (p *leparser) unAddrOf() *Variable {
+
+// mut is currently unused and may remain so.
+func (p *leparser) reference(mut bool) string {
     vartok:=p.next()
-    if vi,there:=VarLookup(p.fs,vartok.tokText); there {
+    if _,there:=VarLookup(p.fs,vartok.tokText); there {
         if atomic.LoadInt32(&concurrent_funcs)>0 {
             vlock.RLock()
             defer vlock.RUnlock()
         }
-        return &ident[p.fs][vi]
+        return vartok.tokText
+    } else {
+        panic(fmt.Errorf("reference to unknown variable"))
     }
-    return nil
 }
-*/
 
 func (p *leparser) unary(token Token) (interface{}) {
 
@@ -820,13 +886,10 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.preIncDec(token)
     case SYM_MM:
         return p.preIncDec(token)
-    /*
-    case SYM_Caret:
-        return p.unAddrOf()
-    case O_Multiply:
-        return p.unDeref(token)
-    */
-
+    case O_Ref:
+        return p.reference(false)
+    case O_Mut:
+        return p.reference(true)
     }
 
 	switch token.tokType {
@@ -856,7 +919,6 @@ func (p *leparser) unary(token Token) (interface{}) {
 
 	return nil
 }
-
 
 func unOpSqr(n interface{}) interface{} {
     switch n:=n.(type) {
@@ -1091,21 +1153,24 @@ func (p *leparser) identifier(token Token) (interface{}) {
     // local lookup:
     ll:=false
     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+
     if val,there:=vgeti(p.fs,token.offset); there {
         if ll { vlock.RUnlock() }
         return val
     }
     if ll { vlock.RUnlock() }
 
-    // global lookup:
-    ll=false
-    if vi,there:=VarLookup(globalaccess,token.tokText); there {
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
-        if v,ok:=vgeti(globalaccess,vi); ok {
+    if p.fs!=globalaccess {
+        // global lookup:
+        ll=false
+        if vi,there:=VarLookup(globalaccess,token.tokText); there {
+            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+            if v,ok:=vgeti(globalaccess,vi); ok {
+                if ll { vlock.RUnlock() }
+               return v
+            }
             if ll { vlock.RUnlock() }
-            return v
         }
-        if ll { vlock.RUnlock() }
     }
 
     if permit_uninit {
@@ -1306,6 +1371,8 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
+    // ident[fs][vi].changed=true
+
     if ll { vlock.Unlock() }
 
     return vi
@@ -1415,6 +1482,7 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
             el=strconv.FormatUint(uint64(el.(uint)), 10)
         }
 
+        // ident[fs][vi].changed=true
         if ok {
             ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
         } else {
@@ -1510,12 +1578,18 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
             copy(newar,ident[fs][vi].IValue.([]interface{}))
             ident[fs][vi].IValue=newar
         }
-        ident[fs][vi].IValue.([]interface{})[numel]=value.(interface{})
+        if value==nil {
+            ident[fs][vi].IValue.([]interface{})[numel]=nil
+        } else {
+            ident[fs][vi].IValue.([]interface{})[numel]=value.(interface{})
+        }
 
     default:
         pf("DEFAULT: Unknown type %T for list %s\n",list,name)
 
     }
+
+    // ident[fs][vi].changed=true
 
     if ll { vlock.Unlock() }
 
@@ -1571,7 +1645,7 @@ func isBool(expr interface{}) bool {
 func isNumber(expr interface{}) bool {
     typeof := reflect.TypeOf(expr).Kind()
     switch typeof {
-    case reflect.Float64, reflect.Int, reflect.Int64, reflect.Uint:
+    case reflect.Float64, reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint8:
         return true
     }
     return false
@@ -1949,7 +2023,11 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
     var results []interface{}
 
     if len(largs)==1 {
-        results=[]interface{}{expr.result}
+        if expr.result==nil {
+            results=[]interface{}{nil}
+        } else {
+            results=[]interface{}{expr.result}
+        }
     } else {
         // read results
         if expr.result!=nil {
@@ -2009,11 +2087,12 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
             }
             // pf("-- normal assignment to (ifs:%d) %s (offset:%d) of %+v [%T]\n", lfs, assignee[0].tokText, vi, results[assno],results[assno])
             vseti(lfs, assignee[0].tokText, vi, results[assno])
-            // pf("--  content of fs %d vi %d -> %+v [%T]\n",lfs,vi,ident[lfs][vi].IValue,ident[lfs][vi].IValue)
+            // pf("--  content of fs %d vi %d -> [%T] %#v\n",lfs,vi,ident[lfs][vi].IValue,ident[lfs][vi])
             /////////////////////////////////////////////////////////////////////////////
 
         case len(assignee)==2:
             // currently only *p pointer assignment, but check...
+            /*
             switch assignee[0].tokText {
             case "*":
 
@@ -2068,6 +2147,7 @@ func (p *leparser) doAssign(lfs,rfs uint32,tks []Token,expr *ExpressionCarton,eq
                 vset(fsid,val.([]string)[1],results[assno])
 
             }
+            */
 
         case len(assignee)>3:
 

@@ -143,7 +143,7 @@ web_serve_path(suid, "s", "^/(.*)/$", "http://{HOST}:61440/$1/index.html")
 
 #print "Press 'q' to quit or any other key to show connection counts.\n"
 #k=0
-# while k!=ascii("q") && web_serve_up(uid)
+# while k!=asc("q") && web_serve_up(uid)
 #    k=keypress(POLL_TIMEOUT)
 #    if k>0 && k!="q"
 #        cmd=|netstat -apeen | egrep "{PORT}[ \t]+ESTABLISHED"

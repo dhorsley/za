@@ -1,5 +1,12 @@
 #!/usr/bin/za
 
+doc `
+    fairly buggy life demo... all the async stuff doesn't mix well with console output!
+
+    should maybe convert this to use the lib-ui 2d stuff instead
+`
+
+
 empty=" "; full="[#4]o"
 if os()!="windows" && utf8supported()
     empty="[#3]·"
@@ -78,6 +85,7 @@ end
 define build_empty_cells()
     init grid mixed mh+2
     for r=0 to mh+1
+        grid[r]=[]
         for e=0 to mw+1
             grid[r]=append(grid[r],false)
         endfor

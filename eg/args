@@ -49,13 +49,16 @@ end
 
 av=argv()
 ac=argc()
+var svar string
+var bvar bool
+var nvar int
 
 println "\n[#b1]4. arg loop parsing[#b0]"
 println "working with these args: [#4][#i1]{av}[#i0][#7]"
 
 while !empty(av)
     arg=next()
-    if len(arg)>1 && hasstart(arg,"-")
+    if len(arg)>1 && has_start(arg,"-")
         opt=substr(arg,0,2)
         when opt
         is "-h"

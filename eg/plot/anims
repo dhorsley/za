@@ -135,7 +135,7 @@ objects[4].dy=0.1
 
 seed(epoch_nano_time())
 for e=50 to 99
-    object_add_text(e,chr(33+rand(10)),rand(term_w()),rand(term_h()),rand(7),rand(7))
+    object_add_text(e,char(33+rand(10)),rand(term_w()),rand(term_h()),rand(7),rand(7))
     objects[e].dx=(50-rand(100))/50.0
     objects[e].dy=(50-rand(100))/100.0
 endfor

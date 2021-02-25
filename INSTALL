@@ -26,6 +26,21 @@ It doesn't matter either way, it's self contained.
 LANGUAGE INSTALLATION FROM SOURCE
 ---------------------------------
 
+pre-requisites:
+
+If you need to build UI support (-u za flag) in, then you will need
+to install the supporting library packages for opengl and their dependancies:
+
+sudo apt update
+sudo apt install xorg-dev libglfw3-dev
+
+( on fedora/redhat you may need some combination of:
+    sudo yum groupinstall "X Software Development"
+    sudo dnf install libXcursor-devel libXrandr-devel libXinerama-devel libXi-devel mesa-libGL-devel
+)
+
+IMPORTANT!! : Your video card and drivers must support opengl 3.3+ for UI facilities to work!
+
 first install:
 
 adjust ./GO to suitable paths, then:
@@ -53,9 +68,25 @@ If you have UPX installed then the upx option above can be used to compress the 
 To cross-compile for Windows:
 -----------------------------
 
+If compiling on an Ubuntu host:
+
+  sudo apt install mingw-w64
+
+... this is required for the opengl/pixel library support in lib-ui.
+
   ./build win
 
 This option leaves the binary unstripped so that Windows 10 doesn't complain too much.
+
+As of V1.0.14 the Windows binary is pretty huge (20+ MB). This is mainly due to the
+unstripped nature of the build, but also partially due to the opengl/pixel library
+support. We will look at options to reduce the size again ongoing, but not very concerned
+at the moment - Windows support is still considered to be experimental and may go away
+at any time before we commit to a 'real' release.
+
+Also underwhelming in the Windows version:
+    - ANSI support in interactive mode: windows just ain't great at it.
+    - multi-monitor (and auto-selection) support for lib-ui opengl context.
 
 
 To compile on FreeBSD:
@@ -65,5 +96,8 @@ To compile on FreeBSD:
 
 The OS should be detected by the build script. You should still do your initial build using the first
 install instructions above.
+
+As of V1.0.14 I have no idea how well the FreeBSD version builds. I have not tested it yet since adding
+the opengl support. 
 
 
