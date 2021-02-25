@@ -1,4 +1,5 @@
-// +build !alpine windows freebsd linux
+// +build !noui
+// +build windows freebsd linux
 
 package main
 
