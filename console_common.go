@@ -35,7 +35,6 @@ var ansiReplacables []string
 var fairyReplacer *str.Replacer
 
 
-/// clear n console chars
 func clearChars(row int,col int,l int) {
     at(row,col)
     fmt.Print(str.Repeat(" ",l))
@@ -55,10 +54,11 @@ func max(a, b int) int {
     return b
 }
 
+// row+col are globals
 func printWithNLRespect(s string,p Pane) {
     var newStr str.Builder
     for i:=0; i<len(s); i++ {
-        if col==p.w {
+        if col==p.w-1 {
             newStr.WriteString(sf("\n\033[%dG",ocol+1))
             col=1 ; row++
         }
@@ -75,11 +75,7 @@ func printWithNLRespect(s string,p Pane) {
 }
 
 // print with line wrap at non-global pane end
-// this function not currently used much as ANSI codes really kick it in the arse.
-// @todo: maybe add an arg for optional word wrap
 func printWithWrap(s string) {
-    // atlock.Lock()
-    // cannot use at() in here as it calls pf() which calls us
     if currentpane!="global" {
         if p, ok := panes[currentpane]; ok {
              printWithNLRespect(s,p)
@@ -89,10 +85,9 @@ func printWithWrap(s string) {
     } else {
         fmt.Print(s)
     }
-    // atlock.Unlock()
 }
 
-/// generic vararg print handler. also moves cursor in interactive mode
+// generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...interface{}) {
 
     s = sf(sparkle(s), va...)
@@ -122,7 +117,7 @@ func pf(s string, va ...interface{}) {
 
 }
 
-/// apply ansi code translation to inbound strings
+// apply ansi code translation to inbound strings
 func sparkle(a interface{}) string {
     switch a:=a.(type) {
     case string:
@@ -131,7 +126,7 @@ func sparkle(a interface{}) string {
     return sf(`%v`,a)
 }
 
-/// logging output printer
+// logging output printer
 func plog(s string, va ...interface{}) {
 
     // print if not silent logging
@@ -153,18 +148,18 @@ func plog(s string, va ...interface{}) {
 
 }
 
-/// special case printing for global var interpolation
+// special case printing for global var interpolation
 func gpf(s string) {
     pf("%s\n", spf(0, s))
 }
 
-/// sprint with namespace
+// sprint with namespace
 func spf(ns uint32, s string) string {
     s = interpolate(ns,s)
     return sf("%v", sparkle(s))
 }
 
-/// clear screen
+// clear screen
 func cls() {
     if v, _ := vget(0, "@winterm"); !v.(bool) {
         pf("\033c")
@@ -174,15 +169,21 @@ func cls() {
     at(1, 1)
 }
 
+
+// probably not used now...
+
+// switch to secondary buffer
 func secScreen() {
     pf("\033[?1049h\033[H")
 }
 
+// switch to primary buffer
 func priScreen() {
     pf("\033[?1049l")
 }
 
-/// search for pane by name and return its dimensions
+
+// search for pane by name and return its dimensions
 func paneLookup(s string) (row int, col int, w int, h int, err error) {
     for p := range panes {
         q := panes[p]
@@ -193,13 +194,13 @@ func paneLookup(s string) (row int, col int, w int, h int, err error) {
     return 0, 0, 0, 0, nil
 }
 
-/// remove ansi codes from a string
+// remove ansi codes from a string
 func Strip(s string) string {
     var strip_re = regexp.MustCompile(ansi)
     return strip_re.ReplaceAllString(s, "")
 }
 
-/// remove za format codes from a string
+// remove za format codes from a string
 func StripCC(s string) string {
     s = Strip(s)
     rs := []string{}
@@ -218,13 +219,13 @@ func rlen(s string) int {
     return utf8.RuneCountInString(s)
 }
 
-/// calculate on-console visible string length, allowing for hidden formatting
+// calculate on-console visible string length, allowing for hidden formatting
 func displayedLen(s string) int {
     // remove ansi codes
     return rlen(Strip(sparkle(s)))
 }
 
-/// move the console cursor
+// move the console cursor
 func absat(row int, col int) {
     if row < 0 {
         row = 0
@@ -237,53 +238,54 @@ func absat(row int, col int) {
     atlock.Unlock()
 }
 
-/// move the console cursor
+// move the console cursor (relative to current pane origin [orow,ocol])
+// orow+ocol are globals
 func at(row int, col int) {
     atlock.Lock()
     fmt.Printf("\033[%d;%dH", orow+row, ocol+col)
     atlock.Unlock()
 }
 
-/// return ansi codes for moving the console cursor
+// return ansi codes for moving the console cursor
 func sat(row int,col int) string {
     return sf("\033[%d;%dH", orow+row, ocol+col)
 }
 
-/// clear to end of line
+// clear to end of line
 func clearToEOL() {
     atlock.Lock()
     pf("\033[0K")
     atlock.Unlock()
 }
 
-/// show the console cursor
+// show the console cursor
 func showCursor() {
     atlock.Lock()
     pf("\033[?12l\033[?25h\033[?8h")
     atlock.Unlock()
 }
 
-/// hide the console cursor
+// hide the console cursor
 func hideCursor() {
     atlock.Lock()
     pf("\033[?8l\033[?25l\033[?12h")
     atlock.Unlock()
 }
 
-/// move to horizontal cursor position n
+// move to horizontal cursor position n
 func cursorX(n int) {
     atlock.Lock()
     pf("\033[%dG",n)
     atlock.Unlock()
 }
 
-/// remove runes in string s before position pos
+// remove runes in string s before position pos
 func removeAllBefore(s string, pos int) string {
     if rlen(s)<pos { return s }
     return s[pos:]
 }
 
-/// remove character at position pos
+// remove character at position pos
 func removeBefore(s string, pos int) string {
     if rlen(s)<pos { return s }
     if pos < 1 { return s }
@@ -291,7 +293,7 @@ func removeBefore(s string, pos int) string {
     return s
 }
 
-/// insert a number of characters in string at position pos
+// insert a number of characters in string at position pos
 func insertBytesAt(s string, pos int, c []byte) string {
     if pos == rlen(s) { // append
         s += string(c)
@@ -301,7 +303,7 @@ func insertBytesAt(s string, pos int, c []byte) string {
     return s
 }
 
-/// insert a single byte at position pos in string s
+// insert a single byte at position pos in string s
 func insertAt(s string, pos int, c byte) string {
     if pos == rlen(s) { // append
         s += string(c)
@@ -311,7 +313,7 @@ func insertAt(s string, pos int, c byte) string {
     return s
 }
 
-/// append a string to end of string or insert it mid-string
+// append a string to end of string or insert it mid-string
 func insertWord(s string, pos int, w string) string {
     if pos >= rlen(s) { // append
         s += w
@@ -321,7 +323,7 @@ func insertWord(s string, pos int, w string) string {
     return s
 }
 
-/// delete the word under the cursor
+// delete the word under the cursor
 func deleteWord(s string, pos int) (string,int) {
 
     start := 0
@@ -364,7 +366,7 @@ func deleteWord(s string, pos int) (string,int) {
     return rstring,cpos
 }
 
-/// get the word in string s under the cursor (at position c)
+// get the word in string s under the cursor (at position c)
 func getWord(s string, c int) string {
 
     if rlen(s)<c {
@@ -414,7 +416,7 @@ func restoreCursor() {
     fmt.Printf("\033[u")
 }
 
-/// clear to end of current window pane
+// clear to end of current window pane
 func clearToEOPane(row int, col int, va ...int) {
     p := panes[currentpane]
     // save cursor pos
@@ -433,6 +435,7 @@ func clearToEOPane(row int, col int, va ...int) {
     // restore cursor pos
     fmt.Printf("\033[u")
 }
+
 
 func paneBox(c string) {
 
@@ -792,7 +795,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         }
     }
 
-
     if riwp.(bool) || rip.(bool) {
 
         if riwp.(bool) {
@@ -842,6 +844,8 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
         // get output
         ns, commandErr = NextCopper(line, read_out)
+        // pf("[copper] line -> <%s>\n",line)
+        // pf("[copper] ns   -> <%s>\n",ns)
 
         // get status code - cmd is not important for this, NextCopper just reads
         //  the output until the next cmdsep
@@ -894,15 +898,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     }
 
     return struct{out string;err string;code int;okay bool}{ns,errout,errint,errint==0}
-}
-
-func debug(level int, s string, va ...interface{}) {
-    debuglock.RLock()
-    if debug_level >= level {
-        pf(sparkle(s), va...)
-    }
-    debuglock.RUnlock()
-
 }
 
 func restoreScreen() {

@@ -8,24 +8,24 @@ import (
 
 
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@{}"
+const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@" // {}
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const numeric = "0123456789."
-const identifier_set = alphanumeric + "_{}"
+const numeric = "0123456789.f"
+const identifier_set = alphanumeric + "_" // "{}"
 const doubleterms = "<>=|&-+*.?"
-const soloChars   = "+-/*.^!%;<>~=|,():[]&"
+const soloChars   = "+-/*.^!%;<>~=|,():[]&{}"
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
     "OPERATOR", "S_COMMENT",
     "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
-    "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "LBRACE", "RBRACE",
+    "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "LBRACE", "RBRACE","LCBRACE","RCBRACE",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
-    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE",
+    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_REF","O_MUT",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -51,7 +51,7 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     var symword string
     var norepeat string
     var norepeatMap = make(map[byte]int)
-    var badFloat, scientific,expectant bool
+    var badFloat,scientific,expectant bool
 
     beforeE := "."
     thisWordStart := -1
@@ -154,13 +154,11 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     }
 
     // number
-    if str.IndexByte(numeric, firstChar) != -1 {
+    if str.IndexByte(numeric, firstChar) != -1 && firstChar!='f' {
         tokType = NumericLiteral
         nonterm = numeric+"eE"
-        term = "\n;" // PIG
-        // term = ""
+        term = "\n;"
         norepeat= "eE."
-
     }
 
     // solo symbols
@@ -231,12 +229,20 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
                     break
                 }
                 // deal with . at end of number
-                if currentChar<len(input)-1 && input[currentChar]=='.' && input[currentChar+1]=='.' {
+                if currentChar<lenInput-1 && input[currentChar]=='.' && input[currentChar+1]=='.' {
                     word=input[thisWordStart:currentChar]
                     startNextTokenAt=currentChar
                     break
                 }
             }
+
+            // deal with 'f' at end of number
+            if input[currentChar]=='f' {
+                word=input[thisWordStart:currentChar+1]
+                startNextTokenAt=currentChar+1
+                break
+            }
+
         }
 
         if matchQuote && input[currentChar]=='\n' {
@@ -284,7 +290,6 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
                 break
             }
         }
-
     }
 
     // catch any eol strays
@@ -305,6 +310,7 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     // otherwise continue on to the switch to match keywords.
 
     if tokType != 0 {
+
         if tokType==NumericLiteral {
             if badFloat {
                 tokType=StringLiteral
@@ -312,20 +318,28 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
             } else {
                 tl:=str.ToLower(word)
                 switch {
+                case tl[len(tl)-1]=='f':
+                    carton.tokVal,_=strconv.ParseFloat(tl[:len(tl)-1],64)
+                    startNextTokenAt = currentChar+1
+                    carton.tokType = tokType
+                    carton.tokText = word
+                    goto get_nt_exit_point
                 case str.IndexByte(tl,'e')!=-1:
-                    carton.tokVal,_=strconv.ParseFloat(word,64)
+                    carton.tokVal,_=strconv.ParseFloat(tl,64)
                 case str.IndexByte(tl,'.')!=-1:
-                    carton.tokVal,_=strconv.ParseFloat(word,64)
+                    carton.tokVal,_=strconv.ParseFloat(tl,64)
                 default:
-                    carton.tokVal,_=strconv.ParseInt(word,10,0)
+                    carton.tokVal,_=strconv.ParseInt(tl,10,0)
                     carton.tokVal=int(carton.tokVal.(int64))
                 }
             }
         }
+
         startNextTokenAt = currentChar
         carton.tokType = tokType
         carton.tokText = word
         goto get_nt_exit_point
+
     }
 
 
@@ -354,6 +368,10 @@ get_nt_eval_point:
         tokType = LeftSBrace
     case "]":
         tokType = RightSBrace
+    case "{":
+        tokType = LeftCBrace
+    case "}":
+        tokType = RightCBrace
     case "+=":
         tokType = SYM_PLE
     case "-=":
@@ -434,6 +452,10 @@ get_nt_eval_point:
             tokType = O_Sqr
         case "sqrt":
             tokType = O_Sqrt
+        case "ref":
+            tokType = O_Ref
+        case "mut":
+            tokType = O_Mut
         case "enum":
             tokType = C_Enum
         case "init":

@@ -40,7 +40,7 @@ end
 
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
-    assert hasstart(iip,"127.0.0.")
+    assert has_start(iip,"127.0.0.")
 endtest
 
 define shorten(s,l)
@@ -163,8 +163,8 @@ define showMem()
     at 4,2; print "Cached    : [#6]{mem_cached} KB[#-]"
     at 5,2; print "Active    : [#6]{mem_active} KB[#-]"
     at 6,2; print "Free Swap : [#6]{mem_swap_free}/{mem_swap_total} KB[#-]"
-    at 8,2; print "Mon Heap  : [#6]{=getmem().alloc} MB[#-]"
-    at 9,2; print "Mon Total : [#6]{=getmem().system} MB[#-]"
+    at 8,2; print "Mon Heap  : [#6]{=get_mem().alloc} MB[#-]"
+    at 9,2; print "Mon Total : [#6]{=get_mem().system} MB[#-]"
 
     # display slab info
 
@@ -421,13 +421,13 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
                     # populate with values
                     at row,pos
-                    print col_sys;      print pad(activity_indicator,1,w_sys,activity_indicator)
-                    print col_user;     print pad(activity_indicator,1,w_user,activity_indicator)
-                    print col_softirq;  print pad(activity_indicator,1,w_softirq,activity_indicator)
-                    print col_irq;      print pad(activity_indicator,1,w_irq,activity_indicator)
-                    print col_guest;    print pad(activity_indicator,1,w_guest,activity_indicator)
-                    print col_steal;    print pad(activity_indicator,1,w_steal,activity_indicator)
-                    print col_iowait;   print pad(activity_indicator,1,w_iowait,activity_indicator)
+                    print col_sys;      print pad(activity_indicator,1,w_sys.int,       activity_indicator)
+                    print col_user;     print pad(activity_indicator,1,w_user.int,      activity_indicator)
+                    print col_softirq;  print pad(activity_indicator,1,w_softirq.int,   activity_indicator)
+                    print col_irq;      print pad(activity_indicator,1,w_irq.int,       activity_indicator)
+                    print col_guest;    print pad(activity_indicator,1,w_guest.int,     activity_indicator)
+                    print col_steal;    print pad(activity_indicator,1,w_steal.int,     activity_indicator)
+                    print col_iowait;   print pad(activity_indicator,1,w_iowait.int,    activity_indicator)
                     print "[##]"
                     pos=pos+49
                 endif
@@ -508,7 +508,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
         fields(int_filter)
 
-        if hasstart(int_name,interface)
+        if has_start(int_name,interface)
 
             # current counters 
             rbytes  = float(F[2])
@@ -734,7 +734,7 @@ while !quit
     k=keypress(key_timeout)
 
     at 1,30
-    when chr(k)
+    when char(k)
     is "i"
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
         ipaddr=interface_ip(interface)

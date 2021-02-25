@@ -75,7 +75,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
         addToPhrase = true
 
-
         if tokenType==SingleComment {
             // at this point we have returned the full comment so throw it away!
             addToPhrase=false

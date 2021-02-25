@@ -12,8 +12,8 @@ define fib(n)
 end
 
 define signum(x)
-    if x<0 ; return -1 ; endif
-    if x>0 ; return 1 ; endif
+    on x<0 do return -1
+    on x>0 do return 1
     return 0
 end
 

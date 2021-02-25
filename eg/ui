@@ -1,0 +1,222 @@
+#!/usr/bin/za -u
+
+# 512 x 384 default win size
+
+# enums can't handle expressions yet...
+
+# these codes are from the button map values in:
+#  https://github.com/faiface/pixel/blob/master/pixelgl/input.go
+
+enum key (
+    SPACE       = ui_get_code("Space"),
+    ESC         = ui_get_code("Escape"),
+    MOUSE_LEFT  = ui_get_code("MouseButtonLeft")
+)
+
+max_poly      = 15
+text_objcount = 0
+init ary mixed text_objcount
+
+w=ui_init(ui_w(),ui_h())
+# w.ui_set_full_screen(ui_primary_monitor())
+w.ui_title("test title")
+w.ui_set_smooth(true)
+
+struct text
+    x float
+    y float
+    s string
+endstruct
+
+init o text
+
+struct tpos
+    x float
+    y float
+endstruct
+
+trail_vanish_mod=1
+size_trail=80
+init temp_pos tpos
+trail=[]
+
+var trail_vanish_count      int
+var pause_render            bool
+var frame_count             int
+var expected_frame_length   float
+var fps                     int
+var angle                   float
+
+# p=pic_load("/home/daniel/www/img/star.png")
+p=pic_load("/home/daniel/star.png")
+star=ui_new_sprite(p)
+
+fps=0
+on fps>0 do expected_frame_length=1000f/fps
+
+last_time=epoch_nano_time()
+frame_start_time=last_time
+    
+mx=w.ui_bounds.Max.X.int
+my=w.ui_bounds.Max.Y.int
+
+var draw_count int
+
+while !ui_closed(w)
+
+    current_time= epoch_nano_time()
+    dt_ms       = float(current_time-last_time)/1e6
+    last_time   = current_time
+
+    draw_count=0
+
+    # input
+    on ui_just_released(w,key.ESC) do break
+    on ui_just_released(w,key.SPACE) do pause_render=!pause_render
+    if ui_pressed(w,key.MOUSE_LEFT)
+        w.ui_cursor_visible(false)
+        vec=w.ui_mouse_pos
+        temp_pos.x=vec.X
+        temp_pos.y=vec.Y
+        on trail.len==size_trail do trail=trail.remove(trail.len)
+        trail=trail.insert(1,temp_pos)
+    else
+        trail_vanish_count+=1
+        if trail_vanish_count % trail_vanish_mod == 0
+            on trail.len>0 do trail=trail.remove(trail.len)
+            trail_vanish_count=0
+        endif
+    endif
+    on ui_just_released(w,key.MOUSE_LEFT) do w.ui_cursor_visible(true)
+
+    # random strings
+    for c=0 to text_objcount-1
+        o.x=mx.randf
+        o.y=my.randf
+        o.s=(rand(89)+38).char*rand(40)
+        ary[c]=o
+    endfor
+
+    if !pause_render
+
+        ui_clear(w,10,40,50)
+        ui_batch_clear(w)
+
+        # lines
+        line=ui_new_draw()
+        for e=0 to my-1 step 4
+            r=randf(); g=randf(); b=randf()
+            ui_pp(ref line,r,g,b,0f,e.float)
+            ui_pp(ref line,r,g,b,mx.float,e.float)
+            ui_line(line,1f)
+        endfor
+        ui_batch(w,line)
+        draw_count+=my/4
+
+        # shapes
+        for e=0 to max_poly-1
+            shape=ui_new_draw()
+            when rand(5)
+            is 1:
+                # Function : ui_polygon(draw_object,thickness)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_polygon(shape,0f)
+            is 2:
+                # Function : ui_circle(draw_object,radius,thickness)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_circle(shape,randf(100),0f)
+            is 3:
+                # Function : ui_circle_arc(draw_object,radius,low,high,thickness)
+                #px=mx.randf; py=my.randf
+                #ui_pp(ref shape,255f,255f,255f,px,py)
+                #ui_pp(ref shape,255f,255f,255f,px+randf(40),py+randf(40))
+                #ui_circle_arc(shape, randf(8), randf(90), 180f+randf(179), randf(8))
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_line(shape,randf(8)-1)
+            is 4:
+                # Function : ui_line(draw_object,thickness)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_line(shape,randf(8)-1)
+            is 5:
+                # Function : ui_rectangle(draw_object,thickness)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
+                ui_rectangle(shape,0f)
+            endwhen
+            ui_batch(w,shape)
+        endfor
+        ui_batch_draw(w)
+                
+        draw_count+=max_poly
+
+        # text output
+        for c=0 to text_objcount-1
+            ui_text(w,ary[c].x,ary[c].y,"yellow",ary[c].s)
+        endfor
+        draw_count+=text_objcount
+
+        # calc movements
+        angle-=0.002*dt_ms
+
+        # .. plant an image at centre of window, with rotation
+        m = ui_new_matrix()
+        m = ui_mat_rotate(m,ui_new_vector(), angle)
+        m = ui_mat_move(m,ui_centre(ui_bounds(w)))
+        ui_sprite_draw(w,star,m)
+
+        v1= ui_new_vector(-47f,-56f)
+        v2= ui_new_vector( 47f,-56f)
+
+        # .. generate transformed version
+        m2= ui_new_matrix()
+        m2= ui_mat_rotate(m2,ui_new_vector(), -angle)
+        m2= ui_mat_move(m2,ui_centre(ui_bounds(w)))
+        m2= ui_mat_move(m2,v1)
+        ui_sprite_draw(w,star,m2) 
+
+        # .. re-use m2 for new transformed object
+        m2= ui_new_matrix()
+        m2= ui_mat_rotate(m2,ui_new_vector(), -angle)
+        m2= ui_mat_move(m2,ui_centre(ui_bounds(w)))
+        m2= ui_mat_move(m2,v2)
+        ui_sprite_draw(w,star,m2)
+
+        draw_count+=3
+
+        # .. push mouse trail
+        foreach t in trail
+            m = ui_new_matrix()
+            m = ui_mat_move(m,ui_new_vector(t.x,t.y))
+            m = ui_mat_scale(m,ui_new_vector(t.x,t.y),ui_new_vector(0.3f,0.24f))
+            ui_sprite_draw(w,star,m)
+        endfor
+
+        draw_count+=trail.len
+
+    endif
+   
+    # update screen     
+    ui_update(w)
+
+    # fps + sync stuff
+    current_time=epoch_nano_time()
+    dt_ms=float(current_time-last_time)/1e6
+    frame_count+=1
+
+    # wait for end of frame:
+    on fps>0 and dt_ms<expected_frame_length do pause expected_frame_length-dt_ms
+
+    if current_time-frame_start_time>=1e9
+        ui_title(w,"item draw count:%5d last frame length:%4.2fms expected:%4.2fms fps:%d".
+                    format(draw_count,dt_ms,expected_frame_length,frame_count)
+        )
+        frame_start_time=current_time
+        frame_count=0
+    endif
+
+endwhile
+

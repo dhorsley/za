@@ -1,0 +1,22 @@
+#!/usr/bin/za
+
+# test - random addition loop
+
+module "./modules/timing.mod"
+
+max_count=2000000
+input max_count optarg 1
+
+a=[]
+ts=epoch_nano_time()
+for f=0 to max_count
+    a=a.append(rand(10))
+endfor
+te=epoch_nano_time()
+
+a = a ?> "#>8"
+
+println "final len {=a.len} , loop-count {f}"
+
+timing.report(ts,te,max_count)
+

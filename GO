@@ -12,3 +12,4 @@ export GOPATH=${pref}/$user/go
 
 echo "Path : $GOPATH"
 
+

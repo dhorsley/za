@@ -30,22 +30,6 @@ import (
      · no intention to add header or method inspection or anything other than what is below.
 */
 
-// TEST : Metrics
-// The code below was for testing graphite stuff.
-//  it can probably be ripped out now - no intention to incorporate it fully.
-//  So long as WebSendMetrics remains false then it will have no side effect leaving it in
-//  in case minds are changed, but it is most likely dead code.
-//  if we wanted to use it, we would need library/env stuff for setting the host+port and 
-//  a way of turning metrics generation off and on.
-//  we would also want to be able to push metrics on demand from other areas of Za code. 
-//  not saying it would be difficult to add, just incredibly low priority.
-
-/*
-    var WLOG_METRICS_HOST="172.16.10.29"
-    var WLOG_METRICS_PORT=2003
-*/
-var WebSendMetrics=false
-
 var web_tr *http.Transport
 var web_client *http.Client
 
@@ -178,46 +162,6 @@ func webRoutes(uid string) {
 
 }
 
-func fireMetric(host string,typ string,value int) {
-
-    // what to send:
-    // increments to query count
-    // increments to permanent redirects
-    // increments to local served
-    // increments to proxied requests
-    // failed to serve
-/*     var strType string
-    switch typ {
-    case "e":
-        strType="error"
-    case "r":
-        strType="redirect"
-    case "f":
-        strType="call"
-    case "s":
-        strType="served"
-    case "p":
-        strType="proxied"
-    default:
-        return
-    }
-*/
-
-/*
-    reqHostSplitAt:=str.IndexByte(host,':')
-    reqHost:=host[:reqHostSplitAt]
-    reqPort:=host[reqHostSplitAt+1:]
-*/
-
-    // metconn, _ := net.Dial("tcp", WLOG_METRICS_HOST+":"+sf("%v",WLOG_METRICS_PORT))
-    // wlog("metric: local.%s.%s.%s %v %v\n",reqHost,reqPort,strType,value,time.Now().Unix())
-    // fmt.Fprintf(metconn,"local.%s.%s.%s %v %v\n",reqHost,reqPort,strType,value,time.Now().Unix())
-    // we should check error here, but what would we do with it?
-    // metconn.Close()
-
-}
-
-
 type webstruct struct {
     host    string
     path    string
@@ -248,12 +192,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     // we also throw out some debug info too when enabled. this should not be the default!
     // it really slows down request processing.
 
-    // get debug level once
-
-    debuglock.RLock()
-    dlevel:=debug_level
-    debuglock.RUnlock()
-
     method:=r.Method        // get, put, etc
     purl  :=r.URL           // provided url
     header:=r.Header        // map[string][]string
@@ -268,20 +206,16 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     srvStr  := srvAddr.String()
 
     localSplitAt:=str.IndexByte(srvStr,':')
-    // localIp:=srvStr[:localSplitAt]
     localPort:=srvStr[localSplitAt+1:]
 
     remoteSplitAt:=str.IndexByte(remote,':')
     remoteIp:=remote[:remoteSplitAt]
-
-    if dlevel>5 { wlog("^ NEW REQUEST : host [%v] path [%v]\n",host,purl) }
 
     serviced:=false         // was a rule acted upon?
     handle := webLookup(host)
 
     if handle=="" {
         port:=""
-        if dlevel>5 { wlog("  entered empty handle processing\n") }
         // extract port
         reqHostSplitAt:=str.IndexByte(host,':')
         if reqHostSplitAt>-1 {
@@ -292,9 +226,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             port=localPort
         }
         handle=webLookup("0.0.0.0:"+port)
-        if dlevel>5 { wlog("  new handle: %v [with 0.0.0.0:%v]\n",handle,port) }
-    } else {
-        if dlevel>5 { wlog("  using handle: %v [with %v]\n",handle,host) }
     }
 
     // deal with forced redirects and reverse proxying first
@@ -316,13 +247,11 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             if str.HasPrefix(path,rule.in) {
                 http.Redirect(w,r,rule.mutation.(string),http.StatusMovedPermanently)
                 wlog("Redirected from %s to %s.\n",path,rule.mutation.(string))
-                if WebSendMetrics { fireMetric(host,"r",http.StatusMovedPermanently) }
                 serviced=true
             }
 
         case "p": // rewrite and reverse proxy
 
-            if dlevel>5 { wlog("Hitting reverse proxy rule [ %s / %s ]\n",rule.in,rule.mutation) }
             // build new_path based on path in rule.in + rule.mutation
             // make a client request from here to host+new_path
             // pass result back including status codes
@@ -398,7 +327,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     down_code=resp.StatusCode
                     if err==nil {
                         content,err=ioutil.ReadAll(resp.Body)
-                        // resp.Body.Close()
                     }
                     // wlog("POST request: Form value provided: %#v\n",r.URL.RawQuery)
 
@@ -406,23 +334,18 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 if down_code>299 {
                     // now look for matching rules for failure
-                    // for _,fail_rule := range web_rules[handle] {
                     for _,fail_rule := range wr_copy {
                         switch fail_rule.code[0] {
                         case 'e':
-                        // fail_rule.in is which path prefix to match on
-                        // fail_rule.mutation is where to redirect to on error
-                            if dlevel>5 { wlog("Checking error rules for path [%s]\n",path) }
+                            // fail_rule.in is which path prefix to match on
+                            // fail_rule.mutation is where to redirect to on error
                             expectedStatusCode:=fail_rule.code[1:]
                             if str.HasPrefix(path,fail_rule.in) {
                                 if expectedStatusCode=="" || expectedStatusCode==sf("%d",down_code) {
                                     http.Redirect(w,r,fail_rule.mutation.(string),http.StatusTemporaryRedirect)
                                     wlog("Redirected temporarily from %s to %s due to bad response.\n",path,fail_rule.mutation.(string))
-                                    if WebSendMetrics { fireMetric(host,"e",http.StatusTemporaryRedirect) }
                                     serviced=true
                                     break
-                                } else {
-                                    if dlevel>5 { wlog("Error check reached inconclusive state with rule code '%s' and inbound code '%+v'\n",expectedStatusCode,down_code) }
                                 }
                             }
                         }
@@ -432,7 +355,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     // case "w": // @todo: rewrite response body
                     // wlog("Proxy read the page successfully. Writing back to remote client.\n")
                     wlog("%s served %s to %s.\n",host,new_path,remoteIp)
-                    if WebSendMetrics { fireMetric(host,"p",1) }
                     w.Write([]byte(content))
                 }
                 serviced=true
@@ -447,13 +369,11 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             // if return == not_empty then w.Write(ret_string)
             // if return == empty then check "e" rules,
             //   e rule may redirect or send a specific error
-            // if no error rule available, return a notfound or nothing at all?
 
             var re = regexp.MustCompile(rule.in)
             if re.MatchString(path) {
 
                 fn:=rule.mutation.(string)
-                if dlevel>5 { wlog("Called %s from %s.\n",fn,path) }
 
                 // check that function exists
                 ifn,found:=fnlookup.lmget(fn)
@@ -549,7 +469,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     if rule.in!="" && rule.mutation.(string)!="" {
                         // provided with a regex rewrite
                         new_path = re.ReplaceAllString(path, rule.mutation.(string))
-                        if dlevel>5 { wlog("Rewrote %s to %s\n",path,new_path) }
                     } else {
                         // just proxy
                         new_path=path
@@ -558,7 +477,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     // decode the reformed url
                     new_url,url_err:=url.Parse(new_path)
                     if url_err==nil {
-                        if dlevel>5 { wlog("New URL Struct : %#v\n",new_url) }
                         new_path=new_url.Path
 
                     }
@@ -582,7 +500,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                                         if expectedStatusCode=="" || expectedStatusCode==sf("%v","404") {
                                             http.Redirect(w,r,fail_rule.mutation.(string),http.StatusTemporaryRedirect)
                                             wlog("Redirected temporarily from %s to %s due to bad response.\n",path,fail_rule.mutation.(string))
-                                            if WebSendMetrics { fireMetric(host,"e",http.StatusTemporaryRedirect) }
                                             serviced=true
                                             break
                                         }
@@ -602,7 +519,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     if contentType=="application/octet-stream" {
                         contentType = http.DetectContentType(s)
                     }
-                    // pf("For %v found type : %v\n",fp,contentType)
 
                     // set type outbound
                     w.Header().Set("Content-Type", contentType)
@@ -615,7 +531,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         wlog("Could not read file %v to serve to %v.\n",new_path,remoteIp)
                     }
 
-                    if WebSendMetrics { fireMetric(host,"s",1) }
                     serviced=true
                     break
                 } // endif regex match path
@@ -651,6 +566,7 @@ func buildNetLib() {
 
     slhelp["net_interfaces"] = LibHelp{in: "", out: "device_string", action: "newline separated list of device names."}
     stdlib["net_interfaces"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("net_interfaces",args,0); !ok { return nil,err }
         i,_:=net.Interfaces()
         a:=""
         for _,v:=range i {
@@ -659,19 +575,22 @@ func buildNetLib() {
         return a[:len(a)-1],nil
     }
 
-    slhelp["web_display"] = LibHelp{in: "", out: "", action: "(debug)"}
+    slhelp["web_display"] = LibHelp{in: "", out: "", action: "Show configured request routing."}
     stdlib["web_display"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("web_display",args,0); !ok { return nil,err }
         webRoutesAll()
         return nil,nil
     }
 
     slhelp["web_max_clients"] = LibHelp{in: "", out: "int", action: "(read-only) returns the maximum permitted client count for a web server."}
     stdlib["web_max_clients"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("web_max_clients",args,0); !ok { return nil,err }
         return int(MAX_CLIENTS),nil
     }
 
     slhelp["web_serve_log"] = LibHelp{in: "args", out: "", action: "Write arguments to the web log file, if available."}
     stdlib["web_serve_log"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("web_serve_log",args,0); !ok { return nil,err }
         switch len(args) {
         case 0:
             return nil,nil
@@ -689,6 +608,7 @@ func buildNetLib() {
                     "  .host (host:port), .method, .path, .remote (remote_ip:port) and .data (POST data).",
 }
     stdlib["web_serve_decode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("web_serve_decode",args,1,"1","main.webstruct"); !ok { return nil,err }
         if len(args)==1 {
             switch args[0].(type) {
             case webstruct:
@@ -698,47 +618,23 @@ func buildNetLib() {
         return nil,err
     }
 
-    slhelp["web_serve_start"] = LibHelp{in: "docroot,port,vhost", out: "handle", action: "Returns an identifier for a new http server."}
+    slhelp["web_serve_start"] = LibHelp{in: "docroot,port[,vhost]", out: "handle", action: "Returns an identifier for a new http server."}
     stdlib["web_serve_start"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("web_serve_start",args,2,
+            "3","string","int","string",
+            "2","string","int"); !ok { return nil,err }
 
         // validate args (docroot,port,addr)
 
-        if len(args)<2 {
-            return "",errors.New("bad arguments to web_serve_start()")
-        }
-
-        var docroot string
-
         var host string
-        var port int
-
-        switch args[0].(type) {
-        case string:
-            docroot=args[0].(string)
-        default:
-            // bad
-            return "",errors.New("bad arguments to web_serve_start()")
-        }
-
-        switch args[1].(type) {
-        case int:
-            port=args[1].(int)
-        default:
-            return "",errors.New("bad arguments to web_serve_start()")
-        }
+        docroot:=args[0].(string)
+        port:=args[1].(int)
 
         if len(args)==3 {
-            // host string
-            switch args[2].(type) {
-            case string:
-                host=args[2].(string)
-            default:
-                return "",errors.New("bad arguments to web_serve_start()")
-            }
+            host=args[2].(string)
         }
 
         // verify
-
         if port<=0 || port>65535 {
             return "",errors.New("port must be between 1 and 65535 in web_serve_start()")
         }
@@ -769,8 +665,8 @@ func buildNetLib() {
             l, e := net.Listen("tcp4", addr)
             if e != nil {
                 log.Fatal(err)
-	        } else {
-	            e=srv.Serve(l)
+            } else {
+                e=srv.Serve(l)
             }
         }()
 
@@ -796,7 +692,6 @@ func buildNetLib() {
                 weblock.RUnlock()
             }
             // store in lookup table
-            locks(true)
             weblock.Lock()
             web_handles[uid]=web_table_entry{srv:&srv,mux:mux,docroot:docroot,addr:addr,host:host,port:port}
             weblock.Unlock()
@@ -809,75 +704,34 @@ func buildNetLib() {
 
     slhelp["web_serve_stop"] = LibHelp{in: "handle", out: "success_flag", action: "Stops and discards a running http server."}
     stdlib["web_serve_stop"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
-        var uid string
-        if len(args)==1 {
-            switch args[0].(type) {
-            case string:
-                uid=args[0].(string)
-            default:
-                return false,nil
-            }
-        } else {
-            return false,nil
-        }
-
+        if ok,err:=expect_args("web_serve_stop",args,1,"1","string"); !ok { return nil,err }
+        uid:=args[0].(string)
         webClose(uid)
         wlog("Stopped web service "+uid+"\n")
         weblock.Lock()
         delete(web_handles,uid)
         weblock.Unlock()
-        locks(false)
         return true,nil
     }
 
     slhelp["html_escape"] = LibHelp{in: "string", out: "string", action: "Converts HTML special characters to ampersand values."}
     stdlib["html_escape"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        var s string
-        if len(args)==1 {
-            switch args[0].(type) {
-            case string:
-                s=args[0].(string)
-            default:
-                return "",errors.New("html_escape() not provided a string value.")
-            }
-            return html.EscapeString(s),nil
-        }
-        return "",errors.New("html_escape() requires a string value.")
+        if ok,err:=expect_args("html_escape",args,1,"1","string"); !ok { return nil,err }
+        return html.EscapeString(args[0].(string)),nil
     }
 
     slhelp["html_unescape"] = LibHelp{in: "string", out: "string", action: "Converts a string containing ampersand values to include HTML special characters."}
     stdlib["html_unescape"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        var s string
-        if len(args)==1 {
-            switch args[0].(type) {
-            case string:
-                s=args[0].(string)
-            default:
-                return "",errors.New("html_unescape() not provided a string value.")
-            }
-            return html.UnescapeString(s),nil
-        }
-        return "",errors.New("html_unescape() requires a string value.")
+        if ok,err:=expect_args("html_unescape",args,1,"1","string"); !ok { return nil,err }
+        return html.UnescapeString(args[0].(string)),nil
     }
 
 
     slhelp["web_serve_up"] = LibHelp{in: "handle", out: "bool", action: "Checks if a web server is still running."}
     stdlib["web_serve_up"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
-        var uid string
-        if len(args)==1 {
-            switch args[0].(type) {
-            case string:
-                uid=args[0].(string)
-            default:
-                return false,nil
-            }
-        } else {
-            return false,nil
-        }
-
-        // @note: web should maybe change this into a test instead of an assumption
+        if ok,err:=expect_args("web_serve_up",args,1,"1","string"); !ok { return nil,err }
+        uid:=args[0].(string)
+        // @note: we should maybe change this into a test instead of an assumption
         //          or ensure that this value is updated periodically.
         _,exists:=web_handles[uid]
         return exists,nil
@@ -886,48 +740,25 @@ func buildNetLib() {
 
     slhelp["web_serve_path"] = LibHelp{in: "handle,action_type,request_regex,new_path", out: "string", action: "Provides a traffic routing instruction to a web server."}
     stdlib["web_serve_path"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=4 {
-            return false,errors.New("bad call args in web_serve_path()")
-        }
-        var uid string
-        switch args[0].(type) {
-        case string:
-            uid=args[0].(string)
+        if ok,err:=expect_args("web_serve_path",args,1,
+            "4","string","string","string","string"); !ok { return nil,err }
+
+        uid:=args[0].(string)
+        switch str.ToLower(args[1].(string))[0] {
+        case 's': // directly serve request
+        case 'r': // redirect
+        case 'p': // rewrite and reverse proxy
+        case 'w': // rewrite response body @todo
+        case 'f': // build func forwarder
+        case 'e': // build rule for handling return failure
         default:
-            return false,errors.New("argument 1 must be a string in web_serve_path()")
-        }
-        switch args[1].(type) {
-        case string:
-            switch str.ToLower(args[1].(string))[0] {
-            case 's': // directly serve request
-            case 'r': // redirect
-            case 'p': // rewrite and reverse proxy
-            case 'w': // rewrite response body @todo
-            case 'f': // build func forwarder
-            case 'e': // build rule for handling return failure
-            default:
-                return false,errors.New("argument 2 of web_serve_path() must be one of S, R, P, F, W or E")
-            }
-        default:
-            return false,errors.New("argument 2 must be a string in web_serve_path()")
+            return false,errors.New("argument 2 of web_serve_path() must be one of S, R, P, F, W or E")
         }
 
         var rule web_rule
         rule.code=args[1].(string)
-
-        switch args[2].(type) {
-        case string:
-            rule.in=args[2].(string)
-        default:
-            return false,errors.New("argument 3 must be a string in web_serve_path()")
-        }
-
-        switch args[3].(type) {
-        case string:
-            rule.mutation=args[3].(string) // name of za function to call
-        default:
-            return false,errors.New("argument 4 must be a string in web_serve_path()")
-        }
+        rule.in=args[2].(string)
+        rule.mutation=args[3].(string) // name of za function to call
 
         webrulelock.Lock()
         web_rules[uid]=append(web_rules[uid],rule)
@@ -940,12 +771,7 @@ func buildNetLib() {
 
     slhelp["web_serve_log_throttle"] = LibHelp{in: "start,freq", out: "", action: "Set the throttle controls for web server logging."}
     stdlib["web_serve_log_throttle"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 {
-            return nil,errors.New("invalid args to web_serve_log_throttle()")
-        }
-        if sf("%T",args[0])!="int" || sf("%T",args[1])!="int" {
-            return nil,errors.New("invalid args to web_serve_log_throttle()")
-        }
+        if ok,err:=expect_args("web_serve_log_throttle",args,1,"2","int","int"); !ok { return nil,err }
         lastWlogStart=args[0].(int)
         lastWlogEvery=args[1].(int)
         // wlog("// throttle changed to start at %d and show every %d messages.\n",lastWlogStart,lastWlogEvery)
@@ -965,7 +791,7 @@ func buildNetLib() {
 
     slhelp["web_head"] = LibHelp{in: "loc_string", out: "bool", action: "Makes a HEAD request of the given [#i1]loc_string[#i0]. Returns true if retrieved successfully."}
     stdlib["web_head"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 { return false,errors.New("Bad args (count) to web_head()") }
+        if ok,err:=expect_args("web_head",args,1,"1","string"); !ok { return nil,err }
         _, down_code := head(args[0].(string))
         if down_code>299 {
             return false,nil
@@ -975,7 +801,7 @@ func buildNetLib() {
 
     slhelp["web_get"] = LibHelp{in: "loc_string", out: "structure", action: "Returns a [#i1]structure[#i0] with content downloaded from [#i1]loc_string[#i0]. [#i1].result[#i0] is the content string. [#i1].code[#i0] is the status code."}
     stdlib["web_get"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=1 { return false,errors.New("Bad args (count) to web_get()") }
+        if ok,err:=expect_args("web_get",args,1,"1","string"); !ok { return nil,err }
         s, down_code, _ := download(args[0].(string))
         if down_code>299 {
             return web_info{result:"",code:int(down_code)}, nil
@@ -983,28 +809,21 @@ func buildNetLib() {
         return web_info{result:string(s),code:int(down_code)},nil
     }
 
-    slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
+    slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[string]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
     stdlib["web_custom"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        var method_string, loc_string string
-        var headers =make(map[string]string)
+        if ok,err:=expect_args("web_custom",args,2,
+            "3","string","string","map[string]interface {}",
+            "2","string","string"); !ok { return nil,err }
 
+        method_string   := args[0].(string)
+        loc_string      := args[1].(string)
+
+        var headers =make(map[string]string)
         switch len(args) {
-        case 2:
-            if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" {
-                return []interface{}{"Invalid arguments (type) in web_custom()",nil,400},nil
-            }
-            method_string   = args[0].(string)
-            loc_string      = args[1].(string)
         case 3:
-            if sf("%T",args[0])!="string" || sf("%T",args[1])!="string" || sf("%T",args[2])!="map[string]interface {}" {
-                return []interface{}{"Invalid arguments (type) in web_custom()",nil,400},nil
-            }
-            method_string   = args[0].(string)
-            loc_string      = args[1].(string)
             for k,v:=range args[2].(map[string]interface{}) { headers[k]=v.(string) }
-        default:
-            return []interface{}{"Invalid arguments (count) in web_custom()",nil,400},nil
         }
+
         // headers
         request, err := http.NewRequest(method_string, loc_string, nil)
         if err != nil { return []interface{}{"Could not create a new HTTP request in web_custom()",nil,400},nil }
@@ -1028,12 +847,9 @@ func buildNetLib() {
 
     slhelp["web_post"] = LibHelp{in: "loc_string,[]key_value_list", out: "result_string", action: "Perform a HTTP POST."}
     stdlib["web_post"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 {
-            return "",errors.New("invalid args to web_post()")
-        }
-        if sf("%T",args[0]) != "string" {
-            return "",errors.New("invalid args to web_post()")
-        }
+        if ok,err:=expect_args("web_post",args,1,
+            "2","string","[]interface {}"); !ok { return nil,err }
+
         s, up_ok := post(args[0].(string),args[1])
         if !up_ok {
             return "",errors.New(sf("Could not post to %v",args[0].(string)))
@@ -1043,10 +859,8 @@ func buildNetLib() {
 
     slhelp["download"] = LibHelp{in: "url_string", out: "local_name", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_name[#i0]. Includes console feedback."}
     stdlib["download"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if sf("%T",args[0])!="string" {
-            return "",errors.New("Bad args (type) in download()")
-        }
-        if len(args)!=1 { return "",errors.New("Bad args (count) in download()") }
+        if ok,err:=expect_args("download",args,1,"1","string"); !ok { return nil,err }
+
         fname, down_code := FileDownload(args[0].(string))
         if down_code<300 { return fname, nil }
         return "", nil
@@ -1054,9 +868,8 @@ func buildNetLib() {
 
     slhelp["web_download"] = LibHelp{in: "url_string,local_file", out: "bool_okay", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_file[#i0]."}
     stdlib["web_download"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if len(args)!=2 { return false,errors.New("Bad args (count) to web_download()") }
-        cont, down_code, header := download(args[0].(string))
-        _=header
+        if ok,err:=expect_args("web_download",args,1,"2","string","string"); !ok { return nil,err }
+        cont, down_code, _ := download(args[0].(string))
         if down_code<300 {
             ioutil.WriteFile(args[1].(string), cont, default_WriteMode)
             return true, nil
@@ -1068,8 +881,6 @@ func buildNetLib() {
 
 func post(loc string,valueMap interface{}) ([]byte,bool) {
     var s []byte
-    // tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-    // client := &http.Client{Transport: tr}
     vlist := url.Values{}
     switch valueMap:=valueMap.(type) {
     case map[string]int:
@@ -1102,7 +913,6 @@ func download(loc string) ([]byte, int, http.Header) {
     var s []byte
 
     resp, err := web_client.Get(loc)
-    // req.Header.Set("name", "value")
     if err == nil {
         defer resp.Body.Close()
         if resp.StatusCode>299 {

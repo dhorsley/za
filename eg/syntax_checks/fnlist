@@ -19,7 +19,7 @@ foreach l in funcs(filter,true)
             split=false
             for i=1 to NF-1
                 if head(F)=="="
-                    esplit(F,"front","rest",2)
+                    esplit(F,ref front,ref rest,2)
                     split=true
                     break
                 endif

@@ -5,7 +5,7 @@
 
 define fwhandle(call)
     c=web_serve_decode(call)
-    region=getglob("region")
+    region=region
     pageTitle="AWS IP Ranges for {region}"
 
     linkOptMap["type"]       ="text/css"
@@ -34,7 +34,7 @@ define fwhandle(call)
     # convert aws IPs to text
     iptabhead =wthead(wtr(wth("IP Range")))
     iptabbody=""
-    ipglob=getglob("thisRegion")
+    ipglob=thisRegion
     if len(ipglob)>0
         foreach ip in ipglob
             iptabbody = iptabbody+wtr(wtd(ip))

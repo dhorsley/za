@@ -18,7 +18,6 @@ import (
     "regexp"
     "runtime"
     str "strings"
-//    "sync/atomic"
     "syscall"
     "time"
 )
@@ -54,8 +53,12 @@ var BuildComment string
 var BuildVersion string
 var BuildDate string
 
+
+// enable UI?
+var hasUI bool
+
 // enable mutices in variable handling functions
-var lockSafety bool=false
+// var lockSafety bool=false
 
 // initialise parser used by the interpolate function
 // this (and interlock) in ev() prevent recursive interpolation from working
@@ -162,11 +165,6 @@ var dbport int
 var dbuser string
 var dbpass string
 
-// for debugging eval routines.
-// should only be used when locks are disabled.
-// it contains the last line number executed.
-var elast int
-
 var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process input stream
 var po io.ReadCloser        // process output stream
@@ -229,7 +227,7 @@ var shellrep bool
 
 // 0:off, >0 max displayed debug level
 // - not currently used too much. may eventually be removed
-var debug_level int
+// var debug_level int
 
 // list of keywords for lookups
 // - used in interactive mode TAB completion
@@ -249,16 +247,21 @@ var vtable_maxreached uint32
 var PromptTemplate string
 
 // var access counts - debugging
-var vgetcount int
-var vgeticount int
+// var vgetcount int
+// var vgeticount int
+
 var concurrent_funcs int32
+
+//
+// @experimental:
+//
+var winAvailable bool
 
 //
 // MAIN
 //
 
-
-func main() {
+func run() {
 
     // time zone handling
     if tz := os.Getenv("TZ"); tz != "" {
@@ -285,7 +288,6 @@ func main() {
         for {
             <-sigs
             globlock.Lock()
-            // winching = true
             MW, MH, _ = GetSize(1)
             globlock.Unlock()
         }
@@ -356,7 +358,7 @@ func main() {
     MW, MH, _ = GetSize(1)
 
     // turn debug mode off
-    debug_level = 0
+    // debug_level = 0
 
     // start processing startup flags
 
@@ -418,7 +420,7 @@ func main() {
     var a_help         =   flag.Bool("h",false,"help page")
     var a_version      =   flag.Bool("v",false,"display the Za version")
     var a_interactive  =   flag.Bool("i",false,"run interactively")
-    var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
+    // var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
     var a_profile      =   flag.Bool("p",false,"enable profiler")
     var a_trace        =   flag.Bool("P",false,"enable trace capture")
     var a_test         =   flag.Bool("t",false,"enable tests")
@@ -433,10 +435,11 @@ func main() {
     var a_mark_time    =   flag.Bool("m",false,"Mark co-process command progress")
     var a_ansi         =   flag.Bool("c",false,"disable colour output")
     var a_ansiForce    =   flag.Bool("C",false,"enable colour output")
-    var a_lock_safety  =   flag.Bool("l",false,"Enable variable mutex locking for multi-threaded use")
+//     var a_lock_safety  =   flag.Bool("l",false,"Enable variable mutex locking for multi-threaded use")
     var a_shell        = flag.String("s","","path to coprocess shell")
     var a_shellrep     =   flag.Bool("Q",false,"enables the shell info reporting")
     var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
+    var a_ui           =   flag.Bool("u",false,"enables the local UI")
     var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte.")
 
     flag.Parse()
@@ -445,17 +448,12 @@ func main() {
 
     // mono flag
     ansiMode=true
-    if !*a_ansiForce && (runtime.GOOS=="windows" || *a_ansi) {
+    if !*a_ansiForce && *a_ansi {
         ansiMode = false
     }
 
     // prepare ANSI colour mappings
     setupAnsiPalette()
-
-    // thread safety checks
-    if *a_lock_safety {
-        locks(true)
-    }
 
     // check if interactive mode was desired
     if *a_interactive {
@@ -511,10 +509,6 @@ func main() {
         vset(0, "mark_time", true)
     }
 
-    if *a_debug != 0 {
-        debug_level = *a_debug
-    }
-
     // trace capture - not advertised.
     if *a_trace {
         tf, err := os.Create("trace.out")
@@ -553,6 +547,10 @@ func main() {
 
     test_group_filter = *a_test_group
 
+    if *a_ui {
+        hasUI=true
+        winAvailable=true
+    }
 
     // disable the coprocess command
     if *a_noshell {
@@ -691,8 +689,8 @@ func main() {
             if caval {
                 // out with the old
                 if bgproc != nil {
-                    pid := bgproc.Process.Pid
-                    debug(13, "\nkilling pid %v\n", pid)
+                    // pid := bgproc.Process.Pid
+                    // debug(13, "\nkilling pid %v\n", pid)
                     // drain io before killing the process:
                     pi.Close()
                     // now kill:
@@ -701,7 +699,7 @@ func main() {
                 }
                 // in with the new
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
-                debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
+                // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
                 vset(0, "@shellpid",bgproc.Process.Pid)
                 siglock.Lock()
                 coproc_active = false
@@ -879,7 +877,6 @@ func main() {
 
         vset(0, "@release_id", tmp)
 
-        // further globals from bash
         h, _ := os.Hostname()
         vset(0, "@hostname", h)
 
@@ -888,6 +885,7 @@ func main() {
     // special case: aliases in bash
     if shelltype=="bash" {
         Copper("shopt -s expand_aliases",true)
+        Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
     }
 
     if testMode {
@@ -911,15 +909,22 @@ func main() {
     loggingEnabled = false
 
 
+    // pixel window handling setup
+    init_ui_features()
+
+
     // interactive mode support
-    if interactive {
+    if (*a_program=="" && exec_file_name=="") || interactive {
+
+        // in case we arrived here by another method:
+        interactive=true
 
         // reset terminal
-        cls()
+        // cls()
 
         // banner
-        title := sparkle(sf("Za Interactive Mode  -  (%v,%v)  ", MH, MW))
-        pf("%s\n\n", sparkle("[#bblue][#7]"+pad(title, -1, MW, "·")+"[#-][##]"))
+        title := sparkle("Za Interactive Mode")
+        pf("\n%s\n\n", sparkle(" [#bold][#ul][#6]"+title+"[#-][##]"))
 
         // state control
         endFunc := false
@@ -930,9 +935,12 @@ func main() {
 
         // term loop
         pf("\033[s") // save cursor
+        /*
         row = 3
         col = 1
         at(row, col)
+        */
+        row,col=GetCursorPos()
         pcol := promptColour
 
         // simple, inelegant, probably buggy REPL
@@ -1123,7 +1131,8 @@ func main() {
         term_complete()
     }
 
-    debug(15,"var counts\nvget  : %d\nvgeti : %d\n",vgetcount,vgeticount)
+    // debug(15,"var counts\nvget  : %d\nvgeti : %d\n",vgetcount,vgeticount)
+    // pf("[cache] miss %d - hit %d - max string len %d\n",evalCacheMiss,evalCacheHit,maxLenEvalString)
 
 }
 

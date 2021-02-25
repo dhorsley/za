@@ -30,7 +30,7 @@ define menu(p,opts)
         if k>=49 && k<maxchoice
             n=k-48
         endif
-        on chr(k)=="q" do break
+        on char(k)=="q" do break
     endwhile
 
     cursoron()

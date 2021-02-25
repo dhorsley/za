@@ -30,6 +30,7 @@ func setEcho(s bool) {
 
 }
 
+// @note: may need to retire this if we are going to do the same in the unix version!
 func GetCursorPos() (int,int) {
     tcol,trow,e:=GetRowCol(1)
     if e==nil {
@@ -42,6 +43,8 @@ func term_complete() {
     // do nothing
 }
 
+
+// for reference:
 /*
 ENABLE_PROCESSED_INPUT          = 0x0001
 ENABLE_LINE_INPUT               = 0x0002

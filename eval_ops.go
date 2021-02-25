@@ -52,7 +52,7 @@ func asBool(val interface{}) bool {
     return b
 }
 
-func asInteger(val interface{}) int {
+func as_integer(val interface{}) int {
     switch v:=val.(type) {
     case nil:
         return int(0)
@@ -125,36 +125,31 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 
 func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
-    var int1 int
-    var int2 int
+    var intInOne bool
+    var intInTwo bool
 
     switch val1.(type) {
     case int:
-    default:
-        intInOne=false
+        intInOne=true
     }
     switch val2.(type) {
     case int:
-    default:
-        intInTwo=false
+        intInTwo=true
     }
 
     if intInOne && intInTwo {
         return val1.(int)+val2.(int)
     }
-    if intInOne { int1=val1.(int) }
-    if intInTwo { int2=val2.(int) }
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
 	if intInOne {
-		float1 = float64(int1)
+		float1 = float64(val1.(int))
 		float1OK = true
 	}
 	if intInTwo {
-		float2 = float64(int2)
+		float2 = float64(val2.(int))
 		float2OK = true
 	}
 
@@ -162,8 +157,8 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 		return float1 + float2
 	}
 
-    if intInOne && val2==nil { return int1 }
-    if intInTwo && val1==nil { return int2 }
+    if intInOne && val2==nil { return val1.(int) }
+    if intInTwo && val1==nil { return val2.(int) }
 
 	str1, str1OK := val1.(string)
 	str2, str2OK := val2.(string)
@@ -240,8 +235,6 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
 func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
     intInOne:=true; intInTwo:=true
-    var int1 int
-    var int2 int
 
     switch val1.(type) {
     case int:
@@ -257,18 +250,16 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 	if intInOne && intInTwo {
 		return val1.(int) - val2.(int)
 	}
-    if intInOne { int1=val1.(int) }
-    if intInTwo { int2=val2.(int) }
 
 	float1, float1OK := val1.(float64)
 	float2, float2OK := val2.(float64)
 
 	if intInOne {
-		float1 = float64(int1)
+		float1 = float64(val1.(int))
 		float1OK = true
 	}
 	if intInTwo {
-		float2 = float64(int2)
+		float2 = float64(val2.(int))
 		float2OK = true
 	}
 
@@ -783,7 +774,9 @@ func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}
 }
 
 
-func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field string) (interface{}) {
+func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}) {
+
+    // evalfs:=p.fs
 
     switch obj:=obj.(type) {
 
@@ -808,7 +801,6 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
 
-            // this part possibly avoidable, as all struct fields made r/w during init:
             rcopy := reflect.New(r.Type()).Elem()
             rcopy.Set(r)
 
@@ -853,7 +845,7 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
                     return f.Interface()
 
                 default:
-                    pf("default type in accessField is [%+v]",f.Type().Name())
+                    // pf("default type in accessField is [%+v]",f.Type().Name())
                     return f.Interface()
                 }
             }
@@ -882,10 +874,9 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
                 isFunc=true
             }
 
-            // filter for functions here
+            // check if stdlib or user-defined function
             if !isFunc {
                 if _, isFunc = stdlib[name]; !isFunc {
-                    // check if exists in user defined function space
                     isFunc = fnlookup.lmexists(name)
                 }
             }
@@ -899,6 +890,8 @@ func (p *leparser) accessFieldOrFunc(evalfs uint32, obj interface{}, field strin
                 }
                 panic(fmt.Errorf("no function, enum or record field found for %v", field))
             }
+
+            // user-defined or stdlib call 
 
             var iargs []interface{}
             if !nonlocal {
@@ -978,7 +971,7 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            panic(fmt.Errorf("element '%d' is out of range in '%v'",field.(int),obj))
+            panic(fmt.Errorf("element '%d' is out of range",field.(int)))
 
         }
 
@@ -1027,7 +1020,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 	if from == nil {
 		fromInt = 0
 	} else {
-		fromInt = asInteger(from)
+		fromInt = as_integer(from)
 	}
 
 	if to == nil && isStr {
@@ -1035,7 +1028,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 	} else if to == nil && isArr {
 		toInt = arl
 	} else {
-		toInt = asInteger(to)
+		toInt = as_integer(to)
 	}
 
 	if fromInt < 0 {
@@ -1080,6 +1073,8 @@ func slice(v interface{}, from, to interface{}) interface{} {
 
 
 func callFunction(evalfs uint32, callline int16, name string, args []interface{}) (res interface{}) {
+
+	// pf("callFunction started with\nfs %v line %v fn %v\n",evalfs,callline,name)
 
     for a:=0; a<len(args); a++ {
         switch args[a].(type) {
@@ -1135,7 +1130,7 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
         // call standard function
         res, err := f(evalfs,args...)
         if err != nil {
-            panic(fmt.Errorf("function error: in %+v(%+v) %s", name, args, err))
+            panic(fmt.Errorf("function error: in %+v %s", name,err))
         }
         return res
     }

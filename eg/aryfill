@@ -3,9 +3,14 @@
 maxc=1
 input maxc param 1 "count"
 
-init y mixed 540
-init xbar mixed 960
-init buf mixed 540
+
+w=960
+h=540
+
+
+init y mixed h
+init xbar mixed w
+init buf mixed h
 
 struct point
     r uint8
@@ -17,22 +22,29 @@ endstruct
 init p point
 
 # fill buffer with empty colour points
-for e=0 to 539
-    y[e]=p*960
+for e=0 to h-1
+    y[e]=p*w
 endfor
 
-println "maxc : ",maxc
-
 # repeatedly fill second buffer with line by line copies of first buf
+ts=epoch_nano_time()
 for c=0 to maxc
-    for e=0 to 539
+    for e=0 to h-1
         buf[e]=y[e]
     endfor
 endfor
+td=epoch_nano_time()-ts
 
-println "mem use : ",getmem().alloc
+loop_payload= 4*w*h
+bytes_xfer  = loop_payload * maxc
+throughput  = bytes_xfer.float / td
 
-doc `
-time za -S eg/aryfill 5000
--> 0m0.918s
-`
+println "payload copied:"
+println "4 x 960 x 540 = ",loop_payload
+println " x {maxc} loop count\n"
+println "total bytes : ",bytes_xfer
+println "byte rate   : {throughput} bytes/ns"
+println "            : %f.3 GB/sec".format(throughput)
+
+println "\nmem use     : ",get_mem().alloc
+

@@ -3,7 +3,6 @@ package main
 import (
     "io/ioutil"
     "math"
-//    "math/big"
     "log"
     "os"
     "path/filepath"
@@ -22,23 +21,11 @@ import (
 func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     r:=make(chan interface{})
 
-    /* @note:
-        I'm probably doing something wrong here, but it seems like the channel
-        requires some set up time in the background.
-        case 1 can return nil at random without this delay.
-        not tried many other delay settings, but 10us was too short and errors
-        still persisted. moving the sleep to other areas of the go func had
-        to effect.
-        I should probably be checking some form of ready signal before use.
-    */
-
-    dur, _ := time.ParseDuration("50us")
-    time.Sleep(dur)
-
     go func() {
         defer close(r)
         atomic.AddInt32(&concurrent_funcs, 1)
         rcount,_:=Call(MODE_NEW, loc, ciAsyn, iargs...)
+
         switch rcount {
         case 0:
             r<-nil
@@ -59,10 +46,9 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
 }
 
 var atlock = &sync.RWMutex{}
-var debuglock = &sync.RWMutex{}
 var siglock = &sync.RWMutex{}
 
-// finish : flag the machine state as okay or in error and 
+// finish : flag the machine state as okay or in error and
 // optionally terminates execution.
 func finish(hard bool, i int) {
     if hard {
@@ -97,14 +83,16 @@ func strcmp(a string, b string) (bool) {
 // GetAsFloat : converts a variety of types to a float
 func GetAsFloat(unk interface{}) (float64, bool) {
     switch i := unk.(type) {
-    case float64:
-        return i, false
     case int:
         return float64(i), false
     case int64:
         return float64(i), false
     case uint:
         return float64(i), false
+    case uint8:
+        return float64(i), false
+    case float64:
+        return i, false
     case string:
         p, e := strconv.ParseFloat(i, 64)
         return p, e != nil
@@ -124,6 +112,8 @@ func GetAsInt64(expr interface{}) (int64, bool) {
         return int64(i), false
     case int64:
         return i, false
+    case uint8:
+        return int64(i), false
     case string:
         p, e := strconv.ParseFloat(i, 64)
         if e == nil {
@@ -141,6 +131,8 @@ func GetAsInt(expr interface{}) (int, bool) {
     case uint:
         return int(i), false
     case int64:
+        return int(i), false
+    case uint8:
         return int(i), false
     case int:
         return i, false
@@ -161,9 +153,11 @@ func GetAsUint(expr interface{}) (uint, bool) {
         return uint(i), false
     case int:
         return uint(i), false
+    case int64:
+        return uint(i), false
     case uint64:
         return uint(i), false
-    case int64:
+    case uint8:
         return uint(i), false
     case uint:
         return i, false
@@ -179,6 +173,7 @@ func GetAsUint(expr interface{}) (uint, bool) {
 
 
 // check for value in slice - used by lookahead()
+// @note: not inlined!
 func InSlice(a uint8, list []uint8) bool {
     for _, b := range list {
         if b == a {
@@ -199,7 +194,6 @@ func searchToken(base uint32, start int16, end int16, sval string) bool {
     range_fs:=functionspaces[base][start:end]
 
     for _, v := range range_fs {
-        // if len(v.Tokens) == 0 {
         if v.TokenCount == 0 {
             continue
         }
@@ -211,7 +205,7 @@ func searchToken(base uint32, start int16, end int16, sval string) bool {
             if str.Contains(v.Tokens[r].tokText, sval) {
                 return true
             }
-            // on *any* indirect reference return true, as we can't be 
+            // on *any* indirect reference return true, as we can't be
             // sure without following the interpolation.
             if str.Contains(v.Tokens[r].tokText,"{{") {
                 return true
@@ -226,6 +220,11 @@ func searchToken(base uint32, start int16, end int16, sval string) bool {
 func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int16, bool) {
 
     range_fs:=functionspaces[fs][startLine:]
+
+    if range_fs[0].pairLA !=0 {
+        // return cached lookahead
+        return true,range_fs[0].pairLA,false
+    }
 
     for i, v := range range_fs {
 
@@ -246,6 +245,8 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 
         // found search term?
         if indent == endlevel && v.Tokens[0].tokType == term {
+            // cache lookahead then return value
+            range_fs[0].pairLA=int16(i)
             return true, int16(i), false
         }
     }
@@ -256,51 +257,49 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 }
 
 
-// @csafe:
 func Uint32n(maxN uint32) uint32 {
-	x := Uint32()
-	return uint32((uint64(x) * uint64(maxN)) >> 32)
+    x := Uint32()
+    return uint32((uint64(x) * uint64(maxN)) >> 32)
 }
 
 type RNG struct {
-	x uint32
+    x uint32
 }
 
 var rngPool sync.Pool
 
 func (r *RNG) Uint32n(maxN uint32) uint32 {
-	x := r.Uint32()
-	return uint32((uint64(x) * uint64(maxN)) >> 32)
+    x := r.Uint32()
+    return uint32((uint64(x) * uint64(maxN)) >> 32)
 }
 
 
-// @csafe:
 func Uint32() uint32 {
-	v := rngPool.Get()
-	if v == nil {
-		v = &RNG{}
-	}
-	r := v.(*RNG)
-	x := r.Uint32()
-	rngPool.Put(r)
-	return x
+    v := rngPool.Get()
+    if v == nil {
+        v = &RNG{}
+    }
+    r := v.(*RNG)
+    x := r.Uint32()
+    rngPool.Put(r)
+    return x
 }
 
 func getRandomUint32() uint32 {
-	x := time.Now().UnixNano()
-	return uint32((x >> 32) ^ x)
+    x := time.Now().UnixNano()
+    return uint32((x >> 32) ^ x)
 }
 
 func (r *RNG) Uint32() uint32 {
-	for r.x == 0 {
-		r.x = getRandomUint32()
-	}
-	x := r.x
-	x ^= x << 13
-	x ^= x >> 17
-	x ^= x << 5
-	r.x = x
-	return x
+    for r.x == 0 {
+        r.x = getRandomUint32()
+    }
+    x := r.x
+    x ^= x << 13
+    x ^= x >> 17
+    x ^= x << 5
+    r.x = x
+    return x
 }
 
 func formatUint32(n uint32) string {
@@ -360,7 +359,7 @@ func GetNextFnSpace(requiredName string) (uint32,string) {
             newName := requiredName
 
             if newName[len(newName)-1]=='@' {
-                newName+=formatUint32(r.Uint32n(1e5))
+                newName+=formatUint32(r.Uint32n(1e7))
             }
 
             if !numlookup.lmexists(q) { // unreserved
@@ -384,14 +383,6 @@ func GetNextFnSpace(requiredName string) (uint32,string) {
     return 0, ""
 }
 
-
-/* deprecated, done directly at winching detection site instead:
-// redraw margins - called after a SIGWINCH
-func pane_redef() {
-    MW, MH, _ = GetSize(1)
-    winching = false
-}
-*/
 
 // setup mutex locks
 var calllock   = &sync.RWMutex{}  // function call related
@@ -437,13 +428,11 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         if r := recover(); r != nil {
             if _,ok:=r.(runtime.Error); ok {
                 parser.report(sf("\n%v\n",r))
-                if debug_level==20 { panic(r) }
                 finish(false,ERR_EVAL)
             }
             err:=r.(error)
             parser.report(sf("\n%v\n",err))
             setEcho(true)
-            if debug_level==20 { panic(r) }
             finish(false,ERR_EVAL)
         }
     }()
@@ -496,7 +485,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     //  these have to be looked up manually.
 
     //  this section rewrites the tokens in the base source (one time only)
-    //  to a contiguous set of integers which represent the array element 
+    //  to a contiguous set of integers which represent the array element
     //  to be looked up in ident[fs][uint16] to locate a Variable{}
 
     // reset the variable mappings if the source hasn't been parsed yet
@@ -612,8 +601,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             nextFaArg:=functionArgs[base].args[e]
             if vi,found:=vmap[ifs][nextFaArg] ; found {
                 vseti(ifs,nextFaArg,vi,va[e])
+                // pf("On entry to %v set local var %v to [%T] %+v\n", fs, nextFaArg, va[e], va[e])
             } else {
                 vseti(ifs,nextFaArg,nextVarId,va[e])
+                // pf("On entry to %v created local var %v with value [%T] %+v\n", fs, nextFaArg, va[e], va[e])
                 nextVarId++
             }
         }
@@ -745,6 +736,8 @@ tco_reentry:
     var si bool
     var statement *Token
     var we ExpressionCarton   // pre-allocated for general expression results eval
+    var expr interface{}      // pre-llocated for wrapped expression results eval
+    var err error
 
     for {
 
@@ -768,7 +761,7 @@ tco_reentry:
         // get the next Phrase
         inbound = &functionspaces[base][pc]
 
-                    // 
+                    //
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
                     //  we want to leave the program counter unaffected.
 
@@ -852,7 +845,7 @@ tco_reentry:
             vname := interpolate(ifs,inbound.Tokens[1].tokText)
 
             // get the required type
-            expr:= crushEvalTokens(inbound.Tokens[2:]).text
+            type_token_string := crushEvalTokens(inbound.Tokens[2:]).text
 
             // this needs reworking, same as C_Init:
 
@@ -860,7 +853,6 @@ tco_reentry:
             var tu uint
             var ti int
             var tf64 float64
-//            var bf64 big.Float
             var ts string
 
             // instantiate fields with an empty expected type:
@@ -869,17 +861,16 @@ tco_reentry:
             typemap["uint"]     = reflect.TypeOf(tu)
             typemap["int"]      = reflect.TypeOf(ti)
             typemap["float"]    = reflect.TypeOf(tf64)
-//            typemap["big"]      = reflect.TypeOf(bf64)
             typemap["string"]   = reflect.TypeOf(ts)
 
-            if _,found:=typemap[expr]; found {
-                vset(ifs,vname,reflect.New(typemap[expr]).Elem().Interface())
+            if _,found:=typemap[type_token_string]; found {
+                vset(ifs,vname,reflect.New(typemap[type_token_string]).Elem().Interface())
                 ll:=false
                 if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
                 vi:=inbound.Tokens[1].offset
                 ident[ifs][vi].ITyped=true
                 ident[ifs][vi].declared=true
-                switch expr {
+                switch type_token_string {
                 case "nil":
                     ident[ifs][vi].IKind=knil
                 case "bool":
@@ -890,17 +881,13 @@ tco_reentry:
                     ident[ifs][vi].IKind=kuint
                 case "float":
                     ident[ifs][vi].IKind=kfloat
-                /*
-                case "big":
-                    ident[ifs][vi].IKind=kbig
-                */
                 case "string":
                     ident[ifs][vi].IKind=kstring
                 }
                 if ll { vlock.Unlock() }
 
             } else {
-                parser.report(sf("unknown data type requested '%v'",expr))
+                parser.report(sf("unknown data type requested '%v'",type_token_string))
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -933,16 +920,16 @@ tco_reentry:
 
                 etoks=inbound.Tokens[1:]
 
-                expr := parser.wrappedEval(ifs,ifs,etoks)
-                if expr.evalError {
+                we = parser.wrappedEval(ifs,ifs,etoks)
+                if we.evalError {
                     parser.report( "could not evaluate WHILE condition")
                     finish(false,ERR_EVAL)
                     break
                 }
 
-                switch expr.result.(type) {
+                switch we.result.(type) {
                 case bool:
-                    res = expr.result.(bool)
+                    res = we.result.(bool)
                 default:
                     parser.report( "WHILE condition must evaluate to boolean")
                     finish(false,ERR_EVAL)
@@ -960,7 +947,7 @@ tco_reentry:
                 lastlock.Unlock()
                 break
             } else {
-                // goto endwhile
+                // -> endwhile
                 pc += enddistance
             }
 
@@ -989,16 +976,16 @@ tco_reentry:
             }
 
             // evaluate condition
-            expr := parser.wrappedEval(ifs,ifs,cond.repeatCond)
-            if expr.evalError {
-                parser.report(sf("eval fault in ENDWHILE\n%+v\n",expr.errVal))
+            we = parser.wrappedEval(ifs,ifs,cond.repeatCond)
+            if we.evalError {
+                parser.report(sf("eval fault in ENDWHILE\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
                 lastlock.Unlock()
                 break
             }
 
-            if expr.result.(bool) {
-                // while still true, loop 
+            if we.result.(bool) {
+                // while still true, loop
                 pc = cond.repeatFrom
             } else {
                 // was false, so leave the loop
@@ -1058,14 +1045,14 @@ tco_reentry:
             // cause evaluation of all terms following IN
             case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
-                expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
-                if expr.evalError {
-                    parser.report(sf("error evaluating term in FOREACH statement '%v'\n%+v\n",expr.text,expr.errVal))
+                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
+                if we.evalError {
+                    parser.report(sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
                 var l int
-                switch lv:=expr.result.(type) {
+                switch lv:=we.result.(type) {
                 case string:
                     l=len(lv)
                 case []string:
@@ -1126,198 +1113,198 @@ tco_reentry:
                 var iter *reflect.MapIter
                 var fkno uint16
 
-                switch expr.result.(type) {
+                switch we.result.(type) {
 
                 case string:
 
                     // split and treat as array if multi-line
 
                     // remove a single trailing \n from string
-                    elast := len(expr.result.(string)) - 1
-                    if expr.result.(string)[elast] == '\n' {
-                        expr.result = expr.result.(string)[:elast]
+                    elast := len(we.result.(string)) - 1
+                    if we.result.(string)[elast] == '\n' {
+                        we.result = we.result.(string)[:elast]
                     }
 
                     // split up string at \n divisions into an array
                     if runtime.GOOS!="windows" {
-                        expr.result = str.Split(expr.result.(string), "\n")
+                        we.result = str.Split(we.result.(string), "\n")
                     } else {
-                        expr.result = str.Split(str.Replace(expr.result.(string), "\r\n", "\n", -1), "\n")
+                        we.result = str.Split(str.Replace(we.result.(string), "\r\n", "\n", -1), "\n")
                     }
 
-                    if len(expr.result.([]string))>0 {
+                    if len(we.result.([]string))>0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]string)[0])
-                        condEndPos = len(expr.result.([]string)) - 1
+                        vseti(ifs, fid, fno, we.result.([]string)[0])
+                        condEndPos = len(we.result.([]string)) - 1
                     }
 
                 case map[string]float64:
-                    if len(expr.result.(map[string]float64)) > 0 {
+                    if len(we.result.(map[string]float64)) > 0 {
                         // get iterator for this map
-                        iter = reflect.ValueOf(expr.result.(map[string]float64)).MapRange()
+                        iter = reflect.ValueOf(we.result.(map[string]float64)).MapRange()
 
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]float64)) - 1
+                        condEndPos = len(we.result.(map[string]float64)) - 1
                     }
 
                 case map[string]bool:
-                    if len(expr.result.(map[string]bool)) > 0 {
-                        iter = reflect.ValueOf(expr.result.(map[string]bool)).MapRange()
+                    if len(we.result.(map[string]bool)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]bool)).MapRange()
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]bool)) - 1
+                        condEndPos = len(we.result.(map[string]bool)) - 1
                     }
 
                 case map[string]uint:
-                    if len(expr.result.(map[string]uint)) > 0 {
-                        iter = reflect.ValueOf(expr.result.(map[string]uint)).MapRange()
+                    if len(we.result.(map[string]uint)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]uint)).MapRange()
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]uint)) - 1
+                        condEndPos = len(we.result.(map[string]uint)) - 1
                     }
 
                 case map[string]int:
-                    if len(expr.result.(map[string]int)) > 0 {
+                    if len(we.result.(map[string]int)) > 0 {
                         // get iterator for this map
-                        iter = reflect.ValueOf(expr.result.(map[string]int)).MapRange()
+                        iter = reflect.ValueOf(we.result.(map[string]int)).MapRange()
 
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]int)) - 1
+                        condEndPos = len(we.result.(map[string]int)) - 1
                     }
 
                 case map[string]string:
 
-                    if len(expr.result.(map[string]string)) > 0 {
+                    if len(we.result.(map[string]string)) > 0 {
 
                         // get iterator for this map
-                        iter = reflect.ValueOf(expr.result.(map[string]string)).MapRange()
+                        iter = reflect.ValueOf(we.result.(map[string]string)).MapRange()
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]string)) - 1
+                        condEndPos = len(we.result.(map[string]string)) - 1
                     }
 
                 case map[string][]string:
 
-                    if len(expr.result.(map[string][]string)) > 0 {
+                    if len(we.result.(map[string][]string)) > 0 {
 
                         // get iterator for this map
-                        iter = reflect.ValueOf(expr.result.(map[string][]string)).MapRange()
+                        iter = reflect.ValueOf(we.result.(map[string][]string)).MapRange()
 
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string][]string)) - 1
+                        condEndPos = len(we.result.(map[string][]string)) - 1
                     }
 
                 case []float64:
 
-                    if len(expr.result.([]float64)) > 0 {
+                    if len(we.result.([]float64)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]float64)[0])
-                        condEndPos = len(expr.result.([]float64)) - 1
+                        vseti(ifs, fid, fno, we.result.([]float64)[0])
+                        condEndPos = len(we.result.([]float64)) - 1
                     }
 
                 case float64: // special case: float
-                    expr.result = []float64{expr.result.(float64)}
-                    if len(expr.result.([]float64)) > 0 {
+                    we.result = []float64{we.result.(float64)}
+                    if len(we.result.([]float64)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]float64)[0])
-                        condEndPos = len(expr.result.([]float64)) - 1
+                        vseti(ifs, fid, fno, we.result.([]float64)[0])
+                        condEndPos = len(we.result.([]float64)) - 1
                     }
 
                 case []uint:
-                    if len(expr.result.([]uint)) > 0 {
+                    if len(we.result.([]uint)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]uint)[0])
-                        condEndPos = len(expr.result.([]uint)) - 1
+                        vseti(ifs, fid, fno, we.result.([]uint)[0])
+                        condEndPos = len(we.result.([]uint)) - 1
                     }
 
                 case []bool:
-                    if len(expr.result.([]bool)) > 0 {
+                    if len(we.result.([]bool)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]bool)[0])
-                        condEndPos = len(expr.result.([]bool)) - 1
+                        vseti(ifs, fid, fno, we.result.([]bool)[0])
+                        condEndPos = len(we.result.([]bool)) - 1
                     }
 
                 case []int:
-                    if len(expr.result.([]int)) > 0 {
+                    if len(we.result.([]int)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]int)[0])
-                        condEndPos = len(expr.result.([]int)) - 1
+                        vseti(ifs, fid, fno, we.result.([]int)[0])
+                        condEndPos = len(we.result.([]int)) - 1
                     }
 
                 case int: // special case: int
-                    expr.result = []int{expr.result.(int)}
-                    if len(expr.result.([]int)) > 0 {
+                    we.result = []int{we.result.(int)}
+                    if len(we.result.([]int)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]int)[0])
-                        condEndPos = len(expr.result.([]int)) - 1
+                        vseti(ifs, fid, fno, we.result.([]int)[0])
+                        condEndPos = len(we.result.([]int)) - 1
                     }
 
                 case []string:
-                    if len(expr.result.([]string)) > 0 {
+                    if len(we.result.([]string)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]string)[0])
-                        condEndPos = len(expr.result.([]string)) - 1
+                        vseti(ifs, fid, fno, we.result.([]string)[0])
+                        condEndPos = len(we.result.([]string)) - 1
                     }
 
                 case []dirent:
-                    if len(expr.result.([]dirent)) > 0 {
+                    if len(we.result.([]dirent)) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]dirent)[0])
-                        condEndPos = len(expr.result.([]dirent)) - 1
+                        vseti(ifs, fid, fno, we.result.([]dirent)[0])
+                        condEndPos = len(we.result.([]dirent)) - 1
                     }
 
                 case []map[string]interface{}:
 
-                    if len(expr.result.([]map[string]interface{})) > 0 {
+                    if len(we.result.([]map[string]interface{})) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]map[string]interface{})[0])
-                        condEndPos = len(expr.result.([]map[string]interface{})) - 1
+                        vseti(ifs, fid, fno, we.result.([]map[string]interface{})[0])
+                        condEndPos = len(we.result.([]map[string]interface{})) - 1
                     }
 
                 case map[string]interface{}:
 
-                    if len(expr.result.(map[string]interface{})) > 0 {
+                    if len(we.result.(map[string]interface{})) > 0 {
 
                         // get iterator for this map
-                        iter = reflect.ValueOf(expr.result.(map[string]interface{})).MapRange()
+                        iter = reflect.ValueOf(we.result.(map[string]interface{})).MapRange()
 
                         // set initial key and value
                         if iter.Next() {
                             fkno=vset(ifs, "key_"+fid, iter.Key().String())
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
-                        condEndPos = len(expr.result.(map[string]interface{})) - 1
+                        condEndPos = len(we.result.(map[string]interface{})) - 1
                     }
 
                 case []interface{}:
 
-                    if len(expr.result.([]interface{})) > 0 {
+                    if len(we.result.([]interface{})) > 0 {
                         fkno=vset(ifs, "key_"+fid, 0)
-                        vseti(ifs, fid, fno, expr.result.([]interface{})[0])
-                        condEndPos = len(expr.result.([]interface{})) - 1
+                        vseti(ifs, fid, fno, we.result.([]interface{})[0])
+                        condEndPos = len(we.result.([]interface{})) - 1
                     }
 
                 default:
-                    parser.report( sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", expr.result,expr.result))
+                    parser.report( sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", we.result,we.result))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1338,7 +1325,7 @@ tco_reentry:
 
                 loops[ifs][depth[ifs]] = s_loop{loopVar: fid, varoffset:fno, varkeyoffset:fkno,
                     optNoUse: Opt_LoopStart,
-                    repeatFrom: pc + 1, iterOverMap: iter, iterOverArray: expr.result,
+                    repeatFrom: pc + 1, iterOverMap: iter, iterOverArray: we.result,
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + pc,
                     loopType: C_Foreach,
                 }
@@ -1370,7 +1357,6 @@ tco_reentry:
             }
 
             var fstart, fend, fstep int
-            var expr interface{}
 
             var err error
 
@@ -1410,7 +1396,7 @@ tco_reentry:
 
             if stepped {
                 if inbound.TokenCount>stepAt+1 {
-                    expr, err := parser.Eval(ifs, inbound.Tokens[stepAt+1:])
+                    expr, err = parser.Eval(ifs, inbound.Tokens[stepAt+1:])
                     if err==nil && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
@@ -1668,7 +1654,7 @@ tco_reentry:
             // We use lastConstruct to establish which is the innermost
             //  of these from which we need to break out.
 
-            // The surrounding construct should set the 
+            // The surrounding construct should set the
             //  lastConstruct[fs][depth] on entry.
 
             lastlock.RLock()
@@ -1681,38 +1667,29 @@ tco_reentry:
                 // jump calc, depending on break context
 
                 thisLoop = &loops[ifs][depth[ifs]]
-                bmess := ""
 
                 switch lastConstruct[ifs][depth[ifs]-1] {
 
                 case C_For:
                     pc = (*thisLoop).forEndPos - 1
                     breakIn = C_Endfor
-                    bmess = "out of FOR:\n"
 
                 case C_Foreach:
                     pc = (*thisLoop).forEndPos - 1
                     breakIn = C_Endfor
-                    bmess = "out of FOREACH:\n"
 
                 case C_While:
                     pc = (*thisLoop).whileContinueAt - 1
                     breakIn = C_Endwhile
-                    bmess = "out of WHILE:\n"
 
                 case C_When:
                     pc = wc[wccount].endLine - 1
-                    bmess = "out of WHEN:\n"
 
                 default:
                     parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
                     lastlock.RUnlock()
                     break
-                }
-
-                if breakIn != Error {
-                    debug(5, "** break %v\n", bmess)
                 }
 
             }
@@ -1722,7 +1699,9 @@ tco_reentry:
 
         case C_Enum:
 
-            if inbound.TokenCount<4 || inbound.Tokens[2].tokType!=LParen || inbound.Tokens[inbound.TokenCount-1].tokType!=RParen {
+            if inbound.TokenCount<4 || (
+                ! (inbound.Tokens[2].tokType==LParen && inbound.Tokens[inbound.TokenCount-1].tokType==RParen) &&
+                ! (inbound.Tokens[2].tokType==LeftCBrace && inbound.Tokens[inbound.TokenCount-1].tokType==RightCBrace)) {
                 parser.report("Incorrect arguments supplied for ENUM.")
                 finish(false,ERR_SYNTAX)
                 break
@@ -1731,15 +1710,15 @@ tco_reentry:
             resu:=parser.splitCommaArray(ifs, inbound.Tokens[3:inbound.TokenCount-1])
 
             globlock.Lock()
-
             enum_name:=inbound.Tokens[1].tokText
             enum[enum_name]=&enum_s{}
             enum[enum_name].members=make(map[string]interface{})
+            globlock.Unlock()
 
             var nextVal interface{}
             nextVal=0           // auto incs to 1 for first default value
             var member string
-            enum_loop:
+          enum_loop:
             for ea:=range resu {
 
                 if len(resu[ea])==1 {
@@ -1759,27 +1738,35 @@ tco_reentry:
                         break enum_loop
                     }
 
+                    globlock.Lock()
                     member=resu[ea][0].tokText
                     enum[enum_name].members[member]=nextVal
                     enum[enum_name].ordered=append(enum[enum_name].ordered,member)
+                    globlock.Unlock()
 
                 } else {
-                    // member [ = constant ]
-                    if len(resu[ea])==3 {
+                    //   member = constant
+                    // | member = expr
+                    if len(resu[ea])>2 {
                         if resu[ea][1].tokType==O_Assign {
-                            switch resu[ea][2].tokType {
-                            case NumericLiteral:
-                                nextVal=resu[ea][2].tokVal
-                            case StringLiteral:
-                                nextVal=stripOuterQuotes(resu[ea][2].tokText,1)
-                            default:
-                                parser.report("Invalid constant for assignment in ENUM")
-                                finish(false,ERR_EVAL)
+
+                            evEnum := parser.wrappedEval(ifs,ifs,resu[ea][2:])
+
+                            if evEnum.evalError {
+                                parser.report("Invalid expression for assignment in ENUM")
+                                finish(false, ERR_EVAL)
                                 break enum_loop
                             }
+
+                            nextVal=evEnum.result
+
+                            globlock.Lock()
                             member=resu[ea][0].tokText
                             enum[enum_name].members[member]=nextVal
                             enum[enum_name].ordered=append(enum[enum_name].ordered,member)
+                            globlock.Unlock()
+
+
                         } else {
                             // error
                             parser.report("Missing assignment in ENUM")
@@ -1789,8 +1776,6 @@ tco_reentry:
                     }
                 }
             }
-
-            globlock.Unlock()
 
 
         case C_Unset: // remove a variable
@@ -1974,20 +1959,20 @@ tco_reentry:
                 break
             }
 
-            expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+            we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
 
-            if !expr.evalError {
+            if !we.evalError {
 
-                if isNumber(expr.result) {
-                    i = sf("%v", expr.result)
+                if isNumber(we.result) {
+                    i = sf("%v", we.result)
                 } else {
-                    i = expr.result.(string)
+                    i = we.result.(string)
                 }
 
                 dur, err := time.ParseDuration(i + "ms")
 
                 if err != nil {
-                    parser.report(sf("'%s' did not evaluate to a duration.", expr.text))
+                    parser.report(sf("'%s' did not evaluate to a duration.", we.text))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -1995,7 +1980,7 @@ tco_reentry:
                 time.Sleep(dur)
 
             } else {
-                parser.report(sf("could not evaluate PAUSE expression\n%+v",expr.errVal))
+                parser.report(sf("could not evaluate PAUSE expression\n%+v",we.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -2108,16 +2093,16 @@ tco_reentry:
                     // more tokens after the DO to form a command with?
                     if inbound.TokenCount >= doAt {
 
-                        expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[1:doAt])
-                        if expr.evalError {
-                            parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",expr.text,expr.errVal))
+                        we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:doAt])
+                        if we.evalError {
+                            parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",we.text,we.errVal))
                             finish(false,ERR_EVAL)
                             break
                         }
 
-                        switch expr.result.(type) {
+                        switch we.result.(type) {
                         case bool:
-                            if expr.result.(bool) {
+                            if we.result.(bool) {
 
                                 // create a phrase
                                 p := Phrase{}
@@ -2131,7 +2116,7 @@ tco_reentry:
 
                             }
                         default:
-                            // pf("Result Type -> %T\n", expr.result)
+                            pf("Result Type -> %T expression was -> %s\n", we.text, we.result)
                             parser.report("ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
                             break
@@ -2156,23 +2141,24 @@ tco_reentry:
             } else {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
 
-                if expr.assign {
+                if we.assign {
                     // someone typo'ed a condition 99.9999% of the time
                     parser.report(
-                        sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",cet.assignVar,cet.text))
+                        sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",
+                            cet.assignVar,cet.text))
                     finish(false,ERR_ASSERT)
                     break
                 }
 
-                if expr.evalError {
+                if we.evalError {
                     parser.report("Could not evaluate expression in ASSERT statement.")
                     finish(false,ERR_EVAL)
                     break
                 }
 
-                switch expr.result.(type) {
+                switch we.result.(type) {
                 case bool:
                     var test_report string
 
@@ -2184,14 +2170,15 @@ tco_reentry:
                         group_name_string += test_name
                     }
 
-                    if !expr.result.(bool) {
+                    if !we.result.(bool) {
                         if !under_test {
-                            parser.report(sf("Could not assert! ( %s )", expr.text))
+                            parser.report(sf("Could not assert! ( %s )", we.text))
                             finish(false, ERR_ASSERT)
                             break
                         }
                         // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), parser.line, expr.text)
+                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
+                            group_name_string, getReportFunctionName(ifs,false), parser.line, we.text)
                         testsFailed++
                         appendToTestReport(test_output_file,ifs, parser.line, test_report)
                         temp_test_assert := test_assert
@@ -2200,14 +2187,15 @@ tco_reentry:
                         }
                         switch temp_test_assert {
                         case "fail":
-                            parser.report(sf("Could not assert! (%s)", expr.text))
+                            parser.report(sf("Could not assert! (%s)", we.text))
                             finish(false, ERR_ASSERT)
                         case "continue":
-                            parser.report(sf("Assert failed (%s), but continuing.", expr.text))
+                            parser.report(sf("Assert failed (%s), but continuing.", we.text))
                         }
                     } else {
                         if under_test {
-                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]", group_name_string, getReportFunctionName(ifs,false), parser.line, expr.text)
+                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
+                                group_name_string, getReportFunctionName(ifs,false), parser.line, we.text)
                             testsPassed++
                             appendToTestReport(test_output_file,ifs, pc, test_report)
                         }
@@ -2236,16 +2224,16 @@ tco_reentry:
 
             if inbound.TokenCount>3 {
 
-                expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
-                if expr.evalError {
-                    parser.report(sf("could not evaluate expression in INIT statement\n%+v",expr.errVal))
+                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
+                if we.evalError {
+                    parser.report(sf("could not evaluate expression in INIT statement\n%+v",we.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
 
-                switch expr.result.(type) {
+                switch we.result.(type) {
                 case int,int64:
-                    strSize,invalid:=GetAsInt(expr.result)
+                    strSize,invalid:=GetAsInt(we.result)
                     if ! invalid {
                         size=strSize
                     }
@@ -2295,11 +2283,8 @@ tco_reentry:
                     typemap["int"]      = reflect.TypeOf(ti)
                     typemap["float"]    = reflect.TypeOf(tf64)
                     typemap["float64"]  = reflect.TypeOf(tf64)
-                    // typemap["big"]      = reflect.TypeOf(bf64)
                     typemap["string"]   = reflect.TypeOf(ts)
                     typemap["[]string"] = reflect.TypeOf(ats)
-                    /* only interface{} currently supported.
-                    */
                     typemap["[]"]       = reflect.TypeOf(atint)
                     typemap["^"]        = reflect.TypeOf(ats)
                     //
@@ -2430,7 +2415,16 @@ tco_reentry:
                 // make Za function call
                 loc,id := GetNextFnSpace(call+"@")
                 calllock.Lock()
-                vset(ifs,"@#@"+strconv.Itoa(int(loc)),nil)
+
+                // @note: @todo:
+                // vset below is commented out as, currently, short-lived async tasks
+                // can possibly have their previously reserved 'loc' value re-used
+                // by subsequent launches of the parallel task.
+                // we should keep a recent-list (bad) or work out a way to hold on to
+                // the reservation until after await() has collected it.
+
+                // vset(ifs,"@#@"+strconv.Itoa(int(loc)),nil)
+
                 calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline: pc, retvar: sf("@#@%v",loc)}
                 calllock.Unlock()
 
@@ -2448,25 +2442,6 @@ tco_reentry:
                 // func not found
                 parser.report(sf("invalid function '%s' in ASYNC call",call))
                 finish(false,ERR_EVAL)
-            }
-
-        case C_Debug:
-
-            if inbound.TokenCount != 2 {
-
-                parser.report("Malformed DEBUG statement.")
-                finish(false, ERR_SYNTAX)
-
-            } else {
-
-                dval, err := parser.Eval(ifs, inbound.Tokens[1:inbound.TokenCount])
-                if err==nil && isNumber(dval) {
-                    debug_level = dval.(int)
-                } else {
-                    parser.report("Bad debug level value - could not evaluate.")
-                    finish(false, ERR_EVAL)
-                }
-
             }
 
 
@@ -2593,16 +2568,6 @@ tco_reentry:
                     }
                 }
                 if exMatchStdlib { break }
-
-                // error if it has already been user defined
-                /* TEMPORARY REMOVAL, CHECKING FUNC NAMESPACE DOTTING
-                if _, exists := fnlookup.lmget(definitionName); exists {
-                    parser.report("Function "+definitionName+" already exists.")
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
-                */
-
 
                 // register new func in funcmap
                 funcmap[currentModule+"."+definitionName]=Funcdef{
@@ -2741,9 +2706,9 @@ tco_reentry:
 
             hint:=id
             if inbound.TokenCount==5 {
-                expr:=parser.wrappedEval(ifs,ifs,inbound.Tokens[4:])
-                if !expr.evalError {
-                    hint=expr.result.(string)
+                we=parser.wrappedEval(ifs,ifs,inbound.Tokens[4:])
+                if !we.evalError {
+                    hint=we.result.(string)
                 }
             }
 
@@ -2814,12 +2779,10 @@ tco_reentry:
 
         case C_Module:
 
-            var expr ExpressionCarton
-
             if inbound.TokenCount > 1 {
-                expr = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
-                if expr.evalError {
-                    parser.report(sf("could not evaluate expression in MODULE statement\n%+v",expr.errVal))
+                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+                if we.evalError {
+                    parser.report(sf("could not evaluate expression in MODULE statement\n%+v",we.errVal))
                     finish(false,ERR_MODULE)
                     break
                 }
@@ -2829,7 +2792,7 @@ tco_reentry:
                 break
             }
 
-            fom := expr.result.(string)
+            fom := we.result.(string)
 
             if strcmp(fom,"") {
                 parser.report("Empty module name provided.")
@@ -2954,7 +2917,6 @@ tco_reentry:
 
             // lookahead
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
-            // pf("@%d : Endwhen lookahead set to statement %d\n",pc+1,pc+1+enddistance)
 
             if er {
                 parser.report("Lookahead error!")
@@ -2968,9 +2930,9 @@ tco_reentry:
                 break
             }
 
-            expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
-            if expr.evalError {
-                parser.report(sf("could not evaluate the WHEN condition\n%+v",expr.errVal))
+            we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+            if we.evalError {
+                parser.report(sf("could not evaluate the WHEN condition\n%+v",we.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -2980,7 +2942,7 @@ tco_reentry:
             lastlock.Lock()
 
             wccount++
-            wc[wccount] = whenCarton{endLine: pc + enddistance, value: expr.result, dodefault: true}
+            wc[wccount] = whenCarton{endLine: pc + enddistance, value: we.result, dodefault: true}
             depth[ifs]++
             lastConstruct[ifs] = append(lastConstruct[ifs], C_When)
 
@@ -3002,12 +2964,10 @@ tco_reentry:
 
             lastlock.RUnlock()
 
-            var expr ExpressionCarton
-
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
-                expr = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
-                if expr.evalError {
-                    parser.report(sf("could not evaluate expression in WHEN condition\n%+v",expr.errVal))
+                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+                if we.evalError {
+                    parser.report(sf("could not evaluate expression in WHEN condition\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -3020,25 +2980,25 @@ tco_reentry:
             case C_Has: // <-- @note: this may change yet
 
                 // build expression from rest, ignore initial condition
-                switch expr.result.(type) {
+                switch we.result.(type) {
                 case bool:
-                    if expr.result.(bool) {  // HAS truth
+                    if we.result.(bool) {  // HAS truth
                         wc[wccount].dodefault = false
                         ramble_on = true
                     }
                 default:
-                    parser.report(sf("HAS condition did not result in a boolean\n%+v",expr.errVal))
+                    parser.report(sf("HAS condition did not result in a boolean\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                 }
 
             case C_Is:
-                if expr.result == carton.value { // matched IS value
+                if we.result == carton.value { // matched IS value
                     wc[wccount].dodefault = false
                     ramble_on = true
                 }
 
             case C_Contains:
-                reg := sparkle(expr.result.(string))
+                reg := sparkle(we.result.(string))
                 switch carton.value.(type) {
                 case string:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
@@ -3166,7 +3126,7 @@ tco_reentry:
                 break
             }
 
-            // 
+            //
             // take definition and create a structmaps entry from it:
             structmaps[structName]=structNode[:]
 
@@ -3244,7 +3204,7 @@ tco_reentry:
             content,_:=vgeti(ifs,vid)
             if ll { vlock.RUnlock() }
 
-		    ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
+            ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
             inside_with=true
             current_with_handle=tfile
@@ -3391,13 +3351,13 @@ tco_reentry:
             // prompt variable assignment:
             if inbound.TokenCount > 1 { // um, should not do this but...
                 if inbound.Tokens[1].tokType == O_Assign {
-                    expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
-                    if expr.evalError {
-                        parser.report(sf("could not evaluate expression prompt assignment\n%+v",expr.errVal))
+                    we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
+                    if we.evalError {
+                        parser.report(sf("could not evaluate expression prompt assignment\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
-                    switch expr.result.(type) {
+                    switch we.result.(type) {
                     case string:
                         PromptTemplate=stripOuterQuotes(inbound.Tokens[2].tokText,1)
                     }
@@ -3466,13 +3426,13 @@ tco_reentry:
             case "on":
                 loggingEnabled = true
                 if inbound.TokenCount == 3 {
-                    expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
-                    if expr.evalError {
-                        parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",expr.errVal))
+                    we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
+                    if we.evalError {
+                        parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
-                    logFile = expr.result.(string)
+                    logFile = we.result.(string)
                     vset(0, "@logsubject", "")
                 }
 
@@ -3484,13 +3444,13 @@ tco_reentry:
 
             case "accessfile":
                 if inbound.TokenCount > 2 {
-                    expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
-                    if expr.evalError {
-                        parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",expr.errVal))
+                    we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
+                    if we.evalError {
+                        parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
-                    web_log_file=expr.result.(string)
+                    web_log_file=we.result.(string)
                     // pf("accessfile changed to %v\n",web_log_file)
                     web_log_handle.Close()
                     var err error
@@ -3522,13 +3482,13 @@ tco_reentry:
 
             case "subject":
                 if inbound.TokenCount == 3 {
-                    expr := parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
-                    if expr.evalError {
-                        parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",expr.errVal))
+                    we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
+                    if we.evalError {
+                        parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
-                    vset(0, "@logsubject", expr.result.(string))
+                    vset(0, "@logsubject", we.result.(string))
                 } else {
                     vset(0, "@logsubject", "")
                 }
@@ -3576,7 +3536,7 @@ tco_reentry:
 
             // eval
             // pf("IF EXPR TOKENS : [%+v]\n",inbound.Tokens[1:])
-            expr, err := parser.Eval(ifs, inbound.Tokens[1:])
+            expr, err = parser.Eval(ifs, inbound.Tokens[1:])
             // pf("Expr result -> %+v\n",expr)
             if err!=nil {
                 parser.report("Could not evaluate expression.")
@@ -3636,8 +3596,6 @@ tco_reentry:
                 }
             }
 
-            //
-            //
             // try to eval and assign
 
             if we=parser.wrappedEval(ifs,ifs,inbound.Tokens); we.evalError {
@@ -3669,7 +3627,7 @@ tco_reentry:
 
         // populate return variable in the caller with retvals
         if retvalues!=nil {
-            // pf("call-end (%v) with retvalues : %+v\n",fs,retvalues)
+            // pf("call-end (%v) (caller:%v,retvar:%v) with retvalues : %+v\n",caller,retvar,fs,retvalues)
             vset(caller, retvar, retvalues)
         }
 
@@ -3678,35 +3636,34 @@ tco_reentry:
         // pf("Leaving call with ifs of %d [fs:%s]\n\n",ifs,fs)
 
         // pf("[#2]about to delete %v[#-]\n",fs)
-        calllock.Lock()
 
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
         if !str.HasPrefix(fs,"@mod_") {
 
-            lastlock.Lock()
+            if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() ; ll=true }
             depth[ifs]=0
             loops[ifs]=nil
-            lastlock.Unlock()
+            if ll { lastlock.Unlock() }
 
+            if atomic.LoadInt32(&concurrent_funcs)>0 { calllock.Lock(); ll=true }
             calltable[ifs]=call_s{}
             fnlookup.lmdelete(fs)
             numlookup.lmdelete(ifs)
-            // pf("call disposing of ifs : %d\n",ifs)
+            if ll { calllock.Unlock() }
 
-            fspacelock.Lock()
-            if ifs>2 { functionspaces[ifs] = []Phrase{} }
-            fspacelock.Unlock()
+            if ifs>2 {
+                if atomic.LoadInt32(&concurrent_funcs)>0 { fspacelock.Lock() ; ll=true }
+                functionspaces[ifs] = []Phrase{}
+                if ll { fspacelock.Unlock() }
+            }
 
-        } else {
-            // pf("... skipped.\n")
         }
-        calllock.Unlock()
 
     }
 
-    calllock.Lock()
+    if atomic.LoadInt32(&concurrent_funcs)>0 { calllock.Lock() ; ll=true }
     callChain=callChain[:len(callChain)-1]
-    calllock.Unlock()
+    if ll { calllock.Unlock() }
 
     return retval_count,endFunc
 
@@ -3730,11 +3687,13 @@ func coprocCall(ifs uint32,s string) {
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
         cet = s[pipepos+1:]
-        // @note: this interpolate may be unnecessary:
         inter   := interpolate(ifs,cet)
         cop := Copper(inter, false)
         if ! cop.okay {
-            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(cet," \t"))
+            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(inter," \t"))
+            if interactive {
+                pf(cop.err)
+            }
         } else {
             if len(cop.out) > 0 {
                 if cop.out[len(cop.out)-1] != '\n' {
