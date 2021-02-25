@@ -707,8 +707,10 @@ func buildInternalLib() {
     slhelp["lang"] = LibHelp{in: "", out: "string", action: "Returns the locale name used within the coprocess."}
     stdlib["lang"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("lang",args,0); !ok { return nil,err }
-        v, _ := vget(0, "@lang")
-        return v.(string), err
+        if v, found := vget(0, "@lang"); found {
+            return v.(string), nil
+        }
+        return "",nil
     }
 
     slhelp["release_name"] = LibHelp{in: "", out: "string", action: "Returns the OS release name as reported by the coprocess."}

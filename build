@@ -23,12 +23,10 @@ bdate =| date "+%d-%m-%Y %H:%M"
 upxfound=| which upx | wc -l
 upxfound=trim(upxfound.out,0).int
 
-strip_opts="-s -w"
-
 if ! os() ~ "^freebsd"
     when lower(tgt)
     is "alpine"
-        if buildMusl(bvers,bdate.out,strip_opts,upx_enable)!=0
+        if buildMusl(bvers,bdate.out)!=0
             exit e.build,"Failed to build alpine version."
         endif
     is "libc"
@@ -36,7 +34,7 @@ if ! os() ~ "^freebsd"
             exit e.build,"Failed to build libc version."
         endif
     is "win"
-        if buildWin(bvers,bdate.out,strip_opts) != 0
+        if buildWin(bvers,bdate.out) != 0
             exit e.build,"Failed to build windows version."
         endif
     or
@@ -51,8 +49,8 @@ endif
 if ! os() ~ "^freebsd"
     if upxfound==1 && is_file("za")
         if tgt!="win"
-            on strip_enable  do | strip {strip_opts} za
-            on upx_enable    do | upx za
+            on tgt!="alpine" and strip_enable   do | strip -s -w za
+            on upx_enable                       do | upx za
         endif
     else
         on is_file("za") do println "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]"
