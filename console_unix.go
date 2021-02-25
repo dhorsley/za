@@ -220,9 +220,12 @@ func setupAnsiPalette() {
     }
 }
 
+
+// race condition, yes... but who arranges concurrent keyboard access?
 var bigbytelist = make([]byte,6*4096)
 
-/// get a key press
+
+// get a key press
 func getch(timeo int) ( []byte, bool, bool, string ) {
 
     term.RawMode(tt)
@@ -243,22 +246,22 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
         // treat as timeout.. separate later, but timeout is buried in here
         return nil, true, false, ""
     }
-    // debug(21,"%#v\n",bigbytelist[0:numRead])
     return bigbytelist[0:numRead], false, false, ""
 }
 
-// maybe deprecate soon
+
+// @todo: deprecate GetCursorPos() soon
+// @note: don't use this if you can avoid it. better to track the cursor yourself
+// than rely on this if you require even modest performance. reads the cursor
+// position from the vt console itself using output commands. of course, speed is
+// also externally dependant upon the vt emulation of the terminal software the
+// program is executed within!
+
 func GetCursorPos() (int,int) {
 
     if tt==nil {
         return 0,0
     }
-
-    /*
-    if ready,er:=tt.RTS(); !ready || er==nil {
-        return 0,0
-    }
-    */
 
     buf:=make([]byte,15,15)
     var r,c int
@@ -287,14 +290,13 @@ func GetCursorPos() (int,int) {
 
 }
 
-// get an input string from stdin, in raw mode
 
+// getInput() : get an input string from stdin, in raw mode
 //  it does have some issues with utf8 input when moving the cursor around.
 //  not likely to fix this unless it annoys me too much.. more likely to
 //  replace the input mechanism wholesale.
-
-// the issue is basically that we are not tracking where the code points start
-// for each char and moving the cursor to those instead of byte by byte.
+//  the issue is basically that we are not tracking where the code points start
+//  for each char and moving the cursor to those instead of byte by byte.
 
 func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
@@ -726,8 +728,14 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
                     add:=""
                     if len(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
+                    spos := cpos
                     s = insertWord(s, newstart, add+helpList[0]+" ")
-                    cpos = len(s)
+                    if bpos:=str.IndexByte(s,'('); bpos!=-1 {
+                        // inserting a func so move cpos to bpos+1
+                        cpos = spos + bpos
+                    } else {
+                        cpos = len(s)
+                    }
                     l := displayedLen(s)
                     clearChars(irow, icol, l)
                     helpstring = ""

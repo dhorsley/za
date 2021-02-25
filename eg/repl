@@ -47,8 +47,8 @@ define process(i)
             print eval(f)
         endfor
     or
-        # println "Error - unknown command: ",statement, ". Trying on shell."
         | {i}
+        on last()!=0 do println last_out()
     endwhen
 
 end

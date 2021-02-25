@@ -1,8 +1,9 @@
 #!/usr/bin/za
 
-coproc(false)
-
-define f(z); pause rand(3000); return z*2; end
+define f(z)
+    pause rand(30)
+    return z*2
+end
 
 # launch all in parallel
 for x=0 to 99

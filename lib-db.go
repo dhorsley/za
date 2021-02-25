@@ -3,122 +3,82 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
-	_ "github.com/go-sql-driver/mysql"
-	"log"
-	"os"
+    "database/sql"
+    "errors"
+    _ "github.com/go-sql-driver/mysql"
+    "log"
+    "os"
 )
 
 func buildDbLib() {
 
-	// os level
+    features["db"] = Feature{version: 1, category: "db"}
+    categories["db"] = []string{"db_init", "db_query", "db_close"} // ,"db_prepared_query"}
 
-	features["db"] = Feature{version: 1, category: "db"}
-	categories["db"] = []string{"db_init", "db_query", "db_close"} // ,"db_prepared_query"}
+    // @todo: fix this: engine not found when in subdir of za build!
 
-	// @todo: fix this: engine not found when in subdir of za build!
+    // open a db connection
+    slhelp["db_init"] = LibHelp{in: "schema", out: "handle", action: "Returns a database connection [#i1]handle[#i0], based on inbound environmental variables."}
+    stdlib["db_init"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("db_init",args,1,"1","string"); !ok { return nil,err }
 
-	// open a db connection
-	slhelp["db_init"] = LibHelp{in: "schema", out: "handle", action: "Returns a database connection [#i1]handle[#i0], based on inbound environmental variables."}
-	stdlib["db_init"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        schema := args[0].(string)
 
-		if len(args) != 1 {
-			return nil, errors.New("Bad args (count) in db_init()")
-		}
+        dbhost, ex_host := os.LookupEnv("ZA_DB_HOST")
+        dbeng , ex_eng  := os.LookupEnv("ZA_DB_ENGINE")
+        dbport, ex_port := os.LookupEnv("ZA_DB_PORT")
+        dbuser, ex_user := os.LookupEnv("ZA_DB_USER")
+        dbpass, ex_pass := os.LookupEnv("ZA_DB_PASS")
 
-		var schema string
+        if !(ex_host || ex_eng || ex_port || ex_user || ex_pass) {
+            return nil, errors.New("Error: Missing DB details at startup.")
+        }
 
-		switch args[0].(type) {
-		case string:
-			schema = args[0].(string)
-		default:
-			return nil, errors.New("Supplied argument was not a schema name.")
-		}
-		// pf("schema->%s\n", schema)
+        // instantiate the db connection:
+        dbh, err := sql.Open(dbeng, dbuser+":"+dbpass+"@tcp("+dbhost+":"+dbport+")/"+schema)
+        if err != nil {
+            return nil, err
+        }
 
-		dbhost, ex_host := os.LookupEnv("ZA_DB_HOST")
-		dbengine, ex_eng := os.LookupEnv("ZA_DB_ENGINE")
-		dbport, ex_port := os.LookupEnv("ZA_DB_PORT")
-		dbuser, ex_user := os.LookupEnv("ZA_DB_USER")
-		dbpass, ex_pass := os.LookupEnv("ZA_DB_PASS")
+        return dbh, err
 
-		if !(ex_host || ex_eng || ex_port || ex_user || ex_pass) {
-			return nil, errors.New("Error: Missing DB details at startup.")
-		}
+    }
 
-		// instantiate the db connection:
-		dbh, err := sql.Open(dbengine, dbuser+":"+dbpass+"@tcp("+dbhost+":"+dbport+")/"+schema)
-		if err != nil {
-			return nil, err
-		}
+    // close a db connection
+    slhelp["db_close"] = LibHelp{in: "handle", out: "", action: "Closes the database connection."}
+    stdlib["db_close"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("db_close",args,1,"1","*sql.db"); !ok { return nil,err }
+        args[0].(*sql.DB).Close()
+        return nil, nil
+    }
 
-		return dbh, err
+    slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: '|'`}
+    stdlib["db_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("db_query",args,2,
+            "3","*sql.db","string","string",
+            "2","*sql.db","string"); !ok { return nil,err }
 
-	}
+        var q string
+        var dbh *sql.DB
 
-	// close a db connection
-	slhelp["db_close"] = LibHelp{in: "handle", out: "", action: "Closes the database connection."}
-	stdlib["db_close"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        var fsep string = "|"
+        if len(args)==3 { fsep = args[2].(string) }
 
-		if len(args) != 1 {
-			return nil, errors.New("Invalid argument count to db_close().")
-		}
+        dbh = args[0].(*sql.DB)
+        q = args[1].(string)
 
-		switch args[0].(type) {
-		case *sql.DB:
-			args[0].(*sql.DB).Close()
-		default:
-			return nil, errors.New("Supplied argument was not a database handle.")
-		}
+        if err := dbh.Ping(); err != nil {
+            log.Fatal(err)
+        }
 
-		return nil, nil
-	}
+        rows, err := dbh.Query(q) // @todo: add prepared statements later
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer rows.Close()
 
-	slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: '|'`}
-	stdlib["db_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-
-		var q string
-		var dbh *sql.DB
-		var fsep string = "|"
-
-		switch len(args) {
-		case 2:
-			break
-		case 3:
-			if sf("%T", args[2]) == "string" {
-				fsep = args[2].(string)
-			}
-		default:
-			return nil, errors.New("Invalid argument count to db_query().")
-		}
-
-		switch args[0].(type) {
-		case *sql.DB:
-			dbh = args[0].(*sql.DB)
-		default:
-			return nil, errors.New("Supplied argument was not a database handle.")
-		}
-
-		switch args[1].(type) {
-		case string:
-			q = args[1].(string)
-		default:
-			return nil, errors.New("Supplied argument was not a query string.")
-		}
-
-		if err := dbh.Ping(); err != nil {
-			log.Fatal(err)
-		}
-
-		rows, err := dbh.Query(q) // @todo: add prepared statements later
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer rows.Close()
-
-		l := make([]string, 50, 200)
-		rc := 0
+        l := make([]string, 50, 200)
+        rc := 0
 
         cols, err := rows.ColumnTypes()
         if err != nil {
@@ -140,7 +100,8 @@ func buildDbLib() {
             rc++
         }
 
-		return l[:rc], err
-	}
+        return l[:rc], err
+    }
 
 }
+

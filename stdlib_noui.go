@@ -1,4 +1,4 @@
-// +build !noui
+// +build noui
 // +build windows linux freebsd
 
 package main
@@ -27,6 +27,5 @@ func buildStandardLib() {
 	buildDbLib()
 	buildHtmlLib()
 	buildImageLib()
-    buildUILib()
 
 }

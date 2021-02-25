@@ -9,7 +9,7 @@ zahandler=`
     set ft=za
 `
 
-if hasstart(os(),"freebsd")
+if has_start(os(),"freebsd")
     pathRoot="/usr/local/share/vim"
 else
     pathRoot="/usr/share/vim"
@@ -19,7 +19,7 @@ endif
 
 allPaths=[]
 foreach p in dir(pathRoot)
-    if hasstart(p.name,"vim8")
+    if has_start(p.name,"vim8")
         allPaths=append(allPaths,p.name)
         break
     endif

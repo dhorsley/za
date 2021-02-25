@@ -1,0 +1,13 @@
+#!/usr/bin/za
+
+ea=|grep -c "expect_args(" lib-*
+
+println ea.out
+
+tot=0
+foreach l in ea.out
+    tot+=field(l,2,":").int
+endfor
+
+println tot
+

@@ -152,6 +152,8 @@ const (
 	O_AssCommand
 	LeftSBrace
 	RightSBrace
+	LeftCBrace
+	RightCBrace
     SYM_PLE
     SYM_MIE
     SYM_MUE
@@ -187,6 +189,8 @@ const (
     O_Filter
     O_Map
     O_InFile
+    O_Ref
+    O_Mut
     START_STATEMENTS
     C_Var
 	C_SetGlob
