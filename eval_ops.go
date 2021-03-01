@@ -10,7 +10,7 @@ import (
     "reflect"
     "strconv"
     str "strings"
-    "sync/atomic"
+//    "sync/atomic"
 )
 
 
@@ -141,95 +141,95 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return val1.(int)+val2.(int)
     }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(val1.(int))
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(val2.(int))
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(val1.(int))
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(val2.(int))
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return float1 + float2
-	}
+    if float1OK && float2OK {
+        return float1 + float2
+    }
 
     if intInOne && val2==nil { return val1.(int) }
     if intInTwo && val1==nil { return val2.(int) }
 
-	str1, str1OK := val1.(string)
-	str2, str2OK := val2.(string)
+    str1, str1OK := val1.(string)
+    str2, str2OK := val2.(string)
 
-	if str1OK && str2OK { // string + string = string
-		return str1 + str2
-	}
+    if str1OK && str2OK { // string + string = string
+        return str1 + str2
+    }
 
-	if str1OK && float2OK {
-		return str1 + strconv.FormatFloat(float2, 'f', -1, 64)
-	}
-	if float1OK && str2OK {
-		return strconv.FormatFloat(float1, 'f', -1, 64) + str2
-	}
+    if str1OK && float2OK {
+        return str1 + strconv.FormatFloat(float2, 'f', -1, 64)
+    }
+    if float1OK && str2OK {
+        return strconv.FormatFloat(float1, 'f', -1, 64) + str2
+    }
 
-	if str1OK && val2 == nil {
-		return str1 + "nil"
-	}
-	if val1 == nil && str2OK {
-		return "nil" + str2
-	}
+    if str1OK && val2 == nil {
+        return str1 + "nil"
+    }
+    if val1 == nil && str2OK {
+        return "nil" + str2
+    }
 
-	bool1, bool1OK := val1.(bool)
-	bool2, bool2OK := val2.(bool)
+    bool1, bool1OK := val1.(bool)
+    bool2, bool2OK := val2.(bool)
 
-	if str1OK && bool2OK {
-		return str1 + strconv.FormatBool(bool2)
-	}
-	if bool1OK && str2OK {
-		return strconv.FormatBool(bool1) + str2
-	}
+    if str1OK && bool2OK {
+        return str1 + strconv.FormatBool(bool2)
+    }
+    if bool1OK && str2OK {
+        return strconv.FormatBool(bool1) + str2
+    }
 
-	arr1, arr1OK := val1.([]interface{})
-	arr2, arr2OK := val2.([]interface{})
-	if arr1OK && arr2OK { return append(arr1, arr2...) }
+    arr1, arr1OK := val1.([]interface{})
+    arr2, arr2OK := val2.([]interface{})
+    if arr1OK && arr2OK { return append(arr1, arr2...) }
 
-	arrb1, arrb1OK := val1.([]bool)
-	arrb2, arrb2OK := val2.([]bool)
-	if arrb1OK && arrb2OK { return append(arrb1, arrb2...) }
+    arrb1, arrb1OK := val1.([]bool)
+    arrb2, arrb2OK := val2.([]bool)
+    if arrb1OK && arrb2OK { return append(arrb1, arrb2...) }
 
-	arri1, arri1OK := val1.([]int)
-	arri2, arri2OK := val2.([]int)
-	if arri1OK && arri2OK { return append(arri1, arri2...) }
+    arri1, arri1OK := val1.([]int)
+    arri2, arri2OK := val2.([]int)
+    if arri1OK && arri2OK { return append(arri1, arri2...) }
 
-	arru1, arru1OK := val1.([]uint)
-	arru2, arru2OK := val2.([]uint)
-	if arru1OK && arru2OK { return append(arru1, arru2...) }
+    arru1, arru1OK := val1.([]uint)
+    arru2, arru2OK := val2.([]uint)
+    if arru1OK && arru2OK { return append(arru1, arru2...) }
 
-	arrf1, arrf1OK := val1.([]float64)
-	arrf2, arrf2OK := val2.([]float64)
-	if arrf1OK && arrf2OK { return append(arrf1, arrf2...) }
+    arrf1, arrf1OK := val1.([]float64)
+    arrf2, arrf2OK := val2.([]float64)
+    if arrf1OK && arrf2OK { return append(arrf1, arrf2...) }
 
-	arrs1, arrs1OK := val1.([]string)
-	arrs2, arrs2OK := val2.([]string)
-	if arrs1OK && arrs2OK { return append(arrs1, arrs2...) }
+    arrs1, arrs1OK := val1.([]string)
+    arrs2, arrs2OK := val2.([]string)
+    if arrs1OK && arrs2OK { return append(arrs1, arrs2...) }
 
-	obj1, obj1OK := val1.(map[string]interface{})
-	obj2, obj2OK := val2.(map[string]interface{})
+    obj1, obj1OK := val1.(map[string]interface{})
+    obj2, obj2OK := val2.(map[string]interface{})
 
-	if obj1OK && obj2OK {
-		sum := make(map[string]interface{})
-		for k, v := range obj1 {
-			sum[k] = v
-		}
-		for k, v := range obj2 {
-			sum[k] = v
-		}
-		return sum
-	}
+    if obj1OK && obj2OK {
+        sum := make(map[string]interface{})
+        for k, v := range obj1 {
+            sum[k] = v
+        }
+        for k, v := range obj2 {
+            sum[k] = v
+        }
+        return sum
+    }
 
-	panic(fmt.Errorf("type error: cannot add or concatenate type %s and %s", typeOf(val1), typeOf(val2)))
+    panic(fmt.Errorf("type error: cannot add or concatenate type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
@@ -247,26 +247,26 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
         intInTwo=false
     }
 
-	if intInOne && intInTwo {
-		return val1.(int) - val2.(int)
-	}
+    if intInOne && intInTwo {
+        return val1.(int) - val2.(int)
+    }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(val1.(int))
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(val2.(int))
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(val1.(int))
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(val2.(int))
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return float1 - float2
-	}
-	panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
+    if float1OK && float2OK {
+        return float1 - float2
+    }
+    panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
@@ -288,39 +288,39 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
         intInTwo=false
     }
 
-	if intInOne && intInTwo {
-		return int1 * int2
+    if intInOne && intInTwo {
+        return int1 * int2
     }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(int1)
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(int2)
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(int1)
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(int2)
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return float1 * float2
-	}
+    if float1OK && float2OK {
+        return float1 * float2
+    }
 
     // int * string = repeat
-	str1, str1OK := val1.(string)
-	str2, str2OK := val2.(string)
-	if (intInOne && str2OK) && int1>=0 { return str.Repeat(str2,int1) }
-	if (intInTwo && str1OK) && int2>=0 { return str.Repeat(str1,int2) }
+    str1, str1OK := val1.(string)
+    str2, str2OK := val2.(string)
+    if (intInOne && str2OK) && int1>=0 { return str.Repeat(str2,int1) }
+    if (intInTwo && str1OK) && int2>=0 { return str.Repeat(str1,int2) }
 
     // int * struct = repeat
     s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
     s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
-	if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e++ { ary=append(ary,val2) }; return ary }
-	if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e++ { ary=append(ary,val1) }; return ary }
+    if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e++ { ary=append(ary,val2) }; return ary }
+    if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e++ { ary=append(ary,val1) }; return ary }
 
-	panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
+    panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
@@ -342,28 +342,28 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
         intInTwo=false
     }
 
-	if intInOne && intInTwo {
+    if intInOne && intInTwo {
         if int2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
-		return int1 / int2
-	}
+        return int1 / int2
+    }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(int1)
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(int2)
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(int1)
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(int2)
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
+    if float1OK && float2OK {
         if float2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
-		return float1 / float2
-	}
-	panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
+        return float1 / float2
+    }
+    panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
@@ -385,26 +385,26 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
         intInTwo=false
     }
 
-	if intInOne && intInTwo {
-		return int1 % int2
-	}
+    if intInOne && intInTwo {
+        return int1 % int2
+    }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(int1)
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(int2)
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(int1)
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(int2)
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return math.Mod(float1, float2)
-	}
-	panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
+    if float1OK && float2OK {
+        return math.Mod(float1, float2)
+    }
+    panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
@@ -426,26 +426,26 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
         intInTwo=false
     }
 
-	if intInOne && intInTwo {
-		return int(math.Pow(float64(int1),float64(int2)))
-	}
+    if intInOne && intInTwo {
+        return int(math.Pow(float64(int1),float64(int2)))
+    }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if intInOne {
-		float1 = float64(int1)
-		float1OK = true
-	}
-	if intInTwo {
-		float2 = float64(int2)
-		float2OK = true
-	}
+    if intInOne {
+        float1 = float64(int1)
+        float1OK = true
+    }
+    if intInTwo {
+        float2 = float64(int2)
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return math.Pow(float1,float2)
-	}
-	panic(fmt.Errorf("type error: cannot perform exponentiation on type %s and %s", typeOf(val1), typeOf(val2)))
+    if float1OK && float2OK {
+        return math.Pow(float1,float2)
+    }
+    panic(fmt.Errorf("type error: cannot perform exponentiation on type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func ev_shift_left(left,right interface{}) (interface{}) {
@@ -472,13 +472,13 @@ func ev_shift_left(left,right interface{}) (interface{}) {
         uintInTwo=false
     }
 
-	if uintInOne && uintInTwo {
-		return uint1 << uint2
-	}
+    if uintInOne && uintInTwo {
+        return uint1 << uint2
+    }
 
-	if intInOne && uintInTwo {
-		return int1 << uint2
-	}
+    if intInOne && uintInTwo {
+        return int1 << uint2
+    }
 
     panic(fmt.Errorf("shift operations only work with integers"))
 
@@ -508,13 +508,13 @@ func ev_shift_right(left,right interface{}) (interface{}) {
         uintInTwo=false
     }
 
-	if uintInOne && uintInTwo {
-		return uint1 << uint2
-	}
+    if uintInOne && uintInTwo {
+        return uint1 << uint2
+    }
 
-	if intInOne && uintInTwo {
-		return int1 >> uint2
-	}
+    if intInOne && uintInTwo {
+        return int1 >> uint2
+    }
 
     panic(fmt.Errorf("shift operations only work with integers"))
 }
@@ -541,12 +541,12 @@ func unaryPlus(val interface{}) (interface{}) {
         intInOne=false
     }
 
-	if intInOne { return intVal }
+    if intInOne { return intVal }
 
     floatVal, ok := val.(float64)
-	if ok { return floatVal }
+    if ok { return floatVal }
 
-	panic(fmt.Errorf("type error: unary positive requires number, but was %s", typeOf(val)))
+    panic(fmt.Errorf("type error: unary positive requires number, but was %s", typeOf(val)))
 }
 
 func unaryMinus(val interface{}) (interface{}) {
@@ -562,12 +562,12 @@ func unaryMinus(val interface{}) (interface{}) {
         intInOne=false
     }
 
-	if intInOne { return -intVal }
+    if intInOne { return -intVal }
 
     floatVal, ok := val.(float64)
-	if ok { return -floatVal }
+    if ok { return -floatVal }
 
-	panic(fmt.Errorf("type error: unary minus requires number, but was %s", typeOf(val)))
+    panic(fmt.Errorf("type error: unary minus requires number, but was %s", typeOf(val)))
 }
 
 
@@ -618,150 +618,150 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
     }
     // end bodge
 
-	switch typ1 := val1.(type) {
+    switch typ1 := val1.(type) {
 
-	case []interface{}:
+    case []interface{}:
 
-		typ2, ok := val2.([]interface{})
-		if !ok || len(typ1) != len(typ2) {
-			return false
-		}
+        typ2, ok := val2.([]interface{})
+        if !ok || len(typ1) != len(typ2) {
+            return false
+        }
 
-		for idx := range typ1 {
-			if !deepEqual(typ1[idx], typ2[idx]) {
-				return false
-			}
-		}
-		return true
+        for idx := range typ1 {
+            if !deepEqual(typ1[idx], typ2[idx]) {
+                return false
+            }
+        }
+        return true
 
-	case map[string]interface{}:
-		typ2, ok := val2.(map[string]interface{})
-		if !ok || len(typ1) != len(typ2) {
-			return false
-		}
-		for idx := range typ1 {
-			if !deepEqual(typ1[idx], typ2[idx]) {
-				return false
-			}
-		}
-		return true
+    case map[string]interface{}:
+        typ2, ok := val2.(map[string]interface{})
+        if !ok || len(typ1) != len(typ2) {
+            return false
+        }
+        for idx := range typ1 {
+            if !deepEqual(typ1[idx], typ2[idx]) {
+                return false
+            }
+        }
+        return true
 
-	case int:
-		int2, ok := val2.(int)
-		if ok {
-			return typ1 == int2
-		}
+    case int:
+        int2, ok := val2.(int)
+        if ok {
+            return typ1 == int2
+        }
         intsixfour, ok := val2.(int64)
         if ok {
             return int64(typ1) == intsixfour
         }
-		float2, ok := val2.(float64)
-		if ok {
-			return float64(typ1) == float2
-		}
-		return false
+        float2, ok := val2.(float64)
+        if ok {
+            return float64(typ1) == float2
+        }
+        return false
 
-	case int64:
-		int2, ok := val2.(int)
-		if ok {
-			return typ1 == int64(int2)
-		}
+    case int64:
+        int2, ok := val2.(int)
+        if ok {
+            return typ1 == int64(int2)
+        }
         intsixfour, ok := val2.(int64)
         if ok {
             return typ1 == intsixfour
         }
-		float2, ok := val2.(float64)
-		if ok {
-			return float64(typ1) == float2
-		}
-		return false
+        float2, ok := val2.(float64)
+        if ok {
+            return float64(typ1) == float2
+        }
+        return false
 
-	case float64:
-		float2, ok := val2.(float64)
-		if ok {
-			return typ1 == float2
-		}
-		int2, ok := val2.(int)
-		if ok {
-			return typ1 == float64(int2)
-		}
-		return false
-	}
+    case float64:
+        float2, ok := val2.(float64)
+        if ok {
+            return typ1 == float2
+        }
+        int2, ok := val2.(int)
+        if ok {
+            return typ1 == float64(int2)
+        }
+        return false
+    }
     // pf("D.E. default compare of (%v) against (%v)\n",val1,val2)
-	return val1 == val2
+    return val1 == val2
 }
 
 func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
-	int1, int1OK := val1.(int)
-	int2, int2OK := val2.(int)
-	if int1OK && int2OK {
-		return compareInt(int1, int2, operation)
-	}
+    int1, int1OK := val1.(int)
+    int2, int2OK := val2.(int)
+    if int1OK && int2OK {
+        return compareInt(int1, int2, operation)
+    }
 
-	float1, float1OK := val1.(float64)
-	float2, float2OK := val2.(float64)
+    float1, float1OK := val1.(float64)
+    float2, float2OK := val2.(float64)
 
-	if int1OK {
-		float1 = float64(int1)
-		float1OK = true
-	}
-	if int2OK {
-		float2 = float64(int2)
-		float2OK = true
-	}
+    if int1OK {
+        float1 = float64(int1)
+        float1OK = true
+    }
+    if int2OK {
+        float2 = float64(int2)
+        float2OK = true
+    }
 
-	if float1OK && float2OK {
-		return compareFloat(float1, float2, operation)
-	}
-	panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
+    if float1OK && float2OK {
+        return compareFloat(float1, float2, operation)
+    }
+    panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
 func compareInt(val1 int, val2 int, operation string) (bool) {
-	switch operation {
-	case "<":
-		return val1 < val2
-	case "<=":
-		return val1 <= val2
-	case ">":
-		return val1 > val2
-	case ">=":
-		return val1 >= val2
-	}
-	panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    switch operation {
+    case "<":
+        return val1 < val2
+    case "<=":
+        return val1 <= val2
+    case ">":
+        return val1 > val2
+    case ">=":
+        return val1 >= val2
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
 func compareFloat(val1 float64, val2 float64, operation string) (bool) {
-	switch operation {
-	case "<":
-		return val1 < val2
-	case "<=":
-		return val1 <= val2
-	case ">":
-		return val1 > val2
-	case ">=":
-		return val1 >= val2
-	}
-	panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    switch operation {
+    case "<":
+        return val1 < val2
+    case "<=":
+        return val1 <= val2
+    case ">":
+        return val1 > val2
+    case ">=":
+        return val1 >= val2
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
 func asObjectKey(key interface{}) (string) {
-	s, ok := key.(string)
-	if !ok {
+    s, ok := key.(string)
+    if !ok {
         panic(fmt.Errorf("type error: object key must be string, but was %s", typeOf(key)))
-	}
-	return s
+    }
+    return s
 }
 
 func addMapMember(evalfs uint32, obj string, key, val interface{}) {
     // map key
-	s := asObjectKey(key)
-	vsetElement(evalfs, obj, s, val)
+    s := asObjectKey(key)
+    vsetElement(evalfs, obj, s, val)
     return
 }
 
 func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}) {
     // normal array
-	s,invalid := GetAsInt(key.(string))
+    s,invalid := GetAsInt(key.(string))
     if invalid { panic(fmt.Errorf("type error: element must be an integer")) }
 
     switch val.(type) {
@@ -770,7 +770,7 @@ func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}
     default:
         panic(fmt.Errorf("addobjmember cannot handle type %T for %v\n",val,key))
     }
-	return
+    return
 }
 
 
@@ -934,23 +934,23 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
     case string:
         vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
         return vg
-	case map[string]string:
-		return obj[field.(string)]
-	case map[string]float64:
-		return obj[field.(string)]
-	case map[string]int:
-		return obj[field.(string)]
-	case map[string]uint:
-		return obj[field.(string)]
-	case map[string]interface{}:
-		return obj[field.(string)]
+    case map[string]string:
+        return obj[field.(string)]
+    case map[string]float64:
+        return obj[field.(string)]
+    case map[string]int:
+        return obj[field.(string)]
+    case map[string]uint:
+        return obj[field.(string)]
+    case map[string]interface{}:
+        return obj[field.(string)]
     default:
 
         r := reflect.ValueOf(obj)
 
         switch r.Kind().String() {
         case "slice":
-		    switch obj:=obj.(type) {
+            switch obj:=obj.(type) {
             case []int:
                 if len(obj)>field.(int) { return obj[field.(int)] }
             case []bool:
@@ -975,14 +975,14 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
 
         }
 
-	} // end default case
+    } // end default case
 
     return nil
 
 }
 
 func slice(v interface{}, from, to interface{}) interface{} {
-	str, isStr := v.(string)
+    str, isStr := v.(string)
     isArr:=false
     var arl int
 
@@ -1012,61 +1012,61 @@ func slice(v interface{}, from, to interface{}) interface{} {
         panic(fmt.Errorf("syntax error: unknown array type '%T'",v))
     }
 
-	if !isStr && !isArr {
-		panic(fmt.Errorf("syntax error: slicing requires an array or string, but was %s", typeOf(v)))
-	}
+    if !isStr && !isArr {
+        panic(fmt.Errorf("syntax error: slicing requires an array or string, but was %s", typeOf(v)))
+    }
 
-	var fromInt, toInt int
-	if from == nil {
-		fromInt = 0
-	} else {
-		fromInt = as_integer(from)
-	}
+    var fromInt, toInt int
+    if from == nil {
+        fromInt = 0
+    } else {
+        fromInt = as_integer(from)
+    }
 
-	if to == nil && isStr {
-		toInt = len(str)
-	} else if to == nil && isArr {
-		toInt = arl
-	} else {
-		toInt = as_integer(to)
-	}
+    if to == nil && isStr {
+        toInt = len(str)
+    } else if to == nil && isArr {
+        toInt = arl
+    } else {
+        toInt = as_integer(to)
+    }
 
-	if fromInt < 0 {
-		panic(fmt.Errorf("range error: start-index %d is negative", fromInt))
-	}
+    if fromInt < 0 {
+        panic(fmt.Errorf("range error: start-index %d is negative", fromInt))
+    }
 
-	if isStr {
-		if toInt < 0 || toInt > len(str) {
-			panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, len(str)))
-		}
-		if fromInt > toInt {
-			panic(fmt.Errorf("range error: start-index %d is greater than end-index %d", fromInt, toInt))
-		}
-		return str[fromInt:toInt]
-	}
+    if isStr {
+        if toInt < 0 || toInt > len(str) {
+            panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, len(str)))
+        }
+        if fromInt > toInt {
+            panic(fmt.Errorf("range error: start-index %d is greater than end-index %d", fromInt, toInt))
+        }
+        return str[fromInt:toInt]
+    }
 
-	if toInt < 0 || toInt > arl {
-		panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, arl))
-	}
-	if fromInt > toInt {
-		panic(fmt.Errorf("range error: start-index %d is greater than end-index %d", fromInt, toInt))
-	}
+    if toInt < 0 || toInt > arl {
+        panic(fmt.Errorf("range error: end-index %d is out of range [0, %d]", toInt, arl))
+    }
+    if fromInt > toInt {
+        panic(fmt.Errorf("range error: start-index %d is greater than end-index %d", fromInt, toInt))
+    }
 
     switch v.(type) {
     case []bool:
-	    return v.([]bool)[fromInt:toInt]
+        return v.([]bool)[fromInt:toInt]
     case []int:
-	    return v.([]int)[fromInt:toInt]
+        return v.([]int)[fromInt:toInt]
     case []float64:
-	    return v.([]float64)[fromInt:toInt]
+        return v.([]float64)[fromInt:toInt]
     case []uint:
-	    return v.([]uint)[fromInt:toInt]
+        return v.([]uint)[fromInt:toInt]
     case []string:
-	    return v.([]string)[fromInt:toInt]
+        return v.([]string)[fromInt:toInt]
     case string:
-	    return v.(string)[fromInt:toInt]
+        return v.(string)[fromInt:toInt]
     case []interface{}:
-	    return v.([]interface{})[fromInt:toInt]
+        return v.([]interface{})[fromInt:toInt]
     }
     return nil
 }
@@ -1074,7 +1074,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 
 func callFunction(evalfs uint32, callline int16, name string, args []interface{}) (res interface{}) {
 
-	// pf("callFunction started with\nfs %v line %v fn %v\n",evalfs,callline,name)
+    // pf("callFunction started with\nfs %v line %v fn %v\n",evalfs,callline,name)
 
     for a:=0; a<len(args); a++ {
         switch args[a].(type) {
@@ -1083,7 +1083,7 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
         }
     }
 
-	if f, ok := stdlib[name]; !ok {
+    if f, ok := stdlib[name]; !ok {
 
         var lmv uint32
         var isFunc bool
@@ -1094,24 +1094,24 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
             name=fm.name
             if isFunc { lmv=fm.fs }
         } else {
-		    lmv, isFunc = fnlookup.lmget(name)
+            lmv, isFunc = fnlookup.lmget(name)
         }
 
-		// check if exists in user defined function space
-		if isFunc {
+        // check if exists in user defined function space
+        if isFunc {
 
-			// make Za function call
+            // make Za function call
             loc,id := GetNextFnSpace(name+"@")
 
             calllock.Lock()
-			calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
+            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
             calllock.Unlock()
 
-            atomic.AddInt32(&concurrent_funcs, 1)
-			rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
-            atomic.AddInt32(&concurrent_funcs, -1)
+            // atomic.AddInt32(&concurrent_funcs, 1)
+            rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
+            // atomic.AddInt32(&concurrent_funcs, -1)
 
-			// handle the returned result, if present.
+            // handle the returned result, if present.
             res, _ = vget(evalfs, "@#")
             switch rcount {
             case 0:
@@ -1122,12 +1122,11 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
                 return res
             }
 
-		} else {
-		    // no? now panic
-		    panic(fmt.Errorf("syntax error: no such function %q", name))
+        } else {
+            panic(fmt.Errorf("syntax error: no such function %q", name))
         }
-	} else {
-        // call standard function
+    } else {
+        // call standard library function
         res, err := f(evalfs,args...)
         if err != nil {
             panic(fmt.Errorf("function error: in %+v %s", name,err))

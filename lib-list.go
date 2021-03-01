@@ -19,6 +19,7 @@ import (
     "sort"
     str "strings"
     "strconv"
+    "sync/atomic"
 )
 
 type sortStructInt struct {
@@ -117,7 +118,7 @@ func buildListLib() {
 
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
-        "append", "insert", "remove", "push_front", "pop", "peek",
+        "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "concat", "esplit", "min", "max", "avg",
         "empty", "list_string", "list_float", "list_int",
         "scan_left","zip",
@@ -398,6 +399,73 @@ func buildListLib() {
         }
         return cols, nil
     }
+
+
+    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
+    stdlib["append_to"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
+         
+        // check args[0] exists in evalfs
+        if args[0]==nil {
+            return nil,errors.New("argument is not a list")
+        }
+
+        vi,there:=VarLookup(evalfs,args[0].(string))
+        if !there {
+            return nil, errors.New(sf("list %s does not exist",args[0]))
+            // @todo: initialise the var automatically later on
+        }
+
+        // check type is compatible
+
+        var ll bool
+
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true}
+
+        set:=false
+        switch ident[evalfs][vi].IValue.(type) {
+        case []string:
+            ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]string),sf("%v",args[1]))
+            set=true
+        case []int:
+            switch args[1].(type) {
+            case int:
+                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]int),args[1].(int))
+                set=true
+            } 
+        case []uint:
+            switch args[1].(type) {
+            case uint:
+                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]uint),args[1].(uint))
+                set=true
+            } 
+        case []float64:
+            switch args[1].(type) {
+            case float64:
+                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]float64),args[1].(float64))
+                set=true
+            } 
+        case []bool:
+            switch args[1].(type) {
+            case bool:
+                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]bool),args[1].(bool))
+                set=true
+            } 
+        case []interface{}:
+            ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]interface{}),args[1])
+            set=true
+        }
+
+        if ll { vlock.Unlock() }
+
+        if !set {
+            return false,errors.New(sf("unsupported list type in append_to()"))
+        }
+
+        return true,nil
+
+    }
+
 
     // append returns a[]+arg
     slhelp["append"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}

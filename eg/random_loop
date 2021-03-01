@@ -10,7 +10,8 @@ input max_count optarg 1
 a=[]
 ts=epoch_nano_time()
 for f=0 to max_count
-    a=a.append(rand(10))
+    # a=a.append(rand(10))
+    append_to(ref a,rand(10))
 endfor
 te=epoch_nano_time()
 

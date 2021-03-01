@@ -9,25 +9,10 @@ lots, i'm sure.
 TODO
 ----
 
-    * need to build an alpine release of 1.0.14 that exludes all trace of the ui library features.
-        - the binary will not even start up on Alpine currently due to missing opengl and other
-          bits and pieces required by 1.0.14.
-
-        - it's a bit of a shame, but may have to push the UI features back on the queue again. 
-           alpine functionality was a big part of the design intent for the language and UI toys
-            certainly were not! 
-
-        - will give this some consideration for a while, but for now v1.0.13 is the last release 
-            currently working with Alpine.
-
-        - it is difficult to leave the features in place as pixel/opengl require control of the main
-            thread and things were re-wired to allow for this.
-
-        - i'm fairly certain i do not want to maintain two versions of the codebase and the UI pieces
-            cannot be made optional due to the main thread control issue.
-
-        - only glimmer of hope currently is distributing some dummy library files in a docker build
-            that stubbed for the missing opengl dependencies and other similar dodgy workarounds.
+    FIXED: added noui build constraint and use CGO_ENABLED=0 and the build constraint in 
+        the build script Alpine option. v1.0.14 now builds fine. It has been tested in Alpine
+        docker builds and on AWS linux 2 and also no longer throws the startup GL warning either.
+        it remains a static, stripped and compressed binary on Alpine.
 
 
     * possible optimisation for evaluations:
@@ -46,6 +31,9 @@ TODO
             - the .changed field has remained in place for now. may come in useful for
                 other features. (doubtful, but not hurting performance left on.)
                 - will remove this before version update if still not required.
+                - if we add a type field also on identifiers we could possibly remove
+                    some map lookups in various places [ mainly identifier() ]
+                - type field set would be something like: [ identifier,library_func,user_func ]
 
  (done) - If we add to all variables in ident[] a field named .changed (bool), then
             set it during vseti/doAssign.
@@ -81,9 +69,20 @@ TODO
         - Windows 10    : UAC, binary stripping and a/v causing problems more
                            so than the Za binary itself. more checks needed.
 
-        - Alpine        : to test
+        - Alpine        : have split out some of the UI functionality to only
+                            build when the build tag 'noui' is not set.
+
+                          the build script has been altered to add this tag and
+                            to also ensure CGO_ENABLED=0
+
+                          this leaves the alpine build operating as it did in previous
+                            versions (i.e. without lib-ui facilities) but for other
+                            builds to include lib-ui.
+
         - FreeBSD       : to test
-        - AWS Linux 1+2 : to test
+
+        - AWS Linux 1+2 : to test - but fully expect it will need to operate like the
+                            Alpine build above.
 
 
 LATER / UNDECIDED

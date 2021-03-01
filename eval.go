@@ -1338,7 +1338,9 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
             }
             if !ok {
                 if ll { vlock.Unlock() }
-                panic(fmt.Errorf("invalid assignation on '%v' of %v [%T]",name,value,value))
+                panic(fmt.Errorf("invalid assignation to '%v' [%T] of %v [%T]",
+                    name,ident[fs][vi].IValue,value,value),
+                )
             }
 
         } else {
@@ -1452,6 +1454,7 @@ func vsetElement(fs uint32, name string, el interface{}, value interface{}) {
 }
 
 // this could probably be faster. not a great idea duplicating the list like this...
+
 func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value interface{}) {
 
     var list interface{}
