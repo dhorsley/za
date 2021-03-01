@@ -33,12 +33,14 @@ func expect_args(name string, args []interface{}, variants int, types... string)
         tryNext=false
         n:=0
         for p=next;p<(next+nc);p++ {
-            if types[p]=="number" {
+            // if types[p]=="number" {
                 switch args[n].(type) {
+                case nil:
+                    return false,nil
                 case int,uint,float64,int64,uint64,uint8:
-                    n++; continue
+                    if types[p]=="number" { n++; continue }
                 }
-            }
+            // }
             if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
                 type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
                 tryNext=true
