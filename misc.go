@@ -76,7 +76,8 @@ func (parser *leparser) report(s string) {
             "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
             line_content+"\n"+
             sparkle("[##][#-][#CTE]")+
-            sf("%s\n", s)+sparkle("[#CTE]")
+            sparkle(sf("%s\n",s))+
+            sparkle("[#CTE]")
     } else {
         msg = sparkle(sf("%s\n",s))+sparkle("[#CTE]")
     }

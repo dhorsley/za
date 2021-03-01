@@ -227,7 +227,7 @@ var shellrep bool
 
 // 0:off, >0 max displayed debug level
 // - not currently used too much. may eventually be removed
-// var debug_level int
+var debug_level int
 
 // list of keywords for lookups
 // - used in interactive mode TAB completion
@@ -358,7 +358,7 @@ func run() {
     MW, MH, _ = GetSize(1)
 
     // turn debug mode off
-    // debug_level = 0
+    debug_level = 0
 
     // start processing startup flags
 
@@ -420,7 +420,7 @@ func run() {
     var a_help         =   flag.Bool("h",false,"help page")
     var a_version      =   flag.Bool("v",false,"display the Za version")
     var a_interactive  =   flag.Bool("i",false,"run interactively")
-    // var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
+    var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
     var a_profile      =   flag.Bool("p",false,"enable profiler")
     var a_trace        =   flag.Bool("P",false,"enable trace capture")
     var a_test         =   flag.Bool("t",false,"enable tests")
@@ -498,6 +498,10 @@ func run() {
     // command separator
     if *a_cmdsep != 0 {
         vset(0,"@cmdsep",byte(*a_cmdsep))
+    }
+
+    if *a_debug != 0 {
+        debug_level = *a_debug
     }
 
     // max co-proc command timeout

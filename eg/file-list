@@ -8,6 +8,11 @@ var n int
 
 testfile="/usr/share/dict/american-english"
 
+when release_id()
+is "fedora"
+    testfile="/usr/share/dict/words"
+endwhen
+
 if is_file(testfile)
     q=fopen(testfile,"r")
     while !feof(q)

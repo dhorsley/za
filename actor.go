@@ -429,6 +429,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             if _,ok:=r.(runtime.Error); ok {
                 parser.report(sf("\n%v\n",r))
                 finish(false,ERR_EVAL)
+                if debug_level>0 { panic(r) }
             }
             err:=r.(error)
             parser.report(sf("\n%v\n",err))
@@ -834,21 +835,41 @@ tco_reentry:
 
         case C_Var: // permit declaration with a default value
 
+            // syntax:
+            // VAR name type [ = expr ]
+            // 0   1    2      3 4+
+
             // check syntax
-            if inbound.TokenCount<3 {
-                parser.report("invalid VAR syntax\nUsage: VAR [#i1]variable type[#i0]")
+            if inbound.TokenCount<3 || inbound.TokenCount==4 {
+                parser.report("invalid VAR syntax\nUsage: VAR [#i1]variable type [ = expression ][#i0]")
                 finish(false,ERR_SYNTAX)
                 break
             }
+
+            hasValue := false
+            if inbound.TokenCount>4 {
+                if inbound.Tokens[3].tokType != O_Assign {
+                    parser.report("Assignment missing in VAR")
+                    finish(false,ERR_SYNTAX)
+                    break
+                }
+                hasValue=true
+                we = parser.wrappedEval(ifs,ifs,inbound.Tokens[4:])
+                if we.evalError {
+                    parser.report("could not evaluate VAR assignment expression")
+                    finish(false,ERR_EVAL)
+                    break
+                }
+            }    
 
             // check if name available
             vname := interpolate(ifs,inbound.Tokens[1].tokText)
 
             // get the required type
-            type_token_string := crushEvalTokens(inbound.Tokens[2:]).text
+            type_token_string := inbound.Tokens[2].tokText
 
             // this needs reworking, same as C_Init:
-
+            // ++
             var tb bool
             var tu uint
             var ti int
@@ -862,16 +883,30 @@ tco_reentry:
             typemap["int"]      = reflect.TypeOf(ti)
             typemap["float"]    = reflect.TypeOf(tf64)
             typemap["string"]   = reflect.TypeOf(ts)
+            // --
 
             if _,found:=typemap[type_token_string]; found {
+
+                if vi,there:=VarLookup(ifs,vname); there {
+                    ll:=false
+                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+                    if ident[ifs][vi].declared==true {
+                        if ll { vlock.Unlock() }
+                        parser.report(sf("variable '%s' already exists",vname))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                    if ll { vlock.Unlock() }
+                }
+
                 vset(ifs,vname,reflect.New(typemap[type_token_string]).Elem().Interface())
-                ll:=false
                 if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
                 vi:=inbound.Tokens[1].offset
                 ident[ifs][vi].ITyped=true
                 ident[ifs][vi].declared=true
                 switch type_token_string {
                 case "nil":
+                    // probably not needed!
                     ident[ifs][vi].IKind=knil
                 case "bool":
                     ident[ifs][vi].IKind=kbool
@@ -884,6 +919,18 @@ tco_reentry:
                 case "string":
                     ident[ifs][vi].IKind=kstring
                 }
+
+                // if we had a default value, stuff it in here...
+                if hasValue {
+                    if sf("%T",we.result)!=type_token_string {
+                        parser.report("type mismatch in VAR assignment")
+                        finish(false,ERR_EVAL)
+                        if ll { vlock.Unlock() }
+                        break
+                    }
+                    ident[ifs][vi].IValue=we.result
+                }
+
                 if ll { vlock.Unlock() }
 
             } else {
@@ -922,7 +969,7 @@ tco_reentry:
 
                 we = parser.wrappedEval(ifs,ifs,etoks)
                 if we.evalError {
-                    parser.report( "could not evaluate WHILE condition")
+                    parser.report("could not evaluate WHILE condition")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -931,7 +978,7 @@ tco_reentry:
                 case bool:
                     res = we.result.(bool)
                 default:
-                    parser.report( "WHILE condition must evaluate to boolean")
+                    parser.report("WHILE condition must evaluate to boolean")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1101,7 +1148,7 @@ tco_reentry:
                     // skip empty expressions
                     endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
                     if !endfound {
-                        parser.report(  "Cannot determine the location of a matching ENDFOR.")
+                        parser.report("Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else { //skip
@@ -1304,7 +1351,7 @@ tco_reentry:
                     }
 
                 default:
-                    parser.report( sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", we.result,we.result))
+                    parser.report(sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", we.result,we.result))
                     finish(false,ERR_EVAL)
                     break
                 }
