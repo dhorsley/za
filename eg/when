@@ -38,12 +38,12 @@ os=release_id()
 
 print "\nOS VALUE : {os}\n\t"
 
-when os
-    contains "ubuntu|debian"
+when
+    has os ~i "ubuntu|debian"
         print "Debian-variant\n"
-    contains "centos|redhat|ami"
+    has os ~i "centos|redhat|ami|fedora"
         print "RedHat-variant\n"
-    contains "opensuse"
+    has os ~i "opensuse"
         print "openSUSE-variant"
     or
         print "Unknown OS-variant.\n"

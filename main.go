@@ -145,6 +145,9 @@ var ident = make([][]Variable, SPACE_CAP)
 var fnlookup = lmcreate(SPACE_CAP)
 var numlookup = nlmcreate(SPACE_CAP)
 
+// tracker for recent function allocations.. probably will slow down function calls!
+var lastfunc = make(map[uint32]string)
+
 // interactive mode and prompt handling flag
 var interactive bool
 
@@ -887,7 +890,7 @@ func run() {
     } // endif not windows
 
     // special case: aliases in bash
-    if shelltype=="bash" {
+    if shelltype=="bash" || shelltype=="ash" {
         Copper("shopt -s expand_aliases",true)
         Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
     }

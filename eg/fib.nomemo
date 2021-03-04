@@ -11,4 +11,5 @@ input x param 1
 println fib(x)
 #println "calls -> {calls}"
 
+println "mem_summary : %#v".format(mem_summary(true)["main"])
 

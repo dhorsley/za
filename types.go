@@ -173,6 +173,12 @@ type Pane struct {
         build   string
     }
 
+    type alloc_info struct {
+        id      int
+        name    string
+        size    int
+    }
+
     type web_info struct {
         result  string
         code    int

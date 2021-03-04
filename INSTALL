@@ -31,6 +31,8 @@ pre-requisites:
 If you need to build UI support (-u za flag) in, then you will need
 to install the supporting library packages for opengl and their dependancies:
 
+Ubuntu:
+
 sudo apt update
 sudo apt install xorg-dev libglfw3-dev
 
@@ -40,6 +42,7 @@ sudo apt install xorg-dev libglfw3-dev
 )
 
 IMPORTANT!! : Your video card and drivers must support opengl 3.3+ for UI facilities to work!
+
 
 first install:
 
@@ -85,7 +88,8 @@ at the moment - Windows support is still considered to be experimental and may g
 at any time before we commit to a 'real' release.
 
 Also underwhelming in the Windows version:
-    - ANSI support in interactive mode: windows just ain't great at it.
+
+    - ANSI support in interactive mode: windows default consoles just ain't great at it.
     - multi-monitor (and auto-selection) support for lib-ui opengl context.
 
 

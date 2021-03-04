@@ -220,3 +220,5 @@ while !ui_closed(w)
 
 endwhile
 
+println "mem_summary : %#v".format(mem_summary(true)["main"])
+

@@ -15,6 +15,7 @@ import (
     "sort"
     str "strings"
     "time"
+//    "unsafe"
 )
 
 
@@ -107,7 +108,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit","wrap",
+        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit","wrap",
         "enum_names","enum_all",
     }
 
@@ -146,12 +147,46 @@ func buildInternalLib() {
             "0"); !ok { return nil,err }
         hnd:=1
         if len(args)==1 {
-            switch args[0].(type) {
-            case int:
-                hnd=args[0].(int)
-            }
+            hnd=args[0].(int)
         }
         return GetWinInfo(hnd), nil
+    }
+
+    slhelp["mem_summary"] = LibHelp{in: "", out: "struct", action: "Returns summary of memory use."}
+    stdlib["mem_summary"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("mem_summary",args,2,
+            "1","bool",
+            "0"); !ok { return nil,err }
+
+        debugSplit:=false
+        if len(args)==1 {
+            debugSplit=true
+        }    
+
+        var r = make(map[string]alloc_info)
+        var w alloc_info
+
+        for k,_:=range ident {
+            if len(ident[k])>0 {
+                w.name,_= numlookup.lmget(uint32(k))
+                if w.name=="" {
+                    w.name="(disposed)"
+                    if lf,there:=lastfunc[uint32(k)]; there {
+                        if lf!="" {
+                            w.name="(recently "+lf+")"
+                        }
+                    }
+                }
+                w.size  = Of(ident[k])
+                w.id    = k
+                if debugSplit {
+                    pf("id %3d - name: %24s : size (bytes) : %12d\n",k,w.name,w.size)
+                }
+                r[w.name]=w
+            }
+        }
+ 
+        return r,nil
     }
 
     slhelp["get_mem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
@@ -392,7 +427,7 @@ func buildInternalLib() {
     slhelp["sizeof"] = LibHelp{in: "var", out: "integer", action: "Returns size of object."}
     stdlib["sizeof"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if len(args) == 1 {
-            return unsafe.Sizeof(args[0]),nil
+            return uint64(unsafe.Sizeof(args[0])),nil
         }
         return -1,errors.New("Bad argument in sizeof()")
     }
@@ -899,7 +934,7 @@ func buildInternalLib() {
                 pf("Invalid space name provided '%v'.\n",s)
             }
         }
-        return true, err
+        return nil, err
     }
 
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}
