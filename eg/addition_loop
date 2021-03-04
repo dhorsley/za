@@ -16,5 +16,6 @@ te=epoch_nano_time()
 
 println "total {a} , loop-count {f}"
 
+# println "mem_summary : %#v".format(mem_summary(true)["main"])
 timing.report(ts,te,max_count)
 

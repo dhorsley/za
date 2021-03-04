@@ -47,4 +47,5 @@ println "byte rate   : {throughput} bytes/ns"
 println "            : %f.3 GB/sec".format(throughput)
 
 println "\nmem use     : ",get_mem().alloc
+println "mem_summary : %#v".format(mem_summary()["main"])
 

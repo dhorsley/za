@@ -25,5 +25,6 @@ else
     exit errors.not_found,"File not found."
 endif
 
+println "mem_summary : %#v".format(mem_summary(true)["main"])
 exit errors.okay
 

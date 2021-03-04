@@ -7,8 +7,6 @@ h=40
 w=term_w()
 
 init y mixed h
-init xbar mixed w
-init buf mixed h
 
 # repeatedly fill second buffer with line by line copies of first buf
 cursoroff()
@@ -29,5 +27,6 @@ endfor
 cursoron()
 cls
 at term_h()-6,1
+println "mem_summary : %#v".format(mem_summary()["main"])
 println "mem use : ",get_mem().alloc
 

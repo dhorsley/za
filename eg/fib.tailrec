@@ -17,4 +17,5 @@ for i=x to y
     println i," ",fib(i)
 endfor
 
+println "mem_summary : %#v".format(mem_summary(true)["main"])
 

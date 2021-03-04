@@ -716,12 +716,14 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case []dirent:
         sz=len(left)
+    case []alloc_info:
+        sz=len(left)
     case []interface{}:
         sz=len(left)
     case string:
         sz=len(left)
 
-    case map[string]interface{},map[string]string,map[string]int,map[int]interface{},map[int]int,map[int]string,map[int][]int,map[int][]string,map[int][]interface{}:
+    case map[string]interface{},map[string]alloc_info,map[string]string,map[string]int,map[int]interface{},map[int]int,map[int]string,map[int][]int,map[int][]string,map[int][]interface{}:
 
         // check for key
         var mkey string
