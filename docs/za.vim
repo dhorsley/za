@@ -119,6 +119,7 @@ syntax match list_functions "\(.\|\s*\)head\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)tail\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)uniq\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)append\s*("he=e-1
+syntax match list_functions "\(.\|\s*\)append_to\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)insert\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)remove\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)push_front\s*("he=e-1

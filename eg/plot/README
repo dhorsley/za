@@ -1,0 +1,15 @@
+
+Please note:
+
+    These tests are still a little buggy where they use asynchronous loops for handling console input.
+
+    I haven't checked yet, but I'm fairly sure this is a consequence of trying to multiplex console access
+    rather than an inherent fault with concurrency within the language. 
+
+    If you have any problems with a terminal stalling just sigkill the Za pid. No harm done ;)
+
+    What I'm trying to say is... keep console access simple, or use lib-ui for more complex front-ends.
+
+    (also: it could definitely be a language bug - it just isn't my gut feeling!)
+
+

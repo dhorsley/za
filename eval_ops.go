@@ -934,6 +934,8 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
     case string:
         vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
         return vg
+    case map[string]alloc_info:
+        return obj[field.(string)]
     case map[string]string:
         return obj[field.(string)]
     case map[string]float64:
@@ -964,6 +966,8 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
             case []float64:
                 if len(obj)>field.(int) { return obj[field.(int)] }
             case []dirent:
+                if len(obj)>field.(int) { return obj[field.(int)] }
+            case []alloc_info:
                 if len(obj)>field.(int) { return obj[field.(int)] }
             case []interface{}:
                 if len(obj)>field.(int) { return obj[field.(int)] }

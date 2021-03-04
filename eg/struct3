@@ -31,5 +31,7 @@ for e=1 to 1000
     print
 endfor
 
+println "mem_summary : %#v".format(mem_summary()["main"])
+
 println "1000 iterations of 100 struct init and populations."
 

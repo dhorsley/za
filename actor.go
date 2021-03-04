@@ -1114,6 +1114,10 @@ tco_reentry:
                     l=len(lv)
                 case []dirent:
                     l=len(lv)
+                case []alloc_info:
+                    l=len(lv)
+                case map[string]alloc_info:
+                    l=len(lv)
                 case map[string]string:
                     l=len(lv)
                 case map[string]uint:
@@ -1196,6 +1200,16 @@ tco_reentry:
                             vseti(ifs, fid, fno, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]float64)) - 1
+                    }
+
+                case map[string]alloc_info:
+                    if len(we.result.(map[string]alloc_info)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]alloc_info)).MapRange()
+                        if iter.Next() {
+                            fkno=vset(ifs, "key_"+fid, iter.Key().String())
+                            vseti(ifs, fid, fno, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]alloc_info)) - 1
                     }
 
                 case map[string]bool:
@@ -1317,6 +1331,13 @@ tco_reentry:
                         fkno=vset(ifs, "key_"+fid, 0)
                         vseti(ifs, fid, fno, we.result.([]dirent)[0])
                         condEndPos = len(we.result.([]dirent)) - 1
+                    }
+
+                case []alloc_info:
+                    if len(we.result.([]alloc_info)) > 0 {
+                        fkno=vset(ifs, "key_"+fid, 0)
+                        vseti(ifs, fid, fno, we.result.([]alloc_info)[0])
+                        condEndPos = len(we.result.([]alloc_info)) - 1
                     }
 
                 case []map[string]interface{}:
@@ -1565,7 +1586,7 @@ tco_reentry:
                         switch (*thisLoop).iterOverArray.(type) {
 
                         // map ranges are randomly ordered!!
-                        case map[string]interface{}, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
+                        case map[string]interface{}, map[string]alloc_info, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).iterOverMap.Key().String())
                                 vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverMap.Value().Interface())
@@ -1586,6 +1607,9 @@ tco_reentry:
                         case []dirent:
                             vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
                             vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
+                        case []alloc_info:
+                            vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
+                            vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
                         case []float64:
                             vseti(ifs, "key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
                             vseti(ifs, (*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
@@ -3696,6 +3720,11 @@ tco_reentry:
             calltable[ifs]=call_s{}
             fnlookup.lmdelete(fs)
             numlookup.lmdelete(ifs)
+
+            // we keep a record here of recently disposed functionspace names
+            //  so that mem_summary can label disposed of function allocations.
+            lastfunc[ifs]=fs
+
             if ll { calllock.Unlock() }
 
             if ifs>2 {

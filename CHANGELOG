@@ -28,6 +28,9 @@ CHANGE LOG
     language features
     -----------------
 
+    Several changes are underway to support windowing features through opengl.
+    This will be done with a subset of the Pixel Go library.
+
     PLEASE NOTE: this version currently only works (correctly) on Linux with certain
     libraries installed and a particular level of OpenGL support (v3.3).
 
@@ -35,9 +38,12 @@ CHANGE LOG
     either not working or compatibility work is in-progress.
 
         - Windows tested some more.. It kinda works now. Still working through tests.
-
-    Several changes are underway to support windowing features through opengl.
-    This will be done with a subset of the Pixel Go library.
+        - FreeBSD still untested.
+        - Alpine/AWS Linux 1/2:
+            - works (with warning) for glibc build.
+            - works fully with Alpine build. (i.e. no lib-ui support compiled in) [./build alpine upx]
+        - Fedora: works fine. (v33+)
+        - Ubuntu: works fine. (v18+)
 
 
     library features
@@ -93,7 +99,10 @@ CHANGE LOG
         - we have added some more generalised parameter checking for types in the
             standard library. Where varargs are expected it is more relaxed.
 
-    * added randf (float between 0 and 1) function.
+    * added randf() : random float between 0 and 1.
+    * added mem_summary() :  returns list of variable storage sizes per function space allocation.
+
+    * added check in VAR to explicitly prevent redeclaration.
 
 
 1.0.13
