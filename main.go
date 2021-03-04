@@ -890,8 +890,13 @@ func run() {
     } // endif not windows
 
     // special case: aliases in bash
-    if shelltype=="bash" || shelltype=="ash" {
+    if shelltype=="bash" {
         Copper("shopt -s expand_aliases",true)
+    }
+
+    // @todo: needs the equivalent to above stanza here to make ash aliases stick.
+
+    if shelltype=="bash" || shelltype=="ash" {
         Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
     }
 
