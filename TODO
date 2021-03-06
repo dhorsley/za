@@ -15,47 +15,6 @@ TODO
         it remains a static, stripped and compressed binary on Alpine.
 
 
-    * possible optimisation for evaluations:
-
-        * tried the work below. it's far too slow. currently commented out.
-            - the string builder and map aes hashes just cripple it. could probably 
-                speed them up significantly, but just not worth the extra complexity
-                that would bring on. 
-
-            - there is also some conflict with the compound assignment and pre/post
-                increment/decrement operations. didn't get around to fixing as i had
-                decided to can the test due to performance anyway. it is fixable if
-                need be. (it was treating the first read after write as cached when
-                it shouldn't).
-
-            - the .changed field has remained in place for now. may come in useful for
-                other features. (doubtful, but not hurting performance left on.)
-                - will remove this before version update if still not required.
-                - if we add a type field also on identifiers we could possibly remove
-                    some map lookups in various places [ mainly identifier() ]
-                - type field set would be something like: [ identifier,library_func,user_func ]
-
- (done) - If we add to all variables in ident[] a field named .changed (bool), then
-            set it during vseti/doAssign.
-
-        - Then during evaluation follow these rules:
-     (done) - If eval tokens contain a function call then always evaluate.
-                - @note: also checking for SYM_DOT chained calls (or field references)
-     (done) - If eval tokens contains variables which are not .changed use cached result.
-                - i.e. if previously cached and variables not changed.
-            - before evaluation exit:
-        (done)  - cache the expression and result in evalCache[fs,expression]=result (type interface{})
-        (done)  - on all variables used in the expression, reset the .changed flag.
-
-        - all the stuff above needs some more thinking about for possible problems. however...
-            even if it is correct, and would speed up evaluations on average, we would need to
-                add another lock around the set of .changed flag resets which may nullify that
-                improvement. it does seem a fairly simple change to test though.
-
-        - would also need some kind of cache ejection policy eventually, but will check size of
-            evalCache for unwieldy growths before introducting that.
-
-
     * make each platform binary not throw errors when opengl not available.
 
         - Linux (Ubuntu, Redhat, Debian) : seems fine on recent versions.
@@ -87,6 +46,8 @@ TODO
 
 LATER / UNDECIDED
 -----------------
+
+    * perform a more thorough division between ui/noui builds rather than between OS.
 
     * add ref and mut directives/operators for use in function calls?
 

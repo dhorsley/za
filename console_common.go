@@ -19,14 +19,15 @@ import (
     "time"
 )
 
-var completions = []string{"INIT", "PAUSE",
-    "HELP", "NOP", "DEBUG", "REQUIRE", "EXIT", "VERSION",
+var completions = []string{"VAR", "SETGLOB", "INIT", "PAUSE",
+    "HELP", "NOP", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN",
+    "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
     "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "IN", "OR", "ENDWHEN", "PANE","VAR",
-    "TEST", "ENDTEST", "ASSERT",
+    "IS", "CONTAINS", "HAS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", 
+    "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "TO", "STEP", "AS", "ENUM", "HIST",
 }
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"

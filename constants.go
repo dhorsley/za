@@ -99,6 +99,16 @@ const (
 	IT_LINE uint8 = iota    // by line 
 )
 
+
+// identifier subtypes
+const (
+    subtypeNone = iota
+    subtypeConst
+    subtypeStandard
+    subtypeUser
+)
+
+
 // fatal error exit codes
 const (
 	ERR_SYNTAX int = iota
@@ -216,6 +226,7 @@ const (
 	C_Cls
 	C_At
 	C_Define
+    C_Showdef
 	C_Enddef
 	C_Return
     C_Async

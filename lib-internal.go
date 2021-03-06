@@ -167,6 +167,7 @@ func buildInternalLib() {
         var w alloc_info
 
         for k,_:=range ident {
+            if k==0 { continue } // skip global
             if len(ident[k])>0 {
                 w.name,_= numlookup.lmget(uint32(k))
                 if w.name=="" {

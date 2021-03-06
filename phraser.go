@@ -2,6 +2,7 @@ package main
 
 import (
 //    str "strings"
+//    "fmt"
 )
 
 // phraseParse():
@@ -47,6 +48,20 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         if tokPos != -1 { pos = tokPos }
 
         tokenType = tempToken.tokType
+
+        // function name token mangling:
+        if phrase.TokenCount>0 {
+            if tokenType == LParen {
+                prevText := phrase.Tokens[phrase.TokenCount-1].tokText
+                if _, isFunc := stdlib[prevText]; !isFunc {
+                    if fnlookup.lmexists(prevText) {
+                        phrase.Tokens[phrase.TokenCount-1].subtype=subtypeUser
+                    }
+                } else {
+                    phrase.Tokens[phrase.TokenCount-1].subtype=subtypeStandard
+                }
+            }
+        }
 
         if tokenType==LParen {
             braceNestLevel++
@@ -96,6 +111,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if pos>0 {
                 if phrase.TokenCount>0 {
                     phrase.Original=input[lstart:pos]
+                    if tempToken.tokType == EOL { phrase.Original=phrase.Original[:pos-lstart-1] }
+                    // fmt.Printf(">> %s <<\n",phrase.Original)
                 } else {
                         phrase.Original=""
                 }

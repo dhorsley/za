@@ -20,9 +20,16 @@ CHANGE LOG
         > print ref colours.enum_all
           [1 10 30 31]
 
+    * added identifier subtype and check for builtin const/library calls in lex.go
+        - this should speed up some types of code a little. was previously always checking these
+            during identifier lookups in evaluation. it also picks up user defined functions if
+            they have already been encountered by this lexing step.
+
     * changed windows default ansi setting to true.
     * removed -l option.
     * removed -d option.
+
+    * added SHOWDEF back in. the output is occasionally a little off due to semicolons, but still has some use.
 
 
     language features

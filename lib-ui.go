@@ -573,7 +573,6 @@ func buildUILib() {
             "6","string","float64","float64","float64","float64","float64"); !ok { return false,err }
         if vi,ok := VarLookup(evalfs,args[0].(string)); ok {
             vlock.Lock()
-            // ident[evalfs][vi].changed=true
 	        ident[evalfs][vi].IValue.(*imdraw.IMDraw).Color = pixel.RGB(args[1].(float64),args[2].(float64),args[3].(float64))
 	        ident[evalfs][vi].IValue.(*imdraw.IMDraw).Push(pixel.V(args[4].(float64),args[5].(float64)))
             vlock.Unlock()

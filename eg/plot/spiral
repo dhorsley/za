@@ -53,3 +53,5 @@ endwhile
 cursoron()
 at height-1,1
 
+showdef
+
