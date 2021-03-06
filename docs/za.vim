@@ -216,6 +216,7 @@ syntax match internal_functions "\(.\|\s*\)unmap\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)coproc\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)capture_shell\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)await\s*("he=e-1
+syntax match internal_functions "\(.\|\s*\)mem_summary\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)get_mem\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)get_cores\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)funcs\s*("he=e-1

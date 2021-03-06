@@ -8,5 +8,3 @@ x=int(x)
 println factorial(x)
 
 
-
-
