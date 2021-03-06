@@ -29,7 +29,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "ENDDEF", "RETURN", "ASYNC",
+    "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
@@ -500,8 +500,10 @@ get_nt_eval_point:
             tokType = C_Cls
         case "at":
             tokType = C_At
-        case "define":
+        case "def","define":
             tokType = C_Define
+        case "showdef":
+            tokType = C_Showdef
         case "end","enddef":
             tokType = C_Enddef
         case "return":
@@ -588,14 +590,16 @@ get_nt_eval_point:
     if tokType == 0 { // assume it was an identifier
         tokType = Identifier
         startNextTokenAt=currentChar
+        if strcmp(word,"true")  { carton.subtype=subtypeConst ; carton.tokVal=true }
+        if strcmp(word,"false") { carton.subtype=subtypeConst ; carton.tokVal=false }
+        if strcmp(word,"nil")   { carton.subtype=subtypeConst ; carton.tokVal=nil }
     }
 
     carton.tokType = tokType
     carton.tokText = word
 
+
 get_nt_exit_point:
-
-
     // you have to set carton.tokType + startNextTokenAt by hand if you jump
     // directly to this exit point.
 

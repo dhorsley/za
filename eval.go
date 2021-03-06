@@ -4,7 +4,7 @@ import (
     "fmt"
     "reflect"
     "strconv"
-    "bytes"
+//    "bytes"
     "math"
     "net/http"
     "sync"
@@ -22,97 +22,12 @@ func (p *leparser) reserved(token Token) (interface{}) {
 }
 
 
-// move to types file
-type evalCacheKey struct {
-    fs uint32
-    toks string
-}
-
-// move to main file
-var evalCache = make(map[evalCacheKey]interface{},1024)
-var evalCacheMiss int
-var evalCacheHit int
-var maxLenEvalString int
-
 func (p *leparser) Eval(fs uint32, toks []Token) (cacheResult interface{},err error) {
 
     p.fs     = fs
     p.tokens = toks
     p.len    = int16(len(toks))
     p.pos    = 0
-
-    /*
-    // eval caching goes here...
-    //
-    //   disabled for now, not playing nicely with compound assignments/pre/post-inc/dec.
-    //   also, it's incredibly slow, with the string build and locks and such like.
-    //   it's mainly the aes hashing which slows it down coupled with the string building.
-    //
-
-    var there bool
-
-    //.. build key struct element from token strings
-    //    find a quicker method post testing.
-    mustEval:=false
-    prevType:=Error
-
-    ll:=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); ll=true }
-
-    var tstring str.Builder
-    tstring.Grow(4)
-
-    for i:=0;i<len(toks);i++ {
-        tstring.WriteString(toks[i].tokText)
-        if i>0 {
-            if prevType==Identifier {
-                switch toks[i].tokType {
-                case LParen,SYM_DOT:
-                    // function calls and field references must be evaluated.
-                    mustEval=true
-                    break
-                }
-            }
-        }
-
-        // check .changed rules here:
-        if toks[i].tokType==Identifier {
-            switch toks[i].tokText {
-            case "false","true","nil":
-            default:
-                vi,_:=vmap[fs][toks[i].tokText]
-                // reset changed flags here
-                ch:=ident[fs][vi].changed
-                ident[fs][vi].changed=false
-                if ch {
-                    // must evaluate
-                    mustEval=true
-                }
-            }
-        }
-                
-        prevType=toks[i].tokType
-
-    }
-    if ll { vlock.RUnlock() }
-
-    if len(tstring.String())>maxLenEvalString {
-        maxLenEvalString=len(tstring.String())
-    }
-
-    var key = evalCacheKey{fs:fs,toks:tstring.String()}
-
-    //.. check if in cache:
-    if cacheResult,there=evalCache[key]; !mustEval && there {
-        evalCacheHit++
-    } else {
-        cacheResult,err=p.dparse(0)
-        evalCache[key]=cacheResult
-        evalCacheMiss++
-    }
-
-    return cacheResult,err
-    */
 
     return p.dparse(0)
 }
@@ -1133,26 +1048,36 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // pf("-- identifier query -> [%+v]\n",token)
 
-    if strcmp(token.tokText,"true")  { return true }
-    if strcmp(token.tokText,"false") { return false }
-    if strcmp(token.tokText,"nil")   { return nil }
+    if token.subtype!=subtypeNone {
+        switch token.subtype {
+        case subtypeConst:
+            return token.tokVal
+        case subtypeStandard:
+            return token.tokText
+        case subtypeUser:
+            return token.tokText
+        }
+    }
 
     // filter for functions here
-    if p.peek().tokType == LParen {
-        var isFunc bool
-        if _, isFunc = stdlib[token.tokText]; !isFunc {
-            // check if exists in user defined function space
-            isFunc = fnlookup.lmexists(token.tokText)
-        }
+    //  @note: still have to do this, even though we sometimes set this 
+    //  in phraser.go, as user function definitions may appear after 
+    //  a reference to them.
 
-        if isFunc {
+    if p.peek().tokType == LParen {
+        if _, isFunc := stdlib[token.tokText]; !isFunc {
+            // check if exists in user defined function space
+            if fnlookup.lmexists(token.tokText) {
+                return token.tokText
+            }
+        } else {
             return token.tokText
         }
 
         panic(fmt.Errorf("function '%v' does not exist",token.tokText))
     }
 
-    // local lookup:
+    // local variable lookup:
     ll:=false
     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
 
@@ -1175,6 +1100,7 @@ func (p *leparser) identifier(token Token) (interface{}) {
         }
     }
 
+    // permit references to uninitialised variables
     if permit_uninit {
         return nil
     }
@@ -1375,8 +1301,6 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
 
     }
 
-    // ident[fs][vi].changed=true
-
     if ll { vlock.Unlock() }
 
     return vi
@@ -1487,7 +1411,6 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
             el=strconv.FormatUint(uint64(el.(uint)), 10)
         }
 
-        // ident[fs][vi].changed=true
         if ok {
             ident[fs][vi].IValue.(map[string]interface{})[el.(string)]= value
         } else {
@@ -1594,8 +1517,6 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
     }
 
-    // ident[fs][vi].changed=true
-
     if ll { vlock.Unlock() }
 
 }
@@ -1657,6 +1578,7 @@ func isNumber(expr interface{}) bool {
 }
 
 
+/*
 func escape(str string) string {
 	var buf bytes.Buffer
 	for _, char := range str {
@@ -1668,7 +1590,7 @@ func escape(str string) string {
 	}
 	return buf.String()
 }
-
+*/
 
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint32, s string) (string) {

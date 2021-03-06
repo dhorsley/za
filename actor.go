@@ -2658,6 +2658,27 @@ tco_reentry:
 
             }
 
+        case C_Showdef:
+
+            if inbound.TokenCount == 2 {
+                fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
+                if _, exists := fnlookup.lmget(fn); exists {
+                    ShowDef(fn)
+                } else {
+                    parser.report("Function not found.")
+                    finish(false, ERR_EVAL)
+                }
+            } else {
+                for oq := range fnlookup.smap {
+                    if fnlookup.smap[oq] < 2 {
+                        continue
+                    } // don't show global or main
+                    ShowDef(oq)
+                }
+                pf("\n")
+            }
+
+
         case C_Return:
 
             // split return args by comma in evaluable lumps
@@ -2983,7 +3004,7 @@ tco_reentry:
             }
 
             if inbound.TokenCount==1 {
-                inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,tokText:"true"})
+                inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,subtype:subtypeConst,tokVal:true,tokText:"true"})
             }
 
             // lookahead
@@ -3779,6 +3800,42 @@ func coprocCall(ifs uint32,s string) {
             }
         }
     }
+}
+
+
+
+/// print user-defined function definition(s) to stdout
+func ShowDef(fn string) bool {
+    var ifn uint32
+    var present bool
+    if ifn, present = fnlookup.lmget(fn); !present {
+        return false
+    }
+
+    if ifn < uint32(len(functionspaces)) {
+
+        if str.HasPrefix(fn,"@mod_") {
+            return false
+        }
+
+        var falist []string
+        for _,fav:=range functionArgs[ifn].args {
+            falist=append(falist,fav)
+        }
+
+        first := true
+
+        for q := range functionspaces[ifn] {
+            strOut := "\t\t "
+            if first == true {
+                first = false
+                strOut = sf("\n[#4][#bold]%s(%v)[#boff][#-]\n\t\t ", fn, str.Join(falist, ","))
+            }
+            // pf("%s%s\n", strOut, functionspaces[ifn][q].Original)
+            pf(sparkle(str.ReplaceAll(sf("%s%s\n", strOut, functionspaces[ifn][q].Original),"%","%%")))
+        }
+    }
+    return true
 }
 
 

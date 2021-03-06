@@ -39,7 +39,6 @@ type Variable struct {
     IKind       uint8
     ITyped      bool
     declared    bool
-    // changed     bool
 }
 
 // holds a Token which forms part of a Phrase.
@@ -48,6 +47,7 @@ type Token struct {
 	tokText string      // the content of the token
     offset  uint16      // position in ident for this identifier
 	tokType uint8       // token type from list in constants.go
+    subtype uint8       // sub type of identifiers
 }
 
 func (t Token) String() string {
