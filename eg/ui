@@ -2,8 +2,6 @@
 
 # 512 x 384 default win size
 
-# enums can't handle expressions yet...
-
 # these codes are from the button map values in:
 #  https://github.com/faiface/pixel/blob/master/pixelgl/input.go
 
@@ -17,10 +15,14 @@ max_poly      = 15
 text_objcount = 0
 init ary mixed text_objcount
 
-w=ui_init(ui_w(),ui_h())
+
+# window initialisation
+
+w=ui_init(ui_w()-64,ui_h()-64)
 # w.ui_set_full_screen(ui_primary_monitor())
 w.ui_title("test title")
 w.ui_set_smooth(true)
+
 
 struct text
     x float
@@ -71,11 +73,11 @@ while !ui_closed(w)
     draw_count=0
 
     # input
+    vec=w.ui_mouse_pos
     on ui_just_released(w,key.ESC) do break
     on ui_just_released(w,key.SPACE) do pause_render=!pause_render
     if ui_pressed(w,key.MOUSE_LEFT)
         w.ui_cursor_visible(false)
-        vec=w.ui_mouse_pos
         temp_pos.x=vec.X
         temp_pos.y=vec.Y
         on trail.len==size_trail do trail=trail.remove(trail.len)
@@ -104,7 +106,7 @@ while !ui_closed(w)
 
         # lines
         line=ui_new_draw()
-        for e=0 to my-1 step 4
+        for e=0 to my-1 step 16
             r=randf(); g=randf(); b=randf()
             ui_pp(ref line,r,g,b,0f,e.float)
             ui_pp(ref line,r,g,b,mx.float,e.float)
@@ -211,8 +213,8 @@ while !ui_closed(w)
     on fps>0 and dt_ms<expected_frame_length do pause expected_frame_length-dt_ms
 
     if current_time-frame_start_time>=1e9
-        ui_title(w,"item draw count:%5d last frame length:%4.2fms expected:%4.2fms fps:%d".
-                    format(draw_count,dt_ms,expected_frame_length,frame_count)
+        ui_title(w,"item draw count:%5d last frame length:%4.2fms expected:%4.2fms fps:%d mx,my=(%f,%f)".
+                    format(draw_count,dt_ms,expected_frame_length,frame_count,vec.X,vec.Y)
         )
         frame_start_time=current_time
         frame_count=0
