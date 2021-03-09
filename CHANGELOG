@@ -20,6 +20,11 @@ CHANGE LOG
         > print ref colours.enum_all
           [1 10 30 31]
 
+    * finally got around to adding a type check on struct build.
+        - currently permitting: bool, int, uint, float, string and mixed.
+
+    * altered PROMPT to permit validator regex to be built from an expression instead of a literal.
+
     * added identifier subtype and check for builtin const/library calls in lex.go
         - this should speed up some types of code a little. was previously always checking these
             during identifier lookups in evaluation. it also picks up user defined functions if

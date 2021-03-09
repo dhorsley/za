@@ -9,12 +9,6 @@ lots, i'm sure.
 TODO
 ----
 
-    FIXED: added noui build constraint and use CGO_ENABLED=0 and the build constraint in 
-        the build script Alpine option. v1.0.14 now builds fine. It has been tested in Alpine
-        docker builds and on AWS linux 2 and also no longer throws the startup GL warning either.
-        it remains a static, stripped and compressed binary on Alpine.
-
-
     * make each platform binary not throw errors when opengl not available.
 
         - Linux (Ubuntu, Redhat, Debian) : seems fine on recent versions.
@@ -38,10 +32,9 @@ TODO
                             versions (i.e. without lib-ui facilities) but for other
                             builds to include lib-ui.
 
-        - FreeBSD       : to test
+        - AWS Linux 1+2 : Use the Alpine build on AWS linux and all is well.
 
-        - AWS Linux 1+2 : to test - but fully expect it will need to operate like the
-                            Alpine build above.
+        - FreeBSD       : to test
 
 
 LATER / UNDECIDED

@@ -739,6 +739,8 @@ tco_reentry:
     var we ExpressionCarton   // pre-allocated for general expression results eval
     var expr interface{}      // pre-llocated for wrapped expression results eval
     var err error
+            
+    typeInvalid:=false          // used during struct building for indicating type validity.
 
     for {
 
@@ -803,9 +805,23 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
                 break
             }
-            // @todo: add a check here for syntax. for example, placing type before name will result
-            //  in an error during INIT. need to raise error here instead. (on order and type validity).
+
             cet :=crushEvalTokens(inbound.Tokens[1:])
+
+            // check for valid types:
+            switch str.ToLower(cet.text) {
+            case "int","float","string","bool","uint","mixed":
+            default:
+                parser.report(sf("Invalid type in STRUCT '%s'",cet.text))
+                finish(false,ERR_SYNTAX)
+                typeInvalid=true
+                break
+            }
+
+            if typeInvalid {
+                break
+            }
+
             structNode=append(structNode,statement.tokText,cet.text)
             continue
         }
@@ -3455,7 +3471,7 @@ tco_reentry:
                     }
                 } else {
                     // prompt command:
-                    if inbound.TokenCount < 3 || inbound.TokenCount > 4 {
+                    if inbound.TokenCount < 3 {
                         parser.report( "Incorrect arguments for PROMPT command.")
                         finish(false, ERR_SYNTAX)
                         break
@@ -3469,11 +3485,10 @@ tco_reentry:
                             break
                         }
                         if prompt_ev_err == nil {
-                            // @todo: allow an expression instead of the string literal for validator
                             processedPrompt := expr.(string)
                             echoMask,_:=vget(0,"@echomask")
-                            if inbound.TokenCount == 4 {
-                                val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:4])
+                            if inbound.TokenCount > 3 {
+                                val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
                                 if val_ex_error != nil {
                                     parser.report("Validator invalid in PROMPT!")
                                     finish(false,ERR_EVAL)
@@ -3709,7 +3724,7 @@ tco_reentry:
     si=sig_int
     siglock.RUnlock()
 
-    if structMode {
+    if structMode && !typeInvalid {
         // incomplete struct definition
         pf("Open STRUCT definition %v\n",structName)
         finish(true,ERR_SYNTAX)

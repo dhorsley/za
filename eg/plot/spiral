@@ -10,7 +10,7 @@ define draw()
     x = 2*theta * cos(theta/pi)/8
     y = theta * sin(theta/pi)/8
     px=cx+x; py=cy+y
-    if px>0 and py>0 and px<width and py<height
+    if px>0 and py>0 and px<width and py<height and not (x==0 and y==0)
         at py,px; print "[#"+int(c)+"]o"
     endif
     setglob theta = theta + rotation
