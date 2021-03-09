@@ -310,7 +310,7 @@ func buildUILib() {
 		return false, errors.New("Windowing system not available")
     }
 
-	slhelp["ui_mouse_pos"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] just been released?"}
+	slhelp["ui_mouse_pos"] = LibHelp{in: "id", out: "bool", action: "Returns the mouse pointer position for window [#i1]id[#i0]. Returns a vector nil."}
 	stdlib["ui_mouse_pos"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_mouse_pos",args,1,"1","string"); !ok { return false,err }
         globlock.Lock()
@@ -318,9 +318,9 @@ func buildUILib() {
         if w,there:=winHandles[args[0].(string)]; winAvailable && there {
             return w.winHandle.MousePosition(),nil
         } else {
-            return false,nil
+            return nil,nil
         }
-		return false, errors.New("Windowing system not available")
+		return nil, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_handle"] = LibHelp{in: "id", out: "handle", action: "Returns the underlying structure."}
@@ -582,7 +582,7 @@ func buildUILib() {
         return true,nil
     }
 
-	slhelp["ui_draw_reset"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Set shape of a draw object to rectangle."}
+	slhelp["ui_draw_reset"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Reset a drawing object to it's initial state."}
 	stdlib["ui_draw_reset"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_draw_reset",args,1,"1","*imdraw.IMDraw"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Reset()
