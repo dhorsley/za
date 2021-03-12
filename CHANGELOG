@@ -117,7 +117,7 @@ CHANGE LOG
         - we have added some more generalised parameter checking for types in the
             standard library. Where varargs are expected it is more relaxed.
 
-    * added randf() : random float between 0 and 1.
+    * added randf() : random float between 0 and 1. (or between 0 and n if n supplied as argument)
     * added mem_summary() :  returns list of variable storage sizes per function space allocation.
 
     * added check in VAR to explicitly prevent redeclaration.
