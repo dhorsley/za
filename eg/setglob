@@ -20,7 +20,7 @@ define w()
     setglob a=!a
 end
 
-init z t
+var z t
 m["one"]=z
 
 

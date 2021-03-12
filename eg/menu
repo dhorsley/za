@@ -7,16 +7,16 @@
 ansi(true)
 
 # simple menu, only accepts up to 9 options
-define menu(p,opts)
+define menu(title_prompt,opts)
     cls
     cursoroff()
 
     at 2,10
-    print "[#b1]{p}[##]"
+    print "[#b1]{title_prompt}[##]"
 
-    foreach p in opts
-        at 4+key_p,10
-        print "[#b1][{=1+key_p}][##] {p}"
+    foreach c in opts
+        at 4+key_c,10
+        print "[#b1][{=1+key_c}][##] {c}"
     endfor
 
     maxchoice=49+len(opts)

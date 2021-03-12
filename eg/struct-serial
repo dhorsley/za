@@ -10,7 +10,7 @@ endstruct
 
 showstruct
 
-init a T
+var a T
 
 file="test-file-struct-serial"
 
@@ -23,7 +23,7 @@ endif
 
 | hexdump -C {file}
 
-init z T
+var z T
 
 if read_struct(file,"z")
     println "returned value: ",z

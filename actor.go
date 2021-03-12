@@ -520,15 +520,18 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
                     if pos,found:=vmap[base][t.tokText] ; found {
                         // replace token
                         t.offset=pos
-                        functionspaces[base][kph].Tokens[kt]=t
+                        vmap[base][t.tokText]=pos
+                        unvmap[base][pos]=t.tokText
+                        // pf("act-stat-replace base %d : %s pos %d\n",base,t.tokText,pos)
                     } else {
                         // append token
+                        t.offset=nextVarId
                         vmap[base][t.tokText]=nextVarId
                         unvmap[base][nextVarId]=t.tokText
-                        t.offset=nextVarId
-                        functionspaces[base][kph].Tokens[kt]=t
+                        // pf("act-stat-add base %d : %s pos %d\n",base,t.tokText,nextVarId)
                         nextVarId++
                     }
+                    functionspaces[base][kph].Tokens[kt]=t
                 }
             }
         }
@@ -541,10 +544,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         }
         identParsed[base]=true
 
-        if varmode==MODE_NEW {
+        //if varmode==MODE_NEW {
             // set the base index for variables in new instances of this base
             functionidents[base]=nextVarId
-        }
+        //}
 
     } else {
         nextVarId=functionidents[base]
@@ -810,7 +813,7 @@ tco_reentry:
 
             // check for valid types:
             switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","mixed":
+            case "int","float","string","bool","uint","uint8","mixed":
             default:
                 parser.report(sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
@@ -851,109 +854,314 @@ tco_reentry:
 
         case C_Var: // permit declaration with a default value
 
-            // syntax:
-            // VAR name type [ = expr ]
-            // 0   1    2      3 4+
+            // expand to this:
+            // 'VAR' name1 [ ',' ... nameX ] [ '[' [size] ']' ] type [ '=' expr ]
 
-            // check syntax
-            if inbound.TokenCount<3 || inbound.TokenCount==4 {
-                parser.report("invalid VAR syntax\nUsage: VAR [#i1]variable type [ = expression ][#i0]")
+            //  and var ary_s []struct_name
+
+            var name_list []string
+            var expectingComma bool
+            var flagVarSynError bool
+            var c int16
+
+          var_comma_loop:
+            for c=int16(1); c<inbound.TokenCount; c++ {
+                switch inbound.Tokens[c].tokType {
+                case Identifier:
+                    if expectingComma { // syntax error
+                        break var_comma_loop
+                    }
+                    name_list=append(name_list,inbound.Tokens[c].tokText)
+                case O_Comma:
+                    if !expectingComma { // syntax error
+                        flagVarSynError=true
+                        break var_comma_loop
+                    }
+                default:
+                    break var_comma_loop
+                } 
+                expectingComma=!expectingComma
+            }
+
+            if len(name_list)==0 {
+                flagVarSynError=true
+            }
+
+            // set eqpos to either location of first equals sign
+            var eqPos int16
+            var hasEqu bool
+            for eqPos=c; eqPos<inbound.TokenCount; eqPos++ {
+                if inbound.Tokens[eqPos].tokType == O_Assign {
+                    hasEqu=true
+                    break
+                }
+            }
+            // eqPos remains as last token index on natural loop exit
+
+            // pf("hasEqu? %v\n",hasEqu)
+            // pf("eqpos @ %d\n",eqPos)
+
+            // look for ary setup
+
+            var hasAry bool
+            var size int
+
+            if !flagVarSynError {
+                // continue from last 'c' value
+                if inbound.Tokens[c].tokType==LeftSBrace {
+
+                    // find RightSBrace
+                    var d int16
+                    for d=eqPos-1; d>c; d-- {
+                        if inbound.Tokens[d].tokType==RightSBrace {
+                            hasAry=true
+                            break
+                        }
+                    }
+                    if hasAry && d>(c+1) {
+                        // not an empty [] term, but includes a size expression
+                        se := parser.wrappedEval(ifs,ifs,inbound.Tokens[c+1:d])
+                        if se.evalError {
+                            parser.report("could not evaluate size expression in VAR")
+                            finish(false,ERR_EVAL)
+                            break
+                        }
+                        switch se.result.(type) {
+                        case int:
+                            size=se.result.(int)
+                        default:
+                            parser.report("size expression must evaluate to an integer")
+                            finish(false,ERR_EVAL)
+                            break
+                        }
+                    }
+                }
+
+                // pf("hasAry?  %v\n",hasAry)
+                // pf("size is  %d\n",size)
+
+            } else {
+                parser.report("invalid VAR syntax\nUsage: VAR varname1 [#i1][,...varnameX][#i0] [#i1][optional_size][#i0] type [#i1][=expression][#i0]")
                 finish(false,ERR_SYNTAX)
+            }
+
+            if flagVarSynError {
                 break
             }
 
+            // eval the terms to assign to new vars
             hasValue := false
-            if inbound.TokenCount>4 {
-                if inbound.Tokens[3].tokType != O_Assign {
-                    parser.report("Assignment missing in VAR")
-                    finish(false,ERR_SYNTAX)
-                    break
-                }
+            if hasEqu {
                 hasValue=true
-                we = parser.wrappedEval(ifs,ifs,inbound.Tokens[4:])
+                we = parser.wrappedEval(ifs,ifs,inbound.Tokens[eqPos+1:])
                 if we.evalError {
                     parser.report("could not evaluate VAR assignment expression")
                     finish(false,ERR_EVAL)
                     break
                 }
-            }    
+            }
 
-            // check if name available
-            vname := interpolate(ifs,inbound.Tokens[1].tokText)
+                // this needs reworking:
+                //   if we pulled them out to global scope then will cause parallelism problems
 
-            // get the required type
-            type_token_string := inbound.Tokens[2].tokText
+                // ++
+                var tb bool
+                var tu8 uint8
+                var tu uint
+                var ti int
+                var tf64 float64
+                var ts string
 
-            // this needs reworking, same as C_Init:
-            // ++
-            var tb bool
-            var tu uint
-            var ti int
-            var tf64 float64
-            var ts string
+                var stb     []bool
+                var stu     []uint
+                var stu8    []uint8
+                var sti     []int
+                var stf64   []float64
+                var sts     []string
+                var stmixed []interface{}
+                
+                // instantiate fields with an empty expected type:
+                typemap:=make(map[string]reflect.Type)
+                typemap["bool"]     = reflect.TypeOf(tb)
+                typemap["uint"]     = reflect.TypeOf(tu)
+                typemap["byte"]     = reflect.TypeOf(tu8)
+                typemap["int"]      = reflect.TypeOf(ti)
+                typemap["float"]    = reflect.TypeOf(tf64)
+                typemap["string"]   = reflect.TypeOf(ts)
+                typemap["[]bool"]   = reflect.TypeOf(stb)
+                typemap["[]uint"]   = reflect.TypeOf(stu)
+                typemap["[]byte"]   = reflect.TypeOf(stu8)
+                typemap["[]int"]    = reflect.TypeOf(sti)
+                typemap["[]float"]  = reflect.TypeOf(stf64)
+                typemap["[]string"] = reflect.TypeOf(sts)
+                typemap["[]mixed"]  = reflect.TypeOf(stmixed)
+                typemap["assoc"]    = nil
+                // --
 
-            // instantiate fields with an empty expected type:
-            typemap:=make(map[string]reflect.Type)
-            typemap["bool"]     = reflect.TypeOf(tb)
-            typemap["uint"]     = reflect.TypeOf(tu)
-            typemap["int"]      = reflect.TypeOf(ti)
-            typemap["float"]    = reflect.TypeOf(tf64)
-            typemap["string"]   = reflect.TypeOf(ts)
-            // --
+                // TODO: still need to add struct support
 
-            if _,found:=typemap[type_token_string]; found {
+            // name iterations
+            // for idx_vname,vname:=range name_list {
+            for _,vname:=range name_list {
 
-                if vi,there:=VarLookup(ifs,vname); there {
+                var vi uint16
+                var there bool
+
+                // only permit redeclaration in interactive mode for now:
+                if vi,there=VarLookup(ifs,vname); there {
                     ll:=false
-                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-                    if ident[ifs][vi].declared==true {
-                        if ll { vlock.Unlock() }
+                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+                    // if !interactive && ident[ifs][vi].declared==true {
+                    if vi>0 && ident[ifs][vi].declared {
+                        if ll { vlock.RUnlock() }
                         parser.report(sf("variable '%s' already exists",vname))
                         finish(false, ERR_SYNTAX)
                         break
+                    } 
+                    if ll { vlock.RUnlock() }
+                }
+
+                // get the required type
+                type_token_string := inbound.Tokens[eqPos-1].tokText
+                new_type_token_string := type_token_string
+                if hasAry {
+                    new_type_token_string="[]"+type_token_string
+                }
+
+                // declaration and initialisation
+                if _,found:=typemap[new_type_token_string]; found {
+
+                    if new_type_token_string!="assoc" {
+                        vset(ifs,vname,reflect.New(typemap[new_type_token_string]).Elem().Interface())
                     }
-                    if ll { vlock.Unlock() }
-                }
 
-                vset(ifs,vname,reflect.New(typemap[type_token_string]).Elem().Interface())
-                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-                vi:=inbound.Tokens[1].offset
-                ident[ifs][vi].ITyped=true
-                ident[ifs][vi].declared=true
-                switch type_token_string {
-                case "nil":
-                    // probably not needed!
-                    ident[ifs][vi].IKind=knil
-                case "bool":
-                    ident[ifs][vi].IKind=kbool
-                case "int":
-                    ident[ifs][vi].IKind=kint
-                case "uint":
-                    ident[ifs][vi].IKind=kuint
-                case "float":
-                    ident[ifs][vi].IKind=kfloat
-                case "string":
-                    ident[ifs][vi].IKind=kstring
-                }
+                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+                    // vi=inbound.Tokens[1+idx_vname].offset
 
-                // if we had a default value, stuff it in here...
-                if hasValue {
-                    if sf("%T",we.result)!=type_token_string {
-                        parser.report("type mismatch in VAR assignment")
-                        finish(false,ERR_EVAL)
+                    ident[ifs][vi].ITyped=true
+                    ident[ifs][vi].declared=true
+
+                    switch new_type_token_string {
+                    case "nil":
+                        ident[ifs][vi].IKind=knil
+                    case "bool":
+                        ident[ifs][vi].IKind=kbool
+                    case "int":
+                        ident[ifs][vi].IKind=kint
+                    case "uint":
+                        ident[ifs][vi].IKind=kuint
+                    case "float":
+                        ident[ifs][vi].IKind=kfloat
+                    case "string":
+                        ident[ifs][vi].IKind=kstring
+                    case "[]bool":
+                        ident[ifs][vi].IKind=ksbool
+                        ident[ifs][vi].IValue=make([]bool,size,size)
+                    case "[]int":
+                        ident[ifs][vi].IKind=ksint
+                        ident[ifs][vi].IValue=make([]int,size,size)
+                    case "[]uint":
+                        ident[ifs][vi].IKind=ksuint
+                        ident[ifs][vi].IValue=make([]uint,size,size)
+                    case "[]float":
+                        ident[ifs][vi].IKind=ksfloat
+                        ident[ifs][vi].IValue=make([]float64,size,size)
+                    case "[]string":
+                        ident[ifs][vi].IKind=ksstring
+                        ident[ifs][vi].IValue=make([]string,size,size)
+                    case "[]byte":
+                        ident[ifs][vi].IKind=ksbyte
+                        ident[ifs][vi].IValue=make([]uint8,size,size)
+                    case "[]mixed":
+                        ident[ifs][vi].IKind=ksany
+                        ident[ifs][vi].IValue=make([]interface{},size,size)
+                    case "assoc":
+                        ident[ifs][vi].IKind=kmap
+                        ident[ifs][vi].IValue=make(map[string]interface{},size)
+                    }
+
+                    // if we had a default value, stuff it in here...
+                    if new_type_token_string!="assoc" && hasValue {
+                        if sf("%T",we.result)!=new_type_token_string {
+                            parser.report("type mismatch in VAR assignment")
+                            finish(false,ERR_EVAL)
+                            if ll { vlock.Unlock() }
+                            break
+                        }
+                        ident[ifs][vi].IValue=we.result
+                    }
+
+                } else {
+                    // unknown type: check if it is a struct name
+
+                    isStruct:=false
+                    structvalues:=[]string{}
+
+                    // structmap has list of field_name,field_type,... for each struct
+                    for sn, snv := range structmaps {
+                        if sn==type_token_string {
+                            isStruct=true
+                            structvalues=snv
+                            break
+                        }
+                    }
+
+                    if isStruct {
+
+                        // deal with var name [n]struct_type
+                        if len(structvalues)>0 {
+                            var sfields []reflect.StructField
+                            offset:=uintptr(0)
+                            for svpos:=0; svpos<len(structvalues); svpos+=2 {
+                                nv:=structvalues[svpos]
+                                nt:=structvalues[svpos+1]
+                                sfields=append(sfields,
+                                    reflect.StructField{
+                                        Name:nv,PkgPath:"main",
+                                        Type:typemap[nt],
+                                        Offset:offset,
+                                        Anonymous:false,
+                                    },
+                                )
+                                offset+=typemap[nt].Size()
+                            }
+                            new_struct:=reflect.StructOf(sfields)
+                            v:=(reflect.New(new_struct).Elem()).Interface()
+
+                            ident[ifs][vi].ITyped=false
+                            ident[ifs][vi].declared=true
+
+
+                            if !hasAry {
+                                ident[ifs][vi].IValue=v
+                            } else {
+                                // don't do this for now, as Za slices are currently just []interface{}:
+                                // slice:=reflect.MakeSlice(reflect.SliceOf(new_struct),0,size)
+                                // ident[ifs][vi].IValue=slice.Interface()
+                                ident[ifs][vi].IValue=[]interface{}{}
+                            }
+                                /*
+                                parser.report("array of struct not supported yet - use []mixed")
+                                finish(false,ERR_SYNTAX)
+                                break
+                                */
+
+                        } // end-len>0
+
                         if ll { vlock.Unlock() }
+
+                    } else {
+                        parser.report(sf("unknown data type requested '%v'",type_token_string))
+                        finish(false, ERR_SYNTAX)
                         break
                     }
-                    ident[ifs][vi].IValue=we.result
-                }
+
+                } // end-type-or-struct
 
                 if ll { vlock.Unlock() }
 
-            } else {
-                parser.report(sf("unknown data type requested '%v'",type_token_string))
-                finish(false, ERR_SYNTAX)
-                break
-            }
+        
+            } // end-of-name-list
 
 
         case C_While:
@@ -2294,6 +2502,7 @@ tco_reentry:
 
         case C_Init: // initialise an array
 
+            /*
             if inbound.TokenCount<2 {
                 parser.report("Not enough arguments in INIT.")
                 finish(false,ERR_EVAL)
@@ -2333,7 +2542,10 @@ tco_reentry:
             }
 
             if varname != "" {
+
+                // TODO: these cases need moving into C_Var: (DONE?)
                 switch vartype {
+
                 case "byte":
                     vset(ifs, varname, make([]uint8,size,size))
                 case "int":
@@ -2348,6 +2560,7 @@ tco_reentry:
                     vset(ifs, varname, make([]string,size,size))
                 case "assoc":
                     vset(ifs, varname, make(map[string]interface{},size))
+
                 default:
                     //
                     // move this later:
@@ -2356,7 +2569,6 @@ tco_reentry:
                     var tu uint
                     var ti int
                     var tf64 float64
-                    // var bf64 big.Float
                     var ts string
                     var atint   []interface{}
                     var ats     []string
@@ -2376,45 +2588,10 @@ tco_reentry:
                     typemap["^"]        = reflect.TypeOf(ats)
                     //
 
-                    // check here for struct init by name
-                    found:=false
-                    structvalues:=[]string{}
 
-                    // structmap has list of field_name,field_type,... for each struct
-                    for sn, snv := range structmaps {
-                        if sn==vartype {
-                            found=true
-                            structvalues=snv
-                            break
-                        }
-                    }
-
-                    if found {
-                        // deal with init name struct_type
-                        if len(structvalues)>0 {
-                            var sf []reflect.StructField
-                            offset:=uintptr(0)
-                            for svpos:=0; svpos<len(structvalues); svpos+=2 {
-                                nv:=structvalues[svpos]
-                                nt:=structvalues[svpos+1]
-                                sf=append(sf,
-                                    reflect.StructField{
-                                        Name:nv,PkgPath:"main",
-                                        Type:typemap[nt],
-                                        Offset:offset,
-                                        Anonymous:false,
-                                    },
-                                )
-                                offset+=typemap[nt].Size()
-                            }
-                            typ:=reflect.StructOf(sf)
-                            v:=(reflect.New(typ).Elem()).Interface()
-                            vset(ifs,varname,v)
-                        }
-                    }
                 }
             }
-
+            */
 
         case C_Help:
             hargs := ""

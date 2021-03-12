@@ -36,6 +36,13 @@ CHANGE LOG
 
     * added SHOWDEF back in. the output is occasionally a little off due to semicolons, but still has some use.
 
+    * oops, fixed issue when auto-allocating from size 0 in array assignment. (sz test in eval.go/vsetElementi func)
+
+    * added some more types to VAR. (will be merging VAR and INIT eventually)
+    * added support for an identifier list in VAR: eg var a,b,c int = 42
+    * started support for [] and [size] as prefix to type in VAR.
+
+
 
     language features
     -----------------
@@ -43,11 +50,8 @@ CHANGE LOG
     Several changes are underway to support windowing features through opengl.
     This will be done with a subset of the Pixel Go library.
 
-    PLEASE NOTE: this version currently only works (correctly) on Linux with certain
+    PLEASE NOTE: the default version currently only works (correctly) on Linux with certain
     libraries installed and a particular level of OpenGL support (v3.3).
-
-    This means that the Windows, FreeBSD, Alpine and several other builds are currently
-    either not working or compatibility work is in-progress.
 
         - Windows tested some more.. It kinda works now. Still working through tests.
         - FreeBSD still untested.
@@ -56,6 +60,8 @@ CHANGE LOG
             - works fully with Alpine build. (i.e. no lib-ui support compiled in) [./build alpine upx]
         - Fedora: works fine. (v33+)
         - Ubuntu: works fine. (v18+)
+
+    Operating with the -u startup arg will only have any effect on builds with lib-ui compiled in. (i.e. !noui tag)
 
 
     library features
