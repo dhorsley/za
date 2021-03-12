@@ -813,7 +813,7 @@ tco_reentry:
 
             // check for valid types:
             switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","uint8","mixed":
+            case "int","float","string","bool","uint","uint8","mixed","[]":
             default:
                 parser.report(sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
@@ -995,10 +995,9 @@ tco_reentry:
                 typemap["[]float"]  = reflect.TypeOf(stf64)
                 typemap["[]string"] = reflect.TypeOf(sts)
                 typemap["[]mixed"]  = reflect.TypeOf(stmixed)
+                typemap["[]"]       = reflect.TypeOf(stmixed)
                 typemap["assoc"]    = nil
                 // --
-
-                // TODO: still need to add struct support
 
             // name iterations
             // for idx_vname,vname:=range name_list {
@@ -1025,7 +1024,9 @@ tco_reentry:
                 type_token_string := inbound.Tokens[eqPos-1].tokText
                 new_type_token_string := type_token_string
                 if hasAry {
-                    new_type_token_string="[]"+type_token_string
+                    if type_token_string!="[]" {
+                        new_type_token_string="[]"+type_token_string
+                    }
                 }
 
                 // declaration and initialisation
@@ -1036,7 +1037,6 @@ tco_reentry:
                     }
 
                     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-                    // vi=inbound.Tokens[1+idx_vname].offset
 
                     ident[ifs][vi].ITyped=true
                     ident[ifs][vi].declared=true
@@ -1072,7 +1072,7 @@ tco_reentry:
                     case "[]byte":
                         ident[ifs][vi].IKind=ksbyte
                         ident[ifs][vi].IValue=make([]uint8,size,size)
-                    case "[]mixed":
+                    case "[]","[]mixed":
                         ident[ifs][vi].IKind=ksany
                         ident[ifs][vi].IValue=make([]interface{},size,size)
                     case "assoc":
