@@ -83,7 +83,7 @@ define proc_input()
 end
 
 define build_empty_cells()
-    init grid mixed mh+2
+    var grid [mh+2]mixed
     for r=0 to mh+1
         grid[r]=[]
         for e=0 to mw+1

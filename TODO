@@ -40,6 +40,80 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * coalesce VAR/INIT ? (IN-PROGRESS)
+        - (DONE) this may mean adding [] as a syntactical element to VAR
+            - eg. var a int  vs.  var a [] int
+            - types are:
+                bool, byte, uint, int, float, string
+                []bool, []byte, []uint, []int, []float, []string
+                nil, assoc (map)
+
+        - (DONE) or, var s struct_name
+        - (PARTIAL) and var ary_s []struct_name
+            - added the syntax support, however, za currently implements these
+                as []interface{} so it accepts the declaration, but does not
+                initialise the elements. you must still do something like:
+                > var q struct_name
+                > var z []struct_name
+                > z[x]=q
+                > z[x].element_name=value
+            - will update to something more robust if needed later.
+
+        - (DONE) needs to also allow for fixed size arrays, e.g. [20] int
+
+    * allow multiple variable declarations?
+        - (DONE) eg. var a,b,c int
+
+    * struct default values.
+        - (NOT DONE) i.e. struct sn; a int [ = value ]; endstruct
+        - this should be an easy addition.
+
+    * need to (re)consider structs as struct member types.
+        - initially, this did not seem like a useful concept for the language use case.
+        - in all honesty, it still doesn't, but it might allow for other use cases.
+        - it also adds a fair amount of complexity that we may be better without.
+        - we currently have 'mixed' as a type meant to hold exotic values in struct member fields.
+            however, this is currently a bit broken :) mainly because it is currently unused.
+            we should either fix up 'mixed' types in structs or replace with something orthogonal
+            to the var/init scheme. (or just ignore this complexity, without a solid use case.)
+
+    * (NOT DONE) update online manual with above details.
+
+    * take another look at allowing 'end' as a synonym for all the end* statements:
+
+            enddef
+            endstruct
+            endif
+            endwhen
+            endfor
+            endwhile
+            endwith
+            endtest
+
+        - the only issue i can see with this is the way we use the lookahead() call for finding
+            block/scope ends. it may need a rewrite. have to think it through:
+
+            - endstruct would be fine most likely as none of the other constructs can 
+                nest inside of it.
+            - we could possibly just add struct,if,when,for,while,with,test as nest-begin components
+                in lookahead(), which I believe it can already handle but have to check.
+            - if it can, then we just allow any 'end' (i.e. C_End) as a synonym for the specific case we
+                are searching for during the call.
+            - this also implies we breakout the specific use of "end" in lex.go as a synonym for
+                C_Enddef only, and make a new C_End token.
+ 
+            - still have to check for other places this may break things, aside from lookahead().
+
+                At this point is there really much difference between {} use and statement_type...end?
+
+                I still consider curly braces to be less readable in general and the specific
+                use of a full end* statement can also be more readable to some people all of the
+                time and to everyone when looking at nesting depths in long stanzas. i.e. does
+                that end belong to the FOR or the IF 3 screens up? some people prefer the clarity,
+                other people don't mind adding comments instead and yet others just don't care
+                either way. However, I care for myself and I'm the one using it :)
+
+
     * perform a more thorough division between ui/noui builds rather than between OS.
 
     * add ref and mut directives/operators for use in function calls?

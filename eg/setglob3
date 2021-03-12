@@ -1,5 +1,5 @@
 
-init z float 10
+var z [10] float
 for e=0 to 9
     z[e]=rand(50)+0.0
 endfor

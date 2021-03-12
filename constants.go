@@ -126,16 +126,26 @@ const (
     ERR_LEX int = 127
 )
 
-// IKind, used by VAR and INIT
+// IKind, used by VAR
 const (
     knil uint8 = iota
     kbool
     kint
+    kint64
     kuint
     kfloat
     kbig
     kstring
-    kint64
+    ksbool
+    ksint
+    ksint64
+    ksuint
+    ksfloat
+    ksbig
+    ksstring
+    kmap
+    ksany
+    ksbyte
 )
 
 // Lexeme values

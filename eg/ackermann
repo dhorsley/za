@@ -38,3 +38,4 @@ println b
 println "A({a},{b}) = ",ackermann(a,b)
 println "Calls : {=calls}"
 
+# println "mem_summary : %#v".format(mem_summary(true)["main"])

@@ -676,7 +676,7 @@ w=term_w()
 redef_layout(cpu_count)
 
 # cpu history setup
-init prev assoc
+var prev assoc
 
 # net graph setup
 prev_rbytes=0

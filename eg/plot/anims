@@ -84,7 +84,7 @@ define hide(obj_list)
 end
 
 define object_add_text(n,label,x,y,bg,fg)
-    init obj object
+    var obj object
     obj.text=label
     obj.fg=fg
     obj.bg=int(bg)
@@ -98,7 +98,7 @@ define object_add_text(n,label,x,y,bg,fg)
 end
 
 define object_add_box(n,label,x,y,h,bg,fg)
-    init obj object
+    var obj object
     obj.type=BOX    ; obj.text=label
     obj.fg=fg       ; obj.bg=int(bg)
     obj.h=h         ; obj.w=label.len
@@ -122,7 +122,7 @@ end
 
 async retwait waitkey()
 
-init objects mixed 100
+var objects [100]mixed
 
 cls
 cursoroff()

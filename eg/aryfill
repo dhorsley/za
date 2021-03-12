@@ -7,10 +7,9 @@ input maxc param 1 "count"
 w=960
 h=540
 
-
-init y mixed h
-init xbar mixed w
-init buf mixed h
+var y       [h]mixed
+var xbar    [w]mixed
+var buf     [h]mixed
 
 struct point
     r uint8
@@ -19,7 +18,7 @@ struct point
     a uint8
 endstruct
 
-init p point
+var p point
 
 # fill buffer with empty colour points
 for e=0 to h-1
@@ -46,6 +45,6 @@ println "total bytes : ",bytes_xfer
 println "byte rate   : {throughput} bytes/ns"
 println "            : %f.3 GB/sec".format(throughput)
 
-println "\nmem use     : ",get_mem().alloc
+println "\nmem use     : ",get_mem().alloc," MB"
 println "mem_summary : %#v".format(mem_summary()["main"])
 

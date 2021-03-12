@@ -13,7 +13,7 @@ enum key (
 
 max_poly      = 15
 text_objcount = 0
-init ary mixed text_objcount
+var ary [text_objcount]mixed
 
 
 # window initialisation
@@ -30,7 +30,7 @@ struct text
     s string
 endstruct
 
-init o text
+var o text
 
 struct tpos
     x float
@@ -39,7 +39,7 @@ endstruct
 
 trail_vanish_mod=1
 size_trail=80
-init temp_pos tpos
+var temp_pos tpos
 trail=[]
 
 var trail_vanish_count      int

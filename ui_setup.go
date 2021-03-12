@@ -8,6 +8,7 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
     "golang.org/x/image/font/basicfont"
+    "os"
 )
 
 import (
@@ -35,6 +36,9 @@ func init_ui_features() {
         if err == nil {
             win.Destroy()
             winAvailable=true
+        } else {
+            pf("Could not initialise windowing features.\n")
+            os.Exit(121)
         }
 
 	    default_atlas = text.NewAtlas(basicfont.Face7x13, text.ASCII, text.RangeTable(unicode.Latin))

@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 struct sa ; a int; b bool; endstruct
-init q sa
+var q sa
 q.a=42
 println kind(q.a)
 assert q.a==42

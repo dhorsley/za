@@ -114,10 +114,13 @@ daysPerYear = 365.24
 N = 5
 body_list=["sun","jupiter","saturn","uranus","neptune"]
 
-init b mixed N
-foreach bn in body_list
-    init {bn} t_body
-endfor
+var b [N]mixed
+
+var sun        t_body
+var jupiter    t_body
+var saturn     t_body
+var uranus     t_body
+var neptune    t_body
 
 # TEST DATA
 

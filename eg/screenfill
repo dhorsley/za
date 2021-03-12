@@ -6,7 +6,7 @@ input maxc param 1 "count"
 h=40
 w=term_w()
 
-init y mixed h
+var y [h]mixed
 
 # repeatedly fill second buffer with line by line copies of first buf
 cursoroff()
