@@ -181,7 +181,7 @@ func buildInternalLib() {
                 w.size  = Of(ident[k])
                 w.id    = k
                 if debugSplit {
-                    pf("id %3d - name: %24s : size (bytes) : %12d\n",k,w.name,w.size)
+                    pf("id %3d - name: %32s : size (bytes) : %-12d\n",k,w.name,w.size)
                 }
                 r[w.name]=w
             }

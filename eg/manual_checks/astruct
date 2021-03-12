@@ -4,8 +4,8 @@
 struct q ; a float ; b float ; c float ; endstruct
 showstruct
 
-init a mixed 10
-init b q
+var a []mixed
+var b q
 
 for e = 0 to 9
     a[e]=b

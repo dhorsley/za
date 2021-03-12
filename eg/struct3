@@ -10,15 +10,15 @@ struct s_person
     dob     string
 endstruct
 
-forenames=["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iris","Janis","Keith","Larry","Moon","Naomi","Orpheus","Pamela",
+forenames= ["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iris","Janis","Keith","Larry","Moon","Naomi","Orpheus","Pamela",
             "Quirkafleeg","Roger","Samuel","Tarjan","Una","Veronica","William","Xavier","Yvonne","Zod"
 ]
 
-surnames =["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Copeland","Charles","Dylan","Mercury","Bowie","Jett",
+surnames = ["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Copeland","Charles","Dylan","Mercury","Bowie","Jett",
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
 
-init person s_person
+var person s_person
 
 for e=1 to 1000
     for p=1 to 100

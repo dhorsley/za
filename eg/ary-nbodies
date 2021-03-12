@@ -28,7 +28,7 @@ define offsetmomentum()
     var pz float
 
     for i=0 to N-1
-        println "bi -> ",b[i]
+        # println "bi -> ",b[i]
         px += b[i][vx] * b[i][mass]
         py += b[i][vy] * b[i][mass]
         pz += b[i][vz] * b[i][mass]
@@ -128,11 +128,13 @@ N = 5
 
 body_list=["sun","jupiter","saturn","uranus","neptune"]
 
-init b mixed N
+var b [N] mixed
 
-foreach bn in body_list
-    init {bn} float component_count
-endfor
+var sun     [component_count]float
+var jupiter [component_count]float
+var saturn  [component_count]float
+var uranus  [component_count]float
+var neptune [component_count]float
 
 sun[sx]=0.0; sun[sy]=0.0; sun[sz]=0.0; sun[vx]=0.0; sun[vy]=0.0; sun[vz]=0.0
 sun[mass]=solarMass

@@ -1078,17 +1078,25 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // local variable lookup:
+
     ll:=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
 
-    if val,there:=vgeti(p.fs,token.offset); there {
+    if interactive {
+        if val,there:=vget(p.fs,token.tokText); there {
+            return val
+        }
+    } else {
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+        if val,there:=vgeti(p.fs,token.offset); there {
+            if ll { vlock.RUnlock() }
+            return val
+        }
         if ll { vlock.RUnlock() }
-        return val
     }
-    if ll { vlock.RUnlock() }
 
-    if p.fs!=globalaccess {
-        // global lookup:
+    // global lookup:
+
+    if !interactive && p.fs!=globalaccess {
         ll=false
         if vi,there:=VarLookup(globalaccess,token.tokText); there {
             if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
@@ -1432,7 +1440,8 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         sz:=cap(ident[fs][vi].IValue.([]int))
         if numel>=sz {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]int,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]int))
             ident[fs][vi].IValue=newar
@@ -1441,9 +1450,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
     case []uint8:
         sz:=cap(ident[fs][vi].IValue.([]uint8))
-        if numel>=sz {
+        if numel>=sz-1 {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]uint8,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]uint8))
             ident[fs][vi].IValue=newar
@@ -1452,9 +1462,10 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
 
     case []uint:
         sz:=cap(ident[fs][vi].IValue.([]uint))
-        if numel>=sz {
+        if numel>=sz-1 {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]uint,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]uint))
             ident[fs][vi].IValue=newar
@@ -1465,7 +1476,8 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         sz:=cap(ident[fs][vi].IValue.([]bool))
         if numel>=sz {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]bool,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]bool))
             ident[fs][vi].IValue=newar
@@ -1476,7 +1488,8 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         sz:=cap(ident[fs][vi].IValue.([]string))
         if numel>=sz {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]string,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]string))
             ident[fs][vi].IValue=newar
@@ -1487,7 +1500,8 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         sz:=cap(ident[fs][vi].IValue.([]float64))
         if numel>=sz {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]float64,newend,newend)
             copy(newar,ident[fs][vi].IValue.([]float64))
             ident[fs][vi].IValue=newar
@@ -1501,7 +1515,8 @@ func vsetElementi(fs uint32, name string, vi uint16, el interface{}, value inter
         sz:=cap(ident[fs][vi].IValue.([]interface{}))
         if numel>=sz {
             newend:=sz*2
-            if numel>newend { newend=numel+sz }
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
             newar:=make([]interface{},newend,newend)
             copy(newar,ident[fs][vi].IValue.([]interface{}))
             ident[fs][vi].IValue=newar
