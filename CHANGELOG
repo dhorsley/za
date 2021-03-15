@@ -38,10 +38,23 @@ CHANGE LOG
 
     * oops, fixed issue when auto-allocating from size 0 in array assignment. (sz test in eval.go/vsetElementi func)
 
-    * added some more types to VAR. (will be merging VAR and INIT eventually)
+    * added some more types to VAR. (and INIT functionality merged into VAR)
     * added support for an identifier list in VAR: eg var a,b,c int = 42
-    * started support for [] and [size] as prefix to type in VAR.
+    * added support for [] and [size] as prefix to type in VAR.
 
+    * struct default values:
+        - You may now supply a default value inside a struct definition for a field.
+        - Format: struct sn; a int [ = value ]; endstruct
+        - Example:
+            struct person
+                first_name string
+                surname string
+                age int = 18
+            endstruct
+        - on initialisation with VAR the defaults are set.
+        - this is currently only implemented with scalar creations of struct in VAR.
+            - still need to add default value support in, e.g., var people []person
+            - should just be a virtual copy/paste job, but testing current implementation first.
 
 
     language features

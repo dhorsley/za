@@ -40,15 +40,6 @@ TODO
 LATER / UNDECIDED
 -----------------
 
-    * coalesce VAR/INIT ? (IN-PROGRESS)
-        - (DONE) this may mean adding [] as a syntactical element to VAR
-            - eg. var a int  vs.  var a [] int
-            - types are:
-                bool, byte, uint, int, float, string
-                []bool, []byte, []uint, []int, []float, []string
-                nil, assoc (map)
-
-        - (DONE) or, var s struct_name
         - (PARTIAL) and var ary_s []struct_name
             - added the syntax support, however, za currently implements these
                 as []interface{} so it accepts the declaration, but does not
@@ -58,15 +49,6 @@ LATER / UNDECIDED
                 > z[x]=q
                 > z[x].element_name=value
             - will update to something more robust if needed later.
-
-        - (DONE) needs to also allow for fixed size arrays, e.g. [20] int
-
-    * allow multiple variable declarations?
-        - (DONE) eg. var a,b,c int
-
-    * struct default values.
-        - (NOT DONE) i.e. struct sn; a int [ = value ]; endstruct
-        - this should be an easy addition.
 
     * need to (re)consider structs as struct member types.
         - initially, this did not seem like a useful concept for the language use case.

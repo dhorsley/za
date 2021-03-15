@@ -24,7 +24,8 @@ end
 println "z -> ",z()
 println "a -> ",a()
 println "b -> ",b()
-println "c -> ",c()
+c1,c2,c3,c4=c()
+println "c -> {c1} {c2} {c3} {c4}"
 println "d -> ",d()
 println
 

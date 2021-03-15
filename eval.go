@@ -1271,6 +1271,27 @@ func vseti(fs uint32, name string, vi uint16, value interface{}) (uint16) {
             case kstring:
                 _,ok=value.(string)
                 if ok { ident[fs][vi].IValue = value }
+            case kbyte:
+                _,ok=value.(uint8)
+                if ok { ident[fs][vi].IValue = value }
+            case ksbool:
+                _,ok=value.([]bool)
+                if ok { ident[fs][vi].IValue = value }
+            case ksint:
+                _,ok=value.([]int)
+                if ok { ident[fs][vi].IValue = value }
+            case ksuint:
+                _,ok=value.([]uint)
+                if ok { ident[fs][vi].IValue = value }
+            case ksfloat:
+                _,ok=value.([]float64)
+                if ok { ident[fs][vi].IValue = value }
+            case ksstring:
+                _,ok=value.([]string)
+                if ok { ident[fs][vi].IValue = value }
+            case ksbyte:
+                _,ok=value.([]uint8)
+                if ok { ident[fs][vi].IValue = value }
             }
             if !ok {
                 if ll { vlock.Unlock() }

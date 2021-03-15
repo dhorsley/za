@@ -1133,7 +1133,9 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
         // call standard library function
         res, err := f(evalfs,args...)
         if err != nil {
-            panic(fmt.Errorf("function error: in %+v %s", name,err))
+            msg:=sf("function error: in %+v %s",name,err)
+            if err.Error()!="" { msg=err.Error() }
+            panic(fmt.Errorf(msg))
         }
         return res
     }

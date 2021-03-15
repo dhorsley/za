@@ -1,9 +1,0 @@
-#!/usr/bin/za
-
-#
-# this is not done interactively as the co-process shell is non-interactive.
-#
-
-tempfile =| mktemp
-| rm {tempfile}
-
