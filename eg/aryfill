@@ -12,10 +12,10 @@ var xbar    [w]mixed
 var buf     [h]mixed
 
 struct point
-    r uint8
-    g uint8
-    b uint8
-    a uint8
+    r byte
+    g byte
+    b byte
+    a byte
 endstruct
 
 var p point

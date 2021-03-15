@@ -1,0 +1,14 @@
+#!/usr/bin/za
+
+struct person
+    first_name string
+    surname string
+    age int = 18
+endstruct
+
+var p person
+
+println "person forename : ",p.first_name
+println "person surname  : ",p.surname
+println "person age      : ",p.age
+

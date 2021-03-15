@@ -1,8 +1,0 @@
-#!/usr/bin/za
-n=10
-if n<10
-    println "It is a one digit number"
-else
-    println "It is a two or more digit number"
-endif
-

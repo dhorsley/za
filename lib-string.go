@@ -690,7 +690,6 @@ func buildStringLib() {
 
         return str.Join(ary[start:end], lsep), err
 
-        return "", err
     }
 
     slhelp["line_head"] = LibHelp{in: "nl_string,count", out: "nl_string", action: "Returns the top [#i1]count[#i0] lines of [#i1]nl_string[#i0]."}
