@@ -1,7 +1,0 @@
-#!/usr/bin/za
-
-println "Wait for 5 seconds."
-pause 5000
-println "Done."
-
-

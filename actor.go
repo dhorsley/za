@@ -15,6 +15,7 @@ import (
     "runtime"
     str "strings"
     "time"
+    "unsafe"
 )
 
 
@@ -731,7 +732,7 @@ tco_reentry:
 
     var structMode bool       // are we currently defining a struct
     var structName string     // name of struct currently being defined
-    var structNode []string   // struct builder
+    var structNode []interface{}   // struct builder
     var defining bool         // are we currently defining a function. takes priority over structmode.
     var definitionName string // ... if we are, what is it called
 
@@ -809,11 +810,37 @@ tco_reentry:
                 break
             }
 
-            cet :=crushEvalTokens(inbound.Tokens[1:])
+            // check for default value assignment:
+            var eqPos int16
+            var hasValue bool
+            for eqPos=2;eqPos<inbound.TokenCount;eqPos++ {
+                if inbound.Tokens[eqPos].tokType==O_Assign {
+                    hasValue=true
+                    break
+                }
+            }
+
+            var default_value ExpressionCarton
+            if hasValue {
+                default_value = parser.wrappedEval(ifs,ifs,inbound.Tokens[eqPos+1:])
+                // pf(" : set default_value in hasValue ( %#v )\n",default_value)
+                if default_value.evalError {
+                    parser.report(sf("Invalid default value in STRUCT '%s'",statement.tokText))
+                    finish(false,ERR_SYNTAX)
+                    break
+                }
+            }
+
+            var cet ExpressionCarton
+            if hasValue {
+                cet = crushEvalTokens(inbound.Tokens[1:eqPos])
+            } else {
+                cet = crushEvalTokens(inbound.Tokens[1:])
+            }
 
             // check for valid types:
             switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","uint8","mixed","[]":
+            case "int","float","string","bool","uint","uint8","byte","mixed","[]":
             default:
                 parser.report(sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
@@ -825,7 +852,9 @@ tco_reentry:
                 break
             }
 
-            structNode=append(structNode,statement.tokText,cet.text)
+            structNode=append(structNode,statement.tokText,cet.text,hasValue,default_value.result)
+            // pf("current struct node build at :\n%#v\n",structNode)
+
             continue
         }
 
@@ -984,12 +1013,14 @@ tco_reentry:
                 typemap:=make(map[string]reflect.Type)
                 typemap["bool"]     = reflect.TypeOf(tb)
                 typemap["uint"]     = reflect.TypeOf(tu)
+                typemap["uint8"]    = reflect.TypeOf(tu8)
                 typemap["byte"]     = reflect.TypeOf(tu8)
                 typemap["int"]      = reflect.TypeOf(ti)
                 typemap["float"]    = reflect.TypeOf(tf64)
                 typemap["string"]   = reflect.TypeOf(ts)
                 typemap["[]bool"]   = reflect.TypeOf(stb)
                 typemap["[]uint"]   = reflect.TypeOf(stu)
+                typemap["[]uint8"]  = reflect.TypeOf(stu8)
                 typemap["[]byte"]   = reflect.TypeOf(stu8)
                 typemap["[]int"]    = reflect.TypeOf(sti)
                 typemap["[]float"]  = reflect.TypeOf(stf64)
@@ -1000,13 +1031,12 @@ tco_reentry:
                 // --
 
             // name iterations
-            // for idx_vname,vname:=range name_list {
+
             for _,vname:=range name_list {
 
                 var vi uint16
                 var there bool
 
-                // only permit redeclaration in interactive mode for now:
                 if vi,there=VarLookup(ifs,vname); there {
                     ll:=false
                     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
@@ -1036,6 +1066,7 @@ tco_reentry:
                         vset(ifs,vname,reflect.New(typemap[new_type_token_string]).Elem().Interface())
                     }
 
+                    ll:=false
                     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
 
                     ident[ifs][vi].ITyped=true
@@ -1054,6 +1085,8 @@ tco_reentry:
                         ident[ifs][vi].IKind=kfloat
                     case "string":
                         ident[ifs][vi].IKind=kstring
+                    case "uint8","byte":
+                        ident[ifs][vi].IKind=kbyte
                     case "[]bool":
                         ident[ifs][vi].IKind=ksbool
                         ident[ifs][vi].IValue=make([]bool,size,size)
@@ -1069,7 +1102,7 @@ tco_reentry:
                     case "[]string":
                         ident[ifs][vi].IKind=ksstring
                         ident[ifs][vi].IValue=make([]string,size,size)
-                    case "[]byte":
+                    case "[]byte","[]uint8":
                         ident[ifs][vi].IKind=ksbyte
                         ident[ifs][vi].IValue=make([]uint8,size,size)
                     case "[]","[]mixed":
@@ -1090,12 +1123,13 @@ tco_reentry:
                         }
                         ident[ifs][vi].IValue=we.result
                     }
+                    if ll { vlock.Unlock() }
 
                 } else {
                     // unknown type: check if it is a struct name
 
                     isStruct:=false
-                    structvalues:=[]string{}
+                    structvalues:=[]interface{}{}
 
                     // structmap has list of field_name,field_type,... for each struct
                     for sn, snv := range structmaps {
@@ -1108,13 +1142,17 @@ tco_reentry:
 
                     if isStruct {
 
+                        ll:=false
+                        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+
                         // deal with var name [n]struct_type
                         if len(structvalues)>0 {
                             var sfields []reflect.StructField
                             offset:=uintptr(0)
-                            for svpos:=0; svpos<len(structvalues); svpos+=2 {
-                                nv:=structvalues[svpos]
-                                nt:=structvalues[svpos+1]
+                            for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                                nv :=structvalues[svpos].(string)
+                                nt :=structvalues[svpos+1].(string)
                                 sfields=append(sfields,
                                     reflect.StructField{
                                         Name:nv,PkgPath:"main",
@@ -1133,18 +1171,48 @@ tco_reentry:
 
 
                             if !hasAry {
-                                ident[ifs][vi].IValue=v
+                                // default values setting:
+
+                                val:=reflect.ValueOf(v)
+                                // typ:=reflect.ValueOf(v).Type()
+                                tmp:=reflect.New(val.Type()).Elem()
+                                tmp.Set(val)
+
+                                allSet:=true
+
+                                for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                                    // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                                    nv :=structvalues[svpos].(string)
+                                    nhd:=structvalues[svpos+2].(bool)
+                                    ndv:=structvalues[svpos+3]
+                                    // pf("nv : %v  hasdef : %v  value : %v\n",nv,nhd,ndv)
+                                    if nhd {
+                                        var intyp reflect.Type
+                                        if ndv!=nil { intyp=reflect.ValueOf(ndv).Type() }
+
+                                        tf:=tmp.FieldByName(nv)
+                                        if intyp.AssignableTo(tf.Type()) {
+                                            tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                                            tf.Set(reflect.ValueOf(ndv))
+                                        } else {
+                                            parser.report(sf("cannot set field default (%T) for %v (%v)",ndv,nv,tf.Type()))
+                                            finish(false,ERR_EVAL)
+                                            allSet=false
+                                            break
+                                        }
+                                    }
+                                }
+
+                                if allSet {
+                                    ident[ifs][vi].IValue=tmp.Interface()
+                                }
+
                             } else {
                                 // don't do this for now, as Za slices are currently just []interface{}:
                                 // slice:=reflect.MakeSlice(reflect.SliceOf(new_struct),0,size)
                                 // ident[ifs][vi].IValue=slice.Interface()
                                 ident[ifs][vi].IValue=[]interface{}{}
                             }
-                                /*
-                                parser.report("array of struct not supported yet - use []mixed")
-                                finish(false,ERR_SYNTAX)
-                                break
-                                */
 
                         } // end-len>0
 
@@ -1158,9 +1226,6 @@ tco_reentry:
 
                 } // end-type-or-struct
 
-                if ll { vlock.Unlock() }
-
-        
             } // end-of-name-list
 
 
@@ -2598,8 +2663,7 @@ tco_reentry:
             if inbound.TokenCount == 2 {
                 hargs = inbound.Tokens[1].tokText
             }
-            help(hargs)
-
+            ihelp(hargs)
 
         case C_Nop:
             // time.Sleep(1 * time.Microsecond)
@@ -3379,9 +3443,7 @@ tco_reentry:
             // consume identifiers sequentially, adding each to definition.
             // Format:
             // STRUCT name
-            // a type; b type;
-            // c type;
-            // d type; e type;
+            // name type [ = default_value ]
             // ...
             // ENDSTRUCT
 
@@ -3416,7 +3478,7 @@ tco_reentry:
             structmaps[structName]=structNode[:]
 
             structName=""
-            structNode=[]string{}
+            structNode=[]interface{}{}
             structMode=false
 
 
@@ -3437,7 +3499,7 @@ tco_reentry:
 
                 pf("[#6]%v[#-]\n",k)
 
-                for i:=0; i<len(s); i+=2 {
+                for i:=0; i<len(s); i+=4 {
                     pf("[#4]%24v[#-] [#3]%v[#-]\n",s[i],s[i+1])
                 }
                 pf("\n")

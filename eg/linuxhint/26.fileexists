@@ -1,8 +1,0 @@
-#!/usr/bin/za
-input filename param 1
-if is_file(filename)
-    println "File exists"
-else
-    println "File does not exist."
-endif
-

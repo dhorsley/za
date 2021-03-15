@@ -371,9 +371,11 @@ func buildListLib() {
         return false, nil
     }
 
-    slhelp["col"] = LibHelp{in: "string,column,delimiter", out: "[]string", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string[#i0]."}
+    slhelp["col"] = LibHelp{in: "string,column[,delimiter]", out: "[]string", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string[#i0]."}
     stdlib["col"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("col",args,1,"3","string","int","string"); !ok { return nil,err }
+        if ok,err:=expect_args("col",args,2,
+            "3","string","int","string",
+            "2","string","int"); !ok { return nil,err }
 
         coln := args[1].(int)
         if coln < 1 {
@@ -387,9 +389,13 @@ func buildListLib() {
             list = str.Split(str.Replace(args[0].(string), "\r\n", "\n", -1), "\n")
         }
 
+        del:=" "
+        if len(args)==3 {
+            del=args[2].(string)
+        }
+
         var cols []string
         if len(list) > 0 {
-            del := args[2].(string)
             for q := range list {
                 z := str.Split(list[q], del)
                 if len(z) >= coln {
@@ -404,7 +410,7 @@ func buildListLib() {
     slhelp["append_to"] = LibHelp{in: "list_name,item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
     stdlib["append_to"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
-         
+
         // check args[0] exists in evalfs
         if args[0]==nil {
             return nil,errors.New("argument is not a list")

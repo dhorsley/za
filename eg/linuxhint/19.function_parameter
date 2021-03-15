@@ -1,9 +1,0 @@
-#!/usr/bin/za
-
-define rectArea(w,h)
-    area=float(w)*float(h)
-    println "Area is {area}"
-end
-
-rectArea(10,20)
-

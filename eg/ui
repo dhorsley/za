@@ -189,8 +189,9 @@ while !ui_closed(w)
 
         draw_count+=3
 
-        # .. push mouse trail
-        foreach t in trail
+        # .. push mouse trail : this is reversed to display the most recent on top
+        for it=len(trail)-1 to 0 step -1
+            t=trail[it]
             m = ui_new_matrix()
             m = ui_mat_move(m,ui_new_vector(t.x,t.y))
             m = ui_mat_scale(m,ui_new_vector(t.x,t.y),ui_new_vector(0.3f,0.24f))

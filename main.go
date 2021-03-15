@@ -238,7 +238,7 @@ var keywordset map[string]struct{}
 
 // list of struct fields per struct type
 // - used by INIT when defining a struct
-var structmaps map[string][]string
+var structmaps map[string][]interface{}
 
 // compile cache for regex operator
 var ifCompileCache map[string]regexp.Regexp
@@ -345,7 +345,7 @@ func run() {
     }
 
     // create the structure definition storage area
-    structmaps = make(map[string][]string)
+    structmaps = make(map[string][]interface{})
 
     // compile cache for regex operator
     // - usage requires a lock around it

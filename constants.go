@@ -130,6 +130,7 @@ const (
 const (
     knil uint8 = iota
     kbool
+    kbyte
     kint
     kint64
     kuint
