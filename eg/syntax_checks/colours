@@ -10,7 +10,6 @@ for p=0 to 7
 
     for i=0 to 7
         cs=format("[#b%d][#%d] ▧ ",p,i)
-        # cs=format("[#b%d][#%d] # ",p,i)
         at 10+p,10+i*3; print cs
     endfor
 
