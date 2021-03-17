@@ -649,7 +649,7 @@ func buildInternalLib() {
 
     slhelp["keypress"] = LibHelp{in: "[timeout_μs]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
     stdlib["keypress"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("keypress",args,1,
+        if ok,err:=expect_args("keypress",args,2,
         "1","int",
         "0"); !ok { return nil,err }
         timeo := int64(0)

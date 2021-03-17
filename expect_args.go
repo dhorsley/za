@@ -14,25 +14,24 @@ import (
  *  it adds a small performance penalty but seemed the only sane option.
 */
 func expect_args(name string, args []interface{}, variants int, types... string) (bool,error) {
-
     next:=0
     var tryNext bool
     var triedOne bool
     var p int
     var type_errs string
+    var la=len(args)
 
-    if len(args)==0 {
-        if variants==0 {
-            return true,nil
-        } else {
-            return false,nil
-        }
+    if la==0 && variants==0 {
+        return true,nil
     }
 
     for v:=0; v<variants; v++ {
-
         nc,err:=strconv.Atoi(types[next])
-        if nc==0 || len(args)!=nc {
+        if nc==0 && la==0 {
+            return true,nil
+        }
+
+        if nc==0 || la!=nc {
             next=next+nc+1
             continue
         }
@@ -53,10 +52,8 @@ func expect_args(name string, args []interface{}, variants int, types... string)
             if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
                 type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
                 tryNext=true
-                // pf("v%d ta%d no match. moving to next.\n",v,n)
                 break
             }
-            // pf("v%d ta%d matched.\n",v,n)
             n++
         }
         next=next+nc

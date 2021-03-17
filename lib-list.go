@@ -560,7 +560,9 @@ func buildListLib() {
 
     slhelp["push_front"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
     stdlib["push_front"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("push_front",args,1,"2","any","any"); !ok { return nil,err }
+        if ok,err:=expect_args("push_front",args,2,
+            "2","any","any",
+            "1","any"); !ok { return nil,err }
 
         if len(args) == 1 {
             switch args[0].(type) {
