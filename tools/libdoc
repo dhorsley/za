@@ -104,7 +104,7 @@ foreach c in func_categories()
 
         body+=wdiv(
             wdiv( wa("",`id="{i}"`)+wh3(fnline) , `class="ttableft"` ) + 
-            wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`,`class="ttabright"`)),
+            wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`),`class="ttabright"`),
           `class="ttab hdbg"`
         )
 
