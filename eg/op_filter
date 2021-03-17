@@ -1,23 +1,23 @@
+#!/usr/bin/za
 
-
-m["a"]="blah"
-m["b"]="blafddfh"
-m["d"]="blah"
-m["g"]="TYTYTYHT"
-println kind(m)
-println m
-println m ?> `upper(#)==upper("blah")`
+#m["a"]="blah"
+#m["b"]="blafddfh"
+#m["d"]="blah"
+#m["g"]="TYTYTYHT"
+#println kind(m)
+#println m
+#println m ?> `upper(#)==upper("blah")`
 
 m["a"]=8
 m["b"]=9
 m["c"]=10
 m["d"]=11
 m["g"]=15
-println kind(m)
-println m
+println kind(m),"\n"
+println m,"\n"
 println m ?> `#>9`
 
-println "map op * 7 on above matches:"
+println "\nmap op * 7 on above matches:"
 println m ?> `#>9` -> "#*7"
 
 

@@ -239,7 +239,7 @@ const (
 	C_Define
     C_Showdef
 	C_Enddef
-	C_Return
+    C_Return
     C_Async
 	C_Lib
 	C_Module

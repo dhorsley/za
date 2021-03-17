@@ -43,7 +43,7 @@ while !quit
     cls
     print "[#bold]"
     theta=0.0
-    for e=0 to 400
+    for e=0 to 2000
         cursoroff()
         draw()
     endfor
@@ -53,5 +53,4 @@ endwhile
 cursoron()
 at height-1,1
 
-showdef
 

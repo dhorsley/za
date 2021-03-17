@@ -24,36 +24,26 @@ define pp(k,i,d)
     # set colour depth
     print "[#"+string((d+1)%7)+"]"
 
-    if i.kind ~ `^map\[`
-        # map
+    when
+    has i.kind ~ `^map\[`
         heading(k,d)
         foreach si in i
             pp(key_si,si,d+1)
         endfor 
-    endif
-
-    if i.kind ~ `^\[map`
-        # array of map
+    has i.kind ~ `^\[map`
         heading(k,d)
         foreach si in i[0]
             pp(key_si,si,d+1)
         endfor
-    endif
-
-    if i.kind ~ `\[\]`
-        # array
+    has i.kind ~ `\[\]`
         heading("[arr] "+k,d)
-        if len(i)>0
-            foreach si in i[0]
-                pp(key_si,si,d+1)
-            endfor
-        endif
-    endif
-
-    if ! i.kind ~ `\[`
-        # value
+        on i.len==0 do break
+        foreach si in i[0]
+            pp(key_si,si,d+1)
+        endfor
+    has ! i.kind ~ `\[`
         value(k,i,d)
-    endif
+    endwhen
 
     # reset colour
     print "[#-]"
@@ -63,10 +53,8 @@ end
 
 # MAIN
 
-f=<-"json-test.json"
-if f==nil
-    exit 1,"Error: could not read JSON file."
-endif
+f=read_file("json-test.json")
+on f==nil do exit 1,"Error: could not read JSON file."
 
 json=json_decode(f)
 
@@ -80,6 +68,4 @@ foreach i in instances[0]
     pp(key_i,i,0)
 endfor
 
-# you could start higher in the tree, e.g.
-# foreach i in json
 

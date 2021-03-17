@@ -18,7 +18,7 @@ func buildDateLib() {
 	stdlib["date"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("date",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when, invalid := GetAsInt64(args[0])
@@ -33,15 +33,15 @@ func buildDateLib() {
 		return st, err
 	}
 
-	slhelp["date_human"] = LibHelp{in: "", out: "string", action: "Returns the current date and time in a readable format (RFC822Z)"}
+	slhelp["date_human"] = LibHelp{in: "none", out: "string", action: "Returns the current date and time in a readable format (RFC822Z)"}
 	stdlib["date_human"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("date_human",args,0); !ok { return "",err }
+        if ok,err:=expect_args("date_human",args,0); !ok { return nil,err }
         return time.Now().Format(time.RFC822Z),nil
     }
 
-	slhelp["epoch_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
+	slhelp["epoch_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
 	stdlib["epoch_time"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("epoch_time",args,0); !ok { return "",err }
+        if ok,err:=expect_args("epoch_time",args,0); !ok { return nil,err }
 		return int(time.Now().Unix()), err
 	}
 
@@ -49,7 +49,7 @@ func buildDateLib() {
 	stdlib["time_hours"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_hours",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -66,7 +66,7 @@ func buildDateLib() {
 	stdlib["time_minutes"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_minutes",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -83,7 +83,7 @@ func buildDateLib() {
 	stdlib["time_seconds"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_seconds",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -100,7 +100,7 @@ func buildDateLib() {
 	stdlib["time_nanos"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_nanos",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -117,7 +117,7 @@ func buildDateLib() {
 	stdlib["time_dow"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_dow",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -134,7 +134,7 @@ func buildDateLib() {
 	stdlib["time_dom"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_dom",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -151,7 +151,7 @@ func buildDateLib() {
 	stdlib["time_month"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_month",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -168,7 +168,7 @@ func buildDateLib() {
 	stdlib["time_year"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("time_year",args,2,
             "1","int",
-            "0"); !ok { return "",err }
+            "0"); !ok { return nil,err }
 		var t time.Time
 		if len(args) == 1 {
 			when := args[0].(int)
@@ -181,15 +181,15 @@ func buildDateLib() {
 		return t.Year(), nil
 	}
 
-	slhelp["epoch_nano_time"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
+	slhelp["epoch_nano_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
 	stdlib["epoch_nano_time"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("epoch_nano_time",args,0); !ok { return "",err }
+        if ok,err:=expect_args("epoch_nano_time",args,0); !ok { return nil,err }
 		return int(time.Now().UnixNano()), err
 	}
 
 	slhelp["time_diff"] = LibHelp{in: "te,ts", out: "integer", action: "Returns difference in micro-seconds between two nano-epoch dates."}
 	stdlib["time_diff"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("time_diff",args,1,"2","int","int"); !ok { return "",err }
+        if ok,err:=expect_args("time_diff",args,1,"2","int","int"); !ok { return nil,err }
         return float64(args[0].(int)-args[1].(int))/1000,nil
 
 	}
