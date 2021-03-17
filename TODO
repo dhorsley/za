@@ -9,6 +9,9 @@ lots, i'm sure.
 TODO
 ----
 
+
+    * update manual credits page for Pixel
+
     * make each platform binary not throw errors when opengl not available.
 
         - Linux (Ubuntu, Redhat, Debian) : seems fine on recent versions.

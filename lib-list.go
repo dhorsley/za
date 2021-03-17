@@ -407,7 +407,7 @@ func buildListLib() {
     }
 
 
-    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
+    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]list_name[#i0]. Returns [#i1]bool_success[#i0] depending on success."}
     stdlib["append_to"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
 

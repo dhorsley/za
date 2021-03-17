@@ -76,28 +76,26 @@ func ev_range(val1 interface{}, val2 interface{}) ([]int) {
         return nil
     }
 
-    switch val1.(type) {
-    case uint:
-        a:=make([]int, val2.(uint)-val1.(uint)+1)
-        for i := range a {
-            a[i] = int(val1.(uint) + uint(i))
+    rstart,invalid:=GetAsInt(val1)
+    if invalid { return nil }
+    rend  ,invalid:=GetAsInt(val2)
+    if invalid { return nil }
+
+    if rstart>rend {
+        // reversed
+        a:=make([]int, rstart-rend+1)
+        for i,_ := range a {
+            a[i] = rstart-i
         }
         return a
-    case int:
-        a:=make([]int, val2.(int)-val1.(int)+1)
-        for i := range a {
-            a[i] = val1.(int) + i
-        }
-        return a
-    case int64:
-        a:=make([]int, val2.(int64)-val1.(int64)+1)
-        for i := range a {
-            a[i] = int(val1.(int64) + int64(i))
+    } else {
+        a:=make([]int, rend-rstart+1)
+        for i,_ := range a {
+            a[i] = rstart+i
         }
         return a
     }
 
-    // unknown type
     return nil
 
 }

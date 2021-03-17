@@ -19,6 +19,11 @@ CHANGE LOG
         > enum colours { r,g=10,b=colours.g*3,w }
         > print ref colours.enum_all
           [1 10 30 31]
+    * updated append_to() help
+    * added support for reversed count ranges in .. operator. e.g. 20..5:
+        - eval_ops/ev_range() amended. returned ranges are always int-based.
+        - range start and end may be specified as uint(64),int(64) or float, but types of start and end must match.
+        - floats should be specified in parentheses where necessary to avoid confusion.
 
     * finally got around to adding a type check on struct build.
         - currently permitting: bool, int, uint, float, string and mixed.
