@@ -8,7 +8,7 @@ import (
 
 
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@" // {}
+const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$" // {}
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.f"
 const identifier_set = alphanumeric + "_" // "{}"
@@ -25,7 +25,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
-    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_REF","O_MUT",
+    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -35,7 +35,6 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM",
 }
-
 
 /// get the next available token, as a struct, from a given string and starting position.
 func nextToken(input string, curLine *int16, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
@@ -456,6 +455,16 @@ get_nt_eval_point:
             tokType = O_Ref
         case "mut":
             tokType = O_Mut
+        case "$lc":
+            tokType = O_Slc
+        case "$uc":
+            tokType = O_Suc
+        case "$st":
+            tokType = O_Sst
+        case "$lt":
+            tokType = O_Slt
+        case "$rt":
+            tokType = O_Srt
         case "enum":
             tokType = C_Enum
         case "init":
