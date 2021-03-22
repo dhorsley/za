@@ -563,7 +563,7 @@ func buildUILib() {
 
 	slhelp["ui_mat_rotate"] = LibHelp{in: "matrix,vector,angle", out: "matrix", action: "Returns new matrix rotated by [#i1]angle[#i0]."}
 	stdlib["ui_mat_rotate"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("ui_mat_rotate",args,1,"2","pixel.Matrix","pixel.Vec"); !ok { return nil,err }
+        if ok,err:=expect_args("ui_mat_rotate",args,1,"3","pixel.Matrix","pixel.Vec","float64"); !ok { return nil,err }
         return args[0].(pixel.Matrix).Rotated(args[1].(pixel.Vec),args[2].(float64)),nil
     }
 

@@ -93,7 +93,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         left=p.identifier(current)
     case SYM_Not, O_Sqr, O_Sqrt, O_InFile:
         left=p.unary(current)
-    case O_Ref,O_Mut:                   // reference and mutable
+    case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt,O_Ref,O_Mut:
         left=p.unary(current)
     case O_Assign, O_Plus, O_Minus:      // prec variable
         left=p.unary(current)
@@ -796,6 +796,29 @@ func (p *leparser) reference(mut bool) string {
     }
 }
 
+func (p *leparser) unaryStringOp(right interface{},op uint8) string {
+    switch right.(type) {
+    case string:
+        switch op {
+        case O_Slc:
+            return str.ToLower(right.(string))
+        case O_Suc:
+            return str.ToUpper(right.(string))
+        case O_Sst:
+            return str.Trim(right.(string)," \t\n\r")
+        case O_Slt:
+            return str.TrimLeft(right.(string)," \t\n\r")
+        case O_Srt:
+            return str.TrimRight(right.(string)," \t\n\r")
+        default:
+            panic(fmt.Errorf("unknown unary string operator!"))
+    }
+    default:
+        panic(fmt.Errorf("invalid type in unary string operator"))
+    }
+    return ""
+}
+
 func (p *leparser) unary(token Token) (interface{}) {
 
     switch token.tokType {
@@ -830,6 +853,8 @@ func (p *leparser) unary(token Token) (interface{}) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
+    case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
+        return p.unaryStringOp(right,token.tokType)
     case O_Assign:
         panic(fmt.Errorf("unary assignment makes no sense"))
 	}

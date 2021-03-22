@@ -212,6 +212,11 @@ const (
     O_InFile
     O_Ref
     O_Mut
+    O_Slc
+    O_Suc
+    O_Sst
+    O_Slt
+    O_Srt
     START_STATEMENTS
     C_Var
 	C_SetGlob

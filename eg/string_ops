@@ -1,0 +1,18 @@
+
+q=read_file("/usr/share/dict/words").split("\n")
+
+ts1=epoch_nano_time()
+println len(q?>`#.has_start("d")`->"$uc #")
+te1=epoch_nano_time()
+    
+ts2=epoch_nano_time()
+z=[]
+foreach a in q
+  on a.has_start("d") do append_to(ref z,$uc a)
+endfor
+println len(z)
+te2=epoch_nano_time()
+
+println "td1 : ",te1-ts1
+println "td2 : ",te2-ts2
+

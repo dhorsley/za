@@ -9,49 +9,43 @@ lots, i'm sure.
 TODO
 ----
 
+    * Considering some unary string operators for inclusion:
 
-    * update manual credits page for Pixel
+        - the following operators are currently (and experimentally) enabled.
+            - if they prove to be unnecessary later they can be removed, but
+                currently do not clash with anything else and will most likely
+                remain indefinitely.
 
-    * make each platform binary not throw errors when opengl not available.
+        - $lc "string"      : to lower
+        - $uc "string"      : to upper
+        - $st "string"      : string trim (whitespace "\ \t\n\r")
+        - $lt "string"      : left trim   (   "        "        )
+        - $rt "string"      : right trim  (   "        "        )
 
-        - Linux (Ubuntu, Redhat, Debian) : seems fine on recent versions.
+        - existing alternatives:
+            - upper("string") and "string".upper
+            - lower("string") and "string".lower
+            - trim("string",-1|0|1,"\ \t\n\r")
 
-        - centos 7 and below have problems with V1.0.14 since the introduction
-            of the opengl stuff. they have a 2012 version of glibc as standard.
+        - equivalent example:
 
-        - Fedora        : tested. seems fine on fedora release 33.
-                           it's probably fine on a lot of older releases too.
+            >> q=read_file("/usr/share/dict/words").split("\n")
 
-        - Windows 10    : UAC, binary stripping and a/v causing problems more
-                           so than the Za binary itself. more checks needed.
+            >> foreach a in q?>`#.has_start("d")`->"$uc #"
+            >>   print a
+            >> endfor
 
-        - Alpine        : have split out some of the UI functionality to only
-                            build when the build tag 'noui' is not set.
+            >> foreach a in q
+            >>   on a.has_start("d") do print a.upper
+            >> endfor
 
-                          the build script has been altered to add this tag and
-                            to also ensure CGO_ENABLED=0
-
-                          this leaves the alpine build operating as it did in previous
-                            versions (i.e. without lib-ui facilities) but for other
-                            builds to include lib-ui.
-
-        - AWS Linux 1+2 : Use the Alpine build on AWS linux and all is well.
-
-        - FreeBSD       : to test
+        - to be honest, example 2 is generally faster and, in simple cases, more readable than example 1.
+        - however, we are providing both options as this won't always be the case.
+        - this is due to the map and filter operators rather than the upper-case operator.
 
 
 LATER / UNDECIDED
 -----------------
-
-        - (PARTIAL) var ary_s []struct_name
-            - added the syntax support, however, za currently implements these
-                as []interface{} so it accepts the declaration, but does not
-                initialise the elements. you must still do something like:
-                > var q struct_name
-                > var z []struct_name
-                > z[x]=q
-                > z[x].element_name=value
-            - will update to something more robust if needed later.
 
     * need to (re)consider structs as struct member types.
         - initially, this did not seem like a useful concept for the language use case.
@@ -110,8 +104,6 @@ LATER / UNDECIDED
     ripping that code apart there's a few other changes that I would feel compelled to make while in there.
 
 
-* add more manual example code in tools/funpages/examples for more functions.
-
-* ultimately, change interactive mode to use readline or similar with better utf-8 support.
+    * ultimately, change interactive mode to use readline or similar with better utf-8 support.
 
 
