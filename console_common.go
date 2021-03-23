@@ -642,12 +642,14 @@ func GetCommand(c string) (s string, err error) {
 
 
 type BashRead struct {
-    S string
+    // S string
+    S []byte
     E error
 }
 
 // execute a command in the coprocess, return output.
-func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
+// func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
+func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     var result BashRead
 
@@ -683,7 +685,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
             v, err = r.ReadByte()
 
             if err == nil {
-                s += string(v)
+                // s += string(v)
+                s = append(s,v)
                 if v == 10 {
                     if mt.(bool) {
                         pf("⟊")
@@ -694,7 +697,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 
             if err == io.EOF {
                 if v != 0 {
-                    s += string(v)
+                    // s += string(v)
+                    s = append(s,v)
                 }
                 break
             }
@@ -726,7 +730,8 @@ func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
         // skip null end marker strings
         if len(s) > 0 {
             if s[0] == cmdsep {
-                s = ""
+                // s = ""
+                s = []byte{}
             }
         }
 
@@ -768,7 +773,8 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     }
     line=str.TrimRight(line,"\n")
 
-    var ns string       // output from coprocess
+    // var ns string       // output from coprocess
+    var ns []byte
     var errout string   // stderr output
     var errint int      // coprocess return code
     var err error       // generic error handle
@@ -799,9 +805,15 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     if riwp.(bool) || rip.(bool) {
 
         if riwp.(bool) {
-            ns,err = GetCommand("cmd /c "+line)
+            // ns,err = GetCommand("cmd /c "+line)
+            var ba string
+            ba,err = GetCommand("cmd /c "+line)
+            ns = []byte(ba)
         } else {
-            ns,err = GetCommand(line)
+            // ns,err = GetCommand(line)
+            var ba string
+            ba,err = GetCommand(line)
+            ns = []byte(ba)
         }
 
         if err != nil {
@@ -860,12 +872,12 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             errint = -3
         } else {
             if err == nil {
-                errint, err = strconv.Atoi(code)
+                errint, err = strconv.Atoi(string(code))
                 if err != nil {
                     errint = -2
                 }
                 if !squashErr {
-                    vset(0, "@last", code)
+                    vset(0, "@last", string(code))
                 }
             } else {
                 errint = -1
@@ -898,7 +910,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         }
     }
 
-    return struct{out string;err string;code int;okay bool}{ns,errout,errint,errint==0}
+    return struct{out string;err string;code int;okay bool}{string(ns),errout,errint,errint==0}
 }
 
 func restoreScreen() {
