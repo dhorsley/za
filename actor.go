@@ -3928,7 +3928,6 @@ tco_reentry:
 
             if inbound.TokenCount > 1 { // ident "=|"
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == O_AssCommand {
-                    // if len(inbound.Text) > 0 {
                     if inbound.TokenCount > 2 {
                         // get text after =|
                         startPos := str.IndexByte(inbound.Original, '|') + 1
