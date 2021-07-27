@@ -15,6 +15,10 @@ TODO
         - there's likely to be a few more breaking bugs exhibiting in the windows build before
             we get to a stable state on Linux. they'll get ironed out over time.
 
+    * there is still a race condition, especially prevalent with fast spawn async processes, around
+        stringmap and nummap access. Not found a good way to avoid it yet. You can force the issue
+        with, for example, holding down the return key when running eg/plot/ff.
+
 LATER / UNDECIDED
 -----------------
 
