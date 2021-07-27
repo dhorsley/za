@@ -1235,6 +1235,7 @@ tco_reentry:
             var enddistance int16
 
             endfound, enddistance, _ = lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
+            // pf("(while debug) -> on line %v : end_found %+v : distance %+v\n",parser.line,endfound,enddistance)
             if !endfound {
                 parser.report("could not find an ENDWHILE")
                 finish(false, ERR_SYNTAX)
@@ -1250,7 +1251,7 @@ tco_reentry:
             var etoks []Token
 
             if inbound.TokenCount==1 {
-                etoks=[]Token{Token{tokType:Identifier,tokText:"true"}}
+                etoks=[]Token{Token{tokType:Identifier,tokText:"true",subtype:subtypeConst,tokVal:true}}
                 res=true
             } else {
 
@@ -1296,7 +1297,14 @@ tco_reentry:
             cond := loops[ifs][depth[ifs]]
 
             if cond.loopType != C_While {
-                parser.report("ENDWHILE outside of WHILE loop.")
+                /* // DEBUG
+                add_output:=""
+                for _,cv:=range lastConstruct[ifs] {
+                    add_output+=sf("%v , ",tokNames[cv])
+                }
+                parser.report(sf("ENDWHILE outside of WHILE loop.\ncond:%#v\nadditional:%v",cond,add_output))
+                */
+                parser.report("ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
                 lastlock.Unlock()
                 break
