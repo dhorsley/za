@@ -12,12 +12,24 @@ for i=0 to 30
     screen[i]=80*" "
 endfor
 
-# draw box
-screen[9] =10*" " + 20*"#"
-screen[19]=10*" " + 20*"#"
-for e=10 to 18
-    screen[e]=10*" " + "#" + 18*" " + "#"
-endfor
+# draw enclosing shape
+screen[02]="******     *****   *****    "
+screen[03]="*    *     *   *   *   *    "
+screen[04]="***  *    **  **   *   *    "
+screen[05]="  *  *    *   *    *   *    "
+screen[06]="  *  *****    *****     *** "
+screen[07]="  *             *         * "
+screen[08]=" **             *         * "
+screen[09]=" *             **         * "
+screen[10]=" *                  ******* "
+screen[11]=" *                  *       "
+screen[12]=" *                  *       "
+screen[13]=" *                  ******  "
+screen[14]=" *             *          * "
+screen[15]=" *             *          * "
+screen[16]=" *             *          * "
+screen[17]=" *             *          * "
+screen[18]=" ************************** "
 
 define show()
     for l=1 to 30
@@ -25,20 +37,17 @@ define show()
     endfor
 end
 
-define fill(x,y,c)
-    # bit screwy at the moment as string slices still need start+end subscript positions:
-    at 33,1; print "filling   "
+define fill(x,y,b,c)
     on x<1 or x>screen.len-1 do return
     on y<1 or y>term_w()-1 do return
     above=screen[x-1]
     line=screen[x]
     below=screen[x+1]
-    on line[y]==" " do setglob screen[x]=line[:y]+c+line[y+1:]
-    on line[y-1]==" "   do fill(x,y-1,c)
-    on above[y] ==" "  do fill(x-1,y,c)
-    on line[y+1]==" " do fill(x,y+1,c)
-    on below[y] ==" "  do fill(x+1,y,c)
-    at 33,1; print "end-of-fill  "
+    on line[y]  ==b do setglob screen[x]=line[:y]+c+line[y+1:]
+    on line[y-1]==b do fill(x,y-1,b,c)
+    on above[y] ==b do fill(x-1,y,b,c)
+    on line[y+1]==b do fill(x,y+1,b,c)
+    on below[y] ==b do fill(x+1,y,b,c)
 end
 
 cursoroff()
@@ -47,11 +56,27 @@ at 35,1; print "press a key to fill box!"
 keypress()
 at 38,1; print "press <space> to quit!"
 
-async hmap fill(13,13,"-")
+ob=" "
+b="-"
+quit=false
 
-while keypress(10)!=32
+async hmap fill(13,13,ob,b)
+
+while !quit
+    when keypress(10)
+    is 32
+        quit=true
+    is 13
+        ob=b
+        while
+            b=char(32+rand(63))
+            on b!="*" do break
+        endwhile
+        async hmap fill(13,13,ob,b)
+    endwhen
     show()
-    pause 50
+    # small pause here - concurrency issues with fast spawning asyncs
+    pause 5
 endwhile
 
 at term_h(),1
