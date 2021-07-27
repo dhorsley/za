@@ -152,7 +152,7 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["mem_summary"] = LibHelp{in: "", out: "struct", action: "Returns summary of memory use."}
+    slhelp["mem_summary"] = LibHelp{in: "[bool_debug]", out: "struct", action: "Returns summary of memory use."}
     stdlib["mem_summary"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("mem_summary",args,2,
             "1","bool",
@@ -160,8 +160,8 @@ func buildInternalLib() {
 
         debugSplit:=false
         if len(args)==1 {
-            debugSplit=true
-        }    
+            debugSplit=args[0].(bool)
+        }
 
         var r = make(map[string]alloc_info)
         var w alloc_info
@@ -665,9 +665,9 @@ func buildInternalLib() {
         k:=wrappedGetCh(int(timeo))
 
         if k==3 { // ctrl-c 
-            siglock.RLock()
+            lastlock.RLock()
             sig_int=true
-            siglock.RUnlock()
+            lastlock.RUnlock()
         }
 
         return k,nil

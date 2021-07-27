@@ -1,0 +1,9 @@
+#!/usr/bin/za
+
+start="s"
+input start optarg 1 "word start"
+
+foreach i in <- "/etc/passwd" ~f "(^|[\n])"+start+".*?:"
+    println "{=key_i} - {=i[:i.len-1].collapse}"
+endfor
+

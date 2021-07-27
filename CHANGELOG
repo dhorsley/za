@@ -20,6 +20,7 @@ CHANGE LOG
         > print ref colours.enum_all
           [1 10 30 31]
     * updated append_to() help
+    * removed siglock mutex.
     * added support for reversed count ranges in .. operator. e.g. 20..5:
         - eval_ops/ev_range() amended. returned ranges are always int-based.
         - range start and end may be specified as uint(64),int(64) or float, but types of start and end must match.
@@ -40,8 +41,18 @@ CHANGE LOG
     * removed -d option.
 
     * added SHOWDEF back in. the output is occasionally a little off due to semicolons, but still has some use.
-
+    * fixed ui_cursor_visible() input type check.
     * oops, fixed issue when auto-allocating from size 0 in array assignment. (sz test in eval.go/vsetElementi func)
+
+    * Fixed stuck FOR loops when loop var already exists with different type (actor.go/C_For)
+        - now throws an error report when var already declared.
+        - *except* when var is an int
+        - this highlighted an issue around whether loop variables should be disposed of post-loop:
+            - as it stands, sequential loops need to use different loop var names so that we do not
+                have to dispose of them when a loop ends (which can be useful).
+            - this will most likely only occur when a FOR loop tries to use the same var name as a
+                FOREACH loop in the same function block.
+            - it's probably fine as it is, but should review soon.
 
     * added some more types to VAR. (and INIT functionality merged into VAR)
     * added support for an identifier list in VAR: eg var a,b,c int = 42
@@ -69,7 +80,13 @@ CHANGE LOG
     This will be done with a subset of the Pixel Go library.
 
     PLEASE NOTE: the default version currently only works (correctly) on Linux with certain
-    libraries installed and a particular level of OpenGL support (v3.3).
+    libraries installed and a particular level of OpenGL support (v3.3). (3.1+ if you hack it a bit)
+
+        : required support and workarounds for opengl(es)1/2/3 can be found through the wiki pages
+        : for pixelgl, glfw, etc.
+        : we managed to get this working on a deliberately feeble test rig of:
+        :    onemix3s/win10 with ubuntu 20.04 vm (opengles2 with vm video hw acceleration off).
+        : ... just to say, it's doable - and probably fairly easily depending on the hardware.
 
         - Windows tested some more.. It kinda works now. Still working through tests.
         - FreeBSD still untested.
@@ -80,6 +97,21 @@ CHANGE LOG
         - Ubuntu: works fine. (v18+)
 
     Operating with the -u startup arg will only have any effect on builds with lib-ui compiled in. (i.e. !noui tag)
+
+    Added some unary string operators. The following operators are currently (and experimentally) enabled:
+
+        - $lc "string"      : to lower
+        - $uc "string"      : to upper
+        - $st "string"      : string trim (whitespace "\ \t\n\r")
+        - $lt "string"      : left trim   (   "        "        )
+        - $rt "string"      : right trim  (   "        "        )
+
+        - example:
+
+            >> q=read_file("/usr/share/dict/words").split("\n")
+            >> foreach a in q ?> `#.has_start("d")` -> "$uc #"
+            >>   println a
+            >> endfor
 
 
     library features

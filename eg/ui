@@ -119,31 +119,28 @@ while !ui_closed(w)
         for e=0 to max_poly-1
             shape=ui_new_draw()
             when rand(5)
-            is 1:
+            is 1
                 # Function : ui_polygon(draw_object,thickness)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_polygon(shape,0f)
-            is 2:
+            is 2
                 # Function : ui_circle(draw_object,radius,thickness)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_circle(shape,randf(100),0f)
-            is 3:
+            is 3
+                # @placeholder: @todo:
                 # Function : ui_circle_arc(draw_object,radius,low,high,thickness)
-                #px=mx.randf; py=my.randf
-                #ui_pp(ref shape,255f,255f,255f,px,py)
-                #ui_pp(ref shape,255f,255f,255f,px+randf(40),py+randf(40))
-                #ui_circle_arc(shape, randf(8), randf(90), 180f+randf(179), randf(8))
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_line(shape,randf(8)-1)
-            is 4:
+            is 4
                 # Function : ui_line(draw_object,thickness)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_line(shape,randf(8)-1)
-            is 5:
+            is 5
                 # Function : ui_rectangle(draw_object,thickness)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
                 ui_pp(ref shape,randf(),randf(),randf(),mx.randf,my.randf)
@@ -223,5 +220,5 @@ while !ui_closed(w)
 
 endwhile
 
-println "mem_summary : %#v".format(mem_summary(true)["main"])
+mem_summary(true)
 

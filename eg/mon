@@ -472,7 +472,6 @@ define showHdd()
             on kind(F[1])!="string" do continue
             if !key("devices",F[1])
                 devices[F[1]]=F[6]
-                # F[5]=replace(F[5],`%`,`%`)
                 at row,1; print format(`%20s %5s %5s %5s %-23s`,shorten(F[1],19),F[2],F[3],F[4],F[5])
                 row++
             endif

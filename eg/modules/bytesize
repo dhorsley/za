@@ -1,0 +1,13 @@
+define bytesize(i)
+    unit="B"
+    if i>=1e9
+        unit="GB"; i=float(i/1e9)
+    endif
+    if i>=1e6
+        unit="MB"; i=float(i/1e6)
+    endif
+    if i>=1e3
+        unit="KB"; i=float(i/1e3)
+    endif
+    return format("%.3f %s",float(i),unit)
+end
