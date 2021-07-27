@@ -633,9 +633,9 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case []alloc_info:
         sz=len(left)
-    case []interface{}:
-        sz=len(left)
     case string:
+        sz=len(left)
+    case []interface{}:
         sz=len(left)
 
     case map[string]interface{},map[string]alloc_info,map[string]string,map[string]int,map[int]interface{},map[int]int,map[int]string,map[int][]int,map[int][]string,map[int][]interface{}:
@@ -689,7 +689,7 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                 hasStart=true
             default:
                 if !sendNil {
-                    panic(fmt.Errorf("start of range must be an integer"))
+                    panic(fmt.Errorf("start of range must be an integer (%+v / %T)",dp,dp))
                 }
             }
         }
@@ -1406,6 +1406,8 @@ func vgetElementi(fs uint32, name string, vi uint16, el string) (interface{}, bo
         return v[iel],ok
     case string:
         iel,_:=GetAsInt(el)
+        // pf("vgete-string: v  %s\n",string(v))
+        // pf("vgete-string: el %s\n",iel)
         return string(v[iel]),ok
     case []interface{}:
         iel,_:=GetAsInt(el)

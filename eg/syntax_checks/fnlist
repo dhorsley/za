@@ -29,8 +29,8 @@ foreach l in funcs(filter,true)
             on !split do rest=F
 
             if rest!=nil
-                foreach i in rest
-                    print format("%v ",i)
+                foreach j in rest
+                    print format("%v ",j)
                 endfor
             endif
             print

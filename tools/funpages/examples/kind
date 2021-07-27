@@ -2,7 +2,7 @@ a=42
 b="the answer"
 c=pi()
 d=true
-init e int 10
+var e [10]int
 f=append(f,"test")
 println kind(a)
 println kind(b)

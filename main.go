@@ -708,9 +708,9 @@ func run() {
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
                 // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
                 vset(0, "@shellpid",bgproc.Process.Pid)
-                siglock.Lock()
+                lastlock.Lock()
                 coproc_active = false
-                siglock.Unlock()
+                lastlock.Unlock()
             }
 
             // user-trap handling

@@ -47,7 +47,6 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
 }
 
 var atlock = &sync.RWMutex{}
-var siglock = &sync.RWMutex{}
 
 // finish : flag the machine state as okay or in error and
 // optionally terminates execution.
@@ -60,9 +59,9 @@ func finish(hard bool, i int) {
         os.Exit(i)
     }
 
-    siglock.Lock()
+    lastlock.Lock()
     sig_int = true
-    siglock.Unlock()
+    lastlock.Unlock()
 
 }
 
@@ -75,7 +74,9 @@ func strcmp(a string, b string) (bool) {
     if la!=len(b)           { return false }
     if la==0 && len(b)==0   { return true }
     strcmp_repeat_point:
-        la--
+        // la-- : as elsewhere, explicit compound decrement
+        //      : appears to be faster than post-fix decrement
+        la -= 1
         if a[la]!=b[la] { return false }
     if la>0 { goto strcmp_repeat_point }
     return true
@@ -787,7 +788,7 @@ tco_reentry:
         }
 
         /////// LINE ////////////////////////////////////////////////////////////
-            // pf("(%20s) [#b7][#2]%5d : %+v[##][#-]\n",fs,pc,inbound.Tokens)
+            // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,parser.line,pc,inbound.Tokens)
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -1040,13 +1041,12 @@ tco_reentry:
                 if vi,there=VarLookup(ifs,vname); there {
                     ll:=false
                     if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
-                    // if !interactive && ident[ifs][vi].declared==true {
                     if vi>0 && ident[ifs][vi].declared {
                         if ll { vlock.RUnlock() }
                         parser.report(sf("variable '%s' already exists",vname))
                         finish(false, ERR_SYNTAX)
                         break
-                    } 
+                    }
                     if ll { vlock.RUnlock() }
                 }
 
@@ -1378,7 +1378,7 @@ tco_reentry:
 
             switch inbound.Tokens[3].tokType {
 
-            // cause evaluation of all terms following IN
+                // cause evaluation of all terms following IN
             case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 we = parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
@@ -1757,7 +1757,7 @@ tco_reentry:
                     if err==nil && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
-                        parser.report(  "Could not evaluate STEP expression")
+                        parser.report("Could not evaluate STEP expression")
                         finish(false, ERR_EVAL)
                         break
                     }
@@ -1797,6 +1797,26 @@ tco_reentry:
             // store loop data
             inter:=inbound.Tokens[1].tokText
             fno:=inbound.Tokens[1].offset
+
+            // ensure we only re-use int type vars
+            loc,found := VarLookup(ifs,inter)
+            if found {
+                ll:=false
+                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+                if ident[ifs][loc].declared {
+                    should_for_break:=false
+                    switch ident[ifs][loc].IValue.(type) {
+                    case int:
+                    default:
+                        if ll { vlock.RUnlock() }
+                        parser.report(sf("Variable %s already declared in FOR.",inter))
+                        finish(false,ERR_EVAL)
+                        should_for_break = true
+                    }
+                    if should_for_break { break }
+                }
+                if ll { vlock.RUnlock() }
+            }
 
             lastlock.Lock()
 
@@ -3546,6 +3566,7 @@ tco_reentry:
                 finish(true,ERR_SYNTAX)
                 break
             }
+
             ll:=false
             if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
             content,_:=vgeti(ifs,vid)
@@ -3958,9 +3979,9 @@ tco_reentry:
     } // end-pc-loop
 
 
-    siglock.RLock()
+    lastlock.RLock()
     si=sig_int
-    siglock.RUnlock()
+    lastlock.RUnlock()
 
     if structMode && !typeInvalid {
         // incomplete struct definition
@@ -3979,10 +4000,9 @@ tco_reentry:
         // clean up
 
         // pf("Leaving call with ifs of %d [fs:%s]\n\n",ifs,fs)
-
         // pf("[#2]about to delete %v[#-]\n",fs)
-
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
+
         if !str.HasPrefix(fs,"@mod_") {
 
             if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() ; ll=true }

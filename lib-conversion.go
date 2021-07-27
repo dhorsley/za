@@ -214,7 +214,7 @@ func buildConversionLib() {
 
     slhelp["json_decode"] = LibHelp{in: "string", out: "[]mixed", action: "Return a mixed type array representing a JSON string."}
     stdlib["json_decode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("jason_decode",args,1,"1","string"); !ok { return nil,err }
+        if ok,err:=expect_args("json_decode",args,1,"1","string"); !ok { return nil,err }
 
         var v map[string]interface{}
         dec:=json.NewDecoder(strings.NewReader(args[0].(string)))
@@ -229,7 +229,7 @@ func buildConversionLib() {
 
     slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of [#i1]string[#i0], or an empty string on error."}
     stdlib["json_format"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("jason_format",args,1,"1","string"); !ok { return nil,err }
+        if ok,err:=expect_args("json_format",args,1,"1","string"); !ok { return nil,err }
         var pj bytes.Buffer
         if err := json.Indent(&pj,[]byte(args[0].(string)), "", "\t"); err!=nil {
             return "",errors.New(sf("could not format string in json_format()"))
@@ -239,7 +239,7 @@ func buildConversionLib() {
 
     slhelp["json_query"] = LibHelp{in: "string,query_string[,map_flag]", out: "output_string", action: "Returns the result of processing [#i1]string[#i0] using the gojq library. [#i1]query_string[#i0] is a jq-like query to operate against [#i1]string[#i0]. If [#i1]map_flag[#i0] is false (default) then a string is returned, otherwise an iterable list is returned."}
     stdlib["json_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("jason_query",args,2,
+        if ok,err:=expect_args("json_query",args,2,
             "2","string","string",
             "3","string","string","bool"); !ok { return nil,err }
 

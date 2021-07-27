@@ -450,14 +450,14 @@ syntax match colour_f4 "\[#4\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 syntax match colour_f5 "\[#5\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 syntax match colour_f6 "\[#6\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 syntax match colour_f7 "\[#7\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f0 "\[#black\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f1 "\[#blue\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f2 "\[#red\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f3 "\[#magenta\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f4 "\[#green\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f5 "\[#cyan\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f6 "\[#yellow\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
-syntax match colour_f7 "\[#white\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f0 "\[#fblack\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f1 "\[#fblue\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f2 "\[#fred\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f3 "\[#fmagenta\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f4 "\[#fgreen\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f5 "\[#fcyan\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f6 "\[#fyellow\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
+syntax match colour_f7 "\[#fwhite\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 
 syntax match colour_normal "\[##\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
 syntax match colour_normal "\[#-\]"hs=s+1,he=e-1 containedin=DoubleQuote,BacktkQuote
