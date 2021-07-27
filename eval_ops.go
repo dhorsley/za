@@ -930,8 +930,12 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
 
     switch obj:=obj.(type) {
     case string:
-        vg,_:=vgetElement(evalfs,obj,strconv.Itoa(field.(int)))
-        return vg
+        // pf("aa-string: fld %#v - type %T\n",field,field)
+        ifield,invalid:=GetAsInt(field)
+        if !invalid {
+            return string(obj[ifield])
+        }
+        panic(fmt.Errorf("string element [%+v] cannot be cast to int",field))
     case map[string]alloc_info:
         return obj[field.(string)]
     case map[string]string:
@@ -973,7 +977,9 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            panic(fmt.Errorf("element '%d' is out of range",field.(int)))
+            // @todo: this is buggy. there's some unhandled cases that are fine but throw this.
+            // disabling it for now pending investigation.
+            // panic(fmt.Errorf("element '%d' is out of range in %+v",field.(int),obj))
 
         }
 

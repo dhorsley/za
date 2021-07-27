@@ -4,7 +4,7 @@
 #  patience to write a generic script. feel free to contribute one!
 
 zahandler=`
- Za shell scripts
+ " Za shell scripts
   elseif s:name =~# '^za\>'
     set ft=za
 `
@@ -21,7 +21,6 @@ allPaths=[]
 foreach p in dir(pathRoot)
     if has_start(p.name,"vim8")
         allPaths=append(allPaths,p.name)
-        break
     endif
 endfor
 

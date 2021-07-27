@@ -1,0 +1,62 @@
+#!/usr/bin/za
+
+#
+# example flood fill inside a text buffer shape
+#
+
+cls
+
+var screen [term_h()-1] string
+# screen[0] will be unused
+for i=0 to 30
+    screen[i]=80*" "
+endfor
+
+# draw box
+screen[9] =10*" " + 20*"#"
+screen[19]=10*" " + 20*"#"
+for e=10 to 18
+    screen[e]=10*" " + "#" + 18*" " + "#"
+endfor
+
+define show()
+    for l=1 to 30
+        at l,1; print screen[l]
+    endfor
+end
+
+define fill(x,y,c)
+    # bit screwy at the moment as string slices still need start+end subscript positions:
+    at 33,1; print "filling   "
+    on x<1 or x>screen.len-1 do return
+    on y<1 or y>term_w()-1 do return
+    above=screen[x-1]
+    line=screen[x]
+    below=screen[x+1]
+    on line[y]==" " do setglob screen[x]=line[:y]+c+line[y+1:]
+    on line[y-1]==" "   do fill(x,y-1,c)
+    on above[y] ==" "  do fill(x-1,y,c)
+    on line[y+1]==" " do fill(x,y+1,c)
+    on below[y] ==" "  do fill(x+1,y,c)
+    at 33,1; print "end-of-fill  "
+end
+
+cursoroff()
+show()
+at 35,1; print "press a key to fill box!"
+keypress()
+at 38,1; print "press <space> to quit!"
+
+async hmap fill(13,13,"-")
+
+while keypress(10)!=32
+    show()
+    pause 50
+endwhile
+
+at term_h(),1
+cursoron()
+
+
+
+

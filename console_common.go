@@ -656,9 +656,9 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
     CMDSEP,_:=vget(0,"@cmdsep")
     cmdsep:=CMDSEP.(byte)
 
-    siglock.Lock()
+    lastlock.Lock()
     coproc_active = true
-    siglock.Unlock()
+    lastlock.Unlock()
 
     c := make(chan BashRead)
 
@@ -749,9 +749,9 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     close(c)
 
-    siglock.Lock()
+    lastlock.Lock()
     coproc_active = false
-    siglock.Unlock()
+    lastlock.Unlock()
 
     return result.S, result.E
 

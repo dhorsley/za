@@ -9,40 +9,11 @@ lots, i'm sure.
 TODO
 ----
 
-    * Considering some unary string operators for inclusion:
-
-        - the following operators are currently (and experimentally) enabled.
-            - if they prove to be unnecessary later they can be removed, but
-                currently do not clash with anything else and will most likely
-                remain indefinitely.
-
-        - $lc "string"      : to lower
-        - $uc "string"      : to upper
-        - $st "string"      : string trim (whitespace "\ \t\n\r")
-        - $lt "string"      : left trim   (   "        "        )
-        - $rt "string"      : right trim  (   "        "        )
-
-        - existing alternatives:
-            - upper("string") and "string".upper
-            - lower("string") and "string".lower
-            - trim("string",-1|0|1,"\ \t\n\r")
-
-        - equivalent example:
-
-            >> q=read_file("/usr/share/dict/words").split("\n")
-
-            >> foreach a in q?>`#.has_start("d")`->"$uc #"
-            >>   print a
-            >> endfor
-
-            >> foreach a in q
-            >>   on a.has_start("d") do print a.upper
-            >> endfor
-
-        - to be honest, example 2 is generally faster and, in simple cases, more readable than example 1.
-        - however, we are providing both options as this won't always be the case.
-        - this is due to the map and filter operators rather than the upper-case operator.
-
+    * There are currently a few issues in the Windows build around async and ui operations.
+        - i'll get to these eventually, but not rushing them. only the linux/alpine builds are
+            considered to be of any import currently.
+        - there's likely to be a few more breaking bugs exhibiting in the windows build before
+            we get to a stable state on Linux. they'll get ironed out over time.
 
 LATER / UNDECIDED
 -----------------
@@ -55,8 +26,6 @@ LATER / UNDECIDED
             however, this is currently a bit broken :) mainly because it is currently unused.
             we should either fix up 'mixed' types in structs or replace with something orthogonal
             to the var/init scheme. (or just ignore this complexity, without a solid use case.)
-
-    * (NOT DONE) update online manual with above details.
 
     * add ref and mut directives/operators for use in function calls?
 
@@ -97,7 +66,7 @@ LATER / UNDECIDED
 
         - maybe other stuff i can't think of right now.
 
-    Without those additional changes, ref/mut are usuable as synonyms for ` "variable" `.
+    Without those additional changes, ref/mut are usable as synonyms for ` "variable" `.
 
     The above would quite clearly be a substantial structure change from how things are now. It's not 
     a lot of code, but it would require much testing. It's made more problematic in that as soon as I start

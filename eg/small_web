@@ -7,7 +7,7 @@
 
 HOST="10.0.2.15"
 PORT=61440
-HOME_PATH="/home/daniel/www/exmachina"
+HOME_PATH="/home/daniel/www"
 
 trapInt="cleanup(sid)"
 

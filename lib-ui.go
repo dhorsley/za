@@ -259,7 +259,7 @@ func buildUILib() {
 
 	slhelp["ui_cursor_visible"] = LibHelp{in: "id,bool", out: "bool_success", action: "Set cursor visibility in window."}
 	stdlib["ui_cursor_visible"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("ui_cursor_visible",args,1,"1","bool"); !ok { return false,err }
+        if ok,err:=expect_args("ui_cursor_visible",args,1,"2","string","bool"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
         if w,there:=winHandles[args[0].(string)]; winAvailable && there {

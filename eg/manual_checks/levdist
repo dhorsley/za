@@ -16,13 +16,8 @@ define leven(s, t)
 
 end
 
-input a optarg 1
-input b optarg 2
-
-if a=="" || b==""
-    println "need some strings"
-    exit 1
-endif
+input a param 1 "word1"
+input b param 2 "word2"
 
 println "p1 : {a}\np2 : {b}\n"
 println "res: ",leven(a,b)

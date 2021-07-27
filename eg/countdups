@@ -1,17 +1,25 @@
 #!/usr/bin/za
 
-m=0
+# count duplicate lines
 
-f=read_file("/dev/stdin")
-foreach l in f
+m=0
+dups[""]=0
+
+foreach l in <-"/dev/stdin"
     # some 'l' values cannot represent keys, depending on nature of input
+    l=$st l
     on dups[l]==nil do dups[l]=0
     # only append if valid key was found
-    if kind(dups[l])==int
+    if kind(dups[l])=="int"
         dups[l]=dups[l]+1
         on m<dups[l] do m=dups[l]
     endif
 endfor
 
-println "{=len(dups)} {m}"
+interpol(false)
+foreach d in dups
+    println d," : ",key_d
+endfor
+interpol(true)
+println len(dups)," unique : ",m," max duplicates"
 

@@ -30,9 +30,9 @@ print
 
 # break check
 
-for f = 1 to 10
+for e = 1 to 10
     broke=true
-    on f==5 do break
+    on e==5 do break
     broke=false
 endfor
 

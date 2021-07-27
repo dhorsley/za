@@ -1,0 +1,4 @@
+module "../modules/bytesize"
+foreach e in dir("/usr/bin")
+    on e.name.has_start("z") do println "%10s %s".format(e.size.bytesize,e.name)
+endfor
