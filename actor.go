@@ -591,7 +591,6 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         // copy the base var mapping to this instance
         ll=false
         if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-
         unvmap[ifs] =make(map[uint16]string,len(unvmap[base]))
         vmap[ifs]   =make(map[string]uint16,len(unvmap[base]))
         for e:=uint16(0); e<uint16(len(unvmap[base])); e++ {

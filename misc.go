@@ -31,9 +31,15 @@ func getReportFunctionName(ifs uint32, full bool) string {
 func showCallChain(base string) {
 
     // show chain
+    evalChainTotal:=0
     pf("[#CTE][#5]")
     for k,v:=range callChain {
         if k==0 { continue }
+        if v.registrant==ciEval { evalChainTotal++ }
+        if evalChainTotal>5 {
+            pf("-> ABORTED EVALUATION CHAIN (>5) ")
+            break
+        }
         v.name=getReportFunctionName(v.loc,false)
         pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
     }
