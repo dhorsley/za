@@ -44,6 +44,8 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case []bool:
         return len(args),nil
+    case []dirent:
+        return len(args),nil
     case map[string]float64:
         return len(args),nil
     case map[string]string:
