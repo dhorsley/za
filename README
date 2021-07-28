@@ -27,14 +27,27 @@ These are the things I want to nail down before general release:
         a) the aim of the language is to be concise and clear for program maintainers.
             (on a side note, about the implementation itself I'll only say, here be dragons! It's pretty ugly.)
 
-        b) nothing will be included that reduces the current speed of processing.
+        b) nothing will be included that noticably reduces the current speed of processing.
 
-        c) we will not be including functionality in the standard library unless it works
+        c) we will not be including new functionality in the standard library unless it works
             on all currently supported platforms. i.e. linux-variants, freebsd, windows 10, alpine and similar.
 
-        d) we will not be including vendor-specific functionality. i.e. no aws api support, no window support,
-            and such like. it would inflate the binary too much and really doesn't gel with the intended
-            purpose of the language.
+        d) we are trying to not include vendor-specific functionality. i.e. no aws api support, no window support,
+            and such like, except in a few circumstances. It inflates the binary too much and really doesn't gel
+            with the intended purpose of the language.
+
+            However, there are some already included, which should be treated as experimental features
+            which may eventually be dropped. (e.g. pixelgl support may go, but something around formats
+            like svg is more likely to stay.)
+
+            The pixelgl support was only included out of curiosity and is likely to go again soon.
+            It doesn't fit with the remit of the language really, but does open up some use cases. However,
+            it greatly increases the binary size, adds a lot of platform-specific bodges, complicates the
+            compilation/build process and adds undesirable dependencies in the libraries. 
+
+            It was originally included partially to see what complications would be exhibited supporting third-party
+            libraries. We need a better method for doing this dynamically at run-time under the za programmer's
+            control. This is not a reflection on the pixelgl libraries themselves, as they were great!
 
     5. things missing from the online manual page.
 
@@ -58,8 +71,8 @@ if the problem is that complex, write it in a real language - or get someone els
 Modules are for internal sharing and organisation, they are not a distribution hierarchy. This is another
 reason we haven't gone overboard on namespace depth.
 
-I wanted a language which is readable and simple but expressive compared to shell scripts, but still gave you 
-many of the same benefits. It is an adjunct to a shell in this respect. 
+I wanted a language which is readable and simple yet expressive compared to shell scripts, but still giving
+you many of the same benefits. It is an adjunct to a shell in this respect. 
 
 We currently have a far greater execution speed than you may expect from a shell whilst retaining a fairly
 easy method of reaching in to a shell for additional functionality outside of the language scope. For some
