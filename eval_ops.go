@@ -952,6 +952,13 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
 
         r := reflect.ValueOf(obj)
 
+        // test for race condition:
+        vlock.RLock()
+        defer vlock.RUnlock()
+        // leaving this in for now. the defer slows things down, but
+        // it is catching ident[] use passed through by reference,
+        // possibly in the reflect.* calls?
+
         switch r.Kind().String() {
         case "slice":
             switch obj:=obj.(type) {

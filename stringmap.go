@@ -14,9 +14,12 @@ func lmcreate(sz int) *Lmap {
 }
 
 func (u *Lmap) lmexists(k string) bool {
+    u.RLock()
     if _,ok:=u.smap[k]; ok {
+        u.RUnlock()
         return true
     }
+    u.RUnlock()
     return false
 }
 
