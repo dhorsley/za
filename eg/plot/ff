@@ -6,10 +6,13 @@
 
 cls
 
-var screen [term_h()-1] string
+sl=term_h()-1
+sw=term_w()-1
+
+var screen [sl] string
 # screen[0] will be unused
-for i=0 to 30
-    screen[i]=80*" "
+for i=0 to sl-1
+    screen[i]=sw*" "
 endfor
 
 # draw enclosing shape
@@ -31,6 +34,7 @@ screen[16]=" *             *          * "
 screen[17]=" *             *          * "
 screen[18]=" ************************** "
 
+# not showing full screen height here, just a demo:
 define show()
     for l=1 to 30
         at l,1; print screen[l]
@@ -38,16 +42,13 @@ define show()
 end
 
 define fill(x,y,b,c)
-    on x<1 or x>screen.len-1 do return
-    on y<1 or y>term_w()-1 do return
-    above=screen[x-1]
-    line=screen[x]
-    below=screen[x+1]
-    on line[y]  ==b do setglob screen[x]=line[:y]+c+line[y+1:]
-    on line[y-1]==b do fill(x,y-1,b,c)
-    on above[y] ==b do fill(x-1,y,b,c)
-    on line[y+1]==b do fill(x,y+1,b,c)
-    on below[y] ==b do fill(x+1,y,b,c)
+    on x<1 or x>=sl do return
+    on y<1 or y>sw do return
+    on screen[x][y]  ==b do setglob screen[x]=screen[x][:y]+c+screen[x][y+1:]
+    on screen[x][y-1]==b do fill(x,y-1,b,c)
+    on screen[x-1][y] ==b do fill(x-1,y,b,c)
+    on screen[x][y+1]==b do fill(x,y+1,b,c)
+    on screen[x+1][y] ==b do fill(x+1,y,b,c)
 end
 
 cursoroff()
@@ -63,10 +64,11 @@ quit=false
 async hmap fill(13,13,ob,b)
 
 while !quit
+
     when keypress(10)
-    is 32
+    is 32 # space
         quit=true
-    is 13
+    is 13 # return
         ob=b
         while
             b=char(32+rand(63))
@@ -75,13 +77,9 @@ while !quit
         async hmap fill(13,13,ob,b)
     endwhen
     show()
-    # small pause here - concurrency issues with fast spawning asyncs
-    pause 5
+
 endwhile
 
 at term_h(),1
 cursoron()
-
-
-
 
