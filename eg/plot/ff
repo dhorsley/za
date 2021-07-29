@@ -3,6 +3,35 @@
 #
 # example flood fill inside a text buffer shape
 #
+#  this is about as simple a fill as you can make. there are
+#  many possible optimisations, but speed isn't the goal here.
+#
+
+#
+# functions
+#
+
+define show()
+    # not showing full screen height here, just a demo:
+    for l=1 to 30
+        at l,1; print screen[l]
+    endfor
+end
+
+define fill(x,y,b,c)
+    on x<1 or x>=sl do return
+    on y<1 or y>sw do return
+    on screen[x][y]  ==b do setglob screen[x]=screen[x][:y]+c+screen[x][y+1:]
+    on screen[x][y-1]==b do fill(x,y-1,b,c)
+    on screen[x][y+1]==b do fill(x,y+1,b,c)
+    on screen[x-1][y] ==b do fill(x-1,y,b,c)
+    on screen[x+1][y] ==b do fill(x+1,y,b,c)
+end
+
+
+#
+# MAIN
+#
 
 cls
 
@@ -10,7 +39,6 @@ sl=term_h()-1
 sw=term_w()-1
 
 var screen [sl] string
-# screen[0] will be unused
 for i=0 to sl-1
     screen[i]=sw*" "
 endfor
@@ -24,32 +52,15 @@ screen[06]="  *  *****    *****     *** "
 screen[07]="  *             *         * "
 screen[08]=" **             *         * "
 screen[09]=" *             **         * "
-screen[10]=" *                  ******* "
+screen[10]=" ******             ******* "
 screen[11]=" *                  *       "
-screen[12]=" *                  *       "
-screen[13]=" *                  ******  "
-screen[14]=" *             *          * "
-screen[15]=" *             *          * "
-screen[16]=" *             *          * "
+screen[12]=" *****              *       "
+screen[13]=" *        ******    ******  "
+screen[14]=" *        *    *          * "
+screen[15]=" *        *  * *          * "
+screen[16]=" *        **** *          * "
 screen[17]=" *             *          * "
 screen[18]=" ************************** "
-
-# not showing full screen height here, just a demo:
-define show()
-    for l=1 to 30
-        at l,1; print screen[l]
-    endfor
-end
-
-define fill(x,y,b,c)
-    on x<1 or x>=sl do return
-    on y<1 or y>sw do return
-    on screen[x][y]  ==b do setglob screen[x]=screen[x][:y]+c+screen[x][y+1:]
-    on screen[x][y-1]==b do fill(x,y-1,b,c)
-    on screen[x-1][y] ==b do fill(x-1,y,b,c)
-    on screen[x][y+1]==b do fill(x,y+1,b,c)
-    on screen[x+1][y] ==b do fill(x+1,y,b,c)
-end
 
 cursoroff()
 show()
