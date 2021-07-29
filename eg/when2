@@ -1,5 +1,6 @@
 
 a=40
+input a optarg 1
 
 when a
 has a==42

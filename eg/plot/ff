@@ -44,23 +44,23 @@ for i=0 to sl-1
 endfor
 
 # draw enclosing shape
-screen[02]="******     *****   *****    "
-screen[03]="*    *     *   *   *   *    "
-screen[04]="***  *    **  **   *   *    "
-screen[05]="  *  *    *   *    *   *    "
-screen[06]="  *  *****    *****     *** "
-screen[07]="  *             *         * "
-screen[08]=" **             *         * "
-screen[09]=" *             **         * "
-screen[10]=" ******             ******* "
-screen[11]=" *                  *       "
-screen[12]=" *****              *       "
-screen[13]=" *        ******    ******  "
-screen[14]=" *        *    *          * "
-screen[15]=" *        *  * *          * "
-screen[16]=" *        **** *          * "
-screen[17]=" *             *          * "
-screen[18]=" ************************** "
+screen[02]="######     #####   #####    "
+screen[03]="#    #     #   #   #   #    "
+screen[04]="###  #    ##  ##   #   #    "
+screen[05]="  #  #    #   #    #   #    "
+screen[06]="  #  #####    #####     ### "
+screen[07]="  #             #         # "
+screen[08]=" ##             #         # "
+screen[09]=" #             ##         # "
+screen[10]=" ######             ####### "
+screen[11]=" #                  #       "
+screen[12]=" #####              #       "
+screen[13]=" #        ######    ######  "
+screen[14]=" #        #    #          # "
+screen[15]=" #        #  # #          # "
+screen[16]=" #        #### #          # "
+screen[17]=" #             #          # "
+screen[18]=" ########################## "
 
 cursoroff()
 show()
@@ -82,8 +82,8 @@ while !quit
     is 13 # return
         ob=b
         while
-            b=char(32+rand(63))
-            on b!="*" do break
+            b=char(32+rand(31))
+            on b!="#" do break
         endwhile
         async hmap fill(13,13,ob,b)
     endwhen
