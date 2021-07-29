@@ -12,7 +12,6 @@ import (
 type Phrase struct {
 	Tokens      []Token // each token found
 	Original    string  // entire string, unmodified for spaces
-    pairLA      int16   // distance to next pc of end matching pair (0 is uncached)
     SourceLine  int16
 	TokenCount  int16   // number of tokens generated for this phrase
 }
@@ -99,6 +98,7 @@ type WhileMarker struct {
 // holds internal state for the WHEN command
 type whenCarton struct {
 	endLine   int16       // where is the endWhen, so that we can break or skip to it
+	performed bool        // set to true by the matching clause
 	dodefault bool        // set false when another clause has been active
 	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
 }

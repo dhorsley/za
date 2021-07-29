@@ -219,14 +219,11 @@ func searchToken(base uint32, start int16, end int16, sval string) bool {
 
 
 // lookahead used by if..else..endif and similar constructs for nesting
+//  @note: lookahead only returns _,_,true when over dedented.
 func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int16, bool) {
 
+    // @todo: check if this statement needs a mutex - it probably should have one
     range_fs:=functionspaces[fs][startLine:]
-
-    if range_fs[0].pairLA !=0 {
-        // return cached lookahead
-        return true,range_fs[0].pairLA,false
-    }
 
     for i, v := range range_fs {
 
@@ -247,8 +244,6 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 
         // found search term?
         if indent == endlevel && v.Tokens[0].tokType == term {
-            // cache lookahead then return value
-            range_fs[0].pairLA=int16(i)
             return true, int16(i), false
         }
     }
@@ -2204,6 +2199,7 @@ tco_reentry:
                 panes = make(map[string]Pane)
                 panes["global"] = Pane{row: 0, col: 0, h: MH, w: MW + 1}
                 currentpane = "global"
+                setPane("global")
 
             case "select":
 
@@ -3287,6 +3283,7 @@ tco_reentry:
                 break
             }
 
+            // make comparator True if missing.
             if inbound.TokenCount==1 {
                 inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,subtype:subtypeConst,tokVal:true,tokText:"true"})
             }
@@ -3295,7 +3292,7 @@ tco_reentry:
             endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
 
             if er {
-                parser.report("Lookahead error!")
+                parser.report("Lookahead dedent error!")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -3306,7 +3303,7 @@ tco_reentry:
                 break
             }
 
-            we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
+            we = parser.wrappedEval(ifs,ifs,inbound.Tokens[1:])
             if we.evalError {
                 parser.report(sf("could not evaluate the WHEN condition\n%+v",we.errVal))
                 finish(false, ERR_EVAL)
@@ -3318,7 +3315,7 @@ tco_reentry:
             lastlock.Lock()
 
             wccount++
-            wc[wccount] = whenCarton{endLine: pc + enddistance, value: we.result, dodefault: true}
+            wc[wccount] = whenCarton{endLine: pc + enddistance, value: we.result, performed:false, dodefault: true}
             depth[ifs]++
             lastConstruct[ifs] = append(lastConstruct[ifs], C_When)
 
@@ -3329,7 +3326,7 @@ tco_reentry:
 
             lastlock.RLock()
 
-            if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
+            if lastConstruct[ifs][len(lastConstruct[ifs])-1] != C_When {
                 parser.report("Not currently in a WHEN block.")
                 finish(false,ERR_SYNTAX)
                 lastlock.RUnlock()
@@ -3339,6 +3336,12 @@ tco_reentry:
             carton := wc[wccount]
 
             lastlock.RUnlock()
+
+            if carton.performed {
+                // already matched and executed a WHEN case so jump to ENDWHEN
+                pc = carton.endLine - 1
+                break
+            }
 
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
                 we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
@@ -3351,6 +3354,8 @@ tco_reentry:
 
             ramble_on := false // assume we'll need to skip to next when clause
 
+            // pf("when-eval: checking type : %s\n%#v\n",tokNames[statement.tokType],carton)
+
             switch statement.tokType {
 
             case C_Has: // <-- @note: this may change yet
@@ -3359,7 +3364,9 @@ tco_reentry:
                 switch we.result.(type) {
                 case bool:
                     if we.result.(bool) {  // HAS truth
+                        wc[wccount].performed = true
                         wc[wccount].dodefault = false
+                        // pf("when-has (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
                         ramble_on = true
                     }
                 default:
@@ -3369,21 +3376,28 @@ tco_reentry:
 
             case C_Is:
                 if we.result == carton.value { // matched IS value
+                    wc[wccount].performed = true
                     wc[wccount].dodefault = false
+                    // pf("when-is (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
                     ramble_on = true
                 }
 
             case C_Contains:
+                // pf("when-reached-contains\ncarton: %#v\n",carton)
                 reg := sparkle(we.result.(string))
                 switch carton.value.(type) {
                 case string:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
+                        wc[wccount].performed = true
                         wc[wccount].dodefault = false
+                        // pf("when-contains (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
                         ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
+                        wc[wccount].performed = true
                         wc[wccount].dodefault = false
+                        // pf("when-contains (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
                         ramble_on = true
                     }
                 }
@@ -3413,6 +3427,9 @@ tco_reentry:
 
                 // add jump distances to list
                 distList := []int16{}
+                if cofound {
+                    distList = append(distList, codistance)
+                }
                 if hasfound {
                     distList = append(distList, hasdistance)
                 }
@@ -3422,9 +3439,14 @@ tco_reentry:
                 if orfound {
                     distList = append(distList, ordistance)
                 }
-                if cofound {
-                    distList = append(distList, codistance)
-                }
+
+                /* // debug
+                pf("when-distlist: %#v\n",distList)
+                pf("when-hasfound,hasdistance: %v,%v\n",hasfound,hasdistance)
+                pf("when-isfound,isdistance: %v,%v\n",isfound,isdistance)
+                pf("when-cofound,codistance: %v,%v\n",cofound,codistance)
+                pf("when-orfound,ordistance: %v,%v\n",orfound,ordistance)
+                */
 
                 if !(isfound || hasfound || orfound || cofound) {
                     // must be an endwhen
@@ -3444,7 +3466,8 @@ tco_reentry:
 
             lastlock.Lock()
 
-            if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
+            // if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
+            if lastConstruct[ifs][len(lastConstruct[ifs])-1] != C_When {
                 parser.report( "Not currently in a WHEN block.")
                 lastlock.Unlock()
                 break
