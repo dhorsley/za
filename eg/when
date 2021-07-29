@@ -10,16 +10,14 @@ print "\nInput colour : <{colour}>\n\t"
 
 
 when colour
-
 is "yellow"
     print "yellow\n"
 is "blue"
     print "blue\n"
 is "black"
     print "black\n"
-
 contains "red|green"
-
+    println "<in contains clause>"
     when colour
     is "red"
         print "red\n "
@@ -27,10 +25,8 @@ contains "red|green"
     is "green"
         print "green\n "
     endwhen
-
 or
     print "unknown colour.\n"
-
 endwhen
 
 
