@@ -2013,7 +2013,6 @@ tco_reentry:
 
                 lastlock.RLock()
                 switch lastConstruct[ifs][depth[ifs]-1] {
-
                 case C_For, C_Foreach:
                     thisLoop = &loops[ifs][depth[ifs]]
                     pc = (*thisLoop).forEndPos - 1
@@ -2021,6 +2020,14 @@ tco_reentry:
                 case C_While:
                     thisLoop = &loops[ifs][depth[ifs]]
                     pc = (*thisLoop).whileContinueAt - 1
+
+                case C_When:
+                    // mark this as an error for now, as we don't currently
+                    //  backtrack through lastConstruct to check the actual
+                    //  loop type so that it can be properly unwound.
+                    parser.report("Attempting to CONTINUE inside a WHEN is not permitted.")
+                    finish(false,ERR_SYNTAX)
+
                 }
                 lastlock.RUnlock()
 
