@@ -1,0 +1,9 @@
+#!/usr/bin/za
+
+foreach line in <-"/dev/stdin"
+    when line
+    contains "^[aA]"
+        println line
+    endwhen
+endfor
+
