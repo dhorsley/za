@@ -59,7 +59,7 @@ end
 #
 
 cls
-wrap(true)
+# wrap(true) # unsupported
 
 #           name        row col h   w           title   border
 pane define "input",    1,  1,  3,  term_w(),   "",     "topline"

@@ -37,6 +37,11 @@ type sortStructString struct {
     v string
 }
 
+type sortStructInterface struct {
+    k string
+    v interface{}
+}
+
 type sortStructFloat struct {
     k string
     v float64
@@ -1145,6 +1150,12 @@ func buildListLib() {
                     sort.Slice(kv,func(i,j int) bool { return kv[i].v < kv[j].v })
                     l:=make(map[string]string); for _,v:=range kv { l[v.k]=v.v }
                     return l,nil
+                case interface{}:
+                    kv:=make([]sortStructInterface,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInterface{k:k,v:v}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].k < kv[j].k })
+                    l:=make(map[string]interface{}); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
                 default:
                     pf("Error: unknown type '%T' in sort()\n",list)
                     finish(false,ERR_EVAL)
@@ -1205,6 +1216,12 @@ func buildListLib() {
                     for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructString{k:k,v:v.(string)}) }
                     sort.Slice(kv,func(i,j int) bool { return kv[i].v > kv[j].v })
                     l:=make(map[string]string); for _,v:=range kv { l[v.k]=v.v }
+                    return l,nil
+                case interface{}:
+                    kv:=make([]sortStructInterface,0,len(list.(map[string]interface{})))
+                    for k,v:=range list.(map[string]interface{}) { kv=append(kv,sortStructInterface{k:k,v:v}) }
+                    sort.Slice(kv,func(i,j int) bool { return kv[i].k > kv[j].k })
+                    l:=make(map[string]interface{}); for _,v:=range kv { l[v.k]=v.v }
                     return l,nil
                 default:
                     pf("Error: unknown type '%T' in sort()\n",list)
