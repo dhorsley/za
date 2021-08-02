@@ -159,6 +159,8 @@ syntax match conversion_functions "\(.\|\s*\)write_struct\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)read_struct\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)btoi\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)itob\s*("he=e-1
+syntax match conversion_functions "\(.\|\s*\)dtoo\s*("he=e-1
+syntax match conversion_functions "\(.\|\s*\)otod\s*("he=e-1
 
 syntax match internal_functions "\(.\|\s*\)execpath\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)last\s*("he=e-1
@@ -376,6 +378,10 @@ syntax match os_functions "\(.\|\s*\)chroot\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)delete\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)rename\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)copy\s*("he=e-1
+syntax match os_functions "\(.\|\s*\)can_read\s*("he=e-1
+syntax match os_functions "\(.\|\s*\)can_write\s*("he=e-1
+syntax match os_functions "\(.\|\s*\)parent\s*("he=e-1
+syntax match os_functions "\(.\|\s*\)fileabs\s*("he=e-1
 
 syntax match html_functions "\(.\|\s*\)wpage\s*("he=e-1
 syntax match html_functions "\(.\|\s*\)wbody\s*("he=e-1

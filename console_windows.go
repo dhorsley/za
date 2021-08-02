@@ -663,10 +663,22 @@ func wrappedGetCh(p int) (k int) {
 
         if c != nil {
             switch {
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+                k = 10
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+                k = 11
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
+                k = 8
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
+                k = 9
             case bytes.Equal(c, []byte{3}):
                 k = 3 // ctrl-c
             case bytes.Equal(c, []byte{4}):
                 k = 4 // ctrl-d
+            case bytes.Equal(c, []byte{27,91,53,126}): // pgup
+                k = 15 // replaces Shift In (SI)
+            case bytes.Equal(c, []byte{27,91,54,126}): // pgdown
+                k = 14 // replaces Shift Out (SO)
             case bytes.Equal(c, []byte{13}):
                 k = 13 // enter
             case bytes.Equal(c, []byte{0xc2, 0xa3}):

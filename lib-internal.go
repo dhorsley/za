@@ -50,6 +50,8 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case map[string]string:
         return len(args),nil
+    case map[string][]string:
+        return len(args),nil
     case map[string]int:
         return len(args),nil
     case map[string]bool:
@@ -110,7 +112,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
-        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit","wrap",
+        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit",
         "enum_names","enum_all",
     }
 
@@ -345,6 +347,7 @@ func buildInternalLib() {
         return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
     }
 
+    /*
     slhelp["wrap"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable line wrap in panes. Returns the previous state."}
     stdlib["wrap"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("wrap",args,1,"1","bool"); !ok { return nil,err }
@@ -354,6 +357,7 @@ func buildInternalLib() {
         lastlock.Unlock()
         return lastwrap,nil
     }
+    */
 
     slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
     stdlib["ansi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {

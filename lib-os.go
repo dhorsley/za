@@ -6,6 +6,8 @@ package main
 import (
     "errors"
     "os"
+    "path/filepath"
+    "golang.org/x/sys/unix"
     "io"
     "syscall"
     "regexp"
@@ -37,7 +39,7 @@ func buildOsLib() {
     // os level
 
     features["os"] = Feature{version: 1, category: "os"}
-    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", }
+    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "fileabs", }
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
@@ -52,11 +54,11 @@ func buildOsLib() {
 
         // get file list
         f, err := os.Open(dir)
-        if err != nil { return nil,errors.New("Path not found in dir()") }
+        if err != nil { return []dirent{},nil } // errors.New("Path not found in dir()") }
 
         files, err := f.Readdir(-1)
         f.Close()
-        if err != nil { return nil,errors.New("Could not complete directory listing in dir()") }
+        if err != nil { return []dirent{},nil } // errors.New("Could not complete directory listing in dir()") }
 
         var dl []dirent
         for _, file := range files {
@@ -71,6 +73,21 @@ func buildOsLib() {
         }
 
         return dl,nil
+    }
+
+    slhelp["parent"] = LibHelp{in: "string", out: "string", action: "Returns the parent directory."}
+    stdlib["parent"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("parent",args,1,"1","string"); !ok { return nil,err }
+        return filepath.Dir(args[0].(string)),nil
+    }
+
+    slhelp["fileabs"] = LibHelp{in: "string", out: "string", action: "Returns the absolute pathname of input string."}
+    stdlib["fileabs"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("fileabs",args,1,"1","string"); !ok { return nil,err }
+        fp,err:=filepath.Abs(args[0].(string))
+        // pf("abs-i: %s\n",args[0].(string))
+        // pf("abs-o: %s\n",fp)
+        return fp,nil
     }
 
     slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
@@ -99,7 +116,20 @@ func buildOsLib() {
     stdlib["cd"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
         err=syscall.Chdir(args[0].(string))
-        return nil, err
+        if err==nil { return true,nil }
+        return false, nil
+    }
+
+    slhelp["can_read"] = LibHelp{in: "string", out: "", action: "Check if path is readable."}
+    stdlib["can_read"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("can_read",args,1,"1","string"); !ok { return nil,err }
+        return unix.Access(args[0].(string),unix.R_OK) == nil, nil
+    }
+
+    slhelp["can_write"] = LibHelp{in: "string", out: "", action: "Check if path is writeable."}
+    stdlib["can_write"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("can_write",args,1,"1","string"); !ok { return nil,err }
+        return unix.Access(args[0].(string),unix.W_OK) == nil, nil
     }
 
     slhelp["delete"] = LibHelp{in: "string", out: "bool", action: "Delete a file."}

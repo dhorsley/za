@@ -54,10 +54,6 @@ CHANGE LOG
                 FOREACH loop in the same function block.
             - it's probably fine as it is, but should review soon.
 
-    * added some more types to VAR. (and INIT functionality merged into VAR)
-    * added support for an identifier list in VAR: eg var a,b,c int = 42
-    * added support for [] and [size] as prefix to type in VAR.
-
     * struct default values:
         - You may now supply a default value inside a struct definition for a field.
         - Format: struct sn; a int [ = value ]; endstruct
@@ -71,6 +67,10 @@ CHANGE LOG
         - this is currently only implemented with scalar creations of struct in VAR.
             - still need to add default value support in, e.g., var people []person
             - should just be a virtual copy/paste job, but testing current implementation first.
+
+    * added map[string]interface to sort(). sorts on key instead of value.
+    * added pgup/pgdown to wrappedGetCh() for use in keypress(). (dec 15/dec 14)
+        - untested in windows. windows is also missing copy/paste functionality.
 
 
     language features
@@ -112,6 +112,11 @@ CHANGE LOG
             >> foreach a in q ?> `#.has_start("d")` -> "$uc #"
             >>   println a
             >> endfor
+
+
+    * added some more types to VAR. (and INIT functionality merged into VAR)
+    * added support for an identifier list in VAR: eg var a,b,c int = 42
+    * added support for [] and [size] as prefix to type in VAR.
 
 
     library features
@@ -159,7 +164,7 @@ CHANGE LOG
         - low object count, around 100 fps.
         - 30-60 fps achievable if the draw count is kept down with batches.
         - you wouldn't ever want to try writing a game with this language, but it
-            should be able to keep up on simple GUIs if done right.
+            is able to keep up on simple GUIs.
 
     other stuff:
 
@@ -171,6 +176,10 @@ CHANGE LOG
     * added mem_summary() :  returns list of variable storage sizes per function space allocation.
 
     * added check in VAR to explicitly prevent redeclaration.
+
+    * added some more lib calls: 
+        - os: can_read, can_write, parent, fileabs
+        - conversion: dtoo, otod
 
 
 1.0.13

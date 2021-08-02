@@ -75,7 +75,7 @@ func buildConversionLib() {
         "byte","int", "int64", "float", "bool", "string", "kind", "char", "asc","uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
-        "btoi","itob",
+        "btoi","itob","dtoo","otod",
     }
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
@@ -187,6 +187,18 @@ func buildConversionLib() {
             return 1,nil
         }
         return 0,nil
+    }
+
+    slhelp["dtoo"] = LibHelp{in: "var", out: "string", action: "Convert decimal int to octal string."}
+    stdlib["dtoo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("dtoo",args,1,"1","int"); !ok { return nil,err }
+        return strconv.FormatInt(int64(args[0].(int)),8),nil
+    }
+
+    slhelp["otod"] = LibHelp{in: "var", out: "string", action: "Convert octal string to decimal int."}
+    stdlib["otod"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("otod",args,1,"1","string"); !ok { return nil,err }
+        return strconv.ParseInt(args[0].(string),8,64)
     }
 
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
