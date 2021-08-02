@@ -4,6 +4,11 @@ foreach line in <-"/dev/stdin"
     when line
     contains "^[aA]"
         println line
+    has line ~i "^G"
+        println "* {line}"
+    has match(line,"^[dD]")
+        println "M {line}"
     endwhen
 endfor
 
+println "\n\n",80*"-","\n",line_filter(<-"/dev/stdin","^[abc]")

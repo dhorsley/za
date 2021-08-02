@@ -35,7 +35,12 @@ func buildDateLib() {
 
 	slhelp["date_human"] = LibHelp{in: "none", out: "string", action: "Returns the current date and time in a readable format (RFC822Z)"}
 	stdlib["date_human"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("date_human",args,0); !ok { return nil,err }
+        if ok,err:=expect_args("date_human",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
+        if len(args)==1 {
+            return time.Unix(int64(args[0].(int)),0).Format(time.RFC822Z),nil
+        }
         return time.Now().Format(time.RFC822Z),nil
     }
 

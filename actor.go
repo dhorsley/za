@@ -114,6 +114,8 @@ func GetAsInt64(expr interface{}) (int64, bool) {
         return int64(i), false
     case int64:
         return i, false
+    case uint32:
+        return int64(i), false
     case uint8:
         return int64(i), false
     case string:
@@ -133,6 +135,8 @@ func GetAsInt(expr interface{}) (int, bool) {
     case uint:
         return int(i), false
     case int64:
+        return int(i), false
+    case uint32:
         return int(i), false
     case uint8:
         return int(i), false
