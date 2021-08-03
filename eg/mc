@@ -184,6 +184,12 @@ def get_name()
     return join([npath,file.name],"/").tr("s","/").fileabs
 end
 
+def refresh(lp,rp)
+    clear_pane("left"); clear_pane("right")
+    show_left(ld,lrow,lwinheight,cursorl)
+    show_right(rd,rrow,rwinheight,cursorr)
+end
+
 def redef_layout()
 
     setglob sw=term_w()
@@ -259,11 +265,13 @@ while !quit
 
     # banner
     pane select "banner"
-    br="[#fbyellow]"
-    at 0,0; print "[#b0][#ul]",term_w()*" "
+    br="[#fbyellow][#bold][#b1]"
+
+    at 0,0; print "[#b0]",term_w()*" "
     at 0,0
-    print "[#7]zamc : ({br}ret[#7]) cd - ({br}i[#7]) file info - ({br}e[#7]) edit - "
-    print "({br}v[#7]) view - ({br}x[#7]) execute - ({br}b[#7]) back - ({br}q[#7]) quit[#-]"
+    print "[#7]zamc : {br}ret[#-] cd  {br}i[#-] info  {br}e[#-] edit  "
+    print "{br}c[#-] copy  {br}r[#-] rename  {br}d[#-] delete  {br}n[#-] mkdir  "
+    print "{br}v[#-] view  {br}x[#-] execute  {br}b[#-] back  {br}q[#-] quit"
 
     # user input
     k=keypress(100)
@@ -292,19 +300,119 @@ while !quit
             rrow_count=show_right(rd,rrow,rwinheight,cursorr)
         endif
 
+    is "c"
+        # copy
+
+        if leftside
+            on ld.len==0 do break
+            dst=rpath
+        else
+            on rd.len==0 do break
+            dst=lpath
+        endif
+
+        n=get_name()
+
+        if is_dir(n)
+            | cp -pR {n} {dst}/
+        else
+            | cp {n} {dst}/
+        endif
+
+        if leftside
+            rd=sort_dir(rpath)
+        else
+            ld=sort_dir(lpath)
+        endif
+
+        refresh()
+
+
+    is "r"
+        # rename
+        if leftside
+            on ld.len==0 do break
+        else
+            on rd.len==0 do break
+        endif
+
+        n=get_name()
+        pane select "global"
+        clear_line(1,1)
+        at 1,1; print "[#b7][#1]"
+        prompt m "New Filename : "
+        if leftside
+            | mv {n} {lpath}/{m}
+            ld=sort_dir(lpath)
+        else
+            | mv {n} {rpath}/{m}
+            rd=sort_dir(rpath)
+        endif
+        refresh()
+
+    is "d"
+        # delete
+        if leftside
+            on ld.len==0 do break
+        else
+            on rd.len==0 do break
+        endif
+
+        n=get_name()
+
+        pane select "global"
+        clear_line(1,1)
+        at 1,1; print "** Press 'y' to confirm deletion! **"
+        k=keypress()
+        when k.char.lower
+        is "y"
+            if is_dir(n)
+                | rm -fr {n}
+            else
+                delete(n)
+            endif
+        endwhen
+
+        if leftside
+            ld=sort_dir(lpath)
+            cursorl=1; lrow=1
+        else
+            rd=sort_dir(rpath)
+            cursorr=1; rrow=1
+        endif
+
+        refresh()
+
+
+    is "n"
+        # new directory (mkdir)
+
+        pane select "global"
+        clear_line(1,1)
+        at 1,1; print "[#b7][#1]"
+        prompt nd "New Directory Name : "
+
+        if leftside
+            | mkdir -p {lpath}/{nd}
+            ld=sort_dir(lpath)
+        else
+            | mkdir -p {rpath}/{nd}
+            rd=sort_dir(rpath)
+        endif
+        refresh()
+
+
     is "m"
 
         n=get_name()
         pane select "global"
         clear_line(1,1)
         at 1,1; print "[#b7][#1]"
-        prompt m "New Mode : "
+        prompt m "New File Mode : "
         on is_number(m) do | chmod {m} {n}
         ld=sort_dir(lpath)
         rd=sort_dir(rpath)
-        clear_pane("left"); clear_pane("right")
-        show_left(ld,lrow,lwinheight,cursorl)
-        show_right(rd,rrow,rwinheight,cursorr)
+        refresh()
 
     is "e"
         if leftside
@@ -316,9 +424,7 @@ while !quit
         endif
         fullname=join([npath,file.name],"/").tr("s","/").fileabs
         edit(fullname)
-        clear_pane("left"); clear_pane("right")
-        show_left(ld,lrow,lwinheight,cursorl)
-        show_right(rd,rrow,rwinheight,cursorr)
+        refresh()
 
     is "v"
         if leftside
@@ -330,9 +436,7 @@ while !quit
         endif
         fullname=join([npath,file.name],"/").tr("s","/").fileabs
         paginate(fullname)
-        clear_pane("left"); clear_pane("right")
-        show_left(ld,lrow,lwinheight,cursorl)
-        show_right(rd,rrow,rwinheight,cursorr)
+        refresh()
 
     is "x"
         if leftside
@@ -345,9 +449,7 @@ while !quit
         fullname=join([npath,file.name],"/").tr("s","/").fileabs
         execute(fullname)
         keypress()
-        clear_pane("left"); clear_pane("right")
-        show_left(ld,lrow,lwinheight,cursorl)
-        show_right(rd,rrow,rwinheight,cursorr)
+        refresh()
 
     has k in 8..9
         leftside=!leftside
@@ -433,9 +535,7 @@ while !quit
         popup(path,file)
 
         redef_layout()
-        clear_pane("left"); clear_pane("right")
-        show_left(ld,lrow,lwinheight,cursorl)
-        show_right(rd,rrow,rwinheight,cursorr)
+        refresh()
 
     has k==13
 
