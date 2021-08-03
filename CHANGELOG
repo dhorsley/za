@@ -180,6 +180,8 @@ CHANGE LOG
     * added some more lib calls: 
         - os: can_read, can_write, parent, fileabs
         - conversion: dtoo, otod
+        - os: is_symlink, is_device, is_pipe, is_socket, is_sticky, is_setuid, is_setgid
+            - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
 
 
 1.0.13

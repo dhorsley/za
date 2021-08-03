@@ -24,7 +24,7 @@ func buildFileLib() {
     features["file"] = Feature{version: 1, category: "os"}
     categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
-                        "is_file", "is_dir", "is_soft", "is_pipe", "perms",
+                        "is_file", "is_dir", "perms",
                         "fopen", "fclose","fseek","fread","fwrite","feof",
     }
 
@@ -215,6 +215,7 @@ func buildFileLib() {
         }
     }
 
+    /*
     slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
     stdlib["is_soft"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("is_soft",args,1,"1","string"); !ok { return nil,err }
@@ -236,6 +237,7 @@ func buildFileLib() {
             return false, err
         }
     }
+    */
 
     slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
     stdlib["perms"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {

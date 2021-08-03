@@ -3722,18 +3722,18 @@ tco_reentry:
             commaAt := findDelim(inbound.Tokens, O_Comma, 1)
 
             if commaAt == -1 || commaAt == inbound.TokenCount {
-                parser.report(  "Bad delimiter in AT.")
+                parser.report("Bad delimiter in AT.")
                 finish(false, ERR_SYNTAX)
             } else {
 
                 expr_row, err := parser.Eval(ifs,inbound.Tokens[1:commaAt])
                 if expr_row==nil || err != nil {
-                    parser.report( sf("Evaluation error in %v", expr_row))
+                    parser.report(sf("Evaluation error in %v", expr_row))
                 }
 
                 expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:])
                 if expr_col==nil || err != nil {
-                    parser.report(  sf("Evaluation error in %v", expr_col))
+                    parser.report(sf("Evaluation error in %v", expr_col))
                 }
 
                 atlock.Lock()
@@ -3772,46 +3772,57 @@ tco_reentry:
                     }
                 } else {
                     // prompt command:
-                    if inbound.TokenCount < 3 {
-                        parser.report( "Incorrect arguments for PROMPT command.")
-                        finish(false, ERR_SYNTAX)
-                        break
-                    } else {
-                        validator := ""
-                        broken := false
-                        expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
-                        if expr==nil {
-                            parser.report( "Could not evaluate in PROMPT command.")
+                    if str.ToLower(inbound.Tokens[1].tokText)=="colour" {
+                        pcol:=parser.wrappedEval(ifs,ifs,inbound.Tokens[2:])
+                        if pcol.evalError {
+                            parser.report("could not evaluate prompt colour")
                             finish(false,ERR_EVAL)
                             break
                         }
-                        if prompt_ev_err == nil {
-                            processedPrompt := expr.(string)
-                            echoMask,_:=vget(0,"@echomask")
-                            if inbound.TokenCount > 3 {
-                                val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
-                                if val_ex_error != nil {
-                                    parser.report("Validator invalid in PROMPT!")
-                                    finish(false,ERR_EVAL)
-                                    break
-                                }
-                                validator = val_ex.(string)
-                                intext := ""
-                                validated := false
-                                for !validated || broken {
-                                    intext, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
-                                    validated, _ = regexp.MatchString(validator, intext)
-                                }
-                                if !broken {
-                                    vset(ifs, inbound.Tokens[1].tokText, intext)
-                                }
-                            } else {
-                                var inp string
-                                inp, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
-                                vset(ifs, inbound.Tokens[1].tokText, inp)
+                        promptColour="[#"+sf("%v",pcol.result)+"]"
+                        // pf("colour is '"+promptColour+"'\n")
+                    } else {
+                        if inbound.TokenCount < 3 {
+                            parser.report( "Incorrect arguments for PROMPT command.")
+                            finish(false, ERR_SYNTAX)
+                            break
+                        } else {
+                            validator := ""
+                            broken := false
+                            expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
+                            if expr==nil {
+                                parser.report( "Could not evaluate in PROMPT command.")
+                                finish(false,ERR_EVAL)
+                                break
                             }
-                            if broken {
-                                finish(false, 0)
+                            if prompt_ev_err == nil {
+                                processedPrompt := expr.(string)
+                                echoMask,_:=vget(0,"@echomask")
+                                if inbound.TokenCount > 3 {
+                                    val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
+                                    if val_ex_error != nil {
+                                        parser.report("Validator invalid in PROMPT!")
+                                        finish(false,ERR_EVAL)
+                                        break
+                                    }
+                                    validator = val_ex.(string)
+                                    intext := ""
+                                    validated := false
+                                    for !validated || broken {
+                                        intext, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                        validated, _ = regexp.MatchString(validator, intext)
+                                    }
+                                    if !broken {
+                                        vset(ifs, inbound.Tokens[1].tokText, intext)
+                                    }
+                                } else {
+                                    var inp string
+                                    inp, _, broken = getInput(ifs,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    vset(ifs, inbound.Tokens[1].tokText, inp)
+                                }
+                                if broken {
+                                    finish(false, 0)
+                                }
                             }
                         }
                     }
