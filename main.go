@@ -183,6 +183,7 @@ var no_interpolation bool   // to disable string interpolation
 var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // to disable ansi colour output
 var lineWrap bool           // optional pane line wrap.
+var promptColour string
 
 // setup getInput() history for interactive mode
 var curHist int
@@ -359,6 +360,9 @@ func run() {
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
+
+    // set default prompt colour
+    promptColour=defaultPromptColour
 
     // turn debug mode off
     debug_level = 0
@@ -953,7 +957,7 @@ func run() {
         at(row, col)
         */
         row,col=GetCursorPos()
-        pcol := promptColour
+        pcol := defaultPromptColour
 
         // simple, inelegant, probably buggy REPL
         for {

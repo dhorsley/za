@@ -1,4 +1,4 @@
-#!/usr/bin/za
+#!/usr/bin/za -S
 
 define clear_pane(p)
     pane select p
@@ -106,6 +106,17 @@ define popup(path,file)
     clear_pane("right")
 end
 
+def get_mode_char(mi)
+    on is_symlink(mi) do return "L",true
+    on is_pipe(mi) do return "p",true
+    on is_device(mi) do return "D",true
+    on is_socket(mi) do return "S",true
+    # on is_setuid(mi) do return "u",true
+    # on is_setgid(mi) do return "g",true
+    # on is_sticky(mi) do return "t",true
+    return "",false
+end
+
 def show_left(ld,lrow,lwinheight,cursorl)
     # show left files
     pane select "left"
@@ -116,8 +127,20 @@ def show_left(ld,lrow,lwinheight,cursorl)
         colmax=f.name.len
         on colmax>maxsl do colmax=maxsl
         doinvert=?? lrow_count==cursorl "[#invert]":""
+        mt,found=get_mode_char(f.mode.int)
+        sz=" "*10
+        if !found
+            if f.isdir
+                mt="[#1]d"
+            else
+                mt="[#4]f"
+                sz="%10d".format(f.size)
+            endif
+        else
+            mt="[#5]"+mt
+        endif
         om=dtoo(f.mode.int%512)
-        at lrow_count++,1; print (" {doinvert}%s [#3]%03s[#4] %-{=maxsl}s %10d[#-]").format(??f.isdir "[#1]D":"[#4]F",om,f.name[:colmax],f.size)
+        at lrow_count++,1; print " {doinvert}%s [#3]%03s[#4] %-{=maxsl}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return lrow_count
 end
@@ -132,10 +155,33 @@ def show_right(rd,rrow,rwinheight,cursorr)
         colmax=f.name.len
         on colmax>maxsr do colmax=maxsr
         doinvert=?? rrow_count==cursorr "[#invert]":""
+        mt,found=get_mode_char(f.mode.int)
+        sz=" "*10
+        if !found
+            if f.isdir
+                mt="[#1]d"
+            else
+                mt="[#4]f"
+                sz="%10d".format(f.size)
+            endif
+        else
+            mt="[#5]"+mt
+        endif
         om=dtoo(f.mode.int%512)
-        at rrow_count++,1; print (" {doinvert}%s [#3]%03s[#4] %-{=maxsr}s %10d[#-]").format(??f.isdir "[#1]D":"[#4]F",om,f.name[:colmax],f.size)
+        at rrow_count++,1; print " {doinvert}%s [#3]%03s[#4] %-{=maxsr}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return rrow_count
+end
+
+def get_name()
+    if leftside
+        npath=lpath
+        file=ld[lrow+cursorl-2]
+    else
+        npath=rpath
+        file=rd[rrow+cursorr-2]
+    endif
+    return join([npath,file.name],"/").tr("s","/").fileabs
 end
 
 def redef_layout()
@@ -177,6 +223,8 @@ def redef_layout()
 
 end
 
+
+prompt colour 1
 
 lpath="."; rpath="."
 input lpath optarg 1
@@ -227,7 +275,7 @@ while !quit
 
     is "b"
         if leftside
-            lpath=lpath.parent
+            lpath=lpath.fileabs.parent
             ld=sort_dir(lpath)
             ltitle=" [#b1][#0]Path : [#5]%s[#-] ".format(lpath)
             clear_pane("left")
@@ -235,7 +283,7 @@ while !quit
             lrow=1; cursorl=1
             lrow_count=show_left(ld,lrow,lwinheight,cursorl)
         else
-            rpath=rpath.parent
+            rpath=rpath.fileabs.parent
             rd=sort_dir(rpath)
             rtitle=" [#b1][#0]Path : [#6]%s[#-] ".format(rpath)
             clear_pane("right")
@@ -243,6 +291,20 @@ while !quit
             rrow=1; cursorr=1
             rrow_count=show_right(rd,rrow,rwinheight,cursorr)
         endif
+
+    is "m"
+
+        n=get_name()
+        pane select "global"
+        clear_line(1,1)
+        at 1,1; print "[#b7][#1]"
+        prompt m "New Mode : "
+        on is_number(m) do | chmod {m} {n}
+        ld=sort_dir(lpath)
+        rd=sort_dir(rpath)
+        clear_pane("left"); clear_pane("right")
+        show_left(ld,lrow,lwinheight,cursorl)
+        show_right(rd,rrow,rwinheight,cursorr)
 
     is "e"
         if leftside
@@ -369,6 +431,11 @@ while !quit
         endif
 
         popup(path,file)
+
+        redef_layout()
+        clear_pane("left"); clear_pane("right")
+        show_left(ld,lrow,lwinheight,cursorl)
+        show_right(rd,rrow,rwinheight,cursorr)
 
     has k==13
 

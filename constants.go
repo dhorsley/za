@@ -33,7 +33,7 @@ const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "
 const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@pwd}[#-] > "
 const promptStringShort = "[#1]{@user}[#-] : [#invert]{@pwd}[#-] : "
-const promptColour = "[#6]"
+const defaultPromptColour = "[#6]"
 const recolour = "[#5][#i1]"
 
 const default_WriteMode = 0644
