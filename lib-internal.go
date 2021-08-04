@@ -773,18 +773,16 @@ func buildInternalLib() {
     slhelp["tokens"] = LibHelp{in: "string", out: "struct", action: "Returns a structure containing a list of tokens ([#i1].tokens[#i0]) in a string and a list ([#i1].types[#i0]) of token types."}
     stdlib["tokens"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("tokens",args,1,"1","string"); !ok { return nil,err }
-        tt := Error
         var toks []string
         var toktypes []string
         cl := int16(1)
         for p := 0; p < len(args[0].(string)); {
-            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p, tt)
-            tt = t.tokType
+            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p)
             if tokPos != -1 {
                 p = tokPos
             }
             toks = append(toks, t.tokText)
-            toktypes = append(toktypes, tokNames[tt])
+            toktypes = append(toktypes, tokNames[t.tokType])
             if eof || eol {
                 break
             }

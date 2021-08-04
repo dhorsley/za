@@ -42,7 +42,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     for ; pos < len(input); {
 
-        tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos, tokenType)
+        tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos)
 
         // If we found something then move the cursor along to next word
         if tokPos != -1 { pos = tokPos }
