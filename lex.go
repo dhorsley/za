@@ -43,7 +43,7 @@ type lcstruct struct {
 var lexCache=make(map[string]lcstruct)
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int16, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
+func nextToken(input string, curLine *int16, start int) (carton Token, startNextTokenAt int, eol bool, eof bool) {
 
     if rv,found:=lexCache[string(start)+"@@"+input]; found {
         return rv.t,rv.s,rv.eol,rv.eof
