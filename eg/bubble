@@ -1,0 +1,43 @@
+#!/usr/bin/za
+
+doc `
+    simple bubble sort
+`
+
+define bs(a)
+
+    c=2
+
+    while
+
+        changed=false
+        for e = 0 to a.len-c
+            if a[e]>a[e+1]
+                tmp=a[e]
+                a[e]=a[e+1]
+                a[e+1]=tmp
+                changed=true
+            endif
+        endfor
+        on not changed or c++==a.len-2 do break
+
+    endwhile
+
+    return a
+
+end
+
+# MAIN
+
+epoch_nano_time().seed
+
+var arr [1000] int
+
+for e=0 to arr.len - 1
+    arr[e]=rand(100000)
+endfor
+
+println "before : \n",arr
+println "after  : \n",arr.bs
+
+

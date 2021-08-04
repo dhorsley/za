@@ -13,6 +13,24 @@ define full_cls()
     cls
 end
 
+define bytesize(i)
+    unit="B"
+    if i>=1099511627776
+        unit="TB"; i=float(i)/1099511627776
+    endif
+    if i>=1073741824
+        unit="GB"; i=float(i)/1073741824
+    endif
+    if i>=1048576
+        unit="MB"; i=float(i)/1048576
+    endif
+    if i>=1024
+        unit="KB"; i=float(i)/1024
+    endif
+    on unit=="B" do return "%d B".format(i)
+    return format("%.3f %s",float(i),unit)
+end
+
 # @todo: add split on space:
 define wrap(s)
     ns=""
@@ -126,21 +144,23 @@ def show_left(ld,lrow,lwinheight,cursorl)
         f=ld[lfp-1]
         colmax=f.name.len
         on colmax>maxsl do colmax=maxsl
-        doinvert=?? lrow_count==cursorl "[#invert]":""
+        doinvert=?? (leftside && lrow_count==cursorl) "[#invert]":""
+        ital    =?? (leftside && doinvert!="") "[#i1][#ul]":""
         mt,found=get_mode_char(f.mode.int)
-        sz=" "*10
+        sz=" "*15
         if !found
             if f.isdir
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                sz="%10d".format(f.size)
+                # sz="%15d".format(f.size)
+                sz="%15s".format(f.size.bytesize)
             endif
         else
             mt="[#5]"+mt
         endif
         om=dtoo(f.mode.int%512)
-        at lrow_count++,1; print " {doinvert}%s [#3]%03s[#4] %-{=maxsl}s %s[#-]".format(mt,om,f.name[:colmax],sz)
+        at lrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsl}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return lrow_count
 end
@@ -154,21 +174,23 @@ def show_right(rd,rrow,rwinheight,cursorr)
         f=rd[rfp-1]
         colmax=f.name.len
         on colmax>maxsr do colmax=maxsr
-        doinvert=?? rrow_count==cursorr "[#invert]":""
+        doinvert=?? (not leftside and rrow_count==cursorr) "[#invert]":""
+        ital    =?? (not leftside && doinvert!="") "[#i1][#ul]":""
         mt,found=get_mode_char(f.mode.int)
-        sz=" "*10
+        sz=" "*15
         if !found
             if f.isdir
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                sz="%10d".format(f.size)
+                #sz="%15d".format(f.size)
+                sz="%15s".format(f.size.bytesize)
             endif
         else
             mt="[#5]"+mt
         endif
         om=dtoo(f.mode.int%512)
-        at rrow_count++,1; print " {doinvert}%s [#3]%03s[#4] %-{=maxsr}s %s[#-]".format(mt,om,f.name[:colmax],sz)
+        at rrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsr}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return rrow_count
 end
@@ -224,9 +246,18 @@ def redef_layout()
     pane define "left" ,lx,ly,lh,lw,ltitle,"double"
     pane define "right",rx,ry,rh,rw,rtitle,"double"
 
-    setglob maxsl=lw-20
-    setglob maxsr=rw-20
+    setglob maxsl=lw-25
+    setglob maxsr=rw-25
 
+end
+
+define empty_break()
+    if leftside
+        on ld.len==0 do return true
+    else
+        on rd.len==0 do return true
+    endif
+    return false
 end
 
 
@@ -330,11 +361,7 @@ while !quit
 
     is "r"
         # rename
-        if leftside
-            on ld.len==0 do break
-        else
-            on rd.len==0 do break
-        endif
+        on empty_break() do break
 
         n=get_name()
         pane select "global"
@@ -352,11 +379,7 @@ while !quit
 
     is "d"
         # delete
-        if leftside
-            on ld.len==0 do break
-        else
-            on rd.len==0 do break
-        endif
+        on empty_break() do break
 
         n=get_name()
 
@@ -403,6 +426,7 @@ while !quit
 
 
     is "m"
+        on empty_break() do break
 
         n=get_name()
         pane select "global"
@@ -415,6 +439,8 @@ while !quit
         refresh()
 
     is "e"
+        on empty_break() do break
+
         if leftside
             npath=lpath
             file=ld[lrow+cursorl-2]
@@ -427,6 +453,8 @@ while !quit
         refresh()
 
     is "v"
+        on empty_break() do break
+
         if leftside
             npath=lpath
             file=ld[lrow+cursorl-2]
@@ -439,6 +467,8 @@ while !quit
         refresh()
 
     is "x"
+        on empty_break() do break
+
         if leftside
             npath=lpath
             file=ld[lrow+cursorl-2]
@@ -523,6 +553,12 @@ while !quit
     is "i"
 
         if leftside
+            on ld.len==0 do break
+        else
+            on rd.len==0 do break
+        endif
+
+        if leftside
             old_path=lpath
             file=ld[lrow+cursorl-2]
             path=lpath
@@ -538,6 +574,8 @@ while !quit
         refresh()
 
     has k==13
+
+        on empty_break() do break
 
         if leftside
             old_path=lpath
