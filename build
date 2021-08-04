@@ -57,8 +57,8 @@ if ! os() ~ "^freebsd"
 endif
 
 when lower(tgt)
-is "libc"
-    println "[#4]Installing to /usr/bin/[#-]\n"
+contains "^(alpine|libc)$"
+    println "[#4]Installing {tgt} build to /usr/bin/[#-]\n"
     | sudo cp -f za /usr/bin
     | sudo chmod 755 /usr/bin/za
 endwhen
