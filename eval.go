@@ -190,7 +190,10 @@ func (p *leparser) binaryLed(prec int8, left interface{}, token Token) (interfac
     case SYM_DOT:
         return p.accessFieldOrFunc(left,p.next().tokText)
     case LParen:
-        return p.callFunction(left,token)
+        switch left.(type) {
+        case string:
+            return p.callFunction(left,token)
+        }
     }
 
 	right,err := p.dparse(prec + 1)
@@ -283,7 +286,8 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
 
     switch left.(type) {
     case []string:
-        var new_list []string
+        // var new_list []string
+        new_list:=make([]string,0,len(left.([]string)))
         for e:=0; e<len(left.([]string)); e++ {
             new_right:=str.Replace(right.(string),"#",`"`+left.([]string)[e]+`"`,-1)
             val,err:=ev(reduceparser,p.fs,new_right)
@@ -298,7 +302,8 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
         return new_list
 
     case []int:
-        var new_list []int
+        // var new_list []int
+        new_list:=make([]int,0,len(left.([]int)))
         for e:=0; e<len(left.([]int)); e++ {
             new_right:=str.Replace(right.(string),"#",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
@@ -313,7 +318,8 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
         return new_list
 
     case []uint:
-        var new_list []uint
+        // var new_list []uint
+        new_list:=make([]uint,0,len(left.([]uint)))
         for e:=0; e<len(left.([]uint)); e++ {
             new_right:=str.Replace(right.(string),"#",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
@@ -328,7 +334,8 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
         return new_list
 
     case []float64:
-        var new_list []float64
+        // var new_list []float64
+        new_list:=make([]float64,0,len(left.([]float64)))
         for e:=0; e<len(left.([]float64)); e++ {
             new_right:=str.Replace(right.(string),"#",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
             val,err:=ev(reduceparser,p.fs,new_right)
@@ -892,6 +899,7 @@ func unOpSqrt(n interface{}) interface{} {
 
 func (p *leparser) tern_if(tok Token) (interface{}) {
     // '??' expr tv [':'|','] fv
+    // tv/fv cannot be parenthesised
     dp,err1:=p.dparse(0)
     tv,err2:=p.dparse(0)
     if p.peek().tokType==SYM_COLON || p.peek().tokType==O_Comma {
@@ -1750,8 +1758,10 @@ func ev(parser *leparser,fs uint32, ws string) (result interface{}, err error) {
     toks:=make([]Token,0,6)
     cl := int16(1)
     var p int
+    var t Token
+    var tokPos int
     for p = 0; p < len(ws);  {
-        t, tokPos, _, _ := nextToken(ws, &cl, p, tt)
+        t, tokPos, _, _ = nextToken(ws, &cl, p, tt)
         tt = t.tokType
         if tokPos != -1 {
             p = tokPos

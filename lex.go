@@ -36,8 +36,18 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM",
 }
 
+type lcstruct struct {
+    t Token;s int;eol bool;eof bool
+}
+
+var lexCache=make(map[string]lcstruct)
+
 /// get the next available token, as a struct, from a given string and starting position.
 func nextToken(input string, curLine *int16, start int, previousToken uint8) (carton Token, startNextTokenAt int, eol bool, eof bool) {
+
+    if rv,found:=lexCache[string(start)+"@@"+input]; found {
+        return rv.t,rv.s,rv.eol,rv.eof
+    }
 
     var tokType uint8
     var word string
@@ -47,7 +57,6 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     var firstChar byte
     var secondChar byte
     var twoChars bool
-    var symword string
     var norepeat string
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant bool
@@ -100,46 +109,46 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
             goto get_nt_eval_point
         }
 
-        symword = string(firstChar)+string(secondChar)
-        switch symword {
+        // symword = string(firstChar)+string(secondChar)
+        switch string(firstChar)+string(secondChar) {
         case "?>": // list filter
-            word=symword
+            word="?>"
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "<-": // file read
-            word=symword
+            word="<-"
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "->": // maps to
-            word=symword
+            word="->"
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "!=":
-            word=symword
+            word="!="
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "<=":
-            word=symword
+            word="<="
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case ">=":
-            word=symword
+            word=">="
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "=|":
-            word=symword
+            word="=|"
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "=@":
-            word=symword
+            word="=@"
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "~i","~f":
-            word=symword
+            word=string(firstChar)+string(secondChar)
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         case "-=","+=","*=","/=","%=":
-            word=symword
+            word=string(firstChar)+string(secondChar)
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
         }
@@ -153,7 +162,8 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     }
 
     // number
-    if str.IndexByte(numeric, firstChar) != -1 && firstChar!='f' {
+    // if str.IndexByte(numeric, firstChar) != -1 && firstChar!='f' {
+    if firstChar!='f' && str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
         nonterm = numeric+"eE"
         term = "\n;"
@@ -161,11 +171,20 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
     }
 
     // solo symbols
+    switch firstChar {
+    case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&','{','}':
+        word = string(firstChar)
+        startNextTokenAt=thisWordStart+1
+        goto get_nt_eval_point
+    }
+
+    /*
     if str.IndexByte(soloChars, firstChar)!=-1 {
         word = string(firstChar)
         startNextTokenAt=thisWordStart+1
         goto get_nt_eval_point
     }
+    */
 
     // identifier or statement
     if str.IndexByte(alphaplus, firstChar) != -1 {
@@ -201,7 +220,7 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
                 }
             }
 
-            if str.IndexByte(beforeE,input[currentChar])>=0 && scientific {
+            if scientific && str.IndexByte(beforeE,input[currentChar])>=0 {
                 pf("Problem lexing character %c in '%s'\n",input[currentChar],str.TrimRight(input,"\n"))
                 os.Exit(ERR_LEX)
             }
@@ -257,7 +276,7 @@ func nextToken(input string, curLine *int16, start int, previousToken uint8) (ca
             break
         }
 
-        if term != "" && str.IndexByte(term, input[currentChar]) != -1 {
+        if len(term)!=0 && str.IndexByte(term, input[currentChar]) != -1 {
             // found a terminator character
 
             if tokType == SingleComment {
@@ -614,6 +633,7 @@ get_nt_exit_point:
 
     if startNextTokenAt>=lenInput { eof=true }
 
+    lexCache[string(start)+"@@"+input]=struct{t Token;s int;eol bool;eof bool}{carton,startNextTokenAt,eol,eof}
     return carton, startNextTokenAt, eol, eof
 
 }
