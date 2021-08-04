@@ -1754,15 +1754,13 @@ func interpolate(fs uint32, s string) (string) {
 func ev(parser *leparser,fs uint32, ws string) (result interface{}, err error) {
 
     // build token list from string 'ws'
-    tt := Error
     toks:=make([]Token,0,6)
     cl := int16(1)
     var p int
     var t Token
     var tokPos int
     for p = 0; p < len(ws);  {
-        t, tokPos, _, _ = nextToken(ws, &cl, p, tt)
-        tt = t.tokType
+        t, tokPos, _, _ = nextToken(ws, &cl, p)
         if tokPos != -1 {
             p = tokPos
         }

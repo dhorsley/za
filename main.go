@@ -1006,7 +1006,6 @@ func run() {
                 // collect input
                 totalInput+=input
 
-                temptok:=Error
                 cl:=int16(0)
                 breakOnCommand:=false
                 tokenIfPresent:=false
@@ -1016,8 +1015,7 @@ func run() {
 
                 for p := 0; p < len(input);  {
 
-                    t, tokPos, _, _ := nextToken(input, &cl, p, temptok)
-                    temptok = t.tokType
+                    t, tokPos, _, _ := nextToken(input, &cl, p)
                     if tokPos != -1 {
                         p = tokPos
                     }
