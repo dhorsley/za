@@ -37,18 +37,33 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
 }
 
 type lcstruct struct {
-    t Token;s int;eol bool;eof bool
+    carton Token;tokPos int;eol bool;eof bool
 }
 
-var lexCache=make(map[string]lcstruct)
+var lexCache=make(map[string]*lcstruct)
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int16, start int) (carton Token, startNextTokenAt int, eol bool, eof bool) {
+func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
 
-    if rv,found:=lexCache[string(start)+"@@"+input]; found {
-        return rv.t,rv.s,rv.eol,rv.eof
+    var found bool
+    lenInput:=len(input)
+
+    // pf("li: %v  ",lenInput)
+    lichunklen:=lenInput-start
+    lc_sz:=27; if lichunklen<lc_sz { lc_sz=lichunklen }
+    if rv,found=lexCache[string(start)+"@@"+input[start:start+lc_sz]]; found {
+        // pf("(lex) key in cache!\n")
+        // pf("key: %#v  ",string(start)+"@@"+input[start:start+lc_sz])
+        // pf("  lo: %v (rv:%+v)\n",rv.tokPos-start,rv)
+        if rv.eol { (*curLine)++ }
+        return
     }
 
+    // pf("(lex) uncached...\n")
+
+    var carton Token
+    var startNextTokenAt int
+    var eol,eof bool
     var tokType uint8
     var word string
     var matchQuote bool
@@ -65,7 +80,6 @@ func nextToken(input string, curLine *int16, start int) (carton Token, startNext
     thisWordStart := -1
 
     // skip past whitespace
-    lenInput:=len(input)
     var currentChar int
     for currentChar = start; currentChar<lenInput ; currentChar++ {
         if input[currentChar] == ' ' || input[currentChar]=='\r' || input[currentChar] == '\t' {
@@ -633,8 +647,11 @@ get_nt_exit_point:
 
     if startNextTokenAt>=lenInput { eof=true }
 
-    lexCache[string(start)+"@@"+input]=struct{t Token;s int;eol bool;eof bool}{carton,startNextTokenAt,eol,eof}
-    return carton, startNextTokenAt, eol, eof
+    rv=&lcstruct{carton,startNextTokenAt,eol,eof}
+    // pf("(lex) ... caching key: %#v\n",string(start)+"@@"+input[start:start+lc_sz])
+    // pf("      ... entry : %#v\n",rv)
+    lexCache[string(start)+"@@"+input[start:start+lc_sz]]=rv
+    return
 
 }
 

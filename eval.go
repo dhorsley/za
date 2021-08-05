@@ -1755,20 +1755,19 @@ func ev(parser *leparser,fs uint32, ws string) (result interface{}, err error) {
 
     // build token list from string 'ws'
     toks:=make([]Token,0,6)
-    cl := int16(1)
+    var cl int16
     var p int
-    var t Token
-    var tokPos int
+    var t *lcstruct
     for p = 0; p < len(ws);  {
-        t, tokPos, _, _ = nextToken(ws, &cl, p)
-        if tokPos != -1 {
-            p = tokPos
+        t = nextToken(ws, &cl, p)
+        if t.tokPos != -1 {
+            p = t.tokPos
         }
-        if t.tokType==Identifier {
-            loc, _ := VarLookup(fs, t.tokText)
-            t.offset=loc
+        if t.carton.tokType==Identifier {
+            loc, _ := VarLookup(fs, t.carton.tokText)
+            t.carton.offset=loc
         }
-        toks = append(toks, t)
+        toks = append(toks, t.carton)
     }
 
     // evaluate token list

@@ -23,9 +23,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     pos := start
     lstart := start
 
-    var eol bool
-
-    var tempToken Token
+    var tempToken *lcstruct
     var phrase = Phrase{}
 
     tokenType := Error
@@ -34,7 +32,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     // simple handler for parens nesting
     var braceNestLevel  int     // round braces
     var sbraceNestLevel int     // square braces
-    var tokPos int
 
     lmv,_:=fnlookup.lmget(fs)
 
@@ -42,12 +39,13 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     for ; pos < len(input); {
 
-        tempToken, tokPos, eol, eof = nextToken(input, &curLine, pos)
+        tempToken = nextToken(input, &curLine, pos)
+        eof=tempToken.eof
 
         // If we found something then move the cursor along to next word
-        if tokPos != -1 { pos = tokPos }
+        if tempToken.tokPos != -1 { pos = tempToken.tokPos }
 
-        tokenType = tempToken.tokType
+        tokenType = tempToken.carton.tokType
 
         // function name token mangling:
         if phrase.TokenCount>0 {
@@ -77,14 +75,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
         if sbraceNestLevel>0 || braceNestLevel>0 {
-            if eol || tokenType==EOL {
+            if tempToken.eol || tokenType==EOL {
                 curLine++
                 continue
             }
         }
 
-        if tempToken.tokType == Error {
-            pf("Error found on line %d in %s\n", curLine+1, tempToken.tokText)
+        if tokenType == Error {
+            pf("Error found on line %d in %s\n", curLine+1, tempToken.carton.tokText)
             break
         }
 
@@ -101,17 +99,17 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
 
         if addToPhrase {
-            phrase.Tokens = append(phrase.Tokens, tempToken)
+            phrase.Tokens = append(phrase.Tokens, tempToken.carton)
             phrase.TokenCount++
         }
 
-        if tempToken.tokType == EOL || tempToken.tokType==SYM_Semicolon {
+        if tokenType == EOL || tokenType == SYM_Semicolon {
 
             // -- add original version
             if pos>0 {
                 if phrase.TokenCount>0 {
                     phrase.Original=input[lstart:pos]
-                    if tempToken.tokType == EOL { phrase.Original=phrase.Original[:pos-lstart-1] }
+                    if tempToken.carton.tokType == EOL { phrase.Original=phrase.Original[:pos-lstart-1] }
                     // fmt.Printf(">> %s <<\n",phrase.Original)
                 } else {
                         phrase.Original=""
@@ -121,7 +119,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             phrase.SourceLine=curLine
             lstart = pos
 
-            if tempToken.tokType==EOL { curLine++ }
+            if tokenType==EOL { curLine++ }
 
             // -- discard empty lines
             if phrase.TokenCount!=0 {

@@ -43,8 +43,8 @@ while !quit
     cls
     print "[#bold]"
     theta=0.0
+    cursoroff()
     for e=0 to 2000
-        cursoroff()
         draw()
     endfor
     rotation+=bounce

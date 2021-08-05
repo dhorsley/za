@@ -1091,12 +1091,14 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
 
     // pf("callFunction started with\nfs %v line %v fn %v\n",evalfs,callline,name)
 
+    /* // test removal - should probably not be interpolating arguments
     for a:=0; a<len(args); a++ {
         switch args[a].(type) {
         case string:
             args[a]=interpolate(evalfs,args[a].(string))
         }
     }
+    */
 
     if f, ok := stdlib[name]; !ok {
 
