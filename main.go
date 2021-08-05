@@ -1006,30 +1006,31 @@ func run() {
                 // collect input
                 totalInput+=input
 
-                cl:=int16(0)
                 breakOnCommand:=false
                 tokenIfPresent:=false
                 tokenOnPresent:=false
                 helpRequest   :=false
                 paneDefine    :=false
 
+                var cl int16
+
                 for p := 0; p < len(input);  {
 
-                    t, tokPos, _, _ := nextToken(input, &cl, p)
-                    if tokPos != -1 {
-                        p = tokPos
+                    t := nextToken(input, &cl, p)
+                    if t.tokPos != -1 {
+                        p = t.tokPos
                     }
 
-                    if t.tokType==C_Help  { helpRequest   =true }
-                    if t.tokType==C_Pane  { paneDefine    =true }
-                    if t.tokType==C_If    { tokenIfPresent=true }
-                    if t.tokType==C_On    { tokenOnPresent=true }
+                    if t.carton.tokType==C_Help  { helpRequest   =true }
+                    if t.carton.tokType==C_Pane  { paneDefine    =true }
+                    if t.carton.tokType==C_If    { tokenIfPresent=true }
+                    if t.carton.tokType==C_On    { tokenOnPresent=true }
 
                     // this is hardly fool-proof, but okay for now:
-                    if t.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
+                    if t.carton.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
 
                     if !helpRequest && !paneDefine {
-                        switch t.tokType {
+                        switch t.carton.tokType {
                         // adders
                         case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
                             nestAccept++
