@@ -12,8 +12,7 @@
 #
 
 define show()
-    # not showing full screen height here, just a demo:
-    for l=1 to 30
+    for l=1 to sl-1
         at l,1; print screen[l]
     endfor
 end
@@ -66,7 +65,7 @@ cursoroff()
 show()
 at 35,1; print "press a key to fill box!"
 keypress()
-at 38,1; print "press <space> to quit!"
+at 38,1; print "press <space> to quit!  "
 
 ob=" "
 b="-"

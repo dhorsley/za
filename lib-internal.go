@@ -775,15 +775,15 @@ func buildInternalLib() {
         if ok,err:=expect_args("tokens",args,1,"1","string"); !ok { return nil,err }
         var toks []string
         var toktypes []string
-        cl := int16(1)
+        var cl int16
         for p := 0; p < len(args[0].(string)); {
-            t, tokPos, eol, eof := nextToken(args[0].(string), &cl, p)
-            if tokPos != -1 {
-                p = tokPos
+            t := nextToken(args[0].(string), &cl, p)
+            if t.tokPos != -1 {
+                p = t.tokPos
             }
-            toks = append(toks, t.tokText)
-            toktypes = append(toktypes, tokNames[t.tokType])
-            if eof || eol {
+            toks = append(toks, t.carton.tokText)
+            toktypes = append(toktypes, tokNames[t.carton.tokType])
+            if t.eof || t.eol {
                 break
             }
         }
