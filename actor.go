@@ -957,6 +957,14 @@ tco_reentry:
                         switch se.result.(type) {
                         case int:
                             size=se.result.(int)
+                        case int32:
+                            size=int(se.result.(int32))
+                        case int64:
+                            size=int(se.result.(int64))
+                        case uint:
+                            size=int(se.result.(uint))
+                        case uint64:
+                            size=int(se.result.(uint64))
                         default:
                             parser.report("size expression must evaluate to an integer")
                             finish(false,ERR_EVAL)
