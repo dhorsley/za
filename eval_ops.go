@@ -10,7 +10,7 @@ import (
     "reflect"
     "strconv"
     str "strings"
-//    "sync/atomic"
+    "sync/atomic"
 )
 
 
@@ -96,7 +96,7 @@ func ev_range(val1 interface{}, val2 interface{}) ([]int) {
         return a
     }
 
-    return nil
+    // unreachable: // return nil
 
 }
 
@@ -121,11 +121,15 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 }
 
 
-func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
+
+    // stacklock.Lock()
+    // defer stacklock.Unlock()
 
     var intInOne bool
     var intInTwo bool
 
+    // short path integers
     switch val1.(type) {
     case int:
         intInOne=true
@@ -136,12 +140,15 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
     }
 
     if intInOne && intInTwo {
-        return val1.(int)+val2.(int)
+        // return val1.(int)+val2.(int)
+        r=val1.(int)+val2.(int)
+        return
     }
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
+    // upcast int to floats
     if intInOne {
         float1 = float64(val1.(int))
         float1OK = true
@@ -155,9 +162,11 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return float1 + float2
     }
 
+    // zero nils 
     if intInOne && val2==nil { return val1.(int) }
     if intInTwo && val1==nil { return val2.(int) }
 
+    // handle string concat
     str1, str1OK := val1.(string)
     str2, str2OK := val2.(string)
 
@@ -165,6 +174,7 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return str1 + str2
     }
 
+    // cast floats to string
     if str1OK && float2OK {
         return str1 + strconv.FormatFloat(float2, 'f', -1, 64)
     }
@@ -172,6 +182,7 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return strconv.FormatFloat(float1, 'f', -1, 64) + str2
     }
 
+    // make nils visible
     if str1OK && val2 == nil {
         return str1 + "nil"
     }
@@ -179,6 +190,7 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return "nil" + str2
     }
 
+    // cast bools to string
     bool1, bool1OK := val1.(bool)
     bool2, bool2OK := val2.(bool)
 
@@ -189,6 +201,7 @@ func ev_add(val1 interface{}, val2 interface{}) (interface{}) {
         return strconv.FormatBool(bool1) + str2
     }
 
+    // array concatenation
     arr1, arr1OK := val1.([]interface{})
     arr2, arr2OK := val2.([]interface{})
     if arr1OK && arr2OK { return append(arr1, arr2...) }
@@ -881,8 +894,8 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
             if !isFunc {
                 // before failing, check if this is a valid enum reference
-                globlock.RLock()
-                defer globlock.RUnlock()
+                tk:=globlock.RLock()
+                defer globlock.RUnlock(tk)
                 if enum[p.preprev.tokText]!=nil {
                     return enum[p.preprev.tokText].members[name]
                 }
@@ -916,7 +929,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                 }
             }
 
-            return callFunction(p.fs,p.line,name,iargs)
+            return callFunction(p.fs,name,iargs)
 
         }
 
@@ -953,8 +966,8 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
         r := reflect.ValueOf(obj)
 
         // test for race condition:
-        vlock.RLock()
-        defer vlock.RUnlock()
+        tk:=vlock.RLock()
+        defer vlock.RUnlock(tk)
         // leaving this in for now. the defer slows things down, but
         // it is catching ident[] use passed through by reference,
         // possibly in the reflect.* calls?
@@ -1087,9 +1100,9 @@ func slice(v interface{}, from, to interface{}) interface{} {
 }
 
 
-func callFunction(evalfs uint32, callline int16, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint32, name string, args []interface{}) (res interface{}) {
 
-    // pf("callFunction started with\nfs %v line %v fn %v\n",evalfs,callline,name)
+    // pf("callFunction started with\nfs %v fn %v\n",evalfs,name)
 
     /* // test removal - should probably not be interpolating arguments
     for a:=0; a<len(args); a++ {
@@ -1121,12 +1134,12 @@ func callFunction(evalfs uint32, callline int16, name string, args []interface{}
             loc,id := GetNextFnSpace(name+"@")
 
             calllock.Lock()
-            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, callline: callline, retvar: "@#"}
+            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, retvar: "@#"}
             calllock.Unlock()
 
-            // atomic.AddInt32(&concurrent_funcs, 1)
+            atomic.AddInt32(&concurrent_funcs, 1)
             rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
-            // atomic.AddInt32(&concurrent_funcs, -1)
+            atomic.AddInt32(&concurrent_funcs, -1)
 
             // handle the returned result, if present.
             res, _ = vget(evalfs, "@#")

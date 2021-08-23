@@ -1,11 +1,13 @@
 package main
 
 import (
-    "sync"
+//    "sync"
+	. "github.com/puzpuzpuz/xsync"
 )
 
 type Nmap struct {
-    sync.RWMutex
+    // sync.RWMutex
+    RBMutex
     nmap    map[uint32]string
 }
 
@@ -14,12 +16,12 @@ func nlmcreate(sz int) *Nmap {
 }
 
 func (u *Nmap) lmexists(k uint32) bool {
-    u.RLock()
+    tk:=u.RLock()
     if _,ok:=u.nmap[k]; ok {
-        u.RUnlock()
+        u.RUnlock(tk)
         return true
     }
-    u.RUnlock()
+    u.RUnlock(tk)
     return false
 }
 
@@ -30,17 +32,17 @@ func (u *Nmap) lmset(k uint32,v string) {
 }
 
 func (u *Nmap) lmget(k uint32) (tmp string,ok bool) {
-	u.RLock()
+    tk:=u.RLock()
     if tmp,ok=u.nmap[k]; ok {
-        u.RUnlock()
+        u.RUnlock(tk)
         return tmp,true
     }
-    u.RUnlock()
+    u.RUnlock(tk)
     return "",false
 }
 
 func (u *Nmap) lmdelete(k uint32) bool {
-	u.Lock()
+    u.Lock()
     if _,ok:=u.nmap[k]; ok {
         delete(u.nmap,k)
 	    u.Unlock()

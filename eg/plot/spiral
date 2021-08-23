@@ -25,14 +25,16 @@ var c         float
 
 epoch_nano_time().seed
 
-rotation = 0.05
+# rotation = 0.05
+rotation = 1f
+max_draw=4500
 width=term_w()
 height=term_h()
 cx=width/2
 cy=height/2
 pi=pi()
 c=rand(7).float
-crate=0.01
+crate=0.00025
 bounce=0.012
 maxrot=13.0
 
@@ -44,7 +46,7 @@ while !quit
     print "[#bold]"
     theta=0.0
     cursoroff()
-    for e=0 to 2000
+    for e=0 to max_draw
         draw()
     endfor
     rotation+=bounce

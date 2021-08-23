@@ -249,8 +249,8 @@ func buildUILib() {
 	slhelp["ui_get_code"] = LibHelp{in: "string", out: "button", action: "Convert Pixel key name to button code for use in events."}
 	stdlib["ui_get_code"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_get_code",args,1,"1","string"); !ok { return nil,err }
-        globlock.RLock()
-        defer globlock.RUnlock()
+        tk:=globlock.RLock()
+        defer globlock.RUnlock(tk)
         if b,there:=buttons[args[0].(string)]; there {
             return b,nil
         }
@@ -268,7 +268,6 @@ func buildUILib() {
         } else {
             return false,nil
         }
-		return false, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_pressed"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] been pressed?"}
@@ -281,7 +280,6 @@ func buildUILib() {
         } else {
             return false,nil
         }
-		return false, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_just_pressed"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] been released?"}
@@ -294,7 +292,6 @@ func buildUILib() {
         } else {
             return false,nil
         }
-		return false, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_just_released"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] just been released?"}
@@ -307,7 +304,6 @@ func buildUILib() {
         } else {
             return false,nil
         }
-		return false, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_mouse_pos"] = LibHelp{in: "id", out: "bool", action: "Returns the mouse pointer position for window [#i1]id[#i0]. Returns a vector nil."}
@@ -320,7 +316,6 @@ func buildUILib() {
         } else {
             return nil,nil
         }
-		return nil, errors.New("Windowing system not available")
     }
 
 	slhelp["ui_handle"] = LibHelp{in: "id", out: "handle", action: "Returns the underlying structure."}

@@ -2,6 +2,71 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.15
+======
+
+    fixes
+    -----
+
+    * testing RWMutex replacement (in places) with RBMutex from:
+        - https://github.com/puzpuzpuz/xsync
+        - will add credit in manual if it stays beyond this test version.
+
+    * localised loops[], depth[] and lastConstruct[]
+        - this allowed us to remove *a lot* of mutex locking. these were previously
+            globally shared as we had thoughts regarding function re-entrance.
+            if this still happens, we'll find another way - the shared storage was too slow.
+        - we could possibly move these entirely into the parser struct later if needed
+            to permit some kind of yielding facility.
+
+    * moved the program counter from local var to each parser's struct. 
+        this saved us needing to take copies of it for error reporting, but otherwise
+        a negligable speed change - just less GC.
+
+    * added timing checks at debug_level>10 for lex/parse-to-ast of global, functions and modules.
+
+    * moved binaryLed inline manually to dparse function. saves a function call which was
+        happening far too frequently.
+
+    * removed siglock mutex.
+
+    * the removal of the mutices above and other changes have contributed to around a 20% speed up in eval
+        and general statement processing speed.
+
+    * added identifier subtype and check for builtin const/library calls in lex.go
+        - this should speed up some types of code a little. was previously always checking these
+            during identifier lookups in evaluation. it also picks up user defined functions if
+            they have already been encountered by this lexing step.
+
+    language features
+    -----------------
+
+    Added some unary string operators. The following operators are currently (and experimentally) enabled:
+
+        - $lc "string"      : to lower
+        - $uc "string"      : to upper
+        - $st "string"      : string trim (whitespace "\ \t\n\r")
+        - $lt "string"      : left trim   (   "        "        )
+        - $rt "string"      : right trim  (   "        "        )
+
+        - example:
+
+            >> q=read_file("/usr/share/dict/words").split("\n")
+            >> foreach a in q ?> `#.has_start("d")` -> "$uc #"
+            >>   println a
+            >> endfor
+
+    library features
+    ----------------
+
+    * added mem_summary() :  returns list of variable storage sizes per function space allocation.
+    * added some more lib calls: 
+        - os: can_read, can_write, parent, fileabs
+        - conversion: dtoo, otod
+        - os: is_symlink, is_device, is_pipe, is_socket, is_sticky, is_setuid, is_setgid
+            - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
+
+
 1.0.14
 ======
 
@@ -20,7 +85,6 @@ CHANGE LOG
         > print ref colours.enum_all
           [1 10 30 31]
     * updated append_to() help
-    * removed siglock mutex.
     * added support for reversed count ranges in .. operator. e.g. 20..5:
         - eval_ops/ev_range() amended. returned ranges are always int-based.
         - range start and end may be specified as uint(64),int(64) or float, but types of start and end must match.
@@ -31,14 +95,8 @@ CHANGE LOG
 
     * altered PROMPT to permit validator regex to be built from an expression instead of a literal.
 
-    * added identifier subtype and check for builtin const/library calls in lex.go
-        - this should speed up some types of code a little. was previously always checking these
-            during identifier lookups in evaluation. it also picks up user defined functions if
-            they have already been encountered by this lexing step.
-
     * changed windows default ansi setting to true.
     * removed -l option.
-    * removed -d option.
 
     * added SHOWDEF back in. the output is occasionally a little off due to semicolons, but still has some use.
     * fixed ui_cursor_visible() input type check.
@@ -97,22 +155,6 @@ CHANGE LOG
         - Ubuntu: works fine. (v18+)
 
     Operating with the -u startup arg will only have any effect on builds with lib-ui compiled in. (i.e. !noui tag)
-
-    Added some unary string operators. The following operators are currently (and experimentally) enabled:
-
-        - $lc "string"      : to lower
-        - $uc "string"      : to upper
-        - $st "string"      : string trim (whitespace "\ \t\n\r")
-        - $lt "string"      : left trim   (   "        "        )
-        - $rt "string"      : right trim  (   "        "        )
-
-        - example:
-
-            >> q=read_file("/usr/share/dict/words").split("\n")
-            >> foreach a in q ?> `#.has_start("d")` -> "$uc #"
-            >>   println a
-            >> endfor
-
 
     * added some more types to VAR. (and INIT functionality merged into VAR)
     * added support for an identifier list in VAR: eg var a,b,c int = 42
@@ -173,15 +215,8 @@ CHANGE LOG
             standard library. Where varargs are expected it is more relaxed.
 
     * added randf() : random float between 0 and 1. (or between 0 and n if n supplied as argument)
-    * added mem_summary() :  returns list of variable storage sizes per function space allocation.
 
     * added check in VAR to explicitly prevent redeclaration.
-
-    * added some more lib calls: 
-        - os: can_read, can_write, parent, fileabs
-        - conversion: dtoo, otod
-        - os: is_symlink, is_device, is_pipe, is_socket, is_sticky, is_setuid, is_setgid
-            - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
 
 
 1.0.13

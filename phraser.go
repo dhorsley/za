@@ -25,6 +25,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     var tempToken *lcstruct
     var phrase = Phrase{}
+    var base   = BaseCode{}
 
     tokenType := Error
     curLine := int16(0)
@@ -108,11 +109,11 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             // -- add original version
             if pos>0 {
                 if phrase.TokenCount>0 {
-                    phrase.Original=input[lstart:pos]
-                    if tempToken.carton.tokType == EOL { phrase.Original=phrase.Original[:pos-lstart-1] }
-                    // fmt.Printf(">> %s <<\n",phrase.Original)
+                    base.Original=input[lstart:pos]
+                    if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
+                    // fmt.Printf(">> %s <<\n",base.Original)
                 } else {
-                        phrase.Original=""
+                        base.Original=""
                 }
             }
 
@@ -126,11 +127,13 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 // -- add phrase to function
                 fspacelock.Lock()
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
+                basecode[lmv]       = append(basecode[lmv], base)
                 fspacelock.Unlock()
             }
 
             // reset phrase
             phrase = Phrase{}
+            base   = BaseCode{}
 
         }
 
@@ -139,6 +142,23 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
     }
+
+    /* TEST CODE -- DO NOT ENABLE!!
+    // raise an implicit C_Exit at end of function
+    if lmv!=0 {
+        fspacelock.Lock()
+        phrase=Phrase{}
+        if isMod {
+            phrase.Tokens=[]Token{Token{tokType:C_Return}}
+        } else {
+            phrase.Tokens=[]Token{Token{tokType:C_Exit}}
+        }
+        phrase.TokenCount++
+        functionspaces[lmv] = append(functionspaces[lmv], phrase)
+        // pf("implicit-exit: %#v\n",functionspaces[lmv])
+        fspacelock.Unlock()
+    }
+    */
 
     return badword, eof
 

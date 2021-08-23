@@ -108,6 +108,7 @@ const (
     subtypeUser
 )
 
+var subtypeNames = [...]string{"None","Constant","StdLib","UserFunc"}
 
 // fatal error exit codes
 const (
@@ -281,5 +282,6 @@ const (
     C_As
     C_Do
     C_Enum
+    END_STATEMENTS
 )
 

@@ -1,11 +1,13 @@
 package main
 
 import (
-    "sync"
-)
+//    "sync"
+	. "github.com/puzpuzpuz/xsync"
+    )
 
 type Lmap struct {
-    sync.RWMutex
+    // sync.RWMutex
+    RBMutex
     smap    map[string]uint32
 }
 
@@ -14,33 +16,33 @@ func lmcreate(sz int) *Lmap {
 }
 
 func (u *Lmap) lmexists(k string) bool {
-    u.RLock()
+    tk:=u.RLock()
     if _,ok:=u.smap[k]; ok {
-        u.RUnlock()
+        u.RUnlock(tk)
         return true
     }
-    u.RUnlock()
+    u.RUnlock(tk)
     return false
 }
 
 func (u *Lmap) lmset(k string,v uint32) {
-	u.Lock()
+    u.Lock()
     u.smap[k] = v
 	u.Unlock()
 }
 
 func (u *Lmap) lmget(k string) (tmp uint32,ok bool) {
-	u.RLock()
+    tk:=u.RLock()
     if tmp,ok=u.smap[k]; ok {
-	    u.RUnlock()
+	    u.RUnlock(tk)
         return tmp,true
     }
-	u.RUnlock()
+	u.RUnlock(tk)
     return 0,false
 }
 
 func (u *Lmap) lmdelete(k string) bool {
-	u.Lock()
+    u.Lock()
     if _,ok:=u.smap[k]; ok {
         delete(u.smap,k)
         u.Unlock()

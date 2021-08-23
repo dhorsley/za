@@ -1,4 +1,3 @@
-#/usr/bin/za
 
 define humansize(i,prec,unit)
     if i>=1e9; unit="Billion"+unit; i=float(i/1e9); endif
