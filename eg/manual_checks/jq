@@ -49,7 +49,8 @@ result=sn.out.json_query(`
     .[] | .[] | .Instances[] 
         | select((.State.Name == "running") or (.State.Name == "pending"))
         | .InstanceId
-`) . fieldsort(1)
+`)
+on result.len>0 do result=result.fieldsort(1)
 
 foreach i in result
     println key_i+1, " ", i

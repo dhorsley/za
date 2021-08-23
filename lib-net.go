@@ -427,7 +427,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 loc,id := GetNextFnSpace(fn+"@")
                 calllock.Lock()
                 ifn,_=fnlookup.lmget(fn)
-                calltable[loc] = call_s{fs: id, base: ifn, callline:-1, caller: local_lastfs, retvar: "@#"}
+                calltable[loc] = call_s{fs: id, base: ifn, caller: local_lastfs, retvar: "@#"}
                 calllock.Unlock()
 
                 atomic.AddInt32(&concurrent_funcs, 1)

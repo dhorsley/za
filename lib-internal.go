@@ -15,7 +15,6 @@ import (
     "sort"
     str "strings"
     "time"
-//    "unsafe"
 )
 
 
@@ -77,8 +76,8 @@ func getMemUsage() (uint64,uint64) {
 }
 
 func enum_names(e string) []string {
-    globlock.RLock()
-    defer globlock.RUnlock()
+    tk:=globlock.RLock()
+    defer globlock.RUnlock(tk)
     l:=[]string{}
     if len(enum[e].members)==0 {
         return l
@@ -90,8 +89,8 @@ func enum_names(e string) []string {
 }
 
 func enum_all(e string) []interface{} {
-    globlock.RLock()
-    defer globlock.RUnlock()
+    tk:=globlock.RLock()
+    defer globlock.RUnlock(tk)
     l:=[]interface{}{}
     if len(enum[e].members)==0 {
         return l
@@ -101,6 +100,74 @@ func enum_all(e string) []interface{} {
     }
     return l
 }
+
+func GetAst(fn string) (ast string) {
+    var ifn uint32
+    var present bool
+    if ifn, present = fnlookup.lmget(fn); !present {
+        return
+    }
+
+    if ifn < uint32(len(functionspaces)) {
+
+        if str.HasPrefix(fn,"@mod_") {
+            return
+        }
+
+        var falist []string
+        for _,fav:=range functionArgs[ifn].args {
+            falist=append(falist,fav)
+        }
+
+        first := true
+
+        indent:=0
+        istring:=""
+
+        for q := range functionspaces[ifn] {
+            // strOut := "\t\t "
+            if first == true {
+                first = false
+                // strOut = sf("\n[#4][#bold]%s(%v)[#boff][#-]\n\t\t ", fn, str.Join(falist, ","))
+            }
+
+            switch functionspaces[ifn][q].Tokens[0].tokType {
+            case C_Endfor, C_Endwhile, C_Endif, C_Endwhen:
+                indent--
+            }
+
+            istring=str.Repeat("....",indent)
+
+                ast+=sf("%sLine (bytes:%d)  : "+sparkle("[#1]" + basecode[ifn][q].Original + "[#-]")+"\n",istring,Of(functionspaces[ifn][q]))
+
+            for tk,tv:=range functionspaces[ifn][q].Tokens {
+                ast+=sf("%s%6d : ",istring,1+tk)
+                subast1:=sf("(%s",tokNames[tv.tokType])
+                if tv.subtype!=0 { subast1+=sf(",subtype:%s",subtypeNames[tv.subtype]) }
+                subast1+=sf(")")
+                ast+=sf("%29s",subast1)
+                ast+=sparkle(sf(" [#1]%+v[#-]",tv.tokText))
+                switch tv.tokVal.(type) {
+                default:
+                    if tv.tokVal!=nil {
+                        ast+=sf(" Value : %+v (%T)",tv.tokVal,tv.tokVal)
+                    }
+                }
+                ast+="\n"
+
+            }
+            ast+="\n"
+
+            switch functionspaces[ifn][q].Tokens[0].tokType {
+            case C_For, C_Foreach, C_While, C_If, C_When:
+                indent++
+            }
+
+        }
+    }
+    return ast
+}
+
 
 
 func buildInternalLib() {
@@ -114,6 +181,7 @@ func buildInternalLib() {
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
         "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit",
         "enum_names","enum_all",
+        "ast",
     }
 
 
@@ -176,11 +244,13 @@ func buildInternalLib() {
                 w.name,_= numlookup.lmget(uint32(k))
                 if w.name=="" {
                     w.name="(disposed)"
+                    lastlock.Lock()
                     if lf,there:=lastfunc[uint32(k)]; there {
                         if lf!="" {
                             w.name="(recently "+lf+")"
                         }
                     }
+                    lastlock.Unlock()
                 }
                 w.size  = Of(ident[k])
                 w.id    = k
@@ -262,6 +332,9 @@ func buildInternalLib() {
     stdlib["eval"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("eval",args,1,"1","string"); !ok { return nil,err }
         p:=&leparser{}
+        tk:=calllock.RLock()
+        p.prectable=default_prectable
+        calllock.RUnlock(tk)
         return ev(p,evalfs, args[0].(string))
     }
 
@@ -568,12 +641,12 @@ func buildInternalLib() {
 
         var v interface{}
         var found bool
-        globlock.RLock()
+        tk:=globlock.RLock()
         if v, found = vget(globalaccess, args[0].(string)); !found {
-            globlock.RUnlock()
+            globlock.RUnlock(tk)
             return false, nil
         }
-        globlock.RUnlock()
+        globlock.RUnlock(tk)
 
         key:=interpolate(evalfs,args[1].(string))
 
@@ -671,9 +744,9 @@ func buildInternalLib() {
         k:=wrappedGetCh(int(timeo))
 
         if k==3 { // ctrl-c 
-            lastlock.RLock()
+            tk:=lastlock.RLock()
             sig_int=true
-            lastlock.RUnlock()
+            lastlock.RUnlock(tk)
         }
 
         return k,nil
@@ -940,6 +1013,19 @@ func buildInternalLib() {
             }
         }
         return nil, err
+    }
+
+    slhelp["ast"] = LibHelp{in: "fn_name", out: "string", action: "Return AST representation."}
+    stdlib["ast"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("ast",args,1,"1","string"); !ok { return nil,err }
+        fname:=args[0].(string)
+        if fname=="" { return "",nil }
+            _,found:=fnlookup.lmget(fname)
+            if found {
+                return GetAst(fname),nil
+            } else {
+                return "",nil
+            }
     }
 
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}

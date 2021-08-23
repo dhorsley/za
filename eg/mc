@@ -13,6 +13,14 @@ define full_cls()
     cls
 end
 
+def get_input(pstring)
+    pane select "global"
+    clear_line(1,1)
+    at 1,1; print "[#b7][#1]"
+    prompt m pstring
+    return m
+end
+
 define bytesize(i)
     unit="B"
     if i>=1099511627776
@@ -93,11 +101,11 @@ define paginate(f)
     return
 end
 
-define execute(f)
+define execute(f,args)
     coproc(false)
     capture_shell(false)
     full_cls()
-    | {f}
+    | {f} {args}
     capture_shell(true)
     coproc(true)
     return
@@ -125,13 +133,14 @@ define popup(path,file)
 end
 
 def get_mode_char(mi)
-    on is_symlink(mi) do return "L",true
-    on is_pipe(mi) do return "p",true
-    on is_device(mi) do return "D",true
-    on is_socket(mi) do return "S",true
-    # on is_setuid(mi) do return "u",true
-    # on is_setgid(mi) do return "g",true
-    # on is_sticky(mi) do return "t",true
+    prefix=""
+    #on is_setuid(mi) do prefix="u"
+    #on is_setgid(mi) do prefix+="g"
+    #on is_sticky(mi) do prefix+="t"
+    on is_symlink(mi) do return prefix+"L",true
+    on is_pipe(mi) do return prefix+"p",true
+    on is_device(mi) do return prefix+"D",true
+    on is_socket(mi) do return prefix+"S",true
     return "",false
 end
 
@@ -153,7 +162,6 @@ def show_left(ld,lrow,lwinheight,cursorl)
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                # sz="%15d".format(f.size)
                 sz="%15s".format(f.size.bytesize)
             endif
         else
@@ -183,7 +191,6 @@ def show_right(rd,rrow,rwinheight,cursorr)
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                #sz="%15d".format(f.size)
                 sz="%15s".format(f.size.bytesize)
             endif
         else
@@ -229,17 +236,12 @@ def redef_layout()
     setglob lw=sm
     setglob rh=sh-3
     setglob rw=sm
-    setglob leftside=true
 
     cls
     pane define "banner",1,1,1,sw,"","none"
 
-    setglob lrow=1
-    setglob rrow=1
     setglob lwinheight=lh-2
     setglob rwinheight=rh-2
-    setglob cursorl=1
-    setglob cursorr=1
 
     ltitle=" [#b1][#0]Path : [#5]%s[#-] ".format(lpath)
     rtitle=" [#b1][#0]Path : [#6]%s[#-] ".format(rpath)
@@ -271,6 +273,11 @@ on not is_dir(rpath) do rpath="."
 ld=sort_dir(lpath)
 rd=sort_dir(rpath)
 
+leftside=true
+lrow=1
+rrow=1
+cursorl=1
+cursorr=1
 redef_layout()
 
 quit=false
@@ -429,10 +436,7 @@ while !quit
         on empty_break() do break
 
         n=get_name()
-        pane select "global"
-        clear_line(1,1)
-        at 1,1; print "[#b7][#1]"
-        prompt m "New File Mode : "
+        m=get_input("New File Mode : ")
         on is_number(m) do | chmod {m} {n}
         ld=sort_dir(lpath)
         rd=sort_dir(rpath)
@@ -477,8 +481,11 @@ while !quit
             file=rd[rrow+cursorr-2]
         endif
         fullname=join([npath,file.name],"/").tr("s","/").fileabs
-        execute(fullname)
+        a=get_input("Arguments ([#i1]return[#i0] for none) : ")
+        execute(fullname,a)
+        at term_h(),1; print "Press a key to return. "
         keypress()
+        full_cls()
         refresh()
 
     has k in 8..9
@@ -487,10 +494,10 @@ while !quit
     has k==10
         if leftside
             cursorl+=1
-            on cursorl>lwinheight do on lrow<ld.len-lwinheight do lrow++
+            on cursorl>lwinheight+1 do on lrow<ld.len-lwinheight do lrow++
         else
             cursorr+=1
-            on cursorr>rwinheight do on rrow<rd.len-rwinheight do rrow++
+            on cursorr>rwinheight+1 do on rrow<rd.len-rwinheight do rrow++
         endif
 
     has k==11
@@ -570,6 +577,10 @@ while !quit
 
         popup(path,file)
 
+        redef_layout()
+        refresh()
+
+    is " "
         redef_layout()
         refresh()
 

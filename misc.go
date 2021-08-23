@@ -54,11 +54,10 @@ func lookupChainName(n uint8) string {
                             "6-UDF Builder","7-Net Library","8-Main Function","9-Error Handling"}[n]
 }
 
-func (parser *leparser) report(s string) {
+func (parser *leparser) report(line int16,s string) {
 
     var baseId uint32
 
-    line:=parser.line
     ifs:=parser.fs                                  // ifs  -> id of failing func
     funcName    := getReportFunctionName(ifs,false) //      -> name of failing func
     if ifs==2 {
@@ -71,7 +70,7 @@ func (parser *leparser) report(s string) {
     var line_content string
     if len(functionspaces[baseId])>0 {
         if baseId!=0 {
-            line_content=functionspaces[baseId][parser.stmtline].Original
+            line_content=basecode[baseId][parser.pc].Original
         } else {
             line_content="Interactive Mode"
         }
@@ -237,6 +236,142 @@ func version() {
 }
 
 
+func help_colour() {
+
+    colourpage:=`
+Some of the codes are demonstrated below. They can be activated by placing the
+code inside [# and ] in output strings.
+
+bdefault        Return background to default colour.
+[#fgray][#b0]bblack[#-]   / b0   Set background colour to black.
+[#fgray][#b1]bblue[#-]    / b1   Set background colour to blue.
+[#fgray][#b2]bred[#-]     / b2   Set background colour to red.
+[#fgray][#b3]bmagenta[#-] / b3   Set background colour to magenta.
+[#fgray][#b4]bgreen[#-]   / b4   Set background colour to green.
+[#fgray][#b5]bcyan[#-]    / b5   Set background colour to cyan.
+[#fgray][#b6]byellow[#-]  / b6   Set background colour to yellow.
+[#fgray][#b7]bwhite[#-]   / b7   Set background colour to white.
+bbgray          Set background colour to bright gray.
+bgray           Set background colour to gray.
+bbred           Set background colour to bright red.
+bbgreen         Set background colour to bright green.
+bbyellow        Set background colour to bright yellow.
+bbblue          Set background colour to bright blue.
+bbmagenta       Set background colour to bright magenta.
+bbcyan          Set background colour to bright cyan.
+
+fdefault        Return the foreground colour to the default.
+fblack[#-]    / 0   Set foreground colour to black.
+fblue           Set foreground colour to blue.
+[#1]fbblue[#-]    / 1   Set foreground colour to bright blue.
+fred            Set foreground colour to red.
+[#2]fbred[#-]     / 2   Set foreground colour to bright red.
+fmagenta        Set foreground colour to magenta.
+[#3]fbmagenta[#-] / 3   Set foreground colour to bright magenta.
+fgreen          Set foreground colour to green.
+[#4]fbgreen[#-]   / 4   Set foreground colour to bright green.
+fcyan           Set foreground colour to cyan.
+[#5]fbcyan[#-]    / 5   Set foreground colour to bright cyan.
+fyellow         Set foreground colour to yellow.
+[#6]fbyellow[#-]  / 6   Set foreground colour to bright yellow.
+fgray           Set foreground colour to gray.
+[#7]fwhite[#-]    / 7   Set foreground colour to white.
+
+-               Return foreground colour to the default.
+#               Return background colour to the default.
+CTE             Clear to end of line.
+default         Turn off all currently raised codes.
+[#bold]bold[#-]            Enable bold text.
+[#dim]dim[#-]             Enable low-lighting of text.
+[#i1]i1[#i0]              Enable italicised text.
+i0              Disable italicised text.
+[#ul]ul | underline[#-]  Enable underlined text.
+[#blink]blink[#-]           Enable flashing text (where supported.)
+[#invert]invert[#-]          Enable reverse video text. (where supported.)
+hidden          Enable hidden text. (where supported.)
+[#crossed]crossed[#-]         Enable single strike-through text. (where supported.)
+[#framed]framed[#-]          Enable framed text. (where supported.)
+`
+
+    gpf(colourpage)
+}
+
+func help_ops() {
+
+    opspage :=`
+[#1][#bold]Supported Operators[#boff][#-]
+
+[#1]Prefix Operators[#-]
+-n          unary negative
++n          unary positive
+!b          boolean negation   ( or not b )
+--n         pre-decrement
+++n         pre-increment
+<- filename read file in as string literal
+sqr n       square (n*n)
+sqrt n      square root
+
+$uc s       upper case string s
+$lc s       lower case string s
+$lt s       left trim leading whitespace from string s [\t\ \n\r]
+$rt s       right trim trailing whitespace from string s
+$st s       trim whitespace from both sides of string s
+
+?? b t [:,] f
+  if expression b is true then t else f
+
+[#1]Infix Operators[#-]
+a - b       subtraction
+a + b       addition
+a * b       numeric multiplication
+str_a * b   string repetition
+a / b       division
+a % b       modulo
+a -= b      subtractive assignment
+a += b      additive assignment
+a *= b      multiplicative assignment
+a /= b      divisive assignment
+a %= b      modulo assignment
+a || b      boolean OR   ( or a or b )
+a && b      boolean AND   ( or a and b )
+a | b       bitwise OR
+a & b       bitwise AND
+a ^ b       bitwise XOR
+a << b      bitwise left shift
+a >> b      bitwise right shift
+a ~f b      array of matches from string a using regex b
+s.f         field access
+s .. e      builds an array of values in the range s to e
+
+array|map ?> "bool_expr"
+  filters matches of "bool_expr" against elements in array
+  or map to return a new array. Each # in bool_expr is
+  replaced by each array/map value.
+
+array|map -> "expr"
+  maps each element of array or map using "expr" to
+  formulate new elements. Each # in expr is replaced by each
+  array/map value.
+
+[#1]Comparisons[#-]
+a == b      equality
+a != b      inequality
+a < b       less than
+a > b       greater than
+a <= b      less than or equal to
+a >= b      greater than or equal to
+a ~ b       string a matches regex b
+a ~i b      string a matches regex b (case insensitive)
+a in b      array b contains value a
+
+[#1]Postfix Operators[#-]
+n--         post-decrement (local scope only, command not expression)
+n++         post-increment (local scope only, command not expression)
+`
+    gpf(opspage)
+}
+
+
 // cli help
 func help(hargs string) {
 
@@ -283,6 +418,8 @@ func ihelp(hargs string) {
 [#4]commands()      [#-]: available statements
 [#4]funcs()         [#-]: all functions
 [#4]funcs(<string>) [#-]: finds matching functions
+[#4]help ops        [#-]: show operator info
+[#4]help colour     [#-]: show colour codes
 [#4]help <string>   [#-]: show specific statement/function info
 
 `
@@ -298,39 +435,50 @@ func ihelp(hargs string) {
         cmdMatchList := ""
         funcMatchList := ""
 
-        // check for keyword first:
-        re, err := regexp.Compile(`(^|\n){1}\[#[0-9]\]` + cmd + `.*?\n`)
+        switch cmd {
+        case "ops":
+            help_ops()
 
-        if err == nil {
-            cmdMatchList = sparkle(str.TrimSpace(re.FindString(str.ToLower(cmdpage))))
-            remspace, _ := regexp.Compile(`[ ]+`)
-            cmdMatchList = remspace.ReplaceAllString(cmdMatchList, " ")
-            if cmdMatchList != "" {
-                foundCommand = true
-            }
-        }
+        case "colour":
+            help_colour()
 
-        // check for stdlib if not a keyword.
-        if _, exists := slhelp[cmd]; exists {
-            lhs := slhelp[cmd].out
-            colour := "2"
-            if slhelp[cmd].out != "" {
-                lhs += " = "
-                colour = "3"
-            }
-            params := slhelp[cmd].in
-            funcMatchList += sf(sparkle("[#"+colour+"]%s%s(%s)[#-]\n"), lhs, cmd, params)
-            funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
-            foundFunction = true
-        }
+        default:
 
-        if foundFunction || foundCommand {
-            if foundCommand {
-                pf("keyword  : %v\n", cmdMatchList)
+            // check for keyword first:
+            re, err := regexp.Compile(`(^|\n){1}\[#[0-9]\]` + cmd + `.*?\n`)
+
+            if err == nil {
+                cmdMatchList = sparkle(str.TrimSpace(re.FindString(str.ToLower(cmdpage))))
+                remspace, _ := regexp.Compile(`[ ]+`)
+                cmdMatchList = remspace.ReplaceAllString(cmdMatchList, " ")
+                if cmdMatchList != "" {
+                    foundCommand = true
+                }
             }
-            if foundFunction {
-                pf("function : %v\n", funcMatchList)
+
+            // check for stdlib if not a keyword.
+            if _, exists := slhelp[cmd]; exists {
+                lhs := slhelp[cmd].out
+                colour := "2"
+                if slhelp[cmd].out != "" {
+                    lhs += " = "
+                    colour = "3"
+                }
+                params := slhelp[cmd].in
+                funcMatchList += sf(sparkle("[#"+colour+"]%s%s(%s)[#-]\n"), lhs, cmd, params)
+                funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
+                foundFunction = true
             }
+
+            if foundFunction || foundCommand {
+                if foundCommand {
+                    pf("keyword  : %v\n", cmdMatchList)
+                }
+                if foundFunction {
+                    pf("function : %v\n", funcMatchList)
+                }
+            }
+
         }
 
     }
