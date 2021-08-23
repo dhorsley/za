@@ -11,12 +11,22 @@ import (
 // this type is for holding a complete line from statement to EOL/Semicolon
 type Phrase struct {
 	Tokens      []Token // each token found
-	Original    string  // entire string, unmodified for spaces
     SourceLine  int16
 	TokenCount  int16   // number of tokens generated for this phrase
+    // folded      bool    // const folded expression
+    // folded_result      interface{}
+    // foldable    bool    // whether to continue to try folding or not
 }
 
-func (p Phrase) String() string {
+type BaseCode struct {
+	Original    string  // entire string, unmodified for spaces
+}
+
+// func (p Phrase) String() string {
+// 	return p.Original
+// }
+
+func (p BaseCode) String() string {
 	return p.Original
 }
 
@@ -60,7 +70,6 @@ type call_s struct {
 	fs          string      // the text name of the calling party
 	caller      uint32      // the thing which made the call
 	base        uint32      // the original functionspace location of the source
-    callline    int16       // from whence it came
 }
 
 func (cs call_s) String() string {
@@ -89,11 +98,13 @@ type Feature struct {
 	category string // for stdlib funcs() output splitting
 }
 
+/*
 // holds state about a while loop
 type WhileMarker struct {
     pc          int16
     enddistance int
 }
+*/
 
 // holds internal state for the WHEN command
 type whenCarton struct {
@@ -111,6 +122,7 @@ type ExpressionCarton struct {
 	result    interface{} // result of evaluation
     errVal    error
 	assign    bool        // is this an assignment expression
+    assignPos int
 	evalError bool        // did the evaluation succeed
 }
 

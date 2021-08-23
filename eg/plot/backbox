@@ -1,0 +1,57 @@
+#!/usr/bin/za
+    
+def quit()
+    repoll=poll_dur
+    while
+        if repoll--<=0
+            if w!=term_w() or h!=term_h()
+                setglob w=term_w()
+                setglob h=term_h()
+                cls
+            endif
+            repoll=poll_dur
+        endif
+        k=keypress(10)
+        on k!=0 do setglob quit=true
+    endwhile
+end
+
+
+# MAIN
+
+poll_dur=7
+quit=false
+
+bh=9; bw=16
+w=term_w()
+h=term_h()
+
+async keyhandle quit()
+
+cls
+cursoroff()
+while !quit
+
+    row_count=int(h/bh)
+    col_count=int(w/bw)
+    
+    for r=0 to row_count
+        on r*bh>=term_h() do continue
+        for c=0 to col_count-1
+            on c*bw>=term_w() do continue
+            hue="[#b{=rand(7)}]"
+            for sr=0 to bh-1
+                at r*bh+sr,c*bw
+                print hue," "*bw
+            endfor
+        endfor
+    endfor
+
+endwhile
+
+at h-1,1
+| reset
+cursoron()
+exit
+
+

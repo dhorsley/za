@@ -140,6 +140,9 @@ func buildListLib() {
 
         var reduceparser *leparser
         reduceparser=&leparser{}
+        tk:=calllock.RLock()
+        reduceparser.prectable=default_prectable
+        calllock.RUnlock(tk)
 
         switch args[0].(type) {
         case []int:
@@ -430,8 +433,7 @@ func buildListLib() {
         // check type is compatible
 
         var ll bool
-
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true}
+        if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true}
 
         set:=false
         switch ident[evalfs][vi].IValue.(type) {
@@ -443,25 +445,25 @@ func buildListLib() {
             case int:
                 ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]int),args[1].(int))
                 set=true
-            } 
+            }
         case []uint:
             switch args[1].(type) {
             case uint:
                 ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]uint),args[1].(uint))
                 set=true
-            } 
+            }
         case []float64:
             switch args[1].(type) {
             case float64:
                 ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]float64),args[1].(float64))
                 set=true
-            } 
+            }
         case []bool:
             switch args[1].(type) {
             case bool:
                 ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]bool),args[1].(bool))
                 set=true
-            } 
+            }
         case []interface{}:
             ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]interface{}),args[1])
             set=true

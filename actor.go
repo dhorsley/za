@@ -9,6 +9,7 @@ import (
     "path"
     "reflect"
     "regexp"
+	. "github.com/puzpuzpuz/xsync"
     "sync"
     "sync/atomic"
     "strconv"
@@ -46,7 +47,7 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
     return r
 }
 
-var atlock = &sync.RWMutex{}
+var atlock = &RBMutex{}
 
 // finish : flag the machine state as okay or in error and
 // optionally terminates execution.
@@ -195,9 +196,9 @@ func InSlice(a uint8, list []uint8) bool {
 //
 
 // searchToken is used by FOR to check for occurrences of the loop variable.
-func searchToken(base uint32, start int16, end int16, sval string) bool {
+func searchToken(source_base uint32, start int16, end int16, sval string) bool {
 
-    range_fs:=functionspaces[base][start:end]
+    range_fs:=functionspaces[source_base][start:end]
 
     for _, v := range range_fs {
         if v.TokenCount == 0 {
@@ -386,18 +387,18 @@ func GetNextFnSpace(requiredName string) (uint32,string) {
 
 
 // setup mutex locks
-var calllock   = &sync.RWMutex{}  // function call related
-var lastlock   = &sync.RWMutex{}  // cached globals, loops[] and depth[]
-var fspacelock = &sync.RWMutex{}  // token storage related
-var farglock   = &sync.RWMutex{}  // function argument related
-var globlock   = &sync.RWMutex{}  // generic global related
+var calllock   = &RBMutex{}  // function call related
+var lastlock   = &RBMutex{}  // cached globals
+var fspacelock = &RBMutex{}  // token storage related
+var farglock   = &RBMutex{}  // function argument related
+var globlock   = &RBMutex{}  // generic global related
 
 
 // identify the source storage id related to a specific instance id
-func baseof(fs uint32) (base uint32) {
-    calllock.RLock()
-    base = calltable[fs].base
-    calllock.RUnlock()
+func baseof(fs uint32) (source_base uint32) {
+    tk:=calllock.RLock()
+    source_base = calltable[fs].base
+    calllock.RUnlock(tk)
     return
 }
 
@@ -415,25 +416,27 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // pf("Entered call -> %#v : va -> %#v\n",calltable[csloc],va)
     // pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
-    callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,line:calltable[csloc].callline,registrant:registrant})
+    callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+    // set up evaluation parser - one per function
+    parser:=&leparser{}
+    parser.prectable=default_prectable
     calllock.Unlock()
 
     var inbound *Phrase
+    var basecode_entry *BaseCode
     var current_with_handle *os.File
-
-    // set up evaluation parser - one per function
-    parser:=&leparser{}
 
     // error handler
     defer func() {
         if r := recover(); r != nil {
             if _,ok:=r.(runtime.Error); ok {
-                parser.report(sf("\n%v\n",r))
+                parser.report(inbound.SourceLine,sf("\n%v\n",r))
                 finish(false,ERR_EVAL)
                 if debug_level>0 { panic(r) }
             }
             err:=r.(error)
-            parser.report(sf("\n%v\n",err))
+            parser.report(inbound.SourceLine,sf("\n%v\n",err))
+            if debug_level>0 { panic(r) }
             setEcho(true)
             finish(false,ERR_EVAL)
         }
@@ -441,26 +444,25 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // some tracking variables for this function call
     var breakIn uint8               // true during transition from break to outer.
-    var pc int16                    // program counter
     var retvar string               // variables to allocate return vars to
     var retvalues []interface{}     // return values to be passed back
     var finalline int16             // tracks end of tokens in the function
     var fs string                   // current function space
     var caller uint32               // function space which placed the call
-    var base uint32                 // location of the translated source tokens
+    var source_base uint32          // location of the translated source tokens
     var thisLoop *s_loop            // pointer to loop information. used in FOR
 
     // set up the function space
 
     // ..get call details
-    calllock.RLock()
+    tk:=calllock.RLock()
     ncs := &calltable[csloc]
 
     // unique name for this execution, pre-generated before call
     fs = (*ncs).fs
 
     // the source code to be read for this function
-    base = (*ncs).base
+    source_base = (*ncs).base
 
     // which func id called this code
     caller = (*ncs).caller
@@ -471,12 +473,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
 
-    calllock.RUnlock()
+    calllock.RUnlock(tk)
 
     // @todo: remove this check at some point - should be redundant
-    if base==0 {
+    if source_base==0 {
         if !interactive {
-            parser.report("Possible race condition. Please check. Base->0")
+            parser.report(-1,"Possible race condition. Please check. Base->0")
             finish(false,ERR_EVAL)
             return
         }
@@ -493,65 +495,63 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
     // reset the variable mappings if the source hasn't been parsed yet
 
     ll:=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+    if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
 
-    if !identParsed[base] && varmode==MODE_NEW {
-        functionidents[base]=0
-        vmap[base]  =make(map[string]uint16,0)
-        unvmap[base]=make(map[uint16]string,0)
+    if !identParsed[source_base] && varmode==MODE_NEW {
+        functionidents[source_base]=0
+        vmap[source_base]  =make(map[string]uint16,0)
+        unvmap[source_base]=make(map[uint16]string,0)
     }
 
     // set the location of the next available slot for new variables
     nextVarId:=uint16(0)
     if varmode==MODE_STATIC {
-        nextVarId=functionidents[base]
+        nextVarId=functionidents[source_base]
     }
 
     // range over all the tokens, adding offsets to the source tokens.
     // this must be done every call for MODE_STATIC, but only if unparsed for MODE_NEW
-    if varmode==MODE_STATIC || !identParsed[base] {
+    if varmode==MODE_STATIC || !identParsed[source_base] {
 
         defnest:=0
-        for kph,ph:= range functionspaces[base] {
+        for kph,ph:= range functionspaces[source_base] {
             for kt,t := range ph.Tokens {
                 // @ 0 is statement, not subsequent identifier in line.
                 if kt==0 && t.tokType==C_Define { defnest++; continue }
                 if kt==0 && t.tokType==C_Enddef { defnest--; continue }
                 if defnest==0 && t.tokType==Identifier {
-                    if pos,found:=vmap[base][t.tokText] ; found {
+                    if pos,found:=vmap[source_base][t.tokText] ; found {
                         // replace token
                         t.offset=pos
-                        vmap[base][t.tokText]=pos
-                        unvmap[base][pos]=t.tokText
-                        // pf("act-stat-replace base %d : %s pos %d\n",base,t.tokText,pos)
+                        vmap[source_base][t.tokText]=pos
+                        unvmap[source_base][pos]=t.tokText
+                        // pf("act-stat-replace base %d : %s pos %d\n",source_base,t.tokText,pos)
                     } else {
                         // append token
                         t.offset=nextVarId
-                        vmap[base][t.tokText]=nextVarId
-                        unvmap[base][nextVarId]=t.tokText
-                        // pf("act-stat-add base %d : %s pos %d\n",base,t.tokText,nextVarId)
+                        vmap[source_base][t.tokText]=nextVarId
+                        unvmap[source_base][nextVarId]=t.tokText
+                        // pf("act-stat-add base %d : %s pos %d\n",source_base,t.tokText,nextVarId)
                         nextVarId++
                     }
-                    functionspaces[base][kph].Tokens[kt]=t
+                    functionspaces[source_base][kph].Tokens[kt]=t
                 }
             }
         }
 
         if defnest!=0 {
-            parser.report("definition nesting error!")
+            parser.report(inbound.SourceLine,"definition nesting error!")
             if ll { vlock.Unlock() }
             finish(true,ERR_SYNTAX)
             return
         }
-        identParsed[base]=true
+        identParsed[source_base]=true
 
-        //if varmode==MODE_NEW {
-            // set the base index for variables in new instances of this base
-            functionidents[base]=nextVarId
-        //}
+        // set the base index for variables in new instances of this base
+        functionidents[source_base]=nextVarId
 
     } else {
-        nextVarId=functionidents[base]
+        nextVarId=functionidents[source_base]
     }
 
     if ll { vlock.Unlock() }
@@ -563,11 +563,12 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         // create the local variable storage for the function
 
         ll=false
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+        var tk *RToken
+        if atomic.LoadInt32(&concurrent_funcs)>1 { tk=vlock.RLock() ; ll=true }
         var vtm uint32
         vtm=vtable_maxreached
         minvar:=nextVarId
-        if ll { vlock.RUnlock() }
+        if ll { vlock.RUnlock(tk) }
 
         if VAR_CAP>minvar { minvar=VAR_CAP }
         if ifs>=vtm {
@@ -576,7 +577,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
         } else {
             // reset existing ifs storage area
             ll=false
-            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+            if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
             identResize(ifs,0)
             if ll { vlock.Unlock() }
         }
@@ -589,20 +590,20 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
         // copy the base var mapping to this instance
         ll=false
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
-        unvmap[ifs] =make(map[uint16]string,len(unvmap[base]))
-        vmap[ifs]   =make(map[string]uint16,len(unvmap[base]))
-        for e:=uint16(0); e<uint16(len(unvmap[base])); e++ {
-            unvmap[ifs][e] = unvmap[base][e]
-            vmap  [ifs][unvmap[base][e]] = vmap[base][unvmap[base][e]]
+        if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
+        unvmap[ifs] =make(map[uint16]string,len(unvmap[source_base]))
+        vmap[ifs]   =make(map[string]uint16,len(unvmap[source_base]))
+        for e:=uint16(0); e<uint16(len(unvmap[source_base])); e++ {
+            unvmap[ifs][e] = unvmap[source_base][e]
+            vmap  [ifs][unvmap[source_base][e]] = vmap[source_base][unvmap[source_base][e]]
         }
         if ll { vlock.Unlock() }
 
         // add the call parameters as available variable mappings
         //  to the current function call
-        farglock.RLock()
+        tk=farglock.RLock()
         for e:=0; e<len(va); e++ {
-            nextFaArg:=functionArgs[base].args[e]
+            nextFaArg:=functionArgs[source_base].args[e]
             if vi,found:=vmap[ifs][nextFaArg] ; found {
                 vseti(ifs,nextFaArg,vi,va[e])
                 // pf("On entry to %v set local var %v to [%T] %+v\n", fs, nextFaArg, va[e], va[e])
@@ -612,10 +613,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
                 nextVarId++
             }
         }
-        farglock.RUnlock()
+        farglock.RUnlock(tk)
 
         ll=false
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+        if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
         functionidents[ifs]=nextVarId
         if ll { vlock.Unlock() }
 
@@ -623,39 +624,40 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
 
     // missing varargs in call result in empty string assignments:
-    farglock.RLock()
-    if len(functionArgs[base].args)>len(va) {
-        for e:=0; e<(len(functionArgs[base].args)-len(va)); e++ {
+    tk=farglock.RLock()
+    if len(functionArgs[source_base].args)>len(va) {
+        for e:=0; e<(len(functionArgs[source_base].args)-len(va)); e++ {
             va=append(va,nil) // "")
         }
     }
-    farglock.RUnlock()
+    farglock.RUnlock(tk)
 
+
+    // generic nesting indentation counters
+    // this being local prevents re-entrance i guess
+    var depth int
+
+    // stores the active construct/loop types outer->inner
+    //  for the break and continue statements
+    // var lastConstruct = make([]uint8, SPACE_CAP)
+    var lastConstruct = []uint8{}
 
     if varmode == MODE_NEW {
 
         // in interactive mode, the top-level current functionspace is 0
         // in normal exec mode, the source is treated as functionspace 1
-        if base < 2 {
+        if source_base < 2 {
             globalaccess = ifs
             vset(globalaccess, "trapInt", "")
         }
 
         // nesting levels in this function
-
-        lastlock.Lock()
-        depth[ifs] = 0
-        lastConstruct[ifs] = []uint8{}
-        lastlock.Unlock()
-
         vset(ifs,"@in_tco",false)
 
     }
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
-
-    lastlock.Lock()
 
     // active WHEN..ENDWHEN statement meta info
     var wc = make([]whenCarton, WHEN_CAP)
@@ -665,9 +667,7 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
 
     // allocate loop storage space if not a repeat ifs value.
 
-    ll=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
-
+    /*
     var top,highest,lscap uint32
 
     top=uint32(cap(loops))
@@ -695,11 +695,10 @@ func Call(varmode uint8, csloc uint32, registrant uint8, va ...interface{}) (ret
             copy(nloops,loops)
             loops=nloops
     }
+    */
 
-    loops[ifs] = make([]s_loop, MAX_LOOPS)
-
-    if ll { vlock.RUnlock() }
-    lastlock.Unlock()
+    // counters per loop type
+    var loops = make([]s_loop, MAX_LOOPS)
 
 
 tco_reentry:
@@ -708,23 +707,23 @@ tco_reentry:
     //  from each va value.
     // - functionArgs[] created at definition time from the call signature
 
-    farglock.RLock()
+    tk=farglock.RLock()
     if len(va) > 0 {
         for q, v := range va {
-            fa:=functionArgs[base].args[q]
+            fa:=functionArgs[source_base].args[q]
             // pf("-- setting va-to-var variable %s with %+v\n",fa,v)
             vset(ifs,fa,v)
         }
     }
-    farglock.RUnlock()
+    farglock.RUnlock(tk)
 
-    if len(functionspaces[base])>32767 {
-        parser.report("function too long!")
+    if len(functionspaces[source_base])>32767 {
+        parser.report(-1,"function too long!")
         finish(true,ERR_SYNTAX)
         return
     }
 
-    finalline = int16(len(functionspaces[base]))
+    finalline = int16(len(functionspaces[source_base]))
 
     inside_test := false      // are we currently inside a test bock
     inside_with := false      // WITH cannot be nested and remains local in scope.
@@ -735,14 +734,14 @@ tco_reentry:
     var defining bool         // are we currently defining a function. takes priority over structmode.
     var definitionName string // ... if we are, what is it called
 
-    pc = -1                   // program counter : increments to zero at start of loop
+    parser.pc = -1            // program counter : increments to zero at start of loop
 
     var si bool
     var statement *Token
     var we ExpressionCarton   // pre-allocated for general expression results eval
     var expr interface{}      // pre-llocated for wrapped expression results eval
     var err error
-            
+
     typeInvalid:=false          // used during struct building for indicating type validity.
 
     for {
@@ -753,26 +752,29 @@ tco_reentry:
         //  pprof didn't capture this reliably (probably to do with sample rate)
         //  however, if you check against eg/long_loop or eg/addition_loop over a sufficiently
         //  large repetition count you will see there is a big difference in performance.
-        //  i guess it isn't optimising away at compile-time as easily as it should.
 
-        // pc += 1  // optimises correctly, but no better than explicit inc below
+        parser.pc+=1
 
-        pc = pc + 1             // program counter, equates to each Phrase struct in the function
-        parser.stmtline=pc      // reflects the pc for use in the evaluator
-
-        if pc >= finalline || endFunc || sig_int {
+        // @note: sig_int can be a race condition. alternatives?
+        /*
+        if parser.pc >= finalline || endFunc || sig_int {
+            break
+        }
+        */
+        if parser.pc >= finalline || endFunc {
             break
         }
 
         // get the next Phrase
-        inbound = &functionspaces[base][pc]
+        inbound = &functionspaces[source_base][parser.pc]
+        basecode_entry = &basecode[source_base][parser.pc]
 
                     //
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
                     //  we want to leave the program counter unaffected.
 
 
-        parser.line=inbound.SourceLine
+        // parser.line=inbound.SourceLine
 
         /////////////////////////////////////////////////////////////////////////
 
@@ -786,7 +788,7 @@ tco_reentry:
         }
 
         /////// LINE ////////////////////////////////////////////////////////////
-            // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,parser.line,pc,inbound.Tokens)
+            // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -794,6 +796,7 @@ tco_reentry:
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
+            basecode[lmv]       = append(basecode[lmv], *basecode_entry)
             fspacelock.Unlock()
             continue
         }
@@ -804,7 +807,7 @@ tco_reentry:
             // as we are only accepting simple types currently, restrict validity
             //  to single type token.
             if inbound.TokenCount<2 {
-                parser.report(sf("Invalid STRUCT entry '%v'",statement.tokText))
+                parser.report(inbound.SourceLine,sf("Invalid STRUCT entry '%v'",statement.tokText))
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -824,7 +827,7 @@ tco_reentry:
                 default_value = parser.wrappedEval(ifs,ifs,inbound.Tokens[eqPos+1:])
                 // pf(" : set default_value in hasValue ( %#v )\n",default_value)
                 if default_value.evalError {
-                    parser.report(sf("Invalid default value in STRUCT '%s'",statement.tokText))
+                    parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",statement.tokText))
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -841,7 +844,7 @@ tco_reentry:
             switch str.ToLower(cet.text) {
             case "int","float","string","bool","uint","uint8","byte","mixed","[]":
             default:
-                parser.report(sf("Invalid type in STRUCT '%s'",cet.text))
+                parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
                 typeInvalid=true
                 break
@@ -858,6 +861,10 @@ tco_reentry:
         }
 
         // abort this phrase if currently inside a TEST block but the test flag is not set.
+        /*
+         * these kind of tests really slow down interpretation.
+         * just removing the stanza below can add ~ 9M ops/sec
+        */
         if inside_test {
             if statement.tokType != C_Endtest && !under_test {
                 continue
@@ -950,7 +957,7 @@ tco_reentry:
                         // not an empty [] term, but includes a size expression
                         se := parser.wrappedEval(ifs,ifs,inbound.Tokens[c+1:d])
                         if se.evalError {
-                            parser.report("could not evaluate size expression in VAR")
+                            parser.report(inbound.SourceLine,"could not evaluate size expression in VAR")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -966,7 +973,7 @@ tco_reentry:
                         case uint64:
                             size=int(se.result.(uint64))
                         default:
-                            parser.report("size expression must evaluate to an integer")
+                            parser.report(inbound.SourceLine,"size expression must evaluate to an integer")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -977,7 +984,7 @@ tco_reentry:
                 // pf("size is  %d\n",size)
 
             } else {
-                parser.report("invalid VAR syntax\nUsage: VAR varname1 [#i1][,...varnameX][#i0] [#i1][optional_size][#i0] type [#i1][=expression][#i0]")
+                parser.report(inbound.SourceLine,"invalid VAR syntax\nUsage: VAR varname1 [#i1][,...varnameX][#i0] [#i1][optional_size][#i0] type [#i1][=expression][#i0]")
                 finish(false,ERR_SYNTAX)
             }
 
@@ -991,7 +998,7 @@ tco_reentry:
                 hasValue=true
                 we = parser.wrappedEval(ifs,ifs,inbound.Tokens[eqPos+1:])
                 if we.evalError {
-                    parser.report("could not evaluate VAR assignment expression")
+                    parser.report(inbound.SourceLine,"could not evaluate VAR assignment expression")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1034,6 +1041,7 @@ tco_reentry:
                 typemap["[]string"] = reflect.TypeOf(sts)
                 typemap["[]mixed"]  = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
+                typemap["nassoc"]   = nil
                 typemap["assoc"]    = nil
                 // --
 
@@ -1043,17 +1051,18 @@ tco_reentry:
 
                 var vi uint16
                 var there bool
+                var tk *RToken
 
                 if vi,there=VarLookup(ifs,vname); there {
                     ll:=false
-                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+                    if atomic.LoadInt32(&concurrent_funcs)>1 { tk=vlock.RLock() ; ll=true }
                     if vi>0 && ident[ifs][vi].declared {
-                        if ll { vlock.RUnlock() }
-                        parser.report(sf("variable '%s' already exists",vname))
+                        if ll { vlock.RUnlock(tk) }
+                        parser.report(inbound.SourceLine,sf("variable '%s' already exists",vname))
                         finish(false, ERR_SYNTAX)
                         break
                     }
-                    if ll { vlock.RUnlock() }
+                    if ll { vlock.RUnlock(tk) }
                 }
 
                 // get the required type
@@ -1068,12 +1077,12 @@ tco_reentry:
                 // declaration and initialisation
                 if _,found:=typemap[new_type_token_string]; found {
 
-                    if new_type_token_string!="assoc" {
+                    if new_type_token_string!="nassoc" && new_type_token_string!="assoc" {
                         vset(ifs,vname,reflect.New(typemap[new_type_token_string]).Elem().Interface())
                     }
 
                     ll:=false
-                    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+                    if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
 
                     ident[ifs][vi].ITyped=true
                     ident[ifs][vi].declared=true
@@ -1114,15 +1123,18 @@ tco_reentry:
                     case "[]","[]mixed":
                         ident[ifs][vi].IKind=ksany
                         ident[ifs][vi].IValue=make([]interface{},size,size)
+                    case "nassoc":
+                        ident[ifs][vi].IKind=kmap
+                        ident[ifs][vi].IValue=make(map[int]interface{},size)
                     case "assoc":
                         ident[ifs][vi].IKind=kmap
                         ident[ifs][vi].IValue=make(map[string]interface{},size)
                     }
 
                     // if we had a default value, stuff it in here...
-                    if new_type_token_string!="assoc" && hasValue {
+                    if new_type_token_string!="nassoc" && new_type_token_string!="assoc" && hasValue {
                         if sf("%T",we.result)!=new_type_token_string {
-                            parser.report("type mismatch in VAR assignment")
+                            parser.report(inbound.SourceLine,"type mismatch in VAR assignment")
                             finish(false,ERR_EVAL)
                             if ll { vlock.Unlock() }
                             break
@@ -1149,7 +1161,7 @@ tco_reentry:
                     if isStruct {
 
                         ll:=false
-                        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true }
+                        if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true }
 
                         // deal with var name [n]struct_type
                         if len(structvalues)>0 {
@@ -1201,7 +1213,7 @@ tco_reentry:
                                             tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
                                             tf.Set(reflect.ValueOf(ndv))
                                         } else {
-                                            parser.report(sf("cannot set field default (%T) for %v (%v)",ndv,nv,tf.Type()))
+                                            parser.report(inbound.SourceLine,sf("cannot set field default (%T) for %v (%v)",ndv,nv,tf.Type()))
                                             finish(false,ERR_EVAL)
                                             allSet=false
                                             break
@@ -1225,7 +1237,7 @@ tco_reentry:
                         if ll { vlock.Unlock() }
 
                     } else {
-                        parser.report(sf("unknown data type requested '%v'",type_token_string))
+                        parser.report(inbound.SourceLine,sf("unknown data type requested '%v'",type_token_string))
                         finish(false, ERR_SYNTAX)
                         break
                     }
@@ -1240,10 +1252,10 @@ tco_reentry:
             var endfound bool
             var enddistance int16
 
-            endfound, enddistance, _ = lookahead(base, pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
-            // pf("(while debug) -> on line %v : end_found %+v : distance %+v\n",parser.line,endfound,enddistance)
+            endfound, enddistance, _ = lookahead(source_base, parser.pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
+            // pf("(while debug) -> on line %v : end_found %+v : distance %+v\n",inbound.SourceLine,endfound,enddistance)
             if !endfound {
-                parser.report("could not find an ENDWHILE")
+                parser.report(inbound.SourceLine,"could not find an ENDWHILE")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1265,7 +1277,7 @@ tco_reentry:
 
                 we = parser.wrappedEval(ifs,ifs,etoks)
                 if we.evalError {
-                    parser.report("could not evaluate WHILE condition")
+                    parser.report(inbound.SourceLine,"could not evaluate WHILE condition")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1274,7 +1286,7 @@ tco_reentry:
                 case bool:
                     res = we.result.(bool)
                 default:
-                    parser.report("WHILE condition must evaluate to boolean")
+                    parser.report(inbound.SourceLine,"WHILE condition must evaluate to boolean")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1283,15 +1295,13 @@ tco_reentry:
 
             if isBool(res) && res {
                 // while cond is true, stack, then continue loop
-                lastlock.Lock()
-                depth[ifs]++
-                loops[ifs][depth[ifs]] = s_loop{repeatFrom: pc, whileContinueAt: pc + enddistance, repeatCond: etoks, loopType: C_While}
-                lastConstruct[ifs] = append(lastConstruct[ifs], C_While)
-                lastlock.Unlock()
+                depth+=1
+                loops[depth] = s_loop{repeatFrom: parser.pc, whileContinueAt: parser.pc + enddistance, repeatCond: etoks, loopType: C_While}
+                lastConstruct = append(lastConstruct, C_While)
                 break
             } else {
                 // -> endwhile
-                pc += enddistance
+                parser.pc += enddistance
             }
 
 
@@ -1299,64 +1309,50 @@ tco_reentry:
 
             // re-evaluate, on true jump back to start, on false, destack and continue
 
-            lastlock.Lock()
-            cond := loops[ifs][depth[ifs]]
+            cond := loops[depth]
 
             if cond.loopType != C_While {
-                /* // DEBUG
-                add_output:=""
-                for _,cv:=range lastConstruct[ifs] {
-                    add_output+=sf("%v , ",tokNames[cv])
-                }
-                parser.report(sf("ENDWHILE outside of WHILE loop.\ncond:%#v\nadditional:%v",cond,add_output))
-                */
-                parser.report("ENDWHILE outside of WHILE loop")
+                parser.report(inbound.SourceLine,"ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
-                lastlock.Unlock()
                 break
             }
 
             // time to die?
             if breakIn == C_Endwhile {
-                lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
-                depth[ifs]--
+                depth-=1
+                lastConstruct = lastConstruct[:depth]
                 breakIn = Error
-                lastlock.Unlock()
                 break
             }
 
             // evaluate condition
             we = parser.wrappedEval(ifs,ifs,cond.repeatCond)
             if we.evalError {
-                parser.report(sf("eval fault in ENDWHILE\n%+v\n",we.errVal))
+                parser.report(inbound.SourceLine,sf("eval fault in ENDWHILE\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
-                lastlock.Unlock()
                 break
             }
 
             if we.result.(bool) {
                 // while still true, loop
-                pc = cond.repeatFrom
+                parser.pc = cond.repeatFrom
             } else {
                 // was false, so leave the loop
-                lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
-                depth[ifs]--
+                depth-=1
+                lastConstruct = lastConstruct[:depth]
             }
-
-            lastlock.Unlock()
-
 
 
         case C_SetGlob: // set the value of a global variable.
 
            if inbound.TokenCount<3 {
-                parser.report("missing value in setglob.")
+                parser.report(inbound.SourceLine,"missing value in setglob.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if res:=parser.wrappedEval(globalaccess,ifs,inbound.Tokens[1:]); res.evalError {
-                parser.report(sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
+                parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
                 finish(false,ERR_EVAL)
                 break
             }
@@ -1368,19 +1364,19 @@ tco_reentry:
             // iterates over the result of expression expr as a list
 
             if inbound.TokenCount<4 {
-                parser.report("bad argument length in FOREACH.")
+                parser.report(inbound.SourceLine,"bad argument length in FOREACH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if str.ToLower(inbound.Tokens[2].tokText) != "in" {
-                parser.report("malformed FOREACH statement.")
+                parser.report(inbound.SourceLine,"malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             if inbound.Tokens[1].tokType != Identifier {
-                parser.report("parameter 2 must be an identifier.")
+                parser.report(inbound.SourceLine,"parameter 2 must be an identifier.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1397,7 +1393,7 @@ tco_reentry:
 
                 we = parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
                 if we.evalError {
-                    parser.report(sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
+                    parser.report(inbound.SourceLine,sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -1453,13 +1449,13 @@ tco_reentry:
 
                 if l==0 {
                     // skip empty expressions
-                    endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                    endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
                     if !endfound {
-                        parser.report("Cannot determine the location of a matching ENDFOR.")
+                        parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else { //skip
-                        pc += enddistance
+                        parser.pc += enddistance
                         break
                     }
                 }
@@ -1675,33 +1671,29 @@ tco_reentry:
                     }
 
                 default:
-                    parser.report(sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", we.result,we.result))
+                    parser.report(inbound.SourceLine,sf("Mishandled return of type '%T' from FOREACH expression '%v'\n", we.result,we.result))
                     finish(false,ERR_EVAL)
                     break
                 }
 
 
                 // figure end position
-                endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
                 if !endfound {
-                    parser.report("Cannot determine the location of a matching ENDFOR.")
+                    parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
-                lastlock.Lock()
+                depth+=1
+                lastConstruct = append(lastConstruct, C_Foreach)
 
-                depth[ifs]++
-                lastConstruct[ifs] = append(lastConstruct[ifs], C_Foreach)
-
-                loops[ifs][depth[ifs]] = s_loop{loopVar: fid, varoffset:fno, varkeyoffset:fkno,
+                loops[depth] = s_loop{loopVar: fid, varoffset:fno, varkeyoffset:fkno,
                     optNoUse: Opt_LoopStart,
-                    repeatFrom: pc + 1, iterOverMap: iter, iterOverArray: we.result,
-                    counter: 0, condEnd: condEndPos, forEndPos: enddistance + pc,
+                    repeatFrom: parser.pc + 1, iterOverMap: iter, iterOverArray: we.result,
+                    counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
                     loopType: C_Foreach,
                 }
-
-                lastlock.Unlock()
 
             }
 
@@ -1709,14 +1701,14 @@ tco_reentry:
         case C_For: // loop over an int64 range
 
             if inbound.TokenCount < 5 || inbound.Tokens[2].tokText != "=" {
-                parser.report("Malformed FOR statement.")
+                parser.report(inbound.SourceLine,"Malformed FOR statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             toAt := findDelim(inbound.Tokens, C_To, 2)
             if toAt == -1 {
-                parser.report("TO not found in FOR")
+                parser.report(inbound.SourceLine,"TO not found in FOR")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1736,12 +1728,12 @@ tco_reentry:
                 if err==nil && isNumber(expr) {
                     fstart, _ = GetAsInt(expr)
                 } else {
-                    parser.report("Could not evaluate start expression in FOR")
+                    parser.report(inbound.SourceLine,"Could not evaluate start expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                parser.report("Missing expression in FOR statement?")
+                parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1755,12 +1747,12 @@ tco_reentry:
                 if err==nil && isNumber(expr) {
                     fend, _ = GetAsInt(expr)
                 } else {
-                    parser.report("Could not evaluate end expression in FOR")
+                    parser.report(inbound.SourceLine,"Could not evaluate end expression in FOR")
                     finish(false, ERR_EVAL)
                     break
                 }
             } else {
-                parser.report("Missing expression in FOR statement?")
+                parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -1771,12 +1763,12 @@ tco_reentry:
                     if err==nil && isNumber(expr) {
                         fstep, _ = GetAsInt(expr)
                     } else {
-                        parser.report("Could not evaluate STEP expression")
+                        parser.report(inbound.SourceLine,"Could not evaluate STEP expression")
                         finish(false, ERR_EVAL)
                         break
                     }
                 } else {
-                    parser.report( "Missing expression in FOR statement?")
+                    parser.report(inbound.SourceLine, "Missing expression in FOR statement?")
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1787,7 +1779,7 @@ tco_reentry:
                 step = fstep
             }
             if step == 0 {
-                parser.report("This is a road to nowhere. (STEP==0)")
+                parser.report(inbound.SourceLine,"This is a road to nowhere. (STEP==0)")
                 finish(true, ERR_EVAL)
                 break
             }
@@ -1798,9 +1790,9 @@ tco_reentry:
             }
 
             // figure end position
-            endfound, enddistance, _ := lookahead(base, pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+            endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
             if !endfound {
-                parser.report("Cannot determine the location of a matching ENDFOR.")
+                parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -1814,32 +1806,32 @@ tco_reentry:
 
             // ensure we only re-use int type vars
             loc,found := VarLookup(ifs,inter)
+            var tk *RToken
+
             if found {
                 ll:=false
-                if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+                if atomic.LoadInt32(&concurrent_funcs)>1 { tk=vlock.RLock() ; ll=true }
                 if ident[ifs][loc].declared {
                     should_for_break:=false
                     switch ident[ifs][loc].IValue.(type) {
                     case int:
                     default:
-                        if ll { vlock.RUnlock() }
-                        parser.report(sf("Variable %s already declared in FOR.",inter))
+                        if ll { vlock.RUnlock(tk) }
+                        parser.report(inbound.SourceLine,sf("Variable %s already declared in FOR.",inter))
                         finish(false,ERR_EVAL)
                         should_for_break = true
                     }
                     if should_for_break { break }
                 }
-                if ll { vlock.RUnlock() }
+                if ll { vlock.RUnlock(tk) }
             }
 
-            lastlock.Lock()
-
-            depth[ifs]++
-            loops[ifs][depth[ifs]] = s_loop{
+            depth+=1
+            loops[depth] = s_loop{
                 loopVar:  inter,
                 varoffset: fno,
                 optNoUse: Opt_LoopStart,
-                loopType: C_For, forEndPos: pc + enddistance, repeatFrom: pc + 1,
+                loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                 counter: fstart, condEnd: fend,
                 repeatAction: direction, repeatActionStep: step,
             }
@@ -1847,20 +1839,18 @@ tco_reentry:
             // store loop start condition
             vseti(ifs, inter, fno, fstart)
 
-            lastConstruct[ifs] = append(lastConstruct[ifs], C_For)
-
-            lastlock.Unlock()
+            lastConstruct = append(lastConstruct, C_For)
 
             // make sure start is not more than end, if it is, send it to the endfor
             switch direction {
             case ACT_INC:
                 if fstart>fend {
-                    pc=pc+enddistance-1
+                    parser.pc=parser.pc+enddistance-1
                     break
                 }
             case ACT_DEC:
                 if fstart<fend {
-                    pc=pc+enddistance-1
+                    parser.pc=parser.pc+enddistance-1
                     break
                 }
             }
@@ -1868,17 +1858,18 @@ tco_reentry:
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
-            ll:=false
-            if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() ; ll=true }
-
             //.. take address of loop info store entry
-            thisLoop = &loops[ifs][depth[ifs]]
+            thisLoop = &loops[depth]
 
             if (*thisLoop).optNoUse == Opt_LoopStart {
-                if lastConstruct[ifs][depth[ifs]-1]!=C_Foreach && lastConstruct[ifs][depth[ifs]-1]!=C_For {
-                    parser.report("ENDFOR without a FOR or FOREACH")
+                if lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
+                    parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
+                    pf("lc (depth : %d) ->\n",depth)
+                    for _,v:=range lastConstruct {
+                        pf("%s ",tokNames[v])
+                    }
+                    pf("\n")
                     finish(false,ERR_SYNTAX)
-                    if ll { lastlock.Unlock() }
                     break
                 }
             }
@@ -1976,7 +1967,7 @@ tco_reentry:
                     if (*thisLoop).optNoUse == Opt_LoopStart {
                         (*thisLoop).optNoUse = Opt_LoopIgnore
                         // check tokens once for loop var references, then set Opt_LoopSet if found.
-                        if searchToken(base, (*thisLoop).repeatFrom, pc, (*thisLoop).loopVar) {
+                        if searchToken(source_base, (*thisLoop).repeatFrom, parser.pc, (*thisLoop).loopVar) {
                             (*thisLoop).optNoUse = Opt_LoopSet
                         }
                     }
@@ -1996,25 +1987,21 @@ tco_reentry:
 
             if loopEnd {
                 // leave the loop
-                lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
-                depth[ifs]--
+                depth-=1
+                lastConstruct = lastConstruct[:depth]
                 breakIn = Error // reset to unbroken
             } else {
                 // jump back to start of block
-                pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
+                parser.pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
             }
-
-            if ll { lastlock.Unlock() }
 
 
         case C_Continue:
 
             // Continue should work with FOR, FOREACH or WHILE.
 
-            lastlock.RLock()
-
-            if depth[ifs] == 0 {
-                parser.report("Attempting to CONTINUE without a valid surrounding construct.")
+            if depth == 0 {
+                parser.report(inbound.SourceLine,"Attempting to CONTINUE without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
@@ -2023,29 +2010,25 @@ tco_reentry:
                 //  loop code) for a minor speed bump. we should periodically
                 //  review this as an optimisation in Go could make this unnecessary.
 
-                lastlock.RLock()
-                switch lastConstruct[ifs][depth[ifs]-1] {
+                switch lastConstruct[depth-1] {
                 case C_For, C_Foreach:
-                    thisLoop = &loops[ifs][depth[ifs]]
-                    pc = (*thisLoop).forEndPos - 1
+                    thisLoop = &loops[depth]
+                    parser.pc = (*thisLoop).forEndPos - 1
 
                 case C_While:
-                    thisLoop = &loops[ifs][depth[ifs]]
-                    pc = (*thisLoop).whileContinueAt - 1
+                    thisLoop = &loops[depth]
+                    parser.pc = (*thisLoop).whileContinueAt - 1
 
                 case C_When:
                     // mark this as an error for now, as we don't currently
                     //  backtrack through lastConstruct to check the actual
                     //  loop type so that it can be properly unwound.
-                    parser.report("Attempting to CONTINUE inside a WHEN is not permitted.")
+                    parser.report(inbound.SourceLine,"Attempting to CONTINUE inside a WHEN is not permitted.")
                     finish(false,ERR_SYNTAX)
 
                 }
-                lastlock.RUnlock()
 
             }
-
-            lastlock.RUnlock()
 
 
         case C_Break:
@@ -2056,54 +2039,48 @@ tco_reentry:
             //  of these from which we need to break out.
 
             // The surrounding construct should set the
-            //  lastConstruct[fs][depth] on entry.
+            //  lastConstruct[depth] on entry.
 
-            lastlock.RLock()
-
-            if depth[ifs] == 0 {
-                parser.report("Attempting to BREAK without a valid surrounding construct.")
+            if depth == 0 {
+                parser.report(inbound.SourceLine,"Attempting to BREAK without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
 
                 // jump calc, depending on break context
 
-                thisLoop = &loops[ifs][depth[ifs]]
+                thisLoop = &loops[depth]
 
-                switch lastConstruct[ifs][depth[ifs]-1] {
+                switch lastConstruct[depth-1] {
 
                 case C_For:
-                    pc = (*thisLoop).forEndPos - 1
+                    parser.pc = (*thisLoop).forEndPos - 1
                     breakIn = C_Endfor
 
                 case C_Foreach:
-                    pc = (*thisLoop).forEndPos - 1
+                    parser.pc = (*thisLoop).forEndPos - 1
                     breakIn = C_Endfor
 
                 case C_While:
-                    pc = (*thisLoop).whileContinueAt - 1
+                    parser.pc = (*thisLoop).whileContinueAt - 1
                     breakIn = C_Endwhile
 
                 case C_When:
-                    pc = wc[wccount].endLine - 1
+                    parser.pc = wc[wccount].endLine - 1
 
                 default:
-                    parser.report("A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
+                    parser.report(inbound.SourceLine,"A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
                     finish(false, ERR_SYNTAX)
-                    lastlock.RUnlock()
                     break
                 }
 
             }
-
-            lastlock.RUnlock()
-
 
         case C_Enum:
 
             if inbound.TokenCount<4 || (
                 ! (inbound.Tokens[2].tokType==LParen && inbound.Tokens[inbound.TokenCount-1].tokType==RParen) &&
                 ! (inbound.Tokens[2].tokType==LeftCBrace && inbound.Tokens[inbound.TokenCount-1].tokType==RightCBrace)) {
-                parser.report("Incorrect arguments supplied for ENUM.")
+                parser.report(inbound.SourceLine,"Incorrect arguments supplied for ENUM.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -2134,7 +2111,7 @@ tco_reentry:
                         nextVal=nextVal.(float64)+1
                     default:
                         // non-incremental error
-                        parser.report("Cannot increment default value in ENUM")
+                        parser.report(inbound.SourceLine,"Cannot increment default value in ENUM")
                         finish(false,ERR_EVAL)
                         break enum_loop
                     }
@@ -2154,7 +2131,7 @@ tco_reentry:
                             evEnum := parser.wrappedEval(ifs,ifs,resu[ea][2:])
 
                             if evEnum.evalError {
-                                parser.report("Invalid expression for assignment in ENUM")
+                                parser.report(inbound.SourceLine,"Invalid expression for assignment in ENUM")
                                 finish(false, ERR_EVAL)
                                 break enum_loop
                             }
@@ -2170,7 +2147,7 @@ tco_reentry:
 
                         } else {
                             // error
-                            parser.report("Missing assignment in ENUM")
+                            parser.report(inbound.SourceLine,"Missing assignment in ENUM")
                             finish(false,ERR_SYNTAX)
                             break enum_loop
                         }
@@ -2182,14 +2159,14 @@ tco_reentry:
         case C_Unset: // remove a variable
 
             if inbound.TokenCount != 2 {
-                parser.report("Incorrect arguments supplied for UNSET.")
+                parser.report(inbound.SourceLine,"Incorrect arguments supplied for UNSET.")
                 finish(false, ERR_SYNTAX)
             } else {
                 removee := inbound.Tokens[1].tokText
                 if _, ok := VarLookup(ifs, removee); ok {
                     vunset(ifs, removee)
                 } else {
-                    parser.report(sf("Variable %s does not exist.", removee))
+                    parser.report(inbound.SourceLine,sf("Variable %s does not exist.", removee))
                     finish(false, ERR_EVAL)
                 }
             }
@@ -2210,7 +2187,7 @@ tco_reentry:
             switch str.ToLower(inbound.Tokens[1].tokText) {
             case "off":
                 if inbound.TokenCount != 2 {
-                    parser.report("Too many arguments supplied.")
+                    parser.report(inbound.SourceLine,"Too many arguments supplied.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2223,7 +2200,7 @@ tco_reentry:
             case "select":
 
                 if inbound.TokenCount != 3 {
-                    parser.report("Invalid pane selection.")
+                    parser.report(inbound.SourceLine,"Invalid pane selection.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2237,7 +2214,7 @@ tco_reentry:
                     currentpane = cp
 
                 default:
-                    parser.report("Warning: you must provide a string value to PANE SELECT.")
+                    parser.report(inbound.SourceLine,"Warning: you must provide a string value to PANE SELECT.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2258,7 +2235,7 @@ tco_reentry:
                    TCommaAt := findDelim(inbound.Tokens, O_Comma, WCommaAt+1)
 
                 if nameCommaAt==-1 || YCommaAt==-1 || XCommaAt==-1 || HCommaAt==-1 {
-                    parser.report("Bad delimiter in PANE DEFINE.")
+                    parser.report(inbound.SourceLine,"Bad delimiter in PANE DEFINE.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2303,7 +2280,7 @@ tco_reentry:
                 }
 
                 if pname.evalError || py.evalError || px.evalError || ph.evalError || pw.evalError {
-                    parser.report("could not evaluate an argument in PANE DEFINE")
+                    parser.report(inbound.SourceLine,"could not evaluate an argument in PANE DEFINE")
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -2319,13 +2296,13 @@ tco_reentry:
                 if hasBox   { boxed = sf("%v",pbox.result)   }
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
-                    parser.report("Could not use an argument in PANE DEFINE.")
+                    parser.report(inbound.SourceLine,"Could not use an argument in PANE DEFINE.")
                     finish(false,ERR_EVAL)
                     break
                 }
 
                 if pname.result.(string) == "global" {
-                    parser.report("Cannot redefine the global PANE.")
+                    parser.report(inbound.SourceLine,"Cannot redefine the global PANE.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2337,7 +2314,7 @@ tco_reentry:
                 paneBox(currentpane)
 
             default:
-                parser.report("Unknown PANE command.")
+                parser.report(inbound.SourceLine,"Unknown PANE command.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -2348,7 +2325,7 @@ tco_reentry:
                 s:=stripOuter(inbound.Tokens[1].tokText,'`')
                 coprocCall(ifs,"|"+s)
             } else {
-                coprocCall(ifs,inbound.Original)
+                coprocCall(ifs,basecode[source_base][parser.pc].Original)
             }
 
         case C_Pause:
@@ -2356,7 +2333,7 @@ tco_reentry:
             var i string
 
             if inbound.TokenCount<2 {
-                parser.report("Not enough arguments in PAUSE.")
+                parser.report(inbound.SourceLine,"Not enough arguments in PAUSE.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -2374,7 +2351,7 @@ tco_reentry:
                 dur, err := time.ParseDuration(i + "ms")
 
                 if err != nil {
-                    parser.report(sf("'%s' did not evaluate to a duration.", we.text))
+                    parser.report(inbound.SourceLine,sf("'%s' did not evaluate to a duration.", we.text))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -2382,7 +2359,7 @@ tco_reentry:
                 time.Sleep(dur)
 
             } else {
-                parser.report(sf("could not evaluate PAUSE expression\n%+v",we.errVal))
+                parser.report(inbound.SourceLine,sf("could not evaluate PAUSE expression\n%+v",we.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
@@ -2408,7 +2385,7 @@ tco_reentry:
                         }
                     }
 
-                    appendToTestReport(test_output_file,ifs, pc, docout)
+                    appendToTestReport(test_output_file,ifs, parser.pc, docout)
 
                 }
             }
@@ -2423,13 +2400,13 @@ tco_reentry:
             if testMode {
 
                 if !(inbound.TokenCount == 4 || inbound.TokenCount == 6) {
-                    parser.report("Badly formatted TEST command.")
+                    parser.report(inbound.SourceLine,"Badly formatted TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
 
                 if str.ToLower(inbound.Tokens[2].tokText) != "group" {
-                    parser.report("Missing GROUP in TEST command.")
+                    parser.report(inbound.SourceLine,"Missing GROUP in TEST command.")
                     finish(false, ERR_SYNTAX)
                     break
                 }
@@ -2437,7 +2414,7 @@ tco_reentry:
                 test_assert = "fail"
                 if inbound.TokenCount == 6 {
                     if str.ToLower(inbound.Tokens[4].tokText) != "assert" {
-                        parser.report("Missing ASSERT in TEST command.")
+                        parser.report(inbound.SourceLine,"Missing ASSERT in TEST command.")
                         finish(false, ERR_SYNTAX)
                         break
                     } else {
@@ -2447,7 +2424,7 @@ tco_reentry:
                         case "continue":
                             test_assert = "continue"
                         default:
-                            parser.report("Bad ASSERT type in TEST command.")
+                            parser.report(inbound.SourceLine,"Bad ASSERT type in TEST command.")
                             finish(false, ERR_SYNTAX)
                             break
                         }
@@ -2463,7 +2440,7 @@ tco_reentry:
                     vset(ifs,"_test_group",test_group)
                     vset(ifs,"_test_name",test_name)
                     under_test = true
-                    appendToTestReport(test_output_file,ifs, pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
+                    appendToTestReport(test_output_file,ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
                 }
 
             }
@@ -2489,7 +2466,7 @@ tco_reentry:
 
                 doAt := findDelim(inbound.Tokens, C_Do, 2)
                 if doAt == -1 {
-                    parser.report("DO not found in ON")
+                    parser.report(inbound.SourceLine,"DO not found in ON")
                     finish(false, ERR_SYNTAX)
                 } else {
                     // more tokens after the DO to form a command with?
@@ -2497,7 +2474,7 @@ tco_reentry:
 
                         we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:doAt])
                         if we.evalError {
-                            parser.report( sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",we.text,we.errVal))
+                            parser.report(inbound.SourceLine, sf("Could not evaluate expression '%v' in ON..DO statement.\n%+v",we.text,we.errVal))
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -2508,18 +2485,20 @@ tco_reentry:
 
                                 // create a phrase
                                 p := Phrase{}
+                                b := BaseCode{}
                                 p.Tokens = inbound.Tokens[doAt+1:]
                                 p.TokenCount = inbound.TokenCount - (doAt + 1)
-                                p.Original = inbound.Original
+                                b.Original = basecode[source_base][parser.pc].Original
 
                                 // action!
                                 inbound=&p
+                                basecode_entry=&b
                                 goto ondo_reenter
 
                             }
                         default:
                             pf("Result Type -> %T expression was -> %s\n", we.text, we.result)
-                            parser.report("ON cannot operate without a condition.")
+                            parser.report(inbound.SourceLine,"ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
                             break
                         }
@@ -2528,7 +2507,7 @@ tco_reentry:
                 }
 
             } else {
-                parser.report("ON missing arguments.")
+                parser.report(inbound.SourceLine,"ON missing arguments.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -2537,7 +2516,7 @@ tco_reentry:
 
             if inbound.TokenCount < 2 {
 
-                parser.report("Insufficient arguments supplied to ASSERT")
+                parser.report(inbound.SourceLine,"Insufficient arguments supplied to ASSERT")
                 finish(false, ERR_ASSERT)
 
             } else {
@@ -2547,7 +2526,7 @@ tco_reentry:
 
                 if we.assign {
                     // someone typo'ed a condition 99.9999% of the time
-                    parser.report(
+                    parser.report(inbound.SourceLine,
                         sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",
                             cet.assignVar,cet.text))
                     finish(false,ERR_ASSERT)
@@ -2555,7 +2534,7 @@ tco_reentry:
                 }
 
                 if we.evalError {
-                    parser.report("Could not evaluate expression in ASSERT statement.")
+                    parser.report(inbound.SourceLine,"Could not evaluate expression in ASSERT statement.")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2574,131 +2553,38 @@ tco_reentry:
 
                     if !we.result.(bool) {
                         if !under_test {
-                            parser.report(sf("Could not assert! ( %s )", we.text))
+                            parser.report(inbound.SourceLine,sf("Could not assert! ( %s )", we.text))
                             finish(false, ERR_ASSERT)
                             break
                         }
                         // under test
                         test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
-                            group_name_string, getReportFunctionName(ifs,false), parser.line, we.text)
+                            group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
                         testsFailed++
-                        appendToTestReport(test_output_file,ifs, parser.line, test_report)
+                        appendToTestReport(test_output_file,ifs, inbound.SourceLine, test_report)
                         temp_test_assert := test_assert
                         if fail_override != "" {
                             temp_test_assert = fail_override
                         }
                         switch temp_test_assert {
                         case "fail":
-                            parser.report(sf("Could not assert! (%s)", we.text))
+                            parser.report(inbound.SourceLine,sf("Could not assert! (%s)", we.text))
                             finish(false, ERR_ASSERT)
                         case "continue":
-                            parser.report(sf("Assert failed (%s), but continuing.", we.text))
+                            parser.report(inbound.SourceLine,sf("Assert failed (%s), but continuing.", we.text))
                         }
                     } else {
                         if under_test {
                             test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
-                                group_name_string, getReportFunctionName(ifs,false), parser.line, we.text)
+                                group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
                             testsPassed++
-                            appendToTestReport(test_output_file,ifs, pc, test_report)
+                            appendToTestReport(test_output_file,ifs, parser.pc, test_report)
                         }
                     }
                 }
 
             }
 
-
-        case C_Init: // initialise an array
-
-            /*
-            if inbound.TokenCount<2 {
-                parser.report("Not enough arguments in INIT.")
-                finish(false,ERR_EVAL)
-                break
-            }
-
-            varname := interpolate(ifs,inbound.Tokens[1].tokText)
-
-            vartype := "assoc"
-            if inbound.TokenCount>2 {
-                vartype = inbound.Tokens[2].tokText
-            }
-
-            size:=DEFAULT_INIT_SIZE
-
-            if inbound.TokenCount>3 {
-
-                we = parser.wrappedEval(ifs,ifs, inbound.Tokens[3:])
-                if we.evalError {
-                    parser.report(sf("could not evaluate expression in INIT statement\n%+v",we.errVal))
-                    finish(false,ERR_EVAL)
-                    break
-                }
-
-                switch we.result.(type) {
-                case int,int64:
-                    strSize,invalid:=GetAsInt(we.result)
-                    if ! invalid {
-                        size=strSize
-                    }
-                default:
-                    parser.report("Array width must evaluate to an integer.")
-                    finish(false,ERR_EVAL)
-                    break
-                }
-
-            }
-
-            if varname != "" {
-
-                // TODO: these cases need moving into C_Var: (DONE?)
-                switch vartype {
-
-                case "byte":
-                    vset(ifs, varname, make([]uint8,size,size))
-                case "int":
-                    vset(ifs, varname, make([]int,size,size))
-                case "float":
-                    vset(ifs, varname, make([]float64,size,size))
-                case "bool":
-                    vset(ifs, varname, make([]bool,size,size))
-                case "mixed":
-                    vset(ifs, varname, make([]interface{},size,size))
-                case "string":
-                    vset(ifs, varname, make([]string,size,size))
-                case "assoc":
-                    vset(ifs, varname, make(map[string]interface{},size))
-
-                default:
-                    //
-                    // move this later:
-                    var tb bool
-                    var tu8 uint8
-                    var tu uint
-                    var ti int
-                    var tf64 float64
-                    var ts string
-                    var atint   []interface{}
-                    var ats     []string
-
-                    // instantiate fields with an empty expected type:
-                    typemap:=make(map[string]reflect.Type)
-                    typemap["bool"]     = reflect.TypeOf(tb)
-                    typemap["byte"]     = reflect.TypeOf(tu8)
-                    typemap["uint8"]    = reflect.TypeOf(tu8)
-                    typemap["uint"]     = reflect.TypeOf(tu)
-                    typemap["int"]      = reflect.TypeOf(ti)
-                    typemap["float"]    = reflect.TypeOf(tf64)
-                    typemap["float64"]  = reflect.TypeOf(tf64)
-                    typemap["string"]   = reflect.TypeOf(ts)
-                    typemap["[]string"] = reflect.TypeOf(ats)
-                    typemap["[]"]       = reflect.TypeOf(atint)
-                    typemap["^"]        = reflect.TypeOf(ats)
-                    //
-
-
-                }
-            }
-            */
 
         case C_Help:
             hargs := ""
@@ -2719,7 +2605,7 @@ tco_reentry:
 
             if inbound.TokenCount<5 {
                 usage := "ASYNC [#i1]handle_map function_call([args]) [next_id][#i0]"
-                parser.report("Invalid arguments in ASYNC\n"+usage)
+                parser.report(inbound.SourceLine,"Invalid arguments in ASYNC\n"+usage)
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -2728,7 +2614,7 @@ tco_reentry:
             call    := inbound.Tokens[2].tokText
 
             if inbound.Tokens[3].tokType!=LParen {
-                parser.report("could not find '(' in ASYNC function call.")
+                parser.report(inbound.SourceLine,"could not find '(' in ASYNC function call.")
                 finish(false,ERR_SYNTAX)
             }
 
@@ -2743,7 +2629,7 @@ tco_reentry:
             }
 
             if rightParenLoc<4 {
-               parser.report("could not find a valid ')' in ASYNC function call.")
+               parser.report(inbound.SourceLine,"could not find a valid ')' in ASYNC function call.")
                 finish(false,ERR_SYNTAX)
             }
 
@@ -2756,7 +2642,7 @@ tco_reentry:
                 nival,err = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
                 nival=sf("%v",nival)
                 if err!=nil {
-                    parser.report(sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
+                    parser.report(inbound.SourceLine,sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2777,7 +2663,7 @@ tco_reentry:
                 }
 
                 if !errClear {
-                    parser.report(sf("problem evaluating arguments in function call. (fs=%v)\n", ifs))
+                    parser.report(inbound.SourceLine,sf("problem evaluating arguments in function call. (fs=%v)\n", ifs))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -2795,7 +2681,7 @@ tco_reentry:
 
                 // vset(ifs,"@#@"+strconv.Itoa(int(loc)),nil)
 
-                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, callline: pc, retvar: sf("@#@%v",loc)}
+                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs, retvar: sf("@#@%v",loc)}
                 calllock.Unlock()
 
                 // construct a go call that includes a normal Call
@@ -2810,7 +2696,7 @@ tco_reentry:
 
             } else {
                 // func not found
-                parser.report(sf("invalid function '%s' in ASYNC call",call))
+                parser.report(inbound.SourceLine,sf("invalid function '%s' in ASYNC call",call))
                 finish(false,ERR_EVAL)
             }
 
@@ -2820,7 +2706,7 @@ tco_reentry:
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
             if inbound.TokenCount < 2 {
-                parser.report("Malformed REQUIRE statement.")
+                parser.report(inbound.SourceLine,"Malformed REQUIRE statement.")
                 finish(true, ERR_SYNTAX)
                 break
             }
@@ -2887,7 +2773,7 @@ tco_reentry:
                     if isNumber(ec) {
                         finish(true, ec.(int))
                     } else {
-                        parser.report("Could not evaluate your EXIT expression")
+                        parser.report(inbound.SourceLine,"Could not evaluate your EXIT expression")
                         finish(true,ERR_EVAL)
                     }
                 }
@@ -2901,7 +2787,7 @@ tco_reentry:
             if inbound.TokenCount > 1 {
 
                 if defining {
-                    parser.report("Already defining a function. Nesting not permitted.")
+                    parser.report(inbound.SourceLine,"Already defining a function. Nesting not permitted.")
                     finish(true, ERR_SYNTAX)
                     break
                 }
@@ -2931,7 +2817,7 @@ tco_reentry:
                 exMatchStdlib:=false
                 for n,_:=range slhelp {
                     if n==definitionName {
-                        parser.report("A library function already exists with the name '"+definitionName+"'")
+                        parser.report(inbound.SourceLine,"A library function already exists with the name '"+definitionName+"'")
                         finish(false,ERR_SYNTAX)
                         exMatchStdlib=true
                         break
@@ -2946,9 +2832,10 @@ tco_reentry:
                     fs:loc,
                 }
 
-                sourceMap[loc]=base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
+                sourceMap[loc]=source_base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
+                basecode[loc] = []BaseCode{}
                 fspacelock.Unlock()
 
                 farglock.Lock()
@@ -2964,7 +2851,7 @@ tco_reentry:
                 if _, exists := fnlookup.lmget(fn); exists {
                     ShowDef(fn)
                 } else {
-                    parser.report("Function not found.")
+                    parser.report(inbound.SourceLine,"Function not found.")
                     finish(false, ERR_EVAL)
                 }
             } else {
@@ -3013,7 +2900,7 @@ tco_reentry:
             if inbound.TokenCount > 2 {
 
                 var bname string
-                bname, _ = numlookup.lmget(base)
+                bname, _ = numlookup.lmget(source_base)
 
                 tco_check:=false // deny tco until we check all is well
 
@@ -3043,7 +2930,7 @@ tco_reentry:
                     // set tco flag if required, and perform.
                     if !skip_reentry {
                         vset(ifs,"@in_tco",true)
-                        pc=-1
+                        parser.pc=-1
                         goto tco_reentry
                     }
                 }
@@ -3055,7 +2942,7 @@ tco_reentry:
             for q:=0;q<int(curArg);q++ {
                 retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
                 if ev_er!=nil {
-                    parser.report("Could not evaluate RETURN arguments")
+                    parser.report(inbound.SourceLine,"Could not evaluate RETURN arguments")
                     finish(true,ERR_EVAL)
                     break
                 }
@@ -3067,7 +2954,7 @@ tco_reentry:
         case C_Enddef:
 
             if !defining {
-                parser.report("Not currently defining a function.")
+                parser.report(inbound.SourceLine,"Not currently defining a function.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3086,7 +2973,7 @@ tco_reentry:
             if inbound.TokenCount < 4 {
                 usage:= "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0] [ [#i1]error_hint[#i0] ]\n"
                 usage+= "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
-                parser.report("Incorrect arguments supplied to INPUT.\n"+usage)
+                parser.report(inbound.SourceLine,"Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3110,7 +2997,7 @@ tco_reentry:
                 d, er := strconv.Atoi(pos)
                 if er == nil {
                     if d<1 {
-                        parser.report( sf("INPUT position %d too low.",d))
+                        parser.report(inbound.SourceLine, sf("INPUT position %d too low.",d))
                         finish(true, ERR_SYNTAX)
                         break
                     }
@@ -3123,11 +3010,11 @@ tco_reentry:
                             vset(ifs, id, cmdargs[d-1])
                         }
                     } else {
-                        parser.report(sf("Expected CLI parameter [%s] not provided at startup.", hint))
+                        parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
                         finish(true, ERR_SYNTAX)
                     }
                 } else {
-                    parser.report(sf("That '%s' doesn't look like a number.", pos))
+                    parser.report(inbound.SourceLine,sf("That '%s' doesn't look like a number.", pos))
                     finish(true, ERR_SYNTAX)
                 }
 
@@ -3150,7 +3037,7 @@ tco_reentry:
                         }
                     }
                 } else {
-                    parser.report( sf("That '%s' doesn't look like a number.", pos))
+                    parser.report(inbound.SourceLine, sf("That '%s' doesn't look like a number.", pos))
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -3173,12 +3060,12 @@ tco_reentry:
             if inbound.TokenCount > 1 {
                 we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
                 if we.evalError {
-                    parser.report(sf("could not evaluate expression in MODULE statement\n%+v",we.errVal))
+                    parser.report(inbound.SourceLine,sf("could not evaluate expression in MODULE statement\n%+v",we.errVal))
                     finish(false,ERR_MODULE)
                     break
                 }
             } else {
-                parser.report("No module name provided.")
+                parser.report(inbound.SourceLine,"No module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -3186,7 +3073,7 @@ tco_reentry:
             fom := we.result.(string)
 
             if strcmp(fom,"") {
-                parser.report("Empty module name provided.")
+                parser.report(inbound.SourceLine,"Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -3222,13 +3109,13 @@ tco_reentry:
             f, err := os.Stat(moduleloc)
 
             if err != nil {
-                parser.report( sf("Module is not accessible. (path:%v)",moduleloc))
+                parser.report(inbound.SourceLine, sf("Module is not accessible. (path:%v)",moduleloc))
                 finish(false, ERR_MODULE)
                 break
             }
 
             if !f.Mode().IsRegular() {
-                parser.report(  "Module is not a regular file.")
+                parser.report(inbound.SourceLine,  "Module is not a regular file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -3237,7 +3124,7 @@ tco_reentry:
 
             mod, err := ioutil.ReadFile(moduleloc)
             if err != nil {
-                parser.report(  "Problem reading the module file.")
+                parser.report(inbound.SourceLine,  "Problem reading the module file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -3246,7 +3133,7 @@ tco_reentry:
 
             //.. error if it has already been defined
             if fnlookup.lmexists("@mod_"+fom) && !permit_dupmod {
-                parser.report("Module file "+fom+" already processed once.")
+                parser.report(inbound.SourceLine,"Module file "+fom+" already processed once.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3259,6 +3146,7 @@ tco_reentry:
 
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
+                basecode[loc] = []BaseCode{}
                 fspacelock.Unlock()
 
                 farglock.Lock()
@@ -3272,19 +3160,31 @@ tco_reentry:
 
                 //.. parse and execute
                 fileMap[loc]=moduleloc
-                phraseParse("@mod_"+fom, string(mod), 0)
-
+                if debug_level>10 {
+                    start := time.Now()
+                    phraseParse("@mod_"+fom, string(mod), 0)
+                    elapsed := time.Since(start)
+                    pf("(timings-module) elapsed in mod translation for '%s' : %v\n",fom,elapsed)
+                } else {
+                    phraseParse("@mod_"+fom, string(mod), 0)
+                }
                 modcs := call_s{}
                 modcs.base = loc
                 modcs.caller = ifs
                 modcs.fs = "@mod_" + fom
-                modcs.callline = pc
                 calltable[loc] = modcs
 
                 calllock.Unlock()
 
                 atomic.AddInt32(&concurrent_funcs, 1)
-                Call(MODE_NEW, loc, ciMod)
+                if debug_level>10 {
+                    start := time.Now()
+                    Call(MODE_NEW, loc, ciMod)
+                    elapsed := time.Since(start)
+                    pf("(timings-module) elapsed in mod execution for '%s' : %v\n",fom,elapsed)
+                } else {
+                    Call(MODE_NEW, loc, ciMod)
+                }
                 atomic.AddInt32(&concurrent_funcs, -1)
 
                 currentModule=oldModule
@@ -3297,7 +3197,7 @@ tco_reentry:
             // endwhen location should be calculated in advance for a direct jump to exit
 
             if wccount==WHEN_CAP {
-                parser.report(sf("maximum WHEN nesting reached (%d)",WHEN_CAP))
+                parser.report(inbound.SourceLine,sf("maximum WHEN nesting reached (%d)",WHEN_CAP))
                 finish(true,ERR_SYNTAX)
                 break
             }
@@ -3308,64 +3208,55 @@ tco_reentry:
             }
 
             // lookahead
-            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
+            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
 
             if er {
-                parser.report("Lookahead dedent error!")
+                parser.report(inbound.SourceLine,"Lookahead dedent error!")
                 finish(true, ERR_SYNTAX)
                 break
             }
 
             if !endfound {
-                parser.report("Missing ENDWHEN for this WHEN. Maybe check for open quotes or braces in block?")
+                parser.report(inbound.SourceLine,"Missing ENDWHEN for this WHEN. Maybe check for open quotes or braces in block?")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             we = parser.wrappedEval(ifs,ifs,inbound.Tokens[1:])
             if we.evalError {
-                parser.report(sf("could not evaluate the WHEN condition\n%+v",we.errVal))
+                parser.report(inbound.SourceLine,sf("could not evaluate the WHEN condition\n%+v",we.errVal))
                 finish(false, ERR_EVAL)
                 break
             }
 
             // create storage for WHEN details and increase the nesting level
 
-            lastlock.Lock()
-
-            wccount++
-            wc[wccount] = whenCarton{endLine: pc + enddistance, value: we.result, performed:false, dodefault: true}
-            depth[ifs]++
-            lastConstruct[ifs] = append(lastConstruct[ifs], C_When)
-
-            lastlock.Unlock()
+            wccount+=1
+            wc[wccount] = whenCarton{endLine: parser.pc + enddistance, value: we.result, performed:false, dodefault: true}
+            depth+=1
+            lastConstruct = append(lastConstruct, C_When)
 
 
         case C_Is, C_Has, C_Contains, C_Or:
 
-            lastlock.RLock()
-
-            if lastConstruct[ifs][len(lastConstruct[ifs])-1] != C_When {
-                parser.report("Not currently in a WHEN block.")
+            if lastConstruct[len(lastConstruct)-1] != C_When {
+                parser.report(inbound.SourceLine,"Not currently in a WHEN block.")
                 finish(false,ERR_SYNTAX)
-                lastlock.RUnlock()
                 break
             }
 
             carton := wc[wccount]
 
-            lastlock.RUnlock()
-
             if carton.performed {
                 // already matched and executed a WHEN case so jump to ENDWHEN
-                pc = carton.endLine - 1
+                parser.pc = carton.endLine - 1
                 break
             }
 
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
                 we = parser.wrappedEval(ifs,ifs, inbound.Tokens[1:])
                 if we.evalError {
-                    parser.report(sf("could not evaluate expression in WHEN condition\n%+v",we.errVal))
+                    parser.report(inbound.SourceLine,sf("could not evaluate expression in WHEN condition\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                     break
                 }
@@ -3385,11 +3276,11 @@ tco_reentry:
                     if we.result.(bool) {  // HAS truth
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-has (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
+                        // pf("when-has (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 default:
-                    parser.report(sf("HAS condition did not result in a boolean\n%+v",we.errVal))
+                    parser.report(inbound.SourceLine,sf("HAS condition did not result in a boolean\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                 }
 
@@ -3397,7 +3288,7 @@ tco_reentry:
                 if we.result == carton.value { // matched IS value
                     wc[wccount].performed = true
                     wc[wccount].dodefault = false
-                    // pf("when-is (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
+                    // pf("when-is (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                     ramble_on = true
                 }
 
@@ -3409,14 +3300,14 @@ tco_reentry:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-contains (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
+                        // pf("when-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-contains (@line %d): true -> %+v == %+v\n",parser.line,we.result,carton.value)
+                        // pf("when-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 }
@@ -3424,7 +3315,7 @@ tco_reentry:
             case C_Or: // default
 
                 if !carton.dodefault {
-                    pc = carton.endLine - 1
+                    parser.pc = carton.endLine - 1
                     ramble_on = false
                 } else {
                     ramble_on = true
@@ -3436,13 +3327,13 @@ tco_reentry:
 
             // jump to the next clause, continue to next line or skip to end.
 
-            if ramble_on { // move on to next pc statement
+            if ramble_on { // move on to next parser.pc statement
             } else {
                 // skip to next WHEN clause:
-                hasfound, hasdistance, _ := lookahead(base, pc+1, 0, 0, C_Has, []uint8{C_When}, []uint8{C_Endwhen})
-                isfound, isdistance, _   := lookahead(base, pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
-                orfound, ordistance, _   := lookahead(base, pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
-                cofound, codistance, _   := lookahead(base, pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
+                hasfound, hasdistance, _ := lookahead(source_base, parser.pc+1, 0, 0, C_Has, []uint8{C_When}, []uint8{C_Endwhen})
+                isfound, isdistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
+                orfound, ordistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
+                cofound, codistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
 
                 // add jump distances to list
                 distList := []int16{}
@@ -3470,39 +3361,33 @@ tco_reentry:
                 if !(isfound || hasfound || orfound || cofound) {
                     // must be an endwhen
                     loc = carton.endLine
-                    // pf("@%d : direct jump to endwhen at %d\n",pc,loc+1)
+                    // pf("@%d : direct jump to endwhen at %d\n",parser.pc,loc+1)
                 } else {
-                    loc = pc + min_int16(distList) + 1
-                    // pf("@%d : direct jump from distList to %d\n",pc,loc+1)
+                    loc = parser.pc + min_int16(distList) + 1
+                    // pf("@%d : direct jump from distList to %d\n",parser.pc,loc+1)
                 }
 
                 // jump to nearest following clause
-                pc = loc - 1
+                parser.pc = loc - 1
             }
 
 
         case C_Endwhen:
 
-            lastlock.Lock()
-
-            // if depth[ifs] == 0 || (depth[ifs] > 0 && lastConstruct[ifs][depth[ifs]-1] != C_When) {
-            if lastConstruct[ifs][len(lastConstruct[ifs])-1] != C_When {
-                parser.report( "Not currently in a WHEN block.")
-                lastlock.Unlock()
+            if lastConstruct[len(lastConstruct)-1] != C_When {
+                parser.report(inbound.SourceLine, "Not currently in a WHEN block.")
                 break
             }
 
             breakIn = Error
-            lastConstruct[ifs] = lastConstruct[ifs][:depth[ifs]-1]
-            depth[ifs]--
-            wccount--
+            lastConstruct = lastConstruct[:depth-1]
+            depth-=1
+            wccount-=1
 
             if wccount < 0 {
-                parser.report("Cannot reduce WHEN stack below zero.")
+                parser.report(inbound.SourceLine,"Cannot reduce WHEN stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
-
-            lastlock.Unlock()
 
 
         case C_Struct:
@@ -3517,13 +3402,13 @@ tco_reentry:
             // ENDSTRUCT
 
             if structMode {
-                parser.report("Cannot nest a STRUCT")
+                parser.report(inbound.SourceLine,"Cannot nest a STRUCT")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if inbound.TokenCount!=2 {
-                parser.report("STRUCT must contain a name.")
+                parser.report(inbound.SourceLine,"STRUCT must contain a name.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3537,7 +3422,7 @@ tco_reentry:
             // end structmode
 
             if ! structMode {
-                parser.report("ENDSTRUCT without STRUCT.")
+                parser.report(inbound.SourceLine,"ENDSTRUCT without STRUCT.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3581,14 +3466,14 @@ tco_reentry:
             // get params
 
             if inbound.TokenCount < 4 {
-                parser.report("Malformed WITH statement.")
+                parser.report(inbound.SourceLine,"Malformed WITH statement.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
             asAt := findDelim(inbound.Tokens, C_As, 2)
             if asAt == -1 {
-                parser.report("AS not found in WITH")
+                parser.report(inbound.SourceLine,"AS not found in WITH")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3598,28 +3483,30 @@ tco_reentry:
             fname:=crushEvalTokens(inbound.Tokens[asAt+1:]).text
 
             if fname=="" || vname=="" {
-                parser.report("Bad arguments to provided to WITH.")
+                parser.report(inbound.SourceLine,"Bad arguments to provided to WITH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
             if _, found := VarLookup(ifs,vname); !found {
-                parser.report(sf("Variable '%s' does not exist.",vname))
+                parser.report(inbound.SourceLine,sf("Variable '%s' does not exist.",vname))
                 finish(false,ERR_EVAL)
                 break
             }
 
             tfile, err:= ioutil.TempFile("","za_with_"+sf("%d",os.Getpid())+"_")
             if err!=nil {
-                parser.report("WITH could not create a temporary file.")
+                parser.report(inbound.SourceLine,"WITH could not create a temporary file.")
                 finish(true,ERR_SYNTAX)
                 break
             }
 
             ll:=false
-            if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; ll=true }
+            var tk *RToken
+
+            if atomic.LoadInt32(&concurrent_funcs)>1 { tk=vlock.RLock() ; ll=true }
             content,_:=vgeti(ifs,vid)
-            if ll { vlock.RUnlock() }
+            if ll { vlock.RUnlock(tk) }
 
             ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,fname,tfile.Name())
@@ -3632,14 +3519,14 @@ tco_reentry:
                 current_with_handle=nil
                 err:=os.Remove(remfile)
                 if err!=nil {
-                    parser.report(sf("WITH could not remove temporary file '%s'",remfile))
+                    parser.report(inbound.SourceLine,sf("WITH could not remove temporary file '%s'",remfile))
                     finish(true,ERR_FATAL)
                 }
             }()
 
         case C_Endwith:
             if !inside_with {
-                parser.report("ENDWITH without a WITH.")
+                parser.report(inbound.SourceLine,"ENDWITH without a WITH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3730,18 +3617,18 @@ tco_reentry:
             commaAt := findDelim(inbound.Tokens, O_Comma, 1)
 
             if commaAt == -1 || commaAt == inbound.TokenCount {
-                parser.report("Bad delimiter in AT.")
+                parser.report(inbound.SourceLine,"Bad delimiter in AT.")
                 finish(false, ERR_SYNTAX)
             } else {
 
                 expr_row, err := parser.Eval(ifs,inbound.Tokens[1:commaAt])
                 if expr_row==nil || err != nil {
-                    parser.report(sf("Evaluation error in %v", expr_row))
+                    parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_row))
                 }
 
                 expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:])
                 if expr_col==nil || err != nil {
-                    parser.report(sf("Evaluation error in %v", expr_col))
+                    parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_col))
                 }
 
                 atlock.Lock()
@@ -3760,7 +3647,7 @@ tco_reentry:
 
             if inbound.TokenCount < 2 {
                 usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ]"
-                parser.report(  "Not enough arguments for PROMPT.\n"+usage)
+                parser.report(inbound.SourceLine,  "Not enough arguments for PROMPT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3770,7 +3657,7 @@ tco_reentry:
                 if inbound.Tokens[1].tokType == O_Assign {
                     we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
                     if we.evalError {
-                        parser.report(sf("could not evaluate expression prompt assignment\n%+v",we.errVal))
+                        parser.report(inbound.SourceLine,sf("could not evaluate expression prompt assignment\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
@@ -3783,7 +3670,7 @@ tco_reentry:
                     if str.ToLower(inbound.Tokens[1].tokText)=="colour" {
                         pcol:=parser.wrappedEval(ifs,ifs,inbound.Tokens[2:])
                         if pcol.evalError {
-                            parser.report("could not evaluate prompt colour")
+                            parser.report(inbound.SourceLine,"could not evaluate prompt colour")
                             finish(false,ERR_EVAL)
                             break
                         }
@@ -3791,7 +3678,7 @@ tco_reentry:
                         // pf("colour is '"+promptColour+"'\n")
                     } else {
                         if inbound.TokenCount < 3 {
-                            parser.report( "Incorrect arguments for PROMPT command.")
+                            parser.report(inbound.SourceLine, "Incorrect arguments for PROMPT command.")
                             finish(false, ERR_SYNTAX)
                             break
                         } else {
@@ -3799,7 +3686,7 @@ tco_reentry:
                             broken := false
                             expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
                             if expr==nil {
-                                parser.report( "Could not evaluate in PROMPT command.")
+                                parser.report(inbound.SourceLine, "Could not evaluate in PROMPT command.")
                                 finish(false,ERR_EVAL)
                                 break
                             }
@@ -3809,7 +3696,7 @@ tco_reentry:
                                 if inbound.TokenCount > 3 {
                                     val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
                                     if val_ex_error != nil {
-                                        parser.report("Validator invalid in PROMPT!")
+                                        parser.report(inbound.SourceLine,"Validator invalid in PROMPT!")
                                         finish(false,ERR_EVAL)
                                         break
                                     }
@@ -3840,7 +3727,7 @@ tco_reentry:
         case C_Logging:
 
             if inbound.TokenCount < 2 || inbound.TokenCount > 3 {
-                parser.report(  "LOGGING command malformed.")
+                parser.report(inbound.SourceLine,  "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3855,7 +3742,7 @@ tco_reentry:
                 if inbound.TokenCount == 3 {
                     we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
                     if we.evalError {
-                        parser.report( sf("could not evaluate destination filename in LOGGING ON statement\n%+v",we.errVal))
+                        parser.report(inbound.SourceLine, sf("could not evaluate destination filename in LOGGING ON statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
@@ -3873,7 +3760,7 @@ tco_reentry:
                 if inbound.TokenCount > 2 {
                     we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
                     if we.evalError {
-                        parser.report( sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",we.errVal))
+                        parser.report(inbound.SourceLine, sf("could not evaluate filename in LOGGING ACCESSFILE statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
@@ -3887,7 +3774,7 @@ tco_reentry:
                     }
                     web_logger = log.New(web_log_handle, "", log.LstdFlags) // no prepended text
                 } else {
-                    parser.report( "No access file provided for LOGGING ACCESSFILE command.")
+                    parser.report(inbound.SourceLine, "No access file provided for LOGGING ACCESSFILE command.")
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -3899,11 +3786,11 @@ tco_reentry:
                     case "off","0","disable":
                         log_web=false
                     default:
-                        parser.report( "Invalid state set for LOGGING WEB.")
+                        parser.report(inbound.SourceLine, "Invalid state set for LOGGING WEB.")
                         finish(false, ERR_EVAL)
                     }
                 } else {
-                    parser.report( "No state provided for LOGGING WEB command.")
+                    parser.report(inbound.SourceLine, "No state provided for LOGGING WEB command.")
                     finish(false, ERR_SYNTAX)
                 }
 
@@ -3911,7 +3798,7 @@ tco_reentry:
                 if inbound.TokenCount == 3 {
                     we = parser.wrappedEval(ifs,ifs, inbound.Tokens[2:])
                     if we.evalError {
-                        parser.report( sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",we.errVal))
+                        parser.report(inbound.SourceLine, sf("could not evaluate logging subject in LOGGING SUBJECT statement\n%+v",we.errVal))
                         finish(false, ERR_EVAL)
                         break
                     }
@@ -3921,7 +3808,7 @@ tco_reentry:
                 }
 
             default:
-                parser.report( "LOGGING command malformed.")
+                parser.report(inbound.SourceLine, "LOGGING command malformed.")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -3952,11 +3839,11 @@ tco_reentry:
         case C_If:
 
             // lookahead
-            elsefound, elsedistance, er := lookahead(base, pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
-            endfound, enddistance, er := lookahead(base, pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+            elsefound, elsedistance, er := lookahead(source_base, parser.pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
+            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
 
             if er || !endfound {
-                parser.report("Missing ENDIF for this IF")
+                parser.report(inbound.SourceLine,"Missing ENDIF for this IF")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3966,7 +3853,7 @@ tco_reentry:
             expr, err = parser.Eval(ifs, inbound.Tokens[1:])
             // pf("Expr result -> %+v\n",expr)
             if err!=nil {
-                parser.report("Could not evaluate expression.")
+                parser.report(inbound.SourceLine,"Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3976,9 +3863,9 @@ tco_reentry:
                 break
             } else {
                 if elsefound && (elsedistance < enddistance) {
-                    pc += elsedistance
+                    parser.pc += elsedistance
                 } else {
-                    pc += enddistance
+                    parser.pc += enddistance
                 }
             }
 
@@ -3988,12 +3875,12 @@ tco_reentry:
             // we already jumped to else+1 to deal with a failed IF test
             // so jump straight to the endif here
 
-            endfound, enddistance, _ := lookahead(base, pc, 1, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+            endfound, enddistance, _ := lookahead(source_base, parser.pc, 1, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
 
             if endfound {
-                pc += enddistance
+                parser.pc += enddistance
             } else { // this shouldn't ever occur, as endif checked during C_If, but...
-                parser.report( "ELSE without an ENDIF\n")
+                parser.report(inbound.SourceLine, "ELSE without an ENDIF\n")
                 finish(false, ERR_SYNTAX)
             }
 
@@ -4011,8 +3898,8 @@ tco_reentry:
                 if statement.tokType == Identifier && inbound.Tokens[1].tokType == O_AssCommand {
                     if inbound.TokenCount > 2 {
                         // get text after =|
-                        startPos := str.IndexByte(inbound.Original, '|') + 1
-                        cmd := interpolate(ifs, inbound.Original[startPos:])
+                        startPos := str.IndexByte(basecode[source_base][parser.pc].Original, '|') + 1
+                        cmd := interpolate(ifs, basecode[source_base][parser.pc].Original[startPos:])
                         cop:=system(cmd,false)
                         lhs_name := statement.tokText
                         vset(ifs, lhs_name, cop)
@@ -4024,24 +3911,78 @@ tco_reentry:
 
             // try to eval and assign
 
+            // .. do some minimal local const folding in function
+            //      this is not completely correct yet and also doesn't cover constant
+            //      expressions in other places (such as index expressions, range specificiers, etc).
+            //      this is just a brief experiment to see if it is worth pursuing further.
+
+            /*
+            if inbound.folded {
+                // return previous answer
+                we.result=inbound.folded_result
+                // pf("(actor-fold) returning previous answer for %+v of %+v\n",inbound.Original,inbound.folded_result)
+            } else {
+                if we=parser.wrappedEval(ifs,ifs,inbound.Tokens); we.evalError {
+                    parser.report(inbound.SourceLine,sf("Error in evaluation\n%+v\n",we.errVal))
+                    finish(false,ERR_EVAL)
+                    break
+                } else {
+                    // .. got an answer, check if it had identifiers so cannot be folded
+                    if inbound.foldable {
+
+                        can_fold:=true
+                        for fk:=we.assignPos+1; fk<len(inbound.Tokens); fk++ {
+                            // pf("(actor-fold) working with %+v\n",inbound.Tokens[fk].tokText)
+                            if inbound.Tokens[fk].tokType==Identifier {
+                                // cannot currently fold string literals either because of string interpolation.
+                                // pf("(actor-fold) identifier bypass for : %+v\n",inbound.Tokens[fk].tokText)
+                                can_fold=false
+                                break
+                            }
+                            if inbound.Tokens[fk].tokType==StringLiteral {
+                                // bypass if string contains {...}
+                                if str.Contains(inbound.Tokens[fk].tokText,"{") && str.Contains(inbound.Tokens[fk].tokText,"}") {
+                                    // pf("(actor-fold) string bypass in : %+v\n",we)
+                                    can_fold=false
+                                    break
+                                }
+                                // pf("(actor-fold) allowing string literal '%v' to pass through foldable check\n",inbound.Tokens[fk].tokText)
+                            }
+                        }
+
+                        if can_fold {
+                            inbound.folded_result=we.result
+                            inbound.folded=true
+                            // pf("(actor-fold) folded expr : %+v\n",we)
+                        } else {
+                            inbound.foldable=false
+                            // pf("(actor-fold) could not fold : %+v\n",we)
+                        }
+
+                    }
+                }
+            }
+            */
+
+            // .. would replace this section:
             if we=parser.wrappedEval(ifs,ifs,inbound.Tokens); we.evalError {
-                parser.report(sf("Error in evaluation\n%+v\n",we.errVal))
+                parser.report(inbound.SourceLine,sf("Error in evaluation\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
                 break
-            } else {
-                if interactive && !we.assign && we.result!=nil {
-                    pf("%#v\n",we.result)
-                }
+            }
+            // end-of-replacable section
+
+            if interactive && !we.assign && we.result!=nil {
+                pf("%#v\n",we.result)
             }
 
         } // end-statements-case
 
     } // end-pc-loop
 
-
-    lastlock.RLock()
+    tk=lastlock.RLock()
     si=sig_int
-    lastlock.RUnlock()
+    lastlock.RUnlock(tk)
 
     if structMode && !typeInvalid {
         // incomplete struct definition
@@ -4065,25 +4006,25 @@ tco_reentry:
 
         if !str.HasPrefix(fs,"@mod_") {
 
-            if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() ; ll=true }
-            depth[ifs]=0
-            loops[ifs]=nil
-            if ll { lastlock.Unlock() }
-
-            if atomic.LoadInt32(&concurrent_funcs)>0 { calllock.Lock(); ll=true }
+            ll=false
+            if atomic.LoadInt32(&concurrent_funcs)>1 { calllock.Lock(); ll=true }
             calltable[ifs]=call_s{}
             fnlookup.lmdelete(fs)
             numlookup.lmdelete(ifs)
 
             // we keep a record here of recently disposed functionspace names
             //  so that mem_summary can label disposed of function allocations.
+            lastlock.Lock()
             lastfunc[ifs]=fs
+            lastlock.Unlock()
 
             if ll { calllock.Unlock() }
 
             if ifs>2 {
-                if atomic.LoadInt32(&concurrent_funcs)>0 { fspacelock.Lock() ; ll=true }
+                ll=false
+                if atomic.LoadInt32(&concurrent_funcs)>1 { fspacelock.Lock() ; ll=true }
                 functionspaces[ifs] = []Phrase{}
+                basecode[ifs] = []BaseCode{}
                 if ll { fspacelock.Unlock() }
             }
 
@@ -4091,9 +4032,11 @@ tco_reentry:
 
     }
 
-    if atomic.LoadInt32(&concurrent_funcs)>0 { calllock.Lock() ; ll=true }
+    // if atomic.LoadInt32(&concurrent_funcs)>1 { calllock.Lock() ; ll=true }
+    calllock.Lock()
     callChain=callChain[:len(callChain)-1]
-    if ll { calllock.Unlock() }
+    calllock.Unlock()
+    // if ll { calllock.Unlock() }
 
     return retval_count,endFunc
 
@@ -4164,8 +4107,7 @@ func ShowDef(fn string) bool {
                 first = false
                 strOut = sf("\n[#4][#bold]%s(%v)[#boff][#-]\n\t\t ", fn, str.Join(falist, ","))
             }
-            // pf("%s%s\n", strOut, functionspaces[ifn][q].Original)
-            pf(sparkle(str.ReplaceAll(sf("%s%s\n", strOut, functionspaces[ifn][q].Original),"%","%%")))
+            pf(sparkle(str.ReplaceAll(sf("%s%s\n", strOut, basecode[ifn][q].Original),"%","%%")))
         }
     }
     return true

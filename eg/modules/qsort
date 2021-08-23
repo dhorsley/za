@@ -1,0 +1,5 @@
+define qs(a)
+    on len(a) <= 1 do return a
+    return qs(a[1:] ?> `# <= a[0]`) + a[0:1] + qs(a[1:] ?> `# > a[0]`)
+end
+

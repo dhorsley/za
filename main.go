@@ -96,6 +96,7 @@ var sourceMap = make(map[uint32]uint32)
 // tokenised function storage
 // this is where all the translated source ends up
 var functionspaces = make([][]Phrase, SPACE_CAP)
+var basecode       = make([][]BaseCode, SPACE_CAP)
 
 // expected parameters for each defined function
 var functionArgs = make([]fa_s, SPACE_CAP)
@@ -106,18 +107,9 @@ var functionidents  [MAX_FUNCS]uint16
 // marks pre-processed function spaces
 var parsed          [MAX_FUNCS]bool
 
-// counters per function per loop type
-var loops = make([][]s_loop, LOOP_START_CAP)
-
-// generic nesting indentation counters
-var depth = make([]int, SPACE_CAP)
 
 // ANSI colour code mappings (key: colour alias)
 var fairydust = make(map[string]string, FAIRY_CAP)
-
-// stores the active construct/loop types outer->inner
-//  for the break and continue statements
-var lastConstruct = make([][]uint8, SPACE_CAP)
 
 // enum storage
 // var enum = make(map[string]map[string]interface{})
@@ -265,6 +257,9 @@ var winAvailable bool
 // MAIN
 //
 
+// default precedence table that each parser copy receives. @todo: find a better home for this.
+var default_prectable [END_STATEMENTS]int8
+
 func run() {
 
     // time zone handling
@@ -297,8 +292,46 @@ func run() {
         }
     }()
 
+
+    default_prectable[EOF]          =-1
+    default_prectable[O_Assign]     =5
+    default_prectable[O_Map]        =7
+    default_prectable[O_Filter]     =9
+    default_prectable[SYM_LAND]     =15
+    default_prectable[SYM_LOR]      =15
+    default_prectable[C_Or]         =15
+    default_prectable[SYM_BAND]     =20
+    default_prectable[SYM_BOR]      =20
+    default_prectable[SYM_Caret]    =20
+    default_prectable[SYM_LSHIFT]   =23
+    default_prectable[SYM_RSHIFT]   =23
+    default_prectable[SYM_Tilde]    =25
+    default_prectable[SYM_ITilde]   =25
+    default_prectable[SYM_FTilde]   =25
+    default_prectable[SYM_EQ]       =25
+    default_prectable[SYM_NE]       =25
+    default_prectable[SYM_LT]       =25
+    default_prectable[SYM_GT]       =25
+    default_prectable[SYM_LE]       =25
+    default_prectable[SYM_GE]       =25
+    default_prectable[C_In]         =27
+    default_prectable[SYM_RANGE]    =29
+    default_prectable[O_Plus]       =31
+    default_prectable[O_Minus]      =31
+    default_prectable[O_Divide]     =35
+    default_prectable[O_Percent]    =35
+    default_prectable[O_Multiply]   =35
+    default_prectable[SYM_POW]      =40
+    default_prectable[SYM_PP]       =45
+    default_prectable[SYM_MM]       =45
+    default_prectable[LeftSBrace]   =45
+    default_prectable[SYM_DOT]      =47
+    default_prectable[LParen]       =100
+
+
     // instantiate parser for interpolation
     interparse=&leparser{}
+    interparse.prectable=default_prectable
 
     // generic error flag - used through main
     var err error
@@ -410,10 +443,6 @@ func run() {
 
     // - set character that can mask user stdin if enabled
     vset(0, "@echomask", "*")
-
-    // set global loop and nesting counters
-    loops[0] = make([]s_loop, MAX_LOOPS)
-    lastConstruct[0] = []uint8{}
 
 
     // read compile time arch info
@@ -684,6 +713,7 @@ func run() {
 
     // initialise global parser
     parser:=&leparser{}
+    interparse.prectable=default_prectable
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
@@ -693,9 +723,9 @@ func run() {
         for {
             <-breaksig
 
-            lastlock.RLock()
+            tk:=lastlock.RLock()
             caval:=coproc_active
-            lastlock.RUnlock()
+            lastlock.RUnlock(tk)
 
             if caval {
                 // out with the old
@@ -767,7 +797,6 @@ func run() {
                     fs: id,
                     base: lmv,
                     caller: globalaccess,
-                    callline: 0,
                     retvar: "@#",
                 }
                 calllock.Unlock()
@@ -909,9 +938,6 @@ func run() {
         defer testExit()
     }
 
-    // reset counters:
-    depth[0] = 0
-
     // for resetting the terminal to global pane
     panes["global"] = Pane{row: 0, col: 0, w: MW + 1, h: MH}
     currentpane = "global"
@@ -961,10 +987,13 @@ func run() {
 
         // simple, inelegant, probably buggy REPL
         for {
-
+            lastlock.Lock()
             sig_int = false
+            lastlock.Unlock()
+
             fspacelock.Lock()
             functionspaces[0] = []Phrase{}
+            basecode[0] = []BaseCode{}
             fspacelock.Unlock()
 
             var echoMask interface{}
@@ -1122,14 +1151,20 @@ func run() {
     // tokenise and part-parse the input
     if len(input) > 0 {
         fileMap[1]=exec_file_name
-        phraseParse("main", input, 0)
+        if debug_level>10 {
+            start:=time.Now()
+            phraseParse("main", input, 0)
+            elapsed:=time.Since(start)
+            pf("(timings-main) elapsed in parse translation for main : %v\n",elapsed)
+        } else {
+            phraseParse("main", input, 0)
+        }
 
         // initialise the main program
         cs := call_s{}
         cs.base = 1
         cs.fs = "main"
         cs.caller = 0
-        cs.callline = 0
 
         mainloc,_ := GetNextFnSpace("main")
         calllock.Lock()

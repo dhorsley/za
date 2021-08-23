@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 
-# Number to guess: How many entries can
-# we add to a dictionary in a second?
+import sys
 
-# Note: we take `i % 1000` to control
-# the size of the dictionary
 
 def f(NUMBER):
     d = {}
-    for i in range(0,NUMBER):
+    for i in range(0, NUMBER):
         d[i % 1000] = i
     print(i)
-import sys
-f(int(sys.argv[1]))
 
+
+f(int(sys.argv[1]))
