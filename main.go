@@ -60,9 +60,11 @@ var hasUI bool
 // enable mutices in variable handling functions
 // var lockSafety bool=false
 
-// initialise parser used by the interpolate function
-// this (and interlock) in ev() prevent recursive interpolation from working
-// @todo: need to see if there's a work around for this.
+// global unique name counter
+var globseq uint32
+
+// global parser init
+var parser *leparser
 var interparse *leparser
 
 // open function calls
@@ -97,6 +99,7 @@ var sourceMap = make(map[uint32]uint32)
 // this is where all the translated source ends up
 var functionspaces = make([][]Phrase, SPACE_CAP)
 var basecode       = make([][]BaseCode, SPACE_CAP)
+var bytecode       = make([]bc_block, 0)
 
 // expected parameters for each defined function
 var functionArgs = make([]fa_s, SPACE_CAP)
@@ -115,9 +118,6 @@ var fairydust = make(map[string]string, FAIRY_CAP)
 // var enum = make(map[string]map[string]interface{})
 var enum = make(map[string]*enum_s)
 
-// number of functionspace which is considered to be "global"
-var globalaccess uint32
-
 // basename of module currently being processed.
 var currentModule string
 
@@ -127,10 +127,9 @@ var modlist = make(map[string]bool)
 // defined function list
 var funcmap = make(map[string]Funcdef)
 
-// variable storage per function
-//  indices: function space id for locality, table offset.
-//  offset calculated by VarLookup
-var ident = make([][]Variable, SPACE_CAP)
+// global variable storage
+var gident = make([]Variable, IDENT_CAP)
+var mident = make([]Variable, IDENT_CAP)
 
 // lookup tables for converting between function name 
 //  and functionspaces[] index.
@@ -171,7 +170,7 @@ var currentpane string      // for pane use
 
 var cmdargs []string        // cli args
 
-var no_interpolation bool   // to disable string interpolation
+var interpolation bool      // false to disable string interpolation
 var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // to disable ansi colour output
 var lineWrap bool           // optional pane line wrap.
@@ -329,10 +328,6 @@ func run() {
     default_prectable[LParen]       =100
 
 
-    // instantiate parser for interpolation
-    interparse=&leparser{}
-    interparse.prectable=default_prectable
-
     // generic error flag - used through main
     var err error
 
@@ -355,6 +350,7 @@ func run() {
     numlookup.lmset(1,"main")
 
     // reset call stacks for global and main
+    // globseq=1
     calllock.Lock()
     calltable[0] = call_s{}
     calltable[1] = call_s{}
@@ -366,6 +362,9 @@ func run() {
     functionArgs[0].args = []string{}
     functionArgs[1].args = []string{}
     farglock.Unlock()
+
+    // set this early, in case of interpol calls.
+    interpolation=true
 
     // setup the functions in the standard library.
     // - this must come before any use of vset()
@@ -388,8 +387,6 @@ func run() {
     // global function space setup
     minvar:=functionidents[0]
     if VAR_CAP>minvar { minvar=VAR_CAP }
-    vcreatetable(0, &vtable_maxreached, minvar)
-
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
@@ -403,54 +400,54 @@ func run() {
     // start processing startup flags
 
     // command output unit separator
-    vset(0,"@cmdsep",byte(0x1e))
+    vset(0,&gident,"@cmdsep",byte(0x1e))
 
     // run in parent - if -S opt or /bin/false specified
     //  for shell, then run commands in parent
-    vset(0,"@runInParent",false)
+    vset(0,&gident,"@runInParent",false)
 
     // should command output be captured?
     // - when disabled, output is sent to stdout
-    vset(0,"@commandCapture",true)
+    vset(0,&gident,"@commandCapture",true)
 
     // like -S, but insist upon it for Windows executions.
-    vset(0,"@runInWindowsParent",false)
+    vset(0,&gident,"@runInWindowsParent",false)
 
     // set available build info
-    vset(0, "@language", "Za")
-    vset(0, "@version", BuildVersion)
-    vset(0, "@creation_author", "D Horsley")
-    vset(0, "@creation_date", BuildDate)
+    vset(0,&gident,"@language", "Za")
+    vset(0,&gident,"@version", BuildVersion)
+    vset(0,&gident,"@creation_author", "D Horsley")
+    vset(0,&gident,"@creation_date", BuildDate)
 
     // set interactive prompt
-    vset(0, "@startprompt", promptStringStartup)
-    vset(0, "@bashprompt", promptBashlike)
+    vset(0,&gident,"@startprompt", promptStringStartup)
+    vset(0,&gident,"@bashprompt", promptBashlike)
     PromptTemplate=promptStringStartup
 
     // set default behaviours
 
     // - don't echo logging
-    vset(0, "@silentlog", true)
+    vset(0,&gident,"@silentlog", true)
 
     // - don't show co-proc command progress
-    vset(0, "mark_time", false)
+    vset(0,&gident,"mark_time", false)
 
     // - name of Za function that handles ctrl-c.
-    vset(0, "trapInt", "")
+    vset(0,&gident,"trapInt", "")
 
     // - show user stdin input
-    vset(0, "@echo", true)
+    vset(0,&gident,"@echo", true)
 
     // - set character that can mask user stdin if enabled
-    vset(0, "@echomask", "*")
+    vset(0,&gident,"@echomask", "*")
 
 
     // read compile time arch info
-    vset(0, "@glibc", false)
+    vset(0,&gident,"@glibc", false)
     if BuildComment == "glibc" {
-        vset(0, "@glibc", true)
+        vset(0,&gident,"@glibc", true)
     }
-    vset(0, "@ct_info", BuildComment)
+    vset(0,&gident,"@ct_info", BuildComment)
 
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
@@ -517,7 +514,7 @@ func run() {
             fdir=filepath.Dir(fpath)
         }
     }
-    vset(0, "@execpath", fdir)
+    vset(0,&gident,"@execpath", fdir)
 
     // help flag
     if *a_help {
@@ -533,7 +530,7 @@ func run() {
 
     // command separator
     if *a_cmdsep != 0 {
-        vset(0,"@cmdsep",byte(*a_cmdsep))
+        vset(0,&gident,"@cmdsep",byte(*a_cmdsep))
     }
 
     if *a_debug != 0 {
@@ -546,7 +543,7 @@ func run() {
     }
 
     if *a_mark_time {
-        vset(0, "mark_time", true)
+        vset(0,&gident,"mark_time", true)
     }
 
     // trace capture - not advertised.
@@ -596,12 +593,12 @@ func run() {
     if *a_noshell {
         no_shell=true
     }
-    vset(0, "@noshell",no_shell)
+    vset(0,&gident,"@noshell",no_shell)
 
     if *a_shellrep {
         shellrep=true
     }
-    vset(0, "@shell_report",shellrep)
+    vset(0,&gident,"@shell_report",shellrep)
 
     // set the coprocess command
     default_shell:=""
@@ -614,6 +611,15 @@ func run() {
     // Primary activity below
     //
 
+    // initialise global parser
+    parser=&leparser{}
+    parser.prectable=default_prectable
+
+    // interpolation parser
+    interparse=&leparser{}
+    interparse.prectable=default_prectable
+    interparse.force_lookup = true
+
     var data []byte // input buffering
 
     // start shell in co-process
@@ -621,7 +627,7 @@ func run() {
     coprocLoc:=""
     var coprocArgs []string
 
-    vset(0,"@shelltype","")
+    vset(0,&gident,"@shelltype","")
 
     // figure out the correct shell to use, with available info.
     if runtime.GOOS!="windows" {
@@ -630,20 +636,20 @@ func run() {
                 coprocLoc, err = GetCommand("/usr/bin/which bash")
                 if err == nil {
                     coprocLoc = coprocLoc[:len(coprocLoc)-1]
-                    vset(0,"@shelltype","bash")
+                    vset(0,&gident,"@shelltype","bash")
                 } else {
                     if fexists("/bin/bash") {
                         coprocLoc ="/bin/bash"
                         coprocArgs=[]string{"-i"}
-                        vset(0,"@shelltype","bash")
+                        vset(0,&gident,"@shelltype","bash")
                     } else {
                         // try for /bin/sh then default to noshell
                         if fexists("/bin/sh") {
                             coprocLoc="/bin/sh"
                             coprocArgs=[]string{"-i"}
                         } else {
-                            vset(0,"@noshell",true)
-                            vset(0, "@noshell",no_shell)
+                            vset(0,&gident,"@noshell",true)
+                            // vset(0,&gident, "@noshell",no_shell)
                             coprocLoc="/bin/false"
                         }
                     }
@@ -661,7 +667,7 @@ func run() {
                 if shellname=="dash" || shellname=="ash" || shellname=="sh" {
                     // specify that NextCopper() should use external printf
                     // for generating \x1e (or other cmdsep) in output
-                    vset(0,"@shelltype",shellname)
+                    vset(0,&gident,"@shelltype",shellname)
                 }
             }
         }
@@ -674,27 +680,27 @@ func run() {
         // improvement if we ever take windows seriously.
 
         coprocLoc="C:/Windows/System32/cmd.exe"
-        vset(0,"@noshell",true)
-        vset(0,"@os","windows")
-        vset(0, "@zsh_version", "")
-        vset(0, "@bash_version", "")
-        vset(0, "@bash_versinfo", "")
-        vset(0, "@user", "")
-        vset(0, "@home", "")
-        vset(0, "@lang", "")
-        vset(0, "@wsl", "")
-        vset(0, "@release_id", "windows")
-        vset(0, "@release_name", "windows")
-        vset(0, "@release_version", "windows")
-        vset(0, "@winterm", false)
-        vset(0,"@runInWindowsParent",true)
+        vset(0,&gident,"@noshell",true)
+        vset(0,&gident,"@os","windows")
+        vset(0,&gident, "@zsh_version", "")
+        vset(0,&gident, "@bash_version", "")
+        vset(0,&gident, "@bash_versinfo", "")
+        vset(0,&gident, "@user", "")
+        vset(0,&gident, "@home", "")
+        vset(0,&gident, "@lang", "")
+        vset(0,&gident, "@wsl", "")
+        vset(0,&gident, "@release_id", "windows")
+        vset(0,&gident, "@release_name", "windows")
+        vset(0,&gident, "@release_version", "windows")
+        vset(0,&gident, "@winterm", false)
+        vset(0,&gident,"@runInWindowsParent",true)
     }
 
-    shelltype, _ := vget(0, "@shelltype")
-    vset(0, "@shell_location", coprocLoc)
+    shelltype, _ := vget(0, &gident,"@shelltype")
+    vset(0,&gident,"@shell_location", coprocLoc)
 
     if runtime.GOOS=="windows" || no_shell || coprocLoc=="/bin/false" {
-        vset(0,"@runInParent",true)
+        vset(0,&gident,"@runInParent",true)
     }
 
     if runtime.GOOS!="windows" {
@@ -702,7 +708,7 @@ func run() {
         if !no_shell {
             // create shell process
             bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
-            vset(0, "@shellpid",bgproc.Process.Pid)
+            vset(0,&gident,"@shellpid",bgproc.Process.Pid)
         }
 
         // prepare for getInput() keyboard input (from main process)
@@ -710,10 +716,6 @@ func run() {
 
     }
 
-
-    // initialise global parser
-    parser:=&leparser{}
-    interparse.prectable=default_prectable
 
     // ctrl-c handler
     breaksig := make(chan os.Signal, 1)
@@ -723,9 +725,9 @@ func run() {
         for {
             <-breaksig
 
-            tk:=lastlock.RLock()
+            lastlock.RLock()
             caval:=coproc_active
-            lastlock.RUnlock(tk)
+            lastlock.RUnlock()
 
             if caval {
                 // out with the old
@@ -741,7 +743,7 @@ func run() {
                 // in with the new
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
                 // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
-                vset(0, "@shellpid",bgproc.Process.Pid)
+                vset(0,&gident,"@shellpid",bgproc.Process.Pid)
                 lastlock.Lock()
                 coproc_active = false
                 lastlock.Unlock()
@@ -749,7 +751,7 @@ func run() {
 
             // user-trap handling
 
-            userSigIntHandler,usihfound:=vget(globalaccess,"trapInt")
+            userSigIntHandler,usihfound:=vget(0,&gident,"trapInt")
             usih:=""
             if usihfound { usih=userSigIntHandler.(string) }
 
@@ -776,9 +778,9 @@ func run() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(parser,globalaccess,a)
+                            aval, err := ev(parser,0,a)
                             if err != nil {
-                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], globalaccess, err)
+                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], 0, err)
                                 finish(false, ERR_EVAL)
                                 break
                             }
@@ -789,23 +791,23 @@ func run() {
 
                 // build call
 
-                loc,id := GetNextFnSpace(usih+"@")
+                loc,id := GetNextFnSpace(true,usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
                 currentModule="main"
                 calltable[loc] = call_s{
                     fs: id,
                     base: lmv,
-                    caller: globalaccess,
-                    retvar: "@#",
+                    caller: 0,
                 }
                 calllock.Unlock()
 
                 // execute call
-                Call(MODE_NEW, loc, ciTrap, iargs...)
 
-                if _, ok := VarLookup(globalaccess, "@#"); ok {
-                    sigintreturn,_ := vget(globalaccess, "@#")
+                var trident = make([]Variable, IDENT_CAP)
+                Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
+                if calltable[loc].retvals!=nil {
+                    sigintreturn := calltable[loc].retvals
                     switch sigintreturn.(type) {
                     case int:
                     default:
@@ -815,6 +817,7 @@ func run() {
                         finish(true,sigintreturn.(int))
                     }
                 }
+                calltable[loc]=call_s{}
             } else {
                 finish(false, 0)
                 pf("\n[#2]User Interrupt![#-] ")
@@ -849,33 +852,33 @@ func run() {
     if runtime.GOOS!="windows" {
 
         cop = Copper("echo -n $WSL_DISTRO_NAME", true)
-        vset(0, "@wsl", cop.out)
+        vset(0,&gident,"@wsl", cop.out)
 
         switch shelltype {
         case "zsh":
             cop = Copper("echo -n $ZSH_VERSION", true)
-            vset(0, "@zsh_version", cop.out)
+            vset(0,&gident,"@zsh_version", cop.out)
         case "bash":
             cop = Copper("echo -n $BASH_VERSION", true)
-            vset(0, "@bash_version", cop.out)
+            vset(0,&gident,"@bash_version", cop.out)
             cop = Copper("echo -n $BASH_VERSINFO", true)
-            vset(0, "@bash_versinfo", cop.out)
+            vset(0,&gident,"@bash_versinfo", cop.out)
             cop = Copper("echo -n $LANG", true)
-            vset(0, "@lang", cop.out)
+            vset(0,&gident,"@lang", cop.out)
         }
 
         cop = Copper("echo -n $USER", true)
-        vset(0, "@user", cop.out)
+        vset(0,&gident,"@user", cop.out)
 
-        vset(0,"@os",runtime.GOOS)
+        vset(0,&gident,"@os",runtime.GOOS)
 
         cop = Copper("echo -n $HOME", true)
-        vset(0, "@home", cop.out)
+        vset(0,&gident,"@home", cop.out)
 
         var tmp string
 
-        vset(0, "@release_name", "unknown")
-        vset(0, "@release_version", "unknown")
+        vset(0,&gident, "@release_name", "unknown")
+        vset(0,&gident, "@release_version", "unknown")
 
         // @todo: these ones *really* need re-doing. should not be calling
         // grep/cut however common they are. i was just being lazy. we can
@@ -883,19 +886,19 @@ func run() {
 
         if runtime.GOOS=="linux" {
             cop = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true)
-            vset(0, "@release_name", stripOuterQuotes(cop.out, 1))
+            vset(0,&gident, "@release_name", stripOuterQuotes(cop.out, 1))
             cop = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true)
-            vset(0, "@release_version", stripOuterQuotes(cop.out, 1))
+            vset(0,&gident, "@release_version", stripOuterQuotes(cop.out, 1))
         }
 
         // special cases for release version:
 
         // case 1: centos/other non-semantic expansion
-        vtmp, _ := vget(0, "@release_version")
+        vtmp, _ := vget(0, &gident,"@release_version")
         if tr(vtmp.(string),DELETE,"0123456789.","")=="" && !str.ContainsAny(vtmp.(string), ".") {
             vtmp = vtmp.(string) + ".0"
         }
-        vset(0, "@release_version", vtmp)
+        vset(0,&gident, "@release_version", vtmp)
 
         cop = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true)
         tmp = stripOuterQuotes(cop.out, 1)
@@ -908,17 +911,17 @@ func run() {
         }
 
         // case 2: ubuntu under wsl
-        vset(0, "@winterm", false)
-        wsl, _ := vget(0, "@wsl")
+        vset(0,&gident, "@winterm", false)
+        wsl, _ := vget(0, &gident,"@wsl")
         if str.HasPrefix(wsl.(string), "Ubuntu-") {
-            vset(0, "@winterm", true)
+            vset(0,&gident,"@winterm", true)
             tmp = "ubuntu"
         }
 
-        vset(0, "@release_id", tmp)
+        vset(0,&gident,"@release_id", tmp)
 
         h, _ := os.Hostname()
-        vset(0, "@hostname", h)
+        vset(0,&gident,"@hostname", h)
 
     } // endif not windows
 
@@ -961,9 +964,6 @@ func run() {
         // in case we arrived here by another method:
         interactive=true
 
-        // reset terminal
-        // cls()
-
         // banner
         title := sparkle("Za Interactive Mode")
         pf("\n%s\n\n", sparkle(" [#bold][#ul][#6]"+title+"[#-][##]"))
@@ -977,11 +977,6 @@ func run() {
 
         // term loop
         pf("\033[s") // save cursor
-        /*
-        row = 3
-        col = 1
-        at(row, col)
-        */
         row,col=GetCursorPos()
         pcol := defaultPromptColour
 
@@ -999,7 +994,7 @@ func run() {
             var echoMask interface{}
             var ok bool
 
-            if echoMask,ok=vget(0,"@echomask"); !ok {
+            if echoMask,ok=vget(0,&gident,"@echomask"); !ok {
                 echoMask=""
             }
 
@@ -1014,12 +1009,12 @@ func run() {
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
-                    tempPrompt=sparkle(interpolate(0,PromptTemplate))
+                    tempPrompt=sparkle(interpolate(1,&mident,PromptTemplate))
                 } else {
                     tempPrompt=promptContinuation
                 }
 
-                input, eof, broken = getInput(0, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
+                input, eof, broken = getInput(1, &mident, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
                 if eof || broken { break }
 
                 row++
@@ -1087,7 +1082,7 @@ func run() {
                 currentModule="main"
 
                 // throw away break and continue positions in interactive mode
-                _,endFunc = Call(MODE_STATIC, 0, ciRepl)
+                _,endFunc = Call(MODE_STATIC, &mident, 0, ciRepl)
                 if endFunc {
                     break
                 }
@@ -1166,12 +1161,14 @@ func run() {
         cs.fs = "main"
         cs.caller = 0
 
-        mainloc,_ := GetNextFnSpace("main")
+        mainloc,_ := GetNextFnSpace(true,"main")
         calllock.Lock()
         calltable[mainloc] = cs
         calllock.Unlock()
         currentModule="main"
-        Call(MODE_NEW, mainloc, ciMain)
+        Call(MODE_NEW, &mident, mainloc, ciMain)
+        // @note: if needed, decode .retvals here
+        calltable[mainloc]=call_s{}
     }
 
     // a little paranoia to finish things off...

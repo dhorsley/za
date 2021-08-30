@@ -290,7 +290,8 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     pane select "cpu"
     pane redraw
 
-    activity_indicator="·"
+    activity_bg=" "
+    activity_indicator="▪"
     on !utf8supported() do activity_indicator="-"
 
     row=1
@@ -404,20 +405,20 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     pos=pos+59
                 endif
 
-                col_sys     = "[#b5]"; w_sys      = diff["sys"]/2
-                col_user    = "[#b4]"; w_user     = diff["user"]/2
-                col_idle    = "[#b0]"; w_idle     = diff["idle"]/2
-                col_softirq = "[#b1]"; w_softirq  = diff["softirq"]/2
-                col_irq     = "[#b7]"; w_irq      = diff["irq"]/2
-                col_guest   = "[#b3]"; w_guest    = diff["guest"]/2
-                col_steal   = "[#b2]"; w_steal    = diff["steal"]/2
-                col_iowait  = "[#b6]"; w_iowait   = diff["iowait"]/2
+                col_sys     = "[#5]"; w_sys      = diff["sys"]/2
+                col_user    = "[#4]"; w_user     = diff["user"]/2
+                col_idle    = "[#fbblue]"; w_idle     = diff["idle"]/2
+                col_softirq = "[#1]"; w_softirq  = diff["softirq"]/2
+                col_irq     = "[#7]"; w_irq      = diff["irq"]/2
+                col_guest   = "[#3]"; w_guest    = diff["guest"]/2
+                col_steal   = "[#2]"; w_steal    = diff["steal"]/2
+                col_iowait  = "[#6]"; w_iowait   = diff["iowait"]/2
 
 
                 if showCpuBars
                     # fill cpu row background
                     at row,pos
-                    print pad(activity_indicator,-1,48,activity_indicator)
+                    print pad(activity_indicator,-1,48,activity_bg)
 
                     # populate with values
                     at row,pos
@@ -683,7 +684,7 @@ prev_tbytes=0
 
 # network load icons
 legload = [ "❶", "❷", "❸", "❹", "❺" ]
-load = [ "[#4]|[#-]", "[#4]|[#-]", "[#6]|[#-]", "[#2]|[#-]", "[#2]|[#-]" ]
+load = [ "[#4]┃[#-]", "[#4]┃[#-]", "[#6]┃[#-]", "[#2]┃[#-]", "[#2]┉[#-]" ]
 
 # main loop
 ipaddr=interface_ip(interface)

@@ -19,7 +19,7 @@ import (
     "sort"
     str "strings"
     "strconv"
-    "sync/atomic"
+//    "sync/atomic"
 )
 
 type sortStructInt struct {
@@ -130,7 +130,7 @@ func buildListLib() {
     }
 
     slhelp["scan_left"] = LibHelp{in: "numeric_list,op_string,start_seed", out: "list", action: "Creates a list from the intermediary values of processing [#i1]op_string[#i0] while iterating over [#i1]list[#i0]."}
-    stdlib["scan_left"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["scan_left"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("scan_left",args,3,
             "3","[]int","string","number",
             "3","[]float64","string","number",
@@ -140,9 +140,11 @@ func buildListLib() {
 
         var reduceparser *leparser
         reduceparser=&leparser{}
-        tk:=calllock.RLock()
+        calllock.RLock()
         reduceparser.prectable=default_prectable
-        calllock.RUnlock(tk)
+        reduceparser.ident=ident
+        reduceparser.fs=evalfs
+        calllock.RUnlock()
 
         switch args[0].(type) {
         case []int:
@@ -227,7 +229,7 @@ func buildListLib() {
     }
 
     slhelp["zip"] = LibHelp{in: "list1,list2", out: "list", action: "Creates a list by combining each element of [#i1]list1[#i0] and [#i1]list2[#i0]."}
-    stdlib["zip"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["zip"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("zip",args,6,
             "2","[]int","[]int",
             "2","[]float64","[]float64",
@@ -333,7 +335,7 @@ func buildListLib() {
     }
 
     slhelp["empty"] = LibHelp{in: "list", out: "bool", action: "Is list empty?"}
-    stdlib["empty"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["empty"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("empty",args,8,
             "1","[]int",
             "1","[]string",
@@ -380,7 +382,7 @@ func buildListLib() {
     }
 
     slhelp["col"] = LibHelp{in: "string,column[,delimiter]", out: "[]string", action: "Creates a list from a particular [#i1]column[#i0] of line separated [#i1]string[#i0]."}
-    stdlib["col"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["col"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("col",args,2,
             "3","string","int","string",
             "2","string","int"); !ok { return nil,err }
@@ -416,14 +418,14 @@ func buildListLib() {
 
 
     slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]list_name[#i0]. Returns [#i1]bool_success[#i0] depending on success."}
-    stdlib["append_to"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["append_to"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
 
-        // check args[0] exists in evalfs
+        // check args[0] exists in &ident
         if args[0]==nil {
             return nil,errors.New("argument is not a list")
         }
-
+        // @note: should have a mutex around this?
         vi,there:=VarLookup(evalfs,args[0].(string))
         if !there {
             return nil, errors.New(sf("list %s does not exist",args[0]))
@@ -432,44 +434,44 @@ func buildListLib() {
 
         // check type is compatible
 
-        var ll bool
-        if atomic.LoadInt32(&concurrent_funcs)>1 { vlock.Lock() ; ll=true}
+        // var ll bool
+        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; ll=true}
 
         set:=false
-        switch ident[evalfs][vi].IValue.(type) {
+        switch (*ident)[vi].IValue.(type) {
         case []string:
-            ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]string),sf("%v",args[1]))
+            (*ident)[vi].IValue=append((*ident)[vi].IValue.([]string),sf("%v",args[1]))
             set=true
         case []int:
             switch args[1].(type) {
             case int:
-                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]int),args[1].(int))
+                (*ident)[vi].IValue=append((*ident)[vi].IValue.([]int),args[1].(int))
                 set=true
             }
         case []uint:
             switch args[1].(type) {
             case uint:
-                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]uint),args[1].(uint))
+                (*ident)[vi].IValue=append((*ident)[vi].IValue.([]uint),args[1].(uint))
                 set=true
             }
         case []float64:
             switch args[1].(type) {
             case float64:
-                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]float64),args[1].(float64))
+                (*ident)[vi].IValue=append((*ident)[vi].IValue.([]float64),args[1].(float64))
                 set=true
             }
         case []bool:
             switch args[1].(type) {
             case bool:
-                ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]bool),args[1].(bool))
+                (*ident)[vi].IValue=append((*ident)[vi].IValue.([]bool),args[1].(bool))
                 set=true
             }
         case []interface{}:
-            ident[evalfs][vi].IValue=append(ident[evalfs][vi].IValue.([]interface{}),args[1])
+            (*ident)[vi].IValue=append((*ident)[vi].IValue.([]interface{}),args[1])
             set=true
         }
 
-        if ll { vlock.Unlock() }
+        // if ll { vlock.Unlock() }
 
         if !set {
             return false,errors.New(sf("unsupported list type in append_to()"))
@@ -482,7 +484,7 @@ func buildListLib() {
 
     // append returns a[]+arg
     slhelp["append"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
-    stdlib["append"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["append"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("append",args,1,"2","any","any"); !ok { return nil,err }
 
         // should really do some kind of implicit conversion here (and elsewhere)
@@ -566,7 +568,7 @@ func buildListLib() {
     }
 
     slhelp["push_front"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Adds [#i1]item[#i0] to the front of [#i1]list[#i0]. If only an item is provided, then a new list is started."}
-    stdlib["push_front"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["push_front"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("push_front",args,2,
             "2","any","any",
             "1","any"); !ok { return nil,err }
@@ -648,7 +650,7 @@ func buildListLib() {
     }
 
     slhelp["peek"] = LibHelp{in: "list_name", out: "item", action: "Returns a copy of the last [#i1]item[#i0] in the list [#i1]list_name[#i0]. Returns an error if the list is empty."}
-    stdlib["peek"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["peek"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("peek",args,6,
             "1","[]string",
             "1","[]int",
@@ -682,47 +684,47 @@ func buildListLib() {
 
     // @note: mut candidate
     slhelp["pop"] = LibHelp{in: "list_name", out: "item", action: "Removes and returns the last [#i1]item[#i0] in the named list [#i1]list_name[#i0]."}
-    stdlib["pop"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["pop"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pop",args,1,
             "1","string"); !ok { return nil,err }
 
             n := args[0].(string)
-            v, _ := vget(evalfs, n)
+            v, _ := vget(evalfs,ident, n)
             switch v.(type) {
             case []bool:
                 if ln := len(v.([]bool)); ln > 0 {
                     r := v.([]bool)[ln-1]
-                    vset(evalfs, n, v.([]bool)[:ln-1])
+                    vset(evalfs,ident, n, v.([]bool)[:ln-1])
                     return r, nil
                 }
             case []int:
                 if ln := len(v.([]int)); ln > 0 {
                     r := v.([]int)[ln-1]
-                    vset(evalfs, n, v.([]int)[:ln-1])
+                    vset(evalfs,ident, n, v.([]int)[:ln-1])
                     return r, nil
                 }
             case []uint:
                 if ln := len(v.([]uint)); ln > 0 {
                     r := v.([]uint)[ln-1]
-                    vset(evalfs, n, v.([]uint)[:ln-1])
+                    vset(evalfs,ident, n, v.([]uint)[:ln-1])
                     return r, nil
                 }
             case []float64:
                 if ln := len(v.([]float64)); ln > 0 {
                     r := v.([]float64)[ln-1]
-                    vset(evalfs, n, v.([]float64)[:ln-1])
+                    vset(evalfs,ident, n, v.([]float64)[:ln-1])
                     return r, nil
                 }
             case []string:
                 if ln := len(v.([]string)); ln > 0 {
                     r := v.([]string)[ln-1]
-                    vset(evalfs, n, v.([]string)[:ln-1])
+                    vset(evalfs,ident, n, v.([]string)[:ln-1])
                     return r, nil
                 }
             case []interface{}:
                 if ln := len(v.([]interface{})); ln > 0 {
                     r := v.([]interface{})[ln-1]
-                    vset(evalfs, n, v.([]interface{})[:ln-1])
+                    vset(evalfs,ident, n, v.([]interface{})[:ln-1])
                     return r, nil
                 }
             }
@@ -732,7 +734,7 @@ func buildListLib() {
     }
 
     slhelp["insert"] = LibHelp{in: "list,pos,item", out: "[]new_list", action: "Returns a [#i1]new_list[#i0] with [#i1]item[#i0] inserted in [#i1]list[#i0] at position [#i1]pos[#i0]. (1-based)"}
-    stdlib["insert"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["insert"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("insert",args,1,"3","any","int","any"); !ok { return nil,err }
 
         pos := args[1].(int)
@@ -792,7 +794,7 @@ func buildListLib() {
     }
 
     slhelp["remove"] = LibHelp{in: "list,pos", out: "[]new_list", action: "Returns a [#i1]new_list[#i0] with the item at position [#i1]pos[#i0] removed. 1-based."}
-    stdlib["remove"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["remove"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("remove",args,1,"2","any","int"); !ok { return nil,err }
 
         pos := args[1].(int)
@@ -856,7 +858,7 @@ func buildListLib() {
 
     // head(l) returns a[0]
     slhelp["head"] = LibHelp{in: "list", out: "item", action: "Returns the head element of a list."}
-    stdlib["head"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["head"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("head",args,1,"1","any"); !ok { return nil,err }
 
         switch args[0].(type) {
@@ -896,7 +898,7 @@ func buildListLib() {
 
     // tail(l) returns a[1:]
     slhelp["tail"] = LibHelp{in: "list", out: "[]new_list", action: "Returns a new list containing all items in [#i1]list[#i0] except the head item."}
-    stdlib["tail"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["tail"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("tail",args,1,"1","any"); !ok { return nil,err }
 
         switch args[0].(type) {
@@ -936,7 +938,7 @@ func buildListLib() {
 
     // all(l) returns bool true if a[:] all true (&&)
     slhelp["all"] = LibHelp{in: "bool_list", out: "bool", action: "Returns true if all items in [#i1]bool_list[#i0] evaluate to true."}
-    stdlib["all"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["all"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("all",args,1,"1","[]bool"); !ok { return nil,err }
         for _, v := range args[0].([]bool) {
             if !v {
@@ -948,7 +950,7 @@ func buildListLib() {
 
     // any(l) returns bool true if a[:] any true (||)
     slhelp["any"] = LibHelp{in: "list", out: "boolean", action: "Returns true if any item in [#i1]list[#i0] evaluates to true."}
-    stdlib["any"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["any"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("any",args,1,"1","[]bool"); !ok { return nil,err }
         for _, v := range args[0].([]bool) {
             if v {
@@ -961,7 +963,7 @@ func buildListLib() {
 
     // fieldsort(s,f,dir) ascending or descending sorted version returned. (type dependant)
     slhelp["fieldsort"] = LibHelp{in: "nl_string,field[,sort_type][,bool_reverse]", out: "new_string", action: "Sorts a newline separated string [#i1]nl_string[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order on key [#i1]field[#i0]."}
-    stdlib["fieldsort"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["fieldsort"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("fieldsort",args,3,
             "4","string","int","string","bool",
             "3","string","int","string",
@@ -1066,7 +1068,7 @@ func buildListLib() {
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
     slhelp["sort"] = LibHelp{in: "list[,bool_reverse]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order."}
-    stdlib["sort"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["sort"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("sort",args,2,
             "2","any","bool",
             "1","any"); !ok { return nil,err }
@@ -1237,7 +1239,7 @@ func buildListLib() {
     }
 
     slhelp["list_float"] = LibHelp{in: "int_or_string_list", out: "[]float_list", action: "Returns [#i1]int_or_string_list[#i0] as a list of floats, with invalid items removed."}
-    stdlib["list_float"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_float"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("list_float",args,4,
             "1","[]int",
             "1","[]uint",
@@ -1279,7 +1281,7 @@ func buildListLib() {
     }
 
     slhelp["list_int"] = LibHelp{in: "float_or_string_list", out: "[]int_list", action: "Returns [#i1]float_or_string_list[#i0] as a list of integers. Invalid items will generate an error."}
-    stdlib["list_int"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_int"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("list_int",args,6,
             "1","[]int",
             "1","[]uint",
@@ -1336,7 +1338,7 @@ func buildListLib() {
 
     // @todo: change sprintf for strconv funcs
     slhelp["list_string"] = LibHelp{in: "list", out: "[]string_list", action: "Returns [#i1]list[#i0] of numbers as a list of strings."}
-    stdlib["list_string"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["list_string"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("list_int",args,6,
             "1","[]int",
             "1","[]uint",
@@ -1364,7 +1366,7 @@ func buildListLib() {
 
     // uniq(l) returns a sorted list with duplicates removed
     slhelp["uniq"] = LibHelp{in: "[]list", out: "[]new_list", action: "Returns [#i1]list[#i0] sorted with duplicate values removed."}
-    stdlib["uniq"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["uniq"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("uniq",args,5,
             "1","string",
             "1","[]string",
@@ -1478,7 +1480,7 @@ func buildListLib() {
 
     // concat(l1,l2) returns concatenated list of l1,l2
     slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "Concatenates two lists and returns the result."}
-    stdlib["concat"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["concat"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("concat",args,1,"2","any","any"); !ok { return nil,err }
 
         if reflect.TypeOf(args[0]) != reflect.TypeOf(args[1]) {
@@ -1504,7 +1506,7 @@ func buildListLib() {
 
     // esplit(l,"a","b",match) recreates l with a[:match] and returns a[pos:]
     slhelp["esplit"] = LibHelp{in: `[]list,"var1","var2",pos`, out: "bool", action: "Split [#i1]list[#i0] at position [#i1]pos[#i0] (1-based). Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]."}
-    stdlib["esplit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["esplit"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("esplit",args,1,"4","any","string","string","int"); !ok { return nil,err }
 
         switch args[0].(type) {
@@ -1521,43 +1523,43 @@ func buildListLib() {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]float64)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]float64)[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]float64)[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]float64)[pos-1:])
         case []bool:
             if pos < 0 || pos > len(args[0].([]bool)) {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]bool)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]bool)[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]bool)[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]bool)[pos-1:])
         case []int:
             if pos < 0 || pos > len(args[0].([]int)) {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]int)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]int)[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]int)[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]int)[pos-1:])
         case []uint:
             if pos < 0 || pos > len(args[0].([]uint)) {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]uint)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]uint)[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]uint)[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]uint)[pos-1:])
         case []string:
             if pos < 0 || pos > len(args[0].([]string)) {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]string)[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]string)[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]string)[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]string)[pos-1:])
         case []interface{}:
             if pos < 0 || pos > len(args[0].([]interface{})) {
                 invalidPos = true
                 break
             }
-            vset(evalfs, args[1].(string), args[0].([]interface{})[:pos-1])
-            vset(evalfs, args[2].(string), args[0].([]interface{})[pos-1:])
+            vset(evalfs,ident, args[1].(string), args[0].([]interface{})[:pos-1])
+            vset(evalfs,ident, args[2].(string), args[0].([]interface{})[pos-1:])
         }
         if invalidPos {
             return false, errors.New("List position not within a valid range.")
@@ -1568,7 +1570,7 @@ func buildListLib() {
     // @note: this one is deliberately removed. it has issues.
     // msplit(l,match) recreates l with a[:matching_element_pos_of(match)] and returns status
     slhelp["msplit"] = LibHelp{in: `[]list,"var1","var2",match`, out: "bool", action: "Split [#i1]list[#i0] at first item matching [#i1]match[#i0]. Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]. Returns success flag."}
-    stdlib["msplit"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["msplit"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("msplit",args,2,
             "4","[]string","string","string","string",
             "4","[]interface {}","string","string","string"); !ok { return nil,err }
@@ -1600,21 +1602,21 @@ func buildListLib() {
             if pos < 0 || pos > len(args[0].([]string)) {
                 return false, errors.New("List position not within a valid range.")
             }
-            vset(evalfs, args[1].(string), args[0].([]string)[:pos])
-            vset(evalfs, args[2].(string), args[0].([]string)[pos:])
+            vset(evalfs,ident, args[1].(string), args[0].([]string)[:pos])
+            vset(evalfs,ident, args[2].(string), args[0].([]string)[pos:])
         case []interface{}:
             if pos < 0 || pos > len(args[0].([]interface{})) {
                 return false, errors.New("List position not within a valid range.")
             }
-            vset(evalfs, args[1].(string), args[0].([]interface{})[:pos])
-            vset(evalfs, args[2].(string), args[0].([]interface{})[pos:])
+            vset(evalfs,ident, args[1].(string), args[0].([]interface{})[:pos])
+            vset(evalfs,ident, args[2].(string), args[0].([]interface{})[pos:])
         }
         return true, nil
 
     }
 
     slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}
-    stdlib["min"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["min"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("min",args,1,"1","any"); !ok { return nil,err }
         switch args[0].(type) {
         case []int:
@@ -1631,7 +1633,7 @@ func buildListLib() {
     }
 
     slhelp["max"] = LibHelp{in: "list", out: "number", action: "Calculate the maximum value in a [#i1]list[#i0]."}
-    stdlib["max"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["max"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("max",args,1,"1","any"); !ok { return nil,err }
         switch args[0].(type) {
         case []int:
@@ -1648,7 +1650,7 @@ func buildListLib() {
     }
 
     slhelp["avg"] = LibHelp{in: "list", out: "number", action: "Calculate the average value in a [#i1]list[#i0]."}
-    stdlib["avg"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["avg"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("avg",args,1,"1","any"); !ok { return nil,err }
         var f float64
         switch args[0].(type) {
@@ -1670,7 +1672,7 @@ func buildListLib() {
     }
 
     slhelp["sum"] = LibHelp{in: "list", out: "number", action: "Calculate the sum of the values in [#i1]list[#i0]."}
-    stdlib["sum"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["sum"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("sum",args,1,"1","any"); !ok { return nil,err }
         var f float64
         switch args[0].(type) {

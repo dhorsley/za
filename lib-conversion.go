@@ -79,14 +79,14 @@ func buildConversionLib() {
     }
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
-    stdlib["write_struct"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["write_struct"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("write_struct",args,1,"2","string","string"); !ok { return nil,err }
 
         fn:=args[0].(string)
         vn:=args[1].(string)
 
         // convert struct to map
-        v,_:=vget(evalfs,vn)
+        v,_:=vget(evalfs,ident,vn)
         m:=s2m(v)
 
         // encode with gob
@@ -109,13 +109,13 @@ func buildConversionLib() {
     }
 
     slhelp["read_struct"] = LibHelp{in: "filename,name_of_destination_struct", out: "success_flag", action: "Read a struct from a file."}
-    stdlib["read_struct"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["read_struct"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("read_struct",args,1,"2","string","string"); !ok { return nil,err }
 
         fn:=args[0].(string)
         vn:=args[1].(string)
 
-        v,success:=vget(evalfs,vn)
+        v,success:=vget(evalfs,ident,vn)
         if !success {
             return false,errors.New(sf("could not find '%v'",vn))
         }
@@ -144,7 +144,7 @@ func buildConversionLib() {
         }
 
         // write to Za variable.
-        vset(evalfs,vn,m2s(*m,v))
+        vset(evalfs,ident,vn,m2s(*m,v))
 
         return true,nil
 
@@ -152,7 +152,7 @@ func buildConversionLib() {
 
 
     slhelp["char"] = LibHelp{in: "int", out: "string", action: "Return a string representation of ASCII char [#i1]int[#i0]. Representations between 128 and 160 are empty."}
-    stdlib["char"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["char"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("char",args,1,"1","int"); !ok { return nil,err }
 
         if args[0].(int) < 0 || args[0].(int) > 255 {
@@ -168,19 +168,19 @@ func buildConversionLib() {
 
     // @todo: fix this up when we support runes better.
     slhelp["asc"] = LibHelp{in: "string", out: "int", action: "Return a numeric representation of the first char in [#i1]string[#i0]."}
-    stdlib["asc"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["asc"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("asc",args,1,"1","string"); !ok { return nil,err }
         return int([]rune(args[0].(string))[0]), nil
     }
 
     slhelp["itob"] = LibHelp{in: "int", out: "bool", action: "Return a boolean which is set to true when [#i1]int[#i0] is non-zero."}
-    stdlib["itob"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["itob"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("itob",args,1,"1","int"); !ok { return nil,err }
         return args[0].(int)!=0, nil
     }
 
     slhelp["btoi"] = LibHelp{in: "bool", out: "int", action: "Return an int which is either 1 when [#i1]bool[#i0] is true or else 0 when [#i1]bool[#i0] is false. This function is mainly useful for performing branchless calculations, although the efficacy is low in an interpreter such as this."}
-    stdlib["btoi"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["btoi"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("btoi",args,1,"1","bool"); !ok { return nil,err }
         switch args[0].(bool) {
         case true:
@@ -190,19 +190,19 @@ func buildConversionLib() {
     }
 
     slhelp["dtoo"] = LibHelp{in: "var", out: "string", action: "Convert decimal int to octal string."}
-    stdlib["dtoo"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["dtoo"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("dtoo",args,1,"1","int"); !ok { return nil,err }
         return strconv.FormatInt(int64(args[0].(int)),8),nil
     }
 
     slhelp["otod"] = LibHelp{in: "var", out: "string", action: "Convert octal string to decimal int."}
-    stdlib["otod"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["otod"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("otod",args,1,"1","string"); !ok { return nil,err }
         return strconv.ParseInt(args[0].(string),8,64)
     }
 
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
-    stdlib["kind"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["kind"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to kind()")
         }
@@ -210,14 +210,14 @@ func buildConversionLib() {
     }
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
-    stdlib["base64e"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["base64e"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("base64e",args,1,"1","string"); !ok { return nil,err }
         enc:=base64.StdEncoding.EncodeToString([]byte(args[0].(string)))
         return enc,nil
     }
 
     slhelp["base64d"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 decoding of [#i1]string[#i0]"}
-    stdlib["base64d"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["base64d"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("base64d",args,1,"1","string"); !ok { return nil,err }
         dec,e:=base64.StdEncoding.DecodeString(args[0].(string))
         if e!=nil { return "",errors.New(sf("could not convert '%s' in base64d()",args[0].(string))) }
@@ -225,7 +225,7 @@ func buildConversionLib() {
     }
 
     slhelp["json_decode"] = LibHelp{in: "string", out: "[]mixed", action: "Return a mixed type array representing a JSON string."}
-    stdlib["json_decode"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["json_decode"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("json_decode",args,1,"1","string"); !ok { return nil,err }
 
         var v map[string]interface{}
@@ -240,7 +240,7 @@ func buildConversionLib() {
     }
 
     slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of [#i1]string[#i0], or an empty string on error."}
-    stdlib["json_format"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["json_format"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("json_format",args,1,"1","string"); !ok { return nil,err }
         var pj bytes.Buffer
         if err := json.Indent(&pj,[]byte(args[0].(string)), "", "\t"); err!=nil {
@@ -250,7 +250,7 @@ func buildConversionLib() {
     }
 
     slhelp["json_query"] = LibHelp{in: "string,query_string[,map_flag]", out: "output_string", action: "Returns the result of processing [#i1]string[#i0] using the gojq library. [#i1]query_string[#i0] is a jq-like query to operate against [#i1]string[#i0]. If [#i1]map_flag[#i0] is false (default) then a string is returned, otherwise an iterable list is returned."}
-    stdlib["json_query"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["json_query"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("json_query",args,2,
             "2","string","string",
             "3","string","string","bool"); !ok { return nil,err }
@@ -300,7 +300,7 @@ func buildConversionLib() {
     }
 
     slhelp["float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
-    stdlib["float"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["float"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to float()")
         }
@@ -310,7 +310,7 @@ func buildConversionLib() {
     }
 
     slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors. The type is still [#bold]int[#boff] however the bounds are limited between 0-255."}
-    stdlib["byte"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["byte"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to byte()")
         }
@@ -327,7 +327,7 @@ func buildConversionLib() {
 
 
     slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert [#i1]string[#i0] to a boolean value, or errors"}
-    stdlib["bool"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["bool"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to bool()")
         }
@@ -346,7 +346,7 @@ func buildConversionLib() {
 
 
     slhelp["int"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an integer, or errors."}
-    stdlib["int"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["int"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to int()")
         }
@@ -358,7 +358,7 @@ func buildConversionLib() {
     }
 
     slhelp["uint"] = LibHelp{in: "var", out: "unsigned_integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
-    stdlib["uint"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["uint"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to uint()")
         }
@@ -370,7 +370,7 @@ func buildConversionLib() {
     }
 
     slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
-    stdlib["int64"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["int64"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to int64()")
         }
@@ -382,7 +382,7 @@ func buildConversionLib() {
     }
 
     slhelp["string"] = LibHelp{in: "var", out: "string", action: "Converts [#i1]var[#i0] to a string."}
-    stdlib["string"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["string"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to string()")
         }
@@ -391,7 +391,7 @@ func buildConversionLib() {
     }
 
     slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "Returns true if [#i1]expression[#i0] evaluates to a numeric value."}
-    stdlib["is_number"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["is_number"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to is_number()")
         }

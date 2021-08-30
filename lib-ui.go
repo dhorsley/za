@@ -84,19 +84,19 @@ func buildUILib() {
     }
 
 	slhelp["ui_get_monitors"] = LibHelp{in: "", out: "[]monitor_info", action: "retrieve a list of available monitors"}
-	stdlib["ui_get_monitors"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_get_monitors"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_get_monitors",args,0); !ok { return nil,err }
         return pixelgl.Monitors(),nil
     }
 
 	slhelp["ui_primary_monitor"] = LibHelp{in: "", out: "monitor_info", action: "retrieve data about the primary monitor"}
-	stdlib["ui_primary_monitor"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_primary_monitor"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_primary_monitor",args,0); !ok { return nil,err }
         return pixelgl.PrimaryMonitor(),nil
     }
 
 	slhelp["ui_h"] = LibHelp{in: "[window_handle]", out: "float", action: "retrieve max height of window or the current monitor in [#i1]window_handle[#i0] is not set."}
-	stdlib["ui_h"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_h"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_h",args,2,
             "1","string",
             "0"); !ok { return nil,err }
@@ -117,7 +117,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_w"] = LibHelp{in: "[window_handle]", out: "float", action: "retrieve max width of window or the current monitor in [#i1]window_handle[#i0] is not set."}
-	stdlib["ui_w"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_w"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_w",args,2,
             "1","string",
             "0"); !ok { return nil,err }
@@ -138,7 +138,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_set_full_screen"] = LibHelp{in: "win_handle,monitor_id", out: "", action: "set a window to display on monitor [#i1]monitor_id[#i0] as full-screen."}
-	stdlib["ui_set_full_screen"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_set_full_screen"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_set_full_screen",args,1,"2","string","*pixelgl.Monitor"); !ok { return nil,err }
 
         globlock.Lock()
@@ -154,7 +154,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_set_windowed"] = LibHelp{in: "win_handle", out: "bool_success", action: "return a window from full-screen mode to normal windowed display."}
-	stdlib["ui_set_windowed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_set_windowed"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_set_windowed",args,1,"1","string"); !ok { return false,err }
 
         globlock.Lock()
@@ -171,7 +171,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_init"] = LibHelp{in: "[float_w,float_h]", out: "handle", action: "open a new window"}
-	stdlib["ui_init"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_init"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_init",args,2,
             "2","float64","float64",
             "0"); !ok { return nil,err }
@@ -208,7 +208,7 @@ func buildUILib() {
 
 
 	slhelp["ui_close"] = LibHelp{in: "handle", out: "bool_success", action: "Closes a UI."}
-	stdlib["ui_close"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_close"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_close",args,1,"1","string"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -228,7 +228,7 @@ func buildUILib() {
 	}
 
 	slhelp["ui_closed"] = LibHelp{in: "handle", out: "bool", action: "Window close requested?"}
-	stdlib["ui_closed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_closed"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_closed",args,1,"1","string"); !ok { return nil,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -247,10 +247,10 @@ func buildUILib() {
 
 
 	slhelp["ui_get_code"] = LibHelp{in: "string", out: "button", action: "Convert Pixel key name to button code for use in events."}
-	stdlib["ui_get_code"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_get_code"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_get_code",args,1,"1","string"); !ok { return nil,err }
-        tk:=globlock.RLock()
-        defer globlock.RUnlock(tk)
+        globlock.RLock()
+        defer globlock.RUnlock()
         if b,there:=buttons[args[0].(string)]; there {
             return b,nil
         }
@@ -258,7 +258,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_cursor_visible"] = LibHelp{in: "id,bool", out: "bool_success", action: "Set cursor visibility in window."}
-	stdlib["ui_cursor_visible"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_cursor_visible"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_cursor_visible",args,1,"2","string","bool"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -271,7 +271,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_pressed"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] been pressed?"}
-	stdlib["ui_pressed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_pressed"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_pressed",args,1,"2","string","pixelgl.Button"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -283,7 +283,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_just_pressed"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] been released?"}
-	stdlib["ui_just_pressed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_just_pressed"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_just_pressed",args,1,"2","string","pixelgl.Button"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -295,7 +295,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_just_released"] = LibHelp{in: "id,button", out: "bool", action: "Has keyboard or mouse key [#i1]button[#i0] just been released?"}
-	stdlib["ui_just_released"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_just_released"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_just_released",args,1,"2","string","pixelgl.Button"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -307,7 +307,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_mouse_pos"] = LibHelp{in: "id", out: "bool", action: "Returns the mouse pointer position for window [#i1]id[#i0]. Returns a vector nil."}
-	stdlib["ui_mouse_pos"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_mouse_pos"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_mouse_pos",args,1,"1","string"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -319,7 +319,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_handle"] = LibHelp{in: "id", out: "handle", action: "Returns the underlying structure."}
-	stdlib["ui_handle"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_handle"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_handle",args,1,"1","string"); !ok { return nil,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -340,7 +340,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_title"] = LibHelp{in: "id,string", out: "", action: "Sets the window title."}
-	stdlib["ui_title"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_title"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_title",args,1,"2","string","string"); !ok { return nil,err }
 
         h:=args[0].(string)
@@ -361,7 +361,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_text"] = LibHelp{in: "id,x,y,color_name,string", out: "", action: "Write text to window."}
-	stdlib["ui_text"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_text"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_text",args,1,
             "5","string","float64","float64","string","string"); !ok { return nil,err }
 
@@ -382,7 +382,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_set_smooth"] = LibHelp{in: "id,bool", out: "", action: "Set window transform smoothing."}
-	stdlib["ui_set_smooth"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_set_smooth"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_set_smooth",args,1,"2","string","bool"); !ok { return nil,err }
 
         h:=args[0].(string)
@@ -400,7 +400,7 @@ func buildUILib() {
 		return nil, errors.New("Windowing system not available")
     }
 	slhelp["ui_colour"] = LibHelp{in: "name|r,g,b", out: "colour", action: "generate a RGB value."}
-	stdlib["ui_colour"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_colour"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_colour",args,2,
             "3","int","int","int",
             "1","string"); !ok { return nil,err }
@@ -419,7 +419,7 @@ func buildUILib() {
 
 
 	slhelp["ui_bounds"] = LibHelp{in: "window_id", out: "rect", action: "get bounds of window."}
-	stdlib["ui_bounds"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_bounds"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_bounds",args,1,"1","string"); !ok { return nil,err }
         h:=args[0].(string)
         globlock.Lock()
@@ -435,13 +435,13 @@ func buildUILib() {
     }
 
 	slhelp["pic_bounds"] = LibHelp{in: "picture", out: "rect", action: "get bounds of picture."}
-	stdlib["pic_bounds"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["pic_bounds"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pic_bounds",args,1,"1","*pixel.PictureData"); !ok { return nil,err }
         return args[0].(*pixel.PictureData).Bounds(),nil
     }
 
 	slhelp["pic_load"] = LibHelp{in: "filename", out: "picture", action: "Read picture from file."}
-	stdlib["pic_load"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["pic_load"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pic_load",args,1,"1","string"); !ok { return nil,err }
         p:=args[0].(string)
 	    pic, err := loadPicture(p)
@@ -452,7 +452,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_new_sprite"] = LibHelp{in: "picture[,rect]", out: "sprite", action: "Create new sprite from picture."}
-	stdlib["ui_new_sprite"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_new_sprite"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_new_sprite",args,2,
             "2","*pixel.PictureData","pixel.Rect",
             "1","*pixel.PictureData"); !ok { return nil,err }
@@ -467,7 +467,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_clear"] = LibHelp{in: "id[,colour_string|r,g,b]", out: "", action: "Clear the window."}
-	stdlib["ui_clear"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_clear"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_clear",args,2,
             "2","string","string",
             "4","string","int","int","int"); !ok { return nil,err }
@@ -510,25 +510,25 @@ func buildUILib() {
     }
 
 	slhelp["ui_new_draw"] = LibHelp{in: "", out: "draw_object", action: "Construct a new immediate mode drawing object."}
-	stdlib["ui_new_draw"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_new_draw"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_new_draw",args,1,"0"); !ok { return nil,err }
         return imdraw.New(nil),nil
     }
 
 	slhelp["ui_new_matrix"] = LibHelp{in: "", out: "matrix", action: "Construct a new matrix."}
-	stdlib["ui_new_matrix"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_new_matrix"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_new_matrix",args,1,"0"); !ok { return nil,err }
 		return pixel.IM,nil
     }
 
 	slhelp["ui_centre"] = LibHelp{in: "rect", out: "vector", action: "Returns vector to centre of rect."}
-	stdlib["ui_centre"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_centre"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_centre",args,1,"1","pixel.Rect"); !ok { return nil,err }
         return args[0].(pixel.Rect).Center(),nil
     }
 
 	slhelp["ui_new_vector"] = LibHelp{in: "[float_x_offset,float_y_offset]", out: "vector", action: "Returns a vector struct. No parameters is a 0,0 vector."}
-	stdlib["ui_new_vector"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_new_vector"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_new_vector",args,2,
             "2","float64","float64",
             "0"); !ok { return nil,err }
@@ -540,7 +540,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_mat_move"] = LibHelp{in: "matrix,vector", out: "matrix", action: "Returns new matrix moved by vector."}
-	stdlib["ui_mat_move"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_mat_move"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_mat_move",args,1,"2","pixel.Matrix","pixel.Vec"); !ok { return nil,err }
         mat:=args[0].(pixel.Matrix)
         vec:=args[1].(pixel.Vec)
@@ -548,7 +548,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_mat_scale"] = LibHelp{in: "matrix,around_vector,scale_vector", out: "matrix", action: "Returns new matrix scaled by [#i1]scale_vector[#i0]."}
-	stdlib["ui_mat_scale"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_mat_scale"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_mat_scale",args,1,"3","pixel.Matrix","pixel.Vec","pixel.Vec"); !ok { return nil,err }
         mat:=args[0].(pixel.Matrix)
         vec:=args[1].(pixel.Vec)
@@ -557,20 +557,21 @@ func buildUILib() {
     }
 
 	slhelp["ui_mat_rotate"] = LibHelp{in: "matrix,vector,angle", out: "matrix", action: "Returns new matrix rotated by [#i1]angle[#i0]."}
-	stdlib["ui_mat_rotate"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_mat_rotate"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_mat_rotate",args,1,"3","pixel.Matrix","pixel.Vec","float64"); !ok { return nil,err }
         return args[0].(pixel.Matrix).Rotated(args[1].(pixel.Vec),args[2].(float64)),nil
     }
 
 	slhelp["ui_pp"] = LibHelp{in: "draw_object,r,g,b,vx,vy", out: "bool_success", action: "Push a point into a draw object."}
-	stdlib["ui_pp"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_pp"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_pp",args,1,
             "6","string","float64","float64","float64","float64","float64"); !ok { return false,err }
+                // @note: should have a (parlock) mutex around this:
         if vi,ok := VarLookup(evalfs,args[0].(string)); ok {
-            vlock.Lock()
-	        ident[evalfs][vi].IValue.(*imdraw.IMDraw).Color = pixel.RGB(args[1].(float64),args[2].(float64),args[3].(float64))
-	        ident[evalfs][vi].IValue.(*imdraw.IMDraw).Push(pixel.V(args[4].(float64),args[5].(float64)))
-            vlock.Unlock()
+            // vlock.Lock()
+	        (*ident)[vi].IValue.(*imdraw.IMDraw).Color = pixel.RGB(args[1].(float64),args[2].(float64),args[3].(float64))
+	        (*ident)[vi].IValue.(*imdraw.IMDraw).Push(pixel.V(args[4].(float64),args[5].(float64)))
+            // vlock.Unlock()
         } else {
             return false,errors.New("ui_pp: invalid object name")
         }
@@ -578,35 +579,35 @@ func buildUILib() {
     }
 
 	slhelp["ui_draw_reset"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Reset a drawing object to it's initial state."}
-	stdlib["ui_draw_reset"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_draw_reset"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_draw_reset",args,1,"1","*imdraw.IMDraw"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Reset()
         return true,nil
     }
 
 	slhelp["ui_line"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Set shape of a draw object to line."}
-	stdlib["ui_line"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_line"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_line",args,1,"2","*imdraw.IMDraw","float64"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Line(args[1].(float64))
         return true,nil
     }
 
 	slhelp["ui_rectangle"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Set shape of a draw object to rectangle."}
-	stdlib["ui_rectangle"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_rectangle"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_rectangle",args,1,"2","*imdraw.IMDraw","float64"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Rectangle(args[1].(float64))
         return true,nil
     }
 
 	slhelp["ui_circle"] = LibHelp{in: "draw_object,radius,thickness", out: "bool_success", action: "Set shape of a draw object to circle."}
-	stdlib["ui_circle"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_circle"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_circle",args,1,"3","*imdraw.IMDraw","float64","float64"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Circle(args[1].(float64),args[2].(float64))
         return true,nil
     }
 
 	slhelp["ui_circle_arc"] = LibHelp{in: "draw_object,radius,low,high,thickness", out: "bool_success", action: "Set shape of a draw object to arc of circle."}
-	stdlib["ui_circle_arc"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_circle_arc"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_circle_arc",args,1,"5",
             "*imdraw.IMDraw","float64","float64","float64","float64"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).CircleArc(args[1].(float64),args[2].(float64),args[3].(float64),args[4].(float64))
@@ -614,14 +615,14 @@ func buildUILib() {
     }
 
 	slhelp["ui_polygon"] = LibHelp{in: "draw_object,thickness", out: "bool_success", action: "Set shape of a draw object to polygon."}
-	stdlib["ui_polygon"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_polygon"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_polygon",args,1,"2","*imdraw.IMDraw","float64"); !ok { return false,err }
 	    args[0].(*imdraw.IMDraw).Polygon(args[1].(float64))
         return true,nil
     }
 
 	slhelp["ui_sprite_draw"] = LibHelp{in: "window_handle,draw_object_name,matrix", out: "bool_success", action: "Directly render shape."}
-	stdlib["ui_sprite_draw"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_sprite_draw"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_sprite_draw",args,2,
             "4","string","*pixel.Sprite","pixel.Matrix","color.Color",
             "3","string","*pixel.Sprite","pixel.Matrix"); !ok { return false,err }
@@ -647,7 +648,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_batch_draw"] = LibHelp{in: "window", out: "bool_success", action: "Render the batch list to target window."}
-	stdlib["ui_batch_draw"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_batch_draw"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_batch_draw",args,1,"1","string"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -664,7 +665,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_batch"] = LibHelp{in: "target_window,drawing_object", out: "bool_success", action: "Send shape to a target window's draw batch."}
-	stdlib["ui_batch"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_batch"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_batch",args,1,"2","string","*imdraw.IMDraw"); !ok { return false,err }
 
         if winAvailable {
@@ -681,7 +682,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_batch_clear"] = LibHelp{in: "window_handle", out: "bool_success", action: "Clear a window's batch draw object."}
-	stdlib["ui_batch_clear"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_batch_clear"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_batch_clear",args,1,"1","string"); !ok { return false,err }
         globlock.Lock()
         defer globlock.Unlock()
@@ -698,7 +699,7 @@ func buildUILib() {
     }
 
 	slhelp["ui_update"] = LibHelp{in: "id", out: "bool_success", action: "Invalidate the window."}
-	stdlib["ui_update"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+	stdlib["ui_update"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ui_update",args,1,"1","string"); !ok { return false,err }
         h:=args[0].(string)
 

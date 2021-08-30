@@ -13,13 +13,15 @@ type Phrase struct {
 	Tokens      []Token // each token found
     SourceLine  int16
 	TokenCount  int16   // number of tokens generated for this phrase
-    // folded      bool    // const folded expression
-    // folded_result      interface{}
-    // foldable    bool    // whether to continue to try folding or not
 }
 
 type BaseCode struct {
 	Original    string  // entire string, unmodified for spaces
+}
+
+type bc_block struct {
+    Block       []byte
+    compiled    bool
 }
 
 // func (p Phrase) String() string {
@@ -38,7 +40,7 @@ type fa_s struct { // function args struct
 
 
 // ExpressionFunction can be called from within expressions.
-type ExpressionFunction = func(evalfs uint32,args ...interface{}) (interface{}, error)
+type ExpressionFunction = func(evalfs uint32,ident *[]Variable,args ...interface{}) (interface{}, error)
 
 
 // za variable
@@ -66,14 +68,14 @@ func (t Token) String() string {
 
 // holds the details of a function call.
 type call_s struct {
-	retvar      string      // the lhs var in the caller to be assigned back to
 	fs          string      // the text name of the calling party
 	caller      uint32      // the thing which made the call
 	base        uint32      // the original functionspace location of the source
+	retvals     interface{} // returned values from the call
 }
 
 func (cs call_s) String() string {
-	return sf("~{ fs %v - caller %v - return var %v }~", cs.fs, cs.caller, cs.retvar)
+	return sf("~{ fs %v - caller %v }~", cs.fs, cs.caller)
 }
 
 type Funcdef struct {
