@@ -6,11 +6,12 @@ import (
     "fmt"
     "math"
     "net/http"
+//    "os"
     "unsafe"
     "reflect"
     "strconv"
     str "strings"
-    "sync/atomic"
+//    "sync/atomic"
 )
 
 
@@ -277,7 +278,8 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
     if float1OK && float2OK {
         return float1 - float2
     }
-    panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
+    // panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
+    panic(fmt.Errorf("type error: cannot subtract type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
 func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
@@ -331,7 +333,8 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e++ { ary=append(ary,val2) }; return ary }
     if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e++ { ary=append(ary,val1) }; return ary }
 
-    panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
+    // panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
+    panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
 func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
@@ -763,31 +766,7 @@ func asObjectKey(key interface{}) (string) {
     return s
 }
 
-func addMapMember(evalfs uint32, obj string, key, val interface{}) {
-    // map key
-    s := asObjectKey(key)
-    vsetElement(evalfs, obj, s, val)
-    return
-}
-
-func addObjectMember(evalfs uint32, obj string, key interface{}, val interface{}) {
-    // normal array
-    s,invalid := GetAsInt(key.(string))
-    if invalid { panic(fmt.Errorf("type error: element must be an integer")) }
-
-    switch val.(type) {
-    case map[string]interface{},map[string]string,int, float64, bool, interface{}:
-        vsetElement(evalfs, obj, s, val)
-    default:
-        panic(fmt.Errorf("addobjmember cannot handle type %T for %v\n",val,key))
-    }
-    return
-}
-
-
 func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}) {
-
-    // evalfs:=p.fs
 
     switch obj:=obj.(type) {
 
@@ -894,8 +873,8 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
             if !isFunc {
                 // before failing, check if this is a valid enum reference
-                tk:=globlock.RLock()
-                defer globlock.RUnlock(tk)
+                globlock.RLock()
+                defer globlock.RUnlock()
                 if enum[p.preprev.tokText]!=nil {
                     return enum[p.preprev.tokText].members[name]
                 }
@@ -929,7 +908,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                 }
             }
 
-            return callFunction(p.fs,name,iargs)
+            return callFunction(p.fs,p.ident,name,iargs)
 
         }
 
@@ -939,7 +918,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 }
 
 
-func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}) {
+func accessArray(ident *[]Variable, obj interface{}, field interface{}) (interface{}) {
 
     switch obj:=obj.(type) {
     case string:
@@ -966,8 +945,8 @@ func accessArray(evalfs uint32, obj interface{}, field interface{}) (interface{}
         r := reflect.ValueOf(obj)
 
         // test for race condition:
-        tk:=vlock.RLock()
-        defer vlock.RUnlock(tk)
+        vlock.RLock()
+        defer vlock.RUnlock()
         // leaving this in for now. the defer slows things down, but
         // it is catching ident[] use passed through by reference,
         // possibly in the reflect.* calls?
@@ -1100,9 +1079,12 @@ func slice(v interface{}, from, to interface{}) interface{} {
 }
 
 
-func callFunction(evalfs uint32, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint32, ident *[]Variable, name string, args []interface{}) (res interface{}) {
 
-    // pf("callFunction started with\nfs %v fn %v\n",evalfs,name)
+    /*
+    pf("callFunction started with\nfs %v fn %v\n",evalfs,name)
+    pf("+ident of : %v\n",*ident)
+    */
 
     /* // test removal - should probably not be interpolating arguments
     for a:=0; a<len(args); a++ {
@@ -1131,33 +1113,45 @@ func callFunction(evalfs uint32, name string, args []interface{}) (res interface
         if isFunc {
 
             // make Za function call
-            loc,id := GetNextFnSpace(name+"@")
+
+            // don't lock in space allocator on recursive calls
+            var do_lock bool
+            evname,_:=numlookup.lmget(evalfs)
+            if len(evname)>=len(name) && evname[:len(name)] != name {
+                do_lock=true
+            }
+            // pf("(in call) do_lock %v - name %v - evalfs_name %v\n",do_lock,name,evname)
+
+            loc,id := GetNextFnSpace(do_lock,name+"@")
 
             calllock.Lock()
-            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs, retvar: "@#"}
+            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs}
             calllock.Unlock()
 
-            atomic.AddInt32(&concurrent_funcs, 1)
-            rcount,_:=Call(MODE_NEW, loc, ciEval, args...)
-            atomic.AddInt32(&concurrent_funcs, -1)
+            var ident = make([]Variable, IDENT_CAP)
+            rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
 
             // handle the returned result, if present.
-            res, _ = vget(evalfs, "@#")
+
+            res = calltable[loc].retvals
             switch rcount {
             case 0:
+                calltable[loc]=call_s{}
                 return nil
             case 1:
+                calltable[loc]=call_s{}
                 return res.([]interface{})[0]
             default:
+                calltable[loc]=call_s{}
                 return res
             }
-
+            return res
         } else {
             panic(fmt.Errorf("syntax error: no such function %q", name))
         }
     } else {
         // call standard library function
-        res, err := f(evalfs,args...)
+        res, err := f(evalfs,ident,args...)
         if err != nil {
             msg:=sf("function error: in %+v %s",name,err)
             if err.Error()!="" { msg=err.Error() }

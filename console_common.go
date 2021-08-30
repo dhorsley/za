@@ -19,13 +19,13 @@ import (
     "time"
 )
 
-var completions = []string{"VAR", "SETGLOB", "INIT", "PAUSE",
+var completions = []string{"VAR", "SETGLOB", "PAUSE",
     "HELP", "NOP", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
     "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "HAS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH", 
+    "IS", "CONTAINS", "HAS", "IN", "OR", "ENDWHEN", "WITH", "ENDWITH",
     "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "TO", "STEP", "AS", "ENUM", "HIST",
 }
@@ -131,7 +131,7 @@ func sparkle(a interface{}) string {
 func plog(s string, va ...interface{}) {
 
     // print if not silent logging
-    if v, _ := vget(0, "@silentlog"); v.(bool) {
+    if v, _ := vget(0, &gident, "@silentlog"); v.(bool) {
         pf(s, va...)
     }
 
@@ -142,7 +142,7 @@ func plog(s string, va ...interface{}) {
             log.Println(err)
         }
         defer f.Close()
-        subj, _ := vget(0, "@logsubject")
+        subj, _ := vget(0, &gident, "@logsubject")
         logger := log.New(f, subj.(string), log.LstdFlags)
         logger.Printf(s, va...)
     }
@@ -151,18 +151,18 @@ func plog(s string, va ...interface{}) {
 
 // special case printing for global var interpolation
 func gpf(s string) {
-    pf("%s\n", spf(0, s))
+    pf("%s\n", spf(0, &gident, s))
 }
 
 // sprint with namespace
-func spf(ns uint32, s string) string {
-    s = interpolate(ns,s)
+func spf(ns uint32, ident *[]Variable, s string) string {
+    s = interpolate(ns,ident,s)
     return sf("%v", sparkle(s))
 }
 
 // clear screen
 func cls() {
-    if v, _ := vget(0, "@winterm"); !v.(bool) {
+    if v, _ := vget(0, &gident, "@winterm"); !v.(bool) {
         pf("\033c")
     } else {
         pf("\033[2J")
@@ -228,23 +228,21 @@ func displayedLen(s string) int {
 
 // move the console cursor
 func absat(row int, col int) {
+    atlock.Lock()
     if row < 0 {
         row = 0
     }
     if col < 0 {
         col = 0
     }
-    atlock.Lock()
-    fmt.Printf("\033[%d;%dH", row, col)
     atlock.Unlock()
+    fmt.Printf("\033[%d;%dH", row, col)
 }
 
 // move the console cursor (relative to current pane origin [orow,ocol])
 // orow+ocol are globals
 func at(row int, col int) {
-    atlock.Lock()
     fmt.Printf("\033[%d;%dH", orow+row, ocol+col)
-    atlock.Unlock()
 }
 
 // return ansi codes for moving the console cursor
@@ -254,30 +252,22 @@ func sat(row int,col int) string {
 
 // clear to end of line
 func clearToEOL() {
-    atlock.Lock()
     pf("\033[0K")
-    atlock.Unlock()
 }
 
 // show the console cursor
 func showCursor() {
-    atlock.Lock()
     pf("\033[?12l\033[?25h\033[?8h")
-    atlock.Unlock()
 }
 
 // hide the console cursor
 func hideCursor() {
-    atlock.Lock()
     pf("\033[?8l\033[?25l\033[?12h")
-    atlock.Unlock()
 }
 
 // move to horizontal cursor position n
 func cursorX(n int) {
-    atlock.Lock()
     pf("\033[%dG",n)
-    atlock.Unlock()
 }
 
 // remove runes in string s before position pos
@@ -628,7 +618,7 @@ func GetCommand(c string) (s string, err error) {
     var out bytes.Buffer
     cmd.Stdin  = os.Stdin
     // cmd.Stderr = os.Stderr
-    capture,_:=vget(0,"@commandCapture")
+    capture,_:=vget(0,&gident,"@commandCapture")
     if capture.(bool) {
         cmd.Stdout = &out
         err = cmd.Run()
@@ -653,7 +643,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     var result BashRead
 
-    CMDSEP,_:=vget(0,"@cmdsep")
+    CMDSEP,_:=vget(0,&gident,"@cmdsep")
     cmdsep:=CMDSEP.(byte)
 
     lastlock.Lock()
@@ -675,7 +665,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
         // if EOF then end with what we have accumulated so far
 
         // save cursor - move to start of row
-        mt, _ := vget(0, "mark_time")
+        mt, _ := vget(0,&gident, "mark_time")
         if mt.(bool) {
             pf("[#CSI]s[#CSI]1G")
         }
@@ -780,16 +770,16 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     var err error       // generic error handle
     var commandErr error
 
-    riwp,_:=vget(0,"@runInWindowsParent")
-    rip,_ :=vget(0,"@runInParent")
+    riwp,_:=vget(0,&gident,"@runInWindowsParent")
+    rip,_ :=vget(0,&gident,"@runInParent")
 
 
     // shell reporting option:
-    sr,_:=vget(0,"@shell_report")
+    sr,_:=vget(0,&gident,"@shell_report")
     if sr.(bool)==true {
-        noshell,_  :=vget(0,"@noshell")
-        shelltype,_:=vget(0,"@shelltype")
-        shellloc,_ :=vget(0,"@shell_location")
+        noshell,_  :=vget(0,&gident,"@noshell")
+        shelltype,_:=vget(0,&gident,"@shelltype")
+        shellloc,_ :=vget(0,&gident,"@shell_location")
         if !noshell.(bool) {
             pf("[#4]Shell Options: ")
             pf("%v (%v) ",shelltype,shellloc)
@@ -818,24 +808,24 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
         if err != nil {
 
-            vset(0,"@last","0")
-            vset(0,"@lastout",[]byte{0})
+            vset(0,&gident,"@last","0")
+            vset(0,&gident,"@lastout",[]byte{0})
 
             if !squashErr {
 
                 if exitError, ok := err.(*exec.ExitError); ok {
-                    vset(0,"@last",sf("%v",exitError.ExitCode()))
-                    vset(0, "@last_out", []byte(err.Error()))
+                    vset(0,&gident,"@last",sf("%v",exitError.ExitCode()))
+                    vset(0,&gident, "@last_out", []byte(err.Error()))
                 } else { // probably a command not found?
-                    vset(0,"@last","1")
-                    vset(0,"@last_out", []byte("Command not found."))
+                    vset(0,&gident,"@last","1")
+                    vset(0,&gident,"@last_out", []byte("Command not found."))
                 }
 
             }
 
         } else {
-            vset(0, "@last", "0")
-            vset(0, "@last_out", []byte{0})
+            vset(0,&gident,"@last", "0")
+            vset(0,&gident,"@last_out", []byte{0})
         }
     } else {
 
@@ -845,12 +835,12 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             os.Remove(errorFile.Name())
             log.Fatal(err)
         }
-        vset(0, "@last", "0")
+        vset(0,&gident,"@last", "0")
 
         read_out := bufio.NewReader(po)
 
         // issue command
-        CMDSEP,_:=vget(0,"@cmdsep")
+        CMDSEP,_:=vget(0,&gident,"@cmdsep")
         cmdsep:=CMDSEP.(byte)
         hexenc:=hex.EncodeToString([]byte{cmdsep})
         io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
@@ -864,9 +854,9 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
         // pull cwd from /proc
-        childProc,_:=vget(0,"@shellpid")
+        childProc,_:=vget(0,&gident,"@shellpid")
         pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
-        vset(0, "@pwd", pwd)
+        vset(0,&gident,"@pwd", pwd)
 
         if commandErr != nil {
             errint = -3
@@ -877,7 +867,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
                     errint = -2
                 }
                 if !squashErr {
-                    vset(0, "@last", string(code))
+                    vset(0,&gident,"@last", string(code))
                 }
             } else {
                 errint = -1
@@ -888,10 +878,10 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         b, err := ioutil.ReadFile(errorFile.Name())
 
         if len(b) > 0 {
-            vset(0, "@last_out", b)
+            vset(0,&gident, "@last_out", b)
             errout=string(b)
         } else {
-            vset(0, "@last_out", []byte{0})
+            vset(0,&gident,"@last_out", []byte{0})
             errout=""
         }
 
@@ -919,7 +909,7 @@ func restoreScreen() {
 }
 
 func testStart(file string) {
-    vos,_:=vget(0,"@os") ; stros:=vos.(string)
+    vos,_:=vget(0,&gident,"@os") ; stros:=vos.(string)
     test_start := sf("\n[#6][#ul][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
     appendToTestReport(test_output_file,0, 0, test_start)
 }

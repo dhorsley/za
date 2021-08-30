@@ -1,0 +1,11 @@
+#!/usr/bin/za
+
+module "modules/timing.mod"
+interpol(false)
+
+# execute fn once to build the identifier name bindings
+report(0,1,1,1)
+
+println ast(ref report)
+
+

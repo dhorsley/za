@@ -11,9 +11,11 @@ const Maxint16  = ^int16(0)
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 
+const gnfsModulus = 32768
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
-const MAX_FUNCS = 10000         // max source funcs (not max instances)
-const SPACE_CAP = 25000         // max user function instances ack(4,1) memoised uses ~16.5k
+const MAX_FUNCS = gnfsModulus   // max source funcs (not max instances)
+const SPACE_CAP = gnfsModulus
+const IDENT_CAP = 8             // initial identifier space per function
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
 const FUNC_CAP = 300            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 

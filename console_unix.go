@@ -302,7 +302,7 @@ func GetCursorPos() (int,int) {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     old_wrap := lineWrap
     lineWrap = false
@@ -326,7 +326,7 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
     var funcnames []string       // the list of possible standard library functions
 
     // get echo status
-    echo,_:=vget(0,"@echo")
+    echo,_:=vget(0,&gident,"@echo")
     if mask=="" { mask="*" }
 
     endLine := false // input complete?
@@ -616,12 +616,14 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
                     selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
 
                     //.. add var names
-                    for _, v := range ident[evalfs] {
-                        if v.IName!="" {
-                            varnames = append(varnames, v.IName)
+                    if ident!=nil {
+                        for _, v := range *ident {
+                            if v.IName!="" {
+                                varnames = append(varnames, v.IName)
+                            }
                         }
+                        sort.Strings(varnames)
                     }
-                    sort.Strings(varnames)
 
                     //.. add functionnames
                     for k, _ := range slhelp {

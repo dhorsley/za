@@ -33,6 +33,7 @@ func showCallChain(base string) {
     // show chain
     evalChainTotal:=0
     pf("[#CTE][#5]")
+    calllock.RLock()
     for k,v:=range callChain {
         if k==0 { continue }
         if v.registrant==ciEval { evalChainTotal++ }
@@ -43,6 +44,7 @@ func showCallChain(base string) {
         v.name=getReportFunctionName(v.loc,false)
         pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
     }
+    calllock.RUnlock()
     pf("-> [#6]"+base+"[#-]\n[#CTE]")
 
 }
@@ -228,11 +230,11 @@ func sizeOf(v reflect.Value,cache map[uintptr]bool) int {
 
 
 func version() {
-    v,_:=vget(0,"@ct_info")
+    v,_:=vget(0,&gident,"@ct_info")
     add:=""
     if v.(string)!="glibc" { add=v.(string)+", " }
-    pf(spf(0,"[#6][#bold]{@language} version {@version}[#boff][#-]\n"))
-    pf(spf(0,"[#1]Last build:[#-] "+add+"{@creation_date}\n"))
+    pf(spf(0,&gident,"[#6][#bold]{@language} version {@version}[#boff][#-]\n"))
+    pf(spf(0,&gident,"[#1]Last build:[#-] "+add+"{@creation_date}\n"))
 }
 
 

@@ -9,7 +9,6 @@ end
 calls=0
 input x param 1
 println fib(x)
-#println "calls -> {calls}"
+# println "calls -> {calls}"
 
-println "mem_summary : %#v".format(mem_summary(true)["main"])
-
+# println get_mem()
