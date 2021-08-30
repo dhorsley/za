@@ -13,7 +13,7 @@ on do_upx=="upx" do upx_enable=true
 # main
 #
 
-GCLIMIT = "GOGC=250 GOMAXPROCS=4"
+GCLIMIT = "GOGC=80 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
 bvers =  "1.0.15"

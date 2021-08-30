@@ -220,5 +220,4 @@ while !ui_closed(w)
 
 endwhile
 
-mem_summary(true)
 

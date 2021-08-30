@@ -191,7 +191,8 @@ def show_right(rd,rrow,rwinheight,cursorr)
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                sz="%15s".format(f.size.bytesize)
+                # sz="%15s".format(f.size.bytesize)
+                sz=f.size.bytesize
             endif
         else
             mt="[#5]"+mt
@@ -312,7 +313,7 @@ while !quit
     print "{br}v[#-] view  {br}x[#-] execute  {br}b[#-] back  {br}q[#-] quit"
 
     # user input
-    k=keypress(100)
+    k=keypress(5)
 
     when char(k)
 
@@ -583,6 +584,7 @@ while !quit
     is " "
         redef_layout()
         refresh()
+        cursoroff()
 
     has k==13
 

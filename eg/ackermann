@@ -5,6 +5,7 @@ var calls int
 define ackermann(m,n)
 
     setglob calls = calls + 1
+#    print "[#"+rand(7)+"]*",calls,"*"
     if globkey("memoA",`{m},{n}`)
         return memoA[`{m},{n}`]
     endif

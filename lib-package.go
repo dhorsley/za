@@ -99,34 +99,34 @@ func buildPackageLib() {
     categories["package"] = []string{"install", "uninstall", "service", "vcmp","is_installed"}
 
     slhelp["install"] = LibHelp{in: "packages_string", out: "", action: "Installs the packages in [#i1]packages_string[#i0]."}
-    stdlib["install"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["install"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("install",args,1,"1","string"); !ok { return nil,err }
         done := install(args[0].(string))
         return done, err
     }
 
     slhelp["is_installed"] = LibHelp{in: "package_name", out: "bool", action: "Is package [#i1]package_name[#i0] installed?"}
-    stdlib["is_installed"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["is_installed"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("is_installed",args,1,"1","string"); !ok { return nil,err }
         if args[0].(string)=="" { return false,errors.New("Invalid package name") }
         return isinstalled(args[0].(string)),nil
     }
 
     slhelp["uninstall"] = LibHelp{in: "packages_string", out: "", action: "Removes the packages in [#i1]packages_string[#i0]."}
-    stdlib["uninstall"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["uninstall"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("uninstall",args,1,"1","string"); !ok { return nil,err }
         done := uninstall(args[0].(string))
         return done, err
     }
 
     slhelp["vcmp"] = LibHelp{in: "string_v1,string_v2", out: "int", action: "Returns -1, 0, or +1 depending on semantic version string [#i1]string_v1[#i0] being less than, equal to, or greater than version string [#i1]string_v2[#i0]."}
-    stdlib["vcmp"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["vcmp"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("vcmp",args,1,"2","string","string"); !ok { return nil,err }
         return vcmp(args[0].(string), args[1].(string))
     }
 
     slhelp["service"] = LibHelp{in: "service_name,action", out: "success_flag", action: "Attempts to take the required [#i1]action[#i0] on service [#i1]service_name[#i0]. Returns true if successful."}
-    stdlib["service"] = func(evalfs uint32,args ...interface{}) (ret interface{}, err error) {
+    stdlib["service"] = func(evalfs uint32,ident *[]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("service",args,1,"2","string","string"); !ok { return nil,err }
         done, err := service(args[0].(string), args[1].(string))
         return done, err
@@ -175,7 +175,7 @@ func vconvert(v string) (float64, error) {
 
 func isinstalled(pkg string) (bool) {
 
-    v, _ := vget(0, "@release_id")
+    v, _ := vget(0, &gident, "@release_id")
 
     err:=-1
     switch v.(string) {
@@ -200,7 +200,7 @@ func uninstall(pkgs string) (state int) {
 
     var pm, upopts, inopts, checkcmd1, checkcmd2 string
 
-    v, _ := vget(0, "@release_id")
+    v, _ := vget(0, &gident, "@release_id")
 
     switch v.(string) {
     case "ubuntu", "debian":
@@ -338,7 +338,7 @@ func install(pkgs string) (state int) {
 
     inopts = ""
 
-    v, _ := vget(0, "@release_id")
+    v, _ := vget(0, &gident, "@release_id")
     switch v.(string) {
     case "ubuntu", "debian":
         pm = "apt"
@@ -415,9 +415,9 @@ func install(pkgs string) (state int) {
 // take a service action. actions are permitted for upstart and systemd tools. 
 func service(name string, action string) (bool, error) {
 
-    v, _ := vget(0, "@release_id")
+    v, _ := vget(0, &gident, "@release_id")
     rid := v.(string)
-    v, _ = vget(0, "@release_version")
+    v, _ = vget(0, &gident, "@release_version")
     rv := v.(string)
 
     sys := Copper("ps -o comm= -q 1", true)

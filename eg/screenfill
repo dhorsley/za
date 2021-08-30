@@ -27,6 +27,5 @@ endfor
 cursoron()
 cls
 at term_h()-6,1
-println "mem_summary : %#v".format(mem_summary()["main"])
 println "mem use : ",get_mem().alloc
 
