@@ -433,7 +433,7 @@ func run() {
     vset(0,&gident,"mark_time", false)
 
     // - name of Za function that handles ctrl-c.
-    vset(0,&gident,"trapInt", "")
+    vset(1,&mident,"trapInt", "")
 
     // - show user stdin input
     vset(0,&gident,"@echo", true)
@@ -751,7 +751,7 @@ func run() {
 
             // user-trap handling
 
-            userSigIntHandler,usihfound:=vget(0,&gident,"trapInt")
+            userSigIntHandler,usihfound:=vget(1,&mident,"trapInt")
             usih:=""
             if usihfound { usih=userSigIntHandler.(string) }
 
@@ -778,9 +778,9 @@ func run() {
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(parser,0,a)
+                            aval, err := ev(interparse,1,a)
                             if err != nil {
-                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], 0, err)
+                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], 1, err)
                                 finish(false, ERR_EVAL)
                                 break
                             }
@@ -807,14 +807,16 @@ func run() {
                 var trident = make([]Variable, IDENT_CAP)
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
-                    sigintreturn := calltable[loc].retvals
-                    switch sigintreturn.(type) {
-                    case int:
-                    default:
-                        finish(true,124)
-                    }
-                    if sigintreturn.(int)!=0 {
-                        finish(true,sigintreturn.(int))
+                    sigintreturn := calltable[loc].retvals.([]interface{})
+                    if len(sigintreturn)>0 {
+                        switch sigintreturn[0].(type) {
+                        case int:
+                        default:
+                            finish(true,124)
+                        }
+                        if sigintreturn[0].(int)!=0 {
+                            finish(true,sigintreturn[0].(int))
+                        }
                     }
                 }
                 calltable[loc]=call_s{}

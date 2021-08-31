@@ -8,8 +8,14 @@ HOST="127.0.0.1"
 PORT=8080
 HOME_PATH="/home/daniel/www"
 
+trapInt="cleanup()"
 
 # FUNCTIONS
+
+define cleanup()
+    println "[#2]** User break **[#-]"
+    return 42
+end
 
 define interface_ip(in)
     addrline =| ip addr show dev {in}

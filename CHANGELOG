@@ -79,6 +79,12 @@ CHANGE LOG
                   i think i will work again on some stability, tidying and feature finish then kick
                   this version out of the door as 1.1.0.
 
+    * fixed trapInt handler (ctrl-c)
+        - needed repointing to main ident space post changes above.
+        - it was also pretty broken since we added multiple return values.
+        - ... and was using the wrong parser in the interrupt handler.
+        - should be okay now!
+        - still want to add other event handlers, mainly for sig winch to begin with.
 
     * localised loops[], depth[] and lastConstruct[]
         - this allowed us to remove *a lot* of mutex locking. these were previously
