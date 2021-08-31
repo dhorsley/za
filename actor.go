@@ -618,9 +618,10 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
     if varmode == MODE_NEW {
 
         // in interactive mode, the top-level current functionspace is 0
-        // in normal exec mode, the source is treated as functionspace 1
+        // in normal exec mode, the source (main) is treated as functionspace 1
+        // pf("in call : mode_new : source base is %d\n",source_base)
         if source_base < 2 {
-            vset(0, &gident, "trapInt", "")
+            vset(1, &mident, "trapInt", "")
         }
 
         // in_tco: currently in an iterative tail-call.
@@ -697,12 +698,11 @@ tco_reentry:
         parser.pc+=1
 
         // @note: sig_int can be a race condition. alternatives?
-        /*
+        // if sig_int removed from below then user ctrl-c handler cannot
+        // return a custom error code (unless it exits instead of returning maybe)
+        // also, having this cond check every iteration slows down execution.
+
         if parser.pc >= finalline || endFunc || sig_int {
-            break
-        }
-        */
-        if parser.pc >= finalline || endFunc {
             break
         }
 
