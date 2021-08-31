@@ -191,8 +191,7 @@ def show_right(rd,rrow,rwinheight,cursorr)
                 mt="[#1]d"
             else
                 mt="[#4]f"
-                # sz="%15s".format(f.size.bytesize)
-                sz=f.size.bytesize
+                sz="%15s".format(f.size.bytesize)
             endif
         else
             mt="[#5]"+mt
