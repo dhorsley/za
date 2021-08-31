@@ -1,14 +1,14 @@
 #!/usr/bin/za
 
-input N param 1
+input n param 1
 
-define f(n)
+#define f(n)
     var d nassoc
     for i = 0 to n-1
         d[i%1000]=i
     endfor
-end
+#end
 
-f(N)
+#f(n)
 
 

@@ -1240,6 +1240,11 @@ func vset(fs uint32, ident *[]Variable, name string, value interface{}) (uint16)
     // vlock.Lock()
     // fmt.Printf("vset (to fs of %d)-  pre-gidcheck ident=%v\nmident=%v\n",fs,ident,mident)
     // fmt.Printf("vset - post-gidcheck ident=%#v - mident=%#v\n",ident,mident)
+    /*
+    if name=="trapInt" {
+        fmt.Printf("Name : %s : fs %d : value (%T) [%v]\n",name,fs,value,value)
+    }
+    */
     if _,found:=vmap[fs][name]; !found {
         vmap[fs][name]=functionidents[fs]+1
         unvmap[fs][functionidents[fs]]=name
