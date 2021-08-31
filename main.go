@@ -449,6 +449,15 @@ func run() {
     }
     vset(0,&gident,"@ct_info", BuildComment)
 
+    // initialise global parser
+    parser=&leparser{}
+    parser.prectable=default_prectable
+
+    // interpolation parser
+    interparse=&leparser{}
+    interparse.prectable=default_prectable
+    interparse.force_lookup = true
+
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
     var a_version      =   flag.Bool("v",false,"display the Za version")
@@ -610,15 +619,6 @@ func run() {
     //
     // Primary activity below
     //
-
-    // initialise global parser
-    parser=&leparser{}
-    parser.prectable=default_prectable
-
-    // interpolation parser
-    interparse=&leparser{}
-    interparse.prectable=default_prectable
-    interparse.force_lookup = true
 
     var data []byte // input buffering
 
