@@ -8,76 +8,24 @@ CHANGE LOG
     fixes
     -----
 
-    * testing replacement callstack id+space allocator.
+    * Changed var backing store layout and name binding scheme.
+    * replaced callstack id+space allocator.
         - using a sequential modulus fn instead of random numbers now.
-        - will need to add a couple more things before it's considered stable, but
-           it is already much faster that the previous shitshow.
            - needs cli opts for setting gnfsModulus constant
            - needs cli opts for other related allocator tweaks
            - needs to actually deallocate reservations too!
-           (sort of done now - need to check over it)
                 - currently, mem use grows to a max (related to MAXFUNCS).
                 - it should keep working at this depth without further allocation
                    however, the callstack doubles in size on demand up to that max.
-                - this didn't happen with the old allocator, just need to figure out
-                  what i turned off while frigging around with this! :)
-                - we can happily calculate larger ackermanns  i.e. eg/ackermann 3 12 (or 4,1 or 5,0)
-                   and fib with/without tail recursion faster too.
-        - this was all needed as the old allocator had a couple of problems:
+                - this didn't happen with the old allocator, so still needs fixing.
+        - this was needed as the old allocator had a couple of problems:
             1. random number use, even using faster rng involved calling sys.time and other hacks.
             2. check for next available slot was basically counting up from zero looking for next
                  instead of starting at around the right place.
-            3. because of 1. and 2. recursion, well, sucked balls.
-        -
-        - some checks completed:
-            - had to rework a few things around locks, parser instances and lhs/rhs ident tables
-            - pretty substantial speed increases seen for general processing and eval work
-            - less small allocs + gc, but still plenty that can't be avoided because of 
-                dynamic typing parts of the code. will just have to live with this.
-            - speed increases vary from ~15% to 50% increase depending on the nature of the test.
-                - e.g. eg/regex down from ~35 seconds to ~16secs.
-                -      eg/addition_loop down from about ~6.5 to ~5.1secs
-                -      similar gains seen in other test code.
-            - probably still some buggy things around as this was not exactly a precise operation!
-                - maybe some issues with name binding in the REPL mode
-                - probably some important mutices missing, but tests seem okay so far:
-                    - weighttp didn't present many issues running eg/web fetching a dynamic page:
 
-        $ weighttp -n 1000 -t 3 -c 50 -k http://127.0.0.1:8080/fun/awsip
-        .
-        .
-        .
-        finished in 0 sec, 119 millisec and 390 microsec, 8375 req/s, 28756 kbyte/s
-        requests: 1000 total, 1000 started, 1000 done, 1000 succeeded, 0 failed, 0 errored
-        status codes: 1000 2xx, 0 3xx, 0 4xx, 0 5xx
-        traffic: 3515640 bytes total, 124000 bytes http, 3391640 bytes data
-
-                - the weighttp test above broke down at high concurrency / high frequency, but 
-                  was to be expected.
-                  (eg. -n 10000, -t 6, -c 250 : this kind of use is tricky for dynamic pages)
-
-                - higher frequency was still acceptable on static workloads:
-
-        $ weighttp -n 10000 -t 6 -c 250 -k http://127.0.0.1:8080/index.html
-        .
-        .
-        .
-        finished in 0 sec, 196 millisec and 853 microsec, 50799 req/s, 47773 kbyte/s
-        requests: 10000 total, 10000 started, 10000 done, 10000 succeeded, 0 failed, 0 errored
-        status codes: 10000 2xx, 0 3xx, 0 4xx, 0 5xx
-        traffic: 9630000 bytes total, 1170000 bytes http, 8460000 bytes data
-
-
-                - many places still not touched for small speed bumps, but I've about given up
-                  at this point. quite minor gains to be had without re-implementing as a
-                  byte-code interpreter instead of direct execution.
-
-                  i'm fairly happy with the speed + stability it is at now, but there may
-                  be a byte-code implementation somewhere in the future, just doesn't feel
-                  necessary yet. 
-
-                  i think i will work again on some stability, tidying and feature finish then kick
-                  this version out of the door as 1.1.0.
+        - had to rework a few things around locks, parser instances and lhs/rhs ident tables
+        - less small allocs + gc, but still plenty that can't be avoided because of 
+           dynamic typing parts of the code. will just have to live with this.
 
     * fixed trapInt handler (ctrl-c)
         - needed repointing to main ident space post changes above.
@@ -136,14 +84,13 @@ CHANGE LOG
     library features
     ----------------
 
-    * added mem_summary() :  returns list of variable storage sizes per function space allocation.
     * added some more lib calls: 
         - os: can_read, can_write, parent, fileabs
         - conversion: dtoo, otod
         - os: is_symlink, is_device, is_pipe, is_socket, is_sticky, is_setuid, is_setgid
             - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
     * updated info for ibase, wininfo, int64, zainfo, byte, floor, ui_w, time_*() lib functions.
-
+    * added varbind(name) to fetch the variable binding id for variable "name" - for debugging.
 
 1.0.14
 ======

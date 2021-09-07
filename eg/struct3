@@ -2,6 +2,9 @@
 
 # same as struct example, except using an assoc. array. similar speed to fixed length arrays.
 
+# logging on "./debug_log"
+# logging quiet
+
 seed(epoch_nano_time())
 
 struct s_person

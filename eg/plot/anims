@@ -18,10 +18,10 @@ struct object
     py      float
 endstruct
 
-define collides(o)
-    i=objects[o]
+define collides(obkey)
+    i=objects[obkey]
     for e=0 to objects.len-1
-        on e==o || objects[e]==nil do continue
+        on e==obkey || objects[e]==nil do continue
         j=objects[e]
         cmpx=i.x+i.dx ; cmpy=i.y+i.dy
         on cmpx >= j.x && cmpx <= j.x+j.w do on cmpy >= j.y && cmpy <= j.y+j.h do return true

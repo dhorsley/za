@@ -27,9 +27,9 @@ for e=1 to 1000
         person.age=rand(49)
         person.dob=date(rand(1546300800)) # 1970 to 2019
         people[p]=person
-        # println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
+        println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
     endfor
-    # print
+    print
 endfor
 
 println "1000 iterations of 100 struct init and populations."
