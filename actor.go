@@ -1,5 +1,5 @@
 package main
-
+ 
 import (
     "io/ioutil"
     "math"
@@ -10,7 +10,7 @@ import (
     "reflect"
     "regexp"
     "sync"
-//     "sync/atomic"
+    "sync/atomic"
     "strconv"
     "runtime"
     "fmt"
@@ -25,8 +25,10 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
 
     go func() {
         defer close(r)
-        var ident = make([]Variable, IDENT_CAP)
+        var ident [szIdent]Variable
+        atomic.AddInt32(&concurrent_funcs,1)
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
+        atomic.AddInt32(&concurrent_funcs,-1)
 
         switch rcount {
         case 0:
@@ -77,14 +79,11 @@ func finish(hard bool, i int) {
 
 // slightly faster string comparison.
 // have to use gotos here as loops can't be inlined
-// @todo: keep this under review
 func strcmp(a string, b string) (bool) {
     la:=len(a)
-    if la!=len(b)           { return false }
-    if la==0 && len(b)==0   { return true }
+    if la!=len(b)   { return false }
+    if la==0        { return true }
     strcmp_repeat_point:
-        // la-- : as elsewhere, explicit compound decrement
-        //      : appears to be faster than post-fix decrement
         la -= 1
         if a[la]!=b[la] { return false }
     if la>0 { goto strcmp_repeat_point }
@@ -212,7 +211,7 @@ func searchToken(source_base uint32, start int16, end int16, sval string) bool {
         if v.TokenCount == 0 {
             continue
         }
-        for r := 0; r < len(v.Tokens); r++ {
+        for r := 0; r < len(v.Tokens); r+=1 {
             if v.Tokens[r].tokType == Identifier && v.Tokens[r].tokText == sval {
                 return true
             }
@@ -246,7 +245,7 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 
         // indents and dedents
         if InSlice(v.Tokens[0].tokType, indenters) {
-            indent++
+            indent+=1
         }
         if InSlice(v.Tokens[0].tokType, dedenters) {
             indent--
@@ -326,11 +325,8 @@ func formatInt32(n int32) string {
 func GetNextFnSpace(do_lock bool, requiredName string) (uint32,string) {
 
     // fmt.Printf("Entered gnfs\n")
-
-    if do_lock {
-        calllock.Lock()
-        defer calllock.Unlock()
-    }
+    calllock.Lock()
+    defer calllock.Unlock()
 
     for ; numlookup.lmexists(globseq) ; { // reserved
         globseq=(globseq+1) % gnfsModulus
@@ -348,7 +344,6 @@ func GetNextFnSpace(do_lock bool, requiredName string) (uint32,string) {
         copy(ncs,calltable)
         calltable=ncs
     }
-    // fmt.Printf("(gnfs) ct len %d - ct cap %d\n",len(calltable),cap(calltable))
 
     // generate new tagged instance name
     newName := requiredName
@@ -388,38 +383,30 @@ func baseof(fs uint32) (source_base uint32) {
 
 var callChain []chainInfo
 
+var symbolised = make(map[uint32]bool)
+
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
-
-    /*
-    // other steps that could happen here?
-    if !interactive {
-        if len(bytecode)>=int(csloc) && bytecode[csloc].compiled {
-            return execute_bytecode(csloc)
-        } else {
-            if translate_to_bytecode(csloc,functionspaces[csloc]) {
-                return execute_bytecode(csloc)
-            }
-        }
-    }
-    */
+func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
 
     // register call
     calllock.Lock()
+
     /*
     pf("\n[#1]Entered call -> %#v : va -> %#v[#-]\n",calltable[csloc],va)
     pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
-    pf("  : [#2] ident len on entry : %d[#-]\n",len(*ident))
     */
+
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.prectable=default_prectable
     parser.ident=ident
-    interparse.ident=ident
     calllock.Unlock()
+    lastlock.Lock()
+    interparse.ident=ident
+    lastlock.Unlock()
 
     var inbound *Phrase
     var basecode_entry *BaseCode
@@ -459,110 +446,79 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
 
     // unique name for this execution, pre-generated before call
     fs = (*ncs).fs
+    // pf("ncs-fs:%s\n",fs)
 
     // the source code to be read for this function
     source_base = (*ncs).base
-
-    // which func id called this code
-    // caller = (*ncs).caller
+    // pf("ncs-base:%d\n",source_base)
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
+    // pf("ncs-ifs:%d\n",ifs)
 
     calllock.RUnlock()
 
-    // create a local symbol table. this excludes references in strings,
-    //  these have to be looked up manually.
+    // pf("CALL ENTRY BINDINGS - #%d\n",ifs)
+    // pf("%+v\n",bindings[ifs])
 
-    //  this section rewrites the tokens in the base source (one time only)
-    //  to a contiguous set of integers which represent the array element
-    //  to be looked up in ident[fs][uint16] to locate a Variable{}
+    // -- generate bindings
 
-    // reset the variable mappings if the source hasn't been parsed yet
-
-    vlock.Lock()
-
-    if !identParsed[source_base] && varmode==MODE_NEW {
-        functionidents[source_base]=0
-        vmap[source_base]  =make(map[string]uint16,0)
-        unvmap[source_base]=make(map[uint16]string,0)
-    }
-
-    // set the location of the next available slot for new variables
-    nextVarId:=uint16(0)
-    if varmode==MODE_STATIC {
-        nextVarId=functionidents[source_base]
-    }
-
-    // range over all the tokens, adding offsets to the source tokens.
-    // this must be done every call for MODE_STATIC, but only if unparsed for MODE_NEW
-    if varmode==MODE_STATIC || !identParsed[source_base] {
-
-        defnest:=0
-        for kph,ph:= range functionspaces[source_base] {
-            for kt,t := range ph.Tokens {
-                // @ 0 is statement, not subsequent identifier in line.
-                if kt==0 && t.tokType==C_Define { defnest++; continue }
-                if kt==0 && t.tokType==C_Enddef { defnest--; continue }
-                if defnest==0 && t.tokType==Identifier {
-                    if pos,found:=vmap[source_base][t.tokText] ; found {
-                        // replace token
-                        t.offset=pos
-                        vmap[source_base][t.tokText]=pos
-                        unvmap[source_base][pos]=t.tokText
-                        // pf("act-stat-replace base %d : %s pos %d\n",source_base,t.tokText,pos)
-                    } else {
-                        // append token
-                        t.offset=nextVarId
-                        vmap[source_base][t.tokText]=nextVarId
-                        unvmap[source_base][nextVarId]=t.tokText
-                        // pf("act-stat-add base %d : %s pos %d\n",source_base,t.tokText,nextVarId)
-                        nextVarId++
+    if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() }
+    if !symbolised[source_base] && source_base>1 {
+        bindlock.Lock()
+        bindings[source_base]=make(map[string]uint64)
+        bindlock.Unlock()
+        /*
+        var defNest int
+        for _, phrase:=range functionspaces[source_base] {
+            switch phrase.Tokens[0].tokType {
+            case C_Define:
+                defNest+=1
+            case C_Enddef:
+            defNest-=1
+            }
+            if defNest==0 {
+                if len(phrase.Tokens)>1 {
+                    switch phrase.Tokens[0].tokType {
+                    case Identifier:
+                        switch phrase.Tokens[1].tokType {
+                        case O_AssCommand, O_Assign:
+                            // phrase.Tokens[0].sid=bind_int(source_base,phrase.Tokens[0].tokText)
+                            // pf("[actor] in fs #%d, just bound %s to %d\n",source_base,phrase.Tokens[0].tokText,phrase.Tokens[0].sid)
+                        }
+                    case C_Async, C_Var,C_Input,C_Enum,C_For,C_Foreach:
+                        // phrase.Tokens[1].sid=bind_int(source_base,phrase.Tokens[1].tokText)
+                        // pf("[actor] in fs #%d, just bound %s to %d\n",source_base,phrase.Tokens[1].tokText,phrase.Tokens[1].sid)
                     }
-                    functionspaces[source_base][kph].Tokens[kt]=t
                 }
             }
         }
+        */
+        symbolised[source_base]=true
+        // fmt.Printf("Just built symbols for base #%d\n",source_base)
+        // fmt.Printf("%+v\n",bindings[source_base])
+    }
+    if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Unlock() }
 
-        if defnest!=0 {
-            parser.report(inbound.SourceLine,"definition nesting error!")
-            finish(true,ERR_SYNTAX)
-            return
-        }
-        identParsed[source_base]=true
-
-        // set the base index for variables in new instances of this base
-        functionidents[source_base]=nextVarId
-
-    } else {
-        nextVarId=functionidents[source_base]
+    bindlock.Lock()
+    if bindings[ifs]==nil && ifs>1 {
+        // pf("-- RESETTING BINDINGS FOR IFS %d\n",ifs)
+        bindings[ifs]=make(map[string]uint64)
     }
 
-    vlock.Unlock()
+    for k,v:=range bindings[source_base] {
+        bindings[ifs][k]=v
+        // pf("[call #ifs %d] BASE COPYING FROM #%d : bound %s to id %d\n",ifs,source_base,k,bindings[ifs][k])
+    }
+    /*
+     fmt.Printf("Just copied symbols for ifs #%d\n",ifs)
+     fmt.Printf("%+v\n",bindings[ifs])
+     */
+    bindlock.Unlock()
 
-    // in source vars processed, can now reserve a minimum space quota
-    //  for this instance of the routine.
-
-    farglock.Lock()
 
     if varmode==MODE_NEW {
         // create the local variable storage for the function
-
-        var vtm uint32
-        vtm=vtable_maxreached
-        minvar:=nextVarId
-
-        if VAR_CAP>minvar { minvar=VAR_CAP }
-
-        // vlock.Lock()
-        if ifs>=vtm {
-            vcreatetable(ifs, ident, &vtable_maxreached, minvar)
-            // pf("-- Created variable table [ifs:%d] with length of %d\n",ifs,minvar)
-        } else {
-            // reset existing ifs storage area
-            identResize(ifs,ident,0)
-        }
-        // vlock.Unlock()
 
         testlock.Lock()
         test_group = ""
@@ -570,41 +526,15 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
         test_assert = ""
         testlock.Unlock()
 
-        // copy the base var mapping to this instance
-        unvmap[ifs] =make(map[uint16]string,len(unvmap[source_base]))
-        vmap[ifs]   =make(map[string]uint16,len(unvmap[source_base]))
-
-        for e:=uint16(0); e<uint16(len(unvmap[source_base])); e++ {
-            unvmap[ifs][e] = unvmap[source_base][e]
-            vmap  [ifs][unvmap[source_base][e]] = vmap[source_base][unvmap[source_base][e]]
-        }
-
-        // add the call parameters as available variable mappings
-        //  to the current function call
-
-
-        for e:=0; e<len(va); e++ {
-            nextFaArg:=functionArgs[source_base].args[e]
-            if vi,found:=vmap[ifs][nextFaArg] ; found {
-                vseti(ifs,ident, nextFaArg,vi,va[e])
-                // pf("On entry to %v set local var %v to [%T] %+v\n", fs, nextFaArg, va[e], va[e])
-            } else {
-                vseti(ifs,ident, nextFaArg,nextVarId,va[e])
-                // pf("On entry to %v created local var %v with value [%T] %+v\n", fs, nextFaArg, va[e], va[e])
-                nextVarId++
-            }
-        }
-        functionidents[ifs]=nextVarId
-
     }
 
     // missing varargs in call result in nil assignments back to caller:
+    farglock.Lock()
     if len(functionArgs[source_base].args)>len(va) {
-        for e:=0; e<(len(functionArgs[source_base].args)-len(va)); e++ {
+        for e:=0; e<(len(functionArgs[source_base].args)-len(va)); e+=1 {
             va=append(va,nil)
         }
     }
-
     farglock.Unlock()
 
     // generic nesting indentation counters
@@ -616,19 +546,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
     var lastConstruct = []uint8{}
 
     if varmode == MODE_NEW {
-
-        // in interactive mode, the top-level current functionspace is 0
-        // in normal exec mode, the source (main) is treated as functionspace 1
-        // pf("in call : mode_new : source base is %d\n",source_base)
-        if source_base < 2 {
-            vset(1, &mident, "trapInt", "")
-        }
-
         // in_tco: currently in an iterative tail-call.
-        // @note: this is far too costly to track, but it also serves
-        // to seed ident[fs], so that it is not empty during a vget(i).
         vset(ifs,ident, "@in_tco",false)
-
     }
 
     // initialise condition states: WHEN stack depth
@@ -653,7 +572,7 @@ tco_reentry:
     if len(va) > 0 {
         for q, v := range va {
             fa:=functionArgs[source_base].args[q]
-            // pf("-- setting va-to-var variable %s with %+v\n",fa,v)
+             // pf("-- setting va-to-var variable %s with %+v\n",fa,v)
             vset(ifs,ident,fa,v)
         }
     }
@@ -708,7 +627,6 @@ tco_reentry:
 
         // get the next Phrase
         inbound = &functionspaces[source_base][parser.pc]
-        basecode_entry = &basecode[source_base][parser.pc]
 
                     //
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
@@ -721,13 +639,15 @@ tco_reentry:
 
         statement = &inbound.Tokens[0]
 
+        /*
         // .. skip comments and DOC statements
         if statement.tokType == C_Doc && !testMode {
             continue
         }
+        */
 
         /////// LINE ////////////////////////////////////////////////////////////
-            // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
+               // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -735,6 +655,7 @@ tco_reentry:
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
+            basecode_entry      = &basecode[source_base][parser.pc]
             basecode[lmv]       = append(basecode[lmv], *basecode_entry)
             fspacelock.Unlock()
             continue
@@ -754,7 +675,7 @@ tco_reentry:
             // check for default value assignment:
             var eqPos int16
             var hasValue bool
-            for eqPos=2;eqPos<inbound.TokenCount;eqPos++ {
+            for eqPos=2;eqPos<inbound.TokenCount;eqPos+=1 {
                 if inbound.Tokens[eqPos].tokType==O_Assign {
                     hasValue=true
                     break
@@ -781,7 +702,7 @@ tco_reentry:
 
             // check for valid types:
             switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","uint8","byte","mixed","[]":
+            case "int","float","string","bool","uint","uint8","byte","mixed","any","[]":
             default:
                 parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
@@ -821,7 +742,7 @@ tco_reentry:
         // jump, but just haven't got around to that yet. 
         // it would mean we could probably remove the stanza below and some
         // code further in (in the C_End* types) as well as speed up break/continues.
-        
+
         if breakIn != Error {
             // breakIn holds either Error or a token_type for ending the current construct
             if statement.tokType != breakIn {
@@ -839,42 +760,44 @@ tco_reentry:
 
             // expand to this:
             // 'VAR' name1 [ ',' ... nameX ] [ '[' [size] ']' ] type [ '=' expr ]
-
             //  and var ary_s []struct_name
 
             var name_list []string
+            // var sid_list []uint64
             var expectingComma bool
-            var flagVarSynError bool
+            var varSyntaxError bool
             var c int16
 
           var_comma_loop:
-            for c=int16(1); c<inbound.TokenCount; c++ {
+            for c=int16(1); c<inbound.TokenCount; c+=1 {
                 switch inbound.Tokens[c].tokType {
                 case Identifier:
                     if expectingComma { // syntax error
                         break var_comma_loop
                     }
                     name_list=append(name_list,inbound.Tokens[c].tokText)
+                    // sid_list=append(sid_list,inbound.Tokens[c].sid)
+                    // pf("[var] added sid %d (for %s) to sidlist.\n",inbound.Tokens[c].sid,inbound.Tokens[c].tokText)
                 case O_Comma:
                     if !expectingComma { // syntax error
-                        flagVarSynError=true
+                        varSyntaxError=true
                         break var_comma_loop
                     }
                 default:
                     break var_comma_loop
-                } 
+                }
                 expectingComma=!expectingComma
             }
 
             if len(name_list)==0 {
-                flagVarSynError=true
+                varSyntaxError=true
             }
 
             // set eqpos to either location of first equals sign
             // or zero, as well as bool to indicate success
             var eqPos int16
             var hasEqu bool
-            for eqPos=c; eqPos<inbound.TokenCount; eqPos++ {
+            for eqPos=c; eqPos<inbound.TokenCount; eqPos+=1 {
                 if inbound.Tokens[eqPos].tokType == O_Assign {
                     hasEqu=true
                     break
@@ -890,7 +813,7 @@ tco_reentry:
             var hasAry bool
             var size int
 
-            if !flagVarSynError {
+            if !varSyntaxError {
                 // continue from last 'c' value
                 if inbound.Tokens[c].tokType==LeftSBrace {
 
@@ -937,7 +860,7 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
             }
 
-            if flagVarSynError {
+            if varSyntaxError {
                 break
             }
 
@@ -990,7 +913,6 @@ tco_reentry:
                 typemap["[]int"]    = reflect.TypeOf(sti)
                 typemap["[]float"]  = reflect.TypeOf(stf64)
                 typemap["[]string"] = reflect.TypeOf(sts)
-                typemap["[]mixed"]  = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
                 typemap["nassoc"]   = nil
                 typemap["assoc"]    = nil
@@ -998,85 +920,102 @@ tco_reentry:
 
             // name iterations
 
+            // for k,vname:=range name_list {
             for _,vname:=range name_list {
 
-                var vi uint16
-                var there bool
+                sid:=bind_int(ifs,vname) // sid_list[k]
 
+                // pf("[var] #%02d : setup of %s (sid %d)\n",k,vname,sid)
+
+                // @todo: fix this. just checking .declared on a possibly re-used binding.
+                /*
                 vlock.RLock()
-                if vi,there=VarLookup(ifs,vname); there {
-                    if vi>0 && (*ident)[vi].declared {
-                        vlock.RUnlock()
-                        parser.report(inbound.SourceLine,sf("variable '%s' already exists",vname))
-                        finish(false, ERR_SYNTAX)
-                        break
-                    }
+                if VarLookup(ifs,ident,vname) {
+                    vlock.RUnlock()
+                    parser.report(inbound.SourceLine,sf("variable '%s' (fs:%d/sid:%d) already exists",vname,ifs,sid))
+                    finish(false, ERR_SYNTAX)
+                    break
                 }
                 vlock.RUnlock()
+                */
 
                 // get the required type
+                var new_type_token_string string
                 type_token_string := inbound.Tokens[eqPos-1].tokText
-                new_type_token_string := type_token_string
+                // pf("[#1] tts->%s[#-]\n",type_token_string)
+                if type_token_string=="]" || type_token_string=="mixed" || type_token_string=="any" {
+                    type_token_string="[]"
+                }
+                if type_token_string!="[]" {
+                    new_type_token_string = type_token_string
+                }
                 if hasAry {
                     if type_token_string!="[]" {
                         new_type_token_string="[]"+type_token_string
+                    } else {
+                        new_type_token_string="[]"
                     }
                 }
+
+                // pf("[#1]ntts->%s[#-]\n",new_type_token_string)
 
                 // declaration and initialisation
                 if _,found:=typemap[new_type_token_string]; found {
 
+                    t:=Variable{}
+
                     if new_type_token_string!="nassoc" && new_type_token_string!="assoc" {
-                        vset(ifs,ident,vname,reflect.New(typemap[new_type_token_string]).Elem().Interface())
+                        t.IValue = reflect.New(typemap[new_type_token_string]).Elem().Interface()
                     }
 
                     vlock.Lock()
 
-                    (*ident)[vi].ITyped=true
-                    (*ident)[vi].declared=true
+                    t.IName=vname
+                    t.ITyped=true
+                    t.declared=true
 
                     switch new_type_token_string {
                     case "nil":
-                        (*ident)[vi].IKind=knil
+                        t.IKind=knil
                     case "bool":
-                        (*ident)[vi].IKind=kbool
+                        t.IKind=kbool
                     case "int":
-                        (*ident)[vi].IKind=kint
+                        t.IKind=kint
                     case "uint":
-                        (*ident)[vi].IKind=kuint
+                        t.IKind=kuint
                     case "float":
-                        (*ident)[vi].IKind=kfloat
+                        t.IKind=kfloat
                     case "string":
-                        (*ident)[vi].IKind=kstring
+                        t.IKind=kstring
                     case "uint8","byte":
-                        (*ident)[vi].IKind=kbyte
+                        t.IKind=kbyte
                     case "[]bool":
-                        (*ident)[vi].IKind=ksbool
-                        (*ident)[vi].IValue=make([]bool,size,size)
+                        t.IKind=ksbool
+                        t.IValue=make([]bool,size,size)
                     case "[]int":
-                        (*ident)[vi].IKind=ksint
-                        (*ident)[vi].IValue=make([]int,size,size)
+                        t.IKind=ksint
+                        t.IValue=make([]int,size,size)
                     case "[]uint":
-                        (*ident)[vi].IKind=ksuint
-                        (*ident)[vi].IValue=make([]uint,size,size)
+                        t.IKind=ksuint
+                        t.IValue=make([]uint,size,size)
                     case "[]float":
-                        (*ident)[vi].IKind=ksfloat
-                        (*ident)[vi].IValue=make([]float64,size,size)
+                        t.IKind=ksfloat
+                        t.IValue=make([]float64,size,size)
                     case "[]string":
-                        (*ident)[vi].IKind=ksstring
-                        (*ident)[vi].IValue=make([]string,size,size)
+                        t.IKind=ksstring
+                        t.IValue=make([]string,size,size)
                     case "[]byte","[]uint8":
-                        (*ident)[vi].IKind=ksbyte
-                        (*ident)[vi].IValue=make([]uint8,size,size)
-                    case "[]","[]mixed":
-                        (*ident)[vi].IKind=ksany
-                        (*ident)[vi].IValue=make([]interface{},size,size)
+                        t.IKind=ksbyte
+                        t.IValue=make([]uint8,size,size)
+                    case "[]","[]mixed","[]any":
+                        t.IKind=ksany
+                        t.IValue=make([]interface{},size,size)
                     case "nassoc":
-                        (*ident)[vi].IKind=kmap
-                        (*ident)[vi].IValue=make(map[int]interface{},size)
+                        t.IKind=kmap
+                        t.IValue=make(map[int]interface{},size)
                     case "assoc":
-                        (*ident)[vi].IKind=kmap
-                        (*ident)[vi].IValue=make(map[string]interface{},size)
+                        t.IKind=kmap
+                        t.IValue=make(map[string]interface{},size)
                     }
 
                     // if we had a default value, stuff it in here...
@@ -1086,9 +1025,17 @@ tco_reentry:
                             finish(false,ERR_EVAL)
                             vlock.Unlock()
                             break
+                        } else {
+                            t.IValue=we.result
                         }
-                        (*ident)[vi].IValue=we.result
                     }
+
+                    // write temp to ident
+                    // @note: have to write all to retain the ITyped flag!
+                    (*ident)[sid]=t
+                     // fmt.Printf("C_Var just wrote %d/%d name %s | t.* = %v\n",ifs,sid,vname,t)
+                     // readval,_:=vget(ifs,ident,vname)
+                     // fmt.Printf("     read back value -> %v\n",readval)
                     vlock.Unlock()
 
                 } else {
@@ -1107,8 +1054,10 @@ tco_reentry:
                     }
 
                     if isStruct {
-
                         vlock.Lock()
+
+                        // holding temp var
+                        t:=(*ident)[sid]
 
                         // deal with var name [n]struct_type
                         if len(structvalues)>0 {
@@ -1118,6 +1067,7 @@ tco_reentry:
                                 // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
                                 nv :=structvalues[svpos].(string)
                                 nt :=structvalues[svpos+1].(string)
+                                if nt=="any" || nt=="mixed" { nt="[]" }
                                 sfields=append(sfields,
                                     reflect.StructField{
                                         Name:nv,PkgPath:"main",
@@ -1131,9 +1081,10 @@ tco_reentry:
                             new_struct:=reflect.StructOf(sfields)
                             v:=(reflect.New(new_struct).Elem()).Interface()
 
-                            (*ident)[vi].ITyped=false
-                            (*ident)[vi].declared=true
-
+                            t.IName=vname
+                            t.ITyped=false
+                            t.declared=true
+                            // pf("-- new struct -> %#v\n",new_struct)
 
                             if !hasAry {
                                 // default values setting:
@@ -1166,16 +1117,21 @@ tco_reentry:
                                         }
                                     }
                                 }
+                                // pf("-- tmp -> %#v\n",tmp)
 
                                 if allSet {
-                                    (*ident)[vi].IValue=tmp.Interface()
+                                    t.IValue=tmp.Interface()
                                 }
 
                             } else {
-                                (*ident)[vi].IValue=[]interface{}{}
+                                t.IValue=[]interface{}{}
                             }
 
                         } // end-len>0
+
+                        // write temp to ident
+                        (*ident)[sid]=t
+                        // if ifs!=0 { fmt.Printf("VAR just declared (%d/%d) name %s = value %v\n",ifs,sid,vname) }
 
                         vlock.Unlock()
 
@@ -1186,6 +1142,9 @@ tco_reentry:
                     }
 
                 } // end-type-or-struct
+
+                // PIG
+                // vset here?
 
             } // end-of-name-list
 
@@ -1294,8 +1253,7 @@ tco_reentry:
                 break
             }
 
-            // @note: this may need a lock around it later!
-            if res:=parser.wrappedEval(1,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
+            if res:=parser.wrappedEval(2,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
                 finish(false,ERR_EVAL)
                 break
@@ -1328,14 +1286,13 @@ tco_reentry:
             var condEndPos int
 
             fid := inbound.Tokens[1].tokText
-            fno := inbound.Tokens[1].offset
 
             switch inbound.Tokens[3].tokType {
 
                 // cause evaluation of all terms following IN
             case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
                     finish(false,ERR_EVAL)
@@ -1388,7 +1345,7 @@ tco_reentry:
                 case []interface{}:
                     l=len(lv)
                 default:
-                    // pf("Unknown loop type [%T]\n",lv)
+                    pf("Unknown loop type [%T]\n",lv)
                 }
 
                 if l==0 {
@@ -1405,7 +1362,6 @@ tco_reentry:
                 }
 
                 var iter *reflect.MapIter
-                var fkno uint16
 
                 switch we.result.(type) {
 
@@ -1427,8 +1383,8 @@ tco_reentry:
                     }
 
                     if len(we.result.([]string))>0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]string)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident,fid, we.result.([]string)[0])
                         condEndPos = len(we.result.([]string)) - 1
                     }
 
@@ -1439,8 +1395,8 @@ tco_reentry:
 
                         // set initial key and value
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]float64)) - 1
                     }
@@ -1449,8 +1405,8 @@ tco_reentry:
                     if len(we.result.(map[string]alloc_info)) > 0 {
                         iter = reflect.ValueOf(we.result.(map[string]alloc_info)).MapRange()
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]alloc_info)) - 1
                     }
@@ -1459,8 +1415,8 @@ tco_reentry:
                     if len(we.result.(map[string]bool)) > 0 {
                         iter = reflect.ValueOf(we.result.(map[string]bool)).MapRange()
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]bool)) - 1
                     }
@@ -1469,8 +1425,8 @@ tco_reentry:
                     if len(we.result.(map[string]uint)) > 0 {
                         iter = reflect.ValueOf(we.result.(map[string]uint)).MapRange()
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]uint)) - 1
                     }
@@ -1482,8 +1438,8 @@ tco_reentry:
 
                         // set initial key and value
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]int)) - 1
                     }
@@ -1496,8 +1452,8 @@ tco_reentry:
                         iter = reflect.ValueOf(we.result.(map[string]string)).MapRange()
                         // set initial key and value
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]string)) - 1
                     }
@@ -1511,8 +1467,8 @@ tco_reentry:
 
                         // set initial key and value
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string][]string)) - 1
                     }
@@ -1520,74 +1476,74 @@ tco_reentry:
                 case []float64:
 
                     if len(we.result.([]float64)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]float64)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]float64)[0])
                         condEndPos = len(we.result.([]float64)) - 1
                     }
 
                 case float64: // special case: float
                     we.result = []float64{we.result.(float64)}
                     if len(we.result.([]float64)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]float64)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]float64)[0])
                         condEndPos = len(we.result.([]float64)) - 1
                     }
 
                 case []uint:
                     if len(we.result.([]uint)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]uint)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]uint)[0])
                         condEndPos = len(we.result.([]uint)) - 1
                     }
 
                 case []bool:
                     if len(we.result.([]bool)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]bool)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]bool)[0])
                         condEndPos = len(we.result.([]bool)) - 1
                     }
 
                 case []int:
                     if len(we.result.([]int)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]int)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]int)[0])
                         condEndPos = len(we.result.([]int)) - 1
                     }
 
                 case int: // special case: int
                     we.result = []int{we.result.(int)}
                     if len(we.result.([]int)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]int)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]int)[0])
                         condEndPos = len(we.result.([]int)) - 1
                     }
 
                 case []string:
                     if len(we.result.([]string)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]string)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]string)[0])
                         condEndPos = len(we.result.([]string)) - 1
                     }
 
                 case []dirent:
                     if len(we.result.([]dirent)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]dirent)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]dirent)[0])
                         condEndPos = len(we.result.([]dirent)) - 1
                     }
 
                 case []alloc_info:
                     if len(we.result.([]alloc_info)) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]alloc_info)[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]alloc_info)[0])
                         condEndPos = len(we.result.([]alloc_info)) - 1
                     }
 
                 case []map[string]interface{}:
 
                     if len(we.result.([]map[string]interface{})) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]map[string]interface{})[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]map[string]interface{})[0])
                         condEndPos = len(we.result.([]map[string]interface{})) - 1
                     }
 
@@ -1600,8 +1556,8 @@ tco_reentry:
 
                         // set initial key and value
                         if iter.Next() {
-                            fkno=vset(ifs, ident,"key_"+fid, iter.Key().String())
-                            vseti(ifs, ident,fid, fno, iter.Value().Interface())
+                            vset(ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]interface{})) - 1
                     }
@@ -1609,8 +1565,8 @@ tco_reentry:
                 case []interface{}:
 
                     if len(we.result.([]interface{})) > 0 {
-                        fkno=vset(ifs, ident,"key_"+fid, 0)
-                        vseti(ifs, ident,fid, fno, we.result.([]interface{})[0])
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]interface{})[0])
                         condEndPos = len(we.result.([]interface{})) - 1
                     }
 
@@ -1632,7 +1588,7 @@ tco_reentry:
                 depth+=1
                 lastConstruct = append(lastConstruct, C_Foreach)
 
-                loops[depth] = s_loop{loopVar: fid, varoffset:fno, varkeyoffset:fkno,
+                loops[depth] = s_loop{loopVar: fid,
                     optNoUse: Opt_LoopStart,
                     repeatFrom: parser.pc + 1, iterOverMap: iter, iterOverArray: we.result,
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
@@ -1745,36 +1701,30 @@ tco_reentry:
             //  C_Endfor, then don't vset the local var
 
             // store loop data
-            inter:=inbound.Tokens[1].tokText
-            fno:=inbound.Tokens[1].offset
+            fid:=inbound.Tokens[1].tokText
 
+            /*
             // ensure we only re-use int type vars
-            vlock.RLock()
-            loc,found := VarLookup(ifs,inter)
-            vlock.RUnlock()
-
-            if found {
+            if VarLookup(ifs,ident,fid) {
                 vlock.RLock()
-
-                if (*ident)[loc].declared {
-                    should_for_break:=false
-                    switch (*ident)[loc].IValue.(type) {
-                    case int:
-                    default:
-                        vlock.RUnlock()
-                        parser.report(inbound.SourceLine,sf("Variable %s already declared in FOR.",inter))
-                        finish(false,ERR_EVAL)
-                        should_for_break = true
-                    }
-                    if should_for_break { break }
+                should_for_break:=false
+                bin:=bind_int(ifs,fid)
+                val=(*ident)[bin].IValue
+                switch val.(type) {
+                case int:
+                default:
+                    parser.report(inbound.SourceLine,sf("Variable %s [%T] already declared in FOR.",fid,val))
+                    finish(false,ERR_EVAL)
+                    should_for_break = true
                 }
                 vlock.RUnlock()
+                if should_for_break { break }
             }
+            */
 
             depth+=1
             loops[depth] = s_loop{
-                loopVar:  inter,
-                varoffset: fno,
+                loopVar:  fid,
                 optNoUse: Opt_LoopStart,
                 loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                 counter: fstart, condEnd: fend,
@@ -1782,7 +1732,8 @@ tco_reentry:
             }
 
             // store loop start condition
-            vseti(ifs, ident,inter, fno, fstart)
+            vset(ifs, ident, fid, fstart)
+            // pf("\nident check for FOR : (%d) %s = %d\n",ifs,fid,fstart)
 
             lastConstruct = append(lastConstruct, C_For)
 
@@ -1809,11 +1760,13 @@ tco_reentry:
             if (*thisLoop).optNoUse == Opt_LoopStart {
                 if lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
                     parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
+                    /*
                     pf("lc (depth : %d) ->\n",depth)
                     for _,v:=range lastConstruct {
                         pf("%s ",tokNames[v])
                     }
                     pf("\n")
+                    */
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1829,7 +1782,7 @@ tco_reentry:
 
                 case C_Foreach: // move through range
 
-                    (*thisLoop).counter++
+                    (*thisLoop).counter+=1
 
                     // set only on first iteration, keeps optNoUse consistent with C_For
                     if (*thisLoop).optNoUse == Opt_LoopStart {
@@ -1847,37 +1800,38 @@ tco_reentry:
                         // map ranges are randomly ordered!!
                         case map[string]interface{}, map[string]alloc_info, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
-                                vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).iterOverMap.Key().String())
-                                vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverMap.Value().Interface())
+                                vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
                         case []bool:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
                         case []int:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
                         case []uint:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
                         case []string:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
                         case []dirent:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
+                            // pf("setting (in %d) %s with value: %+v\n",ifs,(*thisLoop).loopVar,(*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
                         case []alloc_info:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
                         case []float64:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
                         case []map[string]interface{}:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])
                         case []interface{}:
-                            vseti(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).varkeyoffset, (*thisLoop).counter)
-                            vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).counter])
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]interface{})[(*thisLoop).counter])
                         default:
                             // @note: should put a proper exit in here.
                             pv,_:=vget(ifs,ident,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter]))
@@ -1895,7 +1849,7 @@ tco_reentry:
                         if (*thisLoop).counter > (*thisLoop).condEnd {
                             (*thisLoop).counter -= (*thisLoop).repeatActionStep
                             if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).counter)
+                                vsetInteger(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
                             }
                             loopEnd = true
                         }
@@ -1903,7 +1857,7 @@ tco_reentry:
                         if (*thisLoop).counter < (*thisLoop).condEnd {
                             (*thisLoop).counter -= (*thisLoop).repeatActionStep
                             if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).counter)
+                                vsetInteger(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
                             }
                             loopEnd = true
                         }
@@ -1919,9 +1873,8 @@ tco_reentry:
 
                     // assign loop counter value back to local variable
                     if (*thisLoop).optNoUse == Opt_LoopSet {
-                        vseti(ifs, ident,(*thisLoop).loopVar, (*thisLoop).varoffset, (*thisLoop).counter)
                         // assign directly as already declared and removes the fn call
-                        // (*ident)[(*thisLoop).varoffset].IValue=(*thisLoop).counter
+                        vsetInteger(ifs,ident,(*thisLoop).loopVar,(*thisLoop).counter)
                     }
 
                 }
@@ -2111,7 +2064,7 @@ tco_reentry:
             } else {
                 removee := inbound.Tokens[1].tokText
                 // should have a lock around varlookup really:
-                if _, ok := VarLookup(ifs, removee); ok {
+                if VarLookup(ifs, ident,removee) {
                     vunset(ifs, ident, removee)
                 } else {
                     parser.report(inbound.SourceLine,sf("Variable %s does not exist.", removee))
@@ -2242,7 +2195,7 @@ tco_reentry:
                 if hasBox   { boxed = sf("%v",pbox.result)   }
 
                 if invalid1 || invalid2 || invalid3 || invalid4 {
-                    parser.report(inbound.SourceLine,"Could not use an argument in PANE DEFINE.")
+                    parser.report(inbound.SourceLine,sf("Could not use an argument in PANE DEFINE. [%T %T %T %T]",px.result,py.result,pw.result,ph.result))
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -2267,12 +2220,19 @@ tco_reentry:
 
         case SYM_BOR: // Local Command
 
+            /*
+            pf("In local command\nCalled with ifs:%d and tokens->%+v\n",ifs,inbound.Tokens)
+            pf("  source_base -> %v\n",source_base)
+            pf("  basecode    -> %v\n",basecode[source_base][parser.pc].Original)
+            */
+
             if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
                 s:=stripOuter(inbound.Tokens[1].tokText,'`')
                 coprocCall(parser,ifs,ident,"|"+s)
             } else {
                 coprocCall(parser,ifs,ident,basecode[source_base][parser.pc].Original)
             }
+
 
         case C_Pause:
 
@@ -2320,8 +2280,8 @@ tco_reentry:
                     docout := ""
                     for term := range inbound.Tokens[1:] {
                         nt:=inbound.Tokens[1+term]
-                        if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
-                        if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                        if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
+                        if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                         if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                             v,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                             newstart=term+1
@@ -2519,7 +2479,7 @@ tco_reentry:
                         // under test
                         test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
                             group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
-                        testsFailed++
+                        testsFailed+=1
                         appendToTestReport(test_output_file,ifs, inbound.SourceLine, test_report)
                         temp_test_assert := test_assert
                         if fail_override != "" {
@@ -2537,7 +2497,7 @@ tco_reentry:
                         if under_test {
                             test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
                                 group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
-                            testsPassed++
+                            testsPassed+=1
                             appendToTestReport(test_output_file,ifs, parser.pc, test_report)
                         }
                     }
@@ -2612,7 +2572,7 @@ tco_reentry:
             if isfunc {
 
                 errClear:=true
-                for e:=0; e<len(errs); e++ {
+                for e:=0; e<len(errs); e+=1 {
                     if errs[e]!=nil {
                         // error
                         pf("- arg %d: %+v\n",errs[e])
@@ -2630,7 +2590,6 @@ tco_reentry:
 
                 loc,id := GetNextFnSpace(true,call+"@")
                 calllock.Lock()
-
                 calltable[loc] = call_s{fs: id, base: lmv, caller: ifs}
                 calllock.Unlock()
 
@@ -2792,6 +2751,8 @@ tco_reentry:
                 functionArgs[loc].args   = dargs
                 farglock.Unlock()
 
+                // pf("defining new function %s (%d)\n",definitionName,loc)
+
             }
 
         case C_Showdef:
@@ -2827,10 +2788,10 @@ tco_reentry:
             ppos:=0
             for tok := range argtoks {
                 nt:=argtoks[tok]
-                if nt.tokType==LParen { evnest++ }
-                if nt.tokType==RParen { evnest-- }
-                if nt.tokType==LeftSBrace { evnest++ }
-                if nt.tokType==RightSBrace { evnest-- }
+                if nt.tokType==LParen { evnest+=1 }
+                if nt.tokType==RParen { evnest-=1 }
+                if nt.tokType==LeftSBrace { evnest+=1 }
+                if nt.tokType==RightSBrace { evnest-=1 }
                 // pf("rarg-build : current token -> [%d] %+v\n",tok,argtoks[tok])
                 if evnest==0 && (tok==len(argtoks)-1 || nt.tokType == O_Comma) {
                     rargs[curArg]=argtoks[ppos:tok+1]
@@ -2868,7 +2829,7 @@ tco_reentry:
                     skip_reentry:=false
                     resu,errs:=parser.evalCommaArray(ifs,rargs[0][2:len(rargs[0])-1])
                     // populate var args for re-entry. should check errs here too...
-                    for q:=0; q<len(errs); q++ {
+                    for q:=0; q<len(errs); q+=1 {
                         va[q]=resu[q]
                         if errs[q]!=nil { skip_reentry=true; break }
                     }
@@ -2889,7 +2850,7 @@ tco_reentry:
             // evaluate each expr and stuff the results in an array
             var ev_er error
             retvalues=make([]interface{},curArg)
-            for q:=0;q<int(curArg);q++ {
+            for q:=0;q<int(curArg);q+=1 {
                 retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
                 if ev_er!=nil {
                     parser.report(inbound.SourceLine,"Could not evaluate RETURN arguments")
@@ -2911,6 +2872,7 @@ tco_reentry:
 
             defining = false
             definitionName = ""
+            // pf("defined new function %s.\n",definitionName)
 
 
         case C_Input:
@@ -2955,9 +2917,9 @@ tco_reentry:
                         // if this is numeric, assign as an int
                         n, er := strconv.Atoi(cmdargs[d-1])
                         if er == nil {
-                            vset(ifs, ident,id, n)
+                            vset(ifs, ident, id, n)
                         } else {
-                            vset(ifs, ident,id, cmdargs[d-1])
+                            vset(ifs, ident, id, cmdargs[d-1])
                         }
                     } else {
                         parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
@@ -2975,15 +2937,14 @@ tco_reentry:
                         // if this is numeric, assign as an int
                         n, er := strconv.Atoi(cmdargs[d-1])
                         if er == nil {
-                            vset(ifs, ident,id, n)
+                            vset(ifs, ident, id, n)
                         } else {
-                            vset(ifs, ident,id, cmdargs[d-1])
+                            vset(ifs, ident, id, cmdargs[d-1])
                         }
                     } else {
                         // nothing provided but var didn't exist, so create it empty
                         // otherwise, just continue
-                        vid, found := VarLookup(ifs,id)
-                        if !found || (found && ! (*ident)[vid].declared) {
+                        if ! VarLookup(ifs,ident,id) {
                             vset(ifs,ident,id,"")
                         }
                     }
@@ -2999,7 +2960,7 @@ tco_reentry:
                 } else {
                     // when env var empty either create the id var or
                     // leave it alone if it already exists.
-                    if vid, found := VarLookup(ifs,id); !found || (found && ! (*ident)[vid].declared) {
+                    if ! VarLookup(ifs,ident,id) {
                         vset(ifs,ident,id,"")
                     }
                 }
@@ -3127,7 +3088,7 @@ tco_reentry:
 
                 calllock.Unlock()
 
-                var modident = make([]Variable, IDENT_CAP)
+                var modident [szIdent]Variable
 
                 if debug_level>10 {
                     start := time.Now()
@@ -3430,7 +3391,6 @@ tco_reentry:
                 break
             }
 
-            vid  :=inbound.Tokens[1].offset
             vname:=inbound.Tokens[1].tokText
             fname:=crushEvalTokens(inbound.Tokens[asAt+1:]).text
 
@@ -3441,7 +3401,7 @@ tco_reentry:
             }
 
             vlock.RLock()
-            if _, found := VarLookup(ifs,vname); !found {
+            if ! VarLookup(ifs,ident,vname) {
                 vlock.RUnlock()
                 parser.report(inbound.SourceLine,sf("Variable '%s' does not exist.",vname))
                 finish(false,ERR_EVAL)
@@ -3456,7 +3416,7 @@ tco_reentry:
                 break
             }
 
-            content,_:=vgeti(ifs,ident,vid)
+            content,_:=vget(ifs,ident,vname)
 
             ioutil.WriteFile(tfile.Name(), []byte(content.(string)), 0600)
             vset(ifs,ident,fname,tfile.Name())
@@ -3494,8 +3454,8 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
@@ -3516,8 +3476,8 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
@@ -3540,8 +3500,8 @@ tco_reentry:
                 newstart:=0
                 for term := range inbound.Tokens[1:] {
                     nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest++ }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-- }
+                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
+                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                     if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                         v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                         newstart=term+1
@@ -3652,7 +3612,7 @@ tco_reentry:
                                     intext := ""
                                     validated := false
                                     for !validated || broken {
-                                        intext, _, broken = getInput(ifs,nil,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                        intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                         validated, _ = regexp.MatchString(validator, intext)
                                     }
                                     if !broken {
@@ -3660,7 +3620,7 @@ tco_reentry:
                                     }
                                 } else {
                                     var inp string
-                                    inp, _, broken = getInput(ifs,nil,processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                     vset(ifs, ident,inbound.Tokens[1].tokText, inp)
                                 }
                                 if broken {
@@ -3773,7 +3733,7 @@ tco_reentry:
             } else {
                 if currentpane != "global" {
                     p := panes[currentpane]
-                    for l := 1; l < p.h; l++ {
+                    for l := 1; l < p.h; l+=1 {
                         clearToEOPane(l, 2)
                     }
                     atlock.Lock()
@@ -3858,7 +3818,8 @@ tco_reentry:
             }
 
             // try to eval and assign
-
+              //  pf("[act-eval] ifs %d, ident ptr %p\n",ifs,ident)
+              //  pf("[act-eval] toks %+v\n",inbound.Tokens)
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {
                 parser.report(inbound.SourceLine,sf("Error in evaluation\n%+v\n",we.errVal))
                 finish(false,ERR_EVAL)
@@ -3887,7 +3848,9 @@ tco_reentry:
 
         // populate return variable in the caller with retvals
         if retvalues!=nil {
+            calllock.RLock()
             calltable[ifs].retvals=retvalues
+            calllock.RUnlock()
         }
 
         // clean up
@@ -3898,12 +3861,14 @@ tco_reentry:
 
         if !str.HasPrefix(fs,"@mod_") {
 
-            calllock.Lock()
+            // calllock.Lock()
             // calltable[ifs]=call_s{}
 
             // drop allocated names
-            fnlookup.lmdelete(fs)
-            numlookup.lmdelete(ifs)
+            if varmode != MODE_STATIC {
+                fnlookup.lmdelete(fs)
+                numlookup.lmdelete(ifs)
+            }
 
             // we keep a record here of recently disposed functionspace names
             //  so that mem_summary can label disposed of function allocations.
@@ -3911,7 +3876,7 @@ tco_reentry:
             lastfunc[ifs]=fs
             lastlock.Unlock()
 
-            calllock.Unlock()
+            // calllock.Unlock()
 
             if ifs>2 {
                 fspacelock.Lock()
@@ -3923,6 +3888,8 @@ tco_reentry:
         }
 
     }
+
+    // invalidate_lru_bind_cache()
 
     calllock.Lock()
     callChain=callChain[:len(callChain)-1]
@@ -3945,7 +3912,7 @@ func system(cmd string, display bool) (cop struct{out string; err string; code i
 }
 
 /// execute a command in the shell coprocess or parent
-func coprocCall(parser *leparser, ifs uint32,ident *[]Variable, s string) {
+func coprocCall(parser *leparser, ifs uint32,ident *[szIdent]Variable, s string) {
     cet := ""
     s=str.TrimRight(s,"\n")
     if len(s) > 0 {
@@ -3953,7 +3920,9 @@ func coprocCall(parser *leparser, ifs uint32,ident *[]Variable, s string) {
         pipepos := str.IndexByte(s, '|')
         cet = s[pipepos+1:]
         inter   := interpolate(ifs,ident,cet)
+        // pf("INTER -> %s\n",inter)
         cop := Copper(inter, false)
+        // pf("COP DONE!\n")
         if ! cop.okay {
             pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(inter," \t"))
             if interactive {
@@ -3974,17 +3943,19 @@ func coprocCall(parser *leparser, ifs uint32,ident *[]Variable, s string) {
 
 /// print user-defined function definition(s) to stdout
 func ShowDef(fn string) bool {
+
+    if str.HasPrefix(fn,"@mod_") {
+        return false
+    }
+
     var ifn uint32
     var present bool
     if ifn, present = fnlookup.lmget(fn); !present {
+        ifn = calltable[ifn].base
         return false
     }
 
     if ifn < uint32(len(functionspaces)) {
-
-        if str.HasPrefix(fn,"@mod_") {
-            return false
-        }
 
         var falist []string
         for _,fav:=range functionArgs[ifn].args {
@@ -4009,9 +3980,9 @@ func ShowDef(fn string) bool {
 /// search token list for a given delimiter string
 func findDelim(tokens []Token, delim uint8, start int16) (pos int16) {
     n:=0
-    for p := start; p < int16(len(tokens)); p++ {
-        if tokens[p].tokType==LParen { n++ }
-        if tokens[p].tokType==RParen { n-- }
+    for p := start; p < int16(len(tokens)); p+=1 {
+        if tokens[p].tokType==LParen { n+=1 }
+        if tokens[p].tokType==RParen { n-=1 }
         if n==0 && tokens[p].tokType == delim {
             return p
         }
@@ -4030,8 +4001,8 @@ func (parser *leparser) splitCommaArray(ifs uint32, tokens []Token) (resu [][]To
 
     for term := range tokens {
         nt:=tokens[term]
-        if nt.tokType==LParen { evnest++ }
-        if nt.tokType==RParen { evnest-- }
+        if nt.tokType==LParen { evnest+=1 }
+        if nt.tokType==RParen { evnest-=1 }
         if evnest==0 {
             if term==lt-1 {
                 v := tokens[newstart:term+1]
@@ -4062,8 +4033,8 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []inter
 
     for term := range tokens {
         nt:=tokens[term]
-        if nt.tokType==LParen { evnest++ }
-        if nt.tokType==RParen { evnest-- }
+        if nt.tokType==LParen { evnest+=1 }
+        if nt.tokType==RParen { evnest-=1 }
         if evnest==0 {
             if term==lt-1 {
                 v, e := parser.Eval(ifs,tokens[newstart:term+1])

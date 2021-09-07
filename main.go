@@ -79,12 +79,6 @@ var features = make(map[string]Feature)
 // console cursor location and terminal dimensions.
 var orow, ocol, ow, oh int
 
-// for converting vmap id to fn id (for debugging/errors)
-var vmap    = make([]map[string]uint16,MAX_FUNCS)
-
-// for converting fn id to vmap id (for debugging/errors)
-var unvmap  = make([]map[uint16]string,MAX_FUNCS)
-
 // flag to indicate if source vars have been processed once
 var identParsed = make([]bool,MAX_FUNCS)
 
@@ -103,9 +97,6 @@ var bytecode       = make([]bc_block, 0)
 
 // expected parameters for each defined function
 var functionArgs = make([]fa_s, SPACE_CAP)
-
-// for storing found identifier counts in parsing
-var functionidents  [MAX_FUNCS]uint16
 
 // marks pre-processed function spaces
 var parsed          [MAX_FUNCS]bool
@@ -128,8 +119,8 @@ var modlist = make(map[string]bool)
 var funcmap = make(map[string]Funcdef)
 
 // global variable storage
-var gident = make([]Variable, IDENT_CAP)
-var mident = make([]Variable, IDENT_CAP)
+var gident [szIdent]Variable
+var mident [szIdent]Variable
 
 // lookup tables for converting between function name 
 //  and functionspaces[] index.
@@ -241,15 +232,8 @@ var vtable_maxreached uint32
 // repl prompt
 var PromptTemplate string
 
-// var access counts - debugging
-// var vgetcount int
-// var vgeticount int
-
 var concurrent_funcs int32
 
-//
-// @experimental:
-//
 var winAvailable bool
 
 //
@@ -331,17 +315,10 @@ func run() {
     // generic error flag - used through main
     var err error
 
-    // global forward name resolution map
-    vmap[0]=make(map[string]uint16,0)
-
-    // main func forward name resolution map
-    vmap[1]=make(map[string]uint16,0)
-
-    // global reverse name resolution map
-    unvmap[0]=make(map[uint16]string,0)
-
-    // main func reverse name resolution map
-    unvmap[1]=make(map[uint16]string,0)
+    // setup empty symbol tables for main
+    vlock.Lock()
+    bindings[1]=make(map[string]uint64)
+    vlock.Unlock()
 
     // create identifiers for global and main source caches
     fnlookup.lmset("global",0)
@@ -350,7 +327,6 @@ func run() {
     numlookup.lmset(1,"main")
 
     // reset call stacks for global and main
-    // globseq=1
     calllock.Lock()
     calltable[0] = call_s{}
     calltable[1] = call_s{}
@@ -384,9 +360,6 @@ func run() {
     // - usage requires a lock around it
     ifCompileCache = make(map[string]regexp.Regexp)
 
-    // global function space setup
-    minvar:=functionidents[0]
-    if VAR_CAP>minvar { minvar=VAR_CAP }
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
@@ -433,7 +406,7 @@ func run() {
     vset(0,&gident,"mark_time", false)
 
     // - name of Za function that handles ctrl-c.
-    vset(1,&mident,"trapInt", "")
+    vset(2,&mident,"trapInt", "")
 
     // - show user stdin input
     vset(0,&gident,"@echo", true)
@@ -456,7 +429,7 @@ func run() {
     // interpolation parser
     interparse=&leparser{}
     interparse.prectable=default_prectable
-    interparse.force_lookup = true
+    // interparse.force_lookup = true
 
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
@@ -648,8 +621,8 @@ func run() {
                             coprocLoc="/bin/sh"
                             coprocArgs=[]string{"-i"}
                         } else {
-                            vset(0,&gident,"@noshell",true)
-                            // vset(0,&gident, "@noshell",no_shell)
+                            // vset(0,&gident,"@noshell",true)
+                            vset(0,&gident, "@noshell",no_shell)
                             coprocLoc="/bin/false"
                         }
                     }
@@ -751,7 +724,7 @@ func run() {
 
             // user-trap handling
 
-            userSigIntHandler,usihfound:=vget(1,&mident,"trapInt")
+            userSigIntHandler,usihfound:=vget(2,&mident,"trapInt")
             usih:=""
             if usihfound { usih=userSigIntHandler.(string) }
 
@@ -791,7 +764,7 @@ func run() {
 
                 // build call
 
-                loc,id := GetNextFnSpace(true,usih+"@")
+                loc, id := GetNextFnSpace(true,usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
                 calllock.Lock()
                 currentModule="main"
@@ -804,7 +777,7 @@ func run() {
 
                 // execute call
 
-                var trident = make([]Variable, IDENT_CAP)
+                var trident [szIdent]Variable
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]interface{})
@@ -982,22 +955,26 @@ func run() {
         row,col=GetCursorPos()
         pcol := defaultPromptColour
 
-        // simple, inelegant, probably buggy REPL
+
+        mainloc,_ := GetNextFnSpace(true,"main")
+        fnlookup.lmset("main",1)
+        numlookup.lmset(1,"main")
+
         for {
-            lastlock.Lock()
+
+            functionspaces[1] = []Phrase{}
+            basecode[1] = []BaseCode{}
+
             sig_int = false
-            lastlock.Unlock()
 
-            fspacelock.Lock()
-            functionspaces[0] = []Phrase{}
-            basecode[0] = []BaseCode{}
-            fspacelock.Unlock()
-
-            var echoMask interface{}
+            var emask interface{}
+            var echoMask string
             var ok bool
 
-            if echoMask,ok=vget(0,&gident,"@echomask"); !ok {
+            if emask,ok=vget(0,&gident,"@echomask"); !ok {
                 echoMask=""
+            } else {
+                echoMask=emask.(string)
             }
 
             nestAccept:=0
@@ -1005,18 +982,32 @@ func run() {
             var eof,broken bool
             var input string
 
+            // static call IDs
+            // 0 global (system vars) // template area in interactive mode
+            // 1 base template area for "main"
+            // 2 execution environment for "main"
+            // 3 first free template area for base sources
+            // 4... combination of bases and instances
+
+            cs := call_s{}
+            cs.caller = 0
+            cs.base = 1
+            cs.fs = "main"
+            calltable[mainloc]=cs
+
             // multi-line input loop
             for {
 
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
-                    tempPrompt=sparkle(interpolate(1,&mident,PromptTemplate))
+                    tempPrompt=sparkle(interpolate(0,&gident,PromptTemplate))
                 } else {
                     tempPrompt=promptContinuation
                 }
 
-                input, eof, broken = getInput(1, &mident, tempPrompt, "global", row, col, pcol, true, true, echoMask.(string))
+                input, eof, broken = getInput(tempPrompt, "global", row, col, pcol, true, true, echoMask)
+
                 if eof || broken { break }
 
                 row++
@@ -1080,11 +1071,11 @@ func run() {
 
             if nestAccept==0 {
                 fileMap[0]=exec_file_name
-                phraseParse("global", totalInput, 0)
+                phraseParse("main", totalInput, 0)
                 currentModule="main"
 
                 // throw away break and continue positions in interactive mode
-                _,endFunc = Call(MODE_STATIC, &mident, 0, ciRepl)
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
                 if endFunc {
                     break
                 }
@@ -1158,18 +1149,18 @@ func run() {
         }
 
         // initialise the main program
-        cs := call_s{}
-        cs.base = 1
-        cs.fs = "main"
-        cs.caller = 0
 
         mainloc,_ := GetNextFnSpace(true,"main")
+        // pf("[#4]main location set to %d[#-]\n",mainloc)
         calllock.Lock()
+        cs := call_s{}
+        cs.caller = 0
+        cs.base = 1
+        cs.fs = "main"
         calltable[mainloc] = cs
         calllock.Unlock()
         currentModule="main"
         Call(MODE_NEW, &mident, mainloc, ciMain)
-        // @note: if needed, decode .retvals here
         calltable[mainloc]=call_s{}
     }
 

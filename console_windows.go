@@ -71,7 +71,7 @@ func getch(timeo int) (b []byte,timeout bool) {
     waitInput      := vtMode
     nowaitInput    := vtMode
 
-    echo, _ := vget(0,"@echo")
+    echo, _ := vget(0,&gident,"@echo")
     if echo.(bool) {
         waitInput += echoMode
         nowaitInput += echoMode
@@ -252,7 +252,7 @@ func setupAnsiPalette() {
 }
 
 /// get an input string from stdin, in raw mode
-func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     old_wrap:=lineWrap
     lineWrap=false
@@ -278,7 +278,6 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
     var helpColoured []string    // populated (on TAB) list of auto-completion possibilities as displayed on console
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
-    var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
 
     icol := col + dlen + globalPaneShiftLen // input (row,col)
@@ -296,7 +295,7 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
     pf(sparkle(pcol))
 
     // get echo status
-    echo,_:=vget(0,"@echo")
+    echo,_:=vget(0,&gident,"@echo")
     if mask=="" { mask="*" }
 
     for {
@@ -519,20 +518,11 @@ func getInput(evalfs uint32, prompt string, pane string, row int, col int, pcol 
             // completion hinting setup
             if hintEnable && !startedContextHelp {
 
-                varnames = nil
                 funcnames = nil
 
                 startedContextHelp = true
                 helpstring = ""
                 selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
-
-                //.. add var names
-                for _, v := range ident[evalfs] {
-                    if v.IName!="" {
-                        varnames = append(varnames, v.IName)
-                    }
-                }
-                sort.Strings(varnames)
 
                 //.. add functionnames
                 for k, _ := range slhelp {

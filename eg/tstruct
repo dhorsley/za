@@ -1,0 +1,4 @@
+struct q; a int; b string; c mixed; d any; endstruct
+showstruct
+var z q
+

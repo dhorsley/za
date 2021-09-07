@@ -14,12 +14,12 @@ func nlmcreate(sz int) *Nmap {
 }
 
 func (u *Nmap) lmexists(k uint32) bool {
-    // u.RLock()
+    u.RLock()
     if _,ok:=u.nmap[k]; ok {
-        // u.RUnlock()
+        u.RUnlock()
         return true
     }
-    // u.RUnlock()
+    u.RUnlock()
     return false
 }
 

@@ -24,10 +24,6 @@ type bc_block struct {
     compiled    bool
 }
 
-// func (p Phrase) String() string {
-// 	return p.Original
-// }
-
 func (p BaseCode) String() string {
 	return p.Original
 }
@@ -40,7 +36,7 @@ type fa_s struct { // function args struct
 
 
 // ExpressionFunction can be called from within expressions.
-type ExpressionFunction = func(evalfs uint32,ident *[]Variable,args ...interface{}) (interface{}, error)
+type ExpressionFunction = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (interface{}, error)
 
 
 // za variable
@@ -56,7 +52,7 @@ type Variable struct {
 type Token struct {
     tokVal  interface{} // raw value storage
 	tokText string      // the content of the token
-    offset  uint16      // position in ident for this identifier
+    // sid     uint64      // symbol table id
 	tokType uint8       // token type from list in constants.go
     subtype uint8       // sub type of identifiers
 }
@@ -123,8 +119,8 @@ type ExpressionCarton struct {
 	text      string      // total expression
 	result    interface{} // result of evaluation
     errVal    error
-	assign    bool        // is this an assignment expression
     assignPos int
+	assign    bool        // is this an assignment expression
 	evalError bool        // did the evaluation succeed
 }
 
@@ -139,21 +135,18 @@ type enum_s struct {
 // struct for loop internals
 type s_loop struct {
 	loopVar          string           // name of counter
-    varoffset        uint16           // position of varname in vmap array.
-    varkeyoffset     uint16           // position in vmap that key_* will be placed.
-	forEndPos        int16            // ENDFOR location (statement number in functionspace)
-	loopType         uint8            // C_For, C_Foreach, C_While
-	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
-	iterOverArray    interface{}      // stored value to iterate over from start expression
-                                      // one day, we'll just add a reference here ^^ instead! maybe
-	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
+	forEndPos        int16            // ENDFOR location (statement number in functionspace)
 	repeatFrom       int16            // line number to restart block from
-	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
-	repeatActionStep int              // size of repeatAction
-	repeatCond       []Token          // tested with wrappedEval() // used by while
+	loopType         uint8            // C_For, C_Foreach, C_While
+	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
+	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
     iterOverMap      *reflect.MapIter // stored iterator
+	iterOverArray    interface{}      // stored value to iterate over from start expression
+	repeatCond       []Token          // tested with wrappedEval() // used by while
+	repeatActionStep int              // size of repeatAction
+	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
 }
 
 // struct to support pseudo-windows in console

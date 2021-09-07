@@ -124,9 +124,6 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 
 func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
-    // stacklock.Lock()
-    // defer stacklock.Unlock()
-
     var intInOne bool
     var intInTwo bool
 
@@ -141,9 +138,9 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     }
 
     if intInOne && intInTwo {
-        // return val1.(int)+val2.(int)
-        r=val1.(int)+val2.(int)
-        return
+        // r=val1.(int)+val2.(int)
+        // return
+        return val1.(int)+val2.(int)
     }
 
     float1, float1OK := val1.(float64)
@@ -842,13 +839,6 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
         default:
 
-            // @todo: we should probably remove this outside of the switch,
-            //  so that we can handle function chaining for structs as like other
-            //  value types. It would mean massaging the code above a little too
-            //  to allow unhandled cases to fall through and skip chaining if
-            //  already handled above.
-            //  We would need to do this anyway if we ever add struct methods.
-
             // try a function call..
             // lhs_v would become the first argument of func lhs_f
 
@@ -858,6 +848,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
             // parse the function call as module '.' funcname
             nonlocal:=false
             var there bool
+
             if _,there=funcmap[p.preprev.tokText+"."+name] ; there {
                 nonlocal=true
                 name=p.preprev.tokText+"."+name
@@ -878,6 +869,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                 if enum[p.preprev.tokText]!=nil {
                     return enum[p.preprev.tokText].members[name]
                 }
+                // pf("\n\nobject: %v\n\n",obj)
                 panic(fmt.Errorf("no function, enum or record field found for %v", field))
             }
 
@@ -918,11 +910,14 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 }
 
 
-func accessArray(ident *[]Variable, obj interface{}, field interface{}) (interface{}) {
+func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (interface{}) {
+
+    // pf("aa-typ : (%T)\n",obj)
+    // pf("aa-obj : (%T) %+v\n",obj,obj)
+    // pf("aa-fld : (%T) %+v\n",field,field)
 
     switch obj:=obj.(type) {
     case string:
-        // pf("aa-string: fld %#v - type %T\n",field,field)
         ifield,invalid:=GetAsInt(field)
         if !invalid {
             return string(obj[ifield])
@@ -943,13 +938,6 @@ func accessArray(ident *[]Variable, obj interface{}, field interface{}) (interfa
     default:
 
         r := reflect.ValueOf(obj)
-
-        // test for race condition:
-        vlock.RLock()
-        defer vlock.RUnlock()
-        // leaving this in for now. the defer slows things down, but
-        // it is catching ident[] use passed through by reference,
-        // possibly in the reflect.* calls?
 
         switch r.Kind().String() {
         case "slice":
@@ -976,8 +964,6 @@ func accessArray(ident *[]Variable, obj interface{}, field interface{}) (interfa
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            // @todo: this is buggy. there's some unhandled cases that are fine but throw this.
-            // disabling it for now pending investigation.
             // panic(fmt.Errorf("element '%d' is out of range in %+v",field.(int),obj))
 
         }
@@ -992,7 +978,6 @@ func slice(v interface{}, from, to interface{}) interface{} {
     str, isStr := v.(string)
     isArr:=false
     var arl int
-
     switch v.(type) {
     case []bool:
         isArr=true
@@ -1079,7 +1064,7 @@ func slice(v interface{}, from, to interface{}) interface{} {
 }
 
 
-func callFunction(evalfs uint32, ident *[]Variable, name string, args []interface{}) (res interface{}) {
+func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []interface{}) (res interface{}) {
 
     /*
     pf("callFunction started with\nfs %v fn %v\n",evalfs,name)
@@ -1128,7 +1113,7 @@ func callFunction(evalfs uint32, ident *[]Variable, name string, args []interfac
             calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs}
             calllock.Unlock()
 
-            var ident = make([]Variable, IDENT_CAP)
+            var ident [szIdent]Variable
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
 
             // handle the returned result, if present.

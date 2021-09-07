@@ -17,8 +17,8 @@ enddef
 
 define buildLibc(build_version,build_date)
     print "[#4]Libc build[#-]\n"
-    # | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
-    | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
+    | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
+    # | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
     r=last()
     on r>0 do println last_out()
     | cp za za.dynamic

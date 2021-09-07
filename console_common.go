@@ -155,7 +155,7 @@ func gpf(s string) {
 }
 
 // sprint with namespace
-func spf(ns uint32, ident *[]Variable, s string) string {
+func spf(ns uint32, ident *[szIdent]Variable, s string) string {
     s = interpolate(ns,ident,s)
     return sf("%v", sparkle(s))
 }
@@ -776,20 +776,25 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
     // shell reporting option:
     sr,_:=vget(0,&gident,"@shell_report")
+
     if sr.(bool)==true {
         noshell,_  :=vget(0,&gident,"@noshell")
         shelltype,_:=vget(0,&gident,"@shelltype")
         shellloc,_ :=vget(0,&gident,"@shell_location")
+        pf("ABOUT TO NOSHELL CHECK\n")
         if !noshell.(bool) {
+            pf("INSIDE NOSHELL CHECK\n")
             pf("[#4]Shell Options: ")
             pf("%v (%v) ",shelltype,shellloc)
             if riwp.(bool) { pf("Windows ") }
             if rip.(bool)  {
                 pf("in parent\n[#-]")
             } else {
+            pf("INSIDE NOSHELL CHECK - FALSE\n")
                 pf("in coproc\n[#-]")
             }
         }
+        pf("POST NOSHELL CHECK\n")
     }
 
     if riwp.(bool) || rip.(bool) {
