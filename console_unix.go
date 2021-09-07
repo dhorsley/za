@@ -302,7 +302,7 @@ func GetCursorPos() (int,int) {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     old_wrap := lineWrap
     lineWrap = false
@@ -322,11 +322,12 @@ func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row 
     var helpColoured []string    // populated (on TAB) list of auto-completion possibilities as displayed on console
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
-    var varnames []string        // the list of possible variable names from the local context
     var funcnames []string       // the list of possible standard library functions
 
     // get echo status
     echo,_:=vget(0,&gident,"@echo")
+    // pf("echo status is [%v]\n",echo)
+
     if mask=="" { mask="*" }
 
     endLine := false // input complete?
@@ -608,22 +609,11 @@ func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row 
                 // completion hinting setup
                 if hintEnable && !startedContextHelp {
 
-                    varnames = nil
                     funcnames = nil
 
                     startedContextHelp = true
                     helpstring = ""
                     selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
-
-                    //.. add var names
-                    if ident!=nil {
-                        for _, v := range *ident {
-                            if v.IName!="" {
-                                varnames = append(varnames, v.IName)
-                            }
-                        }
-                        sort.Strings(varnames)
-                    }
 
                     //.. add functionnames
                     for k, _ := range slhelp {
@@ -682,6 +672,7 @@ func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row 
                 }
             }
 
+            /*
             for _, v := range varnames {
                 if v!="" {
                     if str.HasPrefix(v, wordUnderCursor) {
@@ -690,6 +681,7 @@ func getInput(evalfs uint32, ident *[]Variable, prompt string, pane string, row 
                     }
                 }
             }
+            */
 
             for _, v := range funcnames {
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {

@@ -38,7 +38,7 @@ struct tpos
 endstruct
 
 trail_vanish_mod=1
-size_trail=80
+size_trail=160
 var temp_pos tpos
 trail=[]
 

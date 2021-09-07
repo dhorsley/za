@@ -53,14 +53,14 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     lc_sz:=27; if lichunklen<lc_sz { lc_sz=lichunklen }
     // @note: yes, string() is deliberate here. faster than sprint and just needs to be unique.
     if rv,found=lexCache[string(start)+"@@"+input[start:start+lc_sz]]; found {
-        // pf("(lex) key in cache!\n")
-        // pf("key: %#v  ",string(start)+"@@"+input[start:start+lc_sz])
-        // pf("  lo: %v (rv:%+v)\n",rv.tokPos-start,rv)
+         // pf("(lex) key in cache!\n")
+         // pf("key: %#v  ",string(start)+"@@"+input[start:start+lc_sz])
+         // pf("  lo: %v (rv:%+v)\n",rv.tokPos-start,rv)
         if rv.eol { (*curLine)++ }
         return
     }
 
-    // pf("(lex) uncached...\n")
+     // pf("(lex) uncached...\n")
 
     var carton Token
     var startNextTokenAt int
@@ -651,7 +651,7 @@ get_nt_exit_point:
 
     rv=&lcstruct{carton,startNextTokenAt,eol,eof}
     // pf("(lex) ... caching key: %#v\n",string(start)+"@@"+input[start:start+lc_sz])
-    // pf("      ... entry : %#v\n",rv)
+    // pf("      ... lex exit with : %#v\n",rv)
     // @note: ignore go-vet here:
     lexCache[string(start)+"@@"+input[start:start+lc_sz]]=rv
     return

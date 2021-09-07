@@ -15,24 +15,14 @@ TODO
         - there's likely to be a few more breaking bugs exhibiting in the windows build before
             we get to a stable state on Linux. they'll get ironed out over time.
 
-    * there is still a race condition, especially prevalent with fast spawn async processes, around
-        stringmap and nummap access. Not found a good way to avoid it yet. You can force the issue
-        with, for example, holding down the return key when running eg/plot/ff.
-        - partially fixed, re-introduced the mutex read lock in stringmap.go/nummap.go existence checks.
-        - still an issue with recursive calls during an async call overflowing a buffer leading to crash.
-
 
 LATER / UNDECIDED
 -----------------
 
     * need to (re)consider structs as struct member types.
-        - initially, this did not seem like a useful concept for the language use case.
-        - in all honesty, it still doesn't, but it might allow for other use cases.
-        - it also adds a fair amount of complexity that we may be better without.
-        - we currently have 'mixed' as a type meant to hold exotic values in struct member fields.
-            however, this is currently a bit broken :) mainly because it is currently unused.
-            we should either fix up 'mixed' types in structs or replace with something compatible
-            with VAR syntax. (or just ignore this complexity, without a solid use case.)
+        - initially, this did not seem useful for the language. in all honesty, it still doesn't,
+           but it might allow for other use cases. it also adds a fair amount of complexity that
+           we may be better without.
 
     * add ref and mut directives/operators for use in function calls?
 

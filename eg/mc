@@ -279,7 +279,7 @@ rrow=1
 cursorl=1
 cursorr=1
 redef_layout()
-
+    
 quit=false
 cursoroff()
 while !quit
@@ -312,7 +312,7 @@ while !quit
     print "{br}v[#-] view  {br}x[#-] execute  {br}b[#-] back  {br}q[#-] quit"
 
     # user input
-    k=keypress(5)
+    k=keypress(20)
 
     when char(k)
 
