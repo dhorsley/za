@@ -19,6 +19,17 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * make fixed size variable backing stores dynamic arrays.
+        - currently a fixed var count per func of 320(?)
+        - this should be autoscaled instead as it slows down recursion and reserves a little more
+            memory than really necessary.
+        - it was previously dynamic under the last var storage scheme, just have not got around
+            to doing anything about it yet.
+        - may be worth marking stores as "getting full" somewhere in bind_int and having an
+            async routine to check and expand candidates. (i.e. like some sort of deranged
+            garbage collector in reverse.)
+        - this would give us a natural place to put actual gc type tasks later.
+
     * need to (re)consider structs as struct member types.
         - initially, this did not seem useful for the language. in all honesty, it still doesn't,
            but it might allow for other use cases. it also adds a fair amount of complexity that

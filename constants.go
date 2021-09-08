@@ -11,14 +11,13 @@ const Maxint16  = ^int16(0)
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 
-const szIdent       = 320
-const sz_lru_cache  = 7
+const szIdent       = 320       // max vars per func
+const sz_lru_cache  = 7         // size of recently used cache of variable name-position lookups
 
-const gnfsModulus = 32768
+const gnfsModulus = 32768       // used by calltable to set max size, mainly impacts recursion
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 const MAX_FUNCS = gnfsModulus   // max source funcs (not max instances)
 const SPACE_CAP = gnfsModulus
-const IDENT_CAP = 32             // initial identifier space per function
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
 const FUNC_CAP = 300            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 

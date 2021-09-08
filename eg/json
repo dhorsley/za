@@ -35,7 +35,7 @@ define pp(k,i,d)
         foreach si in i[0]
             pp(key_si,si,d+1)
         endfor
-    has i.kind ~ `\[\]`
+    has i.kind ~ `\[]`
         heading("[arr] "+k,d)
         on i.len==0 do break
         foreach si in i[0]
@@ -53,7 +53,7 @@ end
 
 # MAIN
 
-f=read_file("json-test.json")
+f=<-"json-test.json"
 on f==nil do exit 1,"Error: could not read JSON file."
 
 json=json_decode(f)

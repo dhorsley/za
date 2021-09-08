@@ -1,7 +1,6 @@
 package main
 
 import (
-    // "fmt"
     "sync"
     "sync/atomic"
 )
@@ -46,7 +45,6 @@ var bindlock = &sync.RWMutex{}
 func bind_int(fs uint32,name string) (i uint64) {
 
     if atomic.LoadInt32(&concurrent_funcs)>0 { bindlock.Lock() ; defer bindlock.Unlock() }
-    // bindlock.Lock() ; defer bindlock.Unlock()
 
     for e:=range lru_bind_cache {
         if fs==lru_bind_cache[e].fs && strcmp(name,lru_bind_cache[e].name) {
@@ -74,20 +72,6 @@ func bind_int(fs uint32,name string) (i uint64) {
     return
 }
 
-
-/*
-func build_bindings(fs uint32,phrase *Phrase) {
-    for k,t:=range (*phrase).Tokens {
-        switch t.tokType {
-        case Identifier:
-            i:=bind_int(fs,t.tokText)
-            (*phrase).Tokens[k].sid=i
-            // pf("[bind] fs %d | name %s | val %d\n",fs,t.tokText,i)
-        }
-    }
-    // pf("Symbol Table # %d\n%+v\n",fs,bindings[fs])
-}
-*/
 
 
 // phraseParse():
@@ -121,8 +105,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     var defNest int             // C_Define nesting
 
     lmv,_:=fnlookup.lmget(fs)
-
-    // bindings[lmv]=make(map[string]uint64)
     addToPhrase:=false
 
     for ; pos < len(input); {
@@ -182,8 +164,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
         if tokenType==SingleComment {
             // at this point we have returned the full comment so throw it away!
-            addToPhrase=false
             // pf("[parse] Discarding comment : '%+v'\n",tempToken.carton.tokText)
+            addToPhrase=false
         }
 
         if tokenType==SYM_Semicolon || tokenType==EOL { // ditto
@@ -217,29 +199,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
             // -- discard empty lines, add phrase to func store
             if phrase.TokenCount!=0 {
-
-                /*
-                // -- generate bindings
-                if defNest==0 {
-                    if len(phrase.Tokens)>1 {
-                        switch phrase.Tokens[0].tokType {
-                        case Identifier:
-                            switch phrase.Tokens[1].tokType {
-                            case O_AssCommand, O_Assign:
-                                // only bind first Token
-                                // this potentially ignores other stuff before the =| or =
-                                // but they would be bound elsewhere if they are used.
-                                // phrase.Tokens[0].sid=bind_int(lmv,phrase.Tokens[0].tokText)
-                                // pf("[phrase] in fs #%d, just bound %s to %d\n",lmv,phrase.Tokens[0].tokText,phrase.Tokens[0].sid)
-                            }
-                        case C_Async, C_Var,C_Input,C_Enum,C_For,C_Foreach:
-                            // phrase.Tokens[1].sid=bind_int(lmv,phrase.Tokens[1].tokText)
-                            // pf("[phrase] in fs #%d, just bound %s to %d\n",lmv,phrase.Tokens[1].tokText,phrase.Tokens[1].sid)
-                        }
-                    }
-                }
-                */
-
                 // -- add phrase to function
                 // fmt.Printf("adding phrase (in #%d): %+v\n",lmv,phrase)
                 fspacelock.Lock()
@@ -259,24 +218,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
     }
-
-    /* TEST CODE -- DO NOT ENABLE!!
-    // raise an implicit C_Exit at end of function
-    if lmv!=0 {
-        fspacelock.Lock()
-        phrase=Phrase{}
-        if isMod {
-            phrase.Tokens=[]Token{Token{tokType:C_Return}}
-        } else {
-            phrase.Tokens=[]Token{Token{tokType:C_Exit}}
-        }
-        phrase.TokenCount++
-        functionspaces[lmv] = append(functionspaces[lmv], phrase)
-        // pf("implicit-exit: %#v\n",functionspaces[lmv])
-        fspacelock.Unlock()
-    }
-    */
-
 
     return badword, eof
 
