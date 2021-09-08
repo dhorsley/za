@@ -266,6 +266,8 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 }
 
 
+/*
+
 func Uint32n(maxN uint32) uint32 {
     x := Uint32()
     return uint32((uint64(x) * uint64(maxN)) >> 32)
@@ -319,6 +321,8 @@ func formatInt32(n int32) string {
     return strconv.FormatInt(int64(n), 10)
 }
 
+*/
+
 
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
@@ -348,7 +352,8 @@ func GetNextFnSpace(do_lock bool, requiredName string) (uint32,string) {
     // generate new tagged instance name
     newName := requiredName
     if newName[len(newName)-1]=='@' {
-        newName+=formatUint32(globseq)
+        // newName+=formatUint32(globseq)
+        newName+=strconv.FormatUint(uint64(globseq), 10)
     }
 
     // allocate
@@ -434,7 +439,6 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     var retvalues []interface{}     // return values to be passed back
     var finalline int16             // tracks end of tokens in the function
     var fs string                   // current function space
-    // var caller uint32               // function space which placed the call
     var source_base uint32          // location of the translated source tokens
     var thisLoop *s_loop            // pointer to loop information. used in FOR
 
@@ -446,15 +450,12 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     // unique name for this execution, pre-generated before call
     fs = (*ncs).fs
-    // pf("ncs-fs:%s\n",fs)
 
     // the source code to be read for this function
     source_base = (*ncs).base
-    // pf("ncs-base:%d\n",source_base)
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
-    // pf("ncs-ifs:%d\n",ifs)
 
     calllock.RUnlock()
 
@@ -468,35 +469,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
         bindlock.Lock()
         bindings[source_base]=make(map[string]uint64)
         bindlock.Unlock()
-        /*
-        var defNest int
-        for _, phrase:=range functionspaces[source_base] {
-            switch phrase.Tokens[0].tokType {
-            case C_Define:
-                defNest+=1
-            case C_Enddef:
-            defNest-=1
-            }
-            if defNest==0 {
-                if len(phrase.Tokens)>1 {
-                    switch phrase.Tokens[0].tokType {
-                    case Identifier:
-                        switch phrase.Tokens[1].tokType {
-                        case O_AssCommand, O_Assign:
-                            // phrase.Tokens[0].sid=bind_int(source_base,phrase.Tokens[0].tokText)
-                            // pf("[actor] in fs #%d, just bound %s to %d\n",source_base,phrase.Tokens[0].tokText,phrase.Tokens[0].sid)
-                        }
-                    case C_Async, C_Var,C_Input,C_Enum,C_For,C_Foreach:
-                        // phrase.Tokens[1].sid=bind_int(source_base,phrase.Tokens[1].tokText)
-                        // pf("[actor] in fs #%d, just bound %s to %d\n",source_base,phrase.Tokens[1].tokText,phrase.Tokens[1].sid)
-                    }
-                }
-            }
-        }
-        */
         symbolised[source_base]=true
-        // fmt.Printf("Just built symbols for base #%d\n",source_base)
-        // fmt.Printf("%+v\n",bindings[source_base])
     }
     if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Unlock() }
 
@@ -513,7 +486,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     /*
      fmt.Printf("Just copied symbols for ifs #%d\n",ifs)
      fmt.Printf("%+v\n",bindings[ifs])
-     */
+    */
     bindlock.Unlock()
 
 
@@ -638,13 +611,6 @@ tco_reentry:
         // finally... start processing the statement.
 
         statement = &inbound.Tokens[0]
-
-        /*
-        // .. skip comments and DOC statements
-        if statement.tokType == C_Doc && !testMode {
-            continue
-        }
-        */
 
         /////// LINE ////////////////////////////////////////////////////////////
                // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
@@ -776,8 +742,6 @@ tco_reentry:
                         break var_comma_loop
                     }
                     name_list=append(name_list,inbound.Tokens[c].tokText)
-                    // sid_list=append(sid_list,inbound.Tokens[c].sid)
-                    // pf("[var] added sid %d (for %s) to sidlist.\n",inbound.Tokens[c].sid,inbound.Tokens[c].tokText)
                 case O_Comma:
                     if !expectingComma { // syntax error
                         varSyntaxError=true
@@ -920,29 +884,14 @@ tco_reentry:
 
             // name iterations
 
-            // for k,vname:=range name_list {
             for _,vname:=range name_list {
 
                 sid:=bind_int(ifs,vname) // sid_list[k]
 
-                // pf("[var] #%02d : setup of %s (sid %d)\n",k,vname,sid)
-
-                // @todo: fix this. just checking .declared on a possibly re-used binding.
-                /*
-                vlock.RLock()
-                if VarLookup(ifs,ident,vname) {
-                    vlock.RUnlock()
-                    parser.report(inbound.SourceLine,sf("variable '%s' (fs:%d/sid:%d) already exists",vname,ifs,sid))
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
-                vlock.RUnlock()
-                */
-
                 // get the required type
                 var new_type_token_string string
                 type_token_string := inbound.Tokens[eqPos-1].tokText
-                // pf("[#1] tts->%s[#-]\n",type_token_string)
+
                 if type_token_string=="]" || type_token_string=="mixed" || type_token_string=="any" {
                     type_token_string="[]"
                 }
@@ -956,8 +905,6 @@ tco_reentry:
                         new_type_token_string="[]"
                     }
                 }
-
-                // pf("[#1]ntts->%s[#-]\n",new_type_token_string)
 
                 // declaration and initialisation
                 if _,found:=typemap[new_type_token_string]; found {
@@ -1033,9 +980,6 @@ tco_reentry:
                     // write temp to ident
                     // @note: have to write all to retain the ITyped flag!
                     (*ident)[sid]=t
-                     // fmt.Printf("C_Var just wrote %d/%d name %s | t.* = %v\n",ifs,sid,vname,t)
-                     // readval,_:=vget(ifs,ident,vname)
-                     // fmt.Printf("     read back value -> %v\n",readval)
                     vlock.Unlock()
 
                 } else {
@@ -1084,7 +1028,6 @@ tco_reentry:
                             t.IName=vname
                             t.ITyped=false
                             t.declared=true
-                            // pf("-- new struct -> %#v\n",new_struct)
 
                             if !hasAry {
                                 // default values setting:
@@ -1100,7 +1043,6 @@ tco_reentry:
                                     nv :=structvalues[svpos].(string)
                                     nhd:=structvalues[svpos+2].(bool)
                                     ndv:=structvalues[svpos+3]
-                                    // pf("nv : %v  hasdef : %v  value : %v\n",nv,nhd,ndv)
                                     if nhd {
                                         var intyp reflect.Type
                                         if ndv!=nil { intyp=reflect.ValueOf(ndv).Type() }
@@ -1117,7 +1059,6 @@ tco_reentry:
                                         }
                                     }
                                 }
-                                // pf("-- tmp -> %#v\n",tmp)
 
                                 if allSet {
                                     t.IValue=tmp.Interface()
@@ -1131,7 +1072,6 @@ tco_reentry:
 
                         // write temp to ident
                         (*ident)[sid]=t
-                        // if ifs!=0 { fmt.Printf("VAR just declared (%d/%d) name %s = value %v\n",ifs,sid,vname) }
 
                         vlock.Unlock()
 
@@ -1142,9 +1082,6 @@ tco_reentry:
                     }
 
                 } // end-type-or-struct
-
-                // PIG
-                // vset here?
 
             } // end-of-name-list
 
@@ -1289,7 +1226,7 @@ tco_reentry:
 
             switch inbound.Tokens[3].tokType {
 
-                // cause evaluation of all terms following IN
+            // cause evaluation of all terms following IN
             case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
@@ -1697,30 +1634,10 @@ tco_reentry:
                 break
             }
 
-            // @note: if loop counter is never used between here and
-            //  C_Endfor, then don't vset the local var
+            // @note: if loop counter is never used between here and C_Endfor, then don't vset the local var
 
             // store loop data
             fid:=inbound.Tokens[1].tokText
-
-            /*
-            // ensure we only re-use int type vars
-            if VarLookup(ifs,ident,fid) {
-                vlock.RLock()
-                should_for_break:=false
-                bin:=bind_int(ifs,fid)
-                val=(*ident)[bin].IValue
-                switch val.(type) {
-                case int:
-                default:
-                    parser.report(inbound.SourceLine,sf("Variable %s [%T] already declared in FOR.",fid,val))
-                    finish(false,ERR_EVAL)
-                    should_for_break = true
-                }
-                vlock.RUnlock()
-                if should_for_break { break }
-            }
-            */
 
             depth+=1
             loops[depth] = s_loop{
@@ -1733,7 +1650,6 @@ tco_reentry:
 
             // store loop start condition
             vset(ifs, ident, fid, fstart)
-            // pf("\nident check for FOR : (%d) %s = %d\n",ifs,fid,fstart)
 
             lastConstruct = append(lastConstruct, C_For)
 
@@ -1760,13 +1676,6 @@ tco_reentry:
             if (*thisLoop).optNoUse == Opt_LoopStart {
                 if lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
                     parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
-                    /*
-                    pf("lc (depth : %d) ->\n",depth)
-                    for _,v:=range lastConstruct {
-                        pf("%s ",tokNames[v])
-                    }
-                    pf("\n")
-                    */
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -1819,7 +1728,6 @@ tco_reentry:
                         case []dirent:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
-                            // pf("setting (in %d) %s with value: %+v\n",ifs,(*thisLoop).loopVar,(*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
                         case []alloc_info:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
@@ -2587,7 +2495,6 @@ tco_reentry:
                 }
 
                 // make Za function call
-
                 loc,id := GetNextFnSpace(true,call+"@")
                 calllock.Lock()
                 calltable[loc] = call_s{fs: id, base: lmv, caller: ifs}
@@ -2792,10 +2699,8 @@ tco_reentry:
                 if nt.tokType==RParen { evnest-=1 }
                 if nt.tokType==LeftSBrace { evnest+=1 }
                 if nt.tokType==RightSBrace { evnest-=1 }
-                // pf("rarg-build : current token -> [%d] %+v\n",tok,argtoks[tok])
                 if evnest==0 && (tok==len(argtoks)-1 || nt.tokType == O_Comma) {
                     rargs[curArg]=argtoks[ppos:tok+1]
-                    // pf("rarg-build : adding from %d to %d\n",ppos,tok)
                     ppos=tok+1
                     curArg+=1
                     if int(curArg)>=len(rargs) {
@@ -2804,8 +2709,6 @@ tco_reentry:
                 }
             }
             retval_count=curArg
-            // pf("retval_count : %d\n",retval_count)
-            // pf("rargs set to : %#v\n",rargs)
 
             // tail call recursion handling:
             if inbound.TokenCount > 2 {
@@ -2817,7 +2720,6 @@ tco_reentry:
 
                 if inbound.Tokens[1].tokType==Identifier && inbound.Tokens[2].tokType==LParen {
                     if strcmp(inbound.Tokens[1].tokText,bname) {
-                        // pf("passed func same name check\n")
                         rbraceAt := findDelim(inbound.Tokens,RParen, 2)
                         if rbraceAt==inbound.TokenCount-1 {
                             tco_check=true
@@ -3444,7 +3346,7 @@ tco_reentry:
             inside_with=false
 
 
-        // parsing for these is a mess, will clean up when new evaluator stable.
+        // parsing for these is a mess.
         // we should only need to worry about parens when scanning for commas
         // as strings should be single string literal tokens.
         case C_Print:
@@ -3757,9 +3659,7 @@ tco_reentry:
             }
 
             // eval
-            // pf("IF EXPR TOKENS : [%+v]\n",inbound.Tokens[1:])
             expr, err = parser.Eval(ifs, inbound.Tokens[1:])
-            // pf("Expr result -> %+v\n",expr)
             if err!=nil {
                 parser.report(inbound.SourceLine,"Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
@@ -3861,9 +3761,6 @@ tco_reentry:
 
         if !str.HasPrefix(fs,"@mod_") {
 
-            // calllock.Lock()
-            // calltable[ifs]=call_s{}
-
             // drop allocated names
             if varmode != MODE_STATIC {
                 fnlookup.lmdelete(fs)
@@ -3889,12 +3786,9 @@ tco_reentry:
 
     }
 
-    // invalidate_lru_bind_cache()
-
     calllock.Lock()
     callChain=callChain[:len(callChain)-1]
     calllock.Unlock()
-
     // fmt.Printf("Releasing fs %d (%s)\n",ifs,fs)
 
     return retval_count,endFunc
@@ -3920,9 +3814,7 @@ func coprocCall(parser *leparser, ifs uint32,ident *[szIdent]Variable, s string)
         pipepos := str.IndexByte(s, '|')
         cet = s[pipepos+1:]
         inter   := interpolate(ifs,ident,cet)
-        // pf("INTER -> %s\n",inter)
         cop := Copper(inter, false)
-        // pf("COP DONE!\n")
         if ! cop.okay {
             pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(inter," \t"))
             if interactive {
