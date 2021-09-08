@@ -48,7 +48,6 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var found bool
     lenInput:=len(input)
 
-    // pf("li: %v  ",lenInput)
     lichunklen:=lenInput-start
     lc_sz:=27; if lichunklen<lc_sz { lc_sz=lichunklen }
     // @note: yes, string() is deliberate here. faster than sprint and just needs to be unique.
@@ -59,8 +58,6 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         if rv.eol { (*curLine)++ }
         return
     }
-
-     // pf("(lex) uncached...\n")
 
     var carton Token
     var startNextTokenAt int

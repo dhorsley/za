@@ -66,11 +66,7 @@ func (p *leparser) next() Token {
 }
 
 func (p *leparser) peek() Token {
-
-    if p.pos+1 == p.len {
-        return Token{tokType:EOF}
-    }
-
+    if p.pos+1 == p.len { return Token{tokType:EOF} }
     return p.tokens[p.pos+1]
 }
 
@@ -1092,7 +1088,8 @@ func (p *leparser) identifier(token Token) (interface{}) {
     //  in phraser.go, as user function definitions may appear after 
     //  a reference to them.
 
-    if p.peek().tokType == LParen {
+    // if p.peek().tokType == LParen {
+    if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             // check if exists in user defined function space
             if fnlookup.lmexists(token.tokText) {
@@ -1108,8 +1105,9 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // local variable lookup:
 
-    if VarLookup(p.fs,p.ident, token.tokText) {
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); defer vlock.RUnlock() }
+    // if VarLookup(p.fs,p.ident, token.tokText) {
+    if (*p.ident)[bind_int(p.fs,token.tokText)].declared {
+        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); defer vlock.RUnlock() }
         return (*p.ident)[bind_int(p.fs,token.tokText)].IValue
     }
 
@@ -1172,9 +1170,7 @@ var vlock = &sync.RWMutex{}
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, ident *[szIdent]Variable, name string) (bool) {
      // fmt.Printf("vlookup : [%d] %s -> %v\n",fs,name,(*ident)[bind_int(fs,name)].declared)
-    if (*ident)[bind_int(fs,name)].declared {
-        return true
-    }
+    if (*ident)[bind_int(fs,name)].declared { return true }
     return false
 }
 
