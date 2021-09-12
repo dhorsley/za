@@ -90,6 +90,17 @@ func strcmp(a string, b string) (bool) {
     return true
 }
 
+func strcmpFrom1(a string, b string) (bool) {
+    la:=len(a)
+    if la!=len(b)   { return false }
+    // if la==0        { return true }
+    strcmp_repeat_point:
+        la -= 1
+        if a[la]!=b[la] { return false }
+    if la>1 { goto strcmp_repeat_point }
+    return true
+}
+
 // GetAsFloat : converts a variety of types to a float
 func GetAsFloat(unk interface{}) (float64, bool) {
     switch i := unk.(type) {
@@ -1227,7 +1238,7 @@ tco_reentry:
             switch inbound.Tokens[3].tokType {
 
             // cause evaluation of all terms following IN
-            case O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
+            case SYM_BOR, O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
                 if we.evalError {
@@ -2250,8 +2261,8 @@ tco_reentry:
                     }
                 }
 
-                test_name = stripOuterQuotes(inbound.Tokens[1].tokText, 2)
-                test_group = stripOuterQuotes(inbound.Tokens[3].tokText, 2)
+                test_name = interpolate(ifs,ident,stripOuterQuotes(inbound.Tokens[1].tokText, 2))
+                test_group = interpolate(ifs,ident,stripOuterQuotes(inbound.Tokens[3].tokText, 2))
 
                 under_test = false
                 // if filter matches group
@@ -2386,9 +2397,9 @@ tco_reentry:
                         }
                         // under test
                         test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
-                            group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
+                            group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, we.text)
                         testsFailed+=1
-                        appendToTestReport(test_output_file,ifs, inbound.SourceLine, test_report)
+                        appendToTestReport(test_output_file,ifs, 1+inbound.SourceLine, test_report)
                         temp_test_assert := test_assert
                         if fail_override != "" {
                             temp_test_assert = fail_override
@@ -2404,7 +2415,7 @@ tco_reentry:
                     } else {
                         if under_test {
                             test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
-                                group_name_string, getReportFunctionName(ifs,false), inbound.SourceLine, we.text)
+                                group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, cet.text)
                             testsPassed+=1
                             appendToTestReport(test_output_file,ifs, parser.pc, test_report)
                         }

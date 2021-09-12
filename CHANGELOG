@@ -81,6 +81,13 @@ CHANGE LOG
             >>   println a
             >> endfor
 
+    * added underscore as a formatting separator inside numeric literals (both int and float).
+        - i.e. 1_000_000  == 1000000  (int)
+        -      1_000.1_23 == 1000.123 (float)
+        -      1_000_f    == 1000     (float)
+        - the underscore is removed immediately during tokenisation, so will not appear in debug output.
+
+
     library features
     ----------------
 
@@ -91,6 +98,7 @@ CHANGE LOG
             - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
     * updated info for ibase, wininfo, int64, zainfo, byte, floor, ui_w, time_*() lib functions.
     * added varbind(name) to fetch the variable binding id for variable "name" - for debugging.
+
 
 1.0.14
 ======

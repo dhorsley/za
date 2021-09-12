@@ -11,6 +11,7 @@ const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$" // {}
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.f"
+const numSeps = "_"
 const identifier_set = alphanumeric + "_" // "{}"
 const doubleterms = "<>=|&-+*.?"
 const soloChars   = "+-/*.^!%;<>~=|,():[]&{}"
@@ -174,10 +175,9 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     }
 
     // number
-    // if str.IndexByte(numeric, firstChar) != -1 && firstChar!='f' {
     if firstChar!='f' && str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
-        nonterm = numeric+"eE"
+        nonterm = numeric+"eE"+numSeps
         term = "\n;"
         norepeat= "eE."
     }
@@ -219,6 +219,11 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
 
         // check numbers for illegal repeated chars
         if tokType==NumericLiteral {
+
+            if str.IndexByte(numSeps,input[currentChar])!=-1 {
+                continue
+            }
+
             if expectant {
                 if str.IndexByte(expExpect,input[currentChar])==-1 {
                     // wanted a digit / + / - here, but didn't find
@@ -343,6 +348,10 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     if tokType != 0 {
 
         if tokType==NumericLiteral {
+
+            // remove any numSeps from literal
+            for _,ns:=range numSeps { word=str.Replace(word,string(ns),"",-1) }
+
             if badFloat {
                 tokType=StringLiteral
                 carton.tokVal=word

@@ -1,0 +1,18 @@
+#!/usr/bin/za
+
+tests=<-"{=execpath()}/math2_tests.txt"
+
+var ans float
+
+foreach t in tests
+    test "test_{=1+key_t}" group "math2" assert fail
+        ary=split(t,"=")
+        println "q->[#1]",ary[0],"[#-]"
+        println "a->",ary[1]
+        ans=eval($st ary[0]).float
+        println "answer->",ans
+        assert ans==float($st  ary[1])
+        print
+    endtest
+endfor
+
