@@ -2,13 +2,10 @@
 
 input n param 1
 
-#define f(n)
-    var d nassoc
-    for i = 0 to n-1
-        d[i%1000]=i
-    endfor
-#end
+var d nassoc
+for i = 0 to n-1
+    d[i%1000]=i
+endfor
 
-#f(n)
 
 

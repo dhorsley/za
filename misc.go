@@ -322,6 +322,8 @@ $st s       trim whitespace from both sides of string s
 ?? b t [:,] f
   if expression b is true then t else f
 
+| s         return successful command output (of s) as a string
+
 [#1]Infix Operators[#-]
 a - b       subtraction
 a + b       addition

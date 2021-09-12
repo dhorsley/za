@@ -4,7 +4,7 @@
 
 module "./modules/timing.mod"
 
-max_count=40000000
+max_count=40_000_000
 input max_count optarg 1
 
 a=0

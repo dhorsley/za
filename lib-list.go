@@ -434,52 +434,47 @@ func buildListLib() {
 
         // check type is compatible
 
-        t:=(*ident)[bind_int(evalfs,name)]
-
         set:=false
-        switch t.IValue.(type) {
+        switch (*ident)[bind_int(evalfs,name)].IValue.(type) {
         case []string:
-            t.IValue=append(t.IValue.([]string),sf("%v",args[1]))
+            (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]string),sf("%v",args[1]))
             set=true
         case []int:
             switch args[1].(type) {
             case int:
-                t.IValue=append(t.IValue.([]int),args[1].(int))
+                (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]int),args[1].(int))
                 set=true
             }
         case []uint:
             switch args[1].(type) {
             case uint:
-                t.IValue=append(t.IValue.([]uint),args[1].(uint))
+                (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]uint),args[1].(uint))
                 set=true
             }
         case []float64:
             switch args[1].(type) {
             case float64:
-                t.IValue=append(t.IValue.([]float64),args[1].(float64))
+                (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]float64),args[1].(float64))
                 set=true
             }
         case []bool:
             switch args[1].(type) {
             case bool:
-                t.IValue=append(t.IValue.([]bool),args[1].(bool))
+                (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]bool),args[1].(bool))
                 set=true
             }
         case []interface{}:
-            t.IValue=append(t.IValue.([]interface{}),args[1])
+            (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]interface{}),args[1])
             set=true
         /*
         default:
-            t.IValue=append(t.IValue.([]interface{}),args[1])
+            (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]interface{}),args[1])
             set=true
         */
         }
 
         if !set {
             return false,errors.New(sf("unsupported list type in append_to()"))
-        } else {
-            (*ident)[bind_int(evalfs,name)]=t
-            // vset(evalfs,ident,name,t.IValue)
         }
 
         return true,nil

@@ -1,5 +1,10 @@
 #!/usr/bin/za
 
+#
+# collison and bounce logic is all wrong in here,
+# but you get the idea... it's just an object test.
+#
+
 CHAR=0
 BOX =1
 
@@ -18,15 +23,21 @@ struct object
     py      float
 endstruct
 
+define is_inside(x,y,a1,b1,a2,b2)
+    on x<a1 or x>a2 do return false
+    on y<b1 or y>b2 do return false
+    return true
+end
+
 define collides(obkey)
     i=objects[obkey]
     for e=0 to objects.len-1
         on e==obkey || objects[e]==nil do continue
         j=objects[e]
         cmpx=i.x+i.dx ; cmpy=i.y+i.dy
-        on cmpx >= j.x && cmpx <= j.x+j.w do on cmpy >= j.y && cmpy <= j.y+j.h do return true
+        on is_inside(cmpx,cmpy,j.x,j.y,j.x+j.w,j.y+j.h) do return e
     endfor
-    return false
+    return -1
 end 
 
 define moveall()
@@ -36,12 +47,26 @@ define moveall()
         o.px=o.x; o.py=o.y
         o.x+=o.dx
         o.y+=o.dy
-        if collides(e)
-            if o.dx<o.dy
-                o.dx=-o.dx
-            else
-                o.dy=-o.dy
+        colpos=collides(e)
+        if colpos!=-1
+            collider=objects[colpos]
+            # bounce away if smaller
+            if o.h*o.w < collider.h*collider.w
+                if o.dx<o.dy
+                    o.dx=-o.dx
+                else
+                    o.dy=-o.dy
+                endif
             endif
+            if o.h*o.w == collider.h*collider.w
+                # same size, so collision object also bounces away
+                if collider.dx<collider.dy
+                    collider.dx=-collider.dx
+                else
+                    collider.dy=-collider.dy
+                endif
+                setglob objects[colpos]=collider
+            endif 
             on o.bg>0 do o.bg-=1
         endif
         on o.x<=1            do o.dx=-o.dx

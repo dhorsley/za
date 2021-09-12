@@ -368,6 +368,7 @@ func buildInternalLib() {
         p.ident=ident
         p.fs=evalfs
         calllock.RUnlock()
+        // pf("-- [eval] q:|%s|\n",args[0].(string))
         return ev(p,evalfs,args[0].(string))
     }
 

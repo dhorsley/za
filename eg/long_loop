@@ -4,7 +4,7 @@
 
 module "./modules/timing.mod"
 
-max_count=100000000
+max_count=100_000_000
 input max_count optarg 1
 
 ts=epoch_nano_time()

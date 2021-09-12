@@ -6,6 +6,17 @@
 
 ansi(true)
 
+pane define "pop",term_h()/2,1,2,term_w(),"","round"
+
+define popup(s)
+    pane select "pop"
+    pane redraw
+    at 1,term_w()/2-len(s)/2
+    print s
+    keypress(0)
+    pane select "global"
+end
+
 # simple menu, only accepts up to 9 options
 define menu(title_prompt,opts)
     cls
@@ -38,8 +49,48 @@ define menu(title_prompt,opts)
 
 end
 
-choice=menu( "Example Menu", [ "First", "Second", "Third" ] )
+def opt_read()
+    "READ".popup
+end
 
-println "\n\nChoice [ {choice} ]\n"
+def opt_write()
+    "WRITE".popup
+end
+
+def opt_delete()
+    "DELETE".popup
+end
+
+#########################################################
+
+choice=0
+
+while choice!=-1
+
+    sub_choice=0
+    choice=menu( "Main Menu", [ "First", "Second", "Third" ] )
+
+    when choice
+    is 1
+        while sub_choice!=-1
+            sub_choice=menu("First Menu",["Read","Write","Delete"])
+            when sub_choice
+            is 1
+                opt_read()
+            is 2
+                opt_write()
+            is 3
+                opt_delete()
+            endwhen
+        endwhile
+    is 2
+        while sub_choice!=-1
+            sub_choice=menu("Second Menu",[])
+        endwhile
+    endwhen
+
+endwhile
+
+println "\n\n\n"
 
 
