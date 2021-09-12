@@ -58,8 +58,8 @@ end
 # main
 
 docpath="funpages"
-egpages="{docpath}/examples"
-headerpages="{docpath}/headers"
+egpages="{=execpath()}/{docpath}/examples"
+headerpages="{=execpath()}/{docpath}/headers"
 
 var totfunc int
 
@@ -147,8 +147,8 @@ foreach c in func_categories()
       `lang="en"`
     )
 
-    println "{docpath}/{key_c}.html"
-    write_file(docpath+"/"+key_c+".html",page)
+    println "{=execpath()}/{docpath}/{key_c}.html"
+    write_file([execpath(),docpath,key_c+".html"].join("/"),page)
 
 endfor
 
@@ -185,7 +185,7 @@ indexpage=wpage(
         )
 )
 
-write_file(docpath+"/index.html",indexpage)
+write_file([execpath(),docpath,"/index.html"].join("/"),indexpage)
 
 println "Total functions : {totfunc}"
 

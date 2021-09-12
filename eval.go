@@ -118,6 +118,8 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         left=p.reference(false)
     case O_Mut:
         left=p.reference(true)
+    case SYM_BOR:
+        left=p.command()
     }
 
     // binaries
@@ -1068,6 +1070,32 @@ func (p *leparser) number(token Token) (num interface{}) {
 	return num
 }
 
+
+func (p *leparser) command() (string) {
+
+    // vartok:=p.next()
+    dp,err:=p.dparse(0)
+    if err!=nil {
+        panic(fmt.Errorf("error parsing string in command operator"))
+    }
+
+    switch dp.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("command operator only accepts strings (not %T)",dp))
+    }
+
+    cmd:=system(interpolate(p.fs,p.ident,dp.(string)),false)
+
+    if cmd.okay {
+        return cmd.out
+    }
+
+    panic(fmt.Errorf("error in command operator (code:%d) '%s'",cmd.code,cmd.err))
+
+}
+
+
 func (p *leparser) identifier(token Token) (interface{}) {
 
     // pf("-- identifier query -> %+v[#CTE]\n",token)
@@ -1084,11 +1112,7 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // filter for functions here
-    //  @note: still have to do this, even though we sometimes set this 
-    //  in phraser.go, as user function definitions may appear after 
-    //  a reference to them.
 
-    // if p.peek().tokType == LParen {
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             // check if exists in user defined function space
@@ -1105,23 +1129,13 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // local variable lookup:
 
-    // if VarLookup(p.fs,p.ident, token.tokText) {
-    if (*p.ident)[bind_int(p.fs,token.tokText)].declared {
-        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock(); defer vlock.RUnlock() }
-        return (*p.ident)[bind_int(p.fs,token.tokText)].IValue
+    bin:=bind_int(p.fs,token.tokText)
+    if (*p.ident)[bin].declared {
+        return (*p.ident)[bin].IValue
     }
 
     var val interface{}
     var there bool
-
-    /*
-    if val,there=vget(p.fs,p.ident,token.tokText); there {
-        // pf("-> Found value (local) of : %+v\n",val)
-        // pf("    with binding of %d\n",bindings[p.fs][token.tokText])
-        // pf("ident table entry  -> \n%+v\n",p.ident[bindings[p.fs][token.tokText]])
-        return val
-    }
-    */
 
     // global lookup:
 
@@ -1178,25 +1192,22 @@ func VarLookup(fs uint32, ident *[szIdent]Variable, name string) (bool) {
 
 // vcreatetable: creates an empty variable store
 // @note: is locked by caller
+/*
 func vcreatetable(fs uint32, ident *[szIdent]Variable, vtable_maxreached *uint32,sz uint16) {
-
     vtmr:=*vtable_maxreached
-
     if fs>=vtmr {
         *vtable_maxreached=fs
         var temp_ident [szIdent]Variable
         *ident=temp_ident
-        /*
-        fmt.Printf("vct - temp_ident=%#v\n",temp_ident)
-        fmt.Printf("vct - ident=%#v\n",ident)
-        fmt.Printf("vct - gident=%#v\n",gident)
-        */
+        // fmt.Printf("vct - temp_ident=%#v\n",temp_ident)
+        // fmt.Printf("vct - ident=%#v\n",ident)
+        // fmt.Printf("vct - gident=%#v\n",gident)
         // fmt.Printf("vcreatetable: just allocated [fs:%d] cap:%d max_reached:%d\n",fs,sz,*vtable_maxreached)
     } else {
         // fmt.Printf("vcreatetable: skipped allocation for [fs:%d] -> length:%v max_reached:%v\n",fs,len(ident),*vtable_maxreached)
     }
-
 }
+*/
 
 func vunset(fs uint32, ident *[szIdent]Variable, name string) {
     vlock.Lock()

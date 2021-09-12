@@ -9,6 +9,7 @@ println files
 foreach tf in files
 
     filename=tf.name
+    on filename.has_end(".txt") do continue
 
     println "[#fbgreen]Check : {filename} , Last Change : ",date(tf.mtime),"[#-]"
 

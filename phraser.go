@@ -1,6 +1,7 @@
 package main
 
 import (
+    // "fmt"
     "sync"
     "sync/atomic"
 )
@@ -17,8 +18,9 @@ func bindResize() {
 // @catwalk: var ;p/09<F7>
 
 type lru_bind struct {
-    fs uint32
+    // used bool
     name string
+    fs uint32
     res uint64
 }
 
@@ -28,7 +30,7 @@ func add_lru_bind_cache(fs uint32,name string,res uint64) {
     for e:=sz_lru_cache-1; e>0; e-=1 {
         lru_bind_cache[e]=lru_bind_cache[e-1]
     }
-    lru_bind_cache[0]=lru_bind{fs:fs,name:name,res:res}
+    lru_bind_cache[0]=lru_bind{fs:fs,name:name,res:res} // ,used:true}
 }
 
 /*
@@ -47,8 +49,12 @@ func bind_int(fs uint32,name string) (i uint64) {
     if atomic.LoadInt32(&concurrent_funcs)>0 { bindlock.Lock() ; defer bindlock.Unlock() }
 
     for e:=range lru_bind_cache {
-        if fs==lru_bind_cache[e].fs && strcmp(name,lru_bind_cache[e].name) {
-            return lru_bind_cache[e].res
+        // if lru_bind_cache[e].used==false { break }
+        // fmt.Printf("cache entry [%d] -> %+v\n",e,lru_bind_cache[e])
+        if fs==lru_bind_cache[e].fs {
+            if strcmp(name,lru_bind_cache[e].name) {
+                return lru_bind_cache[e].res
+            }
         }
     }
 
