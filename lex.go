@@ -3,6 +3,7 @@ package main
 import (
     str "strings"
     "strconv"
+    "math"
     "os"
 )
 
@@ -643,6 +644,7 @@ get_nt_eval_point:
         if strcmp(word,"true")  { carton.subtype=subtypeConst ; carton.tokVal=true }
         if strcmp(word,"false") { carton.subtype=subtypeConst ; carton.tokVal=false }
         if strcmp(word,"nil")   { carton.subtype=subtypeConst ; carton.tokVal=nil }
+        if strcmp(word,"NaN")   { carton.subtype=subtypeConst ; carton.tokVal=math.NaN() }
     }
 
     carton.tokType = tokType

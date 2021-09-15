@@ -4,7 +4,7 @@ struct T
     a int
     b bool
     c string
-    d float64
+    d float
     e uint
 endstruct
 

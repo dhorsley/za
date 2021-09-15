@@ -212,8 +212,8 @@ define showProcs(ct,uptime)
         utime=float(F[14]); stime=float(F[15]); cutime=float(F[16]); cstime=float(F[17])
         priority=F[18]; nice=F[19]; threads=F[20]; procstarttime=float(F[22])
 
-        on kind(procstarttime)!="float64" || kind(utime)!="float64" || kind(stime)!="float64" do continue
-        on kind(cstime)!="float64" || kind(cutime)!="float64" do continue
+        on kind(procstarttime)!="float" || kind(utime)!="float" || kind(stime)!="float" do continue
+        on kind(cstime)!="float" || kind(cutime)!="float" do continue
 
         on procstarttime==0 do continue
 

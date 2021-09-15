@@ -1,0 +1,31 @@
+#!/usr/bin/za
+
+doc `
+    simple quick sort
+`
+
+define qs(a)
+    on len(a) <= 1 do return a
+    return qs(a.tail ?> `# <= a.head`) + [ a.head ] + qs(a.tail ?> `# > a.head`)
+end
+
+
+# MAIN
+
+epoch_nano_time().seed
+
+reps=100
+input reps optarg 1
+
+var arr [1000] any
+
+for f=1 to reps
+    for e=0 to arr.len - 1
+        arr[e]=rand(100000)
+    endfor
+    r=arr.qs
+    println "{f} low {=r[0]} high {=r[r.len-1]}"
+    assert r[0]<=r[arr.len-1]
+endfor
+
+
