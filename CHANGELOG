@@ -87,6 +87,9 @@ CHANGE LOG
         -      1_000_f    == 1000     (float)
         - the underscore is removed immediately during tokenisation, so will not appear in debug output.
 
+    * added NaN as a valid float state and constant
+    * added NaN equality check (e.g. sqrt -1 == NaN) (doesn't follow ieee spec, but may be useful?)
+
 
     library features
     ----------------
@@ -98,7 +101,7 @@ CHANGE LOG
             - these all require a signed integer (int) as parameters. i.e. int(file.mode) from dir().
     * updated info for ibase, wininfo, int64, zainfo, byte, floor, ui_w, time_*() lib functions.
     * added varbind(name) to fetch the variable binding id for variable "name" - for debugging.
-
+    * updated kind() to write float64 types as "float"
 
 1.0.14
 ======

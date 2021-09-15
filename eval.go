@@ -53,7 +53,6 @@ type leparser struct {
     pc          int16       // shadows program counter (pc)
     pos         int16       // distance through parse
     prectable   [END_STATEMENTS]int8
-    // force_lookup bool
 }
 
 
@@ -125,15 +124,25 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
     // binaries
 
     var token Token
+    // var check_token_type uint8
+    // var ppos int16
 
     binloop1:
     for {
 
+        /*
+        ppos=p.pos+1
+        if ppos == p.len {
+            check_token_type=EOF
+        } else {
+            check_token_type=p.tokens[ppos].tokType
+        }
+        if prec >= p.prectable[check_token_type] { break }
+        */
+
         if prec >= p.prectable[p.peek().tokType] { break }
 
-        // token := p.next()
         token = p.next()
-
         switch token.tokType {
         case EOF:
             break binloop1
@@ -144,14 +153,6 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             left = p.accessArray(left,token)
             continue
         case SYM_DOT:
-
-            /*
-            plog("afof with prev of      : %+v\n",p.prev)
-            plog("afof with preprev of   : %+v\n",p.preprev)
-            plog("afof entry param 1 (%T): %+v\n",left,left)
-            plog("afof entry param 2     : %+v\n",p.peek().tokText)
-            */
-
             left = p.accessFieldOrFunc(left,p.next().tokText)
             continue
         case LParen:
@@ -1267,12 +1268,14 @@ func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
 }
 
 func vsetInteger(fs uint32, ident *[szIdent]Variable, name string, value int) {
+    var ll bool
     bin:=bind_int(fs,name)
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
+    if atomic.LoadInt32(&concurrent_funcs)>0 { ll=true; vlock.Lock() }
     (*ident)[bin].IName=name
     (*ident)[bin].IValue=value
     (*ident)[bin].declared=true
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
+    if ll { vlock.Unlock() }
+    // atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 }
 
 

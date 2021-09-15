@@ -606,6 +606,20 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
         }
     }
 
+    // special case for NaN
+    var nt1,nt2 bool
+    switch val1.(type) {
+    case float64:
+        if math.IsNaN(val1.(float64)) { nt1=true }
+    }
+    switch val2.(type) {
+    case float64:
+        if math.IsNaN(val2.(float64)) { nt2=true }
+    }
+    if nt1 && nt2 { return true }
+    if nt1 || nt2 { return false }
+
+    /*
     // special case for ptr nil
     var nilcmp1,nilcmp2 bool
     switch v1:=val1.(type) {
@@ -628,6 +642,7 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
         }
     }
     // end bodge
+    */
 
     switch typ1 := val1.(type) {
 

@@ -12,7 +12,7 @@ import (
     "strconv"
     "encoding/base64"
     "encoding/json"
-    "strings"
+    str "strings"
     "unsafe"
     "encoding/gob"
     "github.com/itchyny/gojq"
@@ -206,7 +206,7 @@ func buildConversionLib() {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to kind()")
         }
-        return sf("%T", args[0]), nil
+        return str.Replace(sf("%T", args[0]),"float64","float",-1), nil
     }
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
@@ -229,7 +229,7 @@ func buildConversionLib() {
         if ok,err:=expect_args("json_decode",args,1,"1","string"); !ok { return nil,err }
 
         var v map[string]interface{}
-        dec:=json.NewDecoder(strings.NewReader(args[0].(string)))
+        dec:=json.NewDecoder(str.NewReader(args[0].(string)))
 
         if err := dec.Decode(&v); err!=nil {
             return "",errors.New(sf("could not convert value '%v' in json_decode()",args[0].(string)))
@@ -273,13 +273,13 @@ func buildConversionLib() {
 
         // then decode json to map suitable for gojq.Run
         var iv map[string]interface{}
-        dec:=json.NewDecoder(strings.NewReader(args[0].(string)))
+        dec:=json.NewDecoder(str.NewReader(args[0].(string)))
         if err := dec.Decode(&iv); err!=nil {
             return "",errors.New("could not convert JSON in json_query()")
         }
 
         // process query
-        var ns strings.Builder
+        var ns str.Builder
         var retlist []interface{}
 
         iter:=q.Run(iv)
