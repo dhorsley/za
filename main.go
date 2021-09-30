@@ -813,10 +813,7 @@ func run() {
 
     // Second, there is a user global. This one can potentially float around.
     //  It represents where global variables are stored by a running Za 
-    //  program. It will generally be at index 1 or 2. Where it is depends
-    //  on if we are in interactive mode or not. 
-
-    // This is not very elegant, but then, nothing about this whole thing is!
+    //  program. It should always be at index 1.
 
     // Globals starting with a '@' sign are considered as nominally constant.
     //  However, the standard library functions may modify their values
