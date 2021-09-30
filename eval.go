@@ -124,21 +124,9 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
     // binaries
 
     var token Token
-    // var check_token_type uint8
-    // var ppos int16
 
     binloop1:
     for {
-
-        /*
-        ppos=p.pos+1
-        if ppos == p.len {
-            check_token_type=EOF
-        } else {
-            check_token_type=p.tokens[ppos].tokType
-        }
-        if prec >= p.prectable[check_token_type] { break }
-        */
 
         if prec >= p.prectable[p.peek().tokType] { break }
 

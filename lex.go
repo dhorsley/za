@@ -22,7 +22,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "S_LITERAL", "N_LITERAL", "IDENTIFIER",
     "OPERATOR", "S_COMMENT",
     "PLUS", "MINUS", "DIVIDE", "MULTIPLY",
-    "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "LBRACE", "RBRACE","LCBRACE","RCBRACE",
+    "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "ASS_OUT_COMMAND", "LBRACE", "RBRACE","LCBRACE","RCBRACE",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
@@ -42,24 +42,11 @@ type lcstruct struct {
     carton Token;tokPos int;eol bool;eof bool
 }
 
-var lexCache=make(map[string]*lcstruct)
 
 /// get the next available token, as a struct, from a given string and starting position.
 func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
 
-    var found bool
     lenInput:=len(input)
-
-    lichunklen:=lenInput-start
-    lc_sz:=27; if lichunklen<lc_sz { lc_sz=lichunklen }
-    // @note: yes, string() is deliberate here. faster than sprint and just needs to be unique.
-    if rv,found=lexCache[string(start)+"@@"+input[start:start+lc_sz]]; found {
-         // pf("(lex) key in cache!\n")
-         // pf("key: %#v  ",string(start)+"@@"+input[start:start+lc_sz])
-         // pf("  lo: %v (rv:%+v)\n",rv.tokPos-start,rv)
-        if rv.eol { (*curLine)++ }
-        return
-    }
 
     var carton Token
     var startNextTokenAt int
@@ -161,7 +148,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             word=string(firstChar)+string(secondChar)
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
-        case "-=","+=","*=","/=","%=":
+        case "=<","-=","+=","*=","/=","%=":
             word=string(firstChar)+string(secondChar)
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
@@ -190,14 +177,6 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         startNextTokenAt=thisWordStart+1
         goto get_nt_eval_point
     }
-
-    /*
-    if str.IndexByte(soloChars, firstChar)!=-1 {
-        word = string(firstChar)
-        startNextTokenAt=thisWordStart+1
-        goto get_nt_eval_point
-    }
-    */
 
     // identifier or statement
     if str.IndexByte(alphaplus, firstChar) != -1 {
@@ -483,6 +462,8 @@ get_nt_eval_point:
         tokType = SYM_COLON
     case "=|":
         tokType = O_AssCommand
+    case "=<":
+        tokType = O_AssOutCommand
     }
 
     if tokType==0 {
@@ -652,16 +633,12 @@ get_nt_eval_point:
 
 
 get_nt_exit_point:
-    // you have to set carton.tokType + startNextTokenAt by hand if you jump
-    // directly to this exit point.
+    // you have to set carton.tokType + startNextTokenAt by hand if you jump directly to this exit point.
 
     if startNextTokenAt>=lenInput { eof=true }
 
     rv=&lcstruct{carton,startNextTokenAt,eol,eof}
-    // pf("(lex) ... caching key: %#v\n",string(start)+"@@"+input[start:start+lc_sz])
     // pf("      ... lex exit with : %#v\n",rv)
-    // @note: ignore go-vet here:
-    lexCache[string(start)+"@@"+input[start:start+lc_sz]]=rv
     return
 
 }

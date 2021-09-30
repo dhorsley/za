@@ -75,12 +75,9 @@ label_x=true
 label_x_period=10
 drawline=true
 redef=true
+last_time = epoch_nano_time()
 
 while !ui_closed(w)
-
-    current_time= epoch_nano_time()
-    dt_ms       = float(current_time-last_time)/1e6
-    last_time   = current_time
 
     # input
     on ui_just_released(w,key.ESC) do break

@@ -58,13 +58,8 @@ on f==nil do exit 1,"Error: could not read JSON file."
 
 json=json_decode(f)
 
-# drill down to right level
-res=json["Reservations"]
-groups=res[0]["Groups"]
-instances=res[0]["Instances"]
-
 # deep iteration over pairs
-foreach i in instances[0]
+foreach i in json["Reservations"][0]["Instances"][0]
     pp(key_i,i,0)
 endfor
 

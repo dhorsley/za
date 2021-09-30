@@ -787,10 +787,13 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
         f := reflect.Indirect(r).FieldByName(field)
         return f
 
+        /*
     case token_result:
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
+        pf("[TR] : r %#v : f %#v\n",r,f)
         return f
+        */
 
     default:
 
@@ -979,7 +982,7 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
                 panic(fmt.Errorf("unhandled type %T in array access.",obj))
             }
 
-            // panic(fmt.Errorf("element '%d' is out of range in %+v",field.(int),obj))
+            panic(fmt.Errorf("element '%d' is out of range in %+v",field.(int),obj))
 
         }
 

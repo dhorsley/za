@@ -176,6 +176,7 @@ const (
 	SYM_Semicolon
 	O_Assign
 	O_AssCommand
+    O_AssOutCommand
 	LeftSBrace
 	RightSBrace
 	LeftCBrace

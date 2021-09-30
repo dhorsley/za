@@ -60,6 +60,8 @@ CHANGE LOG
             during identifier lookups in evaluation. it also picks up user defined functions if
             they have already been encountered by this lexing step.
 
+    * stripped out caching in lex.go/getNextToken() as it offers no real gains any more.
+
     * updated za.vim
 
 
@@ -80,6 +82,9 @@ CHANGE LOG
             >> foreach a in q ?> `#.has_start("d")` -> "$uc #"
             >>   println a
             >> endfor
+
+    * added assign command output operator =<
+        - equivalent to =| except the string output is forced into lhs assignment instead of the full struct.
 
     * added underscore as a formatting separator inside numeric literals (both int and float).
         - i.e. 1_000_000  == 1000000  (int)

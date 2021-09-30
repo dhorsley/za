@@ -567,6 +567,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
             }
 
+            /*
             for _, v := range varnames {
                 if v!="" {
                     if str.HasPrefix(v, wordUnderCursor) {
@@ -575,6 +576,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                 }
             }
+            */
 
             for _, v := range funcnames {
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
