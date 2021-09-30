@@ -3714,14 +3714,25 @@ tco_reentry:
             // local command assignment (child/parent process call)
 
             if inbound.TokenCount > 1 { // ident "=|"
-                if statement.tokType == Identifier && inbound.Tokens[1].tokType == O_AssCommand {
+                if statement.tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
                     if inbound.TokenCount > 2 {
-                        // get text after =|
-                        startPos := str.IndexByte(basecode[source_base][parser.pc].Original, '|') + 1
+                        // get text after =| or =<
+                        var startPos int
+                        switch inbound.Tokens[1].tokType {
+                        case O_AssCommand:
+                            startPos = str.IndexByte(basecode[source_base][parser.pc].Original, '|') + 1
+                        case O_AssOutCommand:
+                            startPos = str.IndexByte(basecode[source_base][parser.pc].Original, '<') + 1
+                        }
                         cmd := interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         cop:=system(cmd,false)
                         lhs_name := statement.tokText
-                        vset(ifs, ident, lhs_name, cop)
+                        switch inbound.Tokens[1].tokType {
+                        case O_AssCommand:
+                            vset(ifs, ident, lhs_name, cop)
+                        case O_AssOutCommand:
+                            vset(ifs, ident, lhs_name, cop.out)
+                        }
                     }
                     // skip normal eval below
                     break
