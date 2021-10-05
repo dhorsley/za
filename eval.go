@@ -93,7 +93,7 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         left=interpolate(p.fs,p.ident,p.tokens[p.pos].tokText)
     case Identifier:
         left=p.identifier(p.tokens[p.pos])
-    case O_Sqr, O_Sqrt, O_InFile:
+    case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(p.tokens[p.pos])
     case SYM_Not:
 	    right,err := p.dparse(24) // don't bind negate as tightly
@@ -837,20 +837,20 @@ func (p *leparser) unaryStringOp(right interface{},op uint8) string {
 
 func (p *leparser) unary(token Token) (interface{}) {
 
-    /*
     switch token.tokType {
+    /*
     case O_Ref:
         return p.reference(false)
     case O_Mut:
         return p.reference(true)
+	*/
+    case O_InFile:
+	    right,err := p.dparse(70) // higher than dot op
+        if err!=nil { panic(err) }
+        return unaryFileInput(right)
     }
-    */
 
-	// right,err := p.dparse(38) // between grouping and other ops
-    // @note: ^^ didn't change this prec when default_prectable was
-    //   reordered and SYM_Dot and others were below 38. (it's now at ~60)
-
-	right,err := p.dparse(70) // between grouping and other ops
+	right,err := p.dparse(38) // between grouping and other ops
     if err!=nil { panic(err) }
 
 	switch token.tokType {
@@ -858,8 +858,6 @@ func (p *leparser) unary(token Token) (interface{}) {
 		return unaryMinus(right)
 	case O_Plus:
 		return unaryPlus(right)
-	case O_InFile:
-        return unaryFileInput(right)
 	case O_Sqr:
         return unOpSqr(right)
 	case O_Sqrt:
