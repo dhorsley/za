@@ -5,7 +5,7 @@
 m=0
 dups[""]=0
 
-foreach l in <-"/dev/stdin"
+foreach l in $in "/dev/stdin"
     # some 'l' values cannot represent keys, depending on nature of input
     l=$st l
     on dups[l]==nil do dups[l]=0

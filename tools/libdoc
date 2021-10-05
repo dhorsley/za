@@ -74,7 +74,7 @@ foreach c in func_categories()
     header=wh1()+"\n"
     header+=wh2("{key_c} functions") 
 
-    on is_file("{headerpages}/{key_c}") do header+=wp(<-"{headerpages}/{key_c}")
+    on is_file("{headerpages}/{key_c}") do header+=wp($in "{headerpages}/{key_c}")
 
     body=""
     pageindex=""
@@ -110,7 +110,7 @@ foreach c in func_categories()
         body+=wp(`{desc}`)
 
         if is_file("{egpages}/{i}")
-            f=<-"{egpages}/{i}"
+            f=$in "{egpages}/{i}"
             interpol(false)
             f=f.html_escape.replace("{","&#123;").replace("}","&#125;")
             interpol(true)
@@ -148,7 +148,7 @@ foreach c in func_categories()
     )
 
     println "{=execpath()}/{docpath}/{key_c}.html"
-    write_file([execpath(),docpath,key_c+".html"].join("/"),page)
+    page $out [execpath(),docpath,key_c+".html"].join("/")
 
 endfor
 
@@ -185,7 +185,7 @@ indexpage=wpage(
         )
 )
 
-write_file([execpath(),docpath,"/index.html"].join("/"),indexpage)
+indexpage $out [execpath(),docpath,"/index.html"].join("/")
 
 println "Total functions : {totfunc}"
 

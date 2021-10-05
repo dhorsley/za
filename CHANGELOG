@@ -86,6 +86,9 @@ CHANGE LOG
     * added assign command output operator =<
         - equivalent to =| except the string output is forced into lhs assignment instead of the full struct.
 
+    * changed unary file input operator to $in expr_filename_string (was <- expr_filename_string)
+    * added file out operator (expr_string $out expr_filename_string)
+
     * added underscore as a formatting separator inside numeric literals (both int and float).
         - i.e. 1_000_000  == 1000000  (int)
         -      1_000.1_23 == 1000.123 (float)
@@ -94,6 +97,9 @@ CHANGE LOG
 
     * added NaN as a valid float state and constant
     * added NaN equality check (e.g. sqrt -1 == NaN) (doesn't follow ieee spec, but may be useful?)
+
+    * unary file input operator ($in) now removes single trailing 0x0a char from input file.
+        - this keeps it in line with the cat shell command, but may change further.
 
 
     library features

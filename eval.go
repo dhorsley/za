@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "io/ioutil"
     "reflect"
     "strconv"
     "math"
@@ -78,7 +79,6 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
     if p.pos>0 { p.preprev=p.prev }
     if p.pos>-1 { p.prev=p.tokens[p.pos] }
     p.pos+=1
-    // current:=p.tokens[p.pos]
 
     // unaries
     switch p.tokens[p.pos].tokType {
@@ -199,6 +199,9 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             left = p.list_filter(left,right)
         case O_Map:
             left = p.list_map(left,right)
+
+        case O_OutFile: // returns success/failure bool
+            left = p.file_out(left,right)
 
         case SYM_BAND: // bitwise-and
             left = as_integer(left) & as_integer(right)
@@ -427,6 +430,28 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
     // unreachable: // return nil
 }
 
+func (p *leparser) file_out(left interface{},right interface{}) interface{} {
+
+    switch right.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("$out requires a filename string on right-hand side"))
+    }
+
+    switch left.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("$out requires an output string on left-hand side"))
+    }
+
+    err := ioutil.WriteFile(right.(string), []byte(left.(string)), 0600)
+    if err != nil {
+        return false
+    }
+    return true
+
+}
+
 func (p *leparser) list_map(left interface{},right interface{}) interface{} {
 
     switch right.(type) {
@@ -437,11 +462,9 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
 
     var reduceparser *leparser
     reduceparser=&leparser{}
-    // calllock.RLock()
     reduceparser.prectable=default_prectable
     reduceparser.ident=p.ident
     reduceparser.fs=p.fs
-    // calllock.RUnlock()
 
     switch left.(type) {
 
@@ -820,15 +843,6 @@ func (p *leparser) unary(token Token) (interface{}) {
         return p.reference(false)
     case O_Mut:
         return p.reference(true)
-    }
-    */
-
-    /*
-	switch token.tokType {
-    case SYM_Not:
-	    right,err := p.dparse(24) // don't bind negate as tightly
-        if err!=nil { panic(err) }
-		return unaryNegate(right)
     }
     */
 
