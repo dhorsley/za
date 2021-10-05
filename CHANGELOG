@@ -8,6 +8,10 @@ CHANGE LOG
     fixes
     -----
 
+    * dot operator binding more tightly to lhs string than $in op is to rhs string
+        - was a problem for a few unary operators since default_prectable[] was re-ordered.
+        - should be fixed now (various unary ops precedence changed to 70 from 38)
+
     * Changed var backing store layout and name binding scheme.
     * replaced callstack id+space allocator.
         - using a sequential modulus fn instead of random numbers now.
@@ -113,6 +117,8 @@ CHANGE LOG
     * updated info for ibase, wininfo, int64, zainfo, byte, floor, ui_w, time_*() lib functions.
     * added varbind(name) to fetch the variable binding id for variable "name" - for debugging.
     * updated kind() to write float64 types as "float"
+    * added grep() as alias for line_filter()
+
 
 1.0.14
 ======
