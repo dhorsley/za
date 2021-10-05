@@ -98,7 +98,7 @@ func buildPackageLib() {
     features["package"] = Feature{version: 1, category: "os"}
     categories["package"] = []string{"install", "uninstall", "service", "vcmp","is_installed"}
 
-    slhelp["install"] = LibHelp{in: "packages_string", out: "", action: "Installs the packages in [#i1]packages_string[#i0]."}
+    slhelp["install"] = LibHelp{in: "packages_string", out: "int", action: "Installs the packages in [#i1]packages_string[#i0]. Returns 0 on success or non-zero error code. (-1 is an unknown OS)"}
     stdlib["install"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("install",args,1,"1","string"); !ok { return nil,err }
         done := install(args[0].(string))
@@ -112,7 +112,7 @@ func buildPackageLib() {
         return isinstalled(args[0].(string)),nil
     }
 
-    slhelp["uninstall"] = LibHelp{in: "packages_string", out: "", action: "Removes the packages in [#i1]packages_string[#i0]."}
+    slhelp["uninstall"] = LibHelp{in: "packages_string", out: "int", action: "Removes the packages in [#i1]packages_string[#i0]. Returns 0 on success or non-zero error code. (-1 is an unknown OS)"}
     stdlib["uninstall"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("uninstall",args,1,"1","string"); !ok { return nil,err }
         done := uninstall(args[0].(string))
