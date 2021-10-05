@@ -9,8 +9,7 @@ CHANGE LOG
     -----
 
     * dot operator binding more tightly to lhs string than $in op is to rhs string
-        - was a problem for a few unary operators since default_prectable[] was re-ordered.
-        - should be fixed now (various unary ops precedence changed to 70 from 38)
+        - should be fixed now (extra case with prec. 70 for $in operator in unary switch)
 
     * Changed var backing store layout and name binding scheme.
     * replaced callstack id+space allocator.
