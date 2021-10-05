@@ -309,7 +309,6 @@ func help_ops() {
 !b          boolean negation   ( or not b )
 --n         pre-decrement
 ++n         pre-increment
-<- filename read file in as string literal
 sqr n       square (n*n)
 sqrt n      square root
 
@@ -318,6 +317,7 @@ $lc s       lower case string s
 $lt s       left trim leading whitespace from string s [\t\ \n\r]
 $rt s       right trim trailing whitespace from string s
 $st s       trim whitespace from both sides of string s
+$in f       read file 'f' in as string literal
 
 ?? b t [:,] f
   if expression b is true then t else f
@@ -331,6 +331,7 @@ a * b       numeric multiplication
 str_a * b   string repetition
 a / b       division
 a % b       modulo
+a ** b      power
 a -= b      subtractive assignment
 a += b      additive assignment
 a *= b      multiplicative assignment
@@ -346,6 +347,7 @@ a >> b      bitwise right shift
 a ~f b      array of matches from string a using regex b
 s.f         field access
 s .. e      builds an array of values in the range s to e
+s $out f    write string 's' to file 'f'
 
 array|map ?> "bool_expr"
   filters matches of "bool_expr" against elements in array
