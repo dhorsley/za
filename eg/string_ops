@@ -1,5 +1,5 @@
 
-q=split(<-"/usr/share/dict/words","\n")
+q=split($in "/usr/share/dict/words","\n")
 
 ts1=epoch_nano_time()
 println len(q?>`#.has_start("d")`->"$uc #")

@@ -15,7 +15,7 @@ const numeric = "0123456789.f"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_" // "{}"
 const doubleterms = "<>=|&-+*.?"
-const soloChars   = "+-/*.^!%;<>~=|,():[]&{}"
+// const soloChars   = "+-/*.^!%;<>~=|,():[]&{}$"
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
@@ -27,7 +27,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
-    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
+    "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_OUTFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -110,20 +110,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             goto get_nt_eval_point
         }
 
-        // symword = string(firstChar)+string(secondChar)
         switch string(firstChar)+string(secondChar) {
-        case "?>": // list filter
-            word="?>"
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "<-": // file read
-            word="<-"
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "->": // maps to
-            word="->"
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
         case "!=":
             word="!="
             startNextTokenAt=thisWordStart+2
@@ -136,19 +123,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             word=">="
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
-        case "=|":
-            word="=|"
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "=@":
-            word="=@"
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "~i","~f":
-            word=string(firstChar)+string(secondChar)
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "=<","-=","+=","*=","/=","%=":
+        case "-=","+=","*=","/=","%=","=<","=@","=|","->","~i","~f","?>":
             word=string(firstChar)+string(secondChar)
             startNextTokenAt=thisWordStart+2
             goto get_nt_eval_point
@@ -422,8 +397,6 @@ get_nt_eval_point:
         tokType = O_Filter
     case "->":
         tokType = O_Map
-    case "<-":
-        tokType = O_InFile
     case "<":
         tokType = SYM_LT
     case ">":
@@ -488,6 +461,10 @@ get_nt_eval_point:
             tokType = O_Slt
         case "$rt":
             tokType = O_Srt
+        case "$in":
+            tokType = O_InFile
+        case "$out":
+            tokType = O_OutFile
         case "enum":
             tokType = C_Enum
         case "init":

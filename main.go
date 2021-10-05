@@ -304,11 +304,12 @@ func run() {
     default_prectable[O_Divide]     =35
     default_prectable[O_Percent]    =35
     default_prectable[O_Multiply]   =35
+    default_prectable[O_OutFile]    =37
     default_prectable[SYM_POW]      =40
     default_prectable[SYM_PP]       =45
     default_prectable[SYM_MM]       =45
     default_prectable[LeftSBrace]   =45
-    default_prectable[SYM_DOT]      =47
+    default_prectable[SYM_DOT]      =61
     default_prectable[LParen]       =100
 
 

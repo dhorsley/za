@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-foreach line in <-"/dev/stdin"
+foreach line in $in "/dev/stdin"
     when line
     contains "^[aA]"
         println line
@@ -11,4 +11,4 @@ foreach line in <-"/dev/stdin"
     endwhen
 endfor
 
-println "\n\n",80*"-","\n",line_filter(<-"/dev/stdin","^[abc]")
+println "\n\n",80*"-","\n",line_filter($in "/dev/stdin","^[abc]")

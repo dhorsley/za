@@ -73,8 +73,8 @@ define showFiles()
         open_fd=""
         open_inode=""
 
-        on is_file("/proc/sys/fs/file-nr")  do open_fd    = <-"/proc/sys/fs/file-nr"
-        on is_file("/proc/sys/fs/inode-nr") do open_inode = <-"/proc/sys/fs/inode-nr"
+        on is_file("/proc/sys/fs/file-nr")  do open_fd    = $in "/proc/sys/fs/file-nr"
+        on is_file("/proc/sys/fs/inode-nr") do open_inode = $in "/proc/sys/fs/inode-nr"
 
         on open_fd=="" || open_inode=="" do return
 
@@ -120,7 +120,7 @@ define showMem()
     # gather
    
     slab_file="" 
-    on is_file("/proc/slabinfo") do slab_file=<-"/proc/slabinfo"
+    on is_file("/proc/slabinfo") do slab_file=$in "/proc/slabinfo"
 
     slabs=""
     if count(slab_file)>1
@@ -139,7 +139,7 @@ define showMem()
     endfor
 
     if is_file("/proc/meminfo")
-        foreach line in <-"/proc/meminfo"
+        foreach line in $in "/proc/meminfo"
             fields(line)
             if F[2]!=""
                 when F[1]
@@ -199,7 +199,7 @@ define showProcs(ct,uptime)
 
     foreach p in procs
         on !is_file(p) do break
-        ps = <-p
+        ps = $in p
 
         comm=tr(filter(ps,`\(.*?\)`),"d","()")
         ps=replace(ps,`\(.*?\)`,`"comm"`)
@@ -279,7 +279,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     proc_file=""
     if is_file("/proc/stat")
-        proc_file=<-"/proc/stat"
+        proc_file=$in "/proc/stat"
     else
         return sample_start_in
     endif
@@ -503,7 +503,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     foreach int_name in net_interfaces()
 
-        int_filter=filter(<-"/proc/net/dev","[ ]*"+int_name+":.*")
+        int_filter=filter($in "/proc/net/dev","[ ]*"+int_name+":.*")
         on int_filter=="" do continue
 
         fields(int_filter)
@@ -708,7 +708,7 @@ while !quit
     endif
 
     # capture system uptime
-    on is_file("/proc/uptime") do uptime=float(field(<-"/proc/uptime",1))
+    on is_file("/proc/uptime") do uptime=float(field($in "/proc/uptime",1))
 
     # show panes
     sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
