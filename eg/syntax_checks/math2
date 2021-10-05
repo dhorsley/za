@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-tests=<-"{=execpath()}/math2_tests.txt"
+tests= $in "{=execpath()}/math2_tests.txt"
 
 var ans float
 

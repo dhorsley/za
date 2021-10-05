@@ -12,7 +12,7 @@ input count param 1
 allwords=split( tr( replace( lower(read_file("/dev/stdin")),"[^a-zA-Z']"," "), "s"," "), " ")
 
 # alternatively:
-# allwords = <- "/dev/stdin" . lower . replace("[^a-zA-Z']"," ") . tr("s"," ") . split(" ")
+# allwords = $in "/dev/stdin" . lower . replace("[^a-zA-Z']"," ") . tr("s"," ") . split(" ")
 
 # count word occurrences
 foreach w in allwords

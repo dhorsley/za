@@ -216,6 +216,7 @@ const (
     O_Filter
     O_Map
     O_InFile
+    O_OutFile
     O_Ref
     O_Mut
     O_Slc
