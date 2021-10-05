@@ -68,7 +68,7 @@ func buildStringLib() {
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
-        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","line_head","line_tail",
+        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","at",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
     }
@@ -812,6 +812,11 @@ func buildStringLib() {
         }
         return -1,nil
 
+    }
+
+    slhelp["grep"] = LibHelp{in: "nl_string,regex", out: "nl_string", action: "Alias for line_filter."}
+    stdlib["grep"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        return stdlib["line_filter"](evalfs,ident,args...)
     }
 
     slhelp["line_filter"] = LibHelp{in: "nl_string,regex", out: "nl_string", action: "Returns lines from [#i1]nl_string[#i0] where regular expression [#i1]regex[#i0] matches."}

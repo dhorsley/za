@@ -846,7 +846,11 @@ func (p *leparser) unary(token Token) (interface{}) {
     }
     */
 
-	right,err := p.dparse(38) // between grouping and other ops
+	// right,err := p.dparse(38) // between grouping and other ops
+    // @note: ^^ didn't change this prec when default_prectable was
+    //   reordered and SYM_Dot and others were below 38. (it's now at ~60)
+
+	right,err := p.dparse(70) // between grouping and other ops
     if err!=nil { panic(err) }
 
 	switch token.tokType {
