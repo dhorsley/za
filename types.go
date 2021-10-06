@@ -131,7 +131,6 @@ type enum_s struct {
 }
 
 
-// @todo: this need splitting up for several reasons. primarily though because of the size:
 // struct for loop internals
 type s_loop struct {
 	loopVar          string           // name of counter
