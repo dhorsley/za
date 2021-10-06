@@ -1,0 +1,37 @@
+#!/usr/bin/za
+
+# do a 'export ZA_DB_PASS="something"' ahead of this script!
+
+set_env("ZA_DB_HOST","127.0.0.1")
+set_env("ZA_DB_ENGINE","mysql")
+set_env("ZA_DB_PORT","3306")
+set_env("ZA_DB_USER","daniel")
+
+h=db_init("mysql")
+println h
+
+res=h.db_query("show tables","|")
+println "\n[#1]table list[#-]\n",res
+
+println "\n[#1]user list[#-]"
+res=h.db_query("select Host,User,Password from user","|")
+
+struct s_u
+    host    string
+    user    string
+    pass    string
+endstruct
+
+var user s_u
+
+foreach l in res
+    fields(l,"|")
+    user.host=F[1]
+    user.user=F[2]
+    user.pass=F[3]
+    println format("%+v",user) 
+endfor
+
+h.db_close
+
+
