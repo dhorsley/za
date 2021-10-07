@@ -239,6 +239,11 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             (*curLine)++
         }
 
+        if matchQuote && input[currentChar]=='\\' {
+            // skip past
+            continue
+        }
+
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
             // didn't find a non-terminator, so get word and finish, but don't
             // increase word end position as we need to continue the next
@@ -269,7 +274,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
                 carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
                 carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
-                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
+                // carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
                 carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
                 goto get_nt_exit_point
             } else {

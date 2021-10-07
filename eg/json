@@ -53,7 +53,7 @@ end
 
 # MAIN
 
-f= <- "json-test.json"
+f= $in "json-test.json"
 on f==nil do exit 1,"Error: could not read JSON file."
 
 json=json_decode(f)
