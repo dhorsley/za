@@ -1,5 +1,13 @@
 #!/usr/bin/za
 
+define clean_name(n)
+    # some kind of injection check
+    on n == "" do return false,n
+    on n ~ `\\` do return false,n
+    n=n.replace("'","\'")
+    return n ~i "^[a-z -\\']*$",n
+end
+
 # do a 'export ZA_DB_PASS="something"' ahead of this script!
 
 set_env("ZA_DB_HOST","127.0.0.1")
@@ -13,8 +21,19 @@ println h
 res=h.db_query("show tables","|")
 println "\n[#1]table list[#-]\n",res
 
+
+# obviously, you would need to verify and validate the input
+# to avoid things like this: u="daniel' or 'a'='a" :
+
+while
+    prompt u "User to search for: " ; print
+    ok,u=clean_name(u)
+    on ok do break
+endwhile
+
 println "\n[#1]user list[#-]"
-res=h.db_query("select Host,User,Password from user","|")
+
+res=h.db_query("select Host,User,Password from user where user='{u}'","|")
 
 struct s_u
     host    string
