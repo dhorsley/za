@@ -1,0 +1,100 @@
+#!/usr/bin/za
+
+enum err { okay, openq, notquoted }
+
+expect_quotes       = false
+break_on_badquote   = true
+trim_leading_space  = true
+quote_char          = `"`
+separator           = `,`
+
+
+# PROCS
+
+define check_quotes(s,row,col)
+    on s.len==0 do return
+    bq=false
+    on expect_quotes and (s[0]!=quote_char or s[s.len-1]!=quote_char) do bq=true
+    if bq
+        on break_on_badquote do exit err.notquoted,"[#2]badly quoted at column #{col}, row #{row}[#-]"
+        setglob err_list+="badly quoted at column #{col}, row #{row}\n"
+    endif
+end
+
+
+#
+# MAIN
+#
+
+err_list=""
+
+file="/dev/stdin"
+input file optarg 1
+
+f=$in file
+
+var rows assoc
+
+foreach r in f
+
+    on r.len==0 do err_list+="Empty row #{=key_r+1}\n"
+
+    rows[key_r]=[]
+
+    colnum=1
+    escaping=false
+    in_quote=false
+    col=""
+
+    for e=0 to len(r)-1
+
+        if not escaping and r[e]==`\\`
+            escaping=true
+            continue
+        else
+            escaping=false
+        endif
+
+        if escaping
+            col+="\\"+r[e]
+            escaping=false
+        else
+            on r[e]==quote_char do in_quote=not in_quote
+            col+=r[e]
+        endif
+
+        if not in_quote
+            if r[e]==separator
+                # push column to array
+                col=col[:col.len-1]
+                on trim_leading_space do col=col.trim(-1)
+                rows[key_r]=rows[key_r].append(col)
+                check_quotes(col,key_r+1,colnum)
+                col=""
+                colnum++
+            endif
+        endif
+
+    endfor
+
+    on in_quote do exit err.openq,"[#2]open quote at eol #{=key_r+1}[#-]"
+
+    # push end column to array
+    on trim_leading_space do col=col.trim(-1)
+    rows[key_r]=rows[key_r].append(col)
+    check_quotes(col,key_r+1,colnum)
+
+    # print "ROW #%8d : %#v\n".format(key_r+1,rows[key_r])
+    escaping=false
+    col=""
+
+endfor
+
+println "\nIngest completed."
+on err_list.len>0 do println "\n[#2]Errors:\n{err_list}[#-]"
+println "Total rows : ",rows.len
+print
+
+# @todo: output mechanism
+
+

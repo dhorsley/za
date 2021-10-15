@@ -116,6 +116,15 @@ func pf(s string, va ...interface{}) {
 
     fmt.Print(s)
 
+    // test row update:
+        chpos:=0
+        c:=col
+        for ; chpos<len(s); c++ {
+            if c%MW==0          { row++; c=0 }
+            if s[chpos]=='\n'   { row++; c=0 }
+            chpos++
+        }
+    // end test
 }
 
 // apply ansi code translation to inbound strings

@@ -16,10 +16,9 @@ set_env("ZA_DB_PORT","3306")
 set_env("ZA_DB_USER","daniel")
 
 h=db_init("mysql")
-println h
 
 res=h.db_query("show tables","|")
-println "\n[#1]table list[#-]\n",res
+println "\n[#1]table list[#-]\n{res}\n"
 
 
 # obviously, you would need to verify and validate the input
@@ -50,6 +49,7 @@ foreach l in res
     user.pass=F[3]
     println format("%+v",user) 
 endfor
+print
 
 h.db_close
 

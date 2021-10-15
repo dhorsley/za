@@ -50,11 +50,14 @@ type Variable struct {
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
-    tokVal  interface{} // raw value storage
-	tokText string      // the content of the token
-    // sid     uint64      // symbol table id
-	tokType uint8       // token type from list in constants.go
-    subtype uint8       // sub type of identifiers
+    tokVal              interface{} // raw value storage
+	tokText             string      // the content of the token
+	tokType             uint8       // token type from list in constants.go
+    subtype             uint8       // sub type of identifiers
+    la_else_distance    int16       // look ahead markers
+    la_end_distance     int16
+    la_has_else         bool
+    la_done             bool
 }
 
 func (t Token) String() string {

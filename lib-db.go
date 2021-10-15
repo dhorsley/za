@@ -15,8 +15,6 @@ func buildDbLib() {
     features["db"] = Feature{version: 1, category: "db"}
     categories["db"] = []string{"db_init", "db_query", "db_close"} // ,"db_prepared_query"}
 
-    // @todo: fix this: engine not found when in subdir of za build!
-
     // open a db connection
     slhelp["db_init"] = LibHelp{in: "schema", out: "handle", action: "Returns a database connection [#i1]handle[#i0], based on inbound environmental variables."}
     stdlib["db_init"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {

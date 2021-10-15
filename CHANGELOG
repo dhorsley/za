@@ -30,6 +30,9 @@ CHANGE LOG
         - less small allocs + gc, but still plenty that can't be avoided because of 
            dynamic typing parts of the code. will just have to live with this.
 
+    * added lookahead caching (stored in ast token for C_If) on IF statements.
+        - currently only for IF..ELSE..ENDIF lookups. ensures the lookahead only happens once.
+
     * fixed trapInt handler (ctrl-c)
         - needed repointing to main ident space post changes above.
         - it was also pretty broken since we added multiple return values.
@@ -55,6 +58,8 @@ CHANGE LOG
 
     * removed siglock mutex.
 
+    * fixed mutex unlocking in C_Assert - could double unlock when recursed through with user-defined funcs.
+
     * the removal of the mutices above and other changes have contributed to around a 20% speed up in eval
         and general statement processing speed.
 
@@ -66,6 +71,8 @@ CHANGE LOG
     * stripped out caching in lex.go/getNextToken() as it offers no real gains any more.
 
     * updated za.vim
+
+    * fixed reverse() on []string.
 
 
     language features
@@ -117,6 +124,7 @@ CHANGE LOG
     * added varbind(name) to fetch the variable binding id for variable "name" - for debugging.
     * updated kind() to write float64 types as "float"
     * added grep() as alias for line_filter()
+    * added stripcc() lib call. (remove za colour codes from string)
 
 
 1.0.14
