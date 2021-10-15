@@ -2218,10 +2218,9 @@ tco_reentry:
 
         case C_Test:
 
-            testlock.Lock()
-
             // TEST "name" GROUP "group_name" ASSERT FAIL|CONTINUE
 
+            testlock.Lock()
             inside_test = true
 
             if testMode {
@@ -2347,35 +2346,28 @@ tco_reentry:
 
         case C_Assert:
 
-            testlock.Lock()
-
             if inbound.TokenCount < 2 {
-
                 parser.report(inbound.SourceLine,"Insufficient arguments supplied to ASSERT")
                 finish(false, ERR_ASSERT)
-
             } else {
 
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[1:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
 
                 if we.assign {
                     // someone typo'ed a condition 99.9999% of the time
-                    parser.report(inbound.SourceLine,
-                        sf("[#2][#bold]Warning! Assert contained an assignment![#-][#boff]\n  [#6]%v = %v[#-]\n",
-                            cet.assignVar,cet.text))
+                    parser.report(inbound.SourceLine,"[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
                     finish(false,ERR_ASSERT)
-                    testlock.Unlock()
                     break
                 }
 
                 if we.evalError {
-                    parser.report(inbound.SourceLine,"Could not evaluate expression in ASSERT statement.")
+                    parser.report(inbound.SourceLine,"Could not evaluate expression in ASSERT statement")
                     finish(false,ERR_EVAL)
-                    testlock.Unlock()
                     break
                 }
 
+                testlock.Lock()
                 switch we.result.(type) {
                 case bool:
                     var test_report string
@@ -2390,9 +2382,8 @@ tco_reentry:
 
                     if !we.result.(bool) {
                         if !under_test {
-                            parser.report(inbound.SourceLine,sf("Could not assert! ( %s )", we.text))
+                            parser.report(inbound.SourceLine,sf("Could not assert! ( %s )", cet.text))
                             finish(false, ERR_ASSERT)
-                            testlock.Unlock()
                             break
                         }
                         // under test
@@ -2408,22 +2399,21 @@ tco_reentry:
                         case "fail":
                             parser.report(inbound.SourceLine,sf("Could not assert! (%s)", we.text))
                             finish(false, ERR_ASSERT)
-                            testlock.Unlock()
                         case "continue":
                             parser.report(inbound.SourceLine,sf("Assert failed (%s), but continuing.", we.text))
                         }
                     } else {
                         if under_test {
                             test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
-                                group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, cet.text)
+                                group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine,cet.text)
                             testsPassed+=1
                             appendToTestReport(test_output_file,ifs, parser.pc, test_report)
                         }
                     }
                 }
+                testlock.Unlock()
 
             }
-            testlock.Unlock()
 
         case C_Help:
             hargs := ""
@@ -3660,8 +3650,22 @@ tco_reentry:
         case C_If:
 
             // lookahead
-            elsefound, elsedistance, er := lookahead(source_base, parser.pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
-            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+            var elsefound, endfound, er bool
+            var elsedistance, enddistance int16
+
+            if ! statement.la_done {
+                elsefound, elsedistance, er = lookahead(source_base, parser.pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
+                endfound, enddistance, er = lookahead(source_base, parser.pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+                statement.la_else_distance=elsedistance
+                statement.la_end_distance=enddistance
+                statement.la_has_else=elsefound
+                statement.la_done=true
+            } else {
+                endfound=true; er=false
+                elsefound=statement.la_has_else
+                elsedistance=statement.la_else_distance
+                enddistance=statement.la_end_distance
+            }
 
             if er || !endfound {
                 parser.report(inbound.SourceLine,"Missing ENDIF for this IF")

@@ -154,7 +154,7 @@ func buildOsLib() {
         return nil, err
     }
 
-    slhelp["cd"] = LibHelp{in: "string", out: "", action: "Changes directory to a given path."}
+    slhelp["cd"] = LibHelp{in: "string", out: "bool", action: "Changes directory to a given path."}
     stdlib["cd"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
         err=syscall.Chdir(args[0].(string))
@@ -162,13 +162,13 @@ func buildOsLib() {
         return false, nil
     }
 
-    slhelp["can_read"] = LibHelp{in: "string", out: "", action: "Check if path is readable."}
+    slhelp["can_read"] = LibHelp{in: "string", out: "bool", action: "Check if path is readable."}
     stdlib["can_read"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("can_read",args,1,"1","string"); !ok { return nil,err }
         return unix.Access(args[0].(string),unix.R_OK) == nil, nil
     }
 
-    slhelp["can_write"] = LibHelp{in: "string", out: "", action: "Check if path is writeable."}
+    slhelp["can_write"] = LibHelp{in: "string", out: "bool", action: "Check if path is writeable."}
     stdlib["can_write"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("can_write",args,1,"1","string"); !ok { return nil,err }
         return unix.Access(args[0].(string),unix.W_OK) == nil, nil
