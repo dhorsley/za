@@ -1,0 +1,13 @@
+#!/usr/bin/za
+
+define index(ary,e)
+    foreach i in ary
+        on i==e do return key_i
+    endfor
+    return -1
+end
+
+test "t_index" group "funcs" assert fail
+    assert index([1,2,3,4],3) == 2
+    assert index([1,2,3,4],5) == -1
+endtest

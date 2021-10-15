@@ -342,6 +342,7 @@ syntax match db_functions "\(.\|\s\*\)*db_close\s*("he=e-1
 
 syntax match string_functions "\(.\|\s*\)next_match\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)stripquotes\s*("he=e-1
+syntax match string_functions "\(.\|\s*\)stripcc\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)addansi\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)stripansi\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)pad\s*("he=e-1
@@ -356,6 +357,7 @@ syntax match string_functions "\(.\|\s*\)match\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)filter\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)line_match\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)line_filter\s*("he=e-1
+syntax match string_functions "\(.\|\s*\)grep\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)split\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)join\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)collapse\s*("he=e-1
@@ -586,8 +588,8 @@ hi WarningMsg   ctermfg=black ctermbg=green
 hi MatchParen   ctermbg=Blue ctermfg=Yellow
 hi InnerBrace   ctermbg=darkGray ctermfg=Blue
 hi Error        ctermbg=Red
-hi uifunctionlist ctermfg=darkCyan cterm=italic
-hi userfunctionlist ctermfg=darkYellow cterm=italic
+hi uifunctionlist ctermfg=Green cterm=italic
+hi userfunctionlist ctermfg=Yellow cterm=italic
 hi functionlist ctermfg=darkCyan cterm=italic
 hi Search       ctermbg=darkGray ctermfg=lightCyan
 hi LineNr       ctermfg=blue

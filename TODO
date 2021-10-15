@@ -20,7 +20,7 @@ TODO
             - it's going to need some serious diff inspection to pull it in line again.
             - will be worth splitting more of the code to the console_common.go file.
             - lib-os_windows.go is also quite out of date now, with missing lib calls.
-                - this may be okay for some of them, as not all call supported under windows,
+                - this may be okay for some of them, as not all calls are supported under windows,
                     but needs checking and documenting.
 
     * There is still a bug in startup on windows when using the -u flag.
@@ -28,6 +28,12 @@ TODO
                very frequently from one execution to the next. 
             - chances are it's a timing/scheduling thing, but it could easily not be us at all.
             - need to figure out a way to inspect the problem on windows.
+
+    * interactive mode bug : post-inc and post-dec triggers false negative in global var name
+        check in interactive mode.
+            - it is looking up var names in fs 2/mident instead of fs 1/mident (i think)
+            - should really unify fs 1+2 regardless of interactive mode, but it's more work
+                that i'm trying to dodge!
 
 
 LATER / UNDECIDED

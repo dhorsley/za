@@ -70,7 +70,7 @@ func buildStringLib() {
         "substr", "gsub", "replace", "trim", "lines", "count",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","at",
-        "split", "join", "collapse","strpos","stripansi","addansi","stripquotes",
+        "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc",
     }
 
     compileCache:=make(map[string]regexp.Regexp)
@@ -178,7 +178,8 @@ func buildStringLib() {
             ln := len(args[0].([]string)) - 1
             r := make([]string, 0, ln+1)
             for i := ln; i >= 0; i-- {
-                r[ln-i] = args[0].([]string)[i]
+                r = append(r, args[0].([]string)[i])
+                // was: r[ln-i] = args[0].([]string)[i]
             }
             return r, nil
         case []uint:
@@ -265,6 +266,12 @@ func buildStringLib() {
     stdlib["stripansi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("stripansi",args,1,"1","string"); !ok { return nil,err }
         return Strip(args[0].(string)), nil
+    }
+
+    slhelp["stripcc"] = LibHelp{in: "string", out: "string", action: "Remove Za colour codes from string."}
+    stdlib["stripcc"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("stripcc",args,1,"1","string"); !ok { return nil,err }
+        return StripCC(args[0].(string)), nil
     }
 
     slhelp["stripquotes"] = LibHelp{in: "string", out: "string", action: "Remove outer quotes (double, single or backtick)"}
