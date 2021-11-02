@@ -2,14 +2,6 @@
 
 module "web_modules/aws_handler"
 
-# GLOBALS
-
-HOST="127.0.0.1"
-PORT=8080
-HOME_PATH="/home/daniel/www"
-
-trapInt="cleanup()"
-
 # FUNCTIONS
 
 define cleanup()
@@ -33,7 +25,10 @@ define negreg(inp,matcher)
     return out
 end
 
+
 # MAIN
+
+trapInt="cleanup()"
 
 when release_id()
 is "ubuntu"
@@ -41,11 +36,9 @@ is "ubuntu"
     println "Found interface : {inter}"
 endwhen
 
-# HOST=interface_ip(inter)
-
-on get_env("PROXY_HOST")!="" do HOST=get_env("PROXY_HOST")
-on get_env("PROXY_PORT")!="" do PORT=get_env("PROXY_PORT")
-on get_env("PROXY_PATH")!="" do HOME_PATH=get_env("PROXY_PATH")
+HOST        =get_env("PROXY_HOST") or "127.0.0.1"
+PORT        =int(get_env("PROXY_PORT") or "8080")
+HOME_PATH   =get_env("PROXY_PATH") or "/home/daniel/www"
 
 
 # Set up an access log file
@@ -150,8 +143,8 @@ web_serve_path(suid, "s", "^/(.*)/$", "http://{HOST}:61440/$1/index.html")
 ipListRefreshMaxCount=12*60*24
 ipListRefreshCount=ipListRefreshMaxCount
 
-region="eu-west-1"
-on get_env("AWS_DEFAULT_REGION")!="" do region=get_env("AWS_DEFAULT_REGION")
+region=get_env("AWS_DEFAULT_REGION") or "eu-west-1"
+println "Region: ",region
 
 while web_serve_up(suid)
 
@@ -166,7 +159,6 @@ while web_serve_up(suid)
 
             thisRegion = json_query(tmp.result, `.prefixes[] | select(.region=="{region}" and .service=="EC2") | .ip_prefix`)
 
-            print "region :\n",thisRegion,"\n"
             println "Completed in ",time_diff(epoch_nano_time(),s)," us"
 
         else

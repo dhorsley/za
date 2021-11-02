@@ -106,6 +106,7 @@ func pf(s string, va ...interface{}) {
             if s[chpos]=='\n'   { row++; c=0 }
             chpos++
         }
+        // past:=row-(MH-BMARGIN) ; if past>1 { fmt.Printf("\033[%dS",past) }
         return
     }
 

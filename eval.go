@@ -7,7 +7,6 @@ import (
     "strconv"
     "math"
     "net/http"
-//    "os"
     "sync"
     "sync/atomic"
     str "strings"
@@ -25,7 +24,7 @@ func UintPow(n, m uint64) (result uint64) {
         return 1
     }
     result = n
-    for i := uint64(2); i <= m; i++ {
+    for i := uint64(2); i <= m; i+=1 {
         result *= n
     }
     return result
@@ -33,6 +32,11 @@ func UintPow(n, m uint64) (result uint64) {
 
 
 func (p *leparser) Eval(fs uint32, toks []Token) (interface{},error) {
+
+    // short circuit pure numeric literals
+    if len(toks)==1 && toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil }
+
+    //    pf("reached dparse: %+v\n",toks)
 
     p.fs     = fs
     p.tokens = toks
@@ -49,6 +53,7 @@ type leparser struct {
     prev        Token       // bodge for post-fix operations
     preprev     Token       //   and the same for assignment
     fs          uint32      // working function space
+    mident      uint32      // fs of main() (1 or 2 depending on interactive mode)
     len         int16       // assigned length to save calling len() during parsing
     line        int16       // shadows lexer source line
     pc          int16       // shadows program counter (pc)
@@ -184,6 +189,16 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
             left = compare(left,right,">=")
 
         case SYM_LOR,C_Or:
+            switch left.(type) {
+            case string:
+                switch right.(type) {
+                case string:
+                    if left.(string)=="" {
+                        return right.(string),nil
+                    }
+                    return left.(string),nil
+                }
+            }
             left = asBool(left) || asBool(right)
         case SYM_LAND:
             left = asBool(left) && asBool(right)
@@ -964,9 +979,9 @@ func (p *leparser) preIncDec(token Token) interface{} {
     there=VarLookup(p.fs,p.ident,vartok.tokText)
     activeFS:=p.fs
     if !there {
-        if VarLookup(2,&mident,vartok.tokText) {
-            val,_=vget(2,&mident,vartok.tokText)
-            activeFS=2
+        if VarLookup(p.mident,&mident,vartok.tokText) {
+            val,_=vget(p.mident,&mident,vartok.tokText)
+            activeFS=p.mident
         }
         if !there { panic(fmt.Errorf("invalid variable name in pre-inc/dec '%s'",vartok.tokText)) }
     } else {
@@ -987,8 +1002,8 @@ func (p *leparser) preIncDec(token Token) interface{} {
         finish(false,ERR_EVAL)
         return nil
     }
-    if activeFS==2 {
-        vset(2,&mident,vartok.tokText,n)
+    if activeFS==p.mident {
+        vset(p.mident,&mident,vartok.tokText,n)
     } else {
         vset(p.fs,p.ident,vartok.tokText,n)
     }
@@ -1013,11 +1028,19 @@ func (p *leparser) postIncDec(token Token) interface{} {
     var val interface{}
 
     activeFS:=p.fs
+
+    var mloc uint32
+    if interactive {
+        mloc=1
+    } else {
+        mloc=2
+    }
+
     activePtr:=p.ident
     if ! VarLookup(p.fs,p.ident,vartok.tokText) {
-        if VarLookup(2,&mident,vartok.tokText) {
-            val,_=vget(2,&mident,vartok.tokText)
-            activeFS=2
+        if VarLookup(mloc,&mident,vartok.tokText) {
+            val,there=vget(mloc,&mident,vartok.tokText)
+            activeFS=mloc
             activePtr=&mident
         }
         if !there { panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText)) }
@@ -1056,19 +1079,6 @@ func (p *leparser) number(token Token) (num interface{}) {
     // test code:
     num=token.tokVal
 
-    /* TEST REMOVAL (dh):
-    if token.tokVal==nil {
-        num, err = strconv.ParseInt(token.tokText, 10, 0)
-        if err!=nil {
-            num, err = strconv.ParseFloat(token.tokText, 0)
-        } else {
-            num=int(num.(int64))
-        }
-    } else {
-        num=token.tokVal
-    }
-    */
-
     if num==nil {
         panic(err)
     }
@@ -1103,7 +1113,7 @@ func (p *leparser) command() (string) {
 
 func (p *leparser) identifier(token Token) (interface{}) {
 
-    // pf("-- identifier query -> %+v[#CTE]\n",token)
+    // pf("-- identifier query -> %#v[#CTE]\n",token)
 
     if token.subtype!=subtypeNone {
         switch token.subtype {
@@ -1117,17 +1127,18 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // filter for functions here
-
+    //  this also sets the subtype for funcs defined late.
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             // check if exists in user defined function space
             if fnlookup.lmexists(token.tokText) {
+                p.tokens[p.pos].subtype=subtypeUser
                 return token.tokText
             }
         } else {
+            p.tokens[p.pos].subtype=subtypeStandard
             return token.tokText
         }
-
         panic(fmt.Errorf("function '%v' does not exist",token.tokText))
     }
 
@@ -1144,14 +1155,14 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // global lookup:
 
-    if !interactive {
+    // if !interactive {
         // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
-        if val,there=vget(2,&mident,token.tokText); there {
+        if val,there=vget(p.mident,&mident,token.tokText); there {
             // pf("-> Found value (global) of : %+v\n",val)
             // pf("ident table -> \n%+v\n",&mident)
             return val
         }
-    }
+    // }
 
     // permit references to uninitialised variables
     if permit_uninit {
@@ -1808,8 +1819,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
             //  okay for now, but could improve. e.g. if p.preprev 
             //  == SYM_DOT || RBrace then work backwards to capture components.
             //  would also depend on length of tks.
-
-            // ++ and -- DO NOT WORK WITH SETGLOB CURRENTLY
 
             // override p.prev value as postIncDec uses it and we will be throwing 
             //  away the p.* values shortly after this use.

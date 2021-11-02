@@ -3,7 +3,7 @@ Za Interpreter
 ==============
 
 Maintainer          : dhorsley@gmail.com
-Last Readme Update  : 18-01-2021
+Last Readme Update  : 25-10-2021
 
 Manual is here      : https://zalang.org/man/index.html
 
@@ -39,15 +39,6 @@ These are the things I want to nail down before general release:
             However, there are some already included, which should be treated as experimental features
             which may eventually be dropped. (e.g. pixelgl support may go, but something around formats
             like svg is more likely to stay.)
-
-            The pixelgl support was only included out of curiosity and is likely to go again soon.
-            It doesn't fit with the remit of the language really, but does open up some use cases. However,
-            it greatly increases the binary size, adds a lot of platform-specific bodges, complicates the
-            compilation/build process and adds undesirable dependencies in the libraries. 
-
-            It was originally included partially to see what complications would be exhibited supporting third-party
-            libraries. We need a better method for doing this dynamically at run-time under the za programmer's
-            control. This is not a reflection on the pixelgl libraries themselves, as they were great!
 
     5. things missing from the online manual page.
 

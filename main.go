@@ -53,13 +53,6 @@ var BuildComment string
 var BuildVersion string
 var BuildDate string
 
-
-// enable UI?
-var hasUI bool
-
-// enable mutices in variable handling functions
-// var lockSafety bool=false
-
 // global unique name counter
 var globseq uint32
 
@@ -157,6 +150,7 @@ var pe io.ReadCloser        // process error stream
 
 var row, col int            // for pane + terminal use
 var MW, MH int              // for pane + terminal use
+var BMARGIN int             // bottom offset to stop io at
 var currentpane string      // for pane use
 
 var cmdargs []string        // cli args
@@ -234,7 +228,6 @@ var PromptTemplate string
 
 var concurrent_funcs int32
 
-var winAvailable bool
 
 //
 // MAIN
@@ -243,7 +236,7 @@ var winAvailable bool
 // default precedence table that each parser copy receives. @todo: find a better home for this.
 var default_prectable [END_STATEMENTS]int8
 
-func run() {
+func main() {
 
     // time zone handling
     if tz := os.Getenv("TZ"); tz != "" {
@@ -265,6 +258,8 @@ func run() {
     if runtime.GOOS!="windows" {
         setWinchSignal(sigs)
     }
+
+    BMARGIN=4
 
     go func() {
         for {
@@ -430,7 +425,6 @@ func run() {
     // interpolation parser
     interparse=&leparser{}
     interparse.prectable=default_prectable
-    // interparse.force_lookup = true
 
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
@@ -451,11 +445,9 @@ func run() {
     var a_mark_time    =   flag.Bool("m",false,"Mark co-process command progress")
     var a_ansi         =   flag.Bool("c",false,"disable colour output")
     var a_ansiForce    =   flag.Bool("C",false,"enable colour output")
-//     var a_lock_safety  =   flag.Bool("l",false,"Enable variable mutex locking for multi-threaded use")
     var a_shell        = flag.String("s","","path to coprocess shell")
     var a_shellrep     =   flag.Bool("Q",false,"enables the shell info reporting")
     var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
-    var a_ui           =   flag.Bool("u",false,"enables the local UI")
     var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte.")
 
     flag.Parse()
@@ -567,11 +559,6 @@ func run() {
 
     test_group_filter = *a_test_group
 
-    if *a_ui {
-        hasUI=true
-        winAvailable=true
-    }
-
     // disable the coprocess command
     if *a_noshell {
         no_shell=true
@@ -622,7 +609,6 @@ func run() {
                             coprocLoc="/bin/sh"
                             coprocArgs=[]string{"-i"}
                         } else {
-                            // vset(0,&gident,"@noshell",true)
                             vset(0,&gident, "@noshell",no_shell)
                             coprocLoc="/bin/false"
                         }
@@ -637,7 +623,6 @@ func run() {
                 shellname:=path.Base(coprocLoc)
                 // a few common shells require use of external printf
                 // for separating output using non-printables.
-                // - @todo: we should find a better way than this.
                 if shellname=="dash" || shellname=="ash" || shellname=="sh" {
                     // specify that NextCopper() should use external printf
                     // for generating \x1e (or other cmdsep) in output
@@ -747,14 +732,21 @@ func run() {
                     // evaluate args
                     var argnames []string
 
+                    var mloc uint32
+                    if interactive {
+                        mloc=1
+                    } else {
+                        mloc=2
+                    }
+
                     // populate inbound parameters to the za function
                     // call, with evaluated versions of each.
                     if argString != "" {
                         argnames = str.Split(argString, ",")
                         for k, a := range argnames {
-                            aval, err := ev(interparse,1,a)
+                            aval, err := ev(interparse,mloc,a)
                             if err != nil {
-                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], 1, err)
+                                pf("Error: problem evaluating '%s' in function call arguments. (fs=%v,err=%v)\n", argnames[k], mloc, err)
                                 finish(false, ERR_EVAL)
                                 break
                             }
@@ -927,10 +919,6 @@ func run() {
     loggingEnabled = false
 
 
-    // pixel window handling setup
-    init_ui_features()
-
-
     // interactive mode support
     if (*a_program=="" && exec_file_name=="") || interactive {
 
@@ -1008,8 +996,9 @@ func run() {
 
                 if eof || broken { break }
 
+
                 row++
-                if row>MH { row=MH ; pf("\n") }
+                if row>MH-BMARGIN { row=MH-BMARGIN ; pf("\n") }
                 col = 1
                 at(row, col)
 
@@ -1074,6 +1063,11 @@ func run() {
 
                 // throw away break and continue positions in interactive mode
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
+
+                past:=0
+                if row>MH-BMARGIN { row=MH ; past=BMARGIN }
+                if past>0 { for ;past>0;past-- { fmt.Print("\n") } }
+
                 if endFunc {
                     break
                 }

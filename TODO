@@ -9,40 +9,32 @@ lots, i'm sure.
 TODO
 ----
 
-    * There are currently a few issues in the Windows build around async and ui operations.
+    * There are currently a few issues in the Windows build around async.
         - i'll get to these eventually, but not rushing them. only the linux/alpine builds are
             considered to be of any import currently.
-        - there's likely to be a few more breaking bugs exhibiting in the windows build before
-            we get to a stable state on Linux. they'll get ironed out over time.
         - 23-09-2021: tested windows build again.
             - it required a little update in console_windows.go to compile and does still function.
             - however, there are several feature changes and fixes not yet included in it.
+                - (this includes the extra fixes for tab completion)
             - it's going to need some serious diff inspection to pull it in line again.
             - will be worth splitting more of the code to the console_common.go file.
             - lib-os_windows.go is also quite out of date now, with missing lib calls.
                 - this may be okay for some of them, as not all calls are supported under windows,
                     but needs checking and documenting.
 
-    * There is still a bug in startup on windows when using the -u flag.
-            - it may be to do with external factors like a/v or the OS, but app startup can fail
-               very frequently from one execution to the next. 
-            - chances are it's a timing/scheduling thing, but it could easily not be us at all.
-            - need to figure out a way to inspect the problem on windows.
+    * accessArray in eval_ops.go : field access slowdown due to converting uint8 to string.
+        - as part of the string/numeric element lookup, there's a string conversion (ifield).
+            it's pretty slow when doing a lot of array access.
 
-    * interactive mode bug : post-inc and post-dec triggers false negative in global var name
-        check in interactive mode.
-            - it is looking up var names in fs 2/mident instead of fs 1/mident (i think)
-            - should really unify fs 1+2 regardless of interactive mode, but it's more work
-                that i'm trying to dodge!
+    * coalesce windows/linux builds.
+        - lib-os is missing some functions in windows file, but probably only
+            things which Windows FS doesn't support. need to confirm.
+        - some functional differences in getch() and other input routines, but mostly expected.
+            not worth correcting yet.
 
 
 LATER / UNDECIDED
 -----------------
-
-    * move StringLiteral value from .tokText to .value field.
-        - this will involve changing references throughout the code, not just in the lexer/phraser.
-        - then, start removing .tokText from token types which don't require it.
-            - i.e. identifiers, literals and anything else where it is duplicate data.
 
     * make fixed size variable backing stores dynamic arrays.
         - currently a fixed var count per func of 320(?)

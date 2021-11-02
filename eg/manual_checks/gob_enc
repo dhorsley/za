@@ -1,0 +1,12 @@
+#!/usr/bin/za
+
+struct sq ; l []; endstruct
+
+q=[]
+var z sq
+
+z.l=q
+
+write_struct("/tmp/dhq",ref z)
+
+

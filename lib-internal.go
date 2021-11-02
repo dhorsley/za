@@ -79,6 +79,7 @@ func enum_names(e string) []string {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]string{}
+    if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
         return l
     }
@@ -92,6 +93,7 @@ func enum_all(e string) []interface{} {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]interface{}{}
+    if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
         return l
     }
@@ -679,7 +681,13 @@ func buildInternalLib() {
         var v interface{}
         var found bool
         globlock.RLock()
-        if v, found = vget(2,&mident, args[0].(string)); !found {
+        var mloc uint32
+        if interactive {
+            mloc=1
+        } else {
+            mloc=2
+        }
+        if v, found = vget(mloc,&mident, args[0].(string)); !found {
             globlock.RUnlock()
             return false, nil
         }
