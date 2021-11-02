@@ -1,0 +1,40 @@
+#!/usr/bin/za
+
+doc `
+    Simple Sieve of Eratosthenes
+`
+
+var number,i,j int
+
+input number optarg 1
+
+var primes [number+1] int
+
+for i = 2 to number
+    primes[i] = i
+endfor
+
+
+i = 2
+while i*i <= number
+
+    if primes[i] != 0
+        for j=2 to number-1
+            if primes[i]*j > number
+                break
+            else
+                primes[primes[i]*j]=0
+            endif
+        endfor 
+    endif
+
+    i++
+
+endwhile
+
+
+for i = 2 to number
+    on primes[i]!=0 do println "%d".format(primes[i])
+endfor
+
+

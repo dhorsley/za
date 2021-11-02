@@ -16,7 +16,12 @@ on do_upx=="upx" do upx_enable=true
 GCLIMIT = "GOGC=80 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
-bvers =  "1.0.15"
+GCCGOFLAGS=""
+doc ` uncomment line below for testing with GCC-GO compiler:
+    GCCGOFLAGS = `-compiler=gccgo -gccgoflags='-O3 -march=native -ffast-math -lpthread'`
+`
+
+bvers =  "1.0.16"
 bdate =| date "+%d-%m-%Y %H:%M"
 
 upxfound=| which upx | wc -l
@@ -26,7 +31,7 @@ if ! os() ~ "^freebsd"
     when lower(tgt)
     has tgt ~i "^(alpine|aws)$"
         if buildMusl(bvers,bdate.out)!=0
-            exit e.build,"Failed to build no ui version."
+            exit e.build,"Failed to build musl version."
         endif
     is "libc"
         if buildLibc(bvers,bdate.out)!=0

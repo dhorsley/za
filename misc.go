@@ -455,7 +455,7 @@ func ihelp(hargs string) {
 
             if err == nil {
                 cmdMatchList = sparkle(str.TrimSpace(re.FindString(str.ToLower(cmdpage))))
-                remspace, _ := regexp.Compile(`[ ]+`)
+                remspace := regexp.MustCompile(`[ ]+`)
                 cmdMatchList = remspace.ReplaceAllString(cmdMatchList, " ")
                 if cmdMatchList != "" {
                     foundCommand = true

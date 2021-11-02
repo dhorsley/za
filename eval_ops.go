@@ -6,12 +6,10 @@ import (
     "fmt"
     "math"
     "net/http"
-//    "os"
     "unsafe"
     "reflect"
     "strconv"
     str "strings"
-//    "sync/atomic"
 )
 
 
@@ -45,10 +43,16 @@ func typeOf(val interface{}) string {
     return "<unknown type>"
 }
 
-func asBool(val interface{}) bool {
-    b, ok := val.(bool)
-    if !ok {
-        panic(fmt.Errorf("type error: required bool, but was %s", typeOf(val)))
+func asBool(val interface{}) (b bool) {
+    switch v:=val.(type) {
+    case bool:
+        b = v
+    case string:
+        b = v!=""
+    case int, int32, int64, uint, uint32, uint64:
+        b = v!=0
+    default:
+            panic(fmt.Errorf("type error: required bool, but was %s", typeOf(v)))
     }
     return b
 }
@@ -327,8 +331,8 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     // int * struct = repeat
     s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
     s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
-    if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e++ { ary=append(ary,val2) }; return ary }
-    if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e++ { ary=append(ary,val1) }; return ary }
+    if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e+=1 { ary=append(ary,val2) }; return ary }
+    if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e+=1 { ary=append(ary,val1) }; return ary }
 
     // panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
     panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
@@ -939,6 +943,7 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
     case string:
         ifield,invalid:=GetAsInt(field)
         if !invalid {
+            // pf("obj-if : (%T) %+v\n",obj[ifield],obj[ifield])
             return string(obj[ifield])
         }
         panic(fmt.Errorf("string element [%+v] cannot be cast to int",field))

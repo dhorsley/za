@@ -351,8 +351,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
         rowLen:=int(dispL-1)/MW
-        if srow>MH { srow=MH }
-        if srow==MH { srow=srow-rowLen }
+        if srow>MH-BMARGIN { srow=MH-BMARGIN }
+        if srow==MH-BMARGIN { srow=srow-rowLen }
         if lastsrow!=srow {
             m1:=min(lastsrow,srow)
             m2:=max(lastsrow,srow)
@@ -383,10 +383,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             pf(str.Repeat(mask,inputL))
         }
         clearToEOL()
-        pf(helpstring)
+        at(irow+1,1); pf(helpstring); clearToEOL()
 
         // move cursor to correct position (cpos)
-        if irow==MH && cursAtCol==1 { srow--; rowLen++; pf("\n\033M") }
+        if irow==MH-BMARGIN && cursAtCol==1 { srow--; rowLen++; pf("\n\033M") }
         cposCursAtCol:=((icol+cpos-1)%MW)+1
         cposRowLen:=int(icol+cpos-1)/MW
         at(srow+cposRowLen, cposCursAtCol)
@@ -432,6 +432,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if startedContextHelp {
                     contextHelpSelected = true
                     clearChars(irow, icol, inputL)
+                    for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                     helpstring = ""
                     break
                 }
@@ -461,9 +462,9 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         if newstart==-1 { newstart=0 }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
                         cpos = len(s)
-                        helpstring = ""
+                        for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                     }
-
+                    helpstring = ""
                 }
 
                 // normal space input
@@ -497,7 +498,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
                 if startedContextHelp && len(helpstring) == 0 {
                     startedContextHelp = false
+                    helpstring=""
                 }
+
+                for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
 
                 if cpos > 0 {
                     s = removeBefore(s, cpos)
@@ -612,6 +616,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     funcnames = nil
 
                     startedContextHelp = true
+                    for i:=irow+1;i<=irow+BMARGIN;i++ { at(i,1); clearToEOL() }
                     helpstring = ""
                     selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
 
@@ -650,14 +655,16 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         selectedStar = -1 // also reset the selector position for auto-complete
                     }
                 }
+
+                // @todo(dh): this is lazy. clears context help after an input change
+                //   needs improving throughout.
+                for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
             }
 
         } // paste or char input end
 
 
         // completion hinting population
-
-        helpstring = ""
 
         if startedContextHelp {
 
@@ -693,7 +700,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             //.. build display string
 
-            helpstring = "   << [#bgray][#6]"
+            helpstring = "help> [#bgray][#6]"
 
             for cnt, v := range helpColoured {
                 starMax = cnt
@@ -713,6 +720,28 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             helpstring += "[#-][##]"
 
+            // don't show desc+function help if current word is a keyword instead of function.
+            //   otherwise, find desc+func for either remaining guess in context list 
+            //   or the current word.
+
+            if len(helpList)>0 {
+                if _,found:=keywordset[helpList[0]]; !found {
+                    pos:=0
+                    if len(helpList)>1 {
+                        // show of desc+function help if current word completes a function (but still other completion options)
+                        for p,v:=range helpList {
+                            if wordUnderCursor==v {
+                                pos=p
+                                break
+                            }
+                        }
+                    }
+                    hla:=helpList[pos]
+                    hla=hla[:len(hla)-2]
+                    helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
+                }
+            }
+
         }
 
         if contextHelpSelected {
@@ -726,19 +755,17 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     add:=""
                     if len(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
-                    spos := cpos
-                    s = insertWord(s, newstart, add+helpList[0]+" ")
+                    s = insertWord(s, newstart, add+helpList[0]) // +" ")
                     if bpos:=str.IndexByte(s,'('); bpos!=-1 {
-                        // inserting a func so move cpos to bpos+1
-                        cpos = spos + bpos
+                        // inserting a func so move cpos
+                        cpos = newstart+len(helpList[0])+1
                     } else {
                         cpos = len(s)
                     }
-                    l := displayedLen(s)
-                    clearChars(irow, icol, l)
-                    helpstring = ""
+                    for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                 }
             }
+            helpstring = ""
             contextHelpSelected = false
             startedContextHelp = false
         }

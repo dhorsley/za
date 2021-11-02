@@ -2,6 +2,92 @@
 CHANGE LOG
 =============================================================================================
 
+1.0.16
+======
+
+    library changes
+    ---------------
+
+    * Removed lib-ui and supporting code.
+        - was an experimental feature. it worked and is still available in 1.0.15
+          but it will not be included going forward. it was simply too heavyweight a
+          feature to support for the occasional use it would receive.
+
+
+    fixes
+    -----
+
+    * Updated trapInt and general handling around interactive mode main ident id.
+    * fixed: interactive mode / post-inc/-dec triggers false negative in global var name
+    * fixed: setglob post-inc/-dec.
+    * now recognising [] of types and interface{} as a type in struct read/writes
+       from/to file, (in actor.go/s2m and actor.go/m2s).
+        - also now auto registering the basic struct field types in gob.Register.
+    * added bottom margin setting for interactive mode
+        - pre-emptive inclusion so that we can add better interactive help later.
+    * poked around a bit tidying tab completion output.
+        - moved from rhs of input to lines beneath instead.
+        - fixed some of the random seeming cursor positions after completion selection
+            - still needs more bug whacking.
+        - added func desc when single func remains in completion text.
+            - added input parameters to help text.
+    * fixed bug in enum_all() and enum_names() (crash on invalid enum name filter)
+
+
+    language changes
+    ----------------
+
+    * (experimental) Added some auto casting in logical OR checks:
+        - ints convert as 0:false, not-zero:true
+        - strings convert as "":false, not-empty:true
+
+    * (experimental) Added an explicit string OR string test:
+        - returns l.h.s. string if l.h.s. is non-empty
+        - returns r.h.s. string if l.h.s. is ""
+        - this allows for setting string defaults, for example:
+            region=get_env("AWS_DEFAULT_REGION") or "eu-west-1"
+        - may also add similar for ints if the above doesn't prove bad in some way.
+
+    * Added break level count to BREAK statement.
+        - arguments treated as expression - must eval to int.
+        - sets the number of FOR/FOREACH/WHILE/WHEN levels to escape to.
+        - e.g.
+
+            while
+                for e=1 to 20
+                    break 1
+                endfor
+            endwhile
+
+        - ... "break 1" escapes to between endfor and endwhile
+        - ... "break 2" escapes to after the endwhile.
+        - ... "break 0" or no argument acts like break 1.
+        - still considering adding more extension keywords, so treat this change 
+            as experimental for now.
+
+        - may also add "break [for|foreach|while|when]" to make break skip to the outside of
+            the next matching construct type. i.e. from example above, "break 2" == "break while"
+        - ... this would be of no use for hopping over multiples of a given type,
+            but it may be more readable. will update here soon. e.g.:
+
+        a="two"
+        when a
+        is "one"
+            print
+        is "two"
+            for e = 1 to 20
+                break when
+            endfor
+        is "three"
+            print
+        endwhen
+        assert e == 1
+
+        - ... may also add a "last break" note field for enumerating the break type after flow continues.
+            - this one is much more unlikely, need to think it through first.
+                - this may be useful as a poor man's exceptions for exit cleanups, but still.. unlikely.
+
+
 1.0.15
 ======
 

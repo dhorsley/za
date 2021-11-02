@@ -33,14 +33,22 @@ input file optarg 1
 
 f=$in file
 
-var rows assoc
+var rows []any
+rn=0
+
+doc `
+    rows[rn] access is pretty slow. could probably speed it up
+     using nassoc as value type and instantiating/appending to that
+     map differently than the array type used below, but this is
+     just an example program and however you do it is going to be
+     pretty slow anyway!
+`
 
 foreach r in f
 
     on r.len==0 do err_list+="Empty row #{=key_r+1}\n"
 
-    rows[key_r]=[]
-
+    rows[rn]=[]
     colnum=1
     escaping=false
     in_quote=false
@@ -68,7 +76,7 @@ foreach r in f
                 # push column to array
                 col=col[:col.len-1]
                 on trim_leading_space do col=col.trim(-1)
-                rows[key_r]=rows[key_r].append(col)
+                rows[rn]=rows[rn].append(col)
                 check_quotes(col,key_r+1,colnum)
                 col=""
                 colnum++
@@ -81,8 +89,9 @@ foreach r in f
 
     # push end column to array
     on trim_leading_space do col=col.trim(-1)
-    rows[key_r]=rows[key_r].append(col)
+    rows[rn]=rows[rn].append(col)
     check_quotes(col,key_r+1,colnum)
+    rn++
 
     # print "ROW #%8d : %#v\n".format(key_r+1,rows[key_r])
     escaping=false
@@ -92,9 +101,10 @@ endfor
 
 println "\nIngest completed."
 on err_list.len>0 do println "\n[#2]Errors:\n{err_list}[#-]"
-println "Total rows : ",rows.len
+println "Total rows : ",rn
 print
 
 # @todo: output mechanism
+# print "ROWS:\n",rows[:rn],"\n"
 
 

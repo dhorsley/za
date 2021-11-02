@@ -1,0 +1,21 @@
+#!/usr/bin/za
+
+bc=3
+input bc optarg 1 "Break Count"
+
+while
+
+    while
+        for e=1 to 50
+            if e > 20
+                break bc
+            endif
+            println e
+        endfor
+        println "FOR COMPLETE!"
+    endwhile
+    println "INNER WHILE COMPLETE!"
+
+endwhile
+
+println "OUTER WHILE COMPLETE"

@@ -4,6 +4,7 @@ import (
     "io/ioutil"
     "math"
     "log"
+    "encoding/gob"
     "os"
     "path/filepath"
     "path"
@@ -422,6 +423,13 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     calllock.Unlock()
     lastlock.Lock()
     interparse.ident=ident
+    if interactive {
+        parser.mident=1
+        interparse.mident=1
+    } else {
+        parser.mident=2
+        interparse.mident=2
+    }
     lastlock.Unlock()
 
     var inbound *Phrase
@@ -446,6 +454,8 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     }()
 
     // some tracking variables for this function call
+    var break_count int             // usually 0. when >0 stops breakIn from resetting
+                                    //  used for multi-level breaks.
     var breakIn uint8               // true during transition from break to outer.
     var retvalues []interface{}     // return values to be passed back
     var finalline int16             // tracks end of tokens in the function
@@ -582,7 +592,7 @@ tco_reentry:
     parser.pc = -1            // program counter : increments to zero at start of loop
 
     var si bool
-    var statement *Token
+    // var statement *Token
     var we ExpressionCarton   // pre-allocated for general expression results eval
     var expr interface{}      // pre-llocated for wrapped expression results eval
     var err error
@@ -621,14 +631,14 @@ tco_reentry:
 
         // finally... start processing the statement.
 
-        statement = &inbound.Tokens[0]
+        // statement = &inbound.Tokens[0]
 
         /////// LINE ////////////////////////////////////////////////////////////
                // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
-        if defining && statement.tokType != C_Enddef {
+        if defining && inbound.Tokens[0].tokType != C_Enddef {
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
@@ -639,12 +649,12 @@ tco_reentry:
         }
 
         // struct building
-        if structMode && statement.tokType!=C_Endstruct {
+        if structMode && inbound.Tokens[0].tokType!=C_Endstruct {
             // consume the statement as an identifier
             // as we are only accepting simple types currently, restrict validity
             //  to single type token.
             if inbound.TokenCount<2 {
-                parser.report(inbound.SourceLine,sf("Invalid STRUCT entry '%v'",statement.tokText))
+                parser.report(inbound.SourceLine,sf("Invalid STRUCT entry '%v'",inbound.Tokens[0].tokText))
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -664,7 +674,7 @@ tco_reentry:
                 default_value = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[eqPos+1:])
                 // pf(" : set default_value in hasValue ( %#v )\n",default_value)
                 if default_value.evalError {
-                    parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",statement.tokText))
+                    parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",inbound.Tokens[0].tokText))
                     finish(false,ERR_SYNTAX)
                     break
                 }
@@ -691,7 +701,7 @@ tco_reentry:
                 break
             }
 
-            structNode=append(structNode,statement.tokText,cet.text,hasValue,default_value.result)
+            structNode=append(structNode,inbound.Tokens[0].tokText,cet.text,hasValue,default_value.result)
             // pf("current struct node build at :\n%#v\n",structNode)
 
             continue
@@ -703,7 +713,7 @@ tco_reentry:
          * just removing the stanza below can add ~ 9M ops/sec
         */
         if inside_test {
-            if statement.tokType != C_Endtest && !under_test {
+            if inbound.Tokens[0].tokType != C_Endtest && !under_test {
                 continue
             }
         }
@@ -722,7 +732,7 @@ tco_reentry:
 
         if breakIn != Error {
             // breakIn holds either Error or a token_type for ending the current construct
-            if statement.tokType != breakIn {
+            if inbound.Tokens[0].tokType != breakIn {
                 continue
             }
         }
@@ -731,7 +741,7 @@ tco_reentry:
 
         // main parsing for statements starts here:
 
-        switch statement.tokType {
+        switch inbound.Tokens[0].tokType {
 
         case C_Var: // permit declaration with a default value
 
@@ -740,7 +750,6 @@ tco_reentry:
             //  and var ary_s []struct_name
 
             var name_list []string
-            // var sid_list []uint64
             var expectingComma bool
             var varSyntaxError bool
             var c int16
@@ -872,6 +881,14 @@ tco_reentry:
                 var sts     []string
                 var stmixed []interface{}
 
+                // *sigh* - really need to move this stuff out of here:
+                gob.Register(stb)
+                gob.Register(stu)
+                gob.Register(stu8)
+                gob.Register(sti)
+                gob.Register(stf64)
+                gob.Register(stmixed)
+
                 // instantiate fields with an empty expected type:
                 typemap:=make(map[string]reflect.Type)
                 typemap["bool"]     = reflect.TypeOf(tb)
@@ -888,6 +905,7 @@ tco_reentry:
                 typemap["[]int"]    = reflect.TypeOf(sti)
                 typemap["[]float"]  = reflect.TypeOf(stf64)
                 typemap["[]string"] = reflect.TypeOf(sts)
+                typemap["[]interface {}"] = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
                 typemap["nassoc"]   = nil
                 typemap["assoc"]    = nil
@@ -902,6 +920,9 @@ tco_reentry:
                 // get the required type
                 var new_type_token_string string
                 type_token_string := inbound.Tokens[eqPos-1].tokText
+
+                // @note: this only allows for []any not just any (as an interface{})
+                //   will revise all this when i get my head around generics in Go 1.18
 
                 if type_token_string=="]" || type_token_string=="mixed" || type_token_string=="any" {
                     type_token_string="[]"
@@ -971,10 +992,13 @@ tco_reentry:
                     case "nassoc":
                         t.IKind=kmap
                         t.IValue=make(map[int]interface{},size)
+                        gob.Register(t.IValue)
                     case "assoc":
                         t.IKind=kmap
                         t.IValue=make(map[string]interface{},size)
+                        gob.Register(t.IValue)
                     }
+
 
                     // if we had a default value, stuff it in here...
                     if new_type_token_string!="nassoc" && new_type_token_string!="assoc" && hasValue {
@@ -1172,6 +1196,18 @@ tco_reentry:
                 depth-=1
                 lastConstruct = lastConstruct[:depth]
                 breakIn = Error
+                break_count-=1
+                if break_count>0 {
+                    switch lastConstruct[depth-1] {
+                    case C_For,C_Foreach:
+                        breakIn=C_Endfor
+                    case C_While:
+                        breakIn=C_Endwhile
+                    case C_When:
+                        breakIn=C_Endwhen
+                    }
+                }
+                // pf("ENDWHILE-BREAK: bc %d\n",break_count)
                 break
             }
 
@@ -1201,7 +1237,7 @@ tco_reentry:
                 break
             }
 
-            if res:=parser.wrappedEval(2,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
+            if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
                 finish(false,ERR_EVAL)
                 break
@@ -1219,7 +1255,7 @@ tco_reentry:
                 break
             }
 
-            if str.ToLower(inbound.Tokens[2].tokText) != "in" {
+            if ! str.EqualFold(inbound.Tokens[2].tokText,"in") {
                 parser.report(inbound.SourceLine,"malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
@@ -1804,11 +1840,29 @@ tco_reentry:
                 loopEnd = true
             }
 
+            // @note: this is bad. should really be a list of break contexts instead of
+            //   just a count.
+
             if loopEnd {
                 // leave the loop
                 depth-=1
                 lastConstruct = lastConstruct[:depth]
                 breakIn = Error // reset to unbroken
+                if break_count>0 {
+                    break_count-=1
+                    breakIn=Error
+                    if break_count>0 {
+                        switch lastConstruct[depth-1] {
+                        case C_For,C_Foreach:
+                            breakIn=C_Endfor
+                        case C_While:
+                            breakIn=C_Endwhile
+                        case C_When:
+                            breakIn=C_Endwhen
+                        }
+                    }
+                    // pf("ENDFOR-BREAK: bc %d - new break type is %s\n",break_count,tokNames[breakIn])
+                }
             } else {
                 // jump back to start of block
                 parser.pc = (*thisLoop).repeatFrom - 1 // start of loop will do pc++
@@ -1860,7 +1914,23 @@ tco_reentry:
             // The surrounding construct should set the
             //  lastConstruct[depth] on entry.
 
-            if depth == 0 {
+            // check for break depth argument
+
+            break_count=0
+
+            if inbound.TokenCount>1 {
+                break_depth:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
+                switch break_depth.result.(type) {
+                case int:
+                    break_count=break_depth.result.(int)
+                default:
+                    parser.report(inbound.SourceLine,"Could not evaluate break depth argument")
+                    finish(false,ERR_EVAL)
+                    break
+                }
+            }
+
+            if depth < break_count {
                 parser.report(inbound.SourceLine,"Attempting to BREAK without a valid surrounding construct.")
                 finish(false, ERR_SYNTAX)
             } else {
@@ -2232,7 +2302,7 @@ tco_reentry:
                     break
                 }
 
-                if str.ToLower(inbound.Tokens[2].tokText) != "group" {
+                if ! str.EqualFold(inbound.Tokens[2].tokText,"group") {
                     parser.report(inbound.SourceLine,"Missing GROUP in TEST command.")
                     finish(false, ERR_SYNTAX)
                     testlock.Unlock()
@@ -2241,7 +2311,7 @@ tco_reentry:
 
                 test_assert = "fail"
                 if inbound.TokenCount == 6 {
-                    if str.ToLower(inbound.Tokens[4].tokText) != "assert" {
+                    if ! str.EqualFold(inbound.Tokens[4].tokText,"assert") {
                         parser.report(inbound.SourceLine,"Missing ASSERT in TEST command.")
                         finish(false, ERR_SYNTAX)
                         break
@@ -3082,7 +3152,7 @@ tco_reentry:
 
             // pf("when-eval: checking type : %s\n%#v\n",tokNames[statement.tokType],carton)
 
-            switch statement.tokType {
+            switch inbound.Tokens[0].tokType {
 
             case C_Has: // <-- @note: this may change yet
 
@@ -3199,6 +3269,21 @@ tco_reentry:
             lastConstruct = lastConstruct[:depth-1]
             depth-=1
             wccount-=1
+
+            if break_count>0 {
+                break_count-=1
+                if break_count>0 {
+                    switch lastConstruct[depth-1] {
+                    case C_For,C_Foreach:
+                        breakIn=C_Endfor
+                    case C_While:
+                        breakIn=C_Endwhile
+                    case C_When:
+                        breakIn=C_Endwhen
+                    }
+                }
+                // pf("ENDWHEN-BREAK: bc %d\n",break_count)
+            }
 
             if wccount < 0 {
                 parser.report(inbound.SourceLine,"Cannot reduce WHEN stack below zero.")
@@ -3478,7 +3563,7 @@ tco_reentry:
                     }
                 } else {
                     // prompt command:
-                    if str.ToLower(inbound.Tokens[1].tokText)=="colour" {
+                    if str.EqualFold(inbound.Tokens[1].tokText,"colour") {
                         pcol:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[2:])
                         if pcol.evalError {
                             parser.report(inbound.SourceLine,"could not evaluate prompt colour")
@@ -3653,18 +3738,18 @@ tco_reentry:
             var elsefound, endfound, er bool
             var elsedistance, enddistance int16
 
-            if ! statement.la_done {
+            if ! inbound.Tokens[0].la_done {
                 elsefound, elsedistance, er = lookahead(source_base, parser.pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
                 endfound, enddistance, er = lookahead(source_base, parser.pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
-                statement.la_else_distance=elsedistance
-                statement.la_end_distance=enddistance
-                statement.la_has_else=elsefound
-                statement.la_done=true
+                inbound.Tokens[0].la_else_distance=elsedistance
+                inbound.Tokens[0].la_end_distance=enddistance
+                inbound.Tokens[0].la_has_else=elsefound
+                inbound.Tokens[0].la_done=true
             } else {
                 endfound=true; er=false
-                elsefound=statement.la_has_else
-                elsedistance=statement.la_else_distance
-                enddistance=statement.la_end_distance
+                elsefound=inbound.Tokens[0].la_has_else
+                elsedistance=inbound.Tokens[0].la_else_distance
+                enddistance=inbound.Tokens[0].la_end_distance
             }
 
             if er || !endfound {
@@ -3718,7 +3803,7 @@ tco_reentry:
             // local command assignment (child/parent process call)
 
             if inbound.TokenCount > 1 { // ident "=|"
-                if statement.tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
+                if inbound.Tokens[0].tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
                     if inbound.TokenCount > 2 {
                         // get text after =| or =<
                         var startPos int
@@ -3730,7 +3815,7 @@ tco_reentry:
                         }
                         cmd := interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         cop:=system(cmd,false)
-                        lhs_name := statement.tokText
+                        lhs_name := inbound.Tokens[0].tokText
                         switch inbound.Tokens[1].tokType {
                         case O_AssCommand:
                             vset(ifs, ident, lhs_name, cop)
