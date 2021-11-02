@@ -56,7 +56,9 @@ func m2s(m map[string]interface{}, rcvr interface{}) interface{} {
         rf  = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
         name:=rt.Field(i).Name
         switch tm:=m[name].(type) {
-        case bool,int,int64,uint,uint8,uint64,float64,string:
+        case bool,int,int64,uint,uint8,uint64,float64,string,interface{}:
+            rf.Set(reflect.ValueOf(tm))
+        case []bool,[]int,[]int64,[]uint,[]uint8,[]uint64,[]float64,[]string,[]interface{}:
             rf.Set(reflect.ValueOf(tm))
         default:
             pf("unknown type in m2s '%T'\n",tm)

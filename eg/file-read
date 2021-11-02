@@ -11,19 +11,15 @@ is "fedora"
     fn="/usr/share/dict/words"
 endwhen
 
-if is_file(fn)
-    fhand=fopen(fn,"r")
-    if fhand!=nil
-        while !feof(fhand)
-            println fread(fhand,"\n")
-        endwhile
-        fhand.fclose
-    else
-        exit errors.file_open,"Could not open dictionary file."
-    endif
-else
-    exit errors.not_found,"File not found."
-endif
+on not is_file(fn) do exit errors.not_found,"File not found."
+
+fhand=fn.fopen("r")
+on fhand==nil do exit errors.file_open,"Could not open dictionary file."
+
+while not feof(fhand)
+    println fread(fhand,"\n")
+endwhile
+fhand.fclose
 
 exit errors.okay
 

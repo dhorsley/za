@@ -1,7 +1,6 @@
 package main
 
 import (
-    // "fmt"
     "sync"
     "sync/atomic"
 )
@@ -145,18 +144,18 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         case C_Enddef:
             defNest-=1
         case LParen:
-            braceNestLevel++
+            braceNestLevel+=1
         case RParen:
-            braceNestLevel--
+            braceNestLevel-=1
         case LeftSBrace:
-            sbraceNestLevel++
+            sbraceNestLevel+=1
         case RightSBrace:
-            sbraceNestLevel--
+            sbraceNestLevel-=1
         }
 
         if sbraceNestLevel>0 || braceNestLevel>0 {
             if tempToken.eol || tokenType==EOL {
-                curLine++
+                curLine+=1
                 continue
             }
         }
@@ -180,7 +179,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
         if addToPhrase {
             phrase.Tokens = append(phrase.Tokens, tempToken.carton)
-            phrase.TokenCount++
+            phrase.TokenCount+=1
         }
 
         if tokenType == EOL || tokenType == SYM_Semicolon {
@@ -199,7 +198,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             phrase.SourceLine=curLine
             lstart = pos
 
-            if tokenType==EOL { curLine++ }
+            if tokenType==EOL { curLine+=1 }
 
             // fmt.Printf("\nCurrent phrase: %+v\n",phrase)
 

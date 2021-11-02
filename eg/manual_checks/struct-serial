@@ -6,6 +6,7 @@ struct T
     c string
     d float
     e uint
+    f []
 endstruct
 
 showstruct
