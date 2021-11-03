@@ -326,7 +326,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
     // get echo status
     echo,_:=vget(0,&gident,"@echo")
-    // pf("echo status is [%v]\n",echo)
+    // fmt.Printf("echo status is [%v]\n",echo)
 
     if mask=="" { mask="*" }
 
@@ -364,13 +364,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
         // print prompt
         at(srow, scol)
-        pf(sprompt)
+        fmt.Printf(sparkle(sprompt))
 
         irow=srow+(int(scol+promptL-1)/MW)
         icol=((scol+promptL-1)%MW)+1
 
         // change input colour
-        pf(sparkle(pcol))
+        fmt.Printf(sparkle(pcol))
 
         cursAtCol:=((icol+inputL-1)%MW)+1
         rowLen=int(icol+inputL-1)/MW
@@ -380,13 +380,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         if echo.(bool) {
             fmt.Print(s)
         } else {
-            pf(str.Repeat(mask,inputL))
+            fmt.Printf(str.Repeat(mask,inputL))
         }
         clearToEOL()
-        at(irow+1,1); pf(helpstring); clearToEOL()
+        at(irow+1,1); fmt.Printf(sparkle(helpstring)); clearToEOL()
 
         // move cursor to correct position (cpos)
-        if irow==MH-BMARGIN && cursAtCol==1 { srow--; rowLen++; pf("\n\033M") }
+        if irow==MH-BMARGIN && cursAtCol==1 { srow--; rowLen++; fmt.Printf("\n\033M") }
         cposCursAtCol:=((icol+cpos-1)%MW)+1
         cposRowLen:=int(icol+cpos-1)/MW
         at(srow+cposRowLen, cposCursAtCol)
@@ -777,10 +777,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     } // input loop
 
     if echo.(bool) {
-        at(irow, icol) ; clearToEOL()
+        at(srow, icol) ; clearToEOL()
         fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
-        cposRowLen:=int(icol+cpos-1)/MW
-        at(irow+cposRowLen-1,1)
+        cposRowLen:=int(scol+cpos-1)/MW
+        at(srow+cposRowLen,1)
     }
 
     lineWrap=old_wrap
