@@ -705,7 +705,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             for cnt, v := range helpColoured {
                 starMax = cnt
                 l := displayedLen(helpstring) + displayedLen(s) + icol
-                if (l + displayedLen(v) + icol +4 ) > MW {
+                if (l + displayedLen(v) + icol + 4) > MW {
                     if l > 3 {
                         helpstring += "..."
                     }
@@ -779,6 +779,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     if echo.(bool) {
         at(irow, icol) ; clearToEOL()
         fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
+        cposRowLen:=int(icol+cpos-1)/MW
+        at(irow+cposRowLen-1,1)
     }
 
     lineWrap=old_wrap
