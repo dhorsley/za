@@ -672,6 +672,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             helpList = []string{}
             helpColoured = []string{}
 
+            for _, v := range funcnames {
+                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
+                    helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
+                    helpList = append(helpList, v+"()")
+                }
+            }
+
             for _, v := range completions {
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
                     helpColoured = append(helpColoured, "[#6]"+v+"[#-]")
@@ -689,14 +696,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
             }
             */
-
-            for _, v := range funcnames {
-                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
-                    helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
-                    helpList = append(helpList, v+"()")
-                }
-            }
-
 
             //.. build display string
 
