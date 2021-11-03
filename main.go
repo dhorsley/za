@@ -259,7 +259,7 @@ func main() {
         setWinchSignal(sigs)
     }
 
-    BMARGIN=4
+    BMARGIN=6
 
     go func() {
         for {

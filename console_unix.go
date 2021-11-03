@@ -383,7 +383,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             fmt.Printf(str.Repeat(mask,inputL))
         }
         clearToEOL()
-        at(irow+1,1); fmt.Printf(sparkle(helpstring)); clearToEOL()
+        for i:=irow+1+rowLen;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
+        at(irow+1,1); fmt.Printf(sparkle(helpstring))
 
         // move cursor to correct position (cpos)
         if irow==MH-BMARGIN && cursAtCol==1 { srow--; rowLen++; fmt.Printf("\n\033M") }
@@ -703,6 +704,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             for cnt, v := range helpColoured {
                 starMax = cnt
+                if cnt>29 { break } // limit max length of options
+                /*
                 l := displayedLen(helpstring) + displayedLen(s) + icol
                 if (l + displayedLen(v) + icol + 4) > MW {
                     if l > 3 {
@@ -710,11 +713,12 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                     break
                 } else {
+                */
                     if cnt == selectedStar {
                         helpstring += "[#bblue]*"
                     }
                     helpstring += v + " "
-                }
+                // }
             }
 
             helpstring += "[#-][##]"
@@ -723,20 +727,28 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             //   otherwise, find desc+func for either remaining guess in context list 
             //   or the current word.
 
+            keynum:=0
+            if selectedStar>0 { keynum=selectedStar }
+
             if len(helpList)>0 {
-                if _,found:=keywordset[helpList[0]]; !found {
+                if _,found:=keywordset[helpList[keynum]]; !found {
                     pos:=0
-                    if len(helpList)>1 {
-                        // show of desc+function help if current word completes a function (but still other completion options)
-                        for p,v:=range helpList {
-                            if wordUnderCursor==v {
-                                pos=p
-                                break
+                    if keynum==0 {
+                        if len(helpList)>1 {
+                            // show of desc+function help if current word completes a function (but still other completion options)
+                            for p,v:=range helpList {
+                                if wordUnderCursor==v {
+                                    pos=p
+                                    break
+                                }
                             }
                         }
+                    } else {
+                        pos=keynum
                     }
                     hla:=helpList[pos]
                     hla=hla[:len(hla)-2]
+                    // helpRowLen:=int(len(helpstring)-1)/MW
                     helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
                 }
             }

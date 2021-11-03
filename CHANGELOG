@@ -31,6 +31,10 @@ CHANGE LOG
             - still needs more bug whacking.
         - added func desc when single func remains in completion text.
             - added input parameters to help text.
+        - made context help move as left/right pressed on "selectedStar" changes.
+        - removed ... in help options.
+            - a fuller list is now displayed (up to 30 entries)
+            - to accommodate this, the bottom input buffer margin has increased to 6 lines.
     * fixed bug in enum_all() and enum_names() (crash on invalid enum name filter)
 
 
