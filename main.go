@@ -996,7 +996,6 @@ func main() {
 
                 if eof || broken { break }
 
-
                 row++
                 if row>MH-BMARGIN { row=MH-BMARGIN ; pf("\n") }
                 col = 1
