@@ -334,6 +334,11 @@ func deleteWord(s string, pos int) (string,int) {
     if end<pos { return s,0 }
 
     for p := pos - 1; p >= 0; p-- {
+        if s[p]=='.' {
+            start=p+1
+            cpos=p+1
+            break
+        }
         if s[p] == ' ' {
             start = p
             cpos=p
@@ -343,7 +348,7 @@ func deleteWord(s string, pos int) (string,int) {
     if cpos==end { cpos-- }
 
     for p := pos; p < rlen(s)-1; p++ {
-        if s[p] == ' ' {
+        if s[p] == ' ' || s[p]=='.' {
             end = p + 1
             break
         }
@@ -368,45 +373,61 @@ func deleteWord(s string, pos int) (string,int) {
 }
 
 // get the word in string s under the cursor (at position c)
+// using space or dot as separator
 func getWord(s string, c int) string {
-
-    if rlen(s)<c {
-        return s
-    }
+    if rlen(s)<c { return s }
 
     // track back
     var i int
     i = rlen(s) - 1
-    if c < i {
-        i = c
-    }
-    if i < 0 {
-        i = 0
-    }
+    if c < i { i = c }
+    if i < 0 { i = 0 }
     for ; i > 0; i-- {
-        if s[i] == ' ' {
+        if i!=c && (s[i]==' ' || s[i]=='.') {
             break
         }
     }
-    if i == 0 {
-        i = -1
-    }
+    if i == 0 { i = -1 }
 
     // track forwards
     var j int
     for j = c; j < rlen(s)-1; j++ {
-        if s[j] == ' ' {
-            break
-        }
+        if s[j] == ' ' || s[j]=='.' { break }
     }
 
     // select word
-    if j > i {
-        return s[i+1 : j]
-    }
+    if j > i { return s[i+1 : j] }
 
     return ""
+}
 
+// get the word in string s under the cursor (at position c)
+// using only space as separator
+func getWordStrict(s string, c int) string {
+    if rlen(s)<c { return s }
+
+    // track back
+    var i int
+    i = rlen(s) - 1
+    if c < i { i = c }
+    if i < 0 { i = 0 }
+    for ; i > 0; i-- {
+        if i!=c && s[i]==' ' {
+            break
+        }
+    }
+    if i == 0 { i = -1 }
+
+    // track forwards
+    var j int
+    for j = c; j < rlen(s)-1; j++ {
+        if s[j] == ' ' { break }
+    }
+
+    // select word
+    if j > i { return s[i+1 : j] }
+
+    return ""
 }
 
 func saveCursor() {
