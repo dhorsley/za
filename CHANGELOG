@@ -18,23 +18,29 @@ CHANGE LOG
     -----
 
     * Updated trapInt and general handling around interactive mode main ident id.
+
     * fixed: interactive mode / post-inc/-dec triggers false negative in global var name
     * fixed: setglob post-inc/-dec.
+
     * now recognising [] of types and interface{} as a type in struct read/writes
        from/to file, (in actor.go/s2m and actor.go/m2s).
         - also now auto registering the basic struct field types in gob.Register.
+
     * added bottom margin setting for interactive mode
         - pre-emptive inclusion so that we can add better interactive help later.
-    * poked around a bit tidying tab completion output.
+
+    * poked around a bit tidying tab completion output. (interactive mode)
         - moved from rhs of input to lines beneath instead.
         - fixed some of the random seeming cursor positions after completion selection
             - still needs more bug whacking.
         - added func desc when single func remains in completion text.
             - added input parameters to help text.
         - made context help move as left/right pressed on "selectedStar" changes.
+        - now recognises a dot (.) as a word separator in context help
         - removed ... in help options.
             - a fuller list is now displayed (up to 30 entries)
-            - to accommodate this, the bottom input buffer margin has increased to 6 lines.
+            - to accommodate this, the bottom input buffer margin has increased to 8 lines.
+
     * fixed bug in enum_all() and enum_names() (crash on invalid enum name filter)
 
 
