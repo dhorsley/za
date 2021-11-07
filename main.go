@@ -259,7 +259,7 @@ func main() {
         setWinchSignal(sigs)
     }
 
-    BMARGIN=6
+    BMARGIN=8
 
     go func() {
         for {
@@ -925,9 +925,20 @@ func main() {
         // in case we arrived here by another method:
         interactive=true
 
+        // term loop
+        pf("\033[s") // save cursor
+        row,col=GetCursorPos()
+        pcol := defaultPromptColour
+
         // banner
         title := sparkle("Za Interactive Mode")
-        pf("\n%s\n\n", sparkle(" [#bold][#ul][#6]"+title+"[#-][##]"))
+        drop:=BMARGIN
+        if row<MH-BMARGIN { drop = 0 }
+
+        pf("\n%s\n%s\n",
+            sparkle("[#bold][#ul][#6]"+title+"[#-][##]"),
+            str.Repeat("\n",drop),
+        )
 
         // state control
         endFunc := false
@@ -935,12 +946,6 @@ func main() {
         curHist = 0
         lastHist = 0
         histEmpty = true
-
-        // term loop
-        pf("\033[s") // save cursor
-        row,col=GetCursorPos()
-        pcol := defaultPromptColour
-
 
         mainloc,_ := GetNextFnSpace(true,"main")
         fnlookup.lmset("main",1)

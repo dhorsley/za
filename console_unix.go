@@ -612,21 +612,29 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             case bytes.Equal(c, []byte{9}): // TAB
 
                 // completion hinting setup
-                if hintEnable && !startedContextHelp {
+                if hintEnable {
+                    if !startedContextHelp {
 
-                    funcnames = nil
+                        funcnames = nil
 
-                    startedContextHelp = true
-                    for i:=irow+1;i<=irow+BMARGIN;i++ { at(i,1); clearToEOL() }
-                    helpstring = ""
-                    selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                        startedContextHelp = true
+                        for i:=irow+1;i<=irow+BMARGIN;i++ { at(i,1); clearToEOL() }
+                        helpstring = ""
+                        selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
 
-                    //.. add functionnames
-                    for k, _ := range slhelp {
-                        funcnames = append(funcnames, k)
+                        //.. add functionnames
+                        for k, _ := range slhelp {
+                            funcnames = append(funcnames, k)
+                        }
+                        sort.Strings(funcnames)
+
+                    } else {
+                        for i:=irow+1;i<=irow+BMARGIN;i++ { at(i,1); clearToEOL() }
+                        helpstring=""
+                        selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                        contextHelpSelected = false
+                        startedContextHelp = false
                     }
-                    sort.Strings(funcnames)
-
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
@@ -763,15 +771,16 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if len(helpList) == 1 {
                     var newstart int
                     s,newstart = deleteWord(s, cpos)
-                    add:=""
-                    if len(s)>0 { add=" " }
+                    //add:=""
+                    //if len(s)>0 { add=" " }
                     if newstart==-1 { newstart=0 }
-                    s = insertWord(s, newstart, add+helpList[0]) // +" ")
+                    // s = insertWord(s, newstart, add+helpList[0]) // +" ")
+                    s = insertWord(s, newstart, helpList[0])
                     if bpos:=str.IndexByte(s,'('); bpos!=-1 {
                         // inserting a func so move cpos
-                        cpos = newstart+len(helpList[0])+1
+                        cpos = newstart+len(helpList[0]) //+1
                     } else {
-                        cpos = len(s)
+                        cpos = len(s)-1
                     }
                     for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                 }
