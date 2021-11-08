@@ -366,31 +366,31 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             // normal space input
             s = insertAt(s, cpos, 32) // c[0])
             cpos++
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
         // FINE IN WINDOWS VT MODE
         case bytes.Equal(c, []byte{27,91,49,126}): // home // from showkey -a
             cpos = 0
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
         // FINE IN WINDOWS VT MODE
         case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
             cpos = rlen(s)
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
 
         case bytes.Equal(c, []byte{1}): // ctrl-a
             cpos = 0
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{5}): // ctrl-e
             cpos = rlen(s)
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{21}): // ctrl-u
             s = removeAllBefore(s, cpos)
             cpos = 0
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
             clearToEOPane(irow, icol, dispL)
 
         // BS is 127 in VT MODE
@@ -403,7 +403,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             if cpos > 0 {
                 s = removeBefore(s, cpos)
                 cpos--
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
                 clearToEOPane(irow, icol, dispL)
             }
 
@@ -412,7 +412,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         case bytes.Equal(c, []byte{126}): // windows DEL
             if cpos < rlen(s) {
                 s = removeBefore(s, cpos+1)
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
                 clearToEOPane(irow, icol, displayedLen(s))
             }
 
@@ -432,7 +432,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             if cpos > 0 {
                 cpos--
             }
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
 
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
@@ -449,7 +449,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             if cpos < rlen(s) {
                 cpos++
             }
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
 
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
@@ -471,7 +471,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         s = hist[curHist]
                     }
                     cpos = rlen(s)
-                    wordUnderCursor = getWord(s, cpos)
+                    wordUnderCursor,_ = getWord(s, cpos)
                     if curHist != lastHist {
                         l := displayedLen(s)
                         clearToEOPane(irow, icol, l)
@@ -496,7 +496,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         navHist = false
                     }
                     cpos = rlen(s)
-                    wordUnderCursor = getWord(s, cpos)
+                    wordUnderCursor,_ = getWord(s, cpos)
                     if curHist != lastHist {
                         l := displayedLen(s)
                         clearToEOPane(irow, icol, l)
@@ -508,10 +508,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         // HOME AND END ARE FINE IN WIN VT INPUT MODE
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
             cpos = 0
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
             cpos = rlen(s)
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
 
         case bytes.Equal(c, []byte{9}): // TAB
 
@@ -544,7 +544,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if c[0] > 32 {
                     s = insertAt(s, cpos, c[0])
                     cpos++
-                    wordUnderCursor = getWord(s, cpos)
+                    wordUnderCursor,_ = getWord(s, cpos)
                     selectedStar = -1 // also reset the selector position for auto-complete
                 }
             }
