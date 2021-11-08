@@ -1750,10 +1750,12 @@ func ev(parser *leparser,fs uint32, ws string) (result interface{}, err error) {
     var t *lcstruct
     for p = 0; p < len(ws);  {
         t = nextToken(ws, &cl, p)
+        // pf("ev: p:%2d t:%+v\n",p,t)
         if t.tokPos != -1 {
             p = t.tokPos
         }
         toks = append(toks, t.carton)
+        if t.eof { break }
     }
 
     // evaluate token list
