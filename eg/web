@@ -9,13 +9,6 @@ define cleanup()
     return 42
 end
 
-define interface_ip(in)
-    addrline =| ip addr show dev {in}
-    ipaddr=replace(filter(addrline.out,"inet.*/"),"inet ","")
-    ipaddr=replace(ipaddr,"/","")
-    return ipaddr
-end
-
 define negreg(inp,matcher)
     out=""
     foreach l in inp
@@ -29,6 +22,8 @@ end
 # MAIN
 
 trapInt="cleanup()"
+permit("shell",false)
+permit("eval",false)
 
 when release_id()
 is "ubuntu"
