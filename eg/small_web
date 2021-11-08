@@ -5,6 +5,9 @@
 # change these to suit:
 # HOME_PATH in web_serve_start() currently needs to be absolute path
 
+permit("shell",false)
+permit("eval",false)
+
 HOST="10.0.2.15"
 PORT=61440
 HOME_PATH="/home/daniel/www"
