@@ -178,12 +178,15 @@ var sig_int bool       // ctrl-c pressed?
 var coproc_active bool // for resetting co-proc if interrupted
 
 // behaviours
-var permit_uninit   bool    // default:false, will evaluation cause a run-time failure if it
-                            //  encounters an uninitialised variable usage.
-                            //  this can be altered with the permit("uninit",bool) call
-var permit_dupmod   bool    // default:false, ignore (true) or error (false) when a duplicate
-                            //  module import occurs.
-var permit_exitquiet bool   // default:false, squash (true) or display (false) err msg on exit
+var permit_uninit       bool    // default:false, will evaluation cause a run-time failure if it
+                                //  encounters an uninitialised variable usage.
+                                //  this can be altered with the permit("uninit",bool) call
+var permit_dupmod       bool    // default:false, ignore (true) or error (false) when a duplicate
+                                //  module import occurs.
+var permit_exitquiet    bool    // default:false, squash (true) or display (false) err msg on exit
+var permit_shell        bool    // default: true, when false, exit script if shell command encountered
+var permit_eval         bool    // default: true, when false, exit script if eval call encountered
+
 
 // test related setup, completely non thread safe
 var testMode bool
@@ -260,6 +263,9 @@ func main() {
     }
 
     BMARGIN=8
+
+    permit_shell=true
+    permit_eval=true
 
     go func() {
         for {

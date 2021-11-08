@@ -782,8 +782,9 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 // submit a command for coprocess execution
 func Copper(line string, squashErr bool) struct{out string; err string; code int; okay bool} {
 
-    // line         command to execute
-    // squashErr    ignore errors in output
+    if !permit_shell {
+        panic(fmt.Errorf("Shell calls not permitted!"))
+    }
 
     // remove some bad conditions...
     if str.HasSuffix(str.TrimRight(line," "),"|") {
@@ -794,7 +795,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     }
     line=str.TrimRight(line,"\n")
 
-    // var ns string       // output from coprocess
     var ns []byte
     var errout string   // stderr output
     var errint int      // coprocess return code

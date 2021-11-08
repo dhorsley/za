@@ -13,6 +13,13 @@ CHANGE LOG
           but it will not be included going forward. it was simply too heavyweight a
           feature to support for the occasional use it would receive.
 
+    * added permit() types to block use of shell calls and eval():
+        - permit("eval",) and permit("shell",) both default to true.
+        - set these (to false!) at your own discretion if you are exposing a web server or similar.
+        - scripts should stop dead when these trigger. we'll probably add something to trap these
+            if we ever improve the error handling. they are just a (very minor) safeguard for now
+            and should not be relied upon for all of your security.
+
 
     fixes
     -----

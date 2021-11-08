@@ -6,6 +6,7 @@ package main
 import (
     "encoding/binary"
     "errors"
+    "fmt"
     "io/ioutil"
     "os"
     "unicode/utf8"
@@ -364,6 +365,11 @@ func buildInternalLib() {
     slhelp["eval"] = LibHelp{in: "string", out: "[mixed]", action: "evaluate expression in [#i1]string[#i0]."}
     stdlib["eval"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("eval",args,1,"1","string"); !ok { return nil,err }
+
+        if !permit_eval {
+            panic(fmt.Errorf("eval() not permitted!"))
+        }
+
         p:=&leparser{}
         calllock.RLock()
         p.prectable=default_prectable
@@ -416,7 +422,7 @@ func buildInternalLib() {
         return v,nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports."}
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports.\nexitquiet(bool): shorter error message.\nshell(bool): permit shell commands.\neval(bool): permit eval() calls."}
     stdlib["permit"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("permit",args,4,
         "2","string","bool",
@@ -452,7 +458,24 @@ func buildInternalLib() {
             default:
                 return nil,errors.New("permit(exitquiet) accepts a boolean value only.")
             }
+        case "shell":
+            switch args[1].(type) {
+            case bool:
+                permit_shell=args[1].(bool)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(shell) accepts a boolean value only.")
+            }
+        case "eval":
+            switch args[1].(type) {
+            case bool:
+                permit_eval=args[1].(bool)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(eval) accepts a boolean value only.")
+            }
         }
+
         return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
     }
 
