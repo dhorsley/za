@@ -20,6 +20,8 @@ CHANGE LOG
             if we ever improve the error handling. they are just a (very minor) safeguard for now
             and should not be relied upon for all of your security.
 
+    * added has_term() and has_colour() library calls.
+
 
     fixes
     -----
