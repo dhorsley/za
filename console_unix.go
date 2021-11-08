@@ -21,6 +21,11 @@ func setEcho(s bool) {
     }
 }
 
+func isatty() bool {
+    _ , err := unix.IoctlGetTermios(0, ioctlReadTermios)
+    return err==nil
+}
+
 func disableEcho() {
     termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
 	if err == nil {

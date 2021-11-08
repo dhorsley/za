@@ -187,7 +187,7 @@ func buildInternalLib() {
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
         "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
@@ -1094,6 +1094,20 @@ func buildInternalLib() {
             } else {
                 return "",nil
             }
+    }
+
+    slhelp["has_term"] = LibHelp{in: "", out: "bool", action: "Check if executing with a tty."}
+    stdlib["has_term"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("has_term",args,0); !ok { return false,err }
+        return isatty(), nil
+    }
+
+    slhelp["has_colour"] = LibHelp{in: "", out: "bool", action: "Check if tty supports at least 16 colours."}
+    stdlib["has_colour"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("has_colour",args,0); !ok { return false,err }
+        term:=os.Getenv("TERM")
+        cterms:=regexp.MustCompile("(?i)^xterm|^vt100|^vt220|^rxvt|^screen|color|ansi|cygwin|linux")
+	    return ansiMode && cterms.MatchString(term),nil
     }
 
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}
