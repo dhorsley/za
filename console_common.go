@@ -306,7 +306,7 @@ func insertBytesAt(s string, pos int, c []byte) string {
 
 // insert a single byte at position pos in string s
 func insertAt(s string, pos int, c byte) string {
-    if pos == rlen(s) { // append
+    if pos >= rlen(s) { // append
         s += string(c)
         return s
     }
@@ -327,29 +327,25 @@ func insertWord(s string, pos int, w string) string {
 // delete the word under the cursor
 func deleteWord(s string, pos int) (string,int) {
 
-    start := 0
-    cpos:=0
-    end := rlen(s)
+    start:=0
+    end := len(s)
 
     if end<pos { return s,0 }
 
     for p := pos - 1; p >= 0; p-- {
         if s[p]=='.' {
             start=p+1
-            cpos=p+1
             break
         }
         if s[p] == ' ' {
-            start = p
-            cpos=p
+            start=p+1
             break
         }
     }
-    if cpos==end { cpos-- }
 
-    for p := pos; p < rlen(s)-1; p++ {
+    for p := pos; p < len(s); p++ {
         if s[p] == ' ' || s[p]=='.' {
-            end = p + 1
+            end = p
             break
         }
     }
@@ -362,20 +358,21 @@ func deleteWord(s string, pos int) (string,int) {
     }
 
     add:=""
-    if end < rlen(s)-1 {
+    if end < len(s) {
         if start!=0 { add=" " }
-        endsub = s[end:]
+        endsub = s[end+1:]
     }
 
     rstring := startsub+add+endsub
 
-    return rstring,cpos
+    return rstring,start
 }
 
 // get the word in string s under the cursor (at position c)
 // using space or dot as separator
-func getWord(s string, c int) string {
-    if rlen(s)<c { return s }
+func getWord(s string, c int) (string,bool) {
+    if rlen(s)<c { return s,false }
+    dotted:=false
 
     // track back
     var i int
@@ -384,6 +381,7 @@ func getWord(s string, c int) string {
     if i < 0 { i = 0 }
     for ; i > 0; i-- {
         if i!=c && (s[i]==' ' || s[i]=='.') {
+            if s[i]=='.' { dotted=true }
             break
         }
     }
@@ -396,9 +394,9 @@ func getWord(s string, c int) string {
     }
 
     // select word
-    if j > i { return s[i+1 : j] }
+    if j > i { return s[i+1 : j],dotted }
 
-    return ""
+    return "",dotted
 }
 
 // get the word in string s under the cursor (at position c)

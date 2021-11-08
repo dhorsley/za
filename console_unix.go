@@ -420,7 +420,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             // strip ansi codes from pbuf then shove it in the input string
             s = insertWord(s, cpos, Strip(pbuf))
             cpos+=len(pbuf)
-            wordUnderCursor = getWord(s, cpos)
+            wordUnderCursor,_ = getWord(s, cpos)
             selectedStar = -1
 
         } else {
@@ -476,28 +476,28 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 // normal space input
                 s = insertAt(s, cpos, c[0])
                 cpos++
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{27,91,49,126}): // home // from showkey -a
                 cpos = 0
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{27,91,52,126}): // end // from showkey -a
                 cpos = len(s)
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{1}): // ctrl-a
                 cpos = 0
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{5}): // ctrl-e
                 cpos = len(s)
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{21}): // ctrl-u
                 s = removeAllBefore(s, cpos)
                 cpos = 0
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
                 clearChars(irow, icol, inputL)
 
             case bytes.Equal(c, []byte{127}): // backspace
@@ -512,14 +512,14 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if cpos > 0 {
                     s = removeBefore(s, cpos)
                     cpos--
-                    wordUnderCursor = getWord(s, cpos)
+                    wordUnderCursor,_ = getWord(s, cpos)
                     clearChars(irow, icol, inputL)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
                 if cpos < len(s) {
                     s = removeBefore(s, cpos+1)
-                    wordUnderCursor = getWord(s, cpos)
+                    wordUnderCursor,_ = getWord(s, cpos)
                     clearChars(irow, icol, displayedLen(s))
                 }
 
@@ -537,7 +537,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if cpos > 0 {
                     cpos--
                 }
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
 
@@ -553,7 +553,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if cpos < len(s) {
                     cpos++
                 }
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
 
@@ -574,7 +574,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             s = hist[curHist]
                         }
                         cpos = len(s)
-                        wordUnderCursor = getWord(s, cpos)
+                        wordUnderCursor,_ = getWord(s, cpos)
                         rowLen=int(icol+cpos-1)/MW
                         if rowLen>0 { irow-=rowLen }
                         if curHist != lastHist {
@@ -599,7 +599,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             navHist = false
                         }
                         cpos = len(s)
-                        wordUnderCursor = getWord(s, cpos)
+                        wordUnderCursor,_ = getWord(s, cpos)
                         if curHist != lastHist {
                             l := displayedLen(s)
                             clearChars(irow, icol, l)
@@ -609,10 +609,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
                 cpos = 0
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
                 cpos = len(s)
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{9}): // TAB
 
@@ -652,7 +652,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
                 s = insertAt(s, cpos, '£')
                 cpos++
-                wordUnderCursor = getWord(s, cpos)
+                wordUnderCursor,_ = getWord(s, cpos)
                 selectedStar = -1
 
             // ignore list
@@ -665,7 +665,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     if c[0] > 32 && c[0]<128 {
                         s = insertAt(s, cpos, c[0])
                         cpos++
-                        wordUnderCursor = getWord(s, cpos)
+                        wordUnderCursor,_ = getWord(s, cpos)
                         selectedStar = -1 // also reset the selector position for auto-complete
                     }
                 }
@@ -744,25 +744,26 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             if selectedStar>0 { keynum=selectedStar }
 
             if len(helpList)>0 {
-                if _,found:=keywordset[helpList[keynum]]; !found {
-                    pos:=0
-                    if keynum==0 {
-                        if len(helpList)>1 {
-                            // show of desc+function help if current word completes a function (but still other completion options)
-                            for p,v:=range helpList {
-                                if wordUnderCursor==v {
-                                    pos=p
-                                    break
+                if keynum<len(helpList) {
+                    if _,found:=keywordset[helpList[keynum]]; !found {
+                        pos:=0
+                        if keynum==0 {
+                            if len(helpList)>1 {
+                                // show of desc+function help if current word completes a function (but still other completion options)
+                                for p,v:=range helpList {
+                                    if wordUnderCursor==v {
+                                        pos=p
+                                        break
+                                    }
                                 }
                             }
+                        } else {
+                            pos=keynum
                         }
-                    } else {
-                        pos=keynum
+                        hla:=helpList[pos]
+                        hla=hla[:len(hla)-2]
+                        helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
                     }
-                    hla:=helpList[pos]
-                    hla=hla[:len(hla)-2]
-                    // helpRowLen:=int(len(helpstring)-1)/MW
-                    helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
                 }
             }
 
@@ -775,18 +776,20 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
                 if len(helpList) == 1 {
                     var newstart int
-                    s,newstart = deleteWord(s, cpos)
-                    //add:=""
-                    //if len(s)>0 { add=" " }
+                    s,newstart = deleteWord(s,cpos)
                     if newstart==-1 { newstart=0 }
-                    // s = insertWord(s, newstart, add+helpList[0]) // +" ")
-                    s = insertWord(s, newstart, helpList[0])
-                    if bpos:=str.IndexByte(s,'('); bpos!=-1 {
-                        // inserting a func so move cpos
-                        cpos = newstart+len(helpList[0]) //+1
-                    } else {
-                        cpos = len(s)-1
+
+                    // remove braces on selected text if expanding out from a dot
+                    dpos:=0
+                    if newstart>0 { dpos=newstart-1 }
+
+                    if str.IndexByte(helpList[0],'(')!=-1 && dpos<len(s) && s[dpos]=='.' {
+                        helpList[0]=helpList[0][:len(helpList[0])-2]
                     }
+
+                    s = insertWord(s, newstart, helpList[0])
+                    cpos = newstart+len(helpList[0])
+
                     for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                 }
             }
