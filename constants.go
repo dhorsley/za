@@ -16,8 +16,10 @@ const sz_lru_cache  = 10        // size of recently used cache of variable name-
 
 const gnfsModulus = 32768       // used by calltable to set max size, mainly impacts recursion
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
-const MAX_FUNCS = gnfsModulus   // max source funcs (not max instances)
-const SPACE_CAP = gnfsModulus
+
+const MAX_FUNCS = gnfsModulus   // initial instance and source functions cap 
+const SPACE_CAP = gnfsModulus   // as MAX_FUNCS. @todo: need to resolve these to one constant
+
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
 const FUNC_CAP = 300            // max stdlib functions
 const LOOP_START_CAP = 8        // max loops per function 
@@ -31,7 +33,6 @@ const WHEN_CAP = 8              // how many placeholders to create for WHEN...EN
                                 //  if we ever perform optimisations that allow for the call to be anywhere
                                 //  except the final statement. (admittedly unlikely)
 
-// const globalspace = uint32(0)   // global namespace
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "
