@@ -52,6 +52,7 @@ CHANGE LOG
 
     * fixed bug in enum_all() and enum_names() (crash on invalid enum name filter)
 
+    * updated za.vim
 
     language changes
     ----------------

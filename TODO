@@ -12,15 +12,15 @@ TODO
     * There are currently a few issues in the Windows build around async.
         - i'll get to these eventually, but not rushing them. only the linux/alpine builds are
             considered to be of any import currently.
-        - 23-09-2021: tested windows build again.
-            - it required a little update in console_windows.go to compile and does still function.
-            - however, there are several feature changes and fixes not yet included in it.
-                - (this includes the extra fixes for tab completion)
-            - it's going to need some serious diff inspection to pull it in line again.
-            - will be worth splitting more of the code to the console_common.go file.
-            - lib-os_windows.go is also quite out of date now, with missing lib calls.
-                - this may be okay for some of them, as not all calls are supported under windows,
-                    but needs checking and documenting.
+    * 23-09-2021: tested windows build again.
+        - it required a little update in console_windows.go to compile and does still function.
+        - however, there are several feature changes and fixes not yet included in it.
+            - (this includes the extra fixes for tab completion)
+        - it's going to need some serious diff inspection to pull it in line again.
+        - will be worth splitting more of the code to the console_common.go file.
+        - lib-os_windows.go is also quite out of date now, with missing lib calls.
+            - this may be okay for some of them, as not all calls are supported under windows,
+                but needs checking and documenting.
 
     * accessArray in eval_ops.go : field access slowdown due to converting uint8 to string.
         - as part of the string/numeric element lookup, there's a string conversion (ifield).
