@@ -1,8 +1,10 @@
 #!/usr/bin/za
 
 doc `
-    simple function to figure max length string in an given array
-    column and demonstrate using it.
+    simple function to figure max length string in a given array
+    column then demonstrates using the result.
+
+    it's not exactly efficient - just another map and list test.
 `
 
 
