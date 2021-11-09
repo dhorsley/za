@@ -36,14 +36,6 @@ f=$in file
 var rows []any
 rn=0
 
-doc `
-    rows[rn] access is pretty slow. could probably speed it up
-     using nassoc as value type and instantiating/appending to that
-     map differently than the array type used below, but this is
-     just an example program and however you do it is going to be
-     pretty slow anyway!
-`
-
 foreach r in f
 
     on r.len==0 do err_list+="Empty row #{=key_r+1}\n"

@@ -935,18 +935,22 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
 func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (interface{}) {
 
-    // pf("aa-typ : (%T)\n",obj)
-    // pf("aa-obj : (%T) %+v\n",obj,obj)
-    // pf("aa-fld : (%T) %+v\n",field,field)
+     // pf("aa-typ : (%T)\n",obj)
+     // pf("aa-obj : (%T) %+v\n",obj,obj)
+     // pf("aa-fld : (%T) %+v\n",field,field)
 
     switch obj:=obj.(type) {
-    case string:
+    case string: // string[n] access
         ifield,invalid:=GetAsInt(field)
         if !invalid {
             // pf("obj-if : (%T) %+v\n",obj[ifield],obj[ifield])
-            return string(obj[ifield])
+            if ifield>=0 && ifield<len(obj) {
+                return string(obj[ifield])
+            } else {
+                panic(fmt.Errorf("out-of-bounds access to string sub-script %d",ifield))
+            }
         }
-        panic(fmt.Errorf("string element [%+v] cannot be cast to int",field))
+        panic(fmt.Errorf("string sub-script '%v' must be a number",field))
     case map[string]alloc_info:
         return obj[field.(string)]
     case map[string]string:
@@ -965,30 +969,37 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
 
         switch r.Kind().String() {
         case "slice":
-            switch obj:=obj.(type) {
-            case []int:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []bool:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []uint:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []string:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case string:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []float64:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []dirent:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []alloc_info:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            case []interface{}:
-                if len(obj)>field.(int) { return obj[field.(int)] }
-            default:
-                panic(fmt.Errorf("unhandled type %T in array access.",obj))
+            ifield,invalid:=GetAsInt(field)
+            if !invalid {
+                if ifield<0 {
+                    panic(fmt.Errorf("out-of-bounds access to sub-script %d in %T",ifield,obj))
+                }
+                switch obj:=obj.(type) {
+                case []int:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []bool:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []uint:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []string:
+                    if len(obj)>ifield { return obj[ifield] }
+                case string:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []float64:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []dirent:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []alloc_info:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []interface{}:
+                    if len(obj)>ifield { return obj[ifield] }
+                default:
+                    panic(fmt.Errorf("unhandled type %T in array access.",obj))
+                }
+                panic(fmt.Errorf("out-of-bounds access to sub-script %d in %T",ifield,obj))
+            } else {
+                panic(fmt.Errorf("array sub-script '%v' must be a number",field))
             }
-
-            panic(fmt.Errorf("element '%d' is out of range in %+v",field.(int),obj))
 
         }
 

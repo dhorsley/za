@@ -50,6 +50,10 @@ CHANGE LOG
             - a fuller list is now displayed (up to 30 entries)
             - to accommodate this, the bottom input buffer margin has increased to 8 lines.
 
+    * removed 'nassoc' type, to reduce complexity.
+
+    * added out-of-bounds and type checks in eval_ops.go/accessArray for sub-scripts.
+
     * fixed bug in enum_all() and enum_names() (crash on invalid enum name filter)
 
     * updated za.vim

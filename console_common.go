@@ -661,13 +661,11 @@ func GetCommand(c string) (s string, err error) {
 
 
 type BashRead struct {
-    // S string
     S []byte
     E error
 }
 
 // execute a command in the coprocess, return output.
-// func NextCopper(cmd string, r *bufio.Reader) (s string, err error) {
 func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     var result BashRead
@@ -704,7 +702,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
             v, err = r.ReadByte()
 
             if err == nil {
-                // s += string(v)
                 s = append(s,v)
                 if v == 10 {
                     if mt.(bool) {
@@ -716,7 +713,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
             if err == io.EOF {
                 if v != 0 {
-                    // s += string(v)
                     s = append(s,v)
                 }
                 break
@@ -749,7 +745,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
         // skip null end marker strings
         if len(s) > 0 {
             if s[0] == cmdsep {
-                // s = ""
                 s = []byte{}
             }
         }
@@ -825,12 +820,10 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     if riwp.(bool) || rip.(bool) {
 
         if riwp.(bool) {
-            // ns,err = GetCommand("cmd /c "+line)
             var ba string
             ba,err = GetCommand("cmd /c "+line)
             ns = []byte(ba)
         } else {
-            // ns,err = GetCommand(line)
             var ba string
             ba,err = GetCommand(line)
             ns = []byte(ba)
@@ -860,11 +853,11 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     } else {
 
         errorFile, err := ioutil.TempFile("", "copper.*.err")
-        defer os.Remove(errorFile.Name())
         if err != nil {
             os.Remove(errorFile.Name())
             log.Fatal(err)
         }
+        defer os.Remove(errorFile.Name())
         vset(0,&gident,"@last", "0")
 
         read_out := bufio.NewReader(po)
@@ -915,7 +908,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             errout=""
         }
 
-        os.Remove(errorFile.Name())
+        // os.Remove(errorFile.Name())
 
     }
 
