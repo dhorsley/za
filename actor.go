@@ -907,7 +907,6 @@ tco_reentry:
                 typemap["[]string"] = reflect.TypeOf(sts)
                 typemap["[]interface {}"] = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
-                typemap["nassoc"]   = nil
                 typemap["assoc"]    = nil
                 // --
 
@@ -943,7 +942,7 @@ tco_reentry:
 
                     t:=Variable{}
 
-                    if new_type_token_string!="nassoc" && new_type_token_string!="assoc" {
+                    if new_type_token_string!="assoc" {
                         t.IValue = reflect.New(typemap[new_type_token_string]).Elem().Interface()
                     }
 
@@ -989,10 +988,6 @@ tco_reentry:
                     case "[]","[]mixed","[]any":
                         t.IKind=ksany
                         t.IValue=make([]interface{},size,size)
-                    case "nassoc":
-                        t.IKind=kmap
-                        t.IValue=make(map[int]interface{},size)
-                        gob.Register(t.IValue)
                     case "assoc":
                         t.IKind=kmap
                         t.IValue=make(map[string]interface{},size)
@@ -1001,7 +996,7 @@ tco_reentry:
 
 
                     // if we had a default value, stuff it in here...
-                    if new_type_token_string!="nassoc" && new_type_token_string!="assoc" && hasValue {
+                    if new_type_token_string!="assoc" && hasValue {
                         if sf("%T",we.result)!=new_type_token_string {
                             parser.report(inbound.SourceLine,"type mismatch in VAR assignment")
                             finish(false,ERR_EVAL)
