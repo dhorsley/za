@@ -1,0 +1,22 @@
+#!/usr/bin/za
+
+doc `
+    simple function to figure max length string in an given array
+    column and demonstrate using it.
+`
+
+
+define longest(ar_s,fld,sep)
+    return (ar_s -> `field(#,fld,sep).len.string`) . list_int . max
+end
+
+
+ln=env().longest(1,"=")
+
+foreach e in env()
+    key=e.field(1,"=")
+    println "[#6]%{ln}s[#-] -> %s".format(key,key.get_env)
+endfor
+
+
+
