@@ -309,6 +309,9 @@ func GetCursorPos() (int,int) {
 
 func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
+    BMARGIN:=BMARGIN
+    if !interactive { BMARGIN=0 }
+
     old_wrap := lineWrap
     lineWrap = false
 
