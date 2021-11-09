@@ -672,7 +672,7 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
     case []interface{}:
         sz=len(left)
 
-    case map[string]interface{},map[string]alloc_info,map[string]string,map[string]int,map[int]interface{},map[int]int,map[int]string,map[int][]int,map[int][]string,map[int][]interface{}:
+    case map[string]interface{},map[string]alloc_info,map[string]string,map[string]int:
 
         // check for key
         var mkey string
@@ -1446,23 +1446,6 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
     bin:=bind_int(fs,name)
 
     switch list.(type) {
-
-    case map[int]interface{}:
-        var key int
-        switch el.(type) {
-        case int:
-            key=el.(int)
-        case uint:
-            key=int(el.(uint))
-        }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
-        if ok {
-            (*ident)[bin].IValue.(map[int]interface{})[key] = value
-        } else {
-            (*ident)[bin].IValue.(map[int]interface{})[key] = value
-        }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
-        return
 
     case map[string]interface{}:
         var key string

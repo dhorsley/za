@@ -22,10 +22,6 @@ TODO
             - this may be okay for some of them, as not all calls are supported under windows,
                 but needs checking and documenting.
 
-    * accessArray in eval_ops.go : field access slowdown due to converting uint8 to string.
-        - as part of the string/numeric element lookup, there's a string conversion (ifield).
-            it's pretty slow when doing a lot of array access.
-
     * coalesce windows/linux builds.
         - lib-os is missing some functions in windows file, but probably only
             things which Windows FS doesn't support. need to confirm.
