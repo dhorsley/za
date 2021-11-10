@@ -1013,10 +1013,11 @@ func main() {
 
                 row++
 
-                if row>MH-BMARGIN {
-                    past:=0
-                    past=row-(MH-BMARGIN); row=MH-BMARGIN
+                if row>=MH-BMARGIN {
+                    if row>MH { row=MH }
+                    past:=row-(MH-BMARGIN)
                     for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    row=MH-BMARGIN
                 }
 
                 at(row,1)
@@ -1082,10 +1083,11 @@ func main() {
                 // throw away break and continue positions in interactive mode
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
 
-                if row>MH-BMARGIN {
-                    past:=0
-                    past=row-(MH-BMARGIN); row=MH-BMARGIN
+                if row>=MH-BMARGIN {
+                    if row>MH { row=MH }
+                    past:=row-(MH-BMARGIN)
                     for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    row=MH-BMARGIN
                 }
 
                 if endFunc {
