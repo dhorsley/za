@@ -143,8 +143,8 @@ syntax match internal_functions "\(.\|\s*\)release_name\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)release_version\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)release_id\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)has_shell\s*("he=e-1
-syntax match internal_functions "\(.\|\s*\)has_term\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)has_colour\s*("he=e-1
+syntax match internal_functions "\(.\|\s*\)has_term\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)shellpid\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)winterm\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)wininfo\s*("he=e-1
@@ -460,7 +460,7 @@ syntax region sqBrace transparent start=/\v\[/ skip=+\\[\]]+ end=/\v\]/
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,udf_functions,ui_functions
+syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,udf_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -510,7 +510,6 @@ hi def link db_functions functionlist
 hi def link string_functions functionlist
 hi def link html_functions functionlist
 hi def link image_functions functionlist
-hi def link ui_functions uifunctionlist
 
 hi def link udf_functions userfunctionlist
 
@@ -534,26 +533,25 @@ hi def link Float               Numbers
 hi def link Integer             Numbers
 hi def link sqBrace             MatchParen
 
-hi Normal       ctermfg=white ctermbg=NONE
-hi comment      ctermfg=Red
+hi Normal       ctermfg=blue ctermbg=NONE
+hi comment      ctermfg=red
 hi Constant     ctermfg=darkGreen cterm=bold
-hi statements   ctermfg=lightCyan
-hi tstatements  ctermfg=Magenta
+hi statements   ctermfg=darkBlue
+hi tstatements  ctermfg=magenta
 hi Identifiers  ctermfg=darkYellow
 hi ErrorMsg     ctermfg=black ctermbg=red
 hi WarningMsg   ctermfg=black ctermbg=green
-hi MatchParen   ctermbg=Blue ctermfg=Yellow
-hi InnerBrace   ctermbg=darkGray ctermfg=Blue
-hi Error        ctermbg=Red
-hi uifunctionlist ctermfg=Green cterm=italic
-hi userfunctionlist ctermfg=Yellow cterm=italic
+hi MatchParen   ctermbg=blue ctermfg=yellow
+hi InnerBrace   ctermbg=darkGray ctermfg=blue
+hi Error        ctermbg=red
+hi userfunctionlist ctermfg=yellow cterm=italic
 hi functionlist ctermfg=darkCyan cterm=italic
-hi Search       ctermbg=darkGray ctermfg=lightCyan
+hi Search       ctermbg=darkGray ctermfg=blue
 hi LineNr       ctermfg=blue
 hi title        ctermfg=darkGray
 hi ShowMarksHL  cterm=bold ctermfg=yellow ctermbg=black
 hi StatusLineNC ctermfg=lightBlue ctermbg=darkBlue
-hi StatusLine   cterm=bold    ctermfg=cyan  ctermbg=blue
+hi StatusLine   cterm=bold ctermfg=cyan ctermbg=blue
 hi clear Visual
 hi Visual       term=reverse cterm=reverse cterm=reverse
 hi DiffChange   ctermbg=darkGreen
@@ -579,9 +577,9 @@ hi colour_f7    ctermfg=white ctermbg=black
 
 hi colour_normal ctermfg=white ctermbg=darkGreen
 
-hi Types        ctermfg=lightMagenta
+hi Types        ctermfg=magenta
 hi Numbers      ctermfg=lightBlue
-hi String ctermfg=Green
+hi String ctermfg=green
 
 " Set Current Syntax: {{{1
 " ===================
