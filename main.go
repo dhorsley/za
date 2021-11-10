@@ -937,14 +937,15 @@ func main() {
         pcol := defaultPromptColour
 
         // banner
-        title := sparkle("Za Interactive Mode")
-        drop:=BMARGIN
-        if row<MH-BMARGIN { drop = 0 }
+        title:=sparkle("Za Interactive Mode")
+        drop :=BMARGIN
 
+        if row<=MH-BMARGIN { drop = 0 }
         pf("\n%s\n%s\n",
             sparkle("[#bold][#ul][#6]"+title+"[#-][##]"),
             str.Repeat("\n",drop),
         )
+        if row>MH-BMARGIN { row=MH-BMARGIN }
 
         // state control
         endFunc := false
@@ -1007,10 +1008,19 @@ func main() {
 
                 if eof || broken { break }
 
+                // getInput re-prints the prompt+input but doesn't add a newline or further at() calls
+                // so, we shove the cursor along here:
+
                 row++
-                if row>MH-BMARGIN { row=MH-BMARGIN ; pf("\n") }
+
+                if row>MH-BMARGIN {
+                    past:=0
+                    past=row-(MH-BMARGIN); row=MH-BMARGIN
+                    for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                }
+
+                at(row,1)
                 col = 1
-                at(row, col)
 
                 if input == "\n" {
                     break
@@ -1026,7 +1036,7 @@ func main() {
                 helpRequest   :=false
                 paneDefine    :=false
 
-                var cl int16
+                var cl int16 // placeholder for current line
 
                 for p := 0; p < len(input);  {
 
@@ -1045,10 +1055,8 @@ func main() {
 
                     if !helpRequest && !paneDefine {
                         switch t.carton.tokType {
-                        // adders
                         case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
                             nestAccept++
-                        // ladders
                         case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endwhen, C_Endstruct, RParen, RightSBrace:
                             nestAccept--
                         }
@@ -1074,9 +1082,11 @@ func main() {
                 // throw away break and continue positions in interactive mode
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
 
-                past:=0
-                if row>MH-BMARGIN { row=MH ; past=BMARGIN }
-                if past>0 { for ;past>0;past-- { fmt.Print("\n") } }
+                if row>MH-BMARGIN {
+                    past:=0
+                    past=row-(MH-BMARGIN); row=MH-BMARGIN
+                    for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                }
 
                 if endFunc {
                     break
