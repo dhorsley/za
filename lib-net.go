@@ -424,14 +424,19 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 // make call
 
-                loc,id := GetNextFnSpace(true,fn+"@")
+                ifn,_=fnlookup.lmget(fn)
+                loc,_ := GetNextFnSpace(true,fn+"@",call_s{prepared:true,base: ifn, caller: evalfs})
+
+                /*
                 calllock.Lock()
                 ifn,_=fnlookup.lmget(fn)
                 calltable[loc] = call_s{fs: id, base: ifn, caller: evalfs}
                 calllock.Unlock()
+                */
 
                 var ident [szIdent]Variable
                 atomic.AddInt32(&concurrent_funcs,1)
+                pf("[net] loc -> %d\n",loc)
                 rcount,_:=Call(MODE_NEW, &ident, loc, ciLnet, webcallstruct)
                 atomic.AddInt32(&concurrent_funcs,-1)
 

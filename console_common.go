@@ -118,6 +118,7 @@ func pf(s string, va ...interface{}) {
     fmt.Print(s)
 
     // test row update:
+        atlock.Lock()
         chpos:=0
         c:=col
         for ; chpos<len(s); c++ {
@@ -125,6 +126,7 @@ func pf(s string, va ...interface{}) {
             if s[chpos]=='\n'   { row++; c=0 }
             chpos++
         }
+        atlock.Unlock()
     // end test
 }
 

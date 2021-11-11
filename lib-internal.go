@@ -15,7 +15,7 @@ import (
     "runtime"
     "sort"
     str "strings"
-    "time"
+//    "time"
 )
 
 
@@ -623,6 +623,8 @@ func buildInternalLib() {
             for k,v:=range handleMap {
                 select {
                 case retval := <-v.(<-chan interface{}):
+                    // fmt.Printf("[await] filled results '%v' in:\n%+v\n",k,handleMap)
+                    // fmt.Printf("[await] retval was %v\n",results[k])
                     results[k]=retval
                     delete(handleMap,k)
                 default:
@@ -632,7 +634,6 @@ func buildInternalLib() {
             if waitForAll {
                 if len(handleMap)!=0 {
                     keepWaiting=true
-                    time.Sleep(1*time.Microsecond)
                 }
             }
         }
