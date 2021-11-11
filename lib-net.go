@@ -436,7 +436,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                 var ident [szIdent]Variable
                 atomic.AddInt32(&concurrent_funcs,1)
-                pf("[net] loc -> %d\n",loc)
                 rcount,_:=Call(MODE_NEW, &ident, loc, ciLnet, webcallstruct)
                 atomic.AddInt32(&concurrent_funcs,-1)
 
