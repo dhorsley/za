@@ -785,7 +785,6 @@ func main() {
                 // execute call
 
                 var trident [szIdent]Variable
-                pf("[erh] loc -> %d\n",loc)
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]interface{})
