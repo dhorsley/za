@@ -14,7 +14,7 @@ const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 const szIdent       = 320       // max vars per func
 const sz_lru_cache  = 10        // size of recently used cache of variable name-position lookups
 
-const gnfsModulus = 32768       // used by calltable to set max size, mainly impacts recursion
+const gnfsModulus = 48000       // used by calltable to set max size, mainly impacts recursion
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 
 const MAX_FUNCS = gnfsModulus   // initial instance and source functions cap 

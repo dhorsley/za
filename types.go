@@ -70,6 +70,7 @@ type call_s struct {
 	fs          string      // the text name of the calling party
 	caller      uint32      // the thing which made the call
 	base        uint32      // the original functionspace location of the source
+    prepared    bool        // some fields pre-filled by caller
 	retvals     interface{} // returned values from the call
 }
 

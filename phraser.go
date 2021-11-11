@@ -1,6 +1,7 @@
 package main
 
 import (
+    str "strings"
     "sync"
     "sync/atomic"
 )
@@ -77,6 +78,10 @@ func bind_int(fs uint32,name string) (i uint64) {
     return
 }
 
+func getFileFromIFS(ifs uint32) (string) {
+    if ifs==1 { return "main" }
+    return fileMap[ifs]
+}
 
 
 // phraseParse():
@@ -111,6 +116,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     lmv,_:=fnlookup.lmget(fs)
     addToPhrase:=false
+    vref_found:=false
 
     for ; pos < len(input); {
 
@@ -121,6 +127,13 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         if tempToken.tokPos != -1 { pos = tempToken.tokPos }
 
         tokenType = tempToken.carton.tokType
+
+        // var_refs display
+        if var_refs && tokenType==Identifier {
+            if tempToken.carton.tokText==var_refs_name {
+                vref_found=true
+            }
+        }
 
         // function name token mangling:
         if phrase.TokenCount>0 {
@@ -189,10 +202,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 if phrase.TokenCount>0 {
                     base.Original=input[lstart:pos]
                     if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
-                    // fmt.Printf(">> %s <<\n",base.Original)
                 } else {
                         base.Original=""
                 }
+            }
+
+            if vref_found {
+                pf("[#3]%s[#-] | Line [#6]%4d[#-] : %s\n",getFileFromIFS(lmv),curLine+1,str.TrimLeft(base.Original," \t"))
+                vref_found=false
             }
 
             phrase.SourceLine=curLine

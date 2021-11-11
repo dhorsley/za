@@ -67,7 +67,7 @@ foreach r in f
             if r[e]==separator
                 # push column to array
                 col=col[:col.len-1]
-                on trim_leading_space do col=col.trim(-1)
+                on trim_leading_space do col=$lt col
                 rows[rn]=rows[rn].append(col)
                 check_quotes(col,key_r+1,colnum)
                 col=""
@@ -80,7 +80,7 @@ foreach r in f
     on in_quote do exit err.openq,"[#2]open quote at eol #{=key_r+1}[#-]"
 
     # push end column to array
-    on trim_leading_space do col=col.trim(-1)
+    on trim_leading_space do col=$lt col
     rows[rn]=rows[rn].append(col)
     check_quotes(col,key_r+1,colnum)
     rn++

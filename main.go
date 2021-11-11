@@ -126,6 +126,10 @@ var lastfunc = make(map[uint32]string)
 // interactive mode and prompt handling flag
 var interactive bool
 
+// for refactoring: find a var
+var var_refs bool
+var var_refs_name string
+
 // storage for the standard library functions
 var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
 
@@ -454,7 +458,8 @@ func main() {
     var a_shell        = flag.String("s","","path to coprocess shell")
     var a_shellrep     =   flag.Bool("Q",false,"enables the shell info reporting")
     var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
-    var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte.")
+    var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte")
+    var a_var_refs     = flag.String("V","","find all references to a variable")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -472,6 +477,13 @@ func main() {
     // check if interactive mode was desired
     if *a_interactive {
         interactive = true
+    }
+
+    // var refs
+    var_refs=false
+    if *a_var_refs != "" {
+        var_refs=true
+        var_refs_name=*a_var_refs
     }
 
     // source filename
@@ -763,20 +775,17 @@ func main() {
 
                 // build call
 
-                loc, id := GetNextFnSpace(true,usih+"@")
                 lmv,_:=fnlookup.lmget(usih)
+                loc, _ := GetNextFnSpace(true,usih+"@",call_s{prepared:true,base:lmv,caller:0})
+
                 calllock.Lock()
                 currentModule="main"
-                calltable[loc] = call_s{
-                    fs: id,
-                    base: lmv,
-                    caller: 0,
-                }
                 calllock.Unlock()
 
                 // execute call
 
                 var trident [szIdent]Variable
+                pf("[erh] loc -> %d\n",loc)
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]interface{})
@@ -954,7 +963,7 @@ func main() {
         lastHist = 0
         histEmpty = true
 
-        mainloc,_ := GetNextFnSpace(true,"main")
+        mainloc,_ := GetNextFnSpace(true,"main",call_s{prepared:false})
         fnlookup.lmset("main",1)
         numlookup.lmset(1,"main")
 
@@ -1015,8 +1024,7 @@ func main() {
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
-                    past:=row-(MH-BMARGIN)
-                    for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH,1); fmt.Print("\n") }
                     row=MH-BMARGIN
                 }
 
@@ -1081,12 +1089,12 @@ func main() {
                 currentModule="main"
 
                 // throw away break and continue positions in interactive mode
+                // pf("[main] loc -> %d\n",mainloc)
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
-                    past:=row-(MH-BMARGIN)
-                    for ;past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH,1); fmt.Print("\n") }
                     row=MH-BMARGIN
                 }
 
@@ -1164,7 +1172,7 @@ func main() {
 
         // initialise the main program
 
-        mainloc,_ := GetNextFnSpace(true,"main")
+        mainloc,_ := GetNextFnSpace(true,"main",call_s{prepared:false})
         // pf("[#4]main location set to %d[#-]\n",mainloc)
         calllock.Lock()
         cs := call_s{}
@@ -1174,6 +1182,7 @@ func main() {
         calltable[mainloc] = cs
         calllock.Unlock()
         currentModule="main"
+        // pf("[main] loc -> %d\n",mainloc)
         Call(MODE_NEW, &mident, mainloc, ciMain)
         calltable[mainloc]=call_s{}
     }
