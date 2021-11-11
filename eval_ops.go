@@ -1147,7 +1147,6 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
 
             var ident [szIdent]Variable
 
-            // pf("[evo] loc -> %d\n",loc)
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
 
             // handle the returned result, if present.
