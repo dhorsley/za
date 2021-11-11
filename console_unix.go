@@ -470,7 +470,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         if len(s)>0 { add=" " }
                         if newstart==-1 { newstart=0 }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
-                        cpos = len(s)
+                        cpos = len(s)-1
                         for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                     }
                     helpstring = ""

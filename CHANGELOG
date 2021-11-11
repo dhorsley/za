@@ -26,6 +26,13 @@ CHANGE LOG
     fixes
     -----
 
+    * reviewed the code around ASYNC/AWAIT for problems.
+        - it's working fine, just not all that clever.
+        - absolutely, under no circumstances, ever try to write a recursive function
+            that has async inside of it. it will work, but it's awful slow.
+            - recursion is not exactly fast to begin with and you lose most chances
+                to take the small advantage of tail-call elimination when using async.
+                
     * Updated trapInt and general handling around interactive mode main ident id.
 
     * fixed: interactive mode / post-inc/-dec triggers false negative in global var name
@@ -60,6 +67,8 @@ CHANGE LOG
 
     language changes
     ----------------
+
+    * (experimental) Added -V <name> option for finding identifier references.
 
     * (experimental) Added some auto casting in logical OR checks:
         - ints convert as 0:false, not-zero:true

@@ -78,10 +78,19 @@ func (parser *leparser) report(line int16,s string) {
         }
     }
 
+    filename:=getFileFromIFS(baseId)
+    if filename=="" { filename="main" }
+
+    var submsg string
+    if interactive {
+        submsg="[#7]Error (interactive) : "
+    } else {
+        submsg=sf("[#7]Error in %+v/%s (line #%d) : ",filename,baseName,line+1)
+    }
+
     var msg string
     if !permit_exitquiet {
-        msg = sparkle(sf("[#CTE]\n[#bred]\n[#CTE]"+
-            "[#7]Error in %+v/%s (line #%d) : ", fileMap[sourceMap[baseId]],baseName,line+1))+
+        msg = sparkle("[#CTE]\n[#bred]\n[#CTE]"+submsg) +
             line_content+"\n"+
             sparkle("[##][#-][#CTE]")+
             sparkle(sf("%s\n",s))+

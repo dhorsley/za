@@ -21,15 +21,24 @@ import (
 )
 
 
-func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
+func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan interface{},string) {
+
     r:=make(chan interface{})
+
+    loc,id := GetNextFnSpace(true,call+"@",call_s{prepared:true,base:base,caller:caller})
+    // fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
     go func() {
         defer close(r)
         var ident [szIdent]Variable
         atomic.AddInt32(&concurrent_funcs,1)
+        /*
+        pf("[task] loc    -> %d\n",loc)
+        pf("[task] caller -> %d\n",caller)
+        pf("[task] cs     -> %+v\n",calltable[loc])
+        */
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
-        atomic.AddInt32(&concurrent_funcs,-1)
+        // fmt.Printf("[task] %d done\n",loc)
 
         switch rcount {
         case 0:
@@ -50,11 +59,11 @@ func task(caller uint32, loc uint32, iargs ...interface{}) <-chan interface{} {
             r<-v
         }
 
-        calllock.Lock()
-        calltable[loc]=call_s{}
-        calllock.Unlock()
+        atomic.AddInt32(&concurrent_funcs,-1)
+
     }()
-    return r
+    // fmt.Printf("***** [task] loc#%d complete.\n",loc)
+    return r,id
 }
 
 var testlock = &sync.RWMutex{}
@@ -338,7 +347,7 @@ func formatInt32(n int32) string {
 
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
-func GetNextFnSpace(do_lock bool, requiredName string) (uint32,string) {
+func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string) {
 
     // fmt.Printf("Entered gnfs\n")
     calllock.Lock()
@@ -359,19 +368,23 @@ func GetNextFnSpace(do_lock bool, requiredName string) (uint32,string) {
         ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
         copy(ncs,calltable)
         calltable=ncs
+        // fmt.Printf("[gnfs] resized calltable.\n")
     }
 
     // generate new tagged instance name
     newName := requiredName
     if newName[len(newName)-1]=='@' {
-        // newName+=formatUint32(globseq)
         newName+=strconv.FormatUint(uint64(globseq), 10)
     }
 
     // allocate
     numlookup.lmset(globseq, newName)
     fnlookup.lmset(newName,globseq)
-    calltable[globseq]=call_s{fs:"@@reserved",caller:0,base:0}
+    if cs.prepared==true {
+        cs.fs=newName
+        calltable[globseq]=cs
+        // fmt.Printf("[gnfs] populated call table entry # %d with: %+v\n",globseq,calltable[globseq]) 
+    }
 
     // fmt.Printf("(gnf) allocated for %v with %d\n",newName,globseq)
 
@@ -386,14 +399,6 @@ var farglock   = &sync.RWMutex{}  // function args manipulation
 var fspacelock = &sync.RWMutex{}  // token storage related
 var globlock   = &sync.RWMutex{}  // generic global related
 
-
-// identify the source storage id related to a specific instance id
-func baseof(fs uint32) (source_base uint32) {
-    calllock.RLock()
-    source_base = calltable[fs].base
-    calllock.RUnlock()
-    return
-}
 
 // for error reporting : keeps a list of parent->child function calls
 //   will probably blow up during recursion.
@@ -410,17 +415,20 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     calllock.Lock()
 
     /*
-    pf("\n[#1]Entered call -> %#v : va -> %#v[#-]\n",calltable[csloc],va)
+    pf("\n[#1]Entered call (csloc#%d) -> %#v[#-]\n",csloc,calltable[csloc])
+    pf(" with caller of  -> %v\n",calltable[csloc].caller)
     pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
     */
 
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.prectable=default_prectable
     parser.ident=ident
     calllock.Unlock()
+
     lastlock.Lock()
     interparse.ident=ident
     if interactive {
@@ -467,13 +475,17 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     // ..get call details
     calllock.RLock()
-    ncs := &calltable[csloc]
 
     // unique name for this execution, pre-generated before call
-    fs = (*ncs).fs
+    fs = calltable[csloc].fs
 
     // the source code to be read for this function
-    source_base = (*ncs).base
+    /*
+    fmt.Printf("[call] csloc: %d\n",csloc)
+    fmt.Printf("[call] cstab: %+v\n",calltable[csloc])
+    */
+
+    source_base = calltable[csloc].base
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
@@ -485,14 +497,15 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     // -- generate bindings
 
-    if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Lock() }
+    var locked bool
+    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true ; lastlock.Lock() }
     if !symbolised[source_base] && source_base>1 {
         bindlock.Lock()
         bindings[source_base]=make(map[string]uint64)
         bindlock.Unlock()
         symbolised[source_base]=true
     }
-    if atomic.LoadInt32(&concurrent_funcs)>0 { lastlock.Unlock() }
+    if locked { lastlock.Unlock() }
 
     bindlock.Lock()
     if bindings[ifs]==nil && ifs>1 {
@@ -524,6 +537,10 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     // missing varargs in call result in nil assignments back to caller:
     farglock.Lock()
+    /*
+    fmt.Printf("[call-fa] ifs#%d source_base -> %+v\n",ifs,source_base)
+    fmt.Printf("[call-fa] ifs#%d fargs       -> %+v\n",ifs,functionArgs[source_base].args)
+    */
     if len(functionArgs[source_base].args)>len(va) {
         for e:=0; e<(len(functionArgs[source_base].args)-len(va)); e+=1 {
             va=append(va,nil)
@@ -539,10 +556,13 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     //  for the break and continue statements
     var lastConstruct = []uint8{}
 
+    /*
     if varmode == MODE_NEW {
         // in_tco: currently in an iterative tail-call.
-        vset(ifs,ident, "@in_tco",false)
+        in_tco=false
+        // vset(ifs,ident, "@in_tco",false)
     }
+    */
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
@@ -566,7 +586,13 @@ tco_reentry:
     if len(va) > 0 {
         for q, v := range va {
             fa:=functionArgs[source_base].args[q]
-             // pf("-- setting va-to-var variable %s with %+v\n",fa,v)
+            /*
+            pf("-- setting va-to-var (fargs-sb) : %+v\n",functionArgs[source_base])
+            pf("-- setting va-to-var in ifs#%d source_base: %d\n",csloc,source_base)
+            pf("-- setting va-to-var in ifs#%d ifs        : %d\n",csloc,ifs)
+            pf("-- setting va-to-var in ifs#%d variable   : %s\n",csloc,fa)
+            pf("-- setting va-to-var in ifs#%d with val   : %+v\n",csloc,v)
+            */
             vset(ifs,ident,fa,v)
         }
     }
@@ -592,7 +618,6 @@ tco_reentry:
     parser.pc = -1            // program counter : increments to zero at start of loop
 
     var si bool
-    // var statement *Token
     var we ExpressionCarton   // pre-allocated for general expression results eval
     var expr interface{}      // pre-llocated for wrapped expression results eval
     var err error
@@ -631,7 +656,6 @@ tco_reentry:
 
         // finally... start processing the statement.
 
-        // statement = &inbound.Tokens[0]
 
         /////// LINE ////////////////////////////////////////////////////////////
                // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
@@ -705,6 +729,15 @@ tco_reentry:
             // pf("current struct node build at :\n%#v\n",structNode)
 
             continue
+        }
+
+        // show var references for -V arg
+        if var_refs {
+            switch inbound.Tokens[0].tokType {
+            case C_Module,C_Define,C_Enddef:
+            default:
+                continue
+            }
         }
 
         // abort this phrase if currently inside a TEST block but the test flag is not set.
@@ -2561,13 +2594,9 @@ tco_reentry:
                 }
 
                 // make Za function call
-                loc,id := GetNextFnSpace(true,call+"@")
-                calllock.Lock()
-                calltable[loc] = call_s{fs: id, base: lmv, caller: ifs}
-                calllock.Unlock()
 
                 // construct a go call that includes a normal Call
-                h:=task(ifs,loc,resu...)
+                h,id:=task(ifs,lmv,call,resu...)
 
                 // assign h to handles map
                 if nival==nil {
@@ -2677,7 +2706,7 @@ tco_reentry:
                 defining = true
                 definitionName = inbound.Tokens[1].tokText
 
-                loc, _ := GetNextFnSpace(true,definitionName)
+                loc, _ := GetNextFnSpace(true,definitionName,call_s{prepared:false})
                 var dargs []string
 
                 if inbound.TokenCount > 2 {
@@ -2715,6 +2744,7 @@ tco_reentry:
                 }
 
                 sourceMap[loc]=source_base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
+                // pf("[sm] loc %d -> %v\n",loc,source_base)
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
                 basecode[loc] = []BaseCode{}
@@ -2808,7 +2838,8 @@ tco_reentry:
 
                     // set tco flag if required, and perform.
                     if !skip_reentry {
-                        vset(ifs,ident,"@in_tco",true)
+                        // vset(ifs,ident,"@in_tco",true)
+                        // in_tco=true
                         parser.pc=-1
                         goto tco_reentry
                     }
@@ -3020,7 +3051,7 @@ tco_reentry:
 
             if !fnlookup.lmexists("@mod_"+fom) {
 
-                loc, _ := GetNextFnSpace(true,"@mod_"+fom)
+                loc, _ := GetNextFnSpace(true,"@mod_"+fom,call_s{prepared:false})
 
                 calllock.Lock()
 
@@ -3040,6 +3071,8 @@ tco_reentry:
 
                 //.. parse and execute
                 fileMap[loc]=moduleloc
+                // pf("[fm] loc %d -> %v\n",loc,moduleloc)
+
                 if debug_level>10 {
                     start := time.Now()
                     phraseParse("@mod_"+fom, string(mod), 0)
@@ -3058,6 +3091,7 @@ tco_reentry:
 
                 var modident [szIdent]Variable
 
+                // pf("[mod] loc -> %d\n",loc)
                 if debug_level>10 {
                     start := time.Now()
                     Call(MODE_NEW, &modident, loc, ciMod)
@@ -3066,7 +3100,6 @@ tco_reentry:
                 } else {
                     Call(MODE_NEW, &modident, loc, ciMod)
                 }
-                calltable[loc]=call_s{}
 
                 currentModule=oldModule
 

@@ -29,10 +29,11 @@ func typeOf(val interface{}) string {
     case reflect.String:
         return "string"
     default:
-        pf("[ kind %#v ]\n", kind.String())
+        // pf("[ kind %#v ]\n", kind.String())
     }
 
     if _, ok := val.([]interface{}); ok {
+        pf("[ typeOf: array : %+v ]\n",val)
         return "array"
     }
 
@@ -1142,27 +1143,24 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
             }
             // pf("(in call) do_lock %v - name %v - evalfs_name %v\n",do_lock,name,evname)
 
-            loc,id := GetNextFnSpace(do_lock,name+"@")
-
-            calllock.Lock()
-            calltable[loc] = call_s{fs: id, base: lmv, caller: evalfs}
-            calllock.Unlock()
+            loc,_ := GetNextFnSpace(do_lock,name+"@",call_s{prepared:true,base: lmv, caller: evalfs})
 
             var ident [szIdent]Variable
+
+            // pf("[evo] loc -> %d\n",loc)
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
 
             // handle the returned result, if present.
 
+            calllock.Lock() ; defer calllock.Unlock()
             res = calltable[loc].retvals
+            calltable[loc]=call_s{}
             switch rcount {
             case 0:
-                calltable[loc]=call_s{}
                 return nil
             case 1:
-                calltable[loc]=call_s{}
                 return res.([]interface{})[0]
             default:
-                calltable[loc]=call_s{}
                 return res
             }
             return res

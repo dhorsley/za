@@ -1145,10 +1145,14 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // local variable lookup:
 
+    locked:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; locked=true }
     bin:=bind_int(p.fs,token.tokText)
     if (*p.ident)[bin].declared {
+        if locked { vlock.RUnlock() }
         return (*p.ident)[bin].IValue
     }
+    if locked { vlock.RUnlock() }
 
     var val interface{}
     var there bool
@@ -1271,13 +1275,15 @@ func identResize(evalfs uint32,ident *[szIdent]Variable,sz uint16) {
 */
 
 func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
+    // fmt.Printf("[vs] name : %s\n",name)
     bin:=bind_int(fs,name)
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
+    var locked bool
+    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; locked=true }
     (*ident)[bin].IName=name
     (*ident)[bin].declared=true
     // fmt.Printf("vset bin is now %d for %s\n",bin,name)
     vseti(fs,ident,bin,value)
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
+    if locked { vlock.Unlock() }
 
     // fmt.Printf("vset value is %+v\n",(*ident)[bin])
 }
@@ -1459,22 +1465,24 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
         case string:
             key=el.(string)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
+        locked:=false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
         if ok {
             (*ident)[bin].IValue.(map[string]interface{})[key] = value
         } else {
             (*ident)[bin].IValue.(map[string]interface{})[key] = value
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
+        if locked { vlock.Unlock() }
         return
     }
 
     numel:=el.(int)
     var fault bool
 
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
+    locked:=false
+    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
     atype:=(*ident)[bin].IValue
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
+    if locked { vlock.Unlock() }
 
     switch atype.(type) {
 
