@@ -50,16 +50,22 @@ else
     endif
 endif
 
-if ! os() ~ "^freebsd"
-    if upxfound==1 && is_file("za")
-        if tgt!="win"
-            on ! tgt ~i "^(alpine|aws)$" and strip_enable do | strip -s -w za
-            on upx_enable do | upx za
+
+if is_file("za")
+    if not os() ~ "^freebsd"
+        if upxfound==1
+            if tgt!="win"
+                on strip_enable and not tgt ~i "^(alpine|aws)$" do | strip -s -w za
+                on upx_enable                                   do | upx za
+            endif
+        else
+            println "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]"
         endif
     else
-        on is_file("za") do println "[#6]Note: Please consider installing the upx package for compressing the binary.[#-]"
+        # don't strip/upx freebsd version
     endif
 endif
+
 
 when lower(tgt)
 contains "^(alpine|libc)$"
