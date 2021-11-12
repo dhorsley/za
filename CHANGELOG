@@ -37,6 +37,8 @@ CHANGE LOG
                 
     * Updated trapInt and general handling around interactive mode main ident id.
 
+    * fixed: removed grep/cut calls during startup. using internal funcs instead.
+
     * fixed: interactive mode / post-inc/-dec triggers false negative in global var name
     * fixed: setglob post-inc/-dec.
 
