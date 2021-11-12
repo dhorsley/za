@@ -22,6 +22,8 @@ CHANGE LOG
 
     * added has_term() and has_colour() library calls.
 
+    * removed some hard exits in unmap(), key() and globkey()
+
 
     fixes
     -----
@@ -41,6 +43,10 @@ CHANGE LOG
     * now recognising [] of types and interface{} as a type in struct read/writes
        from/to file, (in actor.go/s2m and actor.go/m2s).
         - also now auto registering the basic struct field types in gob.Register.
+
+    * added []any type as valid list type in esplit()
+        - this was forcing you to cast a literal list like [1,2,3] to something like
+            [1,2,3].list_int before passing it through esplit().
 
     * added bottom margin setting for interactive mode
         - pre-emptive inclusion so that we can add better interactive help later.

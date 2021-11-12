@@ -9,14 +9,12 @@ lots, i'm sure.
 TODO
 ----
 
-    * There are currently a few issues in the Windows build around async.
+    * There may currently be a few issues in the Windows build around async.
         - i'll get to these eventually, but not rushing them. only the linux/alpine builds are
             considered to be of any import currently.
     * 23-09-2021: tested windows build again.
         - it required a little update in console_windows.go to compile and does still function.
         - however, there are several feature changes and fixes not yet included in it.
-            - (this includes the extra fixes for tab completion)
-        - it's going to need some serious diff inspection to pull it in line again.
         - will be worth splitting more of the code to the console_common.go file.
         - lib-os_windows.go is also quite out of date now, with missing lib calls.
             - this may be okay for some of them, as not all calls are supported under windows,
@@ -25,8 +23,6 @@ TODO
     * coalesce windows/linux builds.
         - lib-os is missing some functions in windows file, but probably only
             things which Windows FS doesn't support. need to confirm.
-        - some functional differences in getch() and other input routines, but mostly expected.
-            not worth correcting yet.
 
 
 LATER / UNDECIDED
@@ -41,58 +37,6 @@ LATER / UNDECIDED
         - may be worth marking stores as "getting full" somewhere in bind_int and having an
             async routine to check and expand candidates. (i.e. like some sort of deranged
             garbage collector in reverse.)
-        - this would give us a natural place to put actual gc type tasks later.
-
-    * need to (re)consider structs as struct member types.
-        - initially, this did not seem useful for the language. in all honesty, it still doesn't,
-           but it might allow for other use cases. it also adds a fair amount of complexity that
-           we may be better without.
-
-    * add ref and mut directives/operators for use in function calls?
-
-    In principle, we are generally trying to avoid passing variables by reference to allow for their
-    mutation in a call. However, it has proven useful at least a few times when constructing the
-    library to allow this. 
-
-    The compromise, so far, was to indicate the variable name with the REF operator rather than
-    putting variable names in strings during the call. It makes clear the intent of the use while
-    still not mutating the variable during the call. We have no aspirations towards pure function calls,
-    however we did want to give clarity for readers of the code what was going on.
-
-    As we have needed to do this ourselves then surely normal programming with the language would
-    deem it necessary to allow for call-by-reference or call-by-copy-restore.  This may be the case, 
-    but we are still trying to avoid it. 
-
-    In case we do change our mind, then we will likely extend calls to make the REF and MUT operators 
-    both act as a literal reference to the variable name but to also pass a usage flag through the call:
-
-        REF n  : read-only reference to caller variable 'n'
-        MUT n  : reference to caller variable 'n'. Work with copy during call. On exit, write the result
-                    back to the caller variable 'n'.
-
-    To accomplish this we would need to:
-
-        - move the callFunction argument wrangling that happens everywhere to the start of the Call function.
-            - this is needed as the arguments are evaluated ahead of the functionArgs comparisions done
-                inside Call(). I.e. the required information is lost by that stage.
-            - it would also unify the various methods of processing args currently done all over the place.
-            - this would possibly also reduce the lock count at function call startup.
-
-        - add code in function arg processing to add a mutable field with "mut" operator (probably quite
-            a minor change code-wise as we already have a processing loop for this, we just need a case for
-            setting the 'mut' flag.)
-
-        - add code on function exit to mutate caller state with updated values (we already do this to 
-            a certain extent for the retval/retvar handling, so this would be an extension.)
-
-        - maybe other stuff i can't think of right now.
-
-    Without those additional changes, ref/mut are usable as synonyms for ` "variable" `.
-
-    The above would quite clearly be a substantial structure change from how things are now. It's not 
-    a lot of code, but it would require much testing. It's made more problematic in that as soon as I start
-    ripping that code apart there's a few other changes that I would feel compelled to make while in there.
-
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support.
 

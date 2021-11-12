@@ -1,0 +1,20 @@
+#!/usr/bin/za
+
+doc `find all lines starting with 'g' and
+        count the occurrences of 'tat' on each line
+`
+
+var lm assoc
+ss="tat"
+foreach l in $in "regexredux-input.txt".grep("^g")
+    lm[key_l]=0
+    println ">>> {l}"
+    for e = 0 to len(l)-len(ss)
+        if strpos(l[e:e+len(ss)],ss)!=-1
+            lm[key_l]+=1
+            e+=len(ss)
+        endif
+    endfor
+    println "... count = ",lm[key_l]
+endfor
+

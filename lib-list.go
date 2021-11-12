@@ -1513,7 +1513,7 @@ func buildListLib() {
         // pf("in esplit : arg 2 : %s\n",args[2].(string))
 
         switch args[0].(type) {
-        case []bool, []string, []uint8, []int, []uint, []float64:
+        case []bool, []string, []uint8, []int, []uint, []float64,[]interface{}:
         default:
             return false, errors.New("Argument 1 must be a list.")
         }
