@@ -3,7 +3,37 @@ package main
 import (
 	"unicode/utf8"
 //    "os"
+    "regexp"
+    str "strings"
 )
+
+
+// line grep from string
+func lgrep(s string,reg string) string {
+    list:=str.Split(s,"\n")
+    var ns str.Builder
+    for _,v:=range list {
+        if m,_:=regexp.MatchString(reg,v); m {
+            ns.WriteString(v+"\n")
+        }
+    }
+    repl:=ns.String()
+    if len(repl)>0 {
+        if repl[len(repl)-1]=='\n' {
+            repl=repl[:len(repl)-1]
+        }
+    }
+    return repl
+}
+
+func lcut(s string,pos int,sep string) string {
+    fstr:=str.TrimSuffix(s,"\n")
+    ta:=str.FieldsFunc(fstr,func(c rune) bool { return str.ContainsRune(sep,c) })
+    if pos>0 && pos<=len(ta) {
+        return ta[pos-1]
+    }
+    return ""
+}
 
 func lastCharSize(s string) int {
 	_, size := utf8.DecodeLastRuneInString(s)

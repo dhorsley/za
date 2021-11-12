@@ -859,15 +859,17 @@ func main() {
         vset(0,&gident, "@release_name", "unknown")
         vset(0,&gident, "@release_version", "unknown")
 
-        // @todo: these ones *really* need re-doing. should not be calling
-        // grep/cut however common they are. i was just being lazy. we can
-        // do all of the work involved with stuff already available.
-
         if runtime.GOOS=="linux" {
-            cop = Copper("cat /etc/*-release | grep '^NAME=' | cut -d= -f2", true)
-            vset(0,&gident, "@release_name", stripOuterQuotes(cop.out, 1))
-            cop = Copper("cat /etc/*-release | grep '^VERSION_ID=' | cut -d= -f2", true)
-            vset(0,&gident, "@release_version", stripOuterQuotes(cop.out, 1))
+
+            cop = Copper("cat /etc/*-release",true)
+            s:=lgrep(cop.out,"^NAME=")
+            s=lcut(s,2,"=")
+            vset(0,&gident, "@release_name", stripOuterQuotes(s,1))
+
+            cop = Copper("cat /etc/*-release",true)
+            s=lgrep(cop.out,"^VERSION_ID=")
+            s=lcut(s,2,"=")
+            vset(0,&gident, "@release_version", stripOuterQuotes(s,1))
         }
 
         // special cases for release version:
@@ -879,7 +881,9 @@ func main() {
         }
         vset(0,&gident, "@release_version", vtmp)
 
-        cop = Copper("cat /etc/*-release | grep '^ID=' | cut -d= -f2", true)
+        cop = Copper("cat /etc/*-release",true)
+        s:=lgrep(cop.out,"^ID=")
+        s=lcut(s,2,"=")
         tmp = stripOuterQuotes(cop.out, 1)
 
         // special cases for release id:
