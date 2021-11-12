@@ -644,7 +644,6 @@ func buildInternalLib() {
     slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key. Returns true on successful removal."}
     stdlib["unmap"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("unmap",args,1,"2","string","string"); !ok { return nil,err }
-        // @note: mut candidate
 
         var v interface{}
         var found bool
@@ -652,6 +651,15 @@ func buildInternalLib() {
         if v, found = vget(evalfs,ident, args[0].(string)); !found {
             return false, nil
         }
+
+        switch v.(type) {
+        case map[string]interface{},map[string]int,map[string]float64,map[string]int64:
+        case map[string]int32,map[string]bool,map[string]uint:
+        default:
+            // pf("v->%+v | k->%T\n",v,v)
+            return false, errors.New("unmap requires a map")
+        }
+
         if _, found = v.(map[string]interface{})[args[1].(string)].(interface{}); found {
             vdelete(evalfs,ident,args[0].(string),args[1].(string))
             return true,nil
@@ -662,7 +670,6 @@ func buildInternalLib() {
     slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]?"}
     stdlib["key"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("key",args,1,"2","string","string"); !ok { return nil,err }
-        // @note: ref candidate
 
         var v interface{}
         var found bool
@@ -692,7 +699,8 @@ func buildInternalLib() {
         case map[string]interface{}:
             if _, found = v[key];   found { return true, nil }
         default:
-            pf("unknown type: %T\n",v); os.Exit(0)
+            // pf("unknown type: %T\n",v); os.Exit(0)
+            return false, errors.New("key() requires a map")
         }
         return false, nil
     }
@@ -738,7 +746,8 @@ func buildInternalLib() {
         case map[string]interface{}:
             if _, found = v.(map[string]interface{})[key];   found { return true, nil }
         default:
-            pf("unknown type: %T\n",v); os.Exit(0)
+            return false, errors.New("globkey() requires a map")
+            // pf("unknown type: %T\n",v); os.Exit(0)
         }
         return false, nil
     }
