@@ -872,10 +872,11 @@ func main() {
             vset(0,&gident, "@release_version", stripOuterQuotes(s,1))
         }
 
+
         // special cases for release version:
 
         // case 1: centos/other non-semantic expansion
-        vtmp, _ := vget(0, &gident,"@release_version")
+        vtmp, _ := vget(0,&gident,"@release_version")
         if tr(vtmp.(string),DELETE,"0123456789.","")=="" && !str.ContainsAny(vtmp.(string), ".") {
             vtmp = vtmp.(string) + ".0"
         }
@@ -884,7 +885,8 @@ func main() {
         cop = Copper("cat /etc/*-release",true)
         s:=lgrep(cop.out,"^ID=")
         s=lcut(s,2,"=")
-        tmp = stripOuterQuotes(cop.out, 1)
+
+        tmp = stripOuterQuotes(s, 1)
 
         // special cases for release id:
 
@@ -903,17 +905,17 @@ func main() {
 
         vset(0,&gident,"@release_id", tmp)
 
+        // get hostname
         h, _ := os.Hostname()
         vset(0,&gident,"@hostname", h)
 
     } // endif not windows
 
+
     // special case: aliases in bash
     if shelltype=="bash" {
         Copper("shopt -s expand_aliases",true)
     }
-
-    // @todo: needs the equivalent to above stanza here to make ash aliases stick.
 
     if shelltype=="bash" || shelltype=="ash" {
         Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
@@ -1153,6 +1155,7 @@ func main() {
         *a_program=s
     }
 
+
     // source the program
     var input string
     if *a_program!="" {
@@ -1198,7 +1201,6 @@ func main() {
     }
 
     // debug(15,"var counts\nvget  : %d\nvgeti : %d\n",vgetcount,vgeticount)
-    // pf("[cache] miss %d - hit %d - max string len %d\n",evalCacheMiss,evalCacheHit,maxLenEvalString)
 
 }
 
