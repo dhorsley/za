@@ -33,8 +33,14 @@ func UintPow(n, m uint64) (result uint64) {
 
 func (p *leparser) Eval(fs uint32, toks []Token) (interface{},error) {
 
-    // short circuit pure numeric literals
-    if len(toks)==1 && toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil }
+    // short circuit pure numeric literals and const names
+    if len(toks)==1 {
+        if toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil }
+        switch toks[0].subtype {
+        case subtypeConst:
+            return toks[0].tokVal,nil
+        }
+    }
 
     //    pf("reached dparse: %+v\n",toks)
 
