@@ -277,6 +277,10 @@ func main() {
             globlock.Lock()
             MW, MH, _ = GetSize(1)
             globlock.Unlock()
+            shelltype, _ := vget(0, &gident,"@shelltype")
+            if shelltype=="bash" || shelltype=="ash" {
+                Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
+            }
         }
     }()
 
@@ -1066,6 +1070,7 @@ func main() {
 
                     // this is hardly fool-proof, but okay for now:
                     if t.carton.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
+                    if t.carton.tokType==C_Break { break } // don't check as may also contain a nesting keyword
 
                     if !helpRequest && !paneDefine {
                         switch t.carton.tokType {
