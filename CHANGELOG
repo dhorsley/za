@@ -103,30 +103,21 @@ CHANGE LOG
         - ... "break 1" escapes to between endfor and endwhile
         - ... "break 2" escapes to after the endwhile.
         - ... "break 0" or no argument acts like break 1.
-        - still considering adding more extension keywords, so treat this change 
-            as experimental for now.
 
-        - may also add "break [for|foreach|while|when]" to make break skip to the outside of
-            the next matching construct type. i.e. from example above, "break 2" == "break while"
-        - ... this would be of no use for hopping over multiples of a given type,
-            but it may be more readable. will update here soon. e.g.:
+        - (experimental!) added "break [for|foreach|while|when]" to make break skip to the outside of
+           the next matching construct type. i.e. from example above, "break 2" == "break while"
 
-        a="two"
-        when a
-        is "one"
-            print
-        is "two"
-            for e = 1 to 20
-                break when
-            endfor
-        is "three"
-            print
-        endwhen
-        assert e == 1
-
-        - ... may also add a "last break" note field for enumerating the break type after flow continues.
-            - this one is much more unlikely, need to think it through first.
-                - this may be useful as a poor man's exceptions for exit cleanups, but still.. unlikely.
+            a="two"
+            when a
+            is "one"
+                print
+            is "two"
+                for e = 1 to 20
+                    break when
+                endfor
+            is "three"
+                print
+            endwhen
 
 
 1.0.15

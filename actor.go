@@ -465,6 +465,8 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     var break_count int             // usually 0. when >0 stops breakIn from resetting
                                     //  used for multi-level breaks.
     var breakIn uint8               // true during transition from break to outer.
+    var forceEnd bool               // used by BREAK for skipping context checks when
+                                    //  bailing from nested constructs.
     var retvalues []interface{}     // return values to be passed back
     var finalline int16             // tracks end of tokens in the function
     var fs string                   // current function space
@@ -1213,7 +1215,7 @@ tco_reentry:
 
             cond := loops[depth]
 
-            if cond.loopType != C_While {
+            if !forceEnd && cond.loopType != C_While {
                 parser.report(inbound.SourceLine,"ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
                 break
@@ -1224,6 +1226,7 @@ tco_reentry:
                 depth-=1
                 lastConstruct = lastConstruct[:depth]
                 breakIn = Error
+                forceEnd=false
                 break_count-=1
                 if break_count>0 {
                     switch lastConstruct[depth-1] {
@@ -1749,7 +1752,7 @@ tco_reentry:
             thisLoop = &loops[depth]
 
             if (*thisLoop).optNoUse == Opt_LoopStart {
-                if lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
+                if !forceEnd && lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
                     parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
                     finish(false,ERR_SYNTAX)
                     break
@@ -1865,6 +1868,7 @@ tco_reentry:
             } else {
                 // time to die, mr bond? C_Break reached
                 breakIn = Error // reset to unbroken
+                forceEnd=false
                 loopEnd = true
             }
 
@@ -1876,9 +1880,11 @@ tco_reentry:
                 depth-=1
                 lastConstruct = lastConstruct[:depth]
                 breakIn = Error // reset to unbroken
+                forceEnd=false
                 if break_count>0 {
                     break_count-=1
                     breakIn=Error
+                    forceEnd=false
                     if break_count>0 {
                         switch lastConstruct[depth-1] {
                         case C_For,C_Foreach:
@@ -1947,12 +1953,68 @@ tco_reentry:
             break_count=0
 
             if inbound.TokenCount>1 {
+
+                // break by construct type
+                if inbound.TokenCount==2 {
+                    thisLoop = &loops[depth]
+                    lookingForEnd:=false
+                    var efound,er bool
+                    forceEnd=false
+                    switch inbound.Tokens[1].tokType {
+                    case C_When:
+                        lookingForEnd=true
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhen, []uint8{C_When},    []uint8{C_Endwhen})
+                        breakIn=C_Endwhen
+                        forceEnd=true
+                        parser.pc = wc[wccount].endLine - 1
+                    case C_For:
+                        lookingForEnd=true
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]uint8{C_For,C_Foreach},[]uint8{C_Endfor})
+                        breakIn=C_Endfor
+                        forceEnd=true
+                        parser.pc = (*thisLoop).forEndPos - 1
+                    case C_Foreach:
+                        lookingForEnd=true
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,  []uint8{C_Foreach}, []uint8{C_Endfor})
+                        breakIn=C_Endfor
+                        forceEnd=true
+                        parser.pc = (*thisLoop).forEndPos - 1
+                    case C_While:
+                        lookingForEnd=true
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]uint8{C_While},   []uint8{C_Endwhile})
+                        breakIn=C_Endwhile
+                        forceEnd=true
+                        parser.pc = (*thisLoop).whileContinueAt - 1
+                    }
+                    if lookingForEnd {
+                        // pf("(debug) efound : %v  er : %v\n",efound,er)
+                        if er {
+                            // lookahead error
+                            parser.report(inbound.SourceLine,sf("BREAK [%s] cannot find end of construct",tokNames[breakIn]))
+                            finish(false, ERR_SYNTAX)
+                            break
+                        }
+                        if ! efound {
+                            // nesting error
+                            parser.report(inbound.SourceLine,sf("BREAK [%s] without surrounding construct",tokNames[breakIn]))
+                            finish(false, ERR_SYNTAX)
+                            break
+                        } else {
+                            // break jump point is set, so continue pc loop 
+                            // pf("(debug) continuing at statement %d\n",parser.pc+1)
+                            continue
+                        }
+
+                    }
+                }
+
+                // break by expression
                 break_depth:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
                 switch break_depth.result.(type) {
                 case int:
                     break_count=break_depth.result.(int)
                 default:
-                    parser.report(inbound.SourceLine,"Could not evaluate break depth argument")
+                    parser.report(inbound.SourceLine,"Could not evaluate BREAK depth argument")
                     finish(false,ERR_EVAL)
                     break
                 }
@@ -3288,12 +3350,13 @@ tco_reentry:
 
         case C_Endwhen:
 
-            if lastConstruct[len(lastConstruct)-1] != C_When {
+            if !forceEnd && lastConstruct[len(lastConstruct)-1] != C_When {
                 parser.report(inbound.SourceLine, "Not currently in a WHEN block.")
                 break
             }
 
             breakIn = Error
+            forceEnd=false
             lastConstruct = lastConstruct[:depth-1]
             depth-=1
             wccount-=1
