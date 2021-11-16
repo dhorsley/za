@@ -313,75 +313,61 @@ func help_ops() {
 [#1][#bold]Supported Operators[#boff][#-]
 
 [#1]Prefix Operators[#-]
--n          unary negative
-+n          unary positive
-!b          boolean negation   ( or not b )
---n         pre-decrement
-++n         pre-increment
-sqr n       square (n*n)
-sqrt n      square root
+[#4]-n[#-]          unary negative              [#4]+n[#-]          unary positive
+[#4]!b[#-]          boolean negation   ( or not b )
 
-$uc s       upper case string s
-$lc s       lower case string s
-$lt s       left trim leading whitespace from string s [\t\ \n\r]
-$rt s       right trim trailing whitespace from string s
-$st s       trim whitespace from both sides of string s
-$in f       read file 'f' in as string literal
+[#4]--n[#-]         pre-decrement               [#4]++n[#-]         pre-increment
+[#4]sqr n[#-]       square (n*n)                [#4]sqrt n[#-]      square root
 
-?? b t [:,] f
+[#4]$uc s[#-]       upper case string s         [#4]$lc s[#-]       lower case string s
+
+[#4]$lt s[#-]       left trim leading whitespace from string s [\t\ \n\r]
+[#4]$rt s[#-]       right trim trailing whitespace from string s
+[#4]$st s[#-]       trim whitespace from both sides of string s
+[#4]$in f[#-]       read file 'f' in as string literal
+
+[#4]?? b t [:,] f[#-]
   if expression b is true then t else f
 
-| s         return successful command output (of s) as a string
+[#4]| s[#-]         return successful command output (of s) as a string
 
 [#1]Infix Operators[#-]
-a - b       subtraction
-a + b       addition
-a * b       numeric multiplication
-str_a * b   string repetition
-a / b       division
-a % b       modulo
-a ** b      power
-a -= b      subtractive assignment
-a += b      additive assignment
-a *= b      multiplicative assignment
-a /= b      divisive assignment
-a %= b      modulo assignment
-a || b      boolean OR   ( or a or b )
-a && b      boolean AND   ( or a and b )
-a | b       bitwise OR
-a & b       bitwise AND
-a ^ b       bitwise XOR
-a << b      bitwise left shift
-a >> b      bitwise right shift
-a ~f b      array of matches from string a using regex b
-s.f         field access
-s .. e      builds an array of values in the range s to e
-s $out f    write string 's' to file 'f'
+[#4]a - b[#-]       subtraction                 [#4]a + b[#-]       addition
+[#4]a * b[#-]       numeric multiplication      [#4]str_a * b[#-]   string repetition
+[#4]a / b[#-]       division                    [#4]a % b[#-]       modulo
+[#4]a ** b[#-]      power
 
-array|map ?> "bool_expr"
-  filters matches of "bool_expr" against elements in array
-  or map to return a new array. Each # in bool_expr is
-  replaced by each array/map value.
+[#4]a -= b[#-]      subtractive assignment      [#4]a += b[#-]      additive assignment
+[#4]a *= b[#-]      multiplicative assignment   [#4]a /= b[#-]      divisive assignment
+[#4]a %= b[#-]      modulo assignment
 
-array|map -> "expr"
-  maps each element of array or map using "expr" to
-  formulate new elements. Each # in expr is replaced by each
-  array/map value.
+[#4]a || b[#-]      boolean OR  ( or a or b  )  [#4]a && b[#-]      boolean AND ( or a and b )
+[#4]a | b[#-]       bitwise OR                  [#4]a & b[#-]       bitwise AND
+[#4]a ^ b[#-]       bitwise XOR                 
+[#4]a << b[#-]      bitwise left shift          [#4]a >> b[#-]      bitwise right shift
+
+[#4]a ~f b[#-]      array of matches from string a using regex b[#-]
+[#4]s.f[#-]         field access                [#4]s .. e[#-]      builds an array of values in the range s to e
+[#4]s $out f[#-]    write string 's' to file 'f'
+
+[#4]array|map ?> "bool_expr"[#-]
+  Filters matches of "bool_expr" against elements in array or map to return 
+  a new array. Each # in bool_expr is replaced by each array/map value.
+
+[#4]array|map -> "expr"[#-]
+  Maps each element of array or map using "expr" to formulate new elements.
+  Each # in expr is replaced by each array/map value.
 
 [#1]Comparisons[#-]
-a == b      equality
-a != b      inequality
-a < b       less than
-a > b       greater than
-a <= b      less than or equal to
-a >= b      greater than or equal to
-a ~ b       string a matches regex b
-a ~i b      string a matches regex b (case insensitive)
-a in b      array b contains value a
+[#4]a == b[#-]      equality                    [#4]a != b[#-]      inequality
+[#4]a < b[#-]       less than                   [#4]a > b[#-]       greater than
+[#4]a <= b[#-]      less than or equal to       [#4]a >= b[#-]      greater than or equal to
+[#4]a ~ b[#-]       string a matches regex b    [#4]a ~i b[#-]      string a matches regex b (case insensitive)
+[#4]a in b[#-]      array b contains value a
 
 [#1]Postfix Operators[#-]
-n--         post-decrement (local scope only, command not expression)
-n++         post-increment (local scope only, command not expression)
+[#4]n--[#-]         post-decrement (local scope only, command not expression)
+[#4]n++[#-]         post-increment (local scope only, command not expression)
 `
     gpf(opspage)
 }

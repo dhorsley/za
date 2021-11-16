@@ -1,0 +1,16 @@
+#!/usr/bin/za
+
+a="two"
+when a
+is "one"
+    print
+is "two"
+    for e = 1 to 20
+        println "e->",e
+        break when
+        println "should not see me!"
+    endfor
+is "three"
+    print
+endwhen
+println "post-when"
