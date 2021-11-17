@@ -124,8 +124,8 @@ func buildListLib() {
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
-        "any", "all", "concat", "esplit", "min", "max", "avg",
-        "empty", "list_string", "list_float", "list_int",
+        "any", "all", "concat", "esplit", "min", "max", "avg","eqlen",
+        "empty", "list_string", "list_float", "list_int","list_bool",
         "scan_left","zip",
     }
 
@@ -1238,6 +1238,57 @@ func buildListLib() {
         return args[0], nil
     }
 
+    slhelp["list_bool"] = LibHelp{in: "int_or_string_list", out: "[]bool", action: "Returns [#i1]int_or_string_list[#i0] as a list of boolean values, with invalid items removed."}
+    stdlib["list_bool"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("list_bool",args,4,
+            "1","[]int",
+            "1","[]uint",
+            "1","[]string",
+            "1","[]interface {}"); !ok { return nil,err }
+
+        var bool_list []bool
+        switch args[0].(type) {
+        case []int:
+            for _, q := range args[0].([]int) {
+                bool_list = append(bool_list, q!=0)
+            }
+        case []uint:
+            for _, q := range args[0].([]uint) {
+                bool_list = append(bool_list, q!=0)
+            }
+        case []string:
+            for _, q := range args[0].([]string) {
+                switch str.ToLower(q) {
+                case "true":
+                    bool_list = append(bool_list,true)
+                case "false":
+                    bool_list = append(bool_list,false)
+                default:
+                    v, invalid := GetAsInt(sf("%v", q))
+                    if !invalid {
+                        bool_list = append(bool_list, v!=0)
+                    }
+                }
+            }
+        case []interface{}:
+            for _, q := range args[0].([]interface{}) {
+                v:=sf("%v",q)
+                switch str.ToLower(v) {
+                case "true":
+                    bool_list = append(bool_list,true)
+                case "false":
+                    bool_list = append(bool_list,false)
+                default:
+                    v2, invalid := GetAsInt(sf("%v", q))
+                    if !invalid {
+                        bool_list = append(bool_list, v2!=0)
+                    }
+                }
+            }
+        }
+        return bool_list, nil
+    }
+
     slhelp["list_float"] = LibHelp{in: "int_or_string_list", out: "[]float_list", action: "Returns [#i1]int_or_string_list[#i0] as a list of floats, with invalid items removed."}
     stdlib["list_float"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("list_float",args,4,
@@ -1616,6 +1667,50 @@ func buildListLib() {
         }
         return true, nil
 
+    }
+
+    slhelp["eqlen"] = LibHelp{in: "list_of_lists", out: "bool", action: "Checks that all lists contain in [#i1]list_of_lists[#0] are of equal length."}
+    stdlib["eqlen"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("eqlen",args,1,"1","any"); !ok { return nil,err }
+        switch args[0].(type) {
+        case []interface{}:
+            var ll int
+            for k,l:=range args[0].([]interface{}) {
+                switch l:=l.(type) {
+                case []int:
+                    if k!=0 && len(l) != ll { return false,nil }
+                    ll=len(l)
+                case []uint:
+                    if k!=0 && len(l) != ll { return false,nil }
+                    ll=len(l)
+                case []float64:
+                    if k!=0 && len(l) != ll { return false,nil }
+                    ll=len(l)
+                case []bool:
+                    if k!=0 && len(l) != ll { return false,nil }
+                    ll=len(l)
+                case []interface{}:
+                    if k!=0 && len(l) != ll { return false,nil }
+                    ll=len(l)
+                default:
+                    return false,errors.New(sf("Not a valid list type [%T] in eqlen()",l))
+                }
+            }
+            return true,nil
+        }
+        return false,errors.New(sf("Not a valid list of lists [%T] in eqlen()",args[0]))
+        /*
+            return min_int(args[0].([]int)), nil
+        case []uint:
+            return min_uint(args[0].([]uint)), nil
+        case []float64:
+            return min_float64(args[0].([]float64)), nil
+        case []interface{}:
+            return min_inter(args[0].([]interface{})), nil
+        default:
+            return nil,errors.New(sf("Unknown number type in min(), type %T\n", args[0]))
+        }
+        */
     }
 
     slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}
