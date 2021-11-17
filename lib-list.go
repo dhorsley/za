@@ -1669,7 +1669,7 @@ func buildListLib() {
 
     }
 
-    slhelp["eqlen"] = LibHelp{in: "list_of_lists", out: "bool", action: "Checks that all lists contain in [#i1]list_of_lists[#0] are of equal length."}
+    slhelp["eqlen"] = LibHelp{in: "list_of_lists", out: "bool", action: "Checks that all lists contained in [#i1]list_of_lists[#0] are of equal length."}
     stdlib["eqlen"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("eqlen",args,1,"1","any"); !ok { return nil,err }
         switch args[0].(type) {
@@ -1699,18 +1699,6 @@ func buildListLib() {
             return true,nil
         }
         return false,errors.New(sf("Not a valid list of lists [%T] in eqlen()",args[0]))
-        /*
-            return min_int(args[0].([]int)), nil
-        case []uint:
-            return min_uint(args[0].([]uint)), nil
-        case []float64:
-            return min_float64(args[0].([]float64)), nil
-        case []interface{}:
-            return min_inter(args[0].([]interface{})), nil
-        default:
-            return nil,errors.New(sf("Unknown number type in min(), type %T\n", args[0]))
-        }
-        */
     }
 
     slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}
