@@ -19,15 +19,16 @@ These are the things I want to nail down before general release:
 
     3. missing library functions - things i forgot to include which would be considered basic requirements.
         i'm not going to add much more in terms of function count, but will always look to add tools which
-        reduce calls out to a shell which are very wasteful.
+        reduce calls out to a shell that are very wasteful.
 
     4. obvious improvements - for anyone willing to dig through the source and contribute i'll look to 
         include their improvements as long as they don't go against these basic principles:
 
         a) the aim of the language is to be concise and clear for program maintainers.
-            (on a side note, about the implementation itself I'll only say, here be dragons! It's pretty ugly.)
+            (about the language implementation itself I'll only say, here be dragons! It's pretty ugly.)
 
-        b) nothing will be included that noticably reduces the current speed of processing.
+        b) nothing will be included that noticably reduces the current speed of processing, except for
+            security patches.
 
         c) we will not be including new functionality in the standard library unless it works
             on all currently supported platforms. i.e. linux-variants, freebsd, windows 10, alpine and similar.
@@ -37,13 +38,11 @@ These are the things I want to nail down before general release:
             with the intended purpose of the language.
 
             However, there are some already included, which should be treated as experimental features
-            which may eventually be dropped. (e.g. pixelgl support may go, but something around formats
-            like svg is more likely to stay.)
+            which may eventually be dropped.
 
     5. things missing from the online manual page.
 
-    6. there's still a few bugs, especially around ASYNC locks. Working on them. They have to all be fixed
-        before the next version.
+    6. there's still a few known bugs. Working on them. They have to all be fixed before the next version.
 
 
 Of course, I would be delighted to hear any other feedback too.
