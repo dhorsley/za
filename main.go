@@ -475,6 +475,9 @@ func main() {
         ansiMode = false
     }
 
+    // prepare DLL calls
+    setupDynamicCalls()
+
     // prepare ANSI colour mappings
     setupAnsiPalette()
 

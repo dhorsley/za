@@ -73,6 +73,12 @@ CHANGE LOG
 
     * updated za.vim
 
+    * revised console_*.go files:
+        - moved getInput routine to console_common.go
+        - added some dummy funcs in win/linux where they were missing
+        - added a "never pasted" result in getch() in windows source.
+
+
     language changes
     ----------------
 

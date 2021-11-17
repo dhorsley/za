@@ -1883,8 +1883,9 @@ tco_reentry:
                 forceEnd=false
                 if break_count>0 {
                     break_count-=1
-                    breakIn=Error
-                    forceEnd=false
+                    // doh: testing removal of these:
+                    // breakIn=Error
+                    // forceEnd=false
                     if break_count>0 {
                         switch lastConstruct[depth-1] {
                         case C_For,C_Foreach:
