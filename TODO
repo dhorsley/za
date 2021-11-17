@@ -9,20 +9,19 @@ lots, i'm sure.
 TODO
 ----
 
-    * There may currently be a few issues in the Windows build around async.
-        - i'll get to these eventually, but not rushing them. only the linux/alpine builds are
-            considered to be of any import currently.
-    * 23-09-2021: tested windows build again.
-        - it required a little update in console_windows.go to compile and does still function.
-        - however, there are several feature changes and fixes not yet included in it.
-        - will be worth splitting more of the code to the console_common.go file.
-        - lib-os_windows.go is also quite out of date now, with missing lib calls.
-            - this may be okay for some of them, as not all calls are supported under windows,
-                but needs checking and documenting.
-
     * coalesce windows/linux builds.
         - lib-os is missing some functions in windows file, but probably only
             things which Windows FS doesn't support. need to confirm.
+
+    * windows build (17-11-2021):
+        - mostly working in ConEmu/Windows Terminal
+        - something is amiss in the window scrolling/terminal height info as the bottom-of-screen
+            scrolling is misbehaving and has occasional artifacts.
+        - Probably just need to detect Windows and use a different combination of ansi codes
+            to perform the scroll and check cursor vertical positions in interactive mode.
+        - background colours in help line current selection highlight.
+            - only the first item in list has background changed, and left/right selections
+                only move the highlight asterisk and not the bg change.
 
 
 LATER / UNDECIDED
@@ -39,5 +38,9 @@ LATER / UNDECIDED
             garbage collector in reverse.)
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support.
+
+    * some escaped chars (e.g. \") screw with the nesting check in interactive mode.
+    * plenty of utf-8/extended char set keys still not working in interactive mode.
+        - e.g. · µ n ”“ ¢ «» and similar.
 
 

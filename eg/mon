@@ -371,7 +371,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 endfor
             else
                 at 2,2; print "[#invert]Checking previous CPU values.[#-]"
-                break
+                break foreach
             endif
 
             # record for next iter

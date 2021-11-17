@@ -3,6 +3,8 @@
 module "modules/menu"
 
 define ssh_menu(f)
+    coproc(true)
+    capture_shell(true)
     capture=|aws --region eu-west-1 --profile itsupport ec2 describe-instances --filters "Name=tag:cluster,Values={f}"
     instances=capture.out.json_query(
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
@@ -56,13 +58,13 @@ while not quitting
         ssh_menu("_BI.Cognos11Stage_")
          break
       is 3
-        ssh_menu("_BI.Cognos11_")
-        break
+         ssh_menu("_BI.Cognos11_")
+         break
     endwhen
 
 endwhile
 
 # end
-at 10,1
+cls
 exit 0
 
