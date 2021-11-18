@@ -101,6 +101,7 @@ syntax match list_functions "\(.\|\s*\)max\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)avg\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)zip\s*("he=e-1
 syntax match list_functions "\(.\|\s*\)scan_left\s*("he=e-1
+syntax match list_functions "\(.\|\s*\)eqlen\s*("he=e-1
 
 syntax match conversion_functions "\(.\|\s*\)byte\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)int64\s*("he=e-1
@@ -116,6 +117,7 @@ syntax match conversion_functions "\(.\|\s*\)asc\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)list_float\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)list_string\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)list_int\s*("he=e-1
+syntax match conversion_functions "\(.\|\s*\)list_bool\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)local\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)base64e\s*("he=e-1
 syntax match conversion_functions "\(.\|\s*\)base64d\s*("he=e-1
