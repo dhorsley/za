@@ -2057,6 +2057,12 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
         // pf("assignee #%d -> %+v\n",assno,largs[assno])
         assignee:=largs[assno]
 
+        if assignee[0].tokType!=Identifier {
+            expr.errVal=fmt.Errorf("Assignee must be an identifier (not '%s')",assignee[0].tokText)
+            expr.evalError=true
+            return
+        }
+
         // then apply the shite below to each one, using the next available result from results[]
 
         dotAt:=-1

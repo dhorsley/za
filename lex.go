@@ -602,6 +602,7 @@ get_nt_eval_point:
     }
 
     if tokType == 0 { // assume it was an identifier
+        // pf("(lex) fallthrough to default with '%v'.\n",word)
         tokType = Identifier
         startNextTokenAt=currentChar
         if strcmp(word,"true")  { carton.subtype=subtypeConst ; carton.tokVal=true }
