@@ -246,6 +246,9 @@ func version() {
     pf(spf(0,&gident,"[#1]Last build:[#-] "+add+"{@creation_date}\n"))
 }
 
+func help_commands() {
+    commands()
+}
 
 func help_colour() {
 
@@ -416,12 +419,12 @@ func ihelp(hargs string) {
     case 0:
 
         helppage:=`
-[#4]commands()      [#-]: available statements
-[#4]funcs()         [#-]: all functions
-[#4]funcs(<string>) [#-]: finds matching functions
-[#4]help ops        [#-]: show operator info
+[#4]help command    [#-]: available statements
+[#4]help op         [#-]: show operator info
 [#4]help colour     [#-]: show colour codes
 [#4]help <string>   [#-]: show specific statement/function info
+[#4]funcs()         [#-]: all functions
+[#4]funcs(<string>) [#-]: finds matching categories or functions
 
 `
     gpf(helppage)
@@ -436,8 +439,16 @@ func ihelp(hargs string) {
         cmdMatchList := ""
         funcMatchList := ""
 
+        if cmd[len(cmd)-1]=='s' {
+            cmd=cmd[:len(cmd)-1]
+        }
+
         switch cmd {
-        case "ops":
+
+        case "command":
+            commands()
+
+        case "op":
             help_ops()
 
         case "colour":
