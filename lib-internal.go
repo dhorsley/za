@@ -186,7 +186,7 @@ func buildInternalLib() {
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
-        "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref", "commands","cursoron","cursoroff","cursorx",
+        "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
         "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit",
         "enum_names","enum_all",
@@ -963,12 +963,14 @@ func buildInternalLib() {
         return v.(bool), err
     }
 
+    /*
     slhelp["commands"] = LibHelp{in: "", out: "", action: "Displays a list of keywords."}
     stdlib["commands"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("commands",args,0); !ok { return nil,err }
         commands()
         return nil, nil
     }
+    */
 
     slhelp["func_inputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function inputs."}
     stdlib["func_inputs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
