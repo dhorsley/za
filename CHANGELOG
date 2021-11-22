@@ -27,6 +27,7 @@ CHANGE LOG
     * added eqlen() lib call in lib-list.go: checks that length of lists in a list-of-lists match:
         - e.g. eqlen( [ [1,2,3] , [2,3] ] ) equals false
         - e.g. eqlen( [ [1,2,3] , [4,5,6] , ["one","two",3] ] ) equals true
+        - also added support for list of strings. e.g. [ "one", "two", "three" ].eqlen => false
 
 
     fixes

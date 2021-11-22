@@ -786,7 +786,8 @@ func buildInternalLib() {
     slhelp["zsh_version"] = LibHelp{in: "", out: "string", action: "Returns the zsh version string if present."}
     stdlib["zsh_version"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("zsh_version",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@zsh_version")
+        v, found := vget(0,&gident, "@zsh_version")
+        if !found { v="" }
         return v.(string), err
     }
 
