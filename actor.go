@@ -2300,17 +2300,25 @@ tco_reentry:
 
         case SYM_BOR: // Local Command
 
+            bc:=basecode[source_base][parser.pc].borcmd
+
             /*
+            pf("\n")
             pf("In local command\nCalled with ifs:%d and tokens->%+v\n",ifs,inbound.Tokens)
             pf("  source_base -> %v\n",source_base)
             pf("  basecode    -> %v\n",basecode[source_base][parser.pc].Original)
+            pf("  bor cmd     -> %#v\n",bc)
+            pf("\n")
             */
 
             if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
+                // s:=stripOuter(inbound.Tokens[1].tokText,'`')
+                // coprocCall(parser,ifs,ident,"|"+s)
                 s:=stripOuter(inbound.Tokens[1].tokText,'`')
-                coprocCall(parser,ifs,ident,"|"+s)
+                coprocCall(parser,ifs,ident,s)
             } else {
-                coprocCall(parser,ifs,ident,basecode[source_base][parser.pc].Original)
+                // coprocCall(parser,ifs,ident,basecode[source_base][parser.pc].Original)
+                coprocCall(parser,ifs,ident,bc)
             }
 
 
@@ -2968,54 +2976,75 @@ tco_reentry:
 
             switch str.ToLower(typ) {
             case "param":
-                d, er := strconv.Atoi(pos)
-                if er == nil {
-                    if d<1 {
-                        parser.report(inbound.SourceLine, sf("INPUT position %d too low.",d))
-                        finish(true, ERR_SYNTAX)
-                        break
-                    }
-                    if d <= len(cmdargs) {
-                        // if this is numeric, assign as an int
-                        n, er := strconv.Atoi(cmdargs[d-1])
-                        if er == nil {
-                            vset(ifs, ident, id, n)
-                        } else {
-                            vset(ifs, ident, id, cmdargs[d-1])
-                        }
+
+                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:])
+                if we.evalError {
+                    parser.report(inbound.SourceLine,sf("could not evaluate the INPUT expression\n%+v",we.errVal))
+                    finish(false, ERR_EVAL)
+                    break
+                }
+                switch we.result.(type) {
+                case int:
+                default:
+                    parser.report(inbound.SourceLine,"INPUT expression must evaluate to an integer")
+                    finish(false,ERR_EVAL)
+                    break
+                }
+                d:=we.result.(int)
+
+                if d<1 {
+                    parser.report(inbound.SourceLine, sf("INPUT position %d too low.",d))
+                    finish(true, ERR_SYNTAX)
+                    break
+                }
+                if d <= len(cmdargs) {
+                    // if this is numeric, assign as an int
+                    n, er := strconv.Atoi(cmdargs[d-1])
+                    if er == nil {
+                        vset(ifs, ident, id, n)
                     } else {
-                        parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
-                        finish(true, ERR_SYNTAX)
+                        vset(ifs, ident, id, cmdargs[d-1])
                     }
                 } else {
-                    parser.report(inbound.SourceLine,sf("That '%s' doesn't look like a number.", pos))
+                    parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
                     finish(true, ERR_SYNTAX)
                 }
 
             case "optarg":
-                d, er := strconv.Atoi(pos)
-                if er == nil {
-                    if d <= len(cmdargs) {
-                        // if this is numeric, assign as an int
-                        n, er := strconv.Atoi(cmdargs[d-1])
-                        if er == nil {
-                            vset(ifs, ident, id, n)
-                        } else {
-                            vset(ifs, ident, id, cmdargs[d-1])
-                        }
+
+                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:])
+                if we.evalError {
+                    parser.report(inbound.SourceLine,sf("could not evaluate the INPUT expression\n%+v",we.errVal))
+                    finish(false, ERR_EVAL)
+                    break
+                }
+                switch we.result.(type) {
+                case int:
+                default:
+                    parser.report(inbound.SourceLine,"INPUT expression must evaluate to an integer")
+                    finish(false,ERR_EVAL)
+                    break
+                }
+                d:=we.result.(int)
+
+                if d <= len(cmdargs) {
+                    // if this is numeric, assign as an int
+                    n, er := strconv.Atoi(cmdargs[d-1])
+                    if er == nil {
+                        vset(ifs, ident, id, n)
                     } else {
-                        // nothing provided but var didn't exist, so create it empty
-                        // otherwise, just continue
-                        if ! VarLookup(ifs,ident,id) {
-                            vset(ifs,ident,id,"")
-                        }
+                        vset(ifs, ident, id, cmdargs[d-1])
                     }
                 } else {
-                    parser.report(inbound.SourceLine, sf("That '%s' doesn't look like a number.", pos))
-                    finish(false, ERR_SYNTAX)
+                    // nothing provided but var didn't exist, so create it empty
+                    // otherwise, just continue
+                    if ! VarLookup(ifs,ident,id) {
+                        vset(ifs,ident,id,"")
+                    }
                 }
 
             case "env":
+
                 if os.Getenv(pos)!="" {
                     // non-empty env var so set id var to value.
                     vset(ifs, ident,id, os.Getenv(pos))
@@ -3897,15 +3926,27 @@ tco_reentry:
             if inbound.TokenCount > 1 { // ident "=|"
                 if inbound.Tokens[0].tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
                     if inbound.TokenCount > 2 {
+
                         // get text after =| or =<
                         var startPos int
+                        bc:=basecode[source_base][parser.pc].borcmd
+
                         switch inbound.Tokens[1].tokType {
                         case O_AssCommand:
                             startPos = str.IndexByte(basecode[source_base][parser.pc].Original, '|') + 1
+                            // pf("(debug) ass-command present is : ·%v·\n",basecode[source_base][parser.pc].borcmd)
                         case O_AssOutCommand:
                             startPos = str.IndexByte(basecode[source_base][parser.pc].Original, '<') + 1
+                            // pf("(debug) ass-out-command present is : ·%v·\n",basecode[source_base][parser.pc].borcmd)
                         }
-                        cmd := interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
+
+                        var cmd string
+                        if bc=="" {
+                            cmd = interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
+                        } else {
+                            cmd = bc[2:]
+                        }
+
                         cop:=system(cmd,false)
                         lhs_name := inbound.Tokens[0].tokText
                         switch inbound.Tokens[1].tokType {

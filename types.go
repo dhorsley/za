@@ -17,6 +17,7 @@ type Phrase struct {
 
 type BaseCode struct {
 	Original    string  // entire string, unmodified for spaces
+    borcmd      string // issued command if SYM_BOR present
 }
 
 type bc_block struct {

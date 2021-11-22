@@ -5,9 +5,18 @@ module "mod_build/defines"
 tgt="libc"
 strip_enable=false
 upx_enable=false
-input tgt optarg 1
-input do_upx optarg 2
-on do_upx=="upx" do upx_enable=true
+
+for e = 1 to argc()
+    input do_what optarg e
+    when $lc do_what
+        is "upx"    ; upx_enable=true
+        is "strip"  ; strip_enable=true
+        is "alpine" ; tgt="alpine"
+        is "libc"   ; tgt="libc"
+        is "win"    ; tgt="win"
+    endwhen
+endfor
+
 
 #
 # main
@@ -28,7 +37,7 @@ upxfound=| which upx | wc -l
 upxfound=trim(upxfound.out,0).int
 
 if ! os() ~ "^freebsd"
-    when lower(tgt)
+    when tgt
     has tgt ~i "^(alpine|aws)$"
         if buildMusl(bvers,bdate.out)!=0
             exit e.build,"Failed to build musl version."
@@ -67,7 +76,7 @@ if is_file("za")
 endif
 
 
-when lower(tgt)
+when tgt
 contains "^(alpine|libc)$"
     println "[#4]Installing {tgt} build to /usr/bin/[#-]\n"
     | sudo cp -f za /usr/bin
