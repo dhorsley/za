@@ -33,6 +33,9 @@ doc ` uncomment line below for testing with GCC-GO compiler:
 bvers =  "1.0.16"
 bdate =| date "+%d-%m-%Y %H:%M"
 
+strStrip = ?? strip_enable "-stripped" : ""
+
+
 upxfound=| which upx | wc -l
 upxfound=trim(upxfound.out,0).int
 

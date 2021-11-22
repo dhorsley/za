@@ -8,7 +8,7 @@ enum e { okay=0, build, syntax, notfound }
 
 define buildMusl(build_version,build_date)
     print "[#4]musl build (alpine/aws)[#-]\n"
-    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine"' -tags netgo -installsuffix netgo
+    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}"' -tags netgo -installsuffix netgo
     r=last()
     on r>0 do print last_out()
     | cp za za.alpine
@@ -18,7 +18,7 @@ enddef
 define buildLibc(build_version,build_date)
     print "[#4]Libc build[#-]\n"
     # | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
-    | {=GCLIMIT} go build {=GCCGOFLAGS} {=GCFLAGS} -ldflags '-extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc"' za
+    | {=GCLIMIT} go build {=GCCGOFLAGS} {=GCFLAGS} -ldflags '-extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
     | cp za za.dynamic
@@ -27,7 +27,7 @@ enddef
 
 define buildFreeBSD(build_version,build_date)
     print "[#4]BSD build[#-]\n"
-    | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=bsd"' za
+    | {=GCLIMIT} go build {=GCFLAGS} -ldflags '-s -w -extldflags "-O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=bsd{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
     | cp za za.dynamic
@@ -36,7 +36,7 @@ enddef
 
 define buildWin(build_version,build_date)
     print "[#4]Windows build[#-] ~ [#i1]experimental![#i0]\n"
-    | CGO_ENABLED="1" CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ GOOS="windows" GOARCH="amd64" {=GCLIMIT} go build {=GCFLAGS} -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows"' za
+    | CGO_ENABLED="1" CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ GOOS="windows" GOARCH="amd64" {=GCLIMIT} go build {=GCFLAGS} -ldflags '-extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
     | cp za.exe za.win64
