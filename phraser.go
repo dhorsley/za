@@ -118,10 +118,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     addToPhrase:=false
     vref_found:=false
 
+    borpos:=-1
+
     for ; pos < len(input); {
 
         tempToken = nextToken(input, &curLine, pos)
         eof=tempToken.eof
+
+        if tempToken.borpos>borpos && borpos == -1 { borpos=tempToken.borpos }
 
         // If we found something then move the cursor along to next word
         if tempToken.tokPos != -1 { pos = tempToken.tokPos }
@@ -201,6 +205,15 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if pos>0 {
                 if phrase.TokenCount>0 {
                     base.Original=input[lstart:pos]
+                    if borpos>=0 {
+                        base.borcmd=input[borpos:pos]
+                        /*
+                        pf("borcmd found @ %d\n",borpos)
+                        pf("start        @ %d\n",lstart)
+                        pf("in from start -> %s\n",input[lstart:pos])
+                        pf("borcmd worked -> ·%s·\n",base.borcmd)
+                        */
+                    }
                     if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
                 } else {
                         base.Original=""
@@ -232,6 +245,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             // reset phrase
             phrase = Phrase{}
             base   = BaseCode{}
+            borpos = -1
 
         }
 

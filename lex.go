@@ -39,7 +39,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
 }
 
 type lcstruct struct {
-    carton Token;tokPos int;eol bool;eof bool
+    carton Token;tokPos int;eol bool;eof bool;borpos int
 }
 
 
@@ -63,8 +63,10 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant bool
 
+
     beforeE := "."
     thisWordStart := -1
+    borpos := -1
 
     // skip past whitespace
     var currentChar int
@@ -422,6 +424,7 @@ get_nt_eval_point:
         tokType = SYM_BAND
     case "|":
         tokType = SYM_BOR
+        borpos  = thisWordStart
     case "++":
         tokType = SYM_PP
     case "--":
@@ -440,8 +443,10 @@ get_nt_eval_point:
         tokType = SYM_COLON
     case "=|":
         tokType = O_AssCommand
+        borpos  = thisWordStart
     case "=<":
         tokType = O_AssOutCommand
+        borpos  = thisWordStart
     }
 
     if tokType==0 {
@@ -614,13 +619,12 @@ get_nt_eval_point:
     carton.tokType = tokType
     carton.tokText = word
 
-
 get_nt_exit_point:
     // you have to set carton.tokType + startNextTokenAt by hand if you jump directly to this exit point.
 
     if startNextTokenAt>=lenInput { eof=true }
 
-    rv=&lcstruct{carton,startNextTokenAt,eol,eof}
+    rv=&lcstruct{carton,startNextTokenAt,eol,eof,borpos}
     // pf("      ... lex exit with : %#v\n",rv)
     return
 
