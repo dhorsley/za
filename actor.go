@@ -3944,7 +3944,7 @@ tco_reentry:
                         if bc=="" {
                             cmd = interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         } else {
-                            cmd = bc[2:]
+                            cmd = interpolate(ifs,ident,bc[2:])
                         }
 
                         cop:=system(cmd,false)
