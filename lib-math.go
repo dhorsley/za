@@ -15,34 +15,35 @@ func buildMathLib() {
     features["math"] = Feature{version: 1, category: "math"}
     categories["math"] = []string{
         "seed", "rand", "randf", "osqr", "osqrt", "pow","abs",
-        "sin", "cos", "tan", "asin", "acos", "atan","floor",
-        "ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
+        "sin", "cos", "tan", "asin", "acos", "atan",
+        "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+        "floor", "ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
         "e", "pi", "phi", "ln2", "ln10","ibase",
         "ubin8","uhex32","numcomma",
     }
 
-    slhelp["e"] = LibHelp{in: "", out: "number", action: "Returns the value of e."}
+    slhelp["e"] = LibHelp{in: "", out: "float", action: "Returns the value of e."}
     stdlib["e"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         return 2.71828182845904523536028747135266249775724709369995957496696763, nil
     }
-    slhelp["pi"] = LibHelp{in: "", out: "number", action: "Returns the value of pi."}
+    slhelp["pi"] = LibHelp{in: "", out: "float", action: "Returns the value of pi."}
     stdlib["pi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         return 3.14159265358979323846264338327950288419716939937510582097494459, nil
     }
-    slhelp["phi"] = LibHelp{in: "", out: "number", action: "Returns the value of phi."}
+    slhelp["phi"] = LibHelp{in: "", out: "float", action: "Returns the value of phi."}
     stdlib["phi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         return 1.61803398874989484820458683436563811772030917980576286213544862, nil
     }
-    slhelp["ln2"] = LibHelp{in: "", out: "number", action: "Returns the value of ln2."}
+    slhelp["ln2"] = LibHelp{in: "", out: "float", action: "Returns the value of ln2."}
     stdlib["ln2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         return 0.693147180559945309417232121458176568075500134360255254120680009, nil
     }
-    slhelp["ln10"] = LibHelp{in: "", out: "number", action: "Returns the value of ln10."}
+    slhelp["ln10"] = LibHelp{in: "", out: "float", action: "Returns the value of ln10."}
     stdlib["ln10"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         return 2.30258509299404568401799145468436420760110148862877297603332790, nil
     }
 
-    slhelp["numcomma"] = LibHelp{in: "number[,precision]", out: "comma_number", action: "Returns formatted number."}
+    slhelp["numcomma"] = LibHelp{in: "number[,precision]", out: "string", action: "Returns formatted number."}
     stdlib["numcomma"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("numcomma",args,6,
         "2","float64","int",
@@ -78,7 +79,7 @@ func buildMathLib() {
         return RenderFloat("#,###"+precString,r),nil
     }
 
-    slhelp["ln"] = LibHelp{in: "number", out: "number", action: "Calculate natural logarithm of [#i1]number[#i0]."}
+    slhelp["ln"] = LibHelp{in: "number", out: "float", action: "Calculate natural logarithm of [#i1]number[#i0]."}
     stdlib["ln"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ln",args,1,"1","number"); !ok { return nil,err }
 
@@ -91,7 +92,7 @@ func buildMathLib() {
         return n, nil
     }
 
-    slhelp["log10"] = LibHelp{in: "number", out: "number", action: "Calculate logarithm (base 10) of [#i1]number[#i0]."}
+    slhelp["log10"] = LibHelp{in: "number", out: "float", action: "Calculate logarithm (base 10) of [#i1]number[#i0]."}
     stdlib["log10"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("log10",args,3,"1","number"); !ok { return nil,err }
         var n float64
@@ -103,7 +104,7 @@ func buildMathLib() {
         return n, nil
     }
 
-    slhelp["log2"] = LibHelp{in: "number", out: "number", action: "Calculate logarithm (base 2) of [#i1]number[#i0]."}
+    slhelp["log2"] = LibHelp{in: "number", out: "float", action: "Calculate logarithm (base 2) of [#i1]number[#i0]."}
     stdlib["log2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("log2",args,3,"1","number"); !ok { return nil,err }
         var n float64
@@ -115,7 +116,7 @@ func buildMathLib() {
         return n, nil
     }
 
-    slhelp["logn"] = LibHelp{in: "number,base", out: "number", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
+    slhelp["logn"] = LibHelp{in: "number,base", out: "float", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
     stdlib["logn"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("log2",args,3,
         "2","float64","number",
@@ -140,7 +141,7 @@ func buildMathLib() {
         return n, nil
     }
 
-    slhelp["deg2rad"] = LibHelp{in: "number", out: "number_radians", action: "Convert degrees to radians."}
+    slhelp["deg2rad"] = LibHelp{in: "number", out: "float", action: "Convert degrees to radians."}
     stdlib["deg2rad"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("deg2rad",args,1,"1","number"); !ok { return nil,err }
         var radians float64
@@ -154,7 +155,7 @@ func buildMathLib() {
         return radians, nil
     }
 
-    slhelp["rad2deg"] = LibHelp{in: "number", out: "number_degrees", action: "Convert radians to degrees."}
+    slhelp["rad2deg"] = LibHelp{in: "number", out: "float", action: "Convert radians to degrees."}
     stdlib["rad2deg"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("rad2deg",args,1,"1","number"); !ok { return nil,err }
         var degrees float64
@@ -168,7 +169,7 @@ func buildMathLib() {
         return degrees, nil
     }
 
-    slhelp["asin"] = LibHelp{in: "number", out: "arc_sine", action: "Calculate arc sine of [#i1]number[#i0]."}
+    slhelp["asin"] = LibHelp{in: "number", out: "float", action: "Calculate arc sine of [#i1]number[#i0]."}
     stdlib["asin"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("asin",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -181,7 +182,7 @@ func buildMathLib() {
         return math.Asin(r), err
     }
 
-    slhelp["acos"] = LibHelp{in: "number", out: "arc_cosine", action: "Calculate arc cosine of [#i1]number[#i0]."}
+    slhelp["acos"] = LibHelp{in: "number", out: "float", action: "Calculate arc cosine of [#i1]number[#i0]."}
     stdlib["acos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("acos",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -194,7 +195,7 @@ func buildMathLib() {
         return math.Acos(r), err
     }
 
-    slhelp["atan"] = LibHelp{in: "number", out: "arc_tangent", action: "Calculate arc tangent of [#i1]number[#i0]."}
+    slhelp["atan"] = LibHelp{in: "number", out: "float", action: "Calculate arc tangent of [#i1]number[#i0]."}
     stdlib["atan"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("atan",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -207,7 +208,85 @@ func buildMathLib() {
         return math.Atan(r), err
     }
 
-    slhelp["sin"] = LibHelp{in: "number", out: "sine", action: "Calculate sine of [#i1]number[#i0]."}
+    slhelp["sinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic sine of [#i1]number[#i0]."}
+    stdlib["sinh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("sinh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Sinh(r), err
+    }
+
+    slhelp["asinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc sine of [#i1]number[#i0]."}
+    stdlib["asinh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("asinh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Asinh(r), err
+    }
+
+    slhelp["cosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic cosine of [#i1]number[#i0]."}
+    stdlib["cosh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("cosh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Cosh(r), err
+    }
+
+    slhelp["acosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc cosine of [#i1]number[#i0]."}
+    stdlib["acosh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("acosh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Acosh(r), err
+    }
+
+    slhelp["tanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic tangent of [#i1]number[#i0]."}
+    stdlib["tanh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("tanh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Tanh(r), err
+    }
+
+    slhelp["atanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc tangent of [#i1]number[#i0]."}
+    stdlib["atanh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("atanh",args,2, "1","int", "1","float64"); !ok { return nil,err }
+        var r float64
+        switch args[0].(type) {
+        case int:
+            r = float64(args[0].(int))
+        case float64:
+            r = args[0].(float64)
+        }
+        return math.Atanh(r), err
+    }
+
+    slhelp["sin"] = LibHelp{in: "number", out: "float", action: "Calculate sine of [#i1]number[#i0]."}
     stdlib["sin"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("sin",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -220,7 +299,7 @@ func buildMathLib() {
         return math.Sin(r), err
     }
 
-    slhelp["cos"] = LibHelp{in: "number", out: "cosine", action: "Calculate cosine of [#i1]number[#i0]."}
+    slhelp["cos"] = LibHelp{in: "number", out: "float", action: "Calculate cosine of [#i1]number[#i0]."}
     stdlib["cos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("cos",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -233,7 +312,7 @@ func buildMathLib() {
         return math.Cos(r), err
     }
 
-    slhelp["tan"] = LibHelp{in: "number", out: "tangent", action: "Calculate tangent of [#i1]number[#i0]."}
+    slhelp["tan"] = LibHelp{in: "number", out: "float", action: "Calculate tangent of [#i1]number[#i0]."}
     stdlib["tan"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("tan",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
@@ -246,7 +325,7 @@ func buildMathLib() {
         return math.Tan(r), err
     }
 
-    slhelp["pow"] = LibHelp{in: "number,n", out: "number", action: "Calculate [#i1]number[#i0] raised to the power [#i1]n[#i0]."}
+    slhelp["pow"] = LibHelp{in: "number,n", out: "float", action: "Calculate [#i1]number[#i0] raised to the power [#i1]n[#i0]."}
     stdlib["pow"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pow",args,4,
             "2","int","int",
@@ -325,7 +404,7 @@ func buildMathLib() {
         return math.NaN(), err
     }
 
-    slhelp["ubin8"] = LibHelp{in: "unsigned_binary_string", out: "decimal", action: "unsigned binary to decimal. (8-bit)"}
+    slhelp["ubin8"] = LibHelp{in: "unsigned_binary_string", out: "int", action: "unsigned binary to decimal. (8-bit)"}
     stdlib["ubin8"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ubin8",args,1,"1","string"); !ok { return nil,err }
         if i,err:=strconv.ParseUint(args[0].(string), 2, 8); err==nil {
@@ -335,7 +414,7 @@ func buildMathLib() {
         }
     }
 
-    slhelp["uhex32"] = LibHelp{in: "unsigned_hex_string", out: "decimal", action: "unsigned hexadecimal to decimal. (16-bit)"}
+    slhelp["uhex32"] = LibHelp{in: "unsigned_hex_string", out: "int", action: "unsigned hexadecimal to decimal. (16-bit)"}
     stdlib["uhex32"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("uhex32",args,1,"1","string"); !ok { return nil,err }
         if i,err:=strconv.ParseUint(args[0].(string), 16, 16); err==nil {
@@ -360,7 +439,7 @@ func buildMathLib() {
         return strconv.FormatInt(i, n),nil
     }
 
-    slhelp["rand"] = LibHelp{in: "positive_max_int", out: "integer", action: "Generate a random integer between 1 and [#i1]positive_max_int[#i0] inclusive."}
+    slhelp["rand"] = LibHelp{in: "positive_max_int", out: "int", action: "Generate a random integer between 1 and [#i1]positive_max_int[#i0] inclusive."}
     stdlib["rand"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("rand",args,1,"1","int"); !ok { return nil,err }
         if args[0].(int) <= 0 {

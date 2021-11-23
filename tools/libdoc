@@ -91,14 +91,14 @@ foreach c in func_categories()
 
         pageindex=pageindex+wli(wa(i,`href="#{i}"`))+"\n"
 
-        in=fi[i].clean
+        inp=fi[i].clean
         out=fo[i].clean
         desc=fd[i].html_escape.clean
 
         if out!=""
-            fnline=clean(`[#7]{out} = {i}({in})[#-]`)
+            fnline=clean(`[#7]{out} = {i}({inp})[#-]`)
         else
-            fnline=clean(`[#6]{i}({in})[#-]`)
+            fnline=clean(`[#6]{i}({inp})[#-]`)
         endif
 
         body+=wdiv(
