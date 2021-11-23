@@ -21,9 +21,8 @@ CHANGE LOG
             and should not be relied upon for all of your security.
 
     * added has_term() and has_colour() library calls.
-
+    * added sinh, cosh, tanh, asinh, acosh and atanh math library calls.
     * removed some hard exits in unmap(), key() and globkey()
-
     * added eqlen() lib call in lib-list.go: checks that length of lists in a list-of-lists match:
         - e.g. eqlen( [ [1,2,3] , [2,3] ] ) equals false
         - e.g. eqlen( [ [1,2,3] , [4,5,6] , ["one","two",3] ] ) equals true
