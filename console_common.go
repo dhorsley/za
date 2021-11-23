@@ -1064,12 +1064,13 @@ func clearToEOPane(row int, col int, va ...int) {
     p := panes[currentpane]
     // save cursor pos
     fmt.Printf("\033[s")
+    fmt.Printf("\033[0m")
     // clear line
     if (len(va) == 1) && (va[0] > p.w) {
         lines := va[0] / (p.w - 1)
         for ; lines >= 0; lines-- {
             at(row+lines-1, 1)
-            fmt.Print(rep(" ",p.w-2))
+            fmt.Print(rep(" ",p.w))
         }
     } else {
         at(row, col)

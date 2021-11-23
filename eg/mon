@@ -758,25 +758,26 @@ while !quit
     pane select "status"
     pane redraw
 
-    clear(1,1,1)
+    clear(1,2,0)
     print "[#b1]"
 
     d=date_human()
-    timo=string(timeout)
-    at 1,1; print "[#bold]",d, "  Current Timeout : {timo} ms [#CTE]"
+    at 1,1; print format("%"+pane_w()+"s     ","[#bold]"+d+"  Current Timeout : {timeout} ms")
 
     # get user input
     k=keypress(key_timeout)
 
-    at 1,30
     when char(k)
     is "i"
+        clear(1,2,1); at 1,1
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
         ipaddr=interface_ip(interface)
     is "f"
-        clear(1,1,1); at 1,1; prompt proc_filter "New Filter (Leave empty to clear) : "
+        clear(1,2,1); at 1,1
+        prompt proc_filter "New Filter (Leave empty to clear) : "
     is "t"
-        clear(1,1,1); at 1,1; prompt timeout "New Timeout (ms) : " "^[0-9]+$"
+        clear(1,2,1); at 1,1
+        prompt timeout "New Timeout (ms) : " "^[0-9]+$"
     is "D"
         showCpuDetails = ! showCpuDetails
     is "B"
@@ -786,12 +787,12 @@ while !quit
     is "q"
         quit=true
     is "h"
-        at 1,54
+        clear(1,2,1); at 1,1
         print "(h) help  (t) timeout  (i) interface  (q) quit  "
         print "(D) cpu details  (B) cpu bars  (T) cpu totals  "
-        print "(f) filter "
+        print "(f) filter"
         k=keypress(1500*1000)
-        clear_line(1,1)
+        clear(1,2,1)
     endwhen
 
     cursoroff()
