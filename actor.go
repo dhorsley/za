@@ -122,6 +122,10 @@ func GetAsFloat(unk interface{}) (float64, bool) {
         return float64(i), false
     case uint8:
         return float64(i), false
+    case uint32:
+        return float64(i), false
+    case uint64:
+        return float64(i), false
     case float64:
         return i, false
     case string:
@@ -143,6 +147,8 @@ func GetAsInt64(expr interface{}) (int64, bool) {
         return int64(i), false
     case int64:
         return i, false
+    case uint64:
+        return int64(i), false
     case uint32:
         return int64(i), false
     case uint8:
@@ -164,6 +170,8 @@ func GetAsInt(expr interface{}) (int, bool) {
     case uint:
         return int(i), false
     case int64:
+        return int(i), false
+    case uint64:
         return int(i), false
     case uint32:
         return int(i), false
