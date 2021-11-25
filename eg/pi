@@ -11,18 +11,17 @@ require 1.0.11
 n=42
 input n optarg 1
 
-i = 0
-k = 0
-var acc float
-den = 1.0
-num = 1.0
+var i,k int
+var acc,k2,tmp float
+den = 1f
+num = 1f
 
 var buf string
 
 while i<n
 
     k++
-    k2 = k*2.0 + 1
+    k2 = 1+ k*2f
     acc += num*2
     acc *= k2
     den *= k2
@@ -30,7 +29,7 @@ while i<n
 
     on num > acc do continue
 
-    tmp = 3.0 * num + acc
+    tmp = 3 * num + acc
     d3 = int(tmp / den)
     tmp += num
     d4 = int(tmp / den)

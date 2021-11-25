@@ -26,14 +26,14 @@ define bar(row,col,hsize,pc,colour)
     part_3q="▊"
     part_2q="▌"
     part_1q="▎"
-    us=int(100f/hsize)
-    d=int(pc/100f*us)
-    r=d % us
+    us = hsize / 100f   # 1% width of total
+    d  = pc*us          # width of input percent
+    r  = d-d.int        # remainder
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d do c="█"
-        if e>=d and e<d+1
+        on e<d.int do c="█"
+        if e>=d.int and e<int(d+1)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
@@ -43,8 +43,8 @@ define bar(row,col,hsize,pc,colour)
 end
 
 define interface_ip(in)
-    addrline =| ip addr show dev {in}
-    ipaddr=replace(filter(addrline.out,"inet.*/"),"inet ","")
+    addrline =< ip addr show dev {in}
+    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
     ipaddr=replace(ipaddr,"/","")
     return ipaddr
 end
@@ -70,11 +70,11 @@ end
 
 define showEnv()
     pane select "envs"
-    pane redraw
+    print linecolour; pane redraw
     clear(2,11,1)
     cursoroff()
 
-    at 2,3; print "Hostname             : [#6]{=hostname()}[#-]"
+    at 2,3; print "[#-]Hostname             : [#6]{=hostname()}[#-]"
     at 3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
     at 4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
     at 5,3; print "User                 : [#6]{=user()}[#-]"
@@ -99,7 +99,7 @@ define showFiles()
         on open_fd=="" || open_inode=="" do return
 
         pane select "files"
-        pane redraw
+        print linecolour; pane redraw
 
         clear(1,4,1)
 
@@ -107,7 +107,7 @@ define showFiles()
         mfd=tr(open_fd,"d","\n")
         mfd=tr(mfd,"s","\t ")
         mfd=float(field(mfd,3,"\t "))
-        at 2,2 ; print "Open Descr. : [#6]{ofd}[#-]"
+        at 2,2 ; print "[#-]Open Descr. : [#6]{ofd}[#-]"
         at 3,2 ; print "Max         : [#6]"
         if mfd>1e8
             print "No Limit[#-]"
@@ -127,7 +127,7 @@ end
 define showMem()
 
     pane select "mem"
-    pane redraw
+    print linecolour; pane redraw
 
     cursoroff()
 
@@ -178,25 +178,29 @@ define showMem()
     # display mem
 
     clear(2,9,1)
-    at 2,1; print "Free Mem  : "; bar(2,14,8,(mem_free.int/mem_total.float)*100,4)
-    print " [#6]{mem_free} KB[#-]"
 
-    at 3,1; print "Avail Mem : "; bar(3,14,8,(mem_avail.int/mem_total.float)*100,4)
-    print " [#6]{mem_avail} KB[#-]"
+    at 2,1; print "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
+    print "[#6]{=hobbitsize(1024*mem_total.float)}B[#-]"
 
-    at 4,1; print "Cached    : "; bar(4,14,8,(mem_cached.int/mem_total.float)*100,3)
-    print " [#6]{mem_cached} KB[#-]"
+    at 3,1; print "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
+    print "[#6]{=hobbitsize(1024*mem_free.float)}B[#-]"
 
-    at 5,1; print "Avail Mem : "; bar(5,14,8,(mem_active.int/mem_total.float)*100,3)
-    print " [#6]{mem_active} KB[#-]"
+    at 4,1; print "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
+    print "[#6]{=hobbitsize(1024*mem_avail.float)}B[#-]"
 
-    at 6,1; print "Free Swap : "; bar(6,14,8,(mem_swap_free.int/mem_swap_total.float)*100,4)
-    print " [#6]{mem_swap_free} KB[#-]"
+    at 5,1; print "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
+    print "[#6]{=hobbitsize(1024*mem_cached.float)}B[#-]"
+
+    at 6,1; print "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
+    print "[#6]{=hobbitsize(1024*mem_active.float)}B[#-]"
+
+    at 7,1; print "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
+    print "[#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]"
 
     al=get_mem().alloc.int
     ts=get_mem().system.int
-    at 7,1; print "Mon Heap  : [#6]"; bar(7,14,8,(al.float/(al+ts))*100,2)
-    print " {al} MB[#-]"
+    at 8,1; print "[#4]Mon Use:"; bar(8,10,16,(al.float/(al+ts))*100,2)
+    print "[#6]{=hobbitsize(al*1024*1024)}B[#-]"
 
     # display slab info
 
@@ -204,7 +208,7 @@ define showMem()
     on count(slabs)<8 do cs=count(slabs)
 
     comwidth=10
-    at 9,1; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    at 10,1; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
     if count(slabs)>0
         for p = 0 to cs-1
@@ -212,7 +216,7 @@ define showMem()
             sa=strpos(l," ",0)
             c1=substr(l,0,sa)
             c2=substr(l,sa+1,len(l)-sa-1)
-            at 10+p,1; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
+            at 11+p,1; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
         endfor
     endif
 end
@@ -221,7 +225,7 @@ end
 define showProcs(ct,uptime)
 
     pane select "procs"
-    pane redraw
+    print linecolour; pane redraw
 
     cursoroff()
 
@@ -304,6 +308,13 @@ define humansize(i)
     return format("%.1f %s/sec",i,unit)
 end
 
+define hobbitsize(i)
+    on i>=1e9 do return "%.1f G".format(float(i/1e9))
+    on i>=1e6 do return "%.1f M".format(float(i/1e6))
+    on i>=1e3 do return "%.1f K".format(float(i/1e3))
+    return "%.1f ".format(i.float)
+end
+
 
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
@@ -320,7 +331,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
 
     pane select "cpu"
-    pane redraw
+    print linecolour; pane redraw
 
     activity_bg=" "
     activity_indicator="▪"
@@ -461,7 +472,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     print col_guest;    print pad(activity_indicator,1,w_guest.int,     activity_indicator)
                     print col_steal;    print pad(activity_indicator,1,w_steal.int,     activity_indicator)
                     print col_iowait;   print pad(activity_indicator,1,w_iowait.int,    activity_indicator)
-                    print "[##]"
+                    print "[#-][##]"
                     pos=pos+49
                 endif
 
@@ -485,21 +496,21 @@ end
 define showHdd()
     
     pane select "hdd"
-    pane redraw
+    print linecolour; pane redraw
 
     cursoroff()
 
     when release_id()
     is "alpine"
-        disks=| df -h | tail -n+2 | egrep '^overlay' | sort -grk5
+        disks=< df -h | tail -n+2 | egrep '^overlay' | sort -grk5
     or
-        disks=| df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
+        disks=< df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
     endwhen
 
     at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use%")
     row=2
 
-    foreach d in disks.out
+    foreach d in disks
         if d!=""
             fields(d)
             on kind(F[1])!="string" do continue
@@ -524,7 +535,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     endif
 
     pane select "net"
-    pane redraw
+    print linecolour; pane redraw
 
     at 1,2
     print "Interface [{interface}] Addr : {ipaddr} "
@@ -626,14 +637,14 @@ end
 define redef_layout(cpu_count)
 
     #            name    row            col             h        w             title                      border
-    pane define "cpu",    1,            1,         cpu_count+1,  term_w(),     "[#b1] Internal [##]",    "none"
-    pane define "hdd",    cpu_count+3,  2,              8,       64,           "[#b1] Disks [##]",       "round"
-    pane define "procs",  cpu_count+12, 2,              20,      64,           "[#b1] Processes [##]",   "round"
-    pane define "net",    cpu_count+3,  66,             19,      44,           "[#b1] Network [##]",     "topline"
-    pane define "envs",   cpu_count+23, 66,             13,      44,           "[#b1] Environment [##]", "topline"
-    pane define "mem",    cpu_count+3,  111,            19,      34,           "[#b1] Memory [##]",      "topline"
-    pane define "files",  cpu_count+23, 111,            13,      34,           "[#b1] Files [##]",       "topline"
-    pane define "status", cpu_count+34, 1,              1,       term_w()-1,   "",                       "none"
+    pane define "cpu",    1,            1,         cpu_count+1,  145,  "[#b1]{=tink} Internal [##]",    "topline"
+    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",       "round"
+    pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]",   "round"
+    pane define "net",    cpu_count+3,  66,             19,      44,   "[#b1]{=tink} Network [##]",     "topline"
+    pane define "envs",   cpu_count+23, 66,             13,      44,   "[#b1]{=tink} Environment [##]", "topline"
+    pane define "mem",    cpu_count+3,  111,            19,      34,   "[#b1]{=tink} Memory [##]",      "topline"
+    pane define "files",  cpu_count+23, 111,            8,       34,   "[#b1]{=tink} Files [##]",       "topline"
+    pane define "status", cpu_count+33, 1,              2,       145,  "",                              "round"
 
     # setglob net_sample_count = term_w()-77
     setglob net_sample_count = 40
@@ -678,9 +689,12 @@ net_sample_start_in=1
 if winterm()
     interface="eth0"
 else
-    i =| ip -o -4 route show to default
-    interface=field(i.out,5)
+    i =< ip -o -4 route show to default
+    interface=field(i,5)
 endif
+
+linecolour="[#1]"
+tink="[#5]"
 
 ct=clktck()
 if ct==0
@@ -690,10 +704,7 @@ endif
 cls
 
 user=get_env("USER")
-if user==""
-    usercmd=|whoami
-    user=usercmd.out
-endif
+on user=="" do user=<whoami
 sudo=get_env("SUDO_USER")
 access=true
 
@@ -756,27 +767,27 @@ while !quit
     # status area
 
     pane select "status"
-    pane redraw
+    print linecolour; pane redraw
 
-    clear(1,2,0)
-    print "[#b1]"
+    clear(1,1,1)
+    print "[#b1][#6]"
 
     d=date_human()
-    at 1,1; print format("%"+pane_w()+"s     ","[#bold]"+d+"  Current Timeout : {timeout} ms")
+    at 1,1; print ccformat("[#bold]%"+string(pane_w()-2)+"s[#boff][#-]",d+"  Current Timeout : {timeout} ms")
 
     # get user input
     k=keypress(key_timeout)
 
     when char(k)
     is "i"
-        clear(1,2,1); at 1,1
+        clear(1,1,1); at 1,1
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
         ipaddr=interface_ip(interface)
     is "f"
-        clear(1,2,1); at 1,1
+        clear(1,1,1); at 1,1
         prompt proc_filter "New Filter (Leave empty to clear) : "
     is "t"
-        clear(1,2,1); at 1,1
+        clear(1,1,1); at 1,1
         prompt timeout "New Timeout (ms) : " "^[0-9]+$"
     is "D"
         showCpuDetails = ! showCpuDetails
@@ -787,12 +798,12 @@ while !quit
     is "q"
         quit=true
     is "h"
-        clear(1,2,1); at 1,1
+        clear(1,1,1); at 1,1
         print "(h) help  (t) timeout  (i) interface  (q) quit  "
         print "(D) cpu details  (B) cpu bars  (T) cpu totals  "
         print "(f) filter"
         k=keypress(1500*1000)
-        clear(1,2,1)
+        clear(1,1,1)
     endwhen
 
     cursoroff()

@@ -38,7 +38,16 @@ CHANGE LOG
             that has async inside of it. it will work, but it's awful slow.
             - recursion is not exactly fast to begin with and you lose most chances
                 to take the small advantage of tail-call elimination when using async.
-                
+        - also passing the gc flag creation for async routine to await instead of task()
+            - this could result in some async calls not getting their id reused, but otherwise
+                helps to preserve the return results for longer.
+            - should fix this properly eventually - could do without passing the results over
+                a channel back to the callers.
+
+    * Added a gc flag to calltable entries so that dead entries can be periodically reused in
+        the function space allocator. It doesn't cull or reorder anything, just marks for re-use.
+        - this should have quite a large effect on memory use in long running programs w/many fn calls.
+
     * Change implemented for determining start position of SYM_BOR ("|") commands better
         - this was previously making a bad estimate of start position from source code line string
         - now recording the position of the SYM_BOR token in input source in order to store commands

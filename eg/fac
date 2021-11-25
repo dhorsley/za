@@ -2,8 +2,8 @@
 
 module "syntax_checks/math.mod"
 
+var x int = 1
 input x param 1
-x=int(x)
 
 println factorial(x)
 
