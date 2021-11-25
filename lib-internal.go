@@ -609,8 +609,6 @@ func buildInternalLib() {
             "2","map[string]interface {}","bool",
             "1","map[string]interface {}"); !ok { return nil,err }
 
-        handleMap:=args[0].(map[string]interface{})
-
         waitForAll:=false
         if len(args)>1 {
             waitForAll=args[1].(bool)
@@ -619,20 +617,21 @@ func buildInternalLib() {
         var results=make(map[string]interface{})
 
         keepWaiting:=true
+
         for ; keepWaiting ; {
-            for k,v:=range handleMap {
+            for k,v:=range args[0].(map[string]interface{}) {
                 select {
                 case retval := <-v.(<-chan interface{}):
-                    // fmt.Printf("[await] filled results '%v' in:\n%+v\n",k,handleMap)
-                    // fmt.Printf("[await] retval was %v\n",results[k])
-                    results[k]=retval
-                    delete(handleMap,k)
+                    loc      :=retval.(struct{l uint32;r interface{}}).l
+                    results[k]=retval.(struct{l uint32;r interface{}}).r
+                    calllock.Lock(); calltable[loc].gc=true ; calllock.Unlock()
+                    delete(args[0].(map[string]interface{}),k)
                 default:
                 }
             }
             keepWaiting=false
             if waitForAll {
-                if len(handleMap)!=0 {
+                if len(args[0].(map[string]interface{}))!=0 {
                     keepWaiting=true
                 }
             }

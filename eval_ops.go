@@ -1151,9 +1151,12 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
 
             // handle the returned result, if present.
 
-            calllock.Lock() ; defer calllock.Unlock()
+            calllock.Lock()
             res = calltable[loc].retvals
-            calltable[loc]=call_s{}
+            // calltable[loc]=call_s{}
+            calltable[loc].gc=true
+            calllock.Unlock()
+
             switch rcount {
             case 0:
                 return nil
