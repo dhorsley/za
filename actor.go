@@ -2307,6 +2307,16 @@ tco_reentry:
                 panes[name] = Pane{row: row, col: col, w: w, h: h, title: title, boxed: boxed}
                 paneBox(name)
 
+            case "title":
+                if inbound.TokenCount>2 {
+                    etit := inbound.Tokens[2:]
+                    ptitle := parser.wrappedEval(ifs,ident,ifs,ident,etit)
+                    p:=panes[currentpane]
+                    p.title=sf("%v",ptitle.result)
+                    panes[currentpane]=p
+                    paneBox(currentpane)
+                }
+
             case "redraw":
                 paneBox(currentpane)
 

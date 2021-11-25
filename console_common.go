@@ -147,7 +147,7 @@ func setupAnsiPalette() {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) { 
+func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
     if !interactive { BMARGIN=0 }
@@ -158,6 +158,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     sprompt := sparkle(prompt)
 
     // calculate real prompt length after ansi codes applied.
+
     // init
     cpos := 0                    // cursor pos as extent of printable chars from start
     os := ""                     // original string before history navigation begins
@@ -174,7 +175,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
     // get echo status
     echo,_:=vget(0,&gident,"@echo")
-    // fmt.Printf("echo status is [%v]\n",echo)
 
     if mask=="" { mask="*" }
 
@@ -230,7 +230,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
         } else {
             fmt.Printf(str.Repeat(mask,inputL))
         }
-        clearToEOL()
+        clearToEOP(cursAtCol)
         for i:=irow+1+rowLen;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
         at(irow+1,1); fmt.Printf(sparkle(helpstring))
 
@@ -886,6 +886,14 @@ func sat(row int,col int) string {
 // clear to end of line
 func clearToEOL() {
     pf("\033[0K")
+}
+
+func clearToEOP(start int) {
+    if currentpane=="global" {
+        pf("\033[0K")
+    } else {
+        pf(str.Repeat(" ",panes[currentpane].w-panes[currentpane].col-start))
+    }
 }
 
 // show the console cursor
