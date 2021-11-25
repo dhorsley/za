@@ -33,14 +33,12 @@ LATER / UNDECIDED
             memory than really necessary.
         - it was previously dynamic under the last var storage scheme, just have not got around
             to doing anything about it yet.
-        - may be worth marking stores as "getting full" somewhere in bind_int and having an
-            async routine to check and expand candidates. (i.e. like some sort of deranged
-            garbage collector in reverse.)
 
-    * ultimately, change interactive mode to use readline or similar with better utf-8 support.
-
-    * some escaped chars (e.g. \") screw with the nesting check in interactive mode.
-    * plenty of utf-8/extended char set keys still not working in interactive mode.
-        - e.g. · µ n ”“ ¢ «» and similar.
+    * ultimately, change interactive mode to use readline or similar with better utf-8 support
+        (because I'm not likely to make many more changes to the in-built line editor):
+        
+        - some escaped chars (e.g. \") screw with the nesting check in interactive mode.
+        - plenty of utf-8/extended char set keys still not working in interactive mode.
+            - e.g. · µ n ”“ ¢ «» and similar.
 
 

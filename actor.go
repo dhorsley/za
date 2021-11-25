@@ -32,17 +32,14 @@ func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan
         defer close(r)
         var ident [szIdent]Variable
         atomic.AddInt32(&concurrent_funcs,1)
-        /*
-        pf("[task] loc    -> %d\n",loc)
-        pf("[task] caller -> %d\n",caller)
-        pf("[task] cs     -> %+v\n",calltable[loc])
-        */
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
-        // fmt.Printf("[task] %d done\n",loc)
+
+        // dur, _ := time.ParseDuration("1ms")
+        // time.Sleep(dur)
 
         switch rcount {
         case 0:
-            r<-nil
+            r<-struct{l uint32;r interface{}}{loc,nil}
         case 1:
             calllock.RLock()
             v:=calltable[loc].retvals
@@ -51,20 +48,20 @@ func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan
                 r<-nil
                 break
             }
-            r<-v.([]interface{})[0]
+            r<-struct{l uint32;r interface{}}{loc,v.([]interface{})[0]}
         default:
             calllock.RLock()
             v:=calltable[loc].retvals
             calllock.RUnlock()
-            r<-v
+            r<-struct{l uint32;r interface{}}{loc,v}
         }
 
         atomic.AddInt32(&concurrent_funcs,-1)
 
     }()
-    // fmt.Printf("***** [task] loc#%d complete.\n",loc)
     return r,id
 }
+
 
 var testlock = &sync.RWMutex{}
 var atlock = &sync.RWMutex{}
@@ -361,6 +358,18 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
     calllock.Lock()
     defer calllock.Unlock()
 
+    // : sets up a re-use value
+    var reuse,e uint32
+    if globseq<gcModulus*2 || (globseq % gcModulus) < 2 {
+        for e=0; e<globseq; e+=1 {
+            if calltable[e].gc {
+                break
+            }
+        }
+        if e<globseq { reuse=e }
+    }
+
+    // find a reservation
     for ; numlookup.lmexists(globseq) ; { // reserved
         globseq=(globseq+1) % gnfsModulus
         if globseq==0 { globseq=1 }
@@ -386,17 +395,18 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
     }
 
     // allocate
-    numlookup.lmset(globseq, newName)
-    fnlookup.lmset(newName,globseq)
+    if reuse==0 { reuse=globseq } // else { fmt.Printf("** reusing fs %d\n",reuse) }
+    numlookup.lmset(reuse, newName)
+    fnlookup.lmset(newName,reuse)
     if cs.prepared==true {
         cs.fs=newName
-        calltable[globseq]=cs
-        // fmt.Printf("[gnfs] populated call table entry # %d with: %+v\n",globseq,calltable[globseq]) 
+        calltable[reuse]=cs
+        // fmt.Printf("[gnfs] populated call table entry # %d with: %+v\n",reuse,calltable[globseq]) 
     }
 
-    // fmt.Printf("(gnf) allocated for %v with %d\n",newName,globseq)
+    // fmt.Printf("(gnf) allocated for %v with %d\n",newName,reuse)
 
-    return globseq,newName
+    return reuse,newName
 
 }
 
@@ -3200,6 +3210,10 @@ tco_reentry:
                 } else {
                     Call(MODE_NEW, &modident, loc, ciMod)
                 }
+
+                calllock.Lock()
+                calltable[ifs].gc=true
+                calllock.Unlock()
 
                 currentModule=oldModule
 

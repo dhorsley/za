@@ -806,7 +806,8 @@ func main() {
                         }
                     }
                 }
-                calltable[loc]=call_s{}
+                // calltable[loc]=call_s{}
+                calltable[loc].gc=true
             } else {
                 finish(false, 0)
                 pf("\n[#2]User Interrupt![#-] ")
@@ -1198,7 +1199,8 @@ func main() {
         currentModule="main"
         // pf("[main] loc -> %d\n",mainloc)
         Call(MODE_NEW, &mident, mainloc, ciMain)
-        calltable[mainloc]=call_s{}
+        // calltable[mainloc]=call_s{}
+        calltable[mainloc].gc=true
     }
 
     // a little paranoia to finish things off...

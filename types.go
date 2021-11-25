@@ -73,6 +73,7 @@ type call_s struct {
 	base        uint32      // the original functionspace location of the source
     prepared    bool        // some fields pre-filled by caller
 	retvals     interface{} // returned values from the call
+    gc          bool        // marked by Call() when disposable
 }
 
 func (cs call_s) String() string {

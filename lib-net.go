@@ -458,7 +458,8 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                 }
 
-                calltable[loc]=call_s{}
+                // calltable[loc]=call_s{}
+                calltable[loc].gc=true
 
                 calllock.Unlock()
                 serviced=true
