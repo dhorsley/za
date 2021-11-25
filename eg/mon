@@ -634,17 +634,17 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 end
 
 
-define redef_layout(cpu_count)
+define redef_layout(cpu_count,pfilter)
 
-    #            name    row            col             h        w             title                      border
-    pane define "cpu",    1,            1,         cpu_count+1,  145,  "[#b1]{=tink} Internal [##]",    "topline"
-    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",       "round"
-    pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]",   "round"
-    pane define "net",    cpu_count+3,  66,             19,      44,   "[#b1]{=tink} Network [##]",     "topline"
-    pane define "envs",   cpu_count+23, 66,             13,      44,   "[#b1]{=tink} Environment [##]", "topline"
-    pane define "mem",    cpu_count+3,  111,            19,      34,   "[#b1]{=tink} Memory [##]",      "topline"
-    pane define "files",  cpu_count+23, 111,            8,       34,   "[#b1]{=tink} Files [##]",       "topline"
-    pane define "status", cpu_count+33, 1,              2,       145,  "",                              "round"
+    #            name    row            col             h        w             title                            border
+    pane define "cpu",    1,            1,         cpu_count+1,  145,  "[#b1]{=tink} Internal [##]",            "topline"
+    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",               "round"
+    pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]"+pfilter,   "round"
+    pane define "net",    cpu_count+3,  66,             19,      44,   "[#b1]{=tink} Network [##]",             "topline"
+    pane define "envs",   cpu_count+23, 66,             13,      44,   "[#b1]{=tink} Environment [##]",         "topline"
+    pane define "mem",    cpu_count+3,  111,            19,      34,   "[#b1]{=tink} Memory [##]",              "topline"
+    pane define "files",  cpu_count+23, 111,            8,       34,   "[#b1]{=tink} Files [##]",               "topline"
+    pane define "status", cpu_count+33, 1,              2,       145,  "",                                      "round"
 
     # setglob net_sample_count = term_w()-77
     setglob net_sample_count = 40
@@ -718,7 +718,8 @@ cpu_count=get_cores()
 
 # set up panes
 w=term_w()
-redef_layout(cpu_count)
+pfilter=""
+redef_layout(cpu_count,pfilter)
 
 # cpu history setup
 var prev assoc
@@ -741,6 +742,7 @@ showCpuTotals=true
 
 iter=0
 proc_filter=""
+lt=epoch_nano_time()
 
 while !quit
 
@@ -750,7 +752,7 @@ while !quit
     if w!=term_w()
         cls
         w=term_w()
-        redef_layout(cpu_count)
+        redef_layout(cpu_count,pfilter)
     endif
 
     # capture system uptime
@@ -772,10 +774,21 @@ while !quit
     clear(1,1,1)
     print "[#b1][#6]"
 
-    d=date_human()
-    at 1,1; print ccformat("[#bold]%"+string(pane_w()-2)+"s[#boff][#-]",d+"  Current Timeout : {timeout} ms")
+    t  = epoch_nano_time()
+    d  = date_human(t/1_000_000_000)
+    dt = float(t-lt) / 1_000_000
+    lt = t
+
+    # " | dt {=int(dt)} ms "+
+    at 1,1
+    print ccformat("[#bold]%"+
+                string(pane_w()-2)+
+                "s[#boff][#-]",d+
+                " | Current Timeout : {timeout} ms"
+    )
 
     # get user input
+
     k=keypress(key_timeout)
 
     when char(k)
@@ -784,11 +797,19 @@ while !quit
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
         ipaddr=interface_ip(interface)
     is "f"
+
         clear(1,1,1); at 1,1
         prompt proc_filter "New Filter (Leave empty to clear) : "
+        pfilter=" ~ filter : [#i1][#2]"+proc_filter+"[#-][#i0] "
+        pane select "procs"
+        new_title="[#b1]{=tink} Processes [##]"
+        on proc_filter!="" do new_title+=pfilter
+        pane title new_title
+
     is "t"
         clear(1,1,1); at 1,1
         prompt timeout "New Timeout (ms) : " "^[0-9]+$"
+        key_timeout=timeout.int*1000
     is "D"
         showCpuDetails = ! showCpuDetails
     is "B"
