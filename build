@@ -31,7 +31,7 @@ doc ` uncomment line below for testing with GCC-GO compiler:
 `
 
 bvers =  "1.0.16"
-bdate =| date "+%d-%m-%Y %H:%M"
+bdate =< date "+%d-%m-%Y %H:%M"
 
 strStrip = ?? strip_enable "-stripped" : ""
 
@@ -42,22 +42,22 @@ upxfound=trim(upxfound.out,0).int
 if ! os() ~ "^freebsd"
     when tgt
     has tgt ~i "^(alpine|aws)$"
-        if buildMusl(bvers,bdate.out)!=0
+        if buildMusl(bvers,bdate)!=0
             exit e.build,"Failed to build musl version."
         endif
     is "libc"
-        if buildLibc(bvers,bdate.out)!=0
+        if buildLibc(bvers,bdate)!=0
             exit e.build,"Failed to build libc version."
         endif
     is "win"
-        if buildWin(bvers,bdate.out) != 0
+        if buildWin(bvers,bdate) != 0
             exit e.build,"Failed to build windows version."
         endif
     or
         exit e.notfound,"Target type unknown."
     endwhen
 else
-    if buildFreeBSD(bvers,bdate.out) != 0
+    if buildFreeBSD(bvers,bdate) != 0
         exit e.build,"Failed to build bsd version."
     endif
 endif
