@@ -76,12 +76,11 @@ define showEnv()
 
     at 2,3; print "[#-]Hostname             : [#6]{=hostname()}[#-]"
     at 3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
-    at 4,3; print "Bash Major Version   : [#6]{=bash_versinfo()}[#-]"
-    at 5,3; print "User                 : [#6]{=user()}[#-]"
-    at 6,3; print "OS                   : [#6]{=os()}[#-]"
-    at 7,3; print "Locale               : [#6]{=lang()}[#-]"
-    at 8,3; print "Distribution         : [#6]{=release_name()}[#-]"
-    at 9,3; print "Distribution Version : [#6]{=release_version()}[#-]"
+    at 4,3; print "User                 : [#6]{=user()}[#-]"
+    at 5,3; print "OS                   : [#6]{=os()}[#-]"
+    at 6,3; print "Locale               : [#6]{=lang()}[#-]"
+    at 7,3; print "Distribution         : [#6]{=release_name()}[#-]"
+    at 8,3; print "Distribution Version : [#6]{=release_version()}[#-]"
 end
 
 
@@ -178,27 +177,27 @@ define showMem()
     clear(2,9,1)
 
     at 2,1; print "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
-    print "[#6]{=hobbitsize(1024*mem_total.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]"
 
     at 3,1; print "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
-    print "[#6]{=hobbitsize(1024*mem_free.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]"
 
     at 4,1; print "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
-    print "[#6]{=hobbitsize(1024*mem_avail.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]"
 
     at 5,1; print "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
-    print "[#6]{=hobbitsize(1024*mem_cached.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]"
 
     at 6,1; print "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
-    print "[#6]{=hobbitsize(1024*mem_active.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]"
 
     at 7,1; print "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
-    print "[#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]"
 
     al=get_mem().alloc.int
     ts=get_mem().system.int
-    at 8,1; print "[#4]Mon Use:"; bar(8,10,16,(al.float/(al+ts))*100,2)
-    print "[#6]{=hobbitsize(al*1024*1024)}B[#-]"
+    at 8,1; print "[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
+    print " [#6]{=hobbitsize(al*1024*1024)}B[#-]"
 
     # display slab info
 
@@ -537,13 +536,13 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     pane select "net"
     print linecolour; pane redraw
 
-    at 1,2
+    at 2,4
     print "Interface [{interface}] Addr : {ipaddr} "
 
-    at pane_h()-4,2
-    print "[#6]", legload[0], "[#-] 64B-4Ki [#6]", legload[1], "[#-] 4Ki-256Ki [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
-    at pane_h()-3,9
-    print "[#6]", legload[3], "[#-] 16Mi-1Gi [#6]", legload[4],"[#-] 1Gi-64Gi"
+    at pane_h()-4,4
+    print "[#6]", legload[0], "[#-] 64B-4Ki  [#6]", legload[1], "[#-] 4Ki-256Ki  [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
+    at pane_h()-3,11
+    print "[#6]", legload[3], "[#-] 16Mi-1Gi  [#6]", legload[4],"[#-] 1Gi-64Gi"
 
     foreach int_name in net_interfaces()
 
@@ -637,14 +636,14 @@ end
 define redef_layout(cpu_count,pfilter)
 
     #            name    row            col             h        w             title                            border
-    pane define "cpu",    1,            1,         cpu_count+1,  145,  "[#b1]{=tink} Internal [##]",            "topline"
+    pane define "cpu",    1,            1,         cpu_count+1,  150,  "[#b1]{=tink} Internal [##]",            "topline"
     pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",               "round"
     pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]"+pfilter,   "round"
-    pane define "net",    cpu_count+3,  66,             19,      44,   "[#b1]{=tink} Network [##]",             "topline"
-    pane define "envs",   cpu_count+23, 66,             13,      44,   "[#b1]{=tink} Environment [##]",         "topline"
-    pane define "mem",    cpu_count+3,  111,            19,      34,   "[#b1]{=tink} Memory [##]",              "topline"
-    pane define "files",  cpu_count+23, 111,            8,       34,   "[#b1]{=tink} Files [##]",               "topline"
-    pane define "status", cpu_count+33, 1,              2,       145,  "",                                      "round"
+    pane define "net",    cpu_count+3,  67,             19,      44,   "[#b1]{=tink} Network [##]",             "topline"
+    pane define "envs",   cpu_count+23, 67,             13,      44,   "[#b1]{=tink} Environment [##]",         "topline"
+    pane define "mem",    cpu_count+3,  112,            19,      34,   "[#b1]{=tink} Memory [##]",              "topline"
+    pane define "files",  cpu_count+23, 112,            8,       34,   "[#b1]{=tink} Files [##]",               "topline"
+    pane define "status", cpu_count+33, 1,              2,       150,  "",                                      "round"
 
     setglob net_sample_count = 40
     # on net_sample_count>72 do setglob net_sample_count = 72

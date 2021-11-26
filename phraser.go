@@ -118,6 +118,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     addToPhrase:=false
     vref_found:=false
 
+    on_found:=false
+    do_found:=false
     borpos:=-1
 
     for ; pos < len(input); {
@@ -125,7 +127,9 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         tempToken = nextToken(input, &curLine, pos)
         eof=tempToken.eof
 
-        if tempToken.borpos>borpos && borpos == -1 { borpos=tempToken.borpos }
+        if on_found && do_found || ! (on_found || do_found) {
+            if tempToken.borpos>borpos && borpos == -1 { borpos=tempToken.borpos }
+        }
 
         // If we found something then move the cursor along to next word
         if tempToken.tokPos != -1 { pos = tempToken.tokPos }
@@ -137,6 +141,16 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if tempToken.carton.tokText==var_refs_name {
                 vref_found=true
             }
+        }
+
+        // ON present?
+        if !on_found && tokenType==C_On {
+            on_found=true
+        }
+
+        // DO present?
+        if !do_found && tokenType==C_Do {
+            do_found=true
         }
 
         // function name token mangling:
@@ -246,6 +260,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             phrase = Phrase{}
             base   = BaseCode{}
             borpos = -1
+            do_found = false
+            on_found = false
 
         }
 
