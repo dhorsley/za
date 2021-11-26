@@ -53,16 +53,11 @@ CHANGE LOG
         - now recording the position of the SYM_BOR token in input source in order to store commands
             in a separate record when present.
         - this was mainly a problem in " ON..DO | cmd " where the .. expression may have had a | symbol in it.
-        - also tweaked this for =| and =< as an expression
-        - unary | "cmd" expressions are still problematic in ON..DO conditions though. please avoid for now!
-            - it's fine when not executing a command after the DO and should be pretty rare in any case.
-            - still, of course, not satisfactory. will rework this later.
-
+        - also tweaked this for |, =| and =< as an expression
 
     * Updated trapInt and general handling around interactive mode main ident id.
 
     * fixed: removed grep/cut calls during startup. using internal funcs instead.
-
     * fixed: interactive mode / post-inc/-dec triggers false negative in global var name
     * fixed: setglob post-inc/-dec.
 
