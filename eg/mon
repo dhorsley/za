@@ -103,10 +103,8 @@ define showFiles()
 
         clear(1,4,1)
 
-        ofd=field(open_fd,1,"\t")
-        mfd=tr(open_fd,"d","\n")
-        mfd=tr(mfd,"s","\t ")
-        mfd=float(field(mfd,3,"\t "))
+        ofd=open_fd.field(1,"\t")
+        mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t ").float
         at 2,2 ; print "[#-]Open Descr. : [#6]{ofd}[#-]"
         at 3,2 ; print "Max         : [#6]"
         if mfd>1e8
@@ -114,8 +112,8 @@ define showFiles()
         else
             print format("%.7g",mfd),"[#-]"
         endif
-        fin=field(open_inode,2," \t\n")
-        tin=float(field(open_inode,1," \t"))
+        fin=open_inode.field(2," \t\n")
+        tin=open_inode.field(1," \t").float
         at 4,2 ; print "Free Inodes : [#6]{fin}[#-]"
         at 5,2 ; print "Total       : [#6]",format("%.7g",tin),"[#-]"
 
@@ -143,15 +141,15 @@ define showMem()
     on is_file("/proc/slabinfo") do slab_file=$in "/proc/slabinfo"
 
     slabs=""
-    if count(slab_file)>1
-        foreach l in lines(slab_file,"2:")
-            name=field(l,1," \t")
-            s_sz=field(l,3," \t")
-            s_cn=field(l,4," \t")
-            on s_sz==0 || s_cn==0 do continue
-            slabs=slabs+format("%s %3v\n",name,(float(s_sz)*float(s_cn))/1024/1024)
+    if slab_file.count>1
+        foreach l in slab_file.lines("2:")
+            name=l.field(1," \t")
+            s_sz=l.field(3," \t")
+            s_cn=l.field(4," \t")
+            on s_sz==0 or s_cn==0 do continue
+            slabs+="%s %3v\n".format(name,(s_sz.float*s_cn.float)/1024/1024)
         endfor
-        slabs=fieldsort(slabs,2,"n",true) 
+        slabs=slabs.fieldsort(2,"n",true) 
     endif
 
     foreach f in ["total","free","avail","cached","active","swap_free","swap_total"]
@@ -260,7 +258,9 @@ define showProcs(ct,uptime)
             on putime==0 do continue
 
             proc_list[pid]=[ state, ppid, 100*float(utime/ct/putime), 100*float(stime/ct/putime), 
-                            100*float(cutime/ct/putime), 100*float(cstime/ct/putime), threads, procstarttime, gsub(comm," ","_") ]
+                            100*float(cutime/ct/putime), 100*float(cstime/ct/putime), 
+                            threads, procstarttime, gsub(comm," ","_") 
+            ]
 
         endif
     endfor
@@ -367,7 +367,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 if f.head.is_number
                     vals[i]    = f.head
                 else
-                    vals[i]    = float(0)
+                    vals[i]    = 0f
                 endif
                 on f.len>0 do f = f.tail
             endfor
@@ -646,9 +646,8 @@ define redef_layout(cpu_count,pfilter)
     pane define "files",  cpu_count+23, 111,            8,       34,   "[#b1]{=tink} Files [##]",               "topline"
     pane define "status", cpu_count+33, 1,              2,       145,  "",                                      "round"
 
-    # setglob net_sample_count = term_w()-77
     setglob net_sample_count = 40
-    on net_sample_count>72 do setglob net_sample_count = 72
+    # on net_sample_count>72 do setglob net_sample_count = 72
 
     setglob rblist = push_front(0.0)
     setglob tblist = push_front(0.0)
@@ -779,7 +778,6 @@ while !quit
     dt = float(t-lt) / 1_000_000
     lt = t
 
-    # " | dt {=int(dt)} ms "+
     at 1,1
     print ccformat("[#bold]%"+
                 string(pane_w()-2)+
