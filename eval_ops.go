@@ -745,7 +745,29 @@ func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
     if float1OK && float2OK {
         return compareFloat(float1, float2, operation)
     }
+
+    str1, str1OK := val1.(string)
+    str2, str2OK := val2.(string)
+
+    if str1OK && str2OK {
+        return compareString(str1, str2, operation)
+    }
+
     panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
+}
+
+func compareString(val1 string, val2 string, operation string) (bool) {
+    switch operation {
+    case "<":
+        return val1 < val2
+    case "<=":
+        return val1 <= val2
+    case ">":
+        return val1 > val2
+    case ">=":
+        return val1 >= val2
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
 func compareInt(val1 int, val2 int, operation string) (bool) {
