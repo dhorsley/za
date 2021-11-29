@@ -346,6 +346,7 @@ syntax match string_functions "\(.\|\s*\)upper\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)format\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)ccformat\s*("he=e-1
 syntax match string_functions "\(.\|\s*\)strpos\s*("he=e-1
+syntax match string_functions "\(.\|\s*\)pos\s*("he=e-1
 
 syntax match os_functions "\(.\|\s*\)env\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)get_env\s*("he=e-1
@@ -362,6 +363,7 @@ syntax match os_functions "\(.\|\s*\)can_read\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)can_write\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)parent\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)fileabs\s*("he=e-1
+syntax match os_functions "\(.\|\s*\)filebase\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)is_symlink\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)is_device\s*("he=e-1
 syntax match os_functions "\(.\|\s*\)is_pipe\s*("he=e-1
@@ -393,6 +395,12 @@ syntax match html_functions "\(.\|\s*\)wh3\s*("he=e-1
 syntax match html_functions "\(.\|\s*\)wh4\s*("he=e-1
 syntax match html_functions "\(.\|\s*\)wh5\s*("he=e-1
 
+syntax match notify_functions "\(.\|\s*\)ev_watch\s*("he=e-1
+syntax match notify_functions "\(.\|\s*\)ev_watch_close\s*("he=e-1
+syntax match notify_functions "\(.\|\s*\)ev_watch_add\s*("he=e-1
+syntax match notify_functions "\(.\|\s*\)ev_exists\s*("he=e-1
+syntax match notify_functions "\(.\|\s*\)ev_event\s*("he=e-1
+syntax match notify_functions "\(.\|\s*\)ev_mask\s*("he=e-1
 
 " Za Keywords: {{{1
 " ==============
@@ -468,7 +476,7 @@ syntax region sqBrace transparent start=/\v\[/ skip=+\\[\]]+ end=/\v\]/
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,udf_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,udf_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -505,6 +513,7 @@ hi def link Range   Operator
 hi def link SingleQuote String
 hi def link SubShRegion Operator
 hi def link WrapLineOperator    Operator
+hi def link notify_functions functionlist
 hi def link time_functions functionlist
 hi def link list_functions functionlist
 hi def link conversion_functions functionlist

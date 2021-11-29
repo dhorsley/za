@@ -15,7 +15,6 @@ import (
     "runtime"
     "sort"
     str "strings"
-//    "time"
 )
 
 
@@ -184,11 +183,11 @@ func buildInternalLib() {
     features["internal"] = Feature{version: 1, category: "debug"}
     categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
-        "funcs", "dump", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
+        "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
-        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","mem_summary","zainfo","get_cores","permit",
+        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
     }
@@ -202,7 +201,6 @@ func buildInternalLib() {
         for e:=0; e<args[0].(int); e++ {
             bie:=bind_int(evalfs,sf("%s%d",start))
             if _,there:=q[bie]; there {
-                // clash
                 pf("* clash on %s\n",sf("%s%d",start,e))
             }
             q[bie]++
@@ -254,49 +252,6 @@ func buildInternalLib() {
         }
         return GetWinInfo(hnd), nil
     }
-
-    /* @note: need to track memory use differently now, as ident[fs] broken into separate units
-
-    slhelp["mem_summary"] = LibHelp{in: "[bool_debug]", out: "struct", action: "Returns summary of memory use."}
-    stdlib["mem_summary"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("mem_summary",args,2,
-            "1","bool",
-            "0"); !ok { return nil,err }
-
-        debugSplit:=false
-        if len(args)==1 {
-            debugSplit=args[0].(bool)
-        }
-
-        var r = make(map[string]alloc_info)
-        var w alloc_info
-
-        for k,_:=range *ident {
-            if k==0 { continue } // skip global
-            if len((*ident)[k])>0 {
-                w.name,_= numlookup.lmget(uint32(k))
-                if w.name=="" {
-                    w.name="(disposed)"
-                    lastlock.Lock()
-                    if lf,there:=lastfunc[uint32(k)]; there {
-                        if lf!="" {
-                            w.name="(recently "+lf+")"
-                        }
-                    }
-                    lastlock.Unlock()
-                }
-                w.size  = Of((*ident)[k])
-                w.id    = k
-                if debugSplit {
-                    pf("id %3d - name: %32s : size (bytes) : %-12d\n",k,w.name,w.size)
-                }
-                r[w.name]=w
-            }
-        }
- 
-        return r,nil
-    }
-    */
 
     slhelp["get_mem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
     stdlib["get_mem"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
@@ -479,18 +434,6 @@ func buildInternalLib() {
         return nil,errors.New("unrecognised behaviour provided in permit() argument 1")
     }
 
-    /*
-    slhelp["wrap"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable line wrap in panes. Returns the previous state."}
-    stdlib["wrap"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("wrap",args,1,"1","bool"); !ok { return nil,err }
-        lastwrap:=lineWrap
-        lastlock.Lock()
-        lineWrap=args[0].(bool)
-        lastlock.Unlock()
-        return lastwrap,nil
-    }
-    */
-
     slhelp["ansi"] = LibHelp{in: "bool", out: "previous_bool", action: "Enable (default) or disable ANSI colour support at runtime. Returns the previous state."}
     stdlib["ansi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ansi",args,1,"1","bool"); !ok { return nil,err }
@@ -547,15 +490,6 @@ func buildInternalLib() {
         return i,nil
     }
 
-    /* @note: disabled for now, too slow to track to permit this
-    slhelp["tco"] = LibHelp{in: "", out: "bool", action: "are we currently in a tail call loop?"}
-    stdlib["tco"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("tco",args,0); !ok { return nil,err }
-        b,_:=vget(evalfs,&ident,"@in_tco")
-        return b.(bool), nil
-    }
-    */
-
     slhelp["local"] = LibHelp{in: "string", out: "value", action: "Return this local variable's value."}
     stdlib["local"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("local",args,1,"1","string"); !ok { return nil,err }
@@ -565,42 +499,10 @@ func buildInternalLib() {
         return nil, errors.New(sf("'%v' does not exist!", name))
     }
 
-/*
-    slhelp["sizeof"] = LibHelp{in: "var", out: "integer", action: "Returns size of object."}
-    stdlib["sizeof"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if len(args) == 1 {
-            return uint64(unsafe.Sizeof(args[0])),nil
-        }
-        return -1,errors.New("Bad argument in sizeof()")
-    }
-*/
-
     slhelp["len"] = LibHelp{in: "various_types", out: "integer", action: "Returns length of string or list."}
     stdlib["len"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args)==1 { return ulen(args[0]) }
         return nil,errors.New("Bad argument in len()")
-        /* @note: re-introduce this block (and comment line above) if len has issues with types...
-        if ok,err:=expect_args("len",args,18,
-            "1","nil",
-            "1","string",
-            "1","[]interface {}",
-            "1","[]string",
-            "1","[]int",
-            "1","[]int64",
-            "1","[]uint8",
-            "1","[]float64",
-            "1","[]bool",
-            "1","map[string]float64",
-            "1","map[string]string",
-            "1","map[string]int",
-            "1","map[string]bool",
-            "1","map[string]int64",
-            "1","map[string]uint8",
-            "1","[]map[string]interface {}",
-            "1","map[string]interface {}",
-            "1","[]interface {}"); !ok { return nil,err }
-        return ulen(args[0])
-        */
     }
 
     slhelp["await"] = LibHelp{in: "handle_map[,all_flag]", out: "[]result", action: "Checks for async completion."}
@@ -655,7 +557,6 @@ func buildInternalLib() {
         case map[string]interface{},map[string]int,map[string]float64,map[string]int64:
         case map[string]int32,map[string]bool,map[string]uint:
         default:
-            // pf("v->%+v | k->%T\n",v,v)
             return false, errors.New("unmap requires a map")
         }
 
@@ -704,7 +605,6 @@ func buildInternalLib() {
         return false, nil
     }
 
-    // may soon be unnecessary (if ref added)
     slhelp["globkey"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
     stdlib["globkey"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("globkey",args,1,"2","string","string"); !ok { return nil,err }
@@ -962,15 +862,6 @@ func buildInternalLib() {
         return v.(bool), err
     }
 
-    /*
-    slhelp["commands"] = LibHelp{in: "", out: "", action: "Displays a list of keywords."}
-    stdlib["commands"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("commands",args,0); !ok { return nil,err }
-        commands()
-        return nil, nil
-    }
-    */
-
     slhelp["func_inputs"] = LibHelp{in: "", out: "[]string", action: "Returns a list of standard library function inputs."}
     stdlib["func_inputs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("func_inputs",args,0); !ok { return nil,err }
@@ -1065,34 +956,6 @@ func buildInternalLib() {
             return nil, nil
         }
         return funclist,nil
-    }
-
-    // @todo: review this. we probably want to only have this available in interactive mode and then only for global scope.
-    slhelp["dump"] = LibHelp{in: "function_name", out: "", action: "Displays variable list for current function or global."}
-    stdlib["dump"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        return nil,err
-        /* @note: temp disable - non-reversable name bindings
-        if ok,err:=expect_args("dump",args,2,
-        "1","string",
-        "0"); !ok { return nil,err }
-        s := ""
-        if len(args) == 1 {
-            s = args[0].(string)
-        }
-
-        if s == "global" {
-            for q,v:=range mident {
-                if q=="" { continue }
-                pf("%s = %v\n", q, v.IValue)
-            }
-        } else {
-            for q,v:=range (*ident) {
-                if q=="" { continue }
-                pf("%s = %v\n", q, v.IValue)
-            }
-        }
-        return nil, err
-        */
     }
 
     slhelp["ast"] = LibHelp{in: "fn_name", out: "string", action: "Return AST representation."}

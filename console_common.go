@@ -14,6 +14,7 @@ import (
     "encoding/hex"
     "strconv"
     "regexp"
+    "runtime"
     "unicode/utf8"
     "sort"
     str "strings"
@@ -172,6 +173,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
+
+    // for special case differences:
+    var winmode bool
+    if runtime.GOOS=="windows" { winmode = true }
 
     // get echo status
     echo,_:=vget(0,&gident,"@echo")
@@ -553,7 +558,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             //.. build display string
 
-            helpstring = "help> [#bgray][#6]"
+            helpstring = "help> [##][#6]"
 
             for cnt, v := range helpColoured {
                 starMax = cnt
@@ -568,7 +573,11 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 } else {
                 */
                     if cnt == selectedStar {
-                        helpstring += "[#bblue]*"
+                        if winmode {
+                            helpstring += "[#b2]*"
+                        } else {
+                            helpstring += "[#b1]*"
+                        }
                     }
                     helpstring += v + " "
                 // }
@@ -710,6 +719,8 @@ func printWithWrap(s string) {
 }
 
 // generic vararg print handler. also moves cursor in interactive mode
+// @TODO: this could use some attention to reduce the differences
+//        between interactive/non-interactive source
 func pf(s string, va ...interface{}) {
 
     s = sf(sparkle(s), va...)
@@ -727,7 +738,7 @@ func pf(s string, va ...interface{}) {
             if s[chpos]=='\n'   { row++; c=0 }
             chpos++
         }
-        // past:=row-(MH-BMARGIN) ; if past>1 { fmt.Printf("\033[%dS",past) }
+
         return
     }
 
@@ -738,7 +749,7 @@ func pf(s string, va ...interface{}) {
 
     fmt.Print(s)
 
-    // test row update:
+    // row update:
         atlock.Lock()
         chpos:=0
         c:=col

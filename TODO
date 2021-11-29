@@ -9,30 +9,31 @@ lots, i'm sure.
 TODO
 ----
 
-    * coalesce windows/linux builds.
-        - lib-os is missing some functions in windows file, but probably only
-            things which Windows FS doesn't support. need to confirm.
-
-    * windows build (17-11-2021):
-        - mostly working in ConEmu/Windows Terminal
-        - something is amiss in the window scrolling/terminal height info as the bottom-of-screen
-            scrolling is misbehaving and has occasional artifacts.
-        - Probably just need to detect Windows and use a different combination of ansi codes
-            to perform the scroll and check cursor vertical positions in interactive mode.
-        - background colours in help line current selection highlight.
-            - only the first item in list has background changed, and left/right selections
-                only move the highlight asterisk and not the bg change.
+    ++ add more examples in docs/
+    ++ windows: filepaths slash and backslash quoting clarification
+    ++ review/fix all of the "@todo"'s in the source! (currently about 20 of them)
 
 
 LATER / UNDECIDED
 -----------------
 
-    * make fixed size variable backing stores dynamic arrays.
-        - currently a fixed var count per func of 320(?)
+    * make fixed size variable backing stores dynamic arrays?
+        - currently a fixed var count per func of 320
         - this should be autoscaled instead as it slows down recursion and reserves a little more
             memory than really necessary.
         - it was previously dynamic under the last var storage scheme, just have not got around
             to doing anything about it yet.
+
+        - update: tested with a fixed size of 32 instead, but didn't change overheads significantly
+            enough to warrant making this dynamic. negligable speed differences with x10 smaller
+            backing arrays.
+
+            also tested with fixed size of 160 (half) and made no difference to mem alloc in eg/mon.
+
+            so, probably going to scrap the dynamic change and may even increase the fixed size.
+            ( empty var struct is 40 bytes. 320*40=12800 bytes per func instance )
+            obviously, we wouldn't do this in a compiler or anything trying to approach optimal.
+            it just doesn't feel like a burden worth reducing for expected use cases.
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support
         (because I'm not likely to make many more changes to the in-built line editor):
@@ -40,5 +41,7 @@ LATER / UNDECIDED
         - some escaped chars (e.g. \") screw with the nesting check in interactive mode.
         - plenty of utf-8/extended char set keys still not working in interactive mode.
             - e.g. · µ n ”“ ¢ «» and similar.
-
+        - cursor movement over utf8 chars in input (and utf8 char deletes) problematic.
+        - update: this just hasn't proven to be much of an issue yet. it is certainly an inconvenience,
+            but it is staying at the bottom of the change list indefinitely.
 

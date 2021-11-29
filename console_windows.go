@@ -41,7 +41,6 @@ func enableEcho() {
     // does nothing
 }
 
-// @note: may need to retire this if we are going to do the same in the unix version!
 func GetCursorPos() (int,int) {
     tcol,trow,e:=GetRowCol(1)
     if e==nil {

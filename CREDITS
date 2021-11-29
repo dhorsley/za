@@ -1,0 +1,41 @@
+
+
+All of the following third-party packages are used in the final binary.
+
+Any of these marked as "Go Modules" should not be distributed with the
+source package for Za, but instead retrieved as Go modules pre-compilation.
+
+Many thanks to all involved with creating these!    
+
+
+Name    : go-sql-driver
+Author  : various authors
+Licence : Mozilla Public License 2.0
+Home    : https://github.com/go-sql-driver/mysql
+Type    : Go Module
+
+Name    : RenderFloat Fn
+Author  : Raymond Hill
+Licence : DO WHAT THE F*** YOU WANT TO
+Home    : https://gist.github.com/gorhill/5285193
+Type    : Code Snippet
+
+Name    : gojq
+Author  : itchyny
+Licence : MIT License
+Home    : https://github.com/itchyny/gojq
+Type    : Go Module
+
+Name    : svgo
+Author  : Anthony Starks
+Licence : Creative Commons 3.0
+Home    : https://github.com/ajstarks/svgo
+Type    : Go Module
+
+Name    : fsnotify
+Author  : Chris Howey and various authors
+Licence : BSD-3-Clause License
+Home    : https://github.com/fsnotify/fsnotify
+Type    : Go Module
+
+

@@ -39,7 +39,7 @@ func buildOsLib() {
     // os level
 
     features["os"] = Feature{version: 1, category: "os"}
-    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "fileabs", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", }
+    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "filebase", "fileabs", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", }
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
@@ -123,12 +123,17 @@ func buildOsLib() {
         return filepath.Dir(args[0].(string)),nil
     }
 
+    slhelp["filebase"] = LibHelp{in: "string", out: "string", action: "Returns the base name of filename string."}
+    stdlib["filebase"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("filebase",args,1,"1","string"); !ok { return nil,err }
+        fp:=filepath.Base(args[0].(string))
+        return fp,nil
+    }
+
     slhelp["fileabs"] = LibHelp{in: "string", out: "string", action: "Returns the absolute pathname of input string."}
     stdlib["fileabs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("fileabs",args,1,"1","string"); !ok { return nil,err }
         fp,err:=filepath.Abs(args[0].(string))
-        // pf("abs-i: %s\n",args[0].(string))
-        // pf("abs-o: %s\n",fp)
         return fp,nil
     }
 

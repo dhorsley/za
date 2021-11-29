@@ -215,30 +215,6 @@ func buildFileLib() {
         }
     }
 
-    /*
-    slhelp["is_soft"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a symbolic link."}
-    stdlib["is_soft"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_soft",args,1,"1","string"); !ok { return nil,err }
-        f, err := os.Stat(args[0].(string))
-        if err == nil {
-            return f.Mode()&os.ModeSymlink != 0, err
-        } else {
-            return false, err
-        }
-    }
-
-    slhelp["is_pipe"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a named pipe."}
-    stdlib["is_pipe"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_pipe",args,1,"1","string"); !ok { return nil,err }
-        f, err := os.Stat(args[0].(string))
-        if err == nil {
-            return f.Mode()&os.ModeNamedPipe != 0, err
-        } else {
-            return false, err
-        }
-    }
-    */
-
     slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
     stdlib["perms"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("perms",args,1,"1","string"); !ok { return nil,err }

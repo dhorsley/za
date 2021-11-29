@@ -2,6 +2,39 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.0
+=====
+
+    library changes
+    ---------------
+
+    * renamed at() to pos(): keyword conflict
+    * experimental: added basic support for fsnotify golang lib
+        - new lib funcs: ev_watch, ev_watch_close, ev_watch_add, ev_exists, ev_event and ev_mask
+        - see eg/notify for example use
+    * added filebase() for returning the base name of a file path.
+    * checked lib-os for windows differences:
+        - some calls have no direct equivalent, so ignoring those.
+        - however, we did overlook parent(), fileabs() and filebase(), so added those for windows
+    * mem_summary() and dump() artifacts removed.
+
+    fixes
+    -----
+
+    * windows: fix scrolling + term height issues.
+        - partially done. still some artifacts, but better than it was.
+    * fix help highlight colour / win
+        - turns out, it was fine, just not good palette selection.
+            changed to a red background for selection in windows.
+
+
+    other
+    -----
+
+    * default build is now unstripped alpine variant
+    * updated za.vim
+
+
 1.0.16
 ======
 
@@ -313,7 +346,7 @@ CHANGE LOG
                 have to dispose of them when a loop ends (which can be useful).
             - this will most likely only occur when a FOR loop tries to use the same var name as a
                 FOREACH loop in the same function block.
-            - it's probably fine as it is, but should review soon.
+            - it's probably fine as it is, but should review soon. (now done, all okay)
 
     * struct default values:
         - You may now supply a default value inside a struct definition for a field.

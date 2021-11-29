@@ -953,21 +953,25 @@ func main() {
         // in case we arrived here by another method:
         interactive=true
 
+        // output separator, may be unnecessary really
+        eol:="\n"
+        if runtime.GOOS=="windows" { eol="\r\n" }
+
         // term loop
         pf("\033[s") // save cursor
         row,col=GetCursorPos()
+        if runtime.GOOS=="windows" { row++ ; col++ }
         pcol := defaultPromptColour
 
         // banner
         title:=sparkle("Za Interactive Mode")
-        drop :=BMARGIN
+        pf("\n%s\n\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
 
-        if row<=MH-BMARGIN { drop = 0 }
-        pf("\n%s\n%s\n",
-            sparkle("[#bold][#ul][#6]"+title+"[#-][##]"),
-            str.Repeat("\n",drop),
-        )
-        if row>MH-BMARGIN { row=MH-BMARGIN }
+        if row>=MH-BMARGIN {
+            if row>MH { row=MH }
+            for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
+            row=MH-BMARGIN
+        }
 
         // state control
         endFunc := false
@@ -1037,7 +1041,7 @@ func main() {
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
-                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
                     row=MH-BMARGIN
                 }
 
@@ -1108,7 +1112,7 @@ func main() {
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
-                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH,1); fmt.Print("\n") }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
                     row=MH-BMARGIN
                 }
 
