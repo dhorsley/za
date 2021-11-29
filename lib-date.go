@@ -14,7 +14,7 @@ func buildDateLib() {
                                 "time_hours","time_minutes","time_seconds","time_nanos",
                                 "time_dow","time_dom","time_month","time_year" }
 
-	slhelp["date"] = LibHelp{in: "[integer]", out: "string", action: "Returns a date/time string. The parsed timestamp is either the current date/time or the optional [#i1]integer[#i0] (epoch timestamp). RFC3339 format."}
+	slhelp["date"] = LibHelp{in: "[integer]", out: "string", action: "Returns a date/time string (RFC3339 format). Optional [#i1]integer[#i0] defaults to the current date/time, otherwise must be an epoch timestamp."}
 	stdlib["date"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("date",args,2,
             "1","int",
@@ -33,7 +33,7 @@ func buildDateLib() {
 		return st, err
 	}
 
-	slhelp["date_human"] = LibHelp{in: "none", out: "string", action: "Returns the current date and time in a readable format (RFC822Z)"}
+	slhelp["date_human"] = LibHelp{in: "[integer]", out: "string", action: "Returns the current date and time in a readable format (RFC822Z). If optional [#i1]integer[#i0] present, uses that as the epoch timestamp to convert."}
 	stdlib["date_human"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("date_human",args,2,
             "1","int",

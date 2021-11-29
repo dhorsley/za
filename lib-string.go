@@ -69,7 +69,7 @@ func buildStringLib() {
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
-        "reverse", "tr", "lower", "upper", "format", "ccformat","at",
+        "reverse", "tr", "lower", "upper", "format", "ccformat","pos",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc",
     }
 
@@ -227,9 +227,9 @@ func buildStringLib() {
         return sf(args[0].(string), args[1:]...), nil
     }
 
-    slhelp["at"] = LibHelp{in: "int_row,int_col", out: "string", action: "Returns a cursor positioning ANSI code string for (row,col)."}
-    stdlib["at"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("at",args,1,"2","int","int"); !ok { return nil,err }
+    slhelp["pos"] = LibHelp{in: "int_row,int_col", out: "string", action: "Returns a cursor positioning ANSI code string for (row,col)."}
+    stdlib["pos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pos",args,1,"2","int","int"); !ok { return nil,err }
         return sat(args[0].(int),args[1].(int)), nil
     }
 

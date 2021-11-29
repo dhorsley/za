@@ -4,7 +4,6 @@ doc `find all lines starting with 'g' and
         count the occurrences of 'tat' on each line
 `
 
-var lm assoc
 ss="tat"
 foreach l in $in "regexredux-input.txt".grep("^g")
     lm[key_l]=0

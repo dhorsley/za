@@ -2,7 +2,7 @@
 
 module "mod_build/defines"
 
-tgt="libc"
+tgt="alpine"
 strip_enable=false
 upx_enable=false
 
@@ -30,11 +30,11 @@ doc ` uncomment line below for testing with GCC-GO compiler:
     GCCGOFLAGS = `-compiler=gccgo -gccgoflags='-O3 -march=native -ffast-math -lpthread'`
 `
 
-bvers =  "1.0.16"
+bvers =  "1.1.0"
 bdate =< date "+%d-%m-%Y %H:%M"
 
-strStrip = ?? strip_enable "-stripped" : ""
-
+strStrip    = ?? strip_enable "-stripped" : ""
+stripFlags  = ?? strip_enable "-s -w" : ""
 
 upxfound=| which upx | wc -l
 upxfound=trim(upxfound.out,0).int
@@ -50,6 +50,7 @@ if ! os() ~ "^freebsd"
             exit e.build,"Failed to build libc version."
         endif
     is "win"
+        on strip_enable do "Windows build does not strip!".warning
         if buildWin(bvers,bdate) != 0
             exit e.build,"Failed to build windows version."
         endif
