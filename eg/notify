@@ -1,0 +1,37 @@
+#!/usr/bin/za
+
+doc `
+    Example for using fsnotify wrapper calls.
+`
+
+
+define shutdown()
+    for e=0 to w.len-1
+        if ev_exists(w[e])  ; ev_watch_close(w[e])
+        else                ; break
+        endif
+    endfor
+    exit
+end
+
+trapInt="shutdown()"
+
+var w []any
+
+w[0],er=ev_watch("/tmp")
+on er!=0 do exit er,"file error"
+
+while
+    e=ev_event(w[0])
+    on e!=nil do println "Last event -> ",e
+    on ev_mask(e,"create")!=nil do println "File creation : ",e.Name
+    on ev_mask(e,"remove")!=nil do println "File removal  : ",e.Name
+    on ev_mask(e,"rename")!=nil do println "File rename   : ",e.Name
+    on ev_mask(e,"chmod") !=nil do println "File chmod    : ",e.Name
+    on ev_mask(e,"write") !=nil do println "File write    : ",e.Name
+    pause 250
+endwhile
+
+
+shutdown()
+

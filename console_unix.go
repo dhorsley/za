@@ -167,7 +167,8 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
 func GetCursorPos() (int,int) {
 
     if tt==nil {
-        return 0,0
+        // return 0,0
+        return -1,-1
     }
 
     buf:=make([]byte,15,15)

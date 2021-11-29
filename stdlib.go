@@ -21,6 +21,7 @@ func buildStandardLib() {
     buildMathLib()
     buildListLib()
     buildFileLib()
+    buildNotifyLib()
     buildConversionLib()
     buildNetLib()
     buildDbLib()

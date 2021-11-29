@@ -19,7 +19,6 @@ import (
     "sort"
     str "strings"
     "strconv"
-//    "sync/atomic"
 )
 
 type sortStructInt struct {
@@ -682,7 +681,6 @@ func buildListLib() {
         return nil,errors.New("No values available to peek()")
     }
 
-    // @note: mut candidate
     slhelp["pop"] = LibHelp{in: "list_name", out: "item", action: "Removes and returns the last [#i1]item[#i0] in the named list [#i1]list_name[#i0]."}
     stdlib["pop"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pop",args,1,

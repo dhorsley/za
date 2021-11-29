@@ -314,6 +314,7 @@ func install(pkgs string) (state int) {
             }
             pf("[#4]%s installed.[#-]\n",pkgs)
             return 0
+            // @todo: finish these package cases
         case ".rpm": // rpm
             // not doing yet. just not checked syntax for rpm. most likely rpm -i or rpm -Uvh
             // depending on current install state.
