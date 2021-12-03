@@ -296,7 +296,7 @@ func buildInternalLib() {
             "2","string","bool",
             "1","string"); !ok { return nil,err }
 
-        cmd:=args[0].(string)
+        cmd:=interpolate(evalfs,ident,args[0].(string))
         if len(args)==2 && args[1]==true {
             system(cmd,true)
             return nil,nil

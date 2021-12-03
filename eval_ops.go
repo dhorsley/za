@@ -143,8 +143,6 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     }
 
     if intInOne && intInTwo {
-        // r=val1.(int)+val2.(int)
-        // return
         return val1.(int)+val2.(int)
     }
 
@@ -179,9 +177,11 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
     // cast floats to string
     if str1OK && float2OK {
+        if var_warn { panic(fmt.Errorf("type error: mixed types in addition (string and float/int)")) }
         return str1 + strconv.FormatFloat(float2, 'f', -1, 64)
     }
     if float1OK && str2OK {
+        if var_warn { panic(fmt.Errorf("type error: mixed types in addition (float/int and string)")) }
         return strconv.FormatFloat(float1, 'f', -1, 64) + str2
     }
 
@@ -198,9 +198,11 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     bool2, bool2OK := val2.(bool)
 
     if str1OK && bool2OK {
+        if var_warn { panic(fmt.Errorf("type error: mixed types in addition (string and bool)")) }
         return str1 + strconv.FormatBool(bool2)
     }
     if bool1OK && str2OK {
+        if var_warn { panic(fmt.Errorf("type error: mixed types in addition (bool and string)")) }
         return strconv.FormatBool(bool1) + str2
     }
 

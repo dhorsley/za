@@ -19,13 +19,13 @@ func GetWatcherField(obj interface{},fieldname string) interface{} {
 }
 
 
-var notify_handler_list=make(map[int]bool)   // file descriptor map of each instantiated watcher
+var notify_handler_list=make(map[*fsnotify.Watcher]bool)   // map of each instantiated watcher
 
 func buildNotifyLib() {
 
     features["notify"] = Feature{version: 1, category: "file"}
     categories["notify"] = []string{
-                        "ev_watch", "ev_watch_close", "ev_watch_add",
+                        "ev_watch", "ev_watch_close", "ev_watch_add","ev_watch_remove",
                         "ev_exists", "ev_event", "ev_mask",
     }
 
@@ -33,47 +33,40 @@ func buildNotifyLib() {
     stdlib["ev_exists"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("ev_exists",args,1,"1","*fsnotify.Watcher"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
-        fd:=GetWatcherField(id,"fd").(int)
-        if _,there:=notify_handler_list[fd]; !there {
+        if _,there:=notify_handler_list[id]; !there {
             return false,nil
         }
-        return true,nil // if the file descriptor should still be open
+        return true,nil // if the watcher port/file descriptor should still be open
     }
 
-    slhelp["ev_watch_close"] = LibHelp{in: "watcher", out: "bool", action: "Dispose of a watcher file descriptor."}
+    slhelp["ev_watch_close"] = LibHelp{in: "watcher", out: "bool", action: "Dispose of a watcher object."}
     stdlib["ev_watch_close"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
 
         if ok,err:=expect_args("ev_watch_close",args,1,"1","*fsnotify.Watcher"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
-        fd:=GetWatcherField(id,"fd").(int)
-
-        if _,there:=notify_handler_list[fd]; !there {
+        if _,there:=notify_handler_list[id]; !there {
             return nil,errors.New("Unknown watcher specified in ev_watch_close")
         } else {
             err=id.Close()
             if err!=nil { return nil,err }
-            delete(notify_handler_list,fd)
+            delete(notify_handler_list,id)
         }
         return nil,nil
     }
 
     slhelp["ev_watch"] = LibHelp{in: "filepath_string", out: "watcher,int_error_code", action: "Initialise a file system watch object. Returns the new watcher and 0 error code on success, otherwise nil and >0 code. 1->create_watcher_failed, 2->file_path_failure"}
     stdlib["ev_watch"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+
         if ok,err:=expect_args("ev_watch",args,1,"1","string"); !ok { return nil,err }
         fspath:=args[0].(string)
 
         watcher, err := fsnotify.NewWatcher()
-        if err!=nil {
-            return []interface{}{nil,1},nil
-        }
+        if err!=nil { return []interface{}{nil,1},nil }
 
         err = watcher.Add(fspath)
-        if err!=nil {
-            return []interface{}{nil,2},nil
-        }
+        if err!=nil { return []interface{}{nil,2},nil }
 
-        fd:=GetWatcherField(watcher,"fd").(int)
-        notify_handler_list[fd]=true
+        notify_handler_list[watcher]=true
         return []interface{}{watcher,0},nil
     }
 
@@ -83,6 +76,16 @@ func buildNotifyLib() {
         id:=args[0].(*fsnotify.Watcher)
         fspath:=args[1].(string)
         err = id.Add(fspath)
+        erv,_:=strconv.ParseInt(sf("%#v",err), 0, 64)
+        return erv,nil
+    }
+
+    slhelp["ev_watch_remove"] = LibHelp{in: "watcher,filepath_string", out: "int_error_code", action: "Remove an existing file path in [#i1]watcher[#i0]. Returns 0 on success, otherwise >0 code."}
+    stdlib["ev_watch_remove"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("ev_watch_remove",args,1,"2","*fsnotify.Watcher","string"); !ok { return nil,err }
+        id:=args[0].(*fsnotify.Watcher)
+        fspath:=args[1].(string)
+        err = id.Remove(fspath)
         erv,_:=strconv.ParseInt(sf("%#v",err), 0, 64)
         return erv,nil
     }

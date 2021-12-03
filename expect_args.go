@@ -50,7 +50,8 @@ func expect_args(name string, args []interface{}, variants int, types... string)
                 if types[p]=="number" { n+=1; continue }
             }
             if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
-                type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
+                // type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
+                type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]))
                 tryNext=true
                 break
             }

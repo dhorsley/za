@@ -53,6 +53,7 @@ func bind_int(fs uint32,name string) (i uint64) {
         // fmt.Printf("cache entry [%d] -> %+v\n",e,lru_bind_cache[e])
         if fs==lru_bind_cache[e].fs {
             if strcmp(name,lru_bind_cache[e].name) {
+                // fmt.Printf("[%d] %s -> found in lru cache\n",fs,name)
                 return lru_bind_cache[e].res
             }
         }
@@ -221,17 +222,24 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                     base.Original=input[lstart:pos]
                     if borpos>=0 {
                         base.borcmd=input[borpos:pos]
+                        // base.borcmd=str.Replace(base.borcmd, `\\`, "\\", -1)
                         /*
                         pf("borcmd found @ %d\n",borpos)
                         pf("start        @ %d\n",lstart)
                         pf("in from start -> %s\n",input[lstart:pos])
-                        pf("borcmd worked -> ·%s·\n",base.borcmd)
+                        pf("borcmd -> ·%s·\n",base.borcmd)
                         */
                     }
-                    if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
+                    // if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
+                    if tempToken.carton.tokType == EOL {
+                        base.Original=base.Original[:pos-lstart-1]
+                        // base.Original=str.Replace(base.Original, `\\`, "\\", -1)
+                    }
+
                 } else {
                         base.Original=""
                 }
+                // pf(".Original -> ·%s·\n",base.Original)
             }
 
             if vref_found {
