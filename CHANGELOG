@@ -8,14 +8,19 @@ CHANGE LOG
     library changes
     ---------------
 
-    * renamed at() to pos(): keyword conflict
     * experimental: added basic support for fsnotify golang lib
-        - new lib funcs: ev_watch, ev_watch_close, ev_watch_add, ev_exists, ev_event and ev_mask
+        - new lib funcs: ev_watch, ev_watch_close, ev_watch_add, ev_watch_remove, ev_exists, ev_event and ev_mask
         - see eg/notify for example use
+        - tested okay on ubuntu and windows so far
+            - windows uses normal file paths, e.g. w,e=ev_watch("c:\users\daniel")
+        - you may need to execute Za with escalated privileges depending on the paths you want to probe.
+
     * added filebase() for returning the base name of a file path.
+
     * checked lib-os for windows differences:
         - some calls have no direct equivalent, so ignoring those.
         - however, we did overlook parent(), fileabs() and filebase(), so added those for windows
+
     * mem_summary() and dump() artifacts removed.
 
     fixes
@@ -23,9 +28,22 @@ CHANGE LOG
 
     * windows: fix scrolling + term height issues.
         - partially done. still some artifacts, but better than it was.
+
     * fix help highlight colour / win
         - turns out, it was fine, just not good palette selection.
             changed to a red background for selection in windows.
+
+    * windows: filepaths slash and backslash quoting clarification
+
+        - checked: added escaping back in for backslashes \\
+        - backslashes are fine if captured as part of a string token,
+        - test fix: escaping backslashes in .Original and/or borcmd in phraser.go
+        - test fix: added SYM_BSLASH symbol support in lexer.go
+            - this is to prevent unquoted backslashes from being thrown away.
+        - currently, as in linux build, only backticks are supported in | command form for wrapping cmd.
+            - in expression form double quotes are also supported
+            - should probably unify and document all of this!
+                will see how it goes for a while first - more changes may be required.
 
 
     other
@@ -33,6 +51,22 @@ CHANGE LOG
 
     * default build is now unstripped alpine variant
     * updated za.vim
+
+    * added -W startup flag:
+        - this produces a definitive exit when addition is performed with string and either int, float or bool
+        - this may be extended where appropriate if it proves useful.
+        - the flag is intended to help find unintentional type mixings when debugging.
+        - ideally, we would catch this sort of thing in a type system, but as we don't 
+            exactly have one, well.. you get this instead for now!
+        - you will probably only use this if you are setting out to enforce types throughout a piece of code.
+            - for most uses of this language, it just shouldn't matter, but it was computationally cheap to 
+                add this check, so it's in. 
+
+    * added support for optional printing at end of AT command:
+        - e.g. AT 10,20, 1+2, " = 3"
+        - etc. LF at end must be user supplied.
+
+    * also, unified PRINT, PRINTLN and LOG (and now AT) into a common call.
 
 
 1.0.16

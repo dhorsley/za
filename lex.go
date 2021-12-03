@@ -15,7 +15,6 @@ const numeric = "0123456789.f"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_" // "{}"
 const doubleterms = "<>=|&-+*.?"
-// const soloChars   = "+-/*.^!%;<>~=|,():[]&{}$"
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
@@ -25,7 +24,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "CARET", "PLING", "PERCENT", "SEMICOLON", "ASSIGN", "ASS_COMMAND", "ASS_OUT_COMMAND", "LBRACE", "RBRACE","LCBRACE","RCBRACE",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
-    "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
+    "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_BSLASH", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
     "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_OUTFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
     "START_STATEMENTS", "VAR", "SETGLOB",
@@ -62,7 +61,6 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var norepeat string
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant bool
-
 
     beforeE := "."
     thisWordStart := -1
@@ -169,6 +167,12 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         nonterm = ""
     }
 
+    if !matchQuote && firstChar == '\\' {
+        word = string(firstChar)
+        startNextTokenAt=thisWordStart+1
+        goto get_nt_eval_point
+    }
+
 
     // start looking for word endings, (terms+nonterms)
 
@@ -270,22 +274,27 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 startNextTokenAt=currentChar+1
                 carton.tokType= StringLiteral
                 carton.tokText= input[thisWordStart:currentChar+1]
+
                 // unescape escapes
                 carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
-                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
+
+                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
                 carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
                 carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
-                // carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
+                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
                 carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
+
                 goto get_nt_exit_point
             } else {
                 // found a terminator, so get word and end.
                 // we need to start next search on this terminator as
                 // it wasn't part of the previous word.
-                word = input[thisWordStart:currentChar]
-                startNextTokenAt=currentChar
-                break
+                if input[currentChar-1]!='\\' {
+                    word = input[thisWordStart:currentChar]
+                    startNextTokenAt=currentChar
+                    break
+                }
             }
         }
     }
@@ -422,6 +431,8 @@ get_nt_eval_point:
         tokType = SYM_LOR
     case "&":
         tokType = SYM_BAND
+    case `\`:
+        tokType = SYM_BSLASH
     case "|":
         tokType = SYM_BOR
         borpos  = thisWordStart

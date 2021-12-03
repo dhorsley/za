@@ -42,15 +42,15 @@ adjust ./GO to suitable paths, then:
 
 subsequent rebuild/update/install:
 
-  ./build
+  ./build libc [upx] [strip]
 
 if the rebuild fails, then run go build za for better output.
 the language version number will not appear at run-time unless compiled using the "build" script
 
-To cross-compile for Alpine:
-----------------------------
+To cross-compile for Alpine (default):
+--------------------------------------
 
-  ./build alpine [upx]
+  ./build alpine [upx] [strip]
 
 If you have UPX installed then the upx option above can be used to compress the binary for docker builds.
 
