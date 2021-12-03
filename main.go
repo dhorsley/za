@@ -130,6 +130,9 @@ var interactive bool
 var var_refs bool
 var var_refs_name string
 
+// for refactoring: panic on mixed additions w/strings
+var var_warn bool
+
 // storage for the standard library functions
 var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
 
@@ -464,6 +467,7 @@ func main() {
     var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
     var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte")
     var a_var_refs     = flag.String("V","","find all references to a variable")
+    var a_var_warn     =   flag.Bool("W",false,"emit errors when addition contains string mixed types")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -491,6 +495,12 @@ func main() {
     if *a_var_refs != "" {
         var_refs=true
         var_refs_name=*a_var_refs
+    }
+
+    // type warnings
+    var_warn=false
+    if *a_var_warn {
+        var_warn=true
     }
 
     // source filename

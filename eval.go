@@ -1151,15 +1151,10 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
     // local variable lookup:
 
-    locked:=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; locked=true }
     bin:=bind_int(p.fs,token.tokText)
     if (*p.ident)[bin].declared {
-        if locked { vlock.RUnlock() }
         return (*p.ident)[bin].IValue
     }
-    if locked { vlock.RUnlock() }
-
     var val interface{}
     var there bool
 
@@ -1168,8 +1163,6 @@ func (p *leparser) identifier(token Token) (interface{}) {
     // if !interactive {
         // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
         if val,there=vget(p.mident,&mident,token.tokText); there {
-            // pf("-> Found value (global) of : %+v\n",val)
-            // pf("ident table -> \n%+v\n",&mident)
             return val
         }
     // }
@@ -1311,10 +1304,11 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
     // fmt.Printf("[vseti fs # %d] bind_int of %d = %v\n",fs,bin,value)
 
     t:=(*ident)[bin]
+    t.declared=true
 
     if (*ident)[bin].ITyped {
         var ok bool
-        t.declared=true
+        // t.declared=true
         switch (*ident)[bin].IKind {
         case kbool:
             _,ok=value.(bool)
@@ -1614,14 +1608,16 @@ func vget(fs uint32, ident *[szIdent]Variable,name string) (interface{}, bool) {
         // most:=32 ; if int(bin)<most { most=int(bin) }
         // for e:=0; e<=most; e++ { pf("      -- idents [#%d/%d]  -> %+v\n",fs,e,(*ident)[e]) }
         // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; defer vlock.Unlock() }
-        return (*ident)[bin].IValue,true
+        if (*ident)[bin].declared { return (*ident)[bin].IValue,true }
+        return nil,false
     }
     return nil, false
 }
 
 func vgeti(fs uint32, ident *[szIdent]Variable,id uint64) (interface{}) {
     // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
-    return (*ident)[id].IValue
+    if (*ident)[id].declared { return (*ident)[id].IValue }
+    return nil
 }
 
 func isBool(expr interface{}) bool {

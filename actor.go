@@ -1,5 +1,5 @@
 package main
- 
+
 import (
     "io/ioutil"
     "math"
@@ -2340,12 +2340,9 @@ tco_reentry:
             */
 
             if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
-                // s:=stripOuter(inbound.Tokens[1].tokText,'`')
-                // coprocCall(parser,ifs,ident,"|"+s)
                 s:=stripOuter(inbound.Tokens[1].tokText,'`')
                 coprocCall(parser,ifs,ident,s)
             } else {
-                // coprocCall(parser,ifs,ident,basecode[source_base][parser.pc].Original)
                 coprocCall(parser,ifs,ident,bc)
             }
 
@@ -3585,74 +3582,14 @@ tco_reentry:
             inside_with=false
 
 
-        // parsing for these is a mess.
-        // we should only need to worry about parens when scanning for commas
-        // as strings should be single string literal tokens.
         case C_Print:
-
-            if inbound.TokenCount > 1 {
-                evnest:=0
-                newstart:=0
-                for term := range inbound.Tokens[1:] {
-                    nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
-                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
-                        newstart=term+1
-                        switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
-                        pf(`%v`,sparkle(v))
-                        continue
-                    }
-                }
-                if interactive { pf("\n") }
-            } else {
-                pf("\n")
-            }
-
+            parser.console_output(inbound.Tokens[1:],ifs,ident,interactive,false,false)
 
         case C_Println:
-            if inbound.TokenCount > 1 {
-                evnest:=0
-                newstart:=0
-                for term := range inbound.Tokens[1:] {
-                    nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
-                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
-                        newstart=term+1
-                        switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
-                        pf(`%v`,sparkle(v))
-                        continue
-                    }
-                }
-                pf("\n")
-            } else {
-                pf("\n")
-            }
-
+            parser.console_output(inbound.Tokens[1:],ifs,ident,interactive,true,false)
 
         case C_Log:
-
-            plog_out := ""
-            if inbound.TokenCount > 1 {
-                evnest:=0
-                newstart:=0
-                for term := range inbound.Tokens[1:] {
-                    nt:=inbound.Tokens[1+term]
-                    if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
-                    if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
-                    if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
-                        v, _ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
-                        newstart=term+1
-                        switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
-                        plog_out += sf(`%v`,sparkle(v))
-                        continue
-                    }
-                }
-            }
-            plog("%v", plog_out)
+            parser.console_output(inbound.Tokens[1:],ifs,ident,false,false,true)
 
 
         case C_Hist:
@@ -3663,7 +3600,7 @@ tco_reentry:
 
         case C_At:
 
-            // AT row ',' column
+            // AT row ',' column [ ',' print_expr ... ]
 
             commaAt := findDelim(inbound.Tokens, O_Comma, 1)
 
@@ -3677,7 +3614,12 @@ tco_reentry:
                     parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_row))
                 }
 
-                expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:])
+                nextCommaAt := findDelim(inbound.Tokens, O_Comma, commaAt+1)
+                if nextCommaAt==-1 {
+                    nextCommaAt=inbound.TokenCount
+                }
+
+                expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:nextCommaAt])
                 if expr_col==nil || err != nil {
                     parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_col))
                 }
@@ -3686,6 +3628,11 @@ tco_reentry:
                 col, _ = GetAsInt(expr_col)
 
                 at(row, col)
+
+                // print surplus, no LF
+                if inbound.TokenCount>nextCommaAt+1 {
+                    parser.console_output(inbound.Tokens[nextCommaAt+1:],ifs,ident,interactive,false,false)
+                }
 
             }
 
@@ -3977,6 +3924,7 @@ tco_reentry:
                             cmd = interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         } else {
                             cmd = interpolate(ifs,ident,bc[2:])
+
                         }
 
                         cop:=system(cmd,false)
@@ -4073,9 +4021,7 @@ tco_reentry:
 
 func system(cmd string, display bool) (cop struct{out string; err string; code int; okay bool}) {
     cmd = str.Trim(cmd," \t\n")
-    if hasOuter(cmd,'`') {
-        cmd=stripOuter(cmd,'`')
-    }
+    if hasOuter(cmd,'`') { cmd=stripOuter(cmd,'`') }
     cop = Copper(cmd, false)
     if display { pf("%s",cop.out) }
     return cop
@@ -4086,11 +4032,17 @@ func coprocCall(parser *leparser, ifs uint32,ident *[szIdent]Variable, s string)
     cet := ""
     s=str.TrimRight(s,"\n")
     if len(s) > 0 {
+
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
-        cet = s[pipepos+1:]
+        cet      = s[pipepos+1:]
+
+        // strip outer quotes
+        cet      = str.Trim(cet," \t\n")
+        if hasOuter(cet,'`') { cet=stripOuter(cet,'`') }
+
         inter   := interpolate(ifs,ident,cet)
-        cop := Copper(inter, false)
+        cop     := Copper(inter, false)
         if ! cop.okay {
             pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(inter," \t"))
             if interactive {
@@ -4222,5 +4174,39 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []inter
     return resu,errs
 
 }
+
+// print / println / log handler
+// when logging, user must decide for themselves if they want a LF at end.
+func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent]Variable,interactive bool,lf bool,logging bool) {
+    plog_out := ""
+    if len(tokens) > 0 {
+        evnest:=0
+        newstart:=0
+        for term := range tokens {
+            nt:=tokens[term]
+            if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
+            if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
+            if evnest==0 && (term==len(tokens)-1 || nt.tokType == O_Comma) {
+                v, _ := parser.Eval(ifs,tokens[newstart:term+1])
+                newstart=term+1
+                switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
+                if logging {
+                    plog_out += sf(`%v`,sparkle(v))
+                } else {
+                    pf(`%v`,sparkle(v))
+                }
+                continue
+            }
+        }
+        if logging {
+            plog("%v", plog_out)
+            return
+        }
+        if interactive || lf { pf("\n") }
+    } else {
+        pf("\n")
+    }
+}
+
 
 

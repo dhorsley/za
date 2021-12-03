@@ -201,6 +201,7 @@ const (
     SYM_LOR
     SYM_BAND
     SYM_BOR
+    SYM_BSLASH
     SYM_DOT
     SYM_PP
     SYM_MM

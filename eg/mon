@@ -38,7 +38,7 @@ define bar(row,col,hsize,pc,colour)
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
         endif
-        print "[#"+colour+"]"+c+"[#-]"
+        print "[#{colour}]{c}[#-]"
     endfor
 end
 
@@ -74,13 +74,13 @@ define showEnv()
     clear(2,11,1)
     cursoroff()
 
-    at 2,3; print "[#-]Hostname             : [#6]{=hostname()}[#-]"
-    at 3,3; print "Bash Version         : [#6]{=bash_version()}[#-]"
-    at 4,3; print "User                 : [#6]{=user()}[#-]"
-    at 5,3; print "OS                   : [#6]{=os()}[#-]"
-    at 6,3; print "Locale               : [#6]{=lang()}[#-]"
-    at 7,3; print "Distribution         : [#6]{=release_name()}[#-]"
-    at 8,3; print "Distribution Version : [#6]{=release_version()}[#-]"
+    at 2,3, "[#-]Hostname             : [#6]{=hostname()}[#-]"
+    at 3,3, "Bash Version         : [#6]{=bash_version()}[#-]"
+    at 4,3, "User                 : [#6]{=user()}[#-]"
+    at 5,3, "OS                   : [#6]{=os()}[#-]"
+    at 6,3, "Locale               : [#6]{=lang()}[#-]"
+    at 7,3, "Distribution         : [#6]{=release_name()}[#-]"
+    at 8,3, "Distribution Version : [#6]{=release_version()}[#-]"
 end
 
 
@@ -104,8 +104,8 @@ define showFiles()
 
         ofd=open_fd.field(1,"\t")
         mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t ").float
-        at 2,2 ; print "[#-]Open Descr. : [#6]{ofd}[#-]"
-        at 3,2 ; print "Max         : [#6]"
+        at 2,2, "[#-]Open Descr. : [#6]{ofd}[#-]"
+        at 3,2, "Max         : [#6]"
         if mfd>1e8
             print "No Limit[#-]"
         else
@@ -113,8 +113,8 @@ define showFiles()
         endif
         fin=open_inode.field(2," \t\n")
         tin=open_inode.field(1," \t").float
-        at 4,2 ; print "Free Inodes : [#6]{fin}[#-]"
-        at 5,2 ; print "Total       : [#6]",format("%.7g",tin),"[#-]"
+        at 4,2, "Free Inodes : [#6]{fin}[#-]"
+        at 5,2, "Total       : [#6]",format("%.7g",tin),"[#-]"
 
     endif
 
@@ -129,8 +129,7 @@ define showMem()
     cursoroff()
 
     if !access
-        at 2,1
-        println "[#1]Slab information requires root access.[#-]"
+        at 2,1,"[#1]Slab information requires root access.[#-]"
         return
     endif
 
@@ -176,28 +175,28 @@ define showMem()
 
     clear(2,9,1)
 
-    at 2,1; print "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
+    at 2,1, "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
     print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]"
 
-    at 3,1; print "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
+    at 3,1, "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
     print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]"
 
-    at 4,1; print "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
+    at 4,1, "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
     print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]"
 
-    at 5,1; print "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
+    at 5,1, "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
     print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]"
 
-    at 6,1; print "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
+    at 6,1, "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
     print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]"
 
-    at 7,1; print "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
+    at 7,1, "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
     print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]"
 
     al=get_mem().alloc.int
     ts=get_mem().system.int
-    at 8,1; print "[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
-    print " [#6]{=hobbitsize(al*1024*1024)}B[#-]"
+    at 8,1, "[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
+    print " [#6]{=hobbitsize(al*1024*1024)}B [#-]"
 
     # display slab info
 
@@ -205,7 +204,7 @@ define showMem()
     on count(slabs)<8 do cs=count(slabs)
 
     comwidth=10
-    at 10,1; print format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    at 10,1, format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
     if count(slabs)>0
         for p = 0 to cs-1
@@ -213,7 +212,7 @@ define showMem()
             sa=strpos(l," ",0)
             c1=substr(l,0,sa)
             c2=substr(l,sa+1,len(l)-sa-1)
-            at 11+p,1; print format("%20s  [#6]%-"+comwidth+"d[#-]",c1,int(c2))
+            at 11+p,1, format("%20s  [#6]%-"+comwidth.string+"d[#-]",c1,int(c2))
         endfor
     endif
 end
@@ -279,7 +278,7 @@ define showProcs(ct,uptime)
         lcount=18
         comwidth=21
 
-        at 1,1; print format (  "[#b2][#7][#bold]%2s %8s %8s %5s %5s %7s %-{comwidth}s[##][#-]",
+        at 1,1, format (  "[#b2][#7][#bold]%2s %8s %8s %5s %5s %7s %-{comwidth}s[##][#-]",
                                 "st","ppid","pid","user","sys","threads","command" )
 
         clear(2,19,1)
@@ -412,7 +411,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     disp_total+=diff[i]
                 endfor
             else
-                at 2,2; print "[#invert]Checking previous CPU values.[#-]"
+                at 2,2, "[#invert]Checking previous CPU values.[#-]"
                 break foreach
             endif
 
@@ -435,11 +434,11 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
                 clear_line(row,1)
 
-                at row,1 ; print format("[#7]%5s ",name)
+                at row,1 , format("[#7]%5s ",name)
                 pos=7
 
                 if showCpuDetails
-                    at row,pos; print format(
+                    at row,pos, format(
                                         "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
                                         float(diff["user"]),float(diff["sys"]),float(diff["softirq"]),
                                         float(diff["irq"]),float(diff["guest"]),float(diff["steal"]),float(diff["iowait"])
@@ -459,8 +458,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
                 if showCpuBars
                     # fill cpu row background
-                    at row,pos
-                    print pad(activity_indicator,-1,48,activity_bg)
+                    at row,pos, pad(activity_indicator,-1,48,activity_bg)
 
                     # populate with values
                     at row,pos
@@ -506,7 +504,7 @@ define showHdd()
         disks=< df -h | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | sort -hrk5
     endwhen
 
-    at 1,1; print format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use%")
+    at 1,1, format("[#b2][#7][#bold]%20s %5s %5s %5s %-23s[#-][##]","path","size","used","avail","use%")
     row=2
 
     foreach d in disks
@@ -515,7 +513,7 @@ define showHdd()
             on kind(F[1])!="string" do continue
             if !key("devices",F[1])
                 devices[F[1]]=F[6]
-                at row,1; print format(`%20s %5s %5s %5s %-23s`,shorten(F[1],19),F[2],F[3],F[4],F[5])
+                at row,1, format(`%20s %5s %5s %5s %-23s`,shorten(F[1],19),F[2],F[3],F[4],F[5])
                 row++
             endif
         endif
@@ -536,13 +534,10 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     pane select "net"
     print linecolour; pane redraw
 
-    at 2,4
-    print "Interface [{interface}] Addr : {ipaddr} "
+    at 2,4,"Interface [{interface}] Addr : {ipaddr} "
 
-    at pane_h()-4,4
-    print "[#6]", legload[0], "[#-] 64B-4Ki  [#6]", legload[1], "[#-] 4Ki-256Ki  [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
-    at pane_h()-3,11
-    print "[#6]", legload[3], "[#-] 16Mi-1Gi  [#6]", legload[4],"[#-] 1Gi-64Gi"
+    at pane_h()-4,4,"[#6]", legload[0], "[#-] 64B-4Ki  [#6]", legload[1], "[#-] 4Ki-256Ki  [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
+    at pane_h()-3,11,"[#6]", legload[3], "[#-] 16Mi-1Gi  [#6]", legload[4],"[#-] 1Gi-64Gi"
 
     foreach int_name in net_interfaces()
 
@@ -584,7 +579,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
                     on rsz>full_magnitude do rsz=full_magnitude
                     if rsz>0
                         for brow=1 to rsz
-                            at midline-brow,1+f ; print load[brow-1]
+                            at midline-brow,1+f , load[brow-1]
                         endfor
                     endif
                 endif
@@ -597,7 +592,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
                     on tsz>full_magnitude do tsz=full_magnitude
                     if tsz>0
                         for brow=1 to tsz
-                            at midline+brow,1+f ; print load[brow-1]
+                            at midline+brow,1+f , load[brow-1]
                         endfor
                     endif
                 endif
@@ -607,8 +602,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             endfor
 
             for e=1 to len(legload)
-                at midline-e,1; print "[#4]",legload[e-1],"[#-]"
-                at midline+e,1; print "[#1]",legload[e-1],"[#-]"
+                at midline-e,1, "[#4]",legload[e-1],"[#-]"
+                at midline+e,1, "[#1]",legload[e-1],"[#-]"
             endfor
 
             # write history
@@ -620,8 +615,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             dtb=humansize((1000/float(timeout))*dtb)
 
             clear_line(pane_h()-1,1)
-            at pane_h()-1,1
-            print format("[#4] rx avg [#-] %v [#1] tx avg [#-] %v", drb, dtb)
+            at pane_h()-1,1, format("[#4] rx avg [#-] %v [#1] tx avg [#-] %v", drb, dtb)
 
         endif
 
@@ -663,8 +657,7 @@ define redef_layout(cpu_count,pfilter)
     graph_line="-"
     on utf8supported() do graph_line="┈"
     midline=8
-    print "[#6]"
-    at midline,2
+    at midline,2, "[#6]"
     for f=1 to net_sample_count
         print graph_line
     endfor
@@ -777,11 +770,10 @@ while !quit
     dt = float(t-lt) / 1_000_000
     lt = t
 
-    at 1,1
-    print ccformat("[#bold]%"+
-                string(pane_w()-2)+
-                "s[#boff][#-]",d+
-                " | Current Timeout : {timeout} ms"
+    at 1,1,ccformat("[#bold]%"+
+            string(pane_w()-2)+
+            "s[#boff][#-]",d+
+            " | Current Timeout : {timeout} ms"
     )
 
     # get user input
@@ -816,10 +808,9 @@ while !quit
     is "q"
         quit=true
     is "h"
-        clear(1,1,1); at 1,1
-        print "(h) help  (t) timeout  (i) interface  (q) quit  "
-        print "(D) cpu details  (B) cpu bars  (T) cpu totals  "
-        print "(f) filter"
+        clear(1,1,1)
+        at 1,1, "(h) help  (t) timeout  (i) interface  (q) quit  "
+        print "(D) cpu details  (B) cpu bars  (T) cpu totals  (f) filter"
         k=keypress(1500*1000)
         clear(1,1,1)
     endwhen

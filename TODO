@@ -10,8 +10,8 @@ TODO
 ----
 
     ++ add more examples in docs/
-    ++ windows: filepaths slash and backslash quoting clarification
     ++ review/fix all of the "@todo"'s in the source! (currently about 20 of them)
+    ++ expectargs defaulting to "string" as type in error messages.
 
 
 LATER / UNDECIDED
