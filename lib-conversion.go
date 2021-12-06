@@ -152,7 +152,6 @@ func buildConversionLib() {
     }
 
 
-    // @todo: fix this up when we support runes better.
     slhelp["char"] = LibHelp{in: "int", out: "string", action: "Return a string representation of ASCII char [#i1]int[#i0]. Representations above 127 are empty."}
     stdlib["char"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("char",args,1,"1","int"); !ok { return nil,err }
@@ -163,7 +162,6 @@ func buildConversionLib() {
         return sf("%c",args[0].(int)),nil
     }
 
-    // @todo: fix this up when we support runes better.
     slhelp["asc"] = LibHelp{in: "string", out: "int", action: "Return a numeric representation of the first char in [#i1]string[#i0]."}
     stdlib["asc"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("asc",args,1,"1","string"); !ok { return nil,err }

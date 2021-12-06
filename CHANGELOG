@@ -23,6 +23,7 @@ CHANGE LOG
 
     * mem_summary() and dump() artifacts removed.
 
+
     fixes
     -----
 
@@ -64,9 +65,18 @@ CHANGE LOG
 
     * added support for optional printing at end of AT command:
         - e.g. AT 10,20, 1+2, " = 3"
-        - etc. LF at end must be user supplied.
-
+        - LF at end-of-line must be user supplied. for AT the default would usually be to not require it anyway.
+        
     * also, unified PRINT, PRINTLN and LOG (and now AT) into a common call.
+
+    * decision: ruled out support for prepared statements.
+        - to do this right would also mean supporting transactions and probably at least a couple of db
+            engines. it also may give the impression that it's a good idea to use db queries in Za just because
+            some support is there. the existing sql support was only ever meant as an emergency measure.
+        - any program that requires statement preparation, transactions or other db engines should already have
+            been getting written in a more suitable tool for performance and maintenance.
+        - this may change in a future version, but there's already enough other stuff to get right first.
+
 
 
 1.0.16

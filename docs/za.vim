@@ -182,7 +182,6 @@ syntax match internal_functions "\(.\|\s*\)locks\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)echo\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)ansi\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)interpol\s*("he=e-1
-syntax match internal_functions "\(.\|\s*\)tco\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)echo\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)get_row\s*("he=e-1
 syntax match internal_functions "\(.\|\s*\)get_col\s*("he=e-1

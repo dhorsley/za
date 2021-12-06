@@ -72,9 +72,6 @@ var features = make(map[string]Feature)
 // console cursor location and terminal dimensions.
 var orow, ocol, ow, oh int
 
-// flag to indicate if source vars have been processed once
-var identParsed = make([]bool,MAX_FUNCS)
-
 // func space to source file name mappings
 var fileMap   = make(map[uint32]string)
 
@@ -90,10 +87,6 @@ var bytecode       = make([]bc_block, 0)
 
 // expected parameters for each defined function
 var functionArgs = make([]fa_s, SPACE_CAP)
-
-// marks pre-processed function spaces
-var parsed          [MAX_FUNCS]bool
-
 
 // ANSI colour code mappings (key: colour alias)
 var fairydust = make(map[string]string, FAIRY_CAP)
@@ -243,7 +236,7 @@ var concurrent_funcs int32
 // MAIN
 //
 
-// default precedence table that each parser copy receives. @todo: find a better home for this.
+// default precedence table that each parser copy receives.
 var default_prectable [END_STATEMENTS]int8
 
 func main() {

@@ -260,7 +260,6 @@ func searchToken(source_base uint32, start int16, end int16, sval string) bool {
 //  @note: lookahead only returns _,_,true when over dedented.
 func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int16, bool) {
 
-    // @todo: check if this statement needs a mutex - it probably should have one
     range_fs:=functionspaces[fs][startLine:]
 
     for i, v := range range_fs {
@@ -463,7 +462,6 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     var current_with_handle *os.File
 
     // error handler
-    // @todo: review this, and the r==nil case, tidy up.
     defer func() {
         if r := recover(); r != nil {
             if _,ok:=r.(runtime.Error); ok {
