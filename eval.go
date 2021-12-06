@@ -1094,8 +1094,7 @@ func (p *leparser) number(token Token) (num interface{}) {
 
 func (p *leparser) command() (string) {
 
-    // vartok:=p.next()
-    dp,err:=p.dparse(0)
+    dp,err:=p.dparse(65)
     if err!=nil {
         panic(fmt.Errorf("error parsing string in command operator"))
     }
@@ -1106,6 +1105,7 @@ func (p *leparser) command() (string) {
         panic(fmt.Errorf("command operator only accepts strings (not %T)",dp))
     }
 
+    // pf("command : |%s|\n",dp.(string))
     cmd:=system(interpolate(p.fs,p.ident,dp.(string)),false)
 
     if cmd.okay {
