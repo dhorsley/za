@@ -14,7 +14,7 @@ func buildMathLib() {
 
     features["math"] = Feature{version: 1, category: "math"}
     categories["math"] = []string{
-        "seed", "rand", "randf", "osqr", "osqrt", "pow","abs",
+        "seed", "rand", "randf", "pow","abs",
         "sin", "cos", "tan", "asin", "acos", "atan",
         "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
         "floor", "ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",

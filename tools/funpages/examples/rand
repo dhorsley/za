@@ -1,7 +1,0 @@
-
-# set seed, otherwise sequences repeat
-epoch_nano_time().seed
-
-# dice roll
-dr=rand(6)
-

@@ -516,8 +516,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     }
                 }
 
-                // @todo(dh): this is lazy. clears context help after an input change
-                //   needs improving throughout.
                 for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
             }
 

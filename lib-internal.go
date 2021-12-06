@@ -187,7 +187,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
-        "globlen","len","tco", "echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
+        "globlen","len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
     }
@@ -580,26 +580,36 @@ func buildInternalLib() {
 
         key:=interpolate(evalfs,ident,args[1].(string))
 
-        // @todo: check if other built-in types are needed here!
         switch v:=v.(type) {
         case http.Header:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]float64:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]uint8:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint32:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint64:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]int32:
+            if _, found = v[key]; found { return true, nil }
         case map[string]int64:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]int:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]bool:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]string:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string][]string:
+            if _, found = v[key]; found { return true, nil }
         case map[string]interface{}:
-            if _, found = v[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string][]interface{}:
+            if _, found = v[key]; found { return true, nil }
         default:
-            // pf("unknown type: %T\n",v); os.Exit(0)
             return false, errors.New("key() requires a map")
         }
         return false, nil
@@ -626,27 +636,37 @@ func buildInternalLib() {
 
         key:=interpolate(evalfs,ident,args[1].(string))
 
-        // @todo: other built-in types needed here?
-        switch v.(type) {
-        case map[string]http.Header:
-            if _, found = v.(http.Header)[key];   found { return true, nil }
+        switch v:=v.(type) {
+        case http.Header:
+            if _, found = v[key]; found { return true, nil }
         case map[string]float64:
-            if _, found = v.(map[string]float64)[key];       found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]uint8:
-            if _, found = v.(map[string]uint8) [key];        found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint32:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]uint64:
+            if _, found = v[key]; found { return true, nil }
+        case map[string]int32:
+            if _, found = v[key]; found { return true, nil }
         case map[string]int64:
-            if _, found = v.(map[string]int64) [key];        found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]int:
-            if _, found = v.(map[string]int) [key];          found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]bool:
-            if _, found = v.(map[string]bool)[key];          found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
         case map[string]string:
-            if _, found = v.(map[string]string)[key];        found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string][]string:
+            if _, found = v[key]; found { return true, nil }
         case map[string]interface{}:
-            if _, found = v.(map[string]interface{})[key];   found { return true, nil }
+            if _, found = v[key]; found { return true, nil }
+        case map[string][]interface{}:
+            if _, found = v[key]; found { return true, nil }
         default:
             return false, errors.New("globkey() requires a map")
-            // pf("unknown type: %T\n",v); os.Exit(0)
         }
         return false, nil
     }

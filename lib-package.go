@@ -314,13 +314,28 @@ func install(pkgs string) (state int) {
             }
             pf("[#4]%s installed.[#-]\n",pkgs)
             return 0
-            // @todo: finish these package cases
         case ".rpm": // rpm
-            // not doing yet. just not checked syntax for rpm. most likely rpm -i or rpm -Uvh
-            // depending on current install state.
+            cmd := "rpm -qi "+pbname
+            cop := Copper(cmd, true)
+            if cop.code==0 { // installed
+                pf("[#3]%s already installed. Overwriting.[#-]\n",pbname)
+            } else {
+                pf("[#3]%s install not detected.[#-]\n",pbname)
+            }
+            cmd = "rpm -U "+pkgs
+            cop = Copper(cmd, true)
+            if cop.code>0 {
+                pf("[#2]Error during package install! Do you have privileges?[#-]\n")
+                return -1
+            }
+            pf("[#4]%s installed.[#-]\n",pkgs)
+            return 0
         case ".apk": // apk
-            // not doing yet. not checked and not guessing :) likely similarly easy to do though.
+            pf("[#2]Local files are not permitted for Alpine![#-]")
+            return -1
         case ".sh" : // execute script
+            pf("[#2]Script execution not supported![#-]")
+            return -1
             // not adding this yet, as there's a good chance an install script could require
             // interactivity, which may or may not work correctly. not checked yet.
             // this is probably just a matter of adding a Copper(pkgs, true) command.

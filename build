@@ -5,15 +5,22 @@ module "mod_build/defines"
 tgt="alpine"
 strip_enable=false
 upx_enable=false
+ipath="/usr/bin"
 
 for e = 1 to argc()
     input do_what optarg e
     when $lc do_what
+        is "help"
+            exit 0,`\n./build [libc|win|alpine] [upx] [strip] [-path "install_path"]\n`
         is "upx"    ; upx_enable=true
         is "strip"  ; strip_enable=true
         is "alpine" ; tgt="alpine"
         is "libc"   ; tgt="libc"
         is "win"    ; tgt="win"
+        is "-path"
+            ipath=argv()[e]
+            e++
+            println "install path changed to {ipath}"
     endwhen
 endfor
 
@@ -82,9 +89,9 @@ endif
 
 when tgt
 contains "^(alpine|libc)$"
-    println "[#4]Installing {tgt} build to /usr/bin/[#-]\n"
-    | sudo cp -f za /usr/bin
-    | sudo chmod 755 /usr/bin/za
+    println "[#4]Installing {tgt} build to {ipath}[#-]\n"
+    | sudo cp -f za {ipath}
+    | sudo chmod 755 {ipath}/za
 endwhen
 
 

@@ -19,8 +19,7 @@ const gnfsModulus = 48000       // used by calltable to set max size, mainly imp
 
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 
-const MAX_FUNCS = gnfsModulus   // initial instance and source functions cap 
-const SPACE_CAP = gnfsModulus   // as MAX_FUNCS. @todo: need to resolve these to one constant
+const SPACE_CAP = gnfsModulus   // initial instance and source functions cap
 
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
 const FUNC_CAP = 300            // max stdlib functions
@@ -30,10 +29,6 @@ const FAIRY_CAP = 64            // max ansi mappings
 const LIST_SIZE_CAP = 16        // initial list size on construction
 const WHEN_CAP = 8              // how many placeholders to create for WHEN...ENDWHEN meta info per func
                                 // ... this is currently only bounds checked in actor.go
-                                // @todo: allow for it to expand dynamically. this will be an issue in 
-                                //  tail-call eliminated recursive calls that use WHEN...ENDWHEN
-                                //  if we ever perform optimisations that allow for the call to be anywhere
-                                //  except the final statement. (admittedly unlikely)
 
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
