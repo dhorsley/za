@@ -46,6 +46,15 @@ CHANGE LOG
             - should probably unify and document all of this!
                 will see how it goes for a while first - more changes may be required.
 
+    * checked associativity of | string_expr form.
+        - as an example, something like this:
+            | "which upx | wc -l" . trim(0) . int
+            ... required parentheses around the | "string" part to correctly associate:
+            ( | "which upx | wc -l" ) . trim(0) . int
+        - experimental: special cased the unary SYM_BOR precedence value, in eval.go/command(), to 65 instead of 0
+            - SYM_DOT prec is 61.
+        - this seems to resolve the parentheses requirement, but checking for other issues before calling it good.
+
 
     other
     -----
