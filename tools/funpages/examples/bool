@@ -1,0 +1,13 @@
+a=bool("0")
+b=bool("true")
+c=bool("1")
+d=bool("false")
+
+print a.kind, " ", b.kind
+bool bool
+
+print a," ",b
+false true
+
+print c," ",d
+true false

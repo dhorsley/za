@@ -1,5 +1,0 @@
-define double(x)
-    return x*2
-end
-println eval( double(5) + "+10+" + "{=double(2)}+pi()" )
-27.141592653589793

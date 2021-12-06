@@ -261,9 +261,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             var re = regexp.MustCompile(rule.in)
             if re.MatchString(path) {
 
-                // @todo: we should figure the best way (and a quick way to start with)
-                //  to fail gracefully when the rewrite goes into a loop on the same host+path
-
                 var new_path string
                 if rule.in!="" && rule.mutation.(string)!="" {
                     // provided with a regex rewrite
@@ -287,8 +284,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     if purl.Fragment!="" {
                         nq+="#"+purl.Fragment
                     }
+
                     // log_nq,_:=url.QueryUnescape(nq)
                     // wlog("* GET Proxying this URL: %s\n",log_nq)
+
                     content, down_code, header = download(nq)
 
                     w.Header().Add("proxied-by-za","true")
@@ -304,8 +303,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     if purl.Fragment!="" {
                         nq+="#"+purl.Fragment
                     }
+
                     // log_nq,_:=url.QueryUnescape(nq)
                     // wlog("* HEAD Proxying this URL: %s\n",log_nq)
+
                     content, down_code = head(nq)
 
                 case "POST", "PUT":
@@ -427,13 +428,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 ifn,_=fnlookup.lmget(fn)
                 loc,_ := GetNextFnSpace(true,fn+"@",call_s{prepared:true,base: ifn, caller: evalfs})
 
-                /*
-                calllock.Lock()
-                ifn,_=fnlookup.lmget(fn)
-                calltable[loc] = call_s{fs: id, base: ifn, caller: evalfs}
-                calllock.Unlock()
-                */
-
                 var ident [szIdent]Variable
                 atomic.AddInt32(&concurrent_funcs,1)
                 rcount,_:=Call(MODE_NEW, &ident, loc, ciLnet, webcallstruct)
@@ -445,12 +439,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 case 0:
                     w.Write([]byte(""))
                 case 1:
-                    // w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                     switch tmp.(type) {
                     case nil:
                         // translate bad func call to error page
                         http.NotFound(w, r)
-                        // w.Write([]byte(sf("%v",nil)))
                     default:
                         w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                     }
@@ -458,7 +450,6 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
                 }
 
-                // calltable[loc]=call_s{}
                 calltable[loc].gc=true
 
                 calllock.Unlock()
@@ -777,8 +768,6 @@ func buildNetLib() {
         return true,nil
     }
 
-    // @todo: add a call for removing web_rules
-
     slhelp["web_serve_log_throttle"] = LibHelp{in: "start,freq", out: "", action: "Set the throttle controls for web server logging."}
     stdlib["web_serve_log_throttle"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("web_serve_log_throttle",args,1,"2","int","int"); !ok { return nil,err }
@@ -936,7 +925,6 @@ func download(loc string) ([]byte, int, http.Header) {
     return []byte{}, 404, nil
 }
 
-// @todo: add more return information than just the body. (status code,etc)
 func head(loc string) ([]byte, int) {
     var s []byte
 
@@ -956,6 +944,5 @@ func head(loc string) ([]byte, int) {
     }
     return []byte{}, resp.StatusCode
 }
-
 
 

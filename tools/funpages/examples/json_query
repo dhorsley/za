@@ -1,0 +1,5 @@
+lb="default_loadbalancer"
+albs =< aws elbv2 describe-load-balancers --names {lb} --output json
+lbquery=`.[]|.[]|select(.LoadBalancerName=="{lb}")`
+alb_details=json_query(albs,lbquery,true)[0]
+

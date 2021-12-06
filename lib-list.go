@@ -416,7 +416,7 @@ func buildListLib() {
     }
 
 
-    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]list_name[#i0]. Returns [#i1]bool_success[#i0] depending on success."}
+    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]local_list_name[#i0]. Returns [#i1]bool_success[#i0] depending on success."}
     stdlib["append_to"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
 
@@ -424,11 +424,10 @@ func buildListLib() {
         if args[0]==nil {
             return nil,errors.New("argument is not a list")
         }
-        // @note: should have a mutex around this?
+
         name:=args[0].(string)
         if ! VarLookup(evalfs,ident,name) {
             return nil, errors.New(sf("list %s does not exist",args[0]))
-            // @todo: initialise the var automatically later on
         }
 
         // check type is compatible
@@ -465,11 +464,6 @@ func buildListLib() {
         case []interface{}:
             (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]interface{}),args[1])
             set=true
-        /*
-        default:
-            (*ident)[bind_int(evalfs,name)].IValue=append((*ident)[bind_int(evalfs,name)].IValue.([]interface{}),args[1])
-            set=true
-        */
         }
 
         if !set {
@@ -1385,28 +1379,30 @@ func buildListLib() {
         return int_list, nil
     }
 
-    // @todo: change sprintf for strconv funcs
-    slhelp["list_string"] = LibHelp{in: "list", out: "[]string_list", action: "Returns [#i1]list[#i0] of numbers as a list of strings."}
+    slhelp["list_string"] = LibHelp{in: "list", out: "[]string_list", action: "Converts [#i1]list[#i0] to a list of strings."}
     stdlib["list_string"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("list_int",args,6,
+        if ok,err:=expect_args("list_int",args,7,
             "1","[]int",
             "1","[]uint",
             "1","[]int64",
             "1","[]float64",
             "1","[]string",
+            "1","[]bool",
             "1","[]interface {}"); !ok { return nil,err }
         var string_list []string
         switch args[0].(type) {
         case []string:
             return args[0].([]string),nil
         case []float64:
-            for _, q := range args[0].([]float64) { string_list = append(string_list, sf("%v",q)) }
+            for _, q := range args[0].([]float64) { string_list = append(string_list, strconv.FormatFloat(q,'f',-1,64)) }
         case []int:
-            for _, q := range args[0].([]int) { string_list = append(string_list, sf("%v",q)) }
+            for _, q := range args[0].([]int) { string_list = append(string_list, strconv.FormatInt(int64(q),10)) }
         case []int64:
-            for _, q := range args[0].([]int) { string_list = append(string_list, sf("%v",q)) }
+            for _, q := range args[0].([]int64) { string_list = append(string_list, strconv.FormatInt(q,10)) }
         case []uint:
-            for _, q := range args[0].([]uint) { string_list = append(string_list, sf("%v",q)) }
+            for _, q := range args[0].([]uint) { string_list = append(string_list, strconv.FormatUint(uint64(q),10)) }
+        case []bool:
+            for _, q := range args[0].([]bool) { string_list = append(string_list, strconv.FormatBool(q)) }
         case []interface{}:
             for _, q := range args[0].([]interface{}) { string_list = append(string_list, sf("%v",q)) }
         }
@@ -1528,7 +1524,8 @@ func buildListLib() {
     }
 
     // concat(l1,l2) returns concatenated list of l1,l2
-    slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "Concatenates two lists and returns the result."}
+    // @todo: remove this at some point, plus operator does the same thing now.
+    slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "(deprecated) Concatenates two lists and returns the result."}
     stdlib["concat"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("concat",args,1,"2","any","any"); !ok { return nil,err }
 

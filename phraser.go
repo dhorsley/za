@@ -7,7 +7,7 @@ import (
 )
 
 // global binding list - populated during phrasing
-var bindings = make([]map[string]uint64,MAX_FUNCS)
+var bindings = make([]map[string]uint64,SPACE_CAP)
 
 func bindResize() {
     newar:=make([]map[string]uint64,cap(bindings)*2)

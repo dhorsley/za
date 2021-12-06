@@ -10,12 +10,19 @@ TODO
 ----
 
     ++ add more examples in docs/
-    ++ review/fix all of the "@todo"'s in the source! (currently about 20 of them)
-    ++ expectargs defaulting to "string" as type in error messages.
 
 
 LATER / UNDECIDED
 -----------------
+
+    * review/fix all of the "@todo"'s in the source! (currently about 20 of them)
+        - checked/partially done.
+            - the remaining ones aren't anything to worry about just yet.
+            - just a couple left:
+                - MODE_STATIC entry points and web page proxy body rewrites
+                - these are definitely not getting done yet.
+                    - no technical reason not to, other than laziness on my part.
+                    - they can wait for next major version - no rush for these.
 
     * make fixed size variable backing stores dynamic arrays?
         - currently a fixed var count per func of 320
