@@ -1,0 +1,80 @@
+#!/usr/bin/za
+
+module "modules/dialog"
+module "modules/menu"
+
+
+test "chart" group "dialog"
+    cls
+    seed(epoch_nano_time())
+    chart(12,10,10,[1,10,20,30,40,50,100,65,60,40,30,20,10,1],"rand(7)")
+    at 14,1
+endtest
+
+############################################################################
+# MAIN
+############################################################################
+
+cls
+cursoroff()
+
+quitting=false
+
+while not quitting
+
+    choice=menu(
+        "Examples", 
+        [
+            "Box View",
+            "Box Message",
+            "Buttons - Horizontal",
+            "Buttons - Vertical",
+            "Checkbox - Horizontal",
+            "Checkbox - Vertical",
+            "Box Input"
+        ]
+    )
+
+    when choice
+    is -1
+        quitting=true
+    is 1
+        at 15,10
+        e=box_view(["0617","group file"],$in "/etc/group")
+    is 2
+        at 15,10
+        sel,quit=box_message(
+            ["0617","Message Box"],
+            "Message body\nis this!",
+            ["Zero","One","Two","Three","Last"]
+        )
+    is 3
+        at 15,10
+        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h",8)
+    is 4
+        at 15,10
+        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v",1)
+    is 5
+        at 15,10
+        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h",8)
+    is 6
+        at 15,10
+        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v",1)
+    is 7
+        at 15,10
+        i,e=box_input(["1610","test title"],"Selection:","")
+    is 0
+        break while
+    endwhen
+
+endwhile
+
+
+############################################################################
+# FINISH
+############################################################################
+
+at 20,1
+cursoron()
+
+

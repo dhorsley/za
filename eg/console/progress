@@ -1,6 +1,5 @@
 #!/usr/bin/za
 
-# hs=term_w()-20
 hs=20
 rep=1
 input rep optarg 1
@@ -25,18 +24,31 @@ define bar(row,col,hsize,pc,colour)
     endfor
 end
 
+define spin(sp)
+    var spin [4]string
+    spin[0]="◐"
+    spin[1]="◓"
+    spin[2]="◑"
+    spin[3]="◒"
+return "[#{=1+sp}]"+spin[sp]+"[#-]"
+end
+
 cursoroff()
 seed(epoch_time())
 
 for i=0 to rep.int-1
     row=get_row()
     c=rand(7)
+    sp=0
     for e = 0 to 100
-        at row,1,"Progress : " ; bar(row,12,hs,e,c)
+        at row,1,"Progress : "
+        bar(row,12,hs,e,c)
         msg=" {e} % "
-        # at row,(term_w()-msg.len)/2,msg
-        print msg
-        pause 1
+        spinmsg=" "+spin(sp)
+        on e==100 do spinmsg=" "
+        print spinmsg,msg
+        on e%5==0 do sp=++sp%4
+        pause 4
     endfor
     println
     hs=8+rand(16)
