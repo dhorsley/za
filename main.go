@@ -195,6 +195,7 @@ var test_group string
 var test_name string
 var test_assert string
 var test_group_filter string
+var test_name_filter string
 var fail_override string
 var test_output_file string
 var testsPassed int
@@ -450,6 +451,7 @@ func main() {
     var a_program_loop =   flag.Bool("r",false,"wraps a program string in a stdin loop - awk-like")
     var a_program_fs   = flag.String("F","","provides a field separator for -r")
     var a_test_override= flag.String("O","continue","test override value")
+    var a_test_name    = flag.String("N","","test name filter")
     var a_test_group   = flag.String("G","","test group filter")
     var a_time_out     =    flag.Int("T",0,"Co-process command time-out (ms)")
     var a_mark_time    =   flag.Bool("m",false,"Mark co-process command progress")
@@ -586,6 +588,7 @@ func main() {
     _ = os.Remove(test_output_file)
 
     test_group_filter = *a_test_group
+    test_name_filter  = *a_test_name
 
     // disable the coprocess command
     if *a_noshell {

@@ -11,8 +11,8 @@ require 1.0.11
 n=42
 input n optarg 1
 
-var i,k int
-var acc,k2,tmp float
+var i int
+var k,acc,k2,tmp float
 den = 1f
 num = 1f
 
@@ -25,7 +25,7 @@ while i<n
     acc += num*2
     acc *= k2
     den *= k2
-    num *= float(k)
+    num *= k
 
     on num > acc do continue
 
@@ -48,6 +48,6 @@ endwhile
 
 println buf
 
-println format("Internal pi -> %.99f",pi())
+println format("Internal pi -> %.50f",pi())
 
 

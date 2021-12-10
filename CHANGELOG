@@ -16,6 +16,8 @@ CHANGE LOG
         - you may need to execute Za with escalated privileges depending on the paths you want to probe.
 
     * added filebase() for returning the base name of a file path.
+    * added inset() for offsetting a string by N chars from l.h.s.
+    * added tab (7) and shift-tab (6) support in keypress()
 
     * checked lib-os for windows differences:
         - some calls have no direct equivalent, so ignoring those.

@@ -67,7 +67,7 @@ func buildStringLib() {
 
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
-        "substr", "gsub", "replace", "trim", "lines", "count",
+        "substr", "gsub", "replace", "trim", "lines", "count","inset",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc",
@@ -696,6 +696,54 @@ func buildStringLib() {
         }
 
         return str.Join(ary[start:end], lsep), err
+
+    }
+
+    slhelp["inset"] = LibHelp{in: "nl_string,distance", out: "nl_string", action: "Left pads each line of [#i1]nl_string[#i0] with [#i1]distance[#i0] cursor right commands."}
+    stdlib["inset"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("inset",args,1,"2","string","int"); !ok { return "",err }
+
+        s:=args[0].(string)
+        dist:=args[1].(int)
+
+        var list []string
+
+        if dist==0 { return s,nil }
+
+        lsep:="\n"
+        if runtime.GOOS=="windows" {
+            lsep="\r\n"
+        }
+
+        s+=lsep
+
+        if runtime.GOOS!="windows" {
+            list = str.Split(s,lsep)
+        } else {
+            list = str.Split(str.Replace(s, lsep, "\n", -1), "\n")
+        }
+
+        llen:=len(list)
+
+        var ns str.Builder
+        ns.Grow(20)
+        if llen>0 {
+            for k:=0; k<llen-1; k++ {
+                if len(list[k])>0 {
+                    ns.WriteString(sf("\033[%dC%s%s",dist,list[k],lsep))
+                } else {
+                    ns.WriteString("\n")
+                }
+            }
+        }
+
+        // always remove trailing lsep 
+        s=ns.String()
+        if s[len(s)-1] == '\n' {
+            s = s[:len(s)-len(lsep)]
+        }
+
+        return s,nil
 
     }
 

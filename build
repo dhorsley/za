@@ -29,7 +29,7 @@ endfor
 # main
 #
 
-GCLIMIT = "GOGC=80 GOMAXPROCS=4"
+GCLIMIT = "madvdontneed=0 GOGC=80 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
 GCCGOFLAGS=""
@@ -43,8 +43,7 @@ bdate =< date "+%d-%m-%Y %H:%M"
 strStrip    = ?? strip_enable "-stripped" : ""
 stripFlags  = ?? strip_enable "-s -w" : ""
 
-upxfound=< which upx | wc -l
-upxfound = upxfound.trim(0).int
+upxfound= | "which upx | wc -l" . trim(0) . int
 
 if ! os() ~ "^freebsd"
     when tgt
