@@ -174,6 +174,8 @@ syntax match internal_functions "\(^|.\|\s*\)term_h\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)term_w\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)pane_h\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)pane_w\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)pane_r\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)pane_c\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)utf8supported\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)system\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)locks\s*("he=e-1
@@ -344,6 +346,7 @@ syntax match string_functions "\(^|.\|\s*\)format\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)ccformat\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)strpos\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)pos\s*("he=e-1
+syntax match string_functions "\(^|.\|\s*\)inset\s*("he=e-1
 
 syntax match os_functions "\(^|.\|\s*\)env\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)get_env\s*("he=e-1
