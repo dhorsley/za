@@ -161,7 +161,7 @@ func setupDynamicCalls() {
 
 
 /// get a keypress
-func wrappedGetCh(p int) (k int) {
+func wrappedGetCh(p int,disp bool) (k int) {
 
     c,tout,_,_ := getch(p)
 
@@ -177,6 +177,10 @@ func wrappedGetCh(p int) (k int) {
                 k = 8
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
                 k = 9
+            case bytes.Equal(c, []byte{0x09}): // TAB
+                k = 7
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
+                k = 6
             case bytes.Equal(c, []byte{3}):
                 k = 3 // ctrl-c
             case bytes.Equal(c, []byte{4}):
@@ -185,6 +189,8 @@ func wrappedGetCh(p int) (k int) {
                 k = 15 // replaces Shift In (SI)
             case bytes.Equal(c, []byte{27,91,54,126}): // pgdown
                 k = 14 // replaces Shift Out (SO)
+            case bytes.Equal(c, []byte{0x01}): // ESCAPE
+                k = 27
             case bytes.Equal(c, []byte{13}):
                 k = 13 // enter
             case bytes.Equal(c, []byte{0xc2, 0xa3}):

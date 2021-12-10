@@ -1,0 +1,556 @@
+#!/usr/bin/za
+
+doc `
+
+    A set of, currently basic, text ui components
+    More functionality may be added later.
+
+    Functions:
+
+x   chart           bar chart using vbars
+x   progress        uses hbar for a progress box
+x   box_input       text input box
+x   box_view        multi-line output box
+x   box_message     message box with action buttons
+x   select          single entry button list w/multiple arg == false
+x   select          multiple entry checklist w/multiple arg == true
+
+    Helpers:
+
+x   vbar            vertical bar
+x   hbar            horizontal bar
+x   spin            returns a spinner segment
+x   style           (internal) used by the above to decode these in provided arguments:
+
+    common style field format:
+    string:
+        "<box bg><box fg><panel bg><panel fg>"
+        e.g. "0715" -> whole box bg black, fg white, io panel bg blue, fg cyan.
+    -or-
+        if len==8 then:
+        "( |b)[0-7]( |b)[0-7]( |b)[0-7]( |b)[0-7]"
+          box bg    box fg    panel bg  panel fg
+        ( ) normal
+        (b) bright
+        e.g. " 0b3b1 7" -> whole box bg black, fg bright magenta, io panel bg bright blue, fg white.
+
+    typical calling arguments:-
+
+    1. [style,title,header,footer]
+    2+ ui component specific
+
+`
+
+############################################################################
+
+define longest(l)
+    return (l->"#.len").list_int.max
+end
+
+enum swatch_bg { 0="b0", 1="b1", 2="b2", 3="b3", 4="b4", 5="b5", 6="b6", 7="b7", 8="bgray",9="bbblue",10="bbred",11="bbmagenta",12="bbgreen",13="bbcyan",14="bbyellow",15="" }
+
+enum swatch_fg { 0="0", 1="1", 2="2", 3="3", 4="4", 5="5", 6="6", 7="7", 8="fbgray",9="fbblue",10="fbred",11="fbmagenta",12="fbgreen",13="fbcyan",14="fbyellow",15="" }
+
+define style(s)
+    when s.len
+    is 4 
+        bb="[#"+enum_all(ref swatch_bg)[s[0].int]+"]" 
+        bf="[#"+enum_all(ref swatch_fg)[s[1].int]+"]" 
+        pb="[#"+enum_all(ref swatch_bg)[s[2].int]+"]" 
+        pf="[#"+enum_all(ref swatch_fg)[s[3].int]+"]" 
+        return bb,bf,pb,pf,0
+    is 8
+        br0 = $lc s[0]=="b"
+        br1 = $lc s[2]=="b"
+        br2 = $lc s[4]=="b"
+        br3 = $lc s[6]=="b"
+        bb=enum_all(ref swatch_bg)[s[1].int+btoi(br0)*8]
+        bf=enum_all(ref swatch_fg)[s[3].int+btoi(br1)*8]
+        pb=enum_all(ref swatch_bg)[s[5].int+btoi(br2)*8]
+        pf=enum_all(ref swatch_fg)[s[7].int+btoi(br3)*8]
+        on bb=="" or bf=="" or pb=="" or pf=="" do return "","","","",2
+        bb="[#"+bb+"]" ; bf="[#"+bf+"]" ; pb="[#"+pb+"]" ; pf="[#"+pf+"]"
+        return bb,bf,pb,pf,0
+    or
+        return "","","","",1
+    endwhen
+end
+
+test "style" group "dialog"
+    for e = 0 to 7
+        s="{e}{e}{e}{e}"
+        bb,bf,pb,pf,err=style(s)
+        println "4s : {s} {bb}bb[#-] {bf}bf[#-] {pb}pb[#-] {pf}pf[#-] err {err}"
+    endfor
+    for e = 0 to 7
+        s1=" {e} {e} {e} {e}"
+        s2="b{e}b{e}b{e}b{e}"
+        bb,bf,pb,pf,err=style(s1)
+        println "8s : {s} {bb}bb[#-] {bf}bf[#-] {pb}pb[#-] {pf}pf[#-] err {err}"
+        bb,bf,pb,pf,err=style(s2)
+        println "8s : {s} {bb}bb[#-] {bf}bf[#-] {pb}pb[#-] {pf}pf[#-] err {err}"
+    endfor
+endtest
+
+############################################################################
+
+define options(o)
+    var s,t,h,f string
+    c=0
+    while not o.empty
+        n=o.head; o=o.tail
+        on c==0 do s=n
+        on c==1 do t=n
+        on c==2 do h=n
+        on c==3 do f=n
+        on c++==4 do break
+    endwhile
+    return s,t,h,f
+end
+
+test "opt1" group "options"
+    opts=["1405","test title","header","footer"]
+    s,t,h,f=options(opts)
+    assert s=="1405"
+    assert t=="test title"
+    assert h=="header"
+    assert f=="footer"
+endtest
+
+test "opt2" group "options"
+    opts=["1405","test title"]
+    s,t,h,f=options(opts)
+    assert s=="1405"
+    assert t=="test title"
+    assert h==""
+    assert f==""
+endtest
+
+############################################################################
+
+define box_input(opts,pr,val)
+    s,t,h,f=options(opts)
+    bb,bf,pb,pf,err=style(s)
+    on err!=0 do return "",err
+    r=get_row(); c=get_col()
+    print bb,bf
+    pane define "bi",r,1,2,term_w(),t,"double"
+    pane select "bi"; at 1,1; prompt i "{pb}{pf}{pr}" val
+    pane off
+    foreach e in 0..2; clear_line(r+e,0); endfor
+    return i,0
+end
+
+test "box_input" group "dialog"
+    pane off
+    cls
+    i,e=box_input(["1250","test title"],"Selection:","")
+    assert e==0
+    at 4,1, "Typed: {i}\n"
+endtest
+
+############################################################################
+
+define box_view(opts,val)
+    s,t,h,f=options(opts)
+    bb,bf,pb,pf,err=style(s)
+    on err!=0 do return 1
+    r=get_row(); c=get_col()
+
+    availheight=term_h()-r-2
+
+    boxheight=val.count+3
+    on boxheight>availheight do boxheight=availheight
+
+    panelheight=boxheight-2
+
+    print bb,bf
+    pane define "bv",r,1,boxheight,term_w(),t,"double"
+    pane select "bv"
+    at panelheight,1,pb,pf,"_"*(pane_w()-2)
+
+    cursor=0
+    changed=true
+    while
+        if changed
+            pane select "bv"
+            foreach e in 1..panelheight-1; at e,1,pb," "*(pane_w()-2),"[#-]"; endfor
+            at 1,0; print pb,pf
+            print val.lines("{cursor}:{=cursor+panelheight-2}").inset(1)
+            at boxheight-1,1,"(q) quit  (↓) down  (↑) up"
+        endif
+        k=keypress()
+        changed=false
+        when $lc char(k)
+        is "q"
+            break while
+        has k==10 or $lc char(k)=="j"
+            cursor++
+            if cursor>val.count-panelheight
+                cursor=val.count-panelheight
+            else
+                changed=true
+            endif
+        has k==11 or $lc char(k)=="k"
+            cursor--
+            if cursor==-1
+                cursor=0
+            else
+                changed=true
+            endif
+        endwhen
+    endwhile
+
+    pane off
+    print "[#-]"
+    foreach e in 0..boxheight; clear_line(r+e,0); endfor
+    return 0
+end
+
+test "box_view" group "dialog"
+    pane off
+    cls
+    e=box_view(["0617","group file"],$in "/etc/group")
+    assert e==0
+    at 4,1
+endtest
+
+############################################################################
+
+define box_message(opts,msg,list_buttons)
+
+    s,t,h,f=options(opts)
+    bb,bf,pb,pf,err=style(s)
+    on err!=0 do return 1
+    r=get_row(); c=get_col()
+
+    availheight=term_h()-r-2
+    on availheight>10 do availheight=10 # clip max msg height
+
+    boxheight=msg.count+3
+    on boxheight>availheight do boxheight=availheight
+
+    panelheight=boxheight-2
+
+    print bb,bf
+    pane define "bv",r,1,boxheight,term_w(),t,"double"
+    pane select "bv"
+
+    at panelheight,1,pb,pf,"_"*(pane_w()-2)
+
+    on list_buttons==nil do list_buttons=[]
+    on list_buttons.len==0 do append_to(ref list_buttons,"Continue")
+
+    # panel...
+
+    pane select "bv"
+    foreach e in 1..panelheight-1; at e,1,pb," "*(pane_w()-2),"[#-]"; endfor
+    at 1,0; print pb,pf
+    print msg.lines("0:{=panelheight}").inset(1)
+
+    # buttons...
+
+    changed=true
+    quit=false
+    sel=0
+
+    cursoroff()
+    while
+        if changed
+            cpos=0
+            foreach b in list_buttons
+                at boxheight-1,1+cpos
+                show=b
+                on key_b==sel do show="[#invert]{b}[#-]"
+                print show
+                cpos+=2+b.len
+            endfor
+        endif
+        changed=false
+
+        k=keypress()
+        when k
+        is 27
+            sel=0
+            quit=true
+            break while
+        is 13
+            break while
+        is 32
+            break while
+        has k==9 or k==7
+            sel++
+            if sel>list_buttons.len-1
+                sel=list_buttons.len-1
+            else
+                changed=true
+            endif
+        has k==8 or k==6
+            sel--
+            if sel<0
+                sel=0
+            else
+                changed=true
+            endif
+        endwhen
+    endwhile
+
+    pane off
+    print "[#-]"
+    foreach e in 0..boxheight; clear_line(r+e,0); endfor
+    cursoron()
+
+    return sel,quit
+
+end
+
+test "box_message" group "dialog"
+    pane off
+    cls
+    at 10,1
+    sel,quit=box_message(
+        ["0617","Message Box"],
+        "Message body\nis this!",
+        ["Zero","One","Two","Three","Last"]
+    )
+    at 16,1
+    println "Selection : {sel}"
+    println "Quit      : {quit}"
+endtest
+
+############################################################################
+
+define select(opts,list_buttons,multiple,orientation,spread)
+
+    # style is used, but title, header and footer ignored
+    s=options(opts)[0]
+    bb,bf,pb,pf,err=style(s)
+    on err!=0 do return 1
+    r=get_row(); c=get_col()
+    sel=0
+
+    on multiple==nil do multiple=false
+
+    on orientation==nil do orientation="h"
+    when orientation; is "h" ; is "v" ; or
+        return sel,true
+    endwhen
+
+    on list_buttons==nil do return sel,true
+
+    ml=longest(list_buttons) 
+    when orientation
+    is "v"
+        list_buttons=list_buttons->`" "+pad(#,-1,ml," ")+" "`
+    is "h"
+        if multiple
+            list_buttons=list_buttons->`#+" "`
+        else
+            list_buttons=list_buttons->`" "+#+" "`
+        endif
+    endwhen
+
+    # buttons...
+
+    changed=true
+    quit=false
+    sel=0
+    var checked [list_buttons.len] bool
+
+    cursoroff()
+
+    while
+        if changed
+            acc_len=0
+            foreach b in list_buttons
+                when orientation
+                is "h"
+                    at r,c+acc_len
+                is "v"
+                    at r+key_b,c
+                endwhen
+                print pb,pf
+                # multiples checkbox:
+                if multiple
+                    print ?? checked[key_b] "[x] ":"[ ] "
+                endif
+                # caption:
+                show=b
+                on key_b==sel do show="[#invert]{b}[#-]"
+                acc_len+=b.len+4*btoi(multiple)
+                print show,"[#-]"
+            endfor
+        endif
+        changed=false
+
+        k=keypress()
+        when k
+        is 27
+            sel=0
+            quit=true
+            break while
+        is 13
+            break while
+        is 32
+            checked[sel]=not checked[sel]
+            changed=true
+        has k==9 or k==7 or k==10
+            sel++
+            if sel>list_buttons.len-1
+                sel=list_buttons.len-1
+            else
+                changed=true
+            endif
+        has k==8 or k==6 or k==11
+            sel--
+            if sel<0
+                sel=0
+            else
+                changed=true
+            endif
+        endwhen
+    endwhile
+
+    print "[#-]"
+    foreach b in list_buttons
+        when orientation
+        is "h"
+            at r,c+key_b
+        is "v"
+            at r+key_b,c
+        endwhen
+        print " "*acc_len+4*list_buttons.len*btoi(multiple)
+    endfor
+    cursoron()
+
+    on multiple do return checked,quit
+    return sel,quit
+
+end
+
+test "select_one" group "dialog"
+    cls
+    at 10,10
+    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h",8)
+    at 20,1,"Selection  : {sel}"
+    at 21,1,"Quit       : {quit}"
+    at 12,10
+    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v",1)
+    at 22,1," Selection : {sel}"
+    at 23,1,"Quit       : {quit}"
+    at 24,1
+endtest
+
+test "select_many" group "dialog"
+    cls
+    at 10,10
+    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h",8)
+    at 20,1,"Selection : {sel}"
+    at 21,1,"Quit      : {quit}"
+    at 12,10
+    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v",1)
+    at 22,1,"Selection : {sel}"
+    at 23,1,"Quit      : {quit}"
+    at 24,1
+endtest
+
+############################################################################
+
+define hbar(row,col,hsize,pc,colour)
+    part_3q="▊"
+    part_2q="▌"
+    part_1q="▎"
+    us = hsize / 100f   # 1% width of total
+    d  = pc*us          # width of input percent
+    r  = d-d.int        # remainder
+    for e=0 to hsize-1
+        at row,col+e
+        c=" "
+        on e<d.int do c="█"
+        if e>=d.int and e<int(d+1)
+            on r>=0.25*us do c=part_1q
+            on r>=0.50*us do c=part_2q
+            on r>=0.75*us do c=part_3q
+        endif
+        print "{colour}{c}[#-]"
+    endfor
+end
+
+define progress(opts)
+    s,t,h,f=options(opts)
+    bb,bf,pb,pf,err=style(s)
+    on err!=0 do return "",err
+    r=get_row(); c=get_col()
+    print bb,bf
+    pane define "prog",r,1,2,term_w(),t,"double"
+    setglob _progress_colour_pb=pb
+    setglob _progress_colour_pf=pf
+end
+
+define progress_update(pcval)
+    pane select "prog"
+    hbar(1,1,term_w()-2,pcval,_progress_colour_pb+_progress_colour_pf)
+end
+
+define progress_off()
+    pane select "prog"
+    r=pane_r()
+    pane off
+    foreach e in 0..2
+        clear_line(r+e,0)
+    endfor
+end
+
+############################################################################
+
+define vbar(row,col,vsize,pc,colour)
+    b1000 = "█"
+    b0750 = "▆"
+    b0500 = "▄"
+    b0250 = "▂"
+    b0125 = "▁"
+    us = vsize / 100f   # 1% width of total
+    d  = pc*us          # height of input percent
+    r  = d-d.int        # remainder
+    for e=0 to vsize-1
+        at row-e,col
+        c=" "
+        on e<d.int do c=b1000
+        if e>=d.int and e<int(d+1)
+            on r>=0.125*us do c=b0125
+            on r>=0.25*us do c=b0250
+            on r>=0.50*us do c=b0500
+            on r>=0.75*us do c=b0750
+        endif
+        print "[#{colour}]{c}[#-]"
+    endfor
+end
+
+define chart(row,col,max_height,series,colour)
+    oc=-1
+    for e = 0 to series.len-1
+        while
+            c=eval(colour)
+            on c!=oc do break
+        endwhile
+        oc=c
+        vbar(row,col+e,max_height,series[e],c)
+        # on e%10==0 do at row+1,col+e,e
+    endfor
+end
+
+test "chart" group "dialog"
+    cls
+    seed(epoch_nano_time())
+    chart(12,10,10,[1,10,20,30,40,50,100,65,60,40,30,20,10,1],"rand(7)")
+    at 14,1
+endtest
+
+############################################################################
+
+define spin(id,sp)
+    spin=[["◐", "◓", "◑", "◒"]]
+return "[#{=1+sp}]"+spin[id][sp]+"[#-]"
+end
+
+

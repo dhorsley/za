@@ -2457,11 +2457,21 @@ tco_reentry:
 
                 under_test = false
                 // if filter matches group
-                if matched, _ := regexp.MatchString(test_group_filter, test_group); matched {
-                    vset(ifs,ident,"_test_group",test_group)
-                    vset(ifs,ident,"_test_name",test_name)
-                    under_test = true
-                    appendToTestReport(test_output_file,ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
+                if test_name_filter=="" {
+                    if matched, _ := regexp.MatchString(test_group_filter, test_group); matched {
+                        vset(ifs,ident,"_test_group",test_group)
+                        vset(ifs,ident,"_test_name",test_name)
+                        under_test = true
+                        appendToTestReport(test_output_file,ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
+                    }
+                } else {
+                    // if filter matches name
+                    if matched, _ := regexp.MatchString(test_name_filter, test_name); matched {
+                        vset(ifs,ident,"_test_group",test_group)
+                        vset(ifs,ident,"_test_name",test_name)
+                        under_test = true
+                        appendToTestReport(test_output_file,ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]",test_group,test_name))
+                    }
                 }
 
             }
@@ -2693,10 +2703,12 @@ tco_reentry:
                 h,id:=task(ifs,lmv,call,resu...)
 
                 // assign h to handles map
-                if nival==nil {
-                    vsetElement(ifs,ident,handles,sf("async_%v",id),h)
-                } else {
-                    vsetElement(ifs,ident,handles,sf("%v",nival),h)
+                if handles!="nil" {
+                    if nival==nil {
+                        vsetElement(ifs,ident,handles,sf("async_%v",id),h)
+                    } else {
+                        vsetElement(ifs,ident,handles,sf("%v",nival),h)
+                    }
                 }
 
             } else {

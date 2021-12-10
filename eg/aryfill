@@ -43,7 +43,7 @@ println "4 x 960 x 540 = ",loop_payload
 println " x {maxc} loop count\n"
 println "total bytes : ",bytes_xfer
 println "byte rate   : {throughput} bytes/ns"
-println "            : %f.3 GB/sec".format(throughput)
+println "            : %.3f GB/sec".format(throughput)
 
 println "\nmem use     : ",get_mem().alloc," MB"
 

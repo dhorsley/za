@@ -59,7 +59,7 @@ func GetWinInfo(fd int) (i int) {
 }
 
 /// get keypresses, filtering out undesired until a valid match found
-func wrappedGetCh(p int) (i int) {
+func wrappedGetCh(p int,disp bool) (i int) {
 
     var keychan chan int
     keychan = make(chan int, 1)
@@ -74,6 +74,7 @@ func wrappedGetCh(p int) (i int) {
             if pasted {
                 break
             }
+            if disp { pf("key : %#v\n",c) }
             if c != nil {
                 switch {
                 case bytes.Equal(c, []byte{2}):
@@ -100,6 +101,12 @@ func wrappedGetCh(p int) (i int) {
                     k = 8
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
                     k = 9
+                case bytes.Equal(c, []byte{0x09}): // TAB
+                    k = 7
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
+                    k = 6
+                case bytes.Equal(c, []byte{0x1B}): // ESCAPE
+                    k = 27
                 default:
                     if len(c) == 1 {
                         if c[0] > 31 {

@@ -186,7 +186,8 @@ func buildInternalLib() {
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","utf8supported","execpath","coproc", "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
+        "eval", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
+        "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
         "globlen","len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
@@ -288,6 +289,18 @@ func buildInternalLib() {
     stdlib["pane_w"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pane_w",args,0); !ok { return nil,err }
         return panes[currentpane].w, nil
+    }
+
+    slhelp["pane_r"] = LibHelp{in: "", out: "int", action: "Returns the current pane start row."}
+    stdlib["pane_r"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pane_r",args,0); !ok { return nil,err }
+        return panes[currentpane].row, nil
+    }
+
+    slhelp["pane_c"] = LibHelp{in: "", out: "int", action: "Returns the current pane start column."}
+    stdlib["pane_c"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("pane_c",args,0); !ok { return nil,err }
+        return panes[currentpane].col, nil
     }
 
     slhelp["system"] = LibHelp{in: "string[,bool]", out: "string", action: "Executes command [#i1]string[#i0] and returns a command structure (bool==false) or displays (bool==true) the output."}
@@ -726,11 +739,12 @@ func buildInternalLib() {
 
     slhelp["keypress"] = LibHelp{in: "[timeout_μs]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
     stdlib["keypress"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("keypress",args,2,
+        if ok,err:=expect_args("keypress",args,3,
+        "2","int","bool",
         "1","int",
         "0"); !ok { return nil,err }
         timeo := int64(0)
-        if len(args) == 1 {
+        if len(args) > 0 {
             switch args[0].(type) {
             case string, int:
                 ttmp, terr := GetAsInt(args[0])
@@ -739,7 +753,10 @@ func buildInternalLib() {
             }
         }
 
-        k:=wrappedGetCh(int(timeo))
+        disp:=false
+        if len(args)>1 { disp=args[1].(bool) }
+
+        k:=wrappedGetCh(int(timeo),disp)
 
         if k==3 { // ctrl-c 
             lastlock.RLock()
