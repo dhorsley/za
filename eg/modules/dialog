@@ -151,11 +151,13 @@ endtest
 
 ############################################################################
 
-define box_view(opts,val)
+define box_view(opts,val,selector)
     s,t,h,f=options(opts)
     bb,bf,pb,pf,err=style(s)
-    on err!=0 do return 1
+    on err!=0 do return err,nil,nil
     r=get_row(); c=get_col()
+
+    on selector==nil do selector=false
 
     availheight=term_h()-r-2
 
@@ -171,19 +173,41 @@ define box_view(opts,val)
 
     cursor=0
     changed=true
+    sp=0
     while
         if changed
             pane select "bv"
-            foreach e in 1..panelheight-1; at e,1,pb," "*(pane_w()-2),"[#-]"; endfor
-            at 1,0; print pb,pf
-            print val.lines("{cursor}:{=cursor+panelheight-2}").inset(1)
-            at boxheight-1,1,"(q) quit  (↓) down  (↑) up"
+            on sp<cursor do sp=cursor
+            on sp>(cursor+panelheight-1) do sp=cursor+panelheight-1
+            foreach e in 1..panelheight
+                at e,1,pb," "*(pane_w()-2),"[#-]"
+            endfor
+            foreach l in val.lines("{cursor}:{=cursor+panelheight-1}").inset(1)
+                invertor=?? (selector && sp==cursor+key_l) "[#invert]":""
+                at 1+key_l,0,pb,pf,invertor,l,"[#-]"
+            endfor
+            at boxheight-1,1,"(q) quit  (↓) down  (↑) up  (pgdn) page down  (pgup) page up"
+            on selector do print "  (shift-up) selector up  (shift-down) selector down  (enter) select"
         endif
         k=keypress()
         changed=false
         when $lc char(k)
         is "q"
             break while
+        has selector and k==13
+            break while
+        has selector and k==211 # shift-up
+            sp--
+            on sp<0 do sp=0
+            changed=true
+        has selector and k==210 # shift-down
+            sp++
+            if sp>cursor+panelheight-1
+                cursor++
+            endif
+            on cursor>val.count-panelheight do cursor=val.count-panelheight
+            on sp>val.count-1 do sp=val.count-1
+            changed=true
         has k==10 or $lc char(k)=="j"
             cursor++
             if cursor>val.count-panelheight
@@ -198,19 +222,29 @@ define box_view(opts,val)
             else
                 changed=true
             endif
+        has k==14
+            cursor+=panelheight
+            changed=true
+            on cursor>val.count-panelheight do cursor=val.count-panelheight
+        has k==15
+            cursor-=panelheight
+            changed=true
+            on cursor<0 do cursor=0
         endwhen
     endwhile
 
     pane off
     print "[#-]"
     foreach e in 0..boxheight; clear_line(r+e,0); endfor
-    return 0
+
+    on selector do return 0,sp,val.lines("{sp}":"{sp}")
+    return 0,nil,nil
 end
 
 test "box_view" group "dialog"
     pane off
     cls
-    e=box_view(["0617","group file"],$in "/etc/group")
+    e,sp,text=box_view(["0617","group file"],$in "/etc/group")
     assert e==0
     at 4,1
 endtest
@@ -320,7 +354,7 @@ endtest
 
 ############################################################################
 
-define select(opts,list_buttons,multiple,orientation,spread)
+define select(opts,list_buttons,multiple,orientation)
 
     # style is used, but title, header and footer ignored
     s=options(opts)[0]
@@ -419,7 +453,7 @@ define select(opts,list_buttons,multiple,orientation,spread)
         is "v"
             at r+key_b,c
         endwhen
-        print " "*acc_len+4*list_buttons.len*btoi(multiple)
+        print " "*(acc_len+4*list_buttons.len*btoi(multiple))
     endfor
     cursoron()
 
@@ -431,11 +465,11 @@ end
 test "select_one" group "dialog"
     cls
     at 10,10
-    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h",8)
+    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h")
     at 20,1,"Selection  : {sel}"
     at 21,1,"Quit       : {quit}"
     at 12,10
-    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v",1)
+    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v")
     at 22,1," Selection : {sel}"
     at 23,1,"Quit       : {quit}"
     at 24,1
@@ -444,11 +478,11 @@ endtest
 test "select_many" group "dialog"
     cls
     at 10,10
-    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h",8)
+    sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h")
     at 20,1,"Selection : {sel}"
     at 21,1,"Quit      : {quit}"
     at 12,10
-    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v",1)
+    sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v")
     at 22,1,"Selection : {sel}"
     at 23,1,"Quit      : {quit}"
     at 24,1
@@ -503,30 +537,38 @@ end
 
 ############################################################################
 
-define vbar(row,col,vsize,pc,colour)
+define vbar(row,col,vsize,pc,colour,label)
     b1000 = "█"
     b0750 = "▆"
     b0500 = "▄"
     b0250 = "▂"
     b0125 = "▁"
-    us = vsize / 100f   # 1% width of total
+    us = vsize / 100f   # 1% height of total
     d  = pc*us          # height of input percent
     r  = d-d.int        # remainder
-    for e=0 to vsize-1
-        at row-e,col
-        c=" "
-        on e<d.int do c=b1000
-        if e>=d.int and e<int(d+1)
-            on r>=0.125*us do c=b0125
-            on r>=0.25*us do c=b0250
-            on r>=0.50*us do c=b0500
-            on r>=0.75*us do c=b0750
-        endif
-        print "[#{colour}]{c}[#-]"
+    # whole parts
+    for e=0 to d.int
+        on e>0 do at row-e,col,"{colour}{b1000}[#-]"
     endfor
+    # remainder
+    at row-e-1,col
+    c=" "
+    on r>=0.125 do c=b0125
+    on r>=0.25  do c=b0250
+    on r>=0.50  do c=b0500
+    on r>=0.75  do c=b0750
+    print "{colour}{c}[#-]"
+    # label
+    if label
+        s=format("%d",pc)
+        l=s.len
+        for j=0 to l-1
+            at row-e-(l-j)-1,col,s[j]
+        endfor
+    endif
 end
 
-define chart(row,col,max_height,series,colour)
+define chart(row,col,max_height,series,colour,label)
     oc=-1
     for e = 0 to series.len-1
         while
@@ -534,8 +576,15 @@ define chart(row,col,max_height,series,colour)
             on c!=oc do break
         endwhile
         oc=c
-        vbar(row,col+e,max_height,series[e],c)
+        vbar(row,col+e,max_height,series[e],c,label)
         # on e%10==0 do at row+1,col+e,e
+        if label and e%2==0
+            s=e.string
+            l=s.len
+            for j=0 to l-1
+                at row+j+1,col+e,s[j]
+            endfor
+        endif
     endfor
 end
 

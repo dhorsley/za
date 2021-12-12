@@ -11,6 +11,11 @@ TODO
 
     ++ add more examples in docs/
 
+    # may also be worth adding something for controlling local echo
+    # igncr, etc like stty would. we already import termios so this
+    # shouldn't be a problem.
+
+
 LATER / UNDECIDED
 -----------------
 
