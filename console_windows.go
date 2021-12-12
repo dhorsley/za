@@ -169,6 +169,10 @@ func wrappedGetCh(p int,disp bool) (k int) {
 
         if c != nil {
             switch {
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x41}): // SHIFT-UP
+                k = 211
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x42}): // SHIFT-DOWN
+                k = 210
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
                 k = 10
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP

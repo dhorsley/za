@@ -4,23 +4,15 @@ module "modules/dialog"
 module "modules/menu"
 
 
-test "chart" group "dialog"
-    cls
-    seed(epoch_nano_time())
-    chart(12,10,10,[1,10,20,30,40,50,100,65,60,40,30,20,10,1],"rand(7)")
-    at 14,1
-endtest
-
-############################################################################
 # MAIN
-############################################################################
 
+seed(epoch_nano_time())
 cls
 cursoroff()
 
-quitting=false
+done=false
 
-while not quitting
+while not done
 
     choice=menu(
         "Examples", 
@@ -31,50 +23,62 @@ while not quitting
             "Buttons - Vertical",
             "Checkbox - Horizontal",
             "Checkbox - Vertical",
-            "Box Input"
+            "Box Input",
+            "Series Draw",
+            "Directory List"]
         ]
     )
 
+    at 16,10
+
     when choice
     is -1
-        quitting=true
+        done=true
     is 1
-        at 15,10
-        e=box_view(["0617","group file"],$in "/etc/group")
+        e,_,text=box_view(["0617","group file"],$in "/etc/group")[0]
     is 2
-        at 15,10
         sel,quit=box_message(
             ["0617","Message Box"],
             "Message body\nis this!",
             ["Zero","One","Two","Three","Last"]
         )
     is 3
-        at 15,10
-        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h",8)
+        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],false,"h")
     is 4
-        at 15,10
-        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v",1)
+        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],false,"v")
     is 5
-        at 15,10
-        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h",8)
+        sel,quit=select(["0617"],["Zero","One","Two","Three","Last"],true,"h")
     is 6
-        at 15,10
-        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v",1)
+        sel,quit=select(["1627"],["Zero","One","Two","Three","Last"],true,"v")
     is 7
-        at 15,10
-        i,e=box_input(["1610","test title"],"Selection:","")
-    is 0
-        break while
+        sel,e=box_input(["1610","test title"],"Selection:","")
+    is 8
+        series=[]
+        l=19+rand(50)
+        for e= 0 to l-1
+            append_to(ref series,rand(101)-1)
+        endfor
+        chart(26,10,4+rand(6),series,"fgrgb(rand(255),rand(255),rand(255))",false)
+    is 9
+        ds=[]
+        foreach f in dir()
+            ds=ds.append(f.name)
+        endfor
+        at 1,1
+        e,sel,text=box_view(["0506"],ds.join("\n"),true)
     endwhen
+
+    on choice in 2..7 or choice==9 do at 26,10,"Selection : ",sel
+    on choice==9 do at 27,10,"Selected Text : |{text}|"
+    if choice in 2..9
+        at 29,1,"Press a key to return to menu."
+        keypress()
+    endif
 
 endwhile
 
 
-############################################################################
 # FINISH
-############################################################################
-
 at 20,1
 cursoron()
-
 

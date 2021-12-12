@@ -69,7 +69,7 @@ func buildStringLib() {
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count","inset",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
-        "reverse", "tr", "lower", "upper", "format", "ccformat","pos",
+        "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc",
     }
 
@@ -231,6 +231,30 @@ func buildStringLib() {
     stdlib["pos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("pos",args,1,"2","int","int"); !ok { return nil,err }
         return sat(args[0].(int),args[1].(int)), nil
+    }
+
+    slhelp["bg256"] = LibHelp{in: "int_colour", out: "string", action: "Returns an ANSI code string for expressing an 8-bit background colour code."}
+    stdlib["bg256"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("bg256",args,1,"1","int"); !ok { return nil,err }
+        return sf("\033[48;5;%dm",args[0].(int)),nil
+    }
+
+    slhelp["fg256"] = LibHelp{in: "int_colour", out: "string", action: "Returns an ANSI code string for expressing an 8-bit foreground colour code."}
+    stdlib["fg256"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("fg256",args,1,"1","int"); !ok { return nil,err }
+        return sf("\033[38;5;%dm",args[0].(int)),nil
+    }
+
+    slhelp["bgrgb"] = LibHelp{in: "int_r,int_g,int_b", out: "string", action: "Returns an ANSI code string for expressing an rgb background colour code."}
+    stdlib["bgrgb"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("bgrgb",args,1,"3","int","int","int"); !ok { return nil,err }
+        return sf("\033[48;2;%d;%d;%dm",args[0].(int),args[1].(int),args[2].(int)),nil
+    }
+
+    slhelp["fgrgb"] = LibHelp{in: "int_r,int_g,int_b", out: "string", action: "Returns an ANSI code string for expressing an rgb foreground colour code."}
+    stdlib["fgrgb"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("fgrgb",args,1,"3","int","int","int"); !ok { return nil,err }
+        return sf("\033[38;2;%d;%d;%dm",args[0].(int),args[1].(int),args[2].(int)),nil
     }
 
     slhelp["tr"] = LibHelp{in: "string,action,case_string[,translation_string]", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]. translate (action "t") can be used, along with the optional [#i1]translation_string[#i0] to specify direct replacements for existing characters. Please note: this is a very restricted subset of the tr tool.`}

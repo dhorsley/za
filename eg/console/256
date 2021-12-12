@@ -1,0 +1,33 @@
+#!/usr/bin/za
+
+doc `
+define bg256(n)
+    return "[#CSI]48;5;{n}m"
+end
+
+define fg256(n)
+    return "[#CSI]38;5;{n}m"
+end
+`
+
+bank1=[16,52,88,124,160,196]
+bank2=[34,70,106,142,178,214]
+
+for e = 0 to 5
+    c=bank1[e]
+    for f = 0 to 17
+        print format(" %02x ",c),bg256(c++)
+    endfor
+    println "[#-]"
+endfor
+
+for e = 0 to 5
+    c=bank2[e]
+    for f = 0 to 17
+        print format(" %02x ",c),bg256(c++)
+    endfor
+    println "[#-]"
+endfor
+
+println
+
