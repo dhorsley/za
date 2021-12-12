@@ -18,12 +18,17 @@ CHANGE LOG
     * added filebase() for returning the base name of a file path.
     * added inset() for offsetting a string by N chars from l.h.s.
     * added tab (7) and shift-tab (6) support in keypress()
+    * added shift-up (211) and shift-down (210) support in keypress()
 
     * checked lib-os for windows differences:
         - some calls have no direct equivalent, so ignoring those.
         - however, we did overlook parent(), fileabs() and filebase(), so added those for windows
 
     * mem_summary() and dump() artifacts removed.
+
+    * added bg256(n) fg256(n) bgrgb(r,g,b) and fgrgb(r,g,b) for expressing 256 colour and RGB ANSI colour codes
+        in the background and foreground.
+        e.g. print bgrgb(0,127,0),"MEDIUM GREEN"
 
 
     fixes
@@ -88,6 +93,8 @@ CHANGE LOG
             been getting written in a more suitable tool for performance and maintenance.
         - this may change in a future version, but there's already enough other stuff to get right first.
 
+    * added case to ignore assignent in lvalue to terms whose identifier is the underscore.
+        - e.g. a,_,c=["a","b","c"]
 
 
 1.0.16

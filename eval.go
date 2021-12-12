@@ -1993,7 +1993,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
     if doMulti {
         curArg:=0
         evnest:=0
-        var scrap [7]Token
+        var scrap [16]Token
         scrapCount:=0
         for tok := range tks[:eqPos] {
             nt:=tks[tok]
@@ -2058,6 +2058,9 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
             expr.evalError=true
             return
         }
+
+        // ignore assignment to underscore
+        if strcmp(assignee[0].tokText,"_") { continue }
 
         // then apply the shite below to each one, using the next available result from results[]
 
