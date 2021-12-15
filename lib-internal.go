@@ -392,7 +392,7 @@ func buildInternalLib() {
         return v,nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports.\nexitquiet(bool): shorter error message.\nshell(bool): permit shell commands.\neval(bool): permit eval() calls."}
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports.\nexitquiet(bool): shorter error message.\nshell(bool): permit shell commands.\neval(bool): permit eval() calls.\nassigneval(bool): permit interpolation in assignments."}
     stdlib["permit"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("permit",args,4,
         "2","string","bool",
