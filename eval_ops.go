@@ -1016,6 +1016,8 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
                     if len(obj)>ifield { return obj[ifield] }
                 case []alloc_info:
                     if len(obj)>ifield { return obj[ifield] }
+                case [][]int:
+                    if len(obj)>ifield { return obj[ifield] }
                 case []interface{}:
                     if len(obj)>ifield { return obj[ifield] }
                 default:
@@ -1057,6 +1059,9 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case string:
         isArr=true
         arl= len(v.(string))
+    case [][]int:
+        isArr=true
+        arl= len(v.([][]int))
     case []interface{}:
         isArr=true
         arl= len(v.([]interface{}))
@@ -1117,6 +1122,8 @@ func slice(v interface{}, from, to interface{}) interface{} {
         return v.([]string)[fromInt:toInt]
     case string:
         return v.(string)[fromInt:toInt]
+    case [][]int:
+        return v.([][]int)[fromInt:toInt]
     case []interface{}:
         return v.([]interface{})[fromInt:toInt]
     }

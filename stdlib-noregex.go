@@ -1,5 +1,5 @@
-// +build linux freebsd
-// +build ! windows !netgo
+// +build !linux !freebsd
+// +build windows netgo
 
 package main
 
@@ -17,7 +17,6 @@ func buildStandardLib() {
     buildInternalLib()
     buildPackageLib()
     buildStringLib()
-    buildRegexLib()
     buildOsLib()
     buildDateLib()
     buildMathLib()

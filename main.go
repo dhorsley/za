@@ -364,7 +364,6 @@ func main() {
     structmaps = make(map[string][]interface{})
 
     // compile cache for regex operator
-    // - usage requires a lock around it
     ifCompileCache = make(map[string]regexp.Regexp)
 
 
@@ -743,7 +742,12 @@ func main() {
 
             userSigIntHandler,usihfound:=vget(2,&mident,"trapInt")
             usih:=""
-            if usihfound { usih=userSigIntHandler.(string) }
+            if usihfound {
+                switch userSigIntHandler.(type) {
+                case string:
+                    usih=userSigIntHandler.(string)
+                }
+            }
 
             if usih!="" {
 
@@ -1084,7 +1088,10 @@ func main() {
 
                     // this is hardly fool-proof, but okay for now:
                     if t.carton.tokType==SYM_BOR && (!tokenIfPresent || !tokenOnPresent) { breakOnCommand=true }
-                    if t.carton.tokType==C_Break { break } // don't check as may also contain a nesting keyword
+                    if t.carton.tokType==C_Break {
+                        nestAccept=0
+                        break
+                    } // don't check as may also contain a nesting keyword
 
                     if !helpRequest && !paneDefine {
                         switch t.carton.tokType {

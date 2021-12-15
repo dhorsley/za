@@ -4,7 +4,7 @@ module "mod_build/defines"
 
 var strip_enable,upx_enable bool
 
-tgt="alpine"
+tgt="default"
 ipath="/usr/bin"
 
 for e = 1 to argc()
@@ -47,26 +47,20 @@ upxfound= | "which upx | wc -l" . trim(0) . int
 
 if ! os() ~ "^freebsd"
     when tgt
+    is "default"
+        on buildDefault(bvers,bdate)!=0 do exit e.build,"Failed to build default version."
     has tgt ~i "^(alpine|aws)$"
-        if buildMusl(bvers,bdate)!=0
-            exit e.build,"Failed to build musl version."
-        endif
+        on buildMusl(bvers,bdate)!=0 do exit e.build,"Failed to build musl version."
     is "libc"
-        if buildLibc(bvers,bdate)!=0
-            exit e.build,"Failed to build libc version."
-        endif
+        on buildLibc(bvers,bdate)!=0 do exit e.build,"Failed to build libc version."
     is "win"
         on strip_enable do "Windows build does not strip!".warning
-        if buildWin(bvers,bdate) != 0
-            exit e.build,"Failed to build windows version."
-        endif
+        on buildWin(bvers,bdate) != 0 do exit e.build,"Failed to build windows version."
     or
         exit e.notfound,"Target type unknown."
     endwhen
 else
-    if buildFreeBSD(bvers,bdate) != 0
-        exit e.build,"Failed to build bsd version."
-    endif
+    on buildFreeBSD(bvers,bdate) != 0 do exit e.build,"Failed to build bsd version."
 endif
 
 
@@ -87,7 +81,7 @@ endif
 
 
 when tgt
-contains "^(alpine|libc)$"
+contains "^(default|alpine|libc)$"
     "Installing {tgt} build to {ipath}".progress
     | sudo cp -f za {ipath}
     | sudo chmod 755 {ipath}/za

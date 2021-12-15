@@ -9,11 +9,11 @@ import (
 
 
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$" // {}
+const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.f"
 const numSeps = "_"
-const identifier_set = alphanumeric + "_" // "{}"
+const identifier_set = alphanumeric + "_"
 const doubleterms = "<>=|&-+*.?"
 const expExpect="0123456789-+"
 
@@ -61,10 +61,12 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var norepeat string
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant bool
+    var maybeBaseChange, thisHex bool
 
     beforeE := "."
     thisWordStart := -1
     borpos := -1
+    maybeBaseChange=true
 
     // skip past whitespace
     var currentChar int
@@ -140,9 +142,9 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     // number
     if firstChar!='f' && str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
-        nonterm = numeric+"eE"+numSeps
+        nonterm = numeric+"xeE"+numSeps
         term = "\n;"
-        norepeat= "eE."
+        norepeat= "xeE."
     }
 
     // solo symbols
@@ -233,13 +235,25 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             }
 
             // deal with 'f' at end of number
-            if input[currentChar]=='f' {
+            if !thisHex && input[currentChar]=='f' {
                 word=input[thisWordStart:currentChar+1]
                 startNextTokenAt=currentChar+1
                 break
             }
 
-        }
+            // deal with '0x' at start
+            if maybeBaseChange && input[thisWordStart]=='0' && currentChar==thisWordStart+1 {
+                switch input[currentChar] {
+                case 'x','X':
+                    thisHex=true
+                    nonterm="0123456789abcdefx"
+                }
+            }
+            if currentChar==thisWordStart+1 {
+                maybeBaseChange=false
+            }
+
+        } // eo-numeric-literal
 
         if matchQuote && input[currentChar]=='\n' {
             (*curLine)++
@@ -319,6 +333,16 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     if tokType != 0 {
 
         if tokType==NumericLiteral {
+
+            if thisHex {
+                hs:=str.Replace(word,"0x","",-1)
+                hs=str.Replace(hs,"0X","",-1)
+                carton.tokVal,_=strconv.ParseInt(hs,16,64)
+                startNextTokenAt=currentChar
+                carton.tokType=NumericLiteral
+                carton.tokText=word
+                goto get_nt_exit_point
+            }
 
             // remove any numSeps from literal
             for _,ns:=range numSeps { word=str.Replace(word,string(ns),"",-1) }
