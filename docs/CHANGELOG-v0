@@ -1,0 +1,613 @@
+
+CHANGE LOG
+=============================================================================================
+
+0.9.6 feature freeze - only bug fixes
+
+        1. subscript out of range (negative) - process crash
+            - added a check in actor.go/C_SetGlob, eval.go/wrappedEval() and goval_parserUtils.go/accessField().
+
+
+0.9.5 feature freeze - only bug fixing before 1.0
+
+      fixes:
+
+        1. added // comments back in.
+        2. fixed # and // comments at end of statements.
+        3. removed EOL and comments from processed source.
+        4. removed the handling for eol/comments in main call loop. speed increase of ~25mips on ref machine.
+        5. did the same as 3. for empty lines. ~10mips inc on ref machine.
+        6. small refactor inside actor.go/C_Endfor and related routines to waste a few less cycles.
+        7. in lex.go and parser.go: removed dead assignments and duplicate length checks. 
+                removed length checks from loops - not as bad as it sounds!
+        8. added type (string) enforcing for arg #1 in format()
+        9. removed semi-colon tokens from processed source.
+       10. more type checking in lib-convert.
+       11. additional checks in float().
+       12. fixed problem in eg/mon (unstripped newline in input field)
+       13. added 'e' error redirect support to local server in web_serve_*().
+       14. added missing arguments parsing to user sigint handler.
+       15. fixed typos in lib-html on some tag end strings.
+       16. fixed missing GET/POST query+fragment passing to "s"
+
+
+0.9.4 no more than 1 new feature
+      no progress without 3 bug fixes.
+
+      features:
+
+        1. added a user interrupt (ctrl-c) handler:
+
+            when global variable trapInt is set to the name of a Za function,
+            that function will be called at the end of normal ctrl-c handling.
+            if the function returns a non-zero value then a hard exit is made from Za with
+            the specified return value as the exit code.
+            Otherwise Za will continue with its usual behaviour on return. This may include
+            a program exit in non-interactive mode or continued operation, in interactive mode.
+            If no return value is provided then operation continues without user or system interrupt.
+
+            e.g.
+
+            <snippet>
+            define test(msg,exCode)
+                println "user handler!\n{msg}"
+                return exCode
+            enddef
+
+            trapInt = "test(status,code)"
+
+            status="current break message."
+            code=127
+            </snippet>
+
+            If ctrl-c occurs now, then output is...
+
+            user handler!
+            current break message.
+
+            echo $?
+            127
+
+      fixes:
+
+        1. vcmp()/service()/install() had an arg data type fatal crash. resolved.
+        2. renamed cursorOff|On|X to cursoroff|on|x.
+        3. some optimisation required in while..endwhile, too slow vs FOR
+
+            a) added a cache in ev() to avoid rebuilding the token string for eval if same as previous.
+                tested with multithreaded web server and no issues exhibited.
+               this took eg/countdown (while test) from ~2922ns/it to ~1910ns/it. (+180K it/sec)
+
+                its/sec        342.137 Thousand
+                its/sec        523.493 Thousand
+
+            b) added a last string cache in goval_lexer.go/NewLexer() to avoid FileSet/new allocation of token.File.
+                eg/countdown went from 1910ns/it to 1583ns/it. (+110K it/sec)
+
+                its/sec        631.636 Thousand
+                
+               currently disabled when lockSafety is true as it doesn't play nicely with concurrency. 
+                Needs lastlock mutex around laststr and lastfile to avoid this.
+                However, this would probably negate the benefits of caching.
+
+               this is right on the edge on what is left to gain from the current math evaluator. it needs rewriting at this point.
+
+
+0.9.3 no more than 2 new features
+      no progress without 3 bug fixes.
+
+      features:
+
+        1. added a "topline" box format. split lr into tlr + blr in box().
+        2. shuffled a few bool checks around in actor.go / Call() main loop to speed up processing.
+
+      fixes:
+
+        1. amended pad() to ignore colour codes.
+        2. fixed eg/mon output formatting.
+        3. blocked co-process calls ending with | or only consisting of | and <space>.
+        4. when *any* indirection present inside a loop, then always update the loop counter.
+            This is to avoid missing an indirect reference to the loop counter, without having to trace each
+             and every interpolation. We are just erring on the side of caution here.
+
+
+0.9.2 no more than 3 new features
+      no progress without 3 bug fixes.
+
+      features:
+
+        1. added: strpos(s,sub,start) for finding next match in a string.
+        2. added: example eg/stddev for calculating sample standard deviation with lists
+        3. added: argv() function.
+
+      fixes:
+
+        1. added trim and tr(squeeze) to collapse().
+        2. removed todo: add a report to PANE without arguments.
+        3. commented out quote stripper in actor.go/C_Return. Checking if it is still required.
+        4. removed some already done @todo notes.
+        5. changed argc/argv to include arg #1 if in interactive mode or processing a -e string.
+
+0.9.1 no more than 4 new features
+      no progress without 3 bug fixes.
+
+      features:
+        1. added split, join and collapse functions.
+            split will convert string to list. join converts list to string.  collapse converts NL to space.
+        2. added line_head and line_tail (nl-separated string, simple head/tail w/count. nothing fancy.)
+
+
+      fixes:
+        1. changed exit iterator value from FOR/FOREACH w/ or w/o BREAK to be last value instead of next.
+        2. changed FOREACH behaviour with NL strings to always treat as lines. strings without NL will
+            no longer be separated character-by-character. 
+            lib-string and/or FOR with len(x)-1 should be used instead.
+        3. SETGLOB: rewrote array ref handling. 
+        4. added some type and range checking to substr(). 
+        5. added string case to vgetElement().
+
+      issues:
+        1. problem with \n handling inside string interpolation...
+
+            - workaround is to either:
+                use backticks when embedding instead of double-quotes, or,
+                ensure string is evaluated before use in print/iteration.
+
+            - example similar to word_ls() in eg/alias:
+                this works:
+
+                    strls="a\nb\nc\n"; sep="\n"
+                    foreach w in strls
+                        word_out=word_out+w+sep
+                    endfor
+
+                however, if changed to ' word_out=word_out+"{w}{sep}" ', it fails to unquote the string literal.
+                and, if changed to ' word_out=word_out+`{w}{sep}` ', then iterating over word_out after it is built will not work
+                 as word_out would be a single string with embedded newlines.
+
+            - this is all a bit messy and needs a better solution, but we can probably explain this behaviour well enough in the ref. doc.
+
+            - this one is not going to be fixed yet. It is a consequence of the lexer and interpolation that may break other stuff if fixed.
+                We could bodge it with escapes but this is not ideal. It should not alter existing behaviour if we fix this post version 1.
+
+
+0.9
+
+    * added fieldsort(s,f,type,dir) with types of "s","n","h".
+        * it sorts a single-space-delimited set of columns in newline-separated rows on field f
+        * "s" string, "n" numeric, "h" human readable numeric
+
+    * added numcomp(str_a,str_b) library function.
+    * added len() alias for length()
+
+    * added mime-type handling to web_serve_* "s" rule. see eg/web for example. css/js should
+        work somewhat better now.
+
+    * added line_match()  ( returns bool from string )
+    * added line_filter() ( returns matching lines from string )
+
+    * added nl separated string support to uniq(). probably best to field_sort() the string first!
+
+    * added home/end for start/end line in interactive mode keyboard handler.
+
+
+0.8.6
+
+    * removed some terminating newline mishandling from FOREACH and interpolate().
+
+    * added back-end headers to "p" proxied requests in web_serve_*
+    * added a proxied-by-za header also (temporarily) for troubleshooting.
+
+    * added a stable log2(n) function.
+    * add a function web_max_clients() to get the current MAX_CLIENT const cap.
+    * added list_string() function for converting to a string list.
+    * added a PRINTLN keyword.
+
+    * fixed sort order of categories in funcs() call.
+    * fixed issue with empty functionArgs slice in function definition holder 'dargs'.
+    * fixed an issue with string concatenation using + symbol. removed + from identifier_set.
+
+    * added -e cli arg for providing a program in a string (like sed/awk). For example:
+
+        * host -t A www.google.com | 
+            za -e 'foreach l in read_file("/dev/stdin"); fields(l); println F4; endfor'
+
+        * a consequence of this is that stdin is ignored as a program source and can then be
+            consumed as data instead.
+
+        * another contrived example, to find all 2nd level depth directory names for a given path:
+
+        sudo find /var/www | 
+            za -e 'foreach _line in read_file("/dev/stdin")+"\n"
+                        fields(_line,"/")
+                        if NF>3
+                            path="/"+F1+"/"+F2+"/"+F3+"/"+F4
+                            on is_dir(path) do all=append(all,path)
+                        endif
+                      endfor
+                      foreach l in uniq(list_string(all)); println l; endfor'
+
+    * added -r cli arg for wrapping up a provided -e arg in a loop iterating /dev/stdin. 
+
+        For example:
+
+        * host -t A www.google.com | za -r -e 'println F4'
+        -or-
+        * za -r -e 'println field(_line,1,":")' </etc/group
+        -or-
+        * cat /usr/share/dict/british-english | 
+            za -r -e 'if match(F1,"^[mM]"); println "-->",F1; endif'
+
+        * this mirrors a little more the behaviour of awk. each line of stdin is 
+            available as the "_line" variable. There is no facility for BEGIN or
+            END sections, however, anything as complicated as that should probably
+            just manage the loop itself in a bigger script.
+
+          The line handling is just:
+
+            # BEGIN {}
+            # LOOP {
+            NL=0
+            foreach _line in read_file("/dev/stdin")
+                inc NL
+                fields(_line,"F_FLAG")
+                # PROGRAM_SOURCE_FROM_E_FLAG
+            endfor
+            # }
+            # END {}
+
+        * each line is automatically put through the fields() function. 
+        * NF is the number of fields on each line of input.
+        * NL is the number of the current line of input.
+
+        For example:
+        * za -e 'on NF>9 do println NL," ",NF," ",F10' -r <test_file
+
+    * added -F cli arg for setting the field separator of -r.
+
+        For example:
+        * za -F ":" -r -e 'println F1' </etc/group
+
+    * added a locks() function for enabling/disabling the mutex locks at run-
+        time (like the -l flag).
+
+    * added function net_interfaces() to retrieve a newline separated list of
+        available network interface names.
+
+    * added missing arg count checks to all standard library functions.
+
+    * confirmed that on..do return|continue|break|exit all work as expected.
+
+    * added nil check in uniq()+sort() library functions. removed some dead code in uniq().
+
+
+0.8.5
+
+    * added -l flag for command line args. This controls if the bulk of in-built 
+        mutex locks are applied or not.
+
+        * For certain activities, such as web servers generating dynamic content,
+            it is imperative that this flag is on.
+
+        * For general use and for static web servers it is probably not needed currently.
+
+        * Having mutex locks enabled will slow down execution considerably, 
+            especially around variable handling.
+
+    * web server "f" function rule complete... i think. it's working anyway :)
+
+    * wrapped up the primary globals that would be affected by concurrent access when 
+        using the "f" web serve rule.
+
+    * almost everything global is now surrounded by or has been tested with a 
+        sync.RWMutex or deadlock.Mutex wrapping.
+
+    * all za variables have been wrapped in a uniform access mechanism including locking.
+        It's reduced speed a bit more again, but had to be done for web concurrency.
+ 
+    * added a rate limit cap to concurrent requests through the web servers. 
+        (MAX_CLIENTS=800 in constants.go)
+
+        * there is an internal limitation on this client count before you run into resource
+            issues. You can tweak LOOP_MAX also to adjust this.
+
+        * this needs language controls and some tidying before general use. The 800
+            concurrent client limit is plenty for now though.
+
+        * static page serving on a typical small VM of:
+
+          * a small image (~36k) http://localhost:8080/headers/blue-flower.jpg:
+            * weighttp -n 10000 -c100 -t4 -k http://localhost:8080/headers/blue-flower.jpg
+            * finished in 0 sec, 563 millisec and 438 microsec, 17748 req/s, 643770 kbyte/s
+            * requests: 10000 total, 10000 started, 10000 done, 10000 succeeded, 0 failed, 0 errored
+            * status codes: 10000 2xx, 0 3xx, 0 4xx, 0 5xx
+            * traffic: 371430000 bytes total, 1100000 bytes http, 370330000 bytes data
+
+          * a small dynamic page (7.5k output) generated in Za http://localhost:8080/fun/awsip:
+            * weighttp -n 10000 -c100 -t4 -k http://localhost:8080/fun/awsip
+            * finished in 19 sec, 357 millisec and 461 microsec, 516 req/s, 3798 kbyte/s
+            * requests: 10000 total, 10000 started, 10000 done, 10000 succeeded, 0 failed, 0 errored
+            * status codes: 10000 2xx, 0 3xx, 0 4xx, 0 5xx
+            * traffic: 75303683 bytes total, 1238705 bytes http, 74064978 bytes data
+
+        * ... so, not exactly ballistic, but good enough for a filthy quick report generator.
+
+    * fixed up missing Close() calls on http client requests.
+
+    * added web page element builders for 'html,head,body,table,thead,th,tr,td,a,p,div,link'
+        * updated eg/web to include an example function handler for "f" proxy rules 
+            which uses the above builders.
+
+    * added elements: h1,h2,h3,h4,h5,ol,ul,li
+
+    * fixed 'globalaccess', getglob, globkey, setglob calls
+        - they were busted by some of the changes in this release and 0.8.4
+
+    * updated eg/web to demo text-to-html serving.
+
+    * added @execpath global. (location of executed source file).
+    * updated module command to use @execpath+module_path if module_path is relative.
+    * added execpath() lib function.
+
+    * updated ./build script to deal with changed params for Alpine static build.
+
+    * moved HTML components into their own library (lib-html.go)
+
+    * HTML element builders; enough done for now - will add more later, but current selection is adequate for non-interactive pages.
+
+    * any other work required to get web servers adequately operating. did some tidying, multi-threading refactor and performance testing. 
+
+    * updated za.vim again.
+    * updated reference manual.
+
+    * added layer on top of ajstarks/svgo interface. currently incomplete. will not implement all functions, just the basics.
+        * added square, rect, roundrect, plot, line, circle, ellipse, group, text, description,
+        * added image, def, polyline, polygon, grid, link.
+
+    * added -s option to specify coprocess shell to use.
+    * stopped some globals from being created when -s used. (i.e. not the default bash)
+    * added @zsh_version global and zsh_version() function.
+
+    * added { and } to alphaplus set for lexer to permit them as part of an identifier token.
+    * now allowing indirection of the FOREACH and FOR iterator variable. This allows you, for example, to do:
+        * y="x"; list=[1,2,3,4,5]; foreach {y} in list; on eval("x<3") do print list[key_{y}]; endfor
+            * ... outputs 1 and 2
+            * you could use {{y}} inside a string literal instead of list[key_{y}] outside.
+            * see example in eg/proc_data
+
+    * added a flag (-c) for disabling ANSI code output. (only from [#..] macros).
+        * direct use of escaped ANSI codes still work.
+        * this is just for removing undesirable non-printables when trying to process the output of a za program.
+
+    * added log10(n) function. log(n,b) is imprecise with powers of 10. needed stable log10 for graphs, so
+        added it to the library also.
+
+    * cut/copy/paste working in interactive mode. it could do with some improvements still to non-printable character,
+        utf handling and cursor positioning, but it is reasonably sound. 
+        paste limit is set to strings of >6 characters. (upto 4096*3 byte chars)
+        * linux keyboard codes can be anything up to 6 characters in length. e.g. shift-down: 0x1b, 0x5b, 0x31, 0x3b, 0x32, 0x42
+        * In order to eventually accept all of the relevant combinations we set the limit above this. We could fix this, but it 
+            would mean rewriting the getch() function to act quite differently. Not currently a priority.
+
+    * Added up/down cursor during multiline input.
+        There's still some issues such as multiline input not clearing correctly from console when navigating history
+            and other similar artifacts depending on operation selected. Nothing urgent though.
+
+    * Added response headers to web_get(). web_get now returns a list of 2 items. res=web_get("https://example_site"); res[0]=body, res[1]=headers.
+        * the headers can be iterated with foreach (e.g. foreach i in res[1]; print key_i,"->",i; endfor)
+        * if read into another variable (e.g. z=res[1]) then the fields can be referenced directly (e.g. print z["Date"],z["Server"],z["Expires"])
+            * the above indirection is because we don't support 2 dimensional arrays.
+        * web_download() still functions as before, and downloads the file to a storage path, if possible, but does not consider headers.
+
+    * Added web_custom() for performing a http request with custom headers.
+
+    * Added base64e() and base64d() library functions.
+
+    * Added example eg/rancher2_deployments.
+
+
+0.8.4
+    * reworked userDefEval.. it was pretty broken. Of course, everything is slower again now it's fixed :)
+    * fixed missing solobind symbol ampersand (&). fixes bitwise ops problem (needing brackets).
+    * added arg count check to userDefEval() (is greater than expected then error)
+    * added web_post() library function - takes url and k-v map.
+    * changed yyInitialStackSize up to 4 in the expression parser - shows as the best average to avoid stack allocs
+    * added numcomma() for formatting numbers with optional precision.
+    * added []interface{} type to min,max,sum,avg functions in lib-list. automatically casts to float64.
+    * Line numbering of tokens was off by a few units. Resolved.
+        * Was not adding to count for braced expressions () and {} which contained line feed characters.
+    * Started new example: proc_data to demo larger list processing (1 million values): min,max,avg,sum,transform,reduce tests
+    * updated za reference document
+    * changed rand() behaviour to return int between 1..n inclusive instead of 0..n-1
+        * you could not feed rand back into itself as underlying rand.Intn() would panic with an input of 0.
+        * may also add a rand0() function later to replicate original behaviour
+    * evaluator optimisations
+        * we've done about as much as possible now without taking yacc apart too much more.
+        * to speed up simple loop calcuations, use the "INC/DEC a x" commands instead of a=a+-x to help avoiding the evaluator.
+            * this will use built-in eval for constant ints and za variables but still pass out to the evaluator for anything complicated.
+            * this has quite an effect on loop speed. we now loop at similar speed to Python xrange for such simple cases.
+               * we are not aiming for any better than this currently - it would need a completely different evaluator.
+    * fixed accessField to use evaluated field index to get maps indices working as expected again.
+    * removed spent MODULEs after they have been executed.
+    * cleaned up SHOWDEF output.
+    * fixed PANE DEFINE to use comma delimiters and evaluate arguments properly (including interpolation).
+
+    * added web server support (basic!):
+        * You won't be replacing nginx with this - it is intended for emergency situations where you need either a 
+            reverse proxy or a static web server in a rush. The general use case might be generating a set of reports and 
+            making them available quickly. i.e. sending people a hyperlink to their index. Alternatively, you may need to
+            put error detection in front of another web server or between a dumb load balancer and a service.
+
+        * new library calls in lib-net.go:
+            * ident=web_serve_start(docroot[,tcp_port,interface_ip])
+            * web_serve_stop(ident)
+            * bool_avail=web_serve_up(ident)
+            * web_serve_path(ident,path,mutation)
+
+        * added example script at eg/web
+        * added new logging commands:
+            * LOGGING WEB 0/OFF/DISABLE | 1/ON/ENABLE
+            * LOGGING ACCESSFILE file_name
+
+    * added rate limiting to web logging. when message repeats exactly (except timestamp) only the first 5 are shown.
+        * thereafter, every 10000 messages are skipped, until the message changes.
+
+    * added web_serve_log_throttle() for the setting the lastWlogStart and lastWlogEvery variables
+
+    * added simple support for POST and HEAD requests in reverse proxy rules. It's probably buggy at this stage.
+        * form data is copied over from the original request
+
+    * added support for query (?) and fragments (#) in reverse proxy GET and HEAD requests.
+        * need to check if this is needed elsewhere.
+
+    * added web_head() library function. checks success of a HTTP HEAD call.
+
+    * updated za.vim syntax file
+
+    * added checks for variable existence before first use on r.h.s. 
+
+    * fixed CONTINUE in ON..DO (similar to previous BREAK issue).
+
+
+0.8.3
+    * *sigh* pulled apart goval package, turned mapped variables into array-based.
+        * there is now a separate variable stack per function space.
+    * added a few helper functions for handling Variable structs.
+        * this has all further reduced GC and run-time complexity.
+    * in doing this, a few problems fell out with indices and reflection of struct literals.
+        * ended up changing most of lib-list to accommodate this.
+        * lib-list now only supports lists of string, float64, int and bool (where appropriate).
+        * lib-list silently supports interface{} where convenient.
+    * now propagating evalfs through goval from Evaluate() call. Allows for nesting/recursion calling back and forth between udf and goval.
+    * warn if lib call/var has same name as fn/keyword instead of silently dropping.
+        * added -A startup flag to set global safetyAssign
+        * safetyAssign checked on first declaration of new variable names per function
+            * when true, checks stdlib and keywords against new var name.
+        * -A defaults to off as it incurs a small speed penalty. (this might change)
+    * possibly fixed now... za functions cannot be processed when contained inside a standard library call. (should be interchangeable now)
+    * list_int() was discarding rather than rounding down floats. 
+        * GetAsInt() now converts strings to float then int. errors if still no conversion possible.
+    * added a bypass in FOR loops so that the counter variable is only set at the end of the loop when it has not been referenced during the loop.
+        * Much faster iterations when value is not needed. Saves a write inside the loop.
+    * added Close() of input stream when bash coproc is unexpectedly interrupted, before new coprocess launched.
+        * not perfect still, but less remnant input breaking interactive mode.
+    * changed FOREACH to handle literal lists (int,float,string,mixed)
+    * changed FOREACH to convert single int or float64 results into a list for iteration.
+    * more type/existence checking around accessField (which we currently do not use, but for which syntax is still handled).
+    * Hacked up int_lexer and int_parser some more:
+        * Removed temp vars and length checks where appropriate. (Replaced with alternatives).
+        * Removed dead initialisations.
+        * Tweaked GC limit again (back downwards).
+        * changed yyInitialStackSize down to 2 in the parser.
+        * Unrolled some -/+2 calculations into double post increments to hopefully inform the compiler better. (And remove in-between +1/-1 calcs).
+        * Removed a dead yyTok3 section (contained only int{0} in the data).
+        * Added a 4 variable lookup cache to vget()
+    * added some support for uint8
+    * converted all CartonToken to Token types. Removed the carton type.
+    * added a tokVal field to Token which carries evaluation results.
+    * references to .name field changed to .tokText field.
+
+
+0.8.2
+    * made funcs() arg optional.
+    * started adding unit/coverage tests
+    * moved enact() functionality into Call(). changed calling params to include a mode flag
+        * modes: MODE_CALL, MODE_ENACT. 
+        * resulted in approx. 10% speed up processing commands and much less GC.
+    * added return value of breakIn from Call() back in. This sets breakIn in the caller after an ON..DO command.
+
+0.8.0
+    tested: "pipesep() broken"
+      * mostly okay. added code to reset fields to null before scan. reduced NF size by 1.
+    tested: "we should be able to directly assign entire arrays, eg. prev=getglob("prev") but this is currently not supported!"
+      * seems to work fine, at least in interactive mode.
+    Added guard against some variable misnaming (when same as keywords)
+    Added some more error checking.
+    Removed some unneeded assignment from the evalCrush* functions.
+    Tweaked GOGC to be lazier.
+    Added a -P flag for capturing trace output.
+    Made -f arg optional. Will take filename to execute from first unprocessed cmd line arg instead if present.
+    Fixed FOREACH looping over empty expression string results
+    Changed funcs() to only match function names, not categories.
+    Changed some more finish() conditions to not break out of interactive mode on error.
+    Other library changes:
+        * type check added for arg #3 in col()
+        * added a few more types (int,int32,int64,float32) to head()
+        * added a few more types (int,int32,int64,float32) to tail()
+        * fixed panic in sort() when all element types didn't match.
+        * fixed panic in uniq() when all element types didn't match.
+        * added new similar() function in lib-list.
+        * added optional new file mode in write_file()
+        * added optional field separator for db_query() (arg#3:string,default:"|")
+        * changed tokens() to return a token list instead of trying to print one.
+        * fixed up pad() some more. (odd division size rounding)
+    Updated eval() output to show returned error strings when needed.
+    Updated za.vim background (hi Normal bg NONE rather than Black)
+    Updated vim syntax file for changed commands.
+
+0.7.9
+    added eval() stdlib function for expression evaluation of provided string.
+    added library function and keyword lookup as argument to HELP command.
+    updated vim syntax file
+    changed debug to use a global level int instead of a za mapped variable. should improve call rejection speed a little.
+
+0.7.8
+    changed the bulk of the map[uint64] internal trackers to slice-of types.
+    bypassed some function calls where possible inside ev().
+    updated vim syntax file.
+
+0.7.7
+    updated coprocess calls to return results char-by-char instead of using ReadBytes(delim). turns out, it is much faster!
+    added a handler to recreate the coprocess on a user interrupt...
+      previously the coprocess would potentially hang in the background after an interrupt in interactive mode.
+    moved opening brace check to the inside of the interpolate() function. interpolate gets called from other places now than just ev()
+      so, extra fn call in ev() but speeds up evaluation in general because of early interpolate terminations elsewhere.
+    disabled debug statements in source. they currently perform too slowly to leave in place. 
+
+0.7.6
+    updated service() and install() to fix version/package manager mismatches.
+    small bodge for ON..DO | cmd syntax to temporarily duct tape it. Needs an overhaul.
+    updated reference manual
+
+0.7.5
+    modified C_Return logic and debugging.
+    fixed a bug in init system detection for lib-package
+    added a -T option for setting the max_timeout value in calls to bash coproc.
+    added LOGGING QUIET|LOUD settings to squash console output for LOG messages.
+    added some fixes to line_replace() and line_add() for newline characters.
+    added LOGGING SUBJECT expression for amending the prepended log line string.
+
+0.7.4
+    added local() function for dereferencing a local value.
+    removed error states from is_dir() lib function.
+
+0.7.3
+    started testing under Windows/WSL/Ubuntu-18.04
+    added fix for on ... do break
+
+0.7.2
+    fixed exit code evaluation in EXIT command.
+    added usage information for INPUT and PROMPT.
+    fixed exceptions in INPUT and PROMPT.
+    now cleaning out @temp in caller pre function call. 
+
+0.7.1
+    added note in docs about avoiding interpolation in normal assignments
+    showdef output: fixed missing EOL chars.
+    fixed right-hand side interpolation for some assignment cases. e.g. {a_{c}}
+    added some support on LHS of assignments for interpolation.
+        * still needs adding in many cases, e.g. ZERO, INC, DEC, SETGLOB, probably bash command assignment
+        * need to confirm this already works in array element name building -- DONE/not working/BP1
+    added ON command : ON condition DO command
+
+0.7.0
+    fixed return value string quoting
+
+0.6.9
+    fixed col()
+    fixed is_number()
+    added syntax highlighting for library functions and user-defined functions (vim syntax file in doc/za.vim)
+
+<0.6.9 historic: probably have the fix details somewhere, but these versions were internal only.
+
+
