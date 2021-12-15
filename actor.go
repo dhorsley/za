@@ -3723,6 +3723,7 @@ tco_reentry:
                                     validated := false
                                     for !validated || broken {
                                         intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                        intext=sanitise(intext)
                                         validated, _ = regexp.MatchString(validator, intext)
                                     }
                                     if !broken {
@@ -3731,6 +3732,7 @@ tco_reentry:
                                 } else {
                                     var inp string
                                     inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    inp=sanitise(inp)
                                     vset(ifs, ident,inbound.Tokens[1].tokText, inp)
                                 }
                                 if broken {

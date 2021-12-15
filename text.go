@@ -81,6 +81,27 @@ func pad(s string, just int, w int, fill string) string {
 	return ""
 }
 
+
+func sanitise(s string) string {
+    var ns str.Builder
+    pass:=true
+    nest:=0
+    for p:=0;p<len(s); p++ {
+        if s[p]=='{' { nest+=1; pass=false }
+        if s[p]=='}' {
+            if nest!=0 {
+                nest-=1
+            }
+            if nest==0 && pass==false {
+                pass=true
+                continue
+            }
+        }
+        if pass { ns.WriteByte(s[p]) }
+    }
+    return ns.String()
+}
+
 func stripOuter(s string, c byte) string {
 	if len(s) > 0 && s[0] == c {
         s=s[1:]

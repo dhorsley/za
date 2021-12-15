@@ -70,7 +70,7 @@ func buildStringLib() {
         "substr", "gsub", "replace", "trim", "lines", "count","inset",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
-        "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc",
+        "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc","clean",
     }
 
     replaceCompileCache:=make(map[string]regexp.Regexp)
@@ -304,6 +304,12 @@ func buildStringLib() {
     stdlib["stripcc"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("stripcc",args,1,"1","string"); !ok { return nil,err }
         return StripCC(args[0].(string)), nil
+    }
+
+    slhelp["clean"] = LibHelp{in: "string", out: "string", action: "Remove curly brace nests from a string. Use this to sanitise inputs."}
+    stdlib["clean"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("clean",args,1,"1","string"); !ok { return nil,err }
+        return sanitise(args[0].(string)), nil
     }
 
     slhelp["stripquotes"] = LibHelp{in: "string", out: "string", action: "Remove outer quotes (double, single or backtick)"}

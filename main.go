@@ -187,7 +187,6 @@ var permit_exitquiet    bool    // default:false, squash (true) or display (fals
 var permit_shell        bool    // default: true, when false, exit script if shell command encountered
 var permit_eval         bool    // default: true, when false, exit script if eval call encountered
 
-
 // test related setup, completely non thread safe
 var testMode bool
 var under_test bool
