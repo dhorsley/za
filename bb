@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [[ "$1" == "escape" ]]; then
-    go build -gcflags "-m -m" za
+    go build -ldflags="-extldflags=-static" -gcflags "-m -m" za
     exit 0
 else
     go build za

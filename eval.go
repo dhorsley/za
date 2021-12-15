@@ -675,6 +675,8 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case string:
         sz=len(left)
+    case [][]int:
+        sz=len(left)
     case []interface{}:
         sz=len(left)
 

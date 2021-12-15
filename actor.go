@@ -1373,6 +1373,8 @@ tco_reentry:
                     l=len(lv)
                 case map[string]interface{}:
                     l=len(lv)
+                case [][]int:
+                    l=len(lv)
                 case []interface{}:
                     l=len(lv)
                 default:
@@ -1568,6 +1570,13 @@ tco_reentry:
                         vset(ifs, ident,"key_"+fid, 0)
                         vset(ifs, ident, fid, we.result.([]alloc_info)[0])
                         condEndPos = len(we.result.([]alloc_info)) - 1
+                    }
+
+                case [][]int:
+                    if len(we.result.([][]int)) > 0 {
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([][]int)[0])
+                        condEndPos = len(we.result.([][]int)) - 1
                     }
 
                 case []map[string]interface{}:
@@ -1828,6 +1837,9 @@ tco_reentry:
                         case []float64:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
+                        case [][]int:
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([][]int)[(*thisLoop).counter])
                         case []map[string]interface{}:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]interface{})[(*thisLoop).counter])

@@ -44,15 +44,15 @@ end
 
 define interface_ip(in)
     addrline =< ip addr show dev {in}
-    ipaddr=replace(filter(addrline,"inet.*/"),"inet ","")
-    ipaddr=replace(ipaddr,"/","")
+    fil=addrline.reg_filter("inet.*/")
+    ipaddr=addrline[fil[0][0]:fil[0][1]].reg_replace("inet ","").gsub("/","")
     return ipaddr
 end
 
 define negreg(inp,matcher)
     out=""
     foreach l in inp
-        if match(l,matcher); continue; endif
+        on match(l,matcher) do continue
         out=out+l+"\n"
     endfor
     return out
@@ -233,8 +233,8 @@ define showProcs(ct,uptime)
         on !is_file(p) do break
         ps = $in p
 
-        comm=tr(filter(ps,`\(.*?\)`),"d","()")
-        ps=replace(ps,`\(.*?\)`,`"comm"`)
+        comm=ps.filter(`\(.*?\)`).tr("d","()")
+        ps=ps.reg_replace(`\(.*?\)`,`"comm"`)
 
         # split up
         fields(ps)
@@ -286,7 +286,7 @@ define showProcs(ct,uptime)
         foreach p in sorted
             at 20-lcount,1
             fields(p," ")
-            on proc_filter!="" and not match($lc F[10],$lc proc_filter) do continue
+            on proc_filter!="" and not reg_match($lc F[10],$lc proc_filter) do continue
             # skip low activity processes
             # on float(F[4])<0.2 or float(F[5])<0.2 do continue
             on len(F[10])>=comwidth do F[10]=substr(F[10],0,comwidth-1)
@@ -352,7 +352,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         on kind(name)!="string" do continue
         on name=="cpu" do continue
 
-        if match(name,"^cpu")
+        if reg_match(name,"^cpu")
 
             # split up row
             f=F.tail
@@ -670,9 +670,9 @@ end
 # MAIN
 # 
 
-# in microseconds
-key_timeout=1000000
-timeout=key_timeout/1000
+# in milliseconds
+key_timeout=1000
+timeout=key_timeout
 
 sample_start_in=4
 net_sample_start_in=1
@@ -768,12 +768,13 @@ while !quit
     t  = epoch_nano_time()
     d  = date_human(t/1_000_000_000)
     dt = float(t-lt) / 1_000_000
+    dts= format("frame: %.2fms",dt)
     lt = t
 
     at 1,1,ccformat("[#bold]%"+
             string(pane_w()-2)+
             "s[#boff][#-]",d+
-            " | Current Timeout : {timeout} ms"
+            " | {dts} | Current Timeout : {timeout} ms"
     )
 
     # get user input
@@ -798,7 +799,7 @@ while !quit
     is "t"
         clear(1,1,1); at 1,1
         prompt timeout "New Timeout (ms) : " "^[0-9]+$"
-        key_timeout=timeout.int*1000
+        key_timeout=timeout.int
     is "D"
         showCpuDetails = ! showCpuDetails
     is "B"
@@ -811,7 +812,7 @@ while !quit
         clear(1,1,1)
         at 1,1, "(h) help  (t) timeout  (i) interface  (q) quit  "
         print "(D) cpu details  (B) cpu bars  (T) cpu totals  (f) filter"
-        k=keypress(1500*1000)
+        k=keypress(1500)
         clear(1,1,1)
     endwhen
 

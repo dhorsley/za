@@ -1,0 +1,69 @@
+#!/usr/bin/za
+
+define runFilter(s,v)
+    f=reg_filter(s,v)
+    println "filter [{v}] done."
+    return format("%s %d", v, len(f))
+end
+
+define runSubs(subs,seq)
+    foreach v in subs
+        println `Sub for {=v[0]},{=v[1]}`
+        seq=reg_replace(seq,v[0],v[1])
+    endfor
+    return seq.len
+end
+
+define perf_regex_dna()
+
+    variants = [
+          "agggtaaa|tttaccct",
+          "[cgt]gggtaaa|tttaccc[acg]",
+          "a[act]ggtaaa|tttacc[agt]t",
+          "ag[act]gtaaa|tttac[agt]ct",
+          "agg[act]taaa|ttta[agt]cct",
+          "aggg[acg]aaa|ttt[cgt]ccct",
+          "agggt[cgt]aa|tt[acg]accct",
+          "agggta[cgt]a|t[acg]taccct",
+          "agggtaa[cgt]|[acg]ttaccct"
+    ]
+
+    subs=[]
+    subs=subs.append([ `tHa[Nt]`, `<4>`            ])
+    subs=subs.append([ `aND|caN|Ha[DS]|WaS`, `<3>` ])
+    subs=subs.append([ `a[NSt]|BY`, `<2>`          ])
+    subs=subs.append([ `<[^>]*>`, `|`              ])
+    subs=subs.append([ `\|[^|][^|]*\|`, `-`        ])
+
+    seq = read_file("/dev/stdin")
+    l1 = seq.len
+
+    seq = reg_replace(seq, ">.*\n|\n", "")
+    l2 = seq.len
+
+    foreach v in variants
+        async ahandles runFilter(seq,v) "filter_{key_v}"
+    endfor
+
+    async ahandles runSubs(subs,seq) "subtot"
+
+    # wait for completion
+    res=ahandles.await(true)
+
+    # push to screen in same order they were sent for processing
+    for e=0 to res.len-1
+        on key("res","filter_{e}") do println format("%s",res["filter_{e}"])
+    endfor
+
+    println
+    println l1
+    println l2
+    println res["subtot"]
+
+end
+
+# MAIN
+
+perf_regex_dna()
+
+

@@ -3,6 +3,7 @@ module za
 go 1.14
 
 require (
+	github.com/GRbit/go-pcre v1.0.0 // indirect
 	github.com/ajstarks/svgo v0.0.0-20200320125537-f189e35d30ca
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/go-sql-driver/mysql v1.5.0
