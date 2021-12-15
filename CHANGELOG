@@ -8,6 +8,31 @@ CHANGE LOG
     library changes
     ---------------
 
+    * experimental: added support for libpcre3 basic use in musl/libc builds
+        - wrapper around some functions in github.com/GRbit/go-pcre
+        - have to install libpcre3-dev on the build machine
+        - need an alternative for windows builds, as they are dynamically-linked.
+        - only added these calls so far:
+            - reg_match(haystack,pcre_needle) (bool) : match present?
+            - reg_filter(haystack,pcre_needle) ([][]int) : list of matching pair positions
+            - reg_replace(haystack,pcre_needle,replacement) (string) : replace all occurences
+            
+        - as a test, eg/regex (benchmarkgames test):
+            - was previously taking about 16 seconds with the 5MB test file
+            - directly replacing the filter and replace calls with reg_filter and reg_replace
+                in eg/pcre_regex takes the completion time down, on the same machine,
+                to approx. 3.254 seconds
+
+        - once we have time to test this more and find a workaround for other OS, this will
+            become a fixed non-experimental call, although we may wait to see if the go regexp
+            handling receives any further improvement first.
+
+        - there are alternative go-pcre packages that work with windows, but they would need
+            some work to wrap the calls and the search flags differently and i have no idea how
+            they perform yet either, so not rushing to fix this for windows.
+
+        - needs copyright/licenses in source and documentation pages.
+
     * experimental: added basic support for fsnotify golang lib
         - new lib funcs: ev_watch, ev_watch_close, ev_watch_add, ev_watch_remove, ev_exists, ev_event and ev_mask
         - see eg/notify for example use
@@ -30,9 +55,15 @@ CHANGE LOG
         in the background and foreground.
         e.g. print bgrgb(0,127,0),"MEDIUM GREEN"
 
+    * added support in lex.go for hex prefix numeric literals, e.g. 0xf000 => 61440 dec
+        - hex processing takes precedence over float tokens (i.e. 0x0f is 15, not 0.0)
+        - hex numbers are int64
+
 
     fixes
     -----
+
+    * added support for [][]int in FOREACH, len() and various other places.
 
     * windows: fix scrolling + term height issues.
         - partially done. still some artifacts, but better than it was.
@@ -66,7 +97,9 @@ CHANGE LOG
     other
     -----
 
-    * default build is now unstripped alpine variant
+    * default build is now a unified build for use on both alpine and other linuxes
+        - the old separate builds are available using ./build alpine|libc
+
     * updated za.vim
 
     * added -W startup flag:
@@ -90,10 +123,10 @@ CHANGE LOG
             engines. it also may give the impression that it's a good idea to use db queries in Za just because
             some support is there. the existing sql support was only ever meant as an emergency measure.
         - any program that requires statement preparation, transactions or other db engines should already have
-            been getting written in a more suitable tool for performance and maintenance.
+            been getting written in a more suitable tool for security, performance and maintenance.
         - this may change in a future version, but there's already enough other stuff to get right first.
 
-    * added case to ignore assignent in lvalue to terms whose identifier is the underscore.
+    * added case to ignore assignment in lvalue to terms whose identifier is the underscore.
         - e.g. a,_,c=["a","b","c"]
 
 

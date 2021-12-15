@@ -63,6 +63,8 @@ func ulen(args interface{}) (int,error) {
         return len(args),nil
     case map[string]interface{}:
         return len(args),nil
+    case [][]int:
+        return len(args),nil
     case []interface{}:
         return len(args),nil
     }
@@ -737,7 +739,7 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["keypress"] = LibHelp{in: "[timeout_μs]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. The microsecond unit for timeout will remain in case this is revised. Lower timeout requirements should use asynchronous functionality."}
+    slhelp["keypress"] = LibHelp{in: "[timeout_ms]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. See the termios(3) man page for reasoning about VMIN/VTIME."}
     stdlib["keypress"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("keypress",args,3,
         "2","int","bool",

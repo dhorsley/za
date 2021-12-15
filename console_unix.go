@@ -148,7 +148,7 @@ func getch(timeo int) ( []byte, bool, bool, string ) {
 
     term.RawMode(tt)
 
-    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Microsecond))
+    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
     numRead, err := tt.Read(bigbytelist)
 
     tt.Restore()

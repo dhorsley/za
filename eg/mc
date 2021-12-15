@@ -312,7 +312,7 @@ while !quit
     print "{br}v[#-] view  {br}x[#-] execute  {br}b[#-] back  {br}q[#-] quit"
 
     # user input
-    k=keypress(20)
+    k=keypress(100)
 
     when char(k)
 

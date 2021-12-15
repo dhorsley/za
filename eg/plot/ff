@@ -75,7 +75,7 @@ async hmap fill(13,13,ob,b)
 
 while !quit
 
-    when keypress(10)
+    when keypress(100)
     is 32 # space
         quit=true
     is 13 # return

@@ -11,7 +11,7 @@ def quit()
             endif
             repoll=poll_dur
         endif
-        k=keypress(10)
+        k=keypress(100)
         on k!=0 do setglob quit=true
     endwhile
 end
