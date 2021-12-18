@@ -1152,22 +1152,18 @@ func (p *leparser) identifier(token Token) (interface{}) {
 
 
     // local variable lookup:
-
     bin:=bind_int(p.fs,token.tokText)
     if (*p.ident)[bin].declared {
         return (*p.ident)[bin].IValue
     }
-    var val interface{}
-    var there bool
 
     // global lookup:
-
-    // if !interactive {
-        // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
-        if val,there=vget(p.mident,&mident,token.tokText); there {
-            return val
-        }
-    // }
+    var val interface{}
+    var there bool
+    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
+    if val,there=vget(p.mident,&mident,token.tokText); there {
+        return val
+    }
 
     // permit references to uninitialised variables
     if permit_uninit {
@@ -1293,11 +1289,13 @@ func vsetInteger(fs uint32, ident *[szIdent]Variable, name string, value int) {
     var ll bool
     bin:=bind_int(fs,name)
     if atomic.LoadInt32(&concurrent_funcs)>0 { ll=true; vlock.Lock() }
+    (*ident)[bin]=Variable{IName:name,IValue:value,declared:true}
+    /*
     (*ident)[bin].IName=name
     (*ident)[bin].IValue=value
     (*ident)[bin].declared=true
+    */
     if ll { vlock.Unlock() }
-    // atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 }
 
 

@@ -10,7 +10,7 @@ for r=0 to 255 step 32
     endfor
     println "[#-]"
 endfor
-for r=0 to 255 step 16
+for r=0 to 255 step 32
     for b=0 to 255 step 32
         for g=0 to 255 step 32
             print bgrgb(r,g,b)," "

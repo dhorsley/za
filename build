@@ -6,6 +6,7 @@ var strip_enable,upx_enable bool
 
 tgt="default"
 ipath="/usr/bin"
+gobin="go"
 
 for e = 1 to argc()
     input do_what optarg e
@@ -17,6 +18,7 @@ for e = 1 to argc()
         is "alpine" ; tgt="alpine"
         is "libc"   ; tgt="libc"
         is "win"    ; tgt="win"
+        is "beta"   ; gobin="gobe"
         is "-path"
             ipath=argv()[e]
             e++

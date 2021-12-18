@@ -18,18 +18,16 @@ func bindResize() {
 // @catwalk: var ;p/09<F7>
 
 type lru_bind struct {
-    used bool
     name string
-    fs uint32
     res uint64
+    fs uint32
+    used bool
 }
 
 var lru_bind_cache [sz_lru_cache]lru_bind
 
 func add_lru_bind_cache(fs uint32,name string,res uint64) {
-    for e:=sz_lru_cache-1; e>0; e-=1 {
-        lru_bind_cache[e]=lru_bind_cache[e-1]
-    }
+    copy(lru_bind_cache[1:],lru_bind_cache[:sz_lru_cache-1])
     lru_bind_cache[0]=lru_bind{fs:fs,name:name,res:res,used:true}
 }
 
@@ -46,7 +44,8 @@ var bindlock = &sync.RWMutex{}
 
 func bind_int(fs uint32,name string) (i uint64) {
 
-    if atomic.LoadInt32(&concurrent_funcs)>0 { bindlock.Lock() ; defer bindlock.Unlock() }
+    var locked bool
+    if atomic.LoadInt32(&concurrent_funcs)>0 { bindlock.Lock() ; locked=true }
 
     for e:=range lru_bind_cache {
         if lru_bind_cache[e].used==false { break }
@@ -54,6 +53,7 @@ func bind_int(fs uint32,name string) (i uint64) {
         if fs==lru_bind_cache[e].fs {
             if strcmp(name,lru_bind_cache[e].name) {
                 // fmt.Printf("[%d] %s -> found in lru cache\n",fs,name)
+                if locked { bindlock.Unlock() }
                 return lru_bind_cache[e].res
             }
         }
@@ -62,9 +62,11 @@ func bind_int(fs uint32,name string) (i uint64) {
     if bindings[fs]==nil {
         bindings[fs]=make(map[string]uint64)
     }
+
     var present bool
     if i,present=bindings[fs][name]; present {
         add_lru_bind_cache(fs,name,i)
+        if locked { bindlock.Unlock() }
         return
     }
 
@@ -76,6 +78,7 @@ func bind_int(fs uint32,name string) (i uint64) {
     bindings[fs][name]=i
     add_lru_bind_cache(fs,name,i)
     // fmt.Printf("[bi] added binding in #%d for %s to %d\n",fs,name,i)
+    if locked { bindlock.Unlock() }
     return
 }
 
