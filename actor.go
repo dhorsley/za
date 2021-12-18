@@ -603,6 +603,7 @@ tco_reentry:
     farglock.RLock()
     if len(va) > 0 {
         for q, v := range va {
+            if q>=len(functionArgs[source_base].args) { break }
             fa:=functionArgs[source_base].args[q]
             /*
             pf("-- setting va-to-var (fargs-sb) : %+v\n",functionArgs[source_base])

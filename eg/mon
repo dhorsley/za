@@ -176,27 +176,27 @@ define showMem()
     clear(2,9,1)
 
     at 2,1, "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
-    print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]   "
 
     at 3,1, "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
-    print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]   "
 
     at 4,1, "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
-    print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]   "
 
     at 5,1, "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]   "
 
     at 6,1, "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]   "
 
     at 7,1, "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
-    print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]"
+    print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]   "
 
     al=get_mem().alloc.int
     ts=get_mem().system.int
     at 8,1, "[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
-    print " [#6]{=hobbitsize(al*1024*1024)}B [#-]"
+    print " [#6]{=hobbitsize(al*1024*1024)}B [#-]   "
 
     # display slab info
 
@@ -228,6 +228,7 @@ define showProcs(ct,uptime)
     # get filenames
     procs =< ls -1 /proc/*/stat
     procs = line_filter(procs,"/[0-9]+/")
+    var proc_list assoc
 
     foreach p in procs
         on !is_file(p) do break
@@ -521,7 +522,6 @@ define showHdd()
 
 end
 
-
 define showNet(net_sc,load,ipaddr,interface,timeout)
 
     cursoroff()
@@ -536,8 +536,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     at 2,4,"Interface [{interface}] Addr : {ipaddr} "
 
-    at pane_h()-4,4,"[#6]", legload[0], "[#-] 64B-4Ki  [#6]", legload[1], "[#-] 4Ki-256Ki  [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
-    at pane_h()-3,11,"[#6]", legload[3], "[#-] 16Mi-1Gi  [#6]", legload[4],"[#-] 1Gi-64Gi"
+    #at pane_h()-4,4,"[#6]", legload[0], "[#-] 64B-4Ki  [#6]", legload[1], "[#-] 4Ki-256Ki  [#6]", legload[2], "[#-] 256Ki-16Mi [#6]"
+    #at pane_h()-3,11,"[#6]", legload[3], "[#-] 16Mi-1Gi  [#6]", legload[4],"[#-] 1Gi-64Gi"
 
     foreach int_name in net_interfaces()
 
@@ -555,6 +555,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             # diff from previous
             drb=rbytes-prev_rbytes
             dtb=tbytes-prev_tbytes
+            on drb < 0 do drb = 0
+            on dtb < 0 do dtb = 0
 
             # shift left and append new to end
             setglob rblist=rblist.tail.append(drb)
@@ -563,48 +565,16 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             # display using log scale up to log64(5).
             # using key_timeout as a rough scaler for the sampling period.
 
-            full_magnitude=5
             midline=8
            
             # traffic plots
-
             clear(3,7,1)
             clear(9,13,1)
-
-            for f=2 to net_sc
-                # recv plot
-                sample=rblist[f-2].int
-                if sample!=0
-                    rsz=logn(sample,64).int
-                    on rsz>full_magnitude do rsz=full_magnitude
-                    if rsz>0
-                        for brow=1 to rsz
-                            at midline-brow,1+f , load[brow-1]
-                        endfor
-                    endif
-                endif
-                print "[#-]"
-
-                # transmit plot
-                sample=tblist[f-2].int
-                if sample!=0
-                    tsz=logn(sample,64).int
-                    on tsz>full_magnitude do tsz=full_magnitude
-                    if tsz>0
-                        for brow=1 to tsz
-                            at midline+brow,1+f , load[brow-1]
-                        endfor
-                    endif
-                endif
-
-                print "[#-]"
-
-            endfor
-
-            for e=1 to len(legload)
-                at midline-e,1, "[#4]",legload[e-1],"[#-]"
-                at midline+e,1, "[#1]",legload[e-1],"[#-]"
-            endfor
+            # log each value to with n=64, convert to a percentage, then clamp between 0-100. convert result to []int and chart.
+            chart(midline-1,2,5,
+                ( (rblist[1:] -> "[20*(logn(#,64)-1),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(0,2/3*?,2*?)",false,false)
+            chart(midline+1,2,5,
+                ( (tblist[1:] -> "[20*(logn(#,64)-1),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(2*?,0,0)",false,true)
 
             # write history
             setglob prev_rbytes = rbytes
@@ -621,11 +591,9 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     endfor
 
-    setglob net_sample_start_in-=1
-    return
+    setglob net_sample_start_in -= 1
 
 end
-
 
 define redef_layout(cpu_count,pfilter)
 
@@ -669,6 +637,8 @@ end
 #
 # MAIN
 # 
+
+module "modules/dialog"
 
 # in milliseconds
 key_timeout=1000
@@ -720,7 +690,7 @@ prev_rbytes=0
 prev_tbytes=0
 
 # network load icons
-legload = [ "❶", "❷", "❸", "❹", "❺" ]
+#legload = [ "❶", "❷", "❸", "❹", "❺" ]
 load = [ "[#4]┃[#-]", "[#4]┃[#-]", "[#6]┃[#-]", "[#2]┃[#-]", "[#2]┉[#-]" ]
 
 # main loop

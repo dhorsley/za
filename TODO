@@ -9,6 +9,16 @@ lots, i'm sure.
 TODO
 ----
 
+    * tested compilation with go 1.18beta
+        - general execution speed up of around 10%, dependant on operation type.
+        - no issues with build compilation on linux (libc+alpine).
+            - not tested freebsd or windows yet.
+        - not done any debug, profiling or other internal work yet.
+        - need to identify a suitable component for generics testing.
+            - this is mainly to figure the eventual adoption scope.
+            - if it doesn't really help to slim down the masses of switch statements,
+                then it might be non-starter anyway!
+
     * need to put a firm reminder in docs/help to use clean and other sanitisation calls
         around data input. 
 
@@ -37,10 +47,6 @@ TODO
 
 
     ++ add more examples in docs/
-
-    # may also be worth adding something for controlling local echo
-    # igncr, etc like stty would. we already import termios so this
-    # shouldn't be a problem.
 
 
 LATER / UNDECIDED

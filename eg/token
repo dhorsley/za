@@ -29,7 +29,7 @@ while not quit
     is "exit"
         quit=true
     is "identifier"
-        when t.tokens[0]
+        when $lc t.tokens[0]
         is "s3"
             on t.tokens.len>1 do s3_command(t.tokens[1:])
         endwhen

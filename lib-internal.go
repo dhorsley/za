@@ -15,6 +15,7 @@ import (
     "runtime"
     "sort"
     str "strings"
+//     "golang.org/x/sys/unix"
 )
 
 
@@ -179,6 +180,53 @@ func GetAst(fn string) (ast string) {
 }
 
 
+/* for future use:
+func sttyFlag(flags string,state bool) (okay bool) {
+    termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
+    newState := *termios
+    if err!=nil {
+        return false
+    }
+    for fp:=0;fp<len(flags); fp++ {
+        f:=flags[fp]
+        if state {
+            switch f {
+            case 'n':
+                newState.Iflag |= unix.ICRNL
+            case 'i':
+                newState.Iflag |= unix.INLCR
+                newState.Iflag |= unix.IGNCR
+            case 'u':
+                newState.Iflag |= unix.IUCLC
+            case 's':
+                newState.Lflag |= unix.ISIG
+            case 'c':
+                newState.Lflag |= unix.ICANON
+            case 'e':
+                newState.Lflag |= unix.ECHO
+            }
+        } else {
+            switch f {
+            case 'n':
+                newState.Iflag &^= unix.ICRNL
+            case 'i':
+                newState.Iflag &^= unix.INLCR
+                newState.Iflag &^= unix.IGNCR
+            case 'u':
+                newState.Iflag &^= unix.IUCLC
+            case 's':
+                newState.Lflag &^= unix.ISIG
+            case 'c':
+                newState.Lflag &^= unix.ICANON
+            case 'e':
+                newState.Lflag &^= unix.ECHO
+            }
+        }
+	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+    }
+    return true
+}
+*/
 
 func buildInternalLib() {
 
@@ -193,6 +241,7 @@ func buildInternalLib() {
         "globlen","len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
+        // "conread","conwrite","conset","conclear", : for future use.
     }
 
 
@@ -228,6 +277,36 @@ func buildInternalLib() {
         if ok,err:=expect_args("enum_all",args,1,"1","string"); !ok { return nil,err }
         return enum_all(args[0].(string)),nil
     }
+
+    /*
+    slhelp["conread"] = LibHelp{in: "", out: "termios_struct", action: "reads console state struct."}
+    stdlib["conread"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("conread",args,1,"0"); !ok { return nil,err }
+        termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
+        if err!=nil {
+            return nil,err
+        }
+        return termios,nil
+    }
+
+    slhelp["conwrite"] = LibHelp{in: "", out: "int", action: "writes console state struct."}
+    stdlib["conwrite"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("conwrite",args,1,"1","*unix.Termios"); !ok { return nil,err }
+	    return nil,unix.IoctlSetTermios(0, ioctlWriteTermios, args[0].(*unix.Termios))
+    }
+
+    slhelp["conclear"] = LibHelp{in: "string", out: "bool", action: "resets console state bits. returns success flag.\nFlags are n:ICRNL i:IGNCR u:IUCLC s:ISIG c:ICANON e:ECHO\nSee man page termios (3) for further details."}
+    stdlib["conclear"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("conclear",args,1,"1","string"); !ok { return nil,err }
+        return sttyFlag(args[0].(string),false),nil
+    }
+
+    slhelp["conset"] = LibHelp{in: "string", out: "bool", action: "sets console state bits. returns success flag.\nFlags are n:ICRNL i:IGNCR u:IUCLC s:ISIG c:ICANON e:ECHO\nSee man page termios (3) for further details."}
+    stdlib["conset"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("conset",args,1,"1","string"); !ok { return nil,err }
+        return sttyFlag(args[0].(string),true),nil
+    }
+    */
 
     slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     stdlib["zainfo"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
@@ -392,7 +471,7 @@ func buildInternalLib() {
         return v,nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports.\nexitquiet(bool): shorter error message.\nshell(bool): permit shell commands.\neval(bool): permit eval() calls.\nassigneval(bool): permit interpolation in assignments."}
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit(bool): determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod(bool): ignore duplicate module imports.\nexitquiet(bool): shorter error message.\nshell(bool): permit shell commands.\neval(bool): permit eval() calls."}
     stdlib["permit"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("permit",args,4,
         "2","string","bool",

@@ -537,21 +537,35 @@ end
 
 ############################################################################
 
-define vbar(row,col,vsize,pc,colour,label)
+define vbar(row,col,vsize,pc,colour,label,down)
+
     b1000 = "█"
-    b0750 = "▆"
-    b0500 = "▄"
-    b0250 = "▂"
-    b0125 = "▁"
+    if down
+        b0750 = "[#invert]▂"
+        b0500 = "▀"
+        b0250 = "[#invert]▆"
+        b0125 = "▔"
+    else
+        b0750 = "▆"
+        b0500 = "▄"
+        b0250 = "▂"
+        b0125 = "▁"
+    endif
+
     us = vsize / 100f   # 1% height of total
     d  = pc*us          # height of input percent
     r  = d-d.int        # remainder
+    d  = int(d)
+    offset=-1
+    on down do offset=1
     # whole parts
-    for e=0 to d.int
-        on e>0 do at row-e,col,"{colour}{b1000}[#-]"
-    endfor
+    #if d-1>=0
+        for e=0 to d-1
+            on d>0 do at row+e*offset,col,"{colour}{b1000}[#-]"
+        endfor
+    #endif
     # remainder
-    at row-e-1,col
+    at row+d*offset,col
     c=" "
     on r>=0.125 do c=b0125
     on r>=0.25  do c=b0250
@@ -563,29 +577,27 @@ define vbar(row,col,vsize,pc,colour,label)
         s=format("%d",pc)
         l=s.len
         for j=0 to l-1
-            at row-e-(l-j)-1,col,s[j]
+            at row+(e+1)*offset+(l-j)*offset,col,s[j]
         endfor
     endif
 end
 
-define chart(row,col,max_height,series,colour,label)
-    oc=-1
+define chart(row,col,max_height,series,colour,label,down)
     for e = 0 to series.len-1
-        while
-            c=eval(colour)
-            on c!=oc do break
-        endwhile
-        oc=c
-        vbar(row,col+e,max_height,series[e],c,label)
-        # on e%10==0 do at row+1,col+e,e
-        if label and e%2==0
+        c=colour.gsub("?",string(series[e])).eval
+        # at term_h()-1,1,bg256(0x7d),fg256(0xdd),"**** pe: {=series[e]} , pek: {=series[e].kind} ****        "
+        vbar(row,col+e,max_height,series[e],c,false,down)
+        offset=1-btoi(down)*2
+        doc `if label and e%2==0
             s=e.string
             l=s.len
             for j=0 to l-1
                 at row+j+1,col+e,s[j]
             endfor
-        endif
+        endif`
     endfor
+    on label do at row+(1+max_height)*offset,col-3,"100"
+    on label do at row+1*offset,col-2,"0%"
 end
 
 test "chart" group "dialog"

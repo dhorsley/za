@@ -15,7 +15,6 @@ import (
     "math"
     "reflect"
     "runtime"
-    "regexp"
     "sort"
     str "strings"
     "strconv"
@@ -123,7 +122,7 @@ func buildListLib() {
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
-        "any", "all", "concat", "esplit", "min", "max", "avg","eqlen",
+        "any", "all", "esplit", "min", "max", "avg","eqlen",
         "empty", "list_string", "list_float", "list_int","list_bool",
         "scan_left","zip",
     }
@@ -1283,14 +1282,17 @@ func buildListLib() {
 
     slhelp["list_float"] = LibHelp{in: "int_or_string_list", out: "[]float_list", action: "Returns [#i1]int_or_string_list[#i0] as a list of floats, with invalid items removed."}
     stdlib["list_float"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("list_float",args,4,
+        if ok,err:=expect_args("list_float",args,5,
             "1","[]int",
             "1","[]uint",
+            "1","[]float64",
             "1","[]string",
             "1","[]interface {}"); !ok { return nil,err }
 
         var float_list []float64
         switch args[0].(type) {
+        case []float64:
+            return args[0].([]float64),nil
         case []int:
             for _, q := range args[0].([]int) {
                 v, invalid := GetAsFloat(sf("%v", q))
@@ -1523,8 +1525,8 @@ func buildListLib() {
         }
     }
 
+    /*
     // concat(l1,l2) returns concatenated list of l1,l2
-    // @todo: remove this at some point, plus operator does the same thing now.
     slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "(deprecated) Concatenates two lists and returns the result."}
     stdlib["concat"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("concat",args,1,"2","any","any"); !ok { return nil,err }
@@ -1549,8 +1551,9 @@ func buildListLib() {
         }
         return nil, errors.New(sf("Unknown list type concatenation (%T+%T)",args[0],args[1]))
     }
+    */
 
-    // esplit(l,"a","b",match) recreates l with a[:match] and returns a[pos:]
+    // esplit(l,"a","b",match) recreates l with a[:match] and returns success flag
     slhelp["esplit"] = LibHelp{in: `[]list,"var1","var2",pos`, out: "bool", action: "Split [#i1]list[#i0] at position [#i1]pos[#i0] (1-based). Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]."}
     stdlib["esplit"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("esplit",args,1,"4","any","string","string","int"); !ok { return nil,err }
@@ -1616,6 +1619,7 @@ func buildListLib() {
         return true, nil
     }
 
+    /*
     // @note: this one is deliberately removed. it has issues.
     // msplit(l,match) recreates l with a[:matching_element_pos_of(match)] and returns status
     slhelp["msplit"] = LibHelp{in: `[]list,"var1","var2",match`, out: "bool", action: "Split [#i1]list[#i0] at first item matching [#i1]match[#i0]. Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]. Returns success flag."}
@@ -1663,6 +1667,7 @@ func buildListLib() {
         return true, nil
 
     }
+    */
 
     slhelp["eqlen"] = LibHelp{in: "list_of_lists_or_strings", out: "bool", action: "Checks that all lists or strings contained in the input are of equal length."}
     stdlib["eqlen"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
