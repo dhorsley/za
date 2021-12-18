@@ -118,7 +118,7 @@ func buildMathLib() {
 
     slhelp["logn"] = LibHelp{in: "number,base", out: "float", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
     stdlib["logn"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("log2",args,3,
+        if ok,err:=expect_args("logn",args,3,
         "2","float64","number",
         "2","int64","number",
         "2","int","number"); !ok { return nil,err }

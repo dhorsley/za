@@ -58,7 +58,10 @@ while not done
         for e= 0 to l-1
             append_to(ref series,rand(101)-1)
         endfor
-        chart(26,10,4+rand(6),series,"fgrgb(rand(255),rand(255),rand(255))",false)
+        maxheight=2+rand(3)
+        chart(21,10,maxheight,series,"fgrgb(rand(255),rand(255),rand(255))",true,false)
+        at 22,10,"[#6]","-"*series.len,"[#-]"
+        chart(23,10,maxheight,series.reverse,"fgrgb(rand(255),rand(255),rand(255))",true,true)
     is 9
         ds=[]
         foreach f in dir()

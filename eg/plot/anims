@@ -5,8 +5,7 @@
 # but you get the idea... it's just an object test.
 #
 
-CHAR=0
-BOX =1
+enum shapes { CHAR=0, BOX }
 
 struct object
     type    int
@@ -80,7 +79,7 @@ end
 define show(obj_list)
     foreach o in obj_list
         on o==nil do continue
-        if o.type==BOX
+        if o.type==shapes.BOX
             for e=0 to o.h-1
                 at int(o.y+e),int(o.x)
                 print "[#b"+o.bg+"][#"+o.fg+"]"+o.text+"[#-][##]"
@@ -96,7 +95,7 @@ define hide(obj_list)
     foreach o in obj_list
         on o==nil do continue
         on int(o.px)==int(o.x) && int(o.py)==int(o.y) do continue
-        if o.type==BOX
+        if o.type==shapes.BOX
             for e=0 to o.h-1
                 at int(o.py+e),int(o.px)
                 print pad(" ",-1,o.w," ")
@@ -124,11 +123,11 @@ end
 
 define object_add_box(n,label,x,y,h,bg,fg)
     var obj object
-    obj.type=BOX    ; obj.text=label
-    obj.fg=fg       ; obj.bg=int(bg)
-    obj.h=h         ; obj.w=label.len
-    obj.x=x.float   ; obj.y=y.float
-    obj.px=x.float  ; obj.py=y.float
+    obj.type=shapes.BOX ; obj.text=label
+    obj.fg=fg           ; obj.bg=int(bg)
+    obj.h=h             ; obj.w=label.len
+    obj.x=x.float       ; obj.y=y.float
+    obj.px=x.float      ; obj.py=y.float
     setglob objects[n]=obj
 end
 

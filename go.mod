@@ -10,4 +10,5 @@ require (
 	github.com/itchyny/gojq v0.12.1
 	github.com/pkg/term v0.0.0-20200520122047-c3ffed290a03
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	honnef.co/go/tools v0.2.2 // indirect
 )
