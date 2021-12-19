@@ -43,7 +43,7 @@ hc[`\[#-]`] = `</span>`
 hc[`\[##]`] = `</span>`
 
 
-define clean(s)
+define cc_clean(s)
     s=s.replace(`\[#i0]`,    `</span>`)
     s=s.replace(`\[#i1]`,    `<span class='ion'>`)
     s=s.replace(`\[#bold]`,  `<span class='boff'>`)
@@ -91,14 +91,14 @@ foreach c in func_categories()
 
         pageindex=pageindex+wli(wa(i,`href="#{i}"`))+"\n"
 
-        inp=fi[i].clean
-        out=fo[i].clean
-        desc=fd[i].html_escape.clean
+        inp=fi[i].cc_clean
+        out=fo[i].cc_clean
+        desc=fd[i].html_escape.cc_clean
 
         if out!=""
-            fnline=clean(`[#7]{out} = {i}({inp})[#-]`)
+            fnline=cc_clean(`[#7]{out} = {i}({inp})[#-]`)
         else
-            fnline=clean(`[#6]{i}({inp})[#-]`)
+            fnline=cc_clean(`[#6]{i}({inp})[#-]`)
         endif
 
         body+=wdiv(
