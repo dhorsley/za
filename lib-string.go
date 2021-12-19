@@ -212,7 +212,7 @@ func buildStringLib() {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in ccformat()") }
         if sf("%T",args[0])!="string" { return "",errors.New("Bad arguments (type) (arg #1 not string) in ccformat()") }
         if len(args) == 1 {
-            return sparkle(sf(args[0].(string))), nil
+            return sparkle(args[0].(string)), nil
         }
         return sparkle(sf(args[0].(string), args[1:]...)), nil
     }
@@ -222,7 +222,7 @@ func buildStringLib() {
         if len(args)==0 { return "",errors.New("Bad arguments (count) in format()") }
         if !strcmp(sf("%T",args[0]),"string") { return "",errors.New("Bad arguments (type) (first argument is not a string) in format()") }
         if len(args) == 1 {
-            return sf(args[0].(string)), nil
+            return args[0].(string), nil
         }
         return sf(args[0].(string), args[1:]...), nil
     }

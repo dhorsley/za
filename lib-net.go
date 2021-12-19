@@ -86,9 +86,11 @@ func limitNumClients(f http.HandlerFunc, maxClients int, evalfs uint32, ident *[
 func wlog(s string,va... interface{}) {
     lastlock.Lock()
     if log_web {
-        new_s:=sf(s,va...)
+        if len(va)>0 {
+            s=sf(s,va...)
+        }
         throttleEnded:=false
-        if lastWlogMsg==new_s { // repeat message
+        if lastWlogMsg==s { // repeat message
             lastWlogCount++
             if lastWlogCount==lastWlogStart { // begin throttling
                 throttle=true
@@ -101,7 +103,7 @@ func wlog(s string,va... interface{}) {
             }
         } else {
             lastWlogCount=0
-            lastWlogMsg=new_s
+            lastWlogMsg=s
             if throttle { throttleEnded=true }
             throttle=false
             WlogDisplay=true
@@ -112,7 +114,7 @@ func wlog(s string,va... interface{}) {
             web_logger.SetFlags((oldFlags | log.Lmicroseconds) &^ log.LUTC)
             if throttle      { web_logger.Printf("// skipped %d repeat messages.\n",lastWlogEvery) }
             if throttleEnded { web_logger.Printf("// stopped throttling messages.\n") }
-            web_logger.Printf(new_s)
+            web_logger.Printf(s)
             web_logger.SetFlags(oldFlags)
         }
     }
@@ -696,7 +698,7 @@ func buildNetLib() {
             weblock.Lock()
             web_handles[uid]=web_table_entry{srv:&srv,mux:mux,docroot:docroot,addr:addr,host:host,port:port}
             weblock.Unlock()
-            wlog("Started web service "+uid+"\n")
+            wlog("Started web service %s\n",uid)
             return uid,nil
         } else {
             return "",e
@@ -708,7 +710,7 @@ func buildNetLib() {
         if ok,err:=expect_args("web_serve_stop",args,1,"1","string"); !ok { return nil,err }
         uid:=args[0].(string)
         webClose(uid)
-        wlog("Stopped web service "+uid+"\n")
+        wlog("Stopped web service %s\n",uid)
         weblock.Lock()
         delete(web_handles,uid)
         weblock.Unlock()

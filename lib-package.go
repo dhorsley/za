@@ -232,7 +232,7 @@ func uninstall(pkgs string) (state int) {
     }
 
     updateCommand := sf("%s %s", pm, upopts)
-    pf("[upd] Executing: %s\n",updateCommand)
+    // pf("[upd] Executing: %s\n",updateCommand)
 
     if firstInstallRun {
         pf("Updating repository.\n")
@@ -249,7 +249,7 @@ func uninstall(pkgs string) (state int) {
     if err == 0 { // installed
         // remove
         removeCommand := sf("%s %s %s", pm, inopts, pkgs)
-        pf("[rem] Executing: %s\n",removeCommand)
+        // pf("[rem] Executing: %s\n",removeCommand)
         pf("Removing: %v\n", pkgs)
         cop := Copper(removeCommand, true)
         if !cop.okay {
@@ -285,8 +285,8 @@ func install(pkgs string) (state int) {
             return errcode
         }
         pkgs=localname
-    } else {
-        pf("no internet prefix\n")
+    // } else {
+        // pf("no internet prefix\n")
     }
 
     // local file install
@@ -331,8 +331,14 @@ func install(pkgs string) (state int) {
             pf("[#4]%s installed.[#-]\n",pkgs)
             return 0
         case ".apk": // apk
-            pf("[#2]Local files are not permitted for Alpine![#-]")
-            return -1
+            cmd:="apk add --allow-untrusted "+pbname
+            cop:=Copper(cmd,true)
+            if cop.code>0 {
+                pf("[#2]Error during package install! Do you have privileges?[#-]\n")
+                return -1
+            }
+            pf("[#4]%s installed.[#-]\n",pkgs)
+            return 0
         case ".sh" : // execute script
             pf("[#2]Script execution not supported![#-]")
             return -1
