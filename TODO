@@ -10,41 +10,15 @@ TODO
 ----
 
     * tested compilation with go 1.18beta
-        - general execution speed up of around 10%, dependant on operation type.
+        - execution speed up of up to 10%, dependant on operation type.
+            - most things remained at the same speed.
         - no issues with build compilation on linux (libc+alpine).
             - not tested freebsd or windows yet.
         - not done any debug, profiling or other internal work yet.
         - need to identify a suitable component for generics testing.
             - this is mainly to figure the eventual adoption scope.
             - if it doesn't really help to slim down the masses of switch statements,
-                then it might be non-starter anyway!
-
-    * need to put a firm reminder in docs/help to use clean and other sanitisation calls
-        around data input. 
-
-        - The PROMPT statement will automatically remove nestings of {} from input.
-        - Any user input which may be assigned or otherwise interpolated should be run
-            through the clean() lib call.
-            - i.e. input_var.clean
-        - Any standard input should be treated similarly.
-        - Any other form of data input should be considered before allowing people or other
-            systems to submit data through it.
-        - Other calls exists for cleansing inputs:
-            - stripquotes, stripcc, stripansi, addansi, clean, html_escape, trim, filter
-            - the ~, ~i and ~f regex operators
-            - PROMPT also has the optional regex validation feature.
-        - Verification and validation are not hard to write for yourself.
-        - permit() options exists for stopping some bad stuff:
-            - permit("eval",bool)   : enable/disable the eval() lib call
-            - permit("shell",bool)  : enable/disable shell command execution
-            - interpol(bool)        : enable/disable string interpolation
-
-        - A reminder that this is not intended to be a secure language
-            - the onus is on the programmer to do sane things.
-        
-        - It should be safe to use with adequate care and forethought.
-            - That does not include exposing it to unsanitised input and hoping for the best.
-
+                then it might a be non-starter anyway!
 
     ++ add more examples in docs/
 

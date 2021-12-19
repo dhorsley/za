@@ -380,10 +380,11 @@ func help_ops() {
 func help(hargs string) {
 
     helppage := `
-[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S]      \
-    [-s [#i1]path[#i0]] [-t] [-O [#i1]tval[#i0]]                    \
-    [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
-    [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
+[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S] [-W]  \
+    [-s [#i1]path[#i0]] [-V] [#i1]varname[#i0]                       \
+    [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]              \
+    [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]          \
+    [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]          \
     [-T [#i1]time-out[#i0]] [-U [#i1]sep[#i0]] [[-f] [#i1]input_file[#i0]][#-]
 
     [#4]-v[#-] : Version
@@ -401,7 +402,10 @@ func help(hargs string) {
     [#4]-O[#-] : Test override value [#i1]tval[#i0]
     [#4]-o[#-] : Name the test file [#i1]output_file[#i0]
     [#4]-G[#-] : Test group filter [#i1]group_filter[#i0]
+    [#4]-N[#-] : Test name filter [#i1]name_filter[#i0]
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
+    [#4]-W[#-] : Emit errors when addition contains strings mixed with other types
+    [#4]-V[#-] : find all references to a variable
     [#4]-m[#-] : Mark co-process command progress
     [#4]-U[#-] : Specify system command separator byte
     [#4]-Q[#-] : Show shell command options

@@ -1226,7 +1226,5 @@ func main() {
         term_complete()
     }
 
-    // debug(15,"var counts\nvget  : %d\nvgeti : %d\n",vgetcount,vgeticount)
-
 }
 

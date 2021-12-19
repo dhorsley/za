@@ -38,4 +38,15 @@ Licence : BSD-3-Clause License
 Home    : https://github.com/fsnotify/fsnotify
 Type    : Go Module
 
+Name    : go-pcre
+Authors : Pavel Gryaznov
+Fork of : https://github.com/pantsing/go-pcre                   (Pan Qing)
+        : ... https://github.com/hobeone/go-pcre                (Daniel Hobe)
+        : ... https://github.com/mathpl/golang-pkg-pcre         (Mathieu Payeur Levallois)
+        : ... https://github.com/glenn-brown/golang-pkg-pcre    (Glenn Brown)
+        : http://git.enyo.de/fw/debian/golang-pkg-pcre.git/     (Florian Weimer)
+Licence : Florian's copyright file reproduced in full @ PCRE-COPYRIGHT-FILE
+        : Distribution is in binary form as part of the compiled za executable (linux builds).
+Home    : https://github.com/GRbit/go-pcre
+Type    : Go Module
 
