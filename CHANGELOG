@@ -56,10 +56,6 @@ CHANGE LOG
         in the background and foreground.
         e.g. print bgrgb(0,127,0),"MEDIUM GREEN"
 
-    * added support in lex.go for hex prefix numeric literals, e.g. 0xf000 => 61440 dec
-        - hex processing takes precedence over float tokens (i.e. 0x0f is 15, not 0.0)
-        - hex numbers are int64
-
 
     fixes
     -----
@@ -97,6 +93,13 @@ CHANGE LOG
 
     other
     -----
+
+    * added support in lex.go for hex prefix numeric literals, e.g. 0xf000 => 61440 dec
+        - hex processing takes precedence over float tokens (i.e. 0x0f is 15, not 0.0)
+        - hex numbers are int64
+
+    * also added similar for binary and octal (0[b|B] and 0[o|O] prefixes)
+        - updated eval_ops.go / basic math operators to work with int64 better
 
     * default build is now a unified build for use on both alpine and other linuxes
         - the old separate builds are available using ./build alpine|libc

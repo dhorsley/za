@@ -129,21 +129,28 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 
 func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
-    var intInOne bool
-    var intInTwo bool
+    var intInOne, intInTwo, i641, i642 bool
 
     // short path integers
     switch val1.(type) {
     case int:
         intInOne=true
+    case int64:
+        i641=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
+    case int64:
+        i642=true
     }
 
     if intInOne && intInTwo {
         return val1.(int)+val2.(int)
+    }
+
+    if i641 && i642 {
+        return val1.(int64)+val2.(int64)
     }
 
     float1, float1OK := val1.(float64)
@@ -156,6 +163,14 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     }
     if intInTwo {
         float2 = float64(val2.(int))
+        float2OK = true
+    }
+    if i641 {
+        float1 = float64(val1.(int64))
+        float1OK = true
+    }
+    if i642 {
+        float2 = float64(val2.(int64))
         float2OK = true
     }
 
@@ -250,21 +265,27 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
 func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
+    var intInOne, intInTwo, i641, i642 bool
 
     switch val1.(type) {
     case int:
-    default:
-        intInOne=false
+        intInOne=true
+    case int64:
+        i641=true
     }
     switch val2.(type) {
     case int:
-    default:
-        intInTwo=false
+        intInTwo=true
+    case int64:
+        i642=true
     }
 
     if intInOne && intInTwo {
         return val1.(int) - val2.(int)
+    }
+
+    if i641 && i642 {
+        return val1.(int64) - val2.(int64)
     }
 
     float1, float1OK := val1.(float64)
@@ -279,45 +300,64 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
         float2OK = true
     }
 
+    if i641 {
+        float1 = float64(val1.(int64))
+        float1OK = true
+    }
+    if i642 {
+        float2 = float64(val2.(int64))
+        float2OK = true
+    }
+
     if float1OK && float2OK {
         return float1 - float2
     }
-    // panic(fmt.Errorf("type error: cannot subtract type %s and %s", typeOf(val1), typeOf(val2)))
+
     panic(fmt.Errorf("type error: cannot subtract type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
 func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
-    var int1 int
-    var int2 int
+    var intInOne, intInTwo, i641, i642 bool
 
-    switch i:=val1.(type) {
+    switch val1.(type) {
     case int:
-        int1=i
-    default:
-        intInOne=false
+        intInOne=true
+    case int64:
+        i641=true
     }
-    switch i:=val2.(type) {
+    switch val2.(type) {
     case int:
-        int2=i
-    default:
-        intInTwo=false
+        intInTwo=true
+    case int64:
+        i642=true
     }
 
     if intInOne && intInTwo {
-        return int1 * int2
+        return val1.(int) * val2.(int)
+    }
+
+    if i641 && i642 {
+        return val1.(int64) * val2.(int64)
     }
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
     if intInOne {
-        float1 = float64(int1)
+        float1 = float64(val1.(int))
         float1OK = true
     }
     if intInTwo {
-        float2 = float64(int2)
+        float2 = float64(val2.(int))
+        float2OK = true
+    }
+    if i641 {
+        float1 = float64(val1.(int64))
+        float1OK = true
+    }
+    if i642 {
+        float2 = float64(val2.(int64))
         float2OK = true
     }
 
@@ -328,57 +368,67 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     // int * string = repeat
     str1, str1OK := val1.(string)
     str2, str2OK := val2.(string)
-    if (intInOne && str2OK) && int1>=0 { return str.Repeat(str2,int1) }
-    if (intInTwo && str1OK) && int2>=0 { return str.Repeat(str1,int2) }
+    if (intInOne && str2OK) && val1.(int)>=0 { return str.Repeat(str2,val1.(int)) }
+    if (intInTwo && str1OK) && val2.(int)>=0 { return str.Repeat(str1,val2.(int)) }
 
     // int * struct = repeat
     s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
     s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
-    if (intInOne && s2ok) && int1>=0 { var ary []interface{}; for e:=0; e<int1; e+=1 { ary=append(ary,val2) }; return ary }
-    if (intInTwo && s1ok) && int2>=0 { var ary []interface{}; for e:=0; e<int2; e+=1 { ary=append(ary,val1) }; return ary }
+    if (intInOne && s2ok) && val1.(int)>=0 { var ary []interface{}; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2.(int)) }; return ary }
+    if (intInTwo && s1ok) && val2.(int)>=0 { var ary []interface{}; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1.(int)) }; return ary }
 
-    // panic(fmt.Errorf("type error: cannot multiply type %s and %s", typeOf(val1), typeOf(val2)))
     panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
 func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
-    var int1 int
-    var int2 int
+    var intInOne, intInTwo, i641, i642 bool
 
-    switch i:=val1.(type) {
+    switch val1.(type) {
     case int:
-        int1=i
-    default:
-        intInOne=false
+        intInOne=true
+    case int64:
+        i641=true
     }
-    switch i:=val2.(type) {
+    switch val2.(type) {
     case int:
-        int2=i
-    default:
-        intInTwo=false
+        intInTwo=true
+    case int64:
+        i642=true
     }
 
     if intInOne && intInTwo {
-        if int2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
-        return int1 / int2
+        if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+        return val1.(int) / val2.(int)
+    }
+
+    if i641 && i642 {
+        if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+        return val1.(int) / val2.(int)
     }
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
     if intInOne {
-        float1 = float64(int1)
+        float1 = float64(val1.(int))
         float1OK = true
     }
     if intInTwo {
-        float2 = float64(int2)
+        float2 = float64(val2.(int))
+        float2OK = true
+    }
+    if i641 {
+        float1 = float64(val1.(int64))
+        float1OK = true
+    }
+    if i642 {
+        float2 = float64(val2.(int64))
         float2OK = true
     }
 
     if float1OK && float2OK {
-        if float2==0 { panic(fmt.Errorf("eval error: I'm afraid I can't do that! (divide by zero)")) }
+        if float2==0 { panic(fmt.Errorf("eval error: divide by zero")) }
         return float1 / float2
     }
     panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
@@ -386,36 +436,45 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
 func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
-    var int1 int
-    var int2 int
+    var intInOne, intInTwo, i641, i642 bool
 
-    switch i:=val1.(type) {
+    switch val1.(type) {
     case int:
-        int1=i
-    default:
-        intInOne=false
+        intInOne=true
+    case int64:
+        i641=true
     }
-    switch i:=val2.(type) {
+    switch val2.(type) {
     case int:
-        int2=i
-    default:
-        intInTwo=false
+        intInTwo=true
+    case int64:
+        i642=true
     }
 
     if intInOne && intInTwo {
-        return int1 % int2
+        return val1.(int) % val2.(int)
+    }
+    if i641 && i642 {
+        return val1.(int64) % val2.(int64)
     }
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
     if intInOne {
-        float1 = float64(int1)
+        float1 = float64(val1.(int))
         float1OK = true
     }
     if intInTwo {
-        float2 = float64(int2)
+        float2 = float64(val2.(int))
+        float2OK = true
+    }
+    if i641 {
+        float1 = float64(val1.(int64))
+        float1OK = true
+    }
+    if i642 {
+        float1 = float64(val2.(int64))
         float2OK = true
     }
 
