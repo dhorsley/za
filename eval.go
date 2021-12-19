@@ -1599,26 +1599,20 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
 }
 
 func vget(fs uint32, ident *[szIdent]Variable,name string) (interface{}, bool) {
-    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; defer vlock.Unlock() }
     if VarLookup(fs,ident, name) {
         bin:=bind_int(fs,name)
-        // pf("\n--vget-- for %s in fs %d -> bin %d value %+v\n",name,fs,bin,(*ident)[bin])
-        // pf("      -- bindings : %+v\n",bindings[fs])
-        // pf("      --    cache : %+v\n",lru_bind_cache)
-        // most:=32 ; if int(bin)<most { most=int(bin) }
-        // for e:=0; e<=most; e++ { pf("      -- idents [#%d/%d]  -> %+v\n",fs,e,(*ident)[e]) }
-        // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; defer vlock.Unlock() }
         if (*ident)[bin].declared { return (*ident)[bin].IValue,true }
         return nil,false
     }
     return nil, false
 }
 
+/*
 func vgeti(fs uint32, ident *[szIdent]Variable,id uint64) (interface{}) {
-    // if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
     if (*ident)[id].declared { return (*ident)[id].IValue }
     return nil
 }
+*/
 
 func isBool(expr interface{}) bool {
     switch reflect.TypeOf(expr).Kind() {
