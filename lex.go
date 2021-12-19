@@ -61,7 +61,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var norepeat string
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant bool
-    var maybeBaseChange, thisHex bool
+    var maybeBaseChange, thisHex, thisOct, thisBin bool
 
     beforeE := "."
     thisWordStart := -1
@@ -246,7 +246,13 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 switch input[currentChar] {
                 case 'x','X':
                     thisHex=true
-                    nonterm="0123456789abcdefx"
+                    nonterm="0123456789abcdefxX"
+                case 'b','B':
+                    thisBin=true
+                    nonterm="01bB"
+                case 'o','O':
+                    thisOct=true
+                    nonterm="01234567oO"
                 }
             }
             if currentChar==thisWordStart+1 {
@@ -338,6 +344,26 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 hs:=str.Replace(word,"0x","",-1)
                 hs=str.Replace(hs,"0X","",-1)
                 carton.tokVal,_=strconv.ParseInt(hs,16,64)
+                startNextTokenAt=currentChar
+                carton.tokType=NumericLiteral
+                carton.tokText=word
+                goto get_nt_exit_point
+            }
+
+            if thisOct {
+                hs:=str.Replace(word,"0o","",-1)
+                hs=str.Replace(hs,"0O","",-1)
+                carton.tokVal,_=strconv.ParseInt(hs,8,64)
+                startNextTokenAt=currentChar
+                carton.tokType=NumericLiteral
+                carton.tokText=word
+                goto get_nt_exit_point
+            }
+
+            if thisBin {
+                hs:=str.Replace(word,"0b","",-1)
+                hs=str.Replace(hs,"0B","",-1)
+                carton.tokVal,_=strconv.ParseInt(hs,2,64)
                 startNextTokenAt=currentChar
                 carton.tokType=NumericLiteral
                 carton.tokText=word
