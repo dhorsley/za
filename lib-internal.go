@@ -235,10 +235,10 @@ func buildInternalLib() {
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
-        "local", "clktck", "globkey", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
+        "local", "clktck", "glob_key", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
-        "capture_shell", "ansi", "interpol", "shellpid", "has_shell", "has_term","has_colour",
-        "globlen","len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
+        "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
+        "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
         "ast","varbind",
         // "conread","conwrite","conset","conclear", : for future use.
@@ -752,9 +752,9 @@ func buildInternalLib() {
         return false, nil
     }
 
-    slhelp["globkey"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
-    stdlib["globkey"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("globkey",args,1,"2","string","string"); !ok { return nil,err }
+    slhelp["glob_key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
+    stdlib["glob_key"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("glob_key",args,1,"2","string","string"); !ok { return nil,err }
 
         var v interface{}
         var found bool
@@ -803,7 +803,7 @@ func buildInternalLib() {
         case map[string][]interface{}:
             if _, found = v[key]; found { return true, nil }
         default:
-            return false, errors.New("globkey() requires a map")
+            return false, errors.New("glob_key() requires a map")
         }
         return false, nil
     }
@@ -1153,10 +1153,10 @@ func buildInternalLib() {
         return !v.(bool), nil
     }
 
-    slhelp["shellpid"] = LibHelp{in: "", out: "int", action: "Get process ID of the launched child co-process."}
-    stdlib["shellpid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("shellpid",args,0); !ok { return nil,err }
-        v, _ := gvget("@shellpid")
+    slhelp["shell_pid"] = LibHelp{in: "", out: "int", action: "Get process ID of the launched child co-process."}
+    stdlib["shell_pid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("shell_pid",args,0); !ok { return nil,err }
+        v, _ := gvget("@shell_pid")
         return v, nil
     }
 

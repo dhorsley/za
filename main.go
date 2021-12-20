@@ -695,7 +695,7 @@ func main() {
         if !no_shell {
             // create shell process
             bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
-            gvset("@shellpid",bgproc.Process.Pid)
+            gvset("@shell_pid",bgproc.Process.Pid)
         }
 
         // prepare for getInput() keyboard input (from main process)
@@ -730,7 +730,7 @@ func main() {
                 // in with the new
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
                 // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
-                gvset("@shellpid",bgproc.Process.Pid)
+                gvset("@shell_pid",bgproc.Process.Pid)
                 lastlock.Lock()
                 coproc_active = false
                 lastlock.Unlock()
