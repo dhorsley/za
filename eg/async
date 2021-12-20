@@ -20,7 +20,7 @@ endfor
 while true
 
     println "[#2]Waiting...[#-]"
-    res=await(handles,true)
+    res=await(ref handles,true)
     println "await() complete."
 
     on len(res)==0 do break

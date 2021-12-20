@@ -71,7 +71,7 @@ ob=" "
 b="-"
 quit=false
 
-async hmap fill(13,13,ob,b)
+async nil fill(13,13,ob,b)
 
 while !quit
 
@@ -84,7 +84,7 @@ while !quit
             b=char(32+rand(31))
             on b!="#" do break
         endwhile
-        async hmap fill(13,13,ob,b)
+        async nil fill(13,13,ob,b)
     endwhen
     show()
 

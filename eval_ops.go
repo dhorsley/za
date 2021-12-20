@@ -374,8 +374,8 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     // int * struct = repeat
     s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
     s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
-    if (intInOne && s2ok) && val1.(int)>=0 { var ary []interface{}; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2.(int)) }; return ary }
-    if (intInTwo && s1ok) && val2.(int)>=0 { var ary []interface{}; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1.(int)) }; return ary }
+    if (intInOne && s2ok) && val1.(int)>=0 { var ary []interface{}; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2) }; return ary }
+    if (intInTwo && s1ok) && val2.(int)>=0 { var ary []interface{}; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1) }; return ary }
 
     panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
@@ -1243,7 +1243,7 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
 
             calllock.Lock()
             res = calltable[loc].retvals
-            // calltable[loc]=call_s{}
+            calltable[loc].gcShyness=20
             calltable[loc].gc=true
             calllock.Unlock()
 

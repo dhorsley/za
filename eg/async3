@@ -25,7 +25,7 @@ endfor
 
 # collect results
 println "Waiting for task completions."
-res=await(hndmap,true)
+res=await(ref hndmap,true)
 for e=0 to 99
     println e," -> ",res[e]
 endfor

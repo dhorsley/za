@@ -72,6 +72,7 @@ type call_s struct {
 	base        uint32      // the original functionspace location of the source
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
+    gcShyness   uint32      // how many turns of the allocator before final disposal
 	fs          string      // the text name of the calling party
 	retvals     interface{} // returned values from the call
 }

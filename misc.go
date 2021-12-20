@@ -239,11 +239,14 @@ func sizeOf(v reflect.Value,cache map[uintptr]bool) int {
 
 
 func version() {
-    v,_:=vget(0,&gident,"@ct_info")
+    v,_:=gvget("@ct_info")
     add:=""
     if v.(string)!="glibc" { add=v.(string)+", " }
-    pf(spf(0,&gident,"[#6][#bold]{@language} version {@version}[#boff][#-]\n"))
-    pf(spf(0,&gident,"[#1]Last build:[#-] "+add+"{@creation_date}\n"))
+    la,_:=gvget("@language")
+    ve,_:=gvget("@version")
+    cd,_:=gvget("@creation_date")
+    pf("[#6][#bold]%s version %s[#boff][#-]\n",la,ve)
+    pf("[#1]Last build:[#-] %s%s\n",add,cd)
 }
 
 func help_commands() {

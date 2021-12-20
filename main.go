@@ -118,6 +118,7 @@ var lastfunc = make(map[uint32]string)
 
 // interactive mode and prompt handling flag
 var interactive bool
+var interactiveFeed bool
 
 // for refactoring: find a var
 var var_refs bool
@@ -273,7 +274,7 @@ func main() {
             globlock.Lock()
             MW, MH, _ = GetSize(1)
             globlock.Unlock()
-            shelltype, _ := vget(0, &gident,"@shelltype")
+            shelltype, _ := gvget("@shelltype")
             if shelltype=="bash" || shelltype=="ash" {
                 Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
             }
@@ -365,7 +366,6 @@ func main() {
     // compile cache for regex operator
     ifCompileCache = make(map[string]regexp.Regexp)
 
-
     // get terminal dimensions
     MW, MH, _ = GetSize(1)
 
@@ -378,54 +378,53 @@ func main() {
     // start processing startup flags
 
     // command output unit separator
-    vset(0,&gident,"@cmdsep",byte(0x1e))
+    gvset("@cmdsep",byte(0x1e))
 
     // run in parent - if -S opt or /bin/false specified
     //  for shell, then run commands in parent
-    vset(0,&gident,"@runInParent",false)
+    gvset("@runInParent",false)
 
     // should command output be captured?
     // - when disabled, output is sent to stdout
-    vset(0,&gident,"@commandCapture",true)
+    gvset("@commandCapture",true)
 
     // like -S, but insist upon it for Windows executions.
-    vset(0,&gident,"@runInWindowsParent",false)
+    gvset("@runInWindowsParent",false)
 
     // set available build info
-    vset(0,&gident,"@language", "Za")
-    vset(0,&gident,"@version", BuildVersion)
-    vset(0,&gident,"@creation_author", "D Horsley")
-    vset(0,&gident,"@creation_date", BuildDate)
+    gvset("@language", "Za")
+    gvset("@version", BuildVersion)
+    gvset("@creation_author", "D Horsley")
+    gvset("@creation_date", BuildDate)
 
     // set interactive prompt
-    vset(0,&gident,"@startprompt", promptStringStartup)
-    vset(0,&gident,"@bashprompt", promptBashlike)
+    gvset("@startprompt", promptStringStartup)
+    gvset("@bashprompt", promptBashlike)
     PromptTemplate=promptStringStartup
 
     // set default behaviours
 
     // - don't echo logging
-    vset(0,&gident,"@silentlog", true)
+    gvset("@silentlog", true)
 
     // - don't show co-proc command progress
-    vset(0,&gident,"mark_time", false)
+    gvset("mark_time", false)
 
     // - name of Za function that handles ctrl-c.
     vset(2,&mident,"trapInt", "")
 
     // - show user stdin input
-    vset(0,&gident,"@echo", true)
+    gvset("@echo", true)
 
     // - set character that can mask user stdin if enabled
-    vset(0,&gident,"@echomask", "*")
-
+    gvset("@echomask", "*")
 
     // read compile time arch info
-    vset(0,&gident,"@glibc", false)
+    gvset("@glibc", false)
     if BuildComment == "glibc" {
-        vset(0,&gident,"@glibc", true)
+        gvset("@glibc", true)
     }
-    vset(0,&gident,"@ct_info", BuildComment)
+    gvset("@ct_info", BuildComment)
 
     // initialise global parser
     parser=&leparser{}
@@ -517,7 +516,7 @@ func main() {
             fdir=filepath.Dir(fpath)
         }
     }
-    vset(0,&gident,"@execpath", fdir)
+    gvset("@execpath", fdir)
 
     // help flag
     if *a_help {
@@ -533,7 +532,7 @@ func main() {
 
     // command separator
     if *a_cmdsep != 0 {
-        vset(0,&gident,"@cmdsep",byte(*a_cmdsep))
+        gvset("@cmdsep",byte(*a_cmdsep))
     }
 
     if *a_debug != 0 {
@@ -546,7 +545,7 @@ func main() {
     }
 
     if *a_mark_time {
-        vset(0,&gident,"mark_time", true)
+        gvset("mark_time", true)
     }
 
     // trace capture - not advertised.
@@ -592,12 +591,12 @@ func main() {
     if *a_noshell {
         no_shell=true
     }
-    vset(0,&gident,"@noshell",no_shell)
+    gvset("@noshell",no_shell)
 
     if *a_shellrep {
         shellrep=true
     }
-    vset(0,&gident,"@shell_report",shellrep)
+    gvset("@shell_report",shellrep)
 
     // set the coprocess command
     default_shell:=""
@@ -617,7 +616,7 @@ func main() {
     coprocLoc:=""
     var coprocArgs []string
 
-    vset(0,&gident,"@shelltype","")
+    gvset("@shelltype","")
 
     // figure out the correct shell to use, with available info.
     if runtime.GOOS!="windows" {
@@ -626,19 +625,19 @@ func main() {
                 coprocLoc, err = GetCommand("/usr/bin/which bash")
                 if err == nil {
                     coprocLoc = coprocLoc[:len(coprocLoc)-1]
-                    vset(0,&gident,"@shelltype","bash")
+                    gvset("@shelltype","bash")
                 } else {
                     if fexists("/bin/bash") {
                         coprocLoc ="/bin/bash"
                         coprocArgs=[]string{"-i"}
-                        vset(0,&gident,"@shelltype","bash")
+                        gvset("@shelltype","bash")
                     } else {
                         // try for /bin/sh then default to noshell
                         if fexists("/bin/sh") {
                             coprocLoc="/bin/sh"
                             coprocArgs=[]string{"-i"}
                         } else {
-                            vset(0,&gident, "@noshell",no_shell)
+                            gvset("@noshell",no_shell)
                             coprocLoc="/bin/false"
                         }
                     }
@@ -655,7 +654,7 @@ func main() {
                 if shellname=="dash" || shellname=="ash" || shellname=="sh" {
                     // specify that NextCopper() should use external printf
                     // for generating \x1e (or other cmdsep) in output
-                    vset(0,&gident,"@shelltype",shellname)
+                    gvset("@shelltype",shellname)
                 }
             }
         }
@@ -668,27 +667,27 @@ func main() {
         // improvement if we ever take windows seriously.
 
         coprocLoc="C:/Windows/System32/cmd.exe"
-        vset(0,&gident,"@noshell",true)
-        vset(0,&gident,"@os","windows")
-        vset(0,&gident, "@zsh_version", "")
-        vset(0,&gident, "@bash_version", "")
-        vset(0,&gident, "@bash_versinfo", "")
-        vset(0,&gident, "@user", "")
-        vset(0,&gident, "@home", "")
-        vset(0,&gident, "@lang", "")
-        vset(0,&gident, "@wsl", "")
-        vset(0,&gident, "@release_id", "windows")
-        vset(0,&gident, "@release_name", "windows")
-        vset(0,&gident, "@release_version", "windows")
-        vset(0,&gident, "@winterm", false)
-        vset(0,&gident,"@runInWindowsParent",true)
+        gvset("@noshell",true)
+        gvset("@os","windows")
+        gvset("@zsh_version", "")
+        gvset("@bash_version", "")
+        gvset("@bash_versinfo", "")
+        gvset("@user", "")
+        gvset("@home", "")
+        gvset("@lang", "")
+        gvset("@wsl", "")
+        gvset("@release_id", "windows")
+        gvset("@release_name", "windows")
+        gvset("@release_version", "windows")
+        gvset("@winterm", false)
+        gvset("@runInWindowsParent",true)
     }
 
-    shelltype, _ := vget(0, &gident,"@shelltype")
-    vset(0,&gident,"@shell_location", coprocLoc)
+    shelltype, _ := gvget("@shelltype")
+    gvset("@shell_location", coprocLoc)
 
     if runtime.GOOS=="windows" || no_shell || coprocLoc=="/bin/false" {
-        vset(0,&gident,"@runInParent",true)
+        gvset("@runInParent",true)
     }
 
     if runtime.GOOS!="windows" {
@@ -696,7 +695,7 @@ func main() {
         if !no_shell {
             // create shell process
             bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
-            vset(0,&gident,"@shellpid",bgproc.Process.Pid)
+            gvset("@shellpid",bgproc.Process.Pid)
         }
 
         // prepare for getInput() keyboard input (from main process)
@@ -731,7 +730,7 @@ func main() {
                 // in with the new
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
                 // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
-                vset(0,&gident,"@shellpid",bgproc.Process.Pid)
+                gvset("@shellpid",bgproc.Process.Pid)
                 lastlock.Lock()
                 coproc_active = false
                 lastlock.Unlock()
@@ -815,7 +814,7 @@ func main() {
                         }
                     }
                 }
-                // calltable[loc]=call_s{}
+                calltable[loc].gcShyness=20
                 calltable[loc].gc=true
             } else {
                 finish(false, 0)
@@ -848,56 +847,56 @@ func main() {
     if runtime.GOOS!="windows" {
 
         cop = Copper("echo -n $WSL_DISTRO_NAME", true)
-        vset(0,&gident,"@wsl", cop.out)
+        gvset("@wsl", cop.out)
 
         switch shelltype {
         case "zsh":
             cop = Copper("echo -n $ZSH_VERSION", true)
-            vset(0,&gident,"@zsh_version", cop.out)
+            gvset("@zsh_version", cop.out)
         case "bash":
             cop = Copper("echo -n $BASH_VERSION", true)
-            vset(0,&gident,"@bash_version", cop.out)
+            gvset("@bash_version", cop.out)
             cop = Copper("echo -n $BASH_VERSINFO", true)
-            vset(0,&gident,"@bash_versinfo", cop.out)
+            gvset("@bash_versinfo", cop.out)
             cop = Copper("echo -n $LANG", true)
-            vset(0,&gident,"@lang", cop.out)
+            gvset("@lang", cop.out)
         }
 
         cop = Copper("echo -n $USER", true)
-        vset(0,&gident,"@user", cop.out)
+        gvset("@user", cop.out)
 
-        vset(0,&gident,"@os",runtime.GOOS)
+        gvset("@os",runtime.GOOS)
 
         cop = Copper("echo -n $HOME", true)
-        vset(0,&gident,"@home", cop.out)
+        gvset("@home", cop.out)
 
         var tmp string
 
-        vset(0,&gident, "@release_name", "unknown")
-        vset(0,&gident, "@release_version", "unknown")
+        gvset("@release_name", "unknown")
+        gvset("@release_version", "unknown")
 
         if runtime.GOOS=="linux" {
 
             cop = Copper("cat /etc/*-release",true)
             s:=lgrep(cop.out,"^NAME=")
             s=lcut(s,2,"=")
-            vset(0,&gident, "@release_name", stripOuterQuotes(s,1))
+            gvset("@release_name", stripOuterQuotes(s,1))
 
             cop = Copper("cat /etc/*-release",true)
             s=lgrep(cop.out,"^VERSION_ID=")
             s=lcut(s,2,"=")
-            vset(0,&gident, "@release_version", stripOuterQuotes(s,1))
+            gvset("@release_version", stripOuterQuotes(s,1))
         }
 
 
         // special cases for release version:
 
         // case 1: centos/other non-semantic expansion
-        vtmp, _ := vget(0,&gident,"@release_version")
+        vtmp, _ := gvget("@release_version")
         if tr(vtmp.(string),DELETE,"0123456789.","")=="" && !str.ContainsAny(vtmp.(string), ".") {
             vtmp = vtmp.(string) + ".0"
         }
-        vset(0,&gident, "@release_version", vtmp)
+        gvset("@release_version", vtmp)
 
         cop = Copper("cat /etc/*-release",true)
         s:=lgrep(cop.out,"^ID=")
@@ -913,18 +912,18 @@ func main() {
         }
 
         // case 2: ubuntu under wsl
-        vset(0,&gident, "@winterm", false)
-        wsl, _ := vget(0, &gident,"@wsl")
+        gvset("@winterm", false)
+        wsl, _ := gvget("@wsl")
         if str.HasPrefix(wsl.(string), "Ubuntu-") {
-            vset(0,&gident,"@winterm", true)
+            gvset("@winterm", true)
             tmp = "ubuntu"
         }
 
-        vset(0,&gident,"@release_id", tmp)
+        gvset("@release_id", tmp)
 
         // get hostname
         h, _ := os.Hostname()
-        vset(0,&gident,"@hostname", h)
+        gvset("@hostname", h)
 
     } // endif not windows
 
@@ -961,6 +960,7 @@ func main() {
 
         // in case we arrived here by another method:
         interactive=true
+        interactiveFeed=true
 
         // output separator, may be unnecessary really
         eol:="\n"
@@ -1004,7 +1004,7 @@ func main() {
             var echoMask string
             var ok bool
 
-            if emask,ok=vget(0,&gident,"@echomask"); !ok {
+            if emask,ok=gvget("@echomask"); !ok {
                 echoMask=""
             } else {
                 echoMask=emask.(string)
@@ -1122,6 +1122,11 @@ func main() {
                 // pf("[main] loc -> %d\n",mainloc)
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
 
+                // insert line feed by default
+                if interactiveFeed {
+                    pf("\n")
+                }
+
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
@@ -1215,7 +1220,7 @@ func main() {
         currentModule="main"
         // pf("[main] loc -> %d\n",mainloc)
         Call(MODE_NEW, &mident, mainloc, ciMain)
-        // calltable[mainloc]=call_s{}
+        calltable[mainloc].gcShyness=20
         calltable[mainloc].gc=true
     }
 
