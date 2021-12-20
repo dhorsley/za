@@ -10,6 +10,17 @@ TODO
 ----
 
     * unify stdlib func names format
+        - done, mostly
+        - there's still some peculiarities in lib-internal
+            - getglob was left without underscore to mirror setglob statement
+            - others were left without underscore if it better reflected the common
+                library name underpinning the call.
+            - some others were just personal preference.
+        - these can be reviewed again before v2
+            - v1 is not a release version for live use with promises of backwards compatability!
+
+        - continuing to use snake case for stdlib calls to hopefully help avoid func name
+            conflicts with user defined funcs written by sensible people.
 
     * tested compilation with go 1.18beta
         - execution speed up of up to 10%, dependant on operation type.

@@ -1517,7 +1517,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
         // pull cwd from /proc
-        childProc,_:=gvget("@shellpid")
+        childProc,_:=gvget("@shell_pid")
         pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
         gvset("@pwd", pwd)
 
