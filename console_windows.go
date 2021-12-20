@@ -81,7 +81,7 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
     waitInput      := vtMode
     nowaitInput    := vtMode
 
-    echo, _ := vget(0,&gident,"@echo")
+    echo, _ := gvget("@echo")
     if echo.(bool) {
         waitInput += echoMode
         nowaitInput += echoMode

@@ -1710,6 +1710,8 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return min_int(args[0].([]int)), nil
+        case []int64:
+            return min_int64(args[0].([]int64)), nil
         case []uint:
             return min_uint(args[0].([]uint)), nil
         case []float64:

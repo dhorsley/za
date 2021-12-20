@@ -311,9 +311,9 @@ func buildInternalLib() {
     slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     stdlib["zainfo"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("zainfo",args,0); !ok { return nil,err }
-        v,_:=vget(0,&gident,"@version")
-        l,_:=vget(0,&gident,"@language")
-        c,_:=vget(0,&gident,"@ct_info")
+        v,_:=gvget("@version")
+        l,_:=gvget("@language")
+        c,_:=gvget("@ct_info")
         return zainfo{version:v.(string),name:l.(string),build:c.(string)},nil
     }
 
@@ -453,20 +453,20 @@ func buildInternalLib() {
 
         se:=true
         if args[0].(bool) {
-            vset(0,&gident,"@echo", true)
+            gvset("@echo", true)
         } else {
             se=false
-            vset(0,&gident, "@echo", false)
+            gvset("@echo", false)
         }
 
-        mask,_:=vget(0,&gident,"@echomask")
+        mask,_:=gvget("@echomask")
         if len(args)>1 {
             mask=args[1].(string)
         }
 
         setEcho(se)
-        vset(0,&gident, "@echomask", mask)
-        v,_:=vget(0,&gident,"@echo")
+        gvset("@echomask", mask)
+        v,_:=gvget("@echo")
 
         return v,nil
     }
@@ -547,6 +547,15 @@ func buildInternalLib() {
         return lastam,nil
     }
 
+    slhelp["feed"] = LibHelp{in: "bool", out: "bool", action: "(debug) Toggle for enforced interactive mode line feed."}
+    stdlib["feed"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("feed",args,1,"1","bool"); !ok { return nil,err }
+        lastlock.Lock()
+        interactiveFeed=args[0].(bool)
+        lastlock.Unlock()
+        return nil, nil
+    }
+
     slhelp["interpol"] = LibHelp{in: "bool", out: "bool", action: "Enable (default) or disable string interpolation at runtime. This is useful for ensuring that braced phrases remain unmolested. Returns the previous state."}
     stdlib["interpol"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("interpol",args,1,"1","bool"); !ok { return nil,err }
@@ -560,14 +569,14 @@ func buildInternalLib() {
     slhelp["coproc"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should execute in the coprocess (true) or the current Za process (false)."}
     stdlib["coproc"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("bool",args,1,"1","bool"); !ok { return nil,err }
-        vset(0,&gident, "@runInParent",!args[0].(bool))
+        gvset("@runInParent",!args[0].(bool))
         return nil, nil
     }
 
     slhelp["capture_shell"] = LibHelp{in: "bool", out: "", action: "Select if | and =| commands should capture output."}
     stdlib["capture_shell"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("capture_shell",args,1,"1","bool"); !ok { return nil,err }
-        vset(0,&gident, "@commandCapture",args[0].(bool))
+        gvset("@commandCapture",args[0].(bool))
         return nil, nil
     }
 
@@ -610,12 +619,19 @@ func buildInternalLib() {
     slhelp["await"] = LibHelp{in: "handle_map[,all_flag]", out: "[]result", action: "Checks for async completion."}
     stdlib["await"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("await",args,2,
-            "2","map[string]interface {}","bool",
-            "1","map[string]interface {}"); !ok { return nil,err }
+            "2","string","bool",
+            "1","string"); !ok { return nil,err }
 
         waitForAll:=false
         if len(args)>1 {
             waitForAll=args[1].(bool)
+        }
+
+        switch args[0].(type) {
+        case string:
+            if ! VarLookup(evalfs,ident, args[0].(string)) {
+                return nil, errors.New("await requires the name of a local handle map")
+            }
         }
 
         var results=make(map[string]interface{})
@@ -623,22 +639,41 @@ func buildInternalLib() {
         keepWaiting:=true
 
         for ; keepWaiting ; {
-            for k,v:=range args[0].(map[string]interface{}) {
+
+            // Have to lock this as the results may be updated
+            // concurrently while this loop is running.
+
+            vlock.Lock()
+            bin:=bind_int(evalfs,args[0].(string))
+            // handles := (*ident)[bin].IValue.(map[string]interface{})
+
+            for k,v:=range (*ident)[bin].IValue.(map[string]interface{}) {
                 select {
                 case retval := <-v.(<-chan interface{}):
+                    if retval==nil { // removed mid check
+                        delete((*ident)[bin].IValue.(map[string]interface{}),k)
+                        continue
+                    }
                     loc      :=retval.(struct{l uint32;r interface{}}).l
                     results[k]=retval.(struct{l uint32;r interface{}}).r
-                    calllock.Lock(); calltable[loc].gc=true ; calllock.Unlock()
-                    delete(args[0].(map[string]interface{}),k)
+                    calllock.Lock()
+                    calltable[loc].gcShyness=40
+                    calltable[loc].gc=true
+                    delete((*ident)[bin].IValue.(map[string]interface{}),k)
+                    calllock.Unlock()
                 default:
                 }
             }
+            // (*ident)[bin].IValue=handles
+            vlock.Unlock()
+
             keepWaiting=false
             if waitForAll {
-                if len(args[0].(map[string]interface{}))!=0 {
+                if len((*ident)[bin].IValue.(map[string]interface{}))!=0 {
                     keepWaiting=true
                 }
             }
+
         }
         return results,nil
     }
@@ -776,7 +811,7 @@ func buildInternalLib() {
     slhelp["last"] = LibHelp{in: "", out: "int", action: "Returns the last received error code from a co-process command."}
     stdlib["last"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("last",args,0); !ok { return nil,err }
-        v, found := vget(0,&gident, "@last")
+        v, found := gvget("@last")
         if found {
             i, bool_err := GetAsInt(v.(string))
             if !bool_err {
@@ -790,14 +825,14 @@ func buildInternalLib() {
     slhelp["execpath"] = LibHelp{in: "", out: "string", action: "Returns the initial working directory."}
     stdlib["execpath"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("execpath",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@execpath")
+        v, _ := gvget("@execpath")
         return string(v.(string)), err
     }
 
     slhelp["last_out"] = LibHelp{in: "", out: "string", action: "Returns the last received error text from the co-process."}
     stdlib["last_out"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("last_out",args,0); !ok { return nil,err }
-        v, found := vget(0,&gident, "@last_out")
+        v, found := gvget("@last_out")
         if found {
             return string(v.([]byte)), err
         }
@@ -807,7 +842,7 @@ func buildInternalLib() {
     slhelp["zsh_version"] = LibHelp{in: "", out: "string", action: "Returns the zsh version string if present."}
     stdlib["zsh_version"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("zsh_version",args,0); !ok { return nil,err }
-        v, found := vget(0,&gident, "@zsh_version")
+        v, found := gvget("@zsh_version")
         if !found { v="" }
         return v.(string), err
     }
@@ -815,14 +850,14 @@ func buildInternalLib() {
     slhelp["bash_version"] = LibHelp{in: "", out: "string", action: "Returns the full release string of the Bash co-process."}
     stdlib["bash_version"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("bash_version",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@bash_version")
+        v, _ := gvget("@bash_version")
         return v.(string), err
     }
 
     slhelp["bash_versinfo"] = LibHelp{in: "", out: "string", action: "Returns the major version number of the Bash co-process."}
     stdlib["bash_versinfo"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("bash_versinfo",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@bash_versinfo")
+        v, _ := gvget("@bash_versinfo")
         return v.(string), err
     }
 
@@ -905,28 +940,28 @@ func buildInternalLib() {
     slhelp["user"] = LibHelp{in: "", out: "string", action: "Returns the parent user of the Bash co-process."}
     stdlib["user"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("user",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@user")
+        v, _ := gvget("@user")
         return v.(string), err
     }
 
     slhelp["os"] = LibHelp{in: "", out: "string", action: "Returns the kernel version name as reported by the coprocess."}
     stdlib["os"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("os",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@os")
+        v, _ := gvget("@os")
         return v.(string), err
     }
 
     slhelp["home"] = LibHelp{in: "", out: "string", action: "Returns the home directory of the user that launched Za as reported by the coprocess."}
     stdlib["home"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("home",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@home")
+        v, _ := gvget("@home")
         return v.(string), err
     }
 
     slhelp["lang"] = LibHelp{in: "", out: "string", action: "Returns the locale name used within the coprocess."}
     stdlib["lang"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("lang",args,0); !ok { return nil,err }
-        if v, found := vget(0,&gident, "@lang"); found {
+        if v, found := gvget("@lang"); found {
             return v.(string), nil
         }
         return "",nil
@@ -935,7 +970,7 @@ func buildInternalLib() {
     slhelp["release_name"] = LibHelp{in: "", out: "string", action: "Returns the OS release name as reported by the coprocess."}
     stdlib["release_name"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("release_name",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@release_name")
+        v, _ := gvget("@release_name")
         return v.(string), err
     }
 
@@ -943,7 +978,7 @@ func buildInternalLib() {
     stdlib["hostname"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("hostname",args,0); !ok { return nil,err }
         z, _ := os.Hostname()
-        vset(0,&gident, "@hostname", z)
+        gvset("@hostname", z)
         return z, err
     }
 
@@ -970,21 +1005,21 @@ func buildInternalLib() {
     slhelp["release_version"] = LibHelp{in: "", out: "string", action: "Returns the OS version number."}
     stdlib["release_version"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("release_version",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@release_version")
+        v, _ := gvget("@release_version")
         return v.(string), err
     }
 
     slhelp["release_id"] = LibHelp{in: "", out: "string", action: "Returns the /etc derived release name."}
     stdlib["release_id"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("release_id",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@release_id")
+        v, _ := gvget("@release_id")
         return v.(string), err
     }
 
     slhelp["winterm"] = LibHelp{in: "", out: "bool", action: "Is this a WSL terminal?"}
     stdlib["winterm"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("winterm",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident, "@winterm")
+        v, _ := gvget("@winterm")
         return v.(bool), err
     }
 
@@ -1114,14 +1149,14 @@ func buildInternalLib() {
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}
     stdlib["has_shell"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("has_shell",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident,"@noshell")
+        v, _ := gvget("@noshell")
         return !v.(bool), nil
     }
 
     slhelp["shellpid"] = LibHelp{in: "", out: "int", action: "Get process ID of the launched child co-process."}
     stdlib["shellpid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("shellpid",args,0); !ok { return nil,err }
-        v, _ := vget(0,&gident,"@shellpid")
+        v, _ := gvget("@shellpid")
         return v, nil
     }
 

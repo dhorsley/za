@@ -1196,16 +1196,14 @@ func (p *leparser) identifier(token Token) (interface{}) {
  */
 
 // for locking vset/vcreate/vdelete during a variable write
+var glock = &sync.RWMutex{}
 var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, ident *[szIdent]Variable, name string) (bool) {
      // fmt.Printf("vlookup : [%d] %s -> %v\n",fs,name,(*ident)[bind_int(fs,name)].declared)
-    if (*ident)[bind_int(fs,name)].declared { return true }
-    return false
+    return (*ident)[bind_int(fs,name)].declared
 }
-
-
 
 // vcreatetable: creates an empty variable store
 // @note: is locked by caller
@@ -1271,31 +1269,23 @@ func identResize(evalfs uint32,ident *[szIdent]Variable,sz uint16) {
 }
 */
 
-func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
-    // fmt.Printf("[vs] name : %s\n",name)
-    bin:=bind_int(fs,name)
-    var locked bool
-    if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() ; locked=true }
-    (*ident)[bin].IName=name
-    (*ident)[bin].declared=true
-    // fmt.Printf("vset bin is now %d for %s\n",bin,name)
-    vseti(fs,ident,bin,value)
-    if locked { vlock.Unlock() }
-
-    // fmt.Printf("vset value is %+v\n",(*ident)[bin])
+func gvset(name string, value interface{}) {
+    glock.Lock()
+    bin:=bind_int(0,name)
+    gident[bin].IName=name
+    gident[bin].IValue=value
+    gident[bin].declared=true
+    glock.Unlock()
 }
 
-func vsetInteger(fs uint32, ident *[szIdent]Variable, name string, value int) {
-    var ll bool
+func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
+    var locked bool
+    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
     bin:=bind_int(fs,name)
-    if atomic.LoadInt32(&concurrent_funcs)>0 { ll=true; vlock.Lock() }
-    (*ident)[bin]=Variable{IName:name,IValue:value,declared:true}
-    /*
     (*ident)[bin].IName=name
-    (*ident)[bin].IValue=value
     (*ident)[bin].declared=true
-    */
-    if ll { vlock.Unlock() }
+    vseti(fs,ident,bin,value)
+    if locked { vlock.Unlock() }
 }
 
 
@@ -1308,7 +1298,6 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
 
     if (*ident)[bin].ITyped {
         var ok bool
-        // t.declared=true
         switch (*ident)[bin].IKind {
         case kbool:
             _,ok=value.(bool)
@@ -1424,10 +1413,9 @@ func vgetElementi(fs uint32, ident *[szIdent]Variable, name string, el string) (
 
 
 func vsetElement(fs uint32, ident *[szIdent]Variable, name string, el interface{}, value interface{}) {
-    var list interface{}
-
+    // var list interface{}
     if ! VarLookup(fs, ident, name) {
-        list = make(map[string]interface{}, LIST_SIZE_CAP)
+        list := make(map[string]interface{}, LIST_SIZE_CAP)
         vset(fs,ident,name,list)
     }
 
@@ -1465,24 +1453,21 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
         case string:
             key=el.(string)
         }
-        locked:=false
-        if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
+        vlock.Lock()
         if ok {
             (*ident)[bin].IValue.(map[string]interface{})[key] = value
         } else {
             (*ident)[bin].IValue.(map[string]interface{})[key] = value
         }
-        if locked { vlock.Unlock() }
+        vlock.Unlock()
         return
     }
 
     numel:=el.(int)
     var fault bool
 
-    locked:=false
-    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
+    vlock.Lock()
     atype:=(*ident)[bin].IValue
-    if locked { vlock.Unlock() }
 
     switch atype.(type) {
 
@@ -1496,9 +1481,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]int))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]int)[numel]=value.(int)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     case []uint8:
         sz:=cap((*ident)[bin].IValue.([]uint8))
@@ -1510,9 +1493,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]uint8))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]uint8)[numel]=value.(uint8)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     case []uint:
         sz:=cap((*ident)[bin].IValue.([]uint))
@@ -1524,9 +1505,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]uint))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]uint)[numel]=value.(uint)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     case []bool:
         sz:=cap((*ident)[bin].IValue.([]bool))
@@ -1538,9 +1517,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]bool))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]bool)[numel]=value.(bool)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     case []string:
         sz:=cap((*ident)[bin].IValue.([]string))
@@ -1552,9 +1529,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]string))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]string)[numel]=value.(string)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     case []float64:
         sz:=cap((*ident)[bin].IValue.([]float64))
@@ -1566,9 +1541,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]float64))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         (*ident)[bin].IValue.([]float64)[numel],fault=GetAsFloat(value)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
         if fault {
             panic(fmt.Errorf("Could not append to float array (ele:%v) a value '%+v' of type '%T'",numel,value,value))
         }
@@ -1583,36 +1556,41 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             copy(newar,(*ident)[bin].IValue.([]interface{}))
             vset(fs,ident,name,newar)
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Lock() }
         if value==nil {
             (*ident)[bin].IValue.([]interface{})[numel]=nil
         } else {
             (*ident)[bin].IValue.([]interface{})[numel]=value.(interface{})
         }
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.Unlock() }
 
     default:
         pf("DEFAULT: Unknown type %T for list %s\n",list,name)
 
     }
 
+    vlock.Unlock()
+
+}
+
+func gvget(name string) (interface{}, bool) {
+    bin:=bind_int(0,name)
+    if gident[bin].declared {
+        glock.RLock()
+        tv:=gident[bin].IValue
+        glock.RUnlock()
+        // pf("gvg->n:%s,int:%d,val:%+v\n",name,bin,tv)
+        return tv,true
+    }
+    return nil,false
 }
 
 func vget(fs uint32, ident *[szIdent]Variable,name string) (interface{}, bool) {
     if VarLookup(fs,ident, name) {
         bin:=bind_int(fs,name)
-        if (*ident)[bin].declared { return (*ident)[bin].IValue,true }
-        return nil,false
+        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
+        return (*ident)[bin].IValue,true
     }
     return nil, false
 }
-
-/*
-func vgeti(fs uint32, ident *[szIdent]Variable,id uint64) (interface{}) {
-    if (*ident)[id].declared { return (*ident)[id].IValue }
-    return nil
-}
-*/
 
 func isBool(expr interface{}) bool {
     switch reflect.TypeOf(expr).Kind() {
@@ -1636,10 +1614,12 @@ func isNumber(expr interface{}) bool {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
 
+    /*
     if atomic.LoadInt32(&concurrent_funcs)>0 {
         lastlock.Lock()
         defer lastlock.Unlock()
     }
+    */
 
     if !interpolation {
         return s
@@ -1826,9 +1806,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
         // use whichever is encountered first
         case O_Assign:
             eqPos=k
-             // pf("Assign query          : %+v\n",tks[k+1:])
             expr.result, err = p.Eval(fs,tks[k+1:])
-             // pf("Assign expression box : %+v\n\n",expr)
             break floop1
         case SYM_PLE:
             expr.result,err=p.Eval(fs,tks[k+1:])
@@ -1889,18 +1867,12 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
     } else {
         expr.assign=true
         expr.assignPos=eqPos
+
         // before eval, rewrite lhs token bindings to their lhs equivalent
         if !standardAssign {
             if lfs!=fs {
                 if newEval[0].tokType==Identifier {
-                    if VarLookup(lfs,lident,newEval[0].tokText) {
-                        if ! (*lident)[bind_int(lfs,newEval[0].tokText)].declared {
-                            p.report(-1,"you may only amend declared variables outside of local scope")
-                            expr.evalError=true
-                            finish(false,ERR_SYNTAX)
-                            return expr
-                        }
-                    } else {
+                    if ! VarLookup(lfs,lident,newEval[0].tokText) {
                         p.report(-1,"you may only amend existing variables outside of local scope")
                         expr.evalError=true
                         finish(false,ERR_SYNTAX)
@@ -1915,24 +1887,10 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
                 newEval[eqPos+1]=Token{tokType:NumericLiteral,tokText:"", tokVal:expr.result}
             }
 
-            // lots of crap here since moving to separate ident[] per func :)
-
-            /*
-            pf("\n\n\n[#1]weval | tok | %+v[#-]\n",tks)
-            pf("[#1]weval | nev | %+v[#-]\n",newEval)
-            pf("[#1]weval | lhs | fs %d | ident_addr %p[#-]\n",lfs,lident)
-            pf("[#1]weval | rhs | fs %d | ident_addr %p[#-]\n\n\n\n",fs,rident)
-            */
-
-            // eval
-            // pf("[#2]weval |  PRE RESULT[#-]\n")
-            // pf("[#1]weval | exp | %#v[#-]\n",expr)
-
             oid:=p.ident; p.ident=lident
             expr.result, err = p.Eval(lfs,newEval)
             p.ident=oid
 
-            // pf("[#2]weval | POST RESULT[#-]\n")
         }
     }
 
@@ -1944,16 +1902,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
     }
 
     if expr.assign {
-        /*
-        pf("-- entering doAssign (lfs->%d,rfs->%d) with tokens : %+v\n",lfs,fs,tks)
-        pf("-- entering doAssign (lfs->%d,rfs->%d) with value  : %+v\n",lfs,fs,expr.result)
-        pf("-- entering doAssign (lfs->%d,rfs->%d) with lfs bindings: %+v\n",lfs,fs,bindings[lfs])
-        pf("-- entering doAssign (lfs->%d,rfs->%d) with rfs bindings: %+v\n",lfs,fs,bindings[fs])
-        */
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
-        // pf("-- exited   doAssign (lfs->%d,rfs->%d) with idents of %+v\n",lfs,fs,lident)
-        // pf("-- exited   doAssign (lfs->%d,rfs->%d) with lfs bindings: %+v\n",lfs,fs,bindings[lfs])
-        // pf("-- exited   doAssign (lfs->%d,rfs->%d) with rfs bindings: %+v\n",lfs,fs,bindings[fs])
     }
 
     return expr

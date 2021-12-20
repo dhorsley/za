@@ -116,7 +116,7 @@ func buildMathLib() {
         return n, nil
     }
 
-    slhelp["logn"] = LibHelp{in: "number,base", out: "float", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy."}
+    slhelp["logn"] = LibHelp{in: "number,base", out: "float", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy. logn(0,x) is reported as 0f."}
     stdlib["logn"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("logn",args,3,
         "2","float64","number",
@@ -138,6 +138,7 @@ func buildMathLib() {
             return 0, errors.New("Data type not supported.")
         }
         n = math.Log(n) / math.Log(b)
+        if math.IsInf(n,0) { n=0 }
         return n, nil
     }
 
@@ -772,10 +773,10 @@ func RenderFloat(format string, n float64) string {
         return "NaN"
     }
     if n > math.MaxFloat64 {
-        return "Infinity"
+        return "Inf"
     }
     if n < -math.MaxFloat64 {
-        return "-Infinity"
+        return "-Inf"
     }
 
     // default format

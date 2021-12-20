@@ -39,7 +39,7 @@ bounce=0.012
 maxrot=13.0
 
 quit=false
-async whand waitkey()
+async nil waitkey()
 
 while !quit
     cls

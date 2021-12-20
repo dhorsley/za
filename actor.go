@@ -34,9 +34,6 @@ func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan
         atomic.AddInt32(&concurrent_funcs,1)
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
 
-        // dur, _ := time.ParseDuration("1ms")
-        // time.Sleep(dur)
-
         switch rcount {
         case 0:
             r<-struct{l uint32;r interface{}}{loc,nil}
@@ -355,14 +352,14 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 
     // fmt.Printf("Entered gnfs\n")
     calllock.Lock()
-    defer calllock.Unlock()
 
     // : sets up a re-use value
     var reuse,e uint32
     if globseq<gcModulus*2 || (globseq % gcModulus) < 2 {
         for e=0; e<globseq; e+=1 {
             if calltable[e].gc {
-                break
+                if calltable[e].gcShyness>0 { calltable[e].gcShyness-=1 }
+                if calltable[e].gcShyness==0 { break }
             }
         }
         if e<globseq { reuse=e }
@@ -379,6 +376,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
         if cap(calltable)>=gnfsModulus {
             fmt.Printf("call table overgrown\n")
             finish(true, ERR_FATAL)
+            calllock.Unlock()
             return 0,""
         }
         ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
@@ -405,6 +403,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 
     // fmt.Printf("(gnf) allocated for %v with %d\n",newName,reuse)
 
+    calllock.Unlock()
     return reuse,newName
 
 }
@@ -1864,7 +1863,7 @@ tco_reentry:
                         if (*thisLoop).counter > (*thisLoop).condEnd {
                             (*thisLoop).counter -= (*thisLoop).repeatActionStep
                             if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vsetInteger(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
                             }
                             loopEnd = true
                         }
@@ -1872,7 +1871,7 @@ tco_reentry:
                         if (*thisLoop).counter < (*thisLoop).condEnd {
                             (*thisLoop).counter -= (*thisLoop).repeatActionStep
                             if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vsetInteger(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
                             }
                             loopEnd = true
                         }
@@ -1889,7 +1888,7 @@ tco_reentry:
                     // assign loop counter value back to local variable
                     if (*thisLoop).optNoUse == Opt_LoopSet {
                         // assign directly as already declared and removes the fn call
-                        vsetInteger(ifs,ident,(*thisLoop).loopVar,(*thisLoop).counter)
+                        vset(ifs,ident,(*thisLoop).loopVar,(*thisLoop).counter)
                     }
 
                 }
@@ -2715,7 +2714,7 @@ tco_reentry:
                 // construct a go call that includes a normal Call
                 h,id:=task(ifs,lmv,call,resu...)
 
-                // assign h to handles map
+                // assign channel h to handles map
                 if handles!="nil" {
                     if nival==nil {
                         vsetElement(ifs,ident,handles,sf("async_%v",id),h)
@@ -2757,7 +2756,7 @@ tco_reentry:
                 _, e := vconvert(required)
                 if e==nil {
                     // sem ver provided / compare to language version
-                    lver,_ :=vget(0,&gident,"@version")
+                    lver,_ :=gvget("@version")
                     lcmp,_ :=vcmp(lver.(string),required)
                     if lcmp==-1 { // lang ver is lower than required ver
                         // error
@@ -3137,7 +3136,7 @@ tco_reentry:
                 if filepath.IsAbs(fom) {
                     moduleloc = fom
                 } else {
-                    mdir, _ := vget(0,&gident,"@execpath")
+                    mdir, _ := gvget("@execpath")
                     moduleloc = mdir.(string)+"/"+fom
                 }
             } else {
@@ -3145,7 +3144,7 @@ tco_reentry:
                 // modules default path is $HOME/.za/modules
                 //  unless otherwise redefined in environmental variable ZA_MODPATH
 
-                modhome, _ := vget(0,&gident, "@home")
+                modhome, _ := gvget("@home")
                 modhome = modhome.(string) + "/.za"
                 if os.Getenv("ZA_MODPATH") != "" {
                     modhome = os.Getenv("ZA_MODPATH")
@@ -3242,6 +3241,7 @@ tco_reentry:
                 }
 
                 calllock.Lock()
+                calltable[ifs].gcShyness=20
                 calltable[ifs].gc=true
                 calllock.Unlock()
 
@@ -3711,7 +3711,7 @@ tco_reentry:
                             }
                             if prompt_ev_err == nil {
                                 processedPrompt := expr.(string)
-                                echoMask,_:=vget(0,&gident,"@echomask")
+                                echoMask,_:=gvget("@echomask")
                                 if inbound.TokenCount > 3 {
                                     val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
                                     if val_ex_error != nil {
@@ -3768,14 +3768,14 @@ tco_reentry:
                         break
                     }
                     logFile = we.result.(string)
-                    vset(0, &gident, "@logsubject", "")
+                    gvset("@logsubject", "")
                 }
 
             case "quiet":
-                vset(0, &gident, "@silentlog", true)
+                gvset("@silentlog", true)
 
             case "loud":
-                vset(0, &gident, "@silentlog", false)
+                gvset("@silentlog", false)
 
             case "accessfile":
                 if inbound.TokenCount > 2 {
@@ -3823,9 +3823,9 @@ tco_reentry:
                         finish(false, ERR_EVAL)
                         break
                     }
-                    vset(0, &gident, "@logsubject", we.result.(string))
+                    gvset("@logsubject", we.result.(string))
                 } else {
-                    vset(0, &gident, "@logsubject", "")
+                    gvset("@logsubject", "")
                 }
 
             default:
@@ -4227,7 +4227,7 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent
             plog("%v", plog_out)
             return
         }
-        if interactive || lf { pf("\n") }
+        if interactiveFeed || lf { pf("\n") }
     } else {
         pf("\n")
     }

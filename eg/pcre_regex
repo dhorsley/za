@@ -48,7 +48,7 @@ define perf_regex_dna()
     async ahandles runSubs(subs,seq) "subtot"
 
     # wait for completion
-    res=ahandles.await(true)
+    res=await(ref ahandles,true)
 
     # push to screen in same order they were sent for processing
     for e=0 to res.len-1

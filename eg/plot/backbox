@@ -26,7 +26,7 @@ bh=9; bw=16
 w=term_w()
 h=term_h()
 
-async keyhandle quit()
+async nil quit()
 
 cls
 cursoroff()

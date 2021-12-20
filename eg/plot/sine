@@ -51,7 +51,7 @@ dx = (2.0*pi() / period)
 
 # key loop
 quit=false
-async retmap async_waitkey()
+async nil async_waitkey()
 
 
 # display loop

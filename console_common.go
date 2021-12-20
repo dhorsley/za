@@ -179,7 +179,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     if runtime.GOOS=="windows" { winmode = true }
 
     // get echo status
-    echo,_:=vget(0,&gident,"@echo")
+    echo,_:=gvget("@echo")
 
     if mask=="" { mask="*" }
 
@@ -773,7 +773,7 @@ func sparkle(a interface{}) string {
 func plog(s string, va ...interface{}) {
 
     // print if not silent logging
-    if v, _ := vget(0, &gident, "@silentlog"); v.(bool) {
+    if v, _ := gvget("@silentlog"); v.(bool) {
         pf(s, va...)
     }
 
@@ -784,7 +784,7 @@ func plog(s string, va ...interface{}) {
             log.Println(err)
         }
         defer f.Close()
-        subj, _ := vget(0, &gident, "@logsubject")
+        subj, _ := gvget("@logsubject")
         logger := log.New(f, subj.(string), log.LstdFlags)
         logger.Printf(s, va...)
     }
@@ -804,7 +804,7 @@ func spf(ns uint32, ident *[szIdent]Variable, s string) string {
 
 // clear screen
 func cls() {
-    if v, _ := vget(0, &gident, "@winterm"); !v.(bool) {
+    if v, _ := gvget("@winterm"); !v.(bool) {
         pf("\033c")
     } else {
         pf("\033[2J")
@@ -1287,8 +1287,7 @@ func GetCommand(c string) (s string, err error) {
     cmd := exec.Command(bargs[0], bargs[1:]...)
     var out bytes.Buffer
     cmd.Stdin  = os.Stdin
-    // cmd.Stderr = os.Stderr
-    capture,_:=vget(0,&gident,"@commandCapture")
+    capture,_:=gvget("@commandCapture")
     if capture.(bool) {
         cmd.Stdout = &out
         err = cmd.Run()
@@ -1311,7 +1310,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     var result BashRead
 
-    CMDSEP,_:=vget(0,&gident,"@cmdsep")
+    CMDSEP,_:=gvget("@cmdsep")
     cmdsep:=CMDSEP.(byte)
 
     lastlock.Lock()
@@ -1333,7 +1332,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
         // if EOF then end with what we have accumulated so far
 
         // save cursor - move to start of row
-        mt, _ := vget(0,&gident, "mark_time")
+        mt, _ := gvget("mark_time")
         if mt.(bool) {
             pf("[#CSI]s[#CSI]1G")
         }
@@ -1435,17 +1434,17 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     var err error       // generic error handle
     var commandErr error
 
-    riwp,_:=vget(0,&gident,"@runInWindowsParent")
-    rip,_ :=vget(0,&gident,"@runInParent")
+    riwp,_:=gvget("@runInWindowsParent")
+    rip,_ :=gvget("@runInParent")
 
 
     // shell reporting option:
-    sr,_:=vget(0,&gident,"@shell_report")
+    sr,_:=gvget("@shell_report")
 
     if sr.(bool)==true {
-        noshell,_  :=vget(0,&gident,"@noshell")
-        shelltype,_:=vget(0,&gident,"@shelltype")
-        shellloc,_ :=vget(0,&gident,"@shell_location")
+        noshell,_  :=gvget("@noshell")
+        shelltype,_:=gvget("@shelltype")
+        shellloc,_ :=gvget("@shell_location")
         if !noshell.(bool) {
             pf("[#4]Shell Options: ")
             pf("%v (%v) ",shelltype,shellloc)
@@ -1472,24 +1471,24 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
         if err != nil {
 
-            vset(0,&gident,"@last","0")
-            vset(0,&gident,"@lastout",[]byte{0})
+            gvset("@last","0")
+            gvset("@lastout",[]byte{0})
 
             if !squashErr {
 
                 if exitError, ok := err.(*exec.ExitError); ok {
-                    vset(0,&gident,"@last",sf("%v",exitError.ExitCode()))
-                    vset(0,&gident, "@last_out", []byte(err.Error()))
+                    gvset("@last",sf("%v",exitError.ExitCode()))
+                    gvset( "@last_out", []byte(err.Error()))
                 } else { // probably a command not found?
-                    vset(0,&gident,"@last","1")
-                    vset(0,&gident,"@last_out", []byte("Command not found."))
+                    gvset("@last","1")
+                    gvset("@last_out", []byte("Command not found."))
                 }
 
             }
 
         } else {
-            vset(0,&gident,"@last", "0")
-            vset(0,&gident,"@last_out", []byte{0})
+            gvset("@last", "0")
+            gvset("@last_out", []byte{0})
         }
     } else {
 
@@ -1499,12 +1498,12 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             log.Fatal(err)
         }
         defer os.Remove(errorFile.Name())
-        vset(0,&gident,"@last", "0")
+        gvset("@last", "0")
 
         read_out := bufio.NewReader(po)
 
         // issue command
-        CMDSEP,_:=vget(0,&gident,"@cmdsep")
+        CMDSEP,_:=gvget("@cmdsep")
         cmdsep:=CMDSEP.(byte)
         hexenc:=hex.EncodeToString([]byte{cmdsep})
         io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
@@ -1518,9 +1517,9 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         //  the output until the next cmdsep
         code, err := NextCopper("#Status", read_out)
         // pull cwd from /proc
-        childProc,_:=vget(0,&gident,"@shellpid")
+        childProc,_:=gvget("@shellpid")
         pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
-        vset(0,&gident,"@pwd", pwd)
+        gvset("@pwd", pwd)
 
         if commandErr != nil {
             errint = -3
@@ -1531,7 +1530,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
                     errint = -2
                 }
                 if !squashErr {
-                    vset(0,&gident,"@last", string(code))
+                    gvset("@last", string(code))
                 }
             } else {
                 errint = -1
@@ -1542,10 +1541,10 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         b, err := ioutil.ReadFile(errorFile.Name())
 
         if len(b) > 0 {
-            vset(0,&gident, "@last_out", b)
+            gvset("@last_out", b)
             errout=string(b)
         } else {
-            vset(0,&gident,"@last_out", []byte{0})
+            gvset("@last_out", []byte{0})
             errout=""
         }
 
@@ -1573,7 +1572,7 @@ func restoreScreen() {
 }
 
 func testStart(file string) {
-    vos,_:=vget(0,&gident,"@os") ; stros:=vos.(string)
+    vos,_:=gvget("@os") ; stros:=vos.(string)
     test_start := sf("\n[#6][#ul][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
     appendToTestReport(test_output_file,0, 0, test_start)
 }
