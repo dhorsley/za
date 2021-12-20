@@ -22,6 +22,15 @@ define clear(lstart,lend,column)
     endfor
 end
 
+define header(t)
+    at 0,1
+    for e=0 to pane_w()-2
+        print fgrgb(0,e*64f/pane_w(),e*255f/pane_w()),"_"
+    endfor
+    print "[#-]"
+    at 0,0,t
+end
+
 define bar(row,col,hsize,pc,colour)
     part_3q="▊"
     part_2q="▌"
@@ -32,7 +41,8 @@ define bar(row,col,hsize,pc,colour)
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.int do c="█"
+        # on e<d.int do c="█"
+        on e<d.int do c="▪"
         if e>=d.int and e<int(d+1)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
@@ -71,16 +81,18 @@ end
 define showEnv()
     pane select "envs"
     print linecolour; pane redraw
+    header("{=tink} Environment [#-]")
+
     clear(2,11,1)
     cursoroff()
 
-    at 2,3, "[#-]Hostname             : [#6]{=hostname()}[#-]"
-    at 3,3, "Bash Version         : [#6]{=bash_version()}[#-]"
-    at 4,3, "User                 : [#6]{=user()}[#-]"
-    at 5,3, "OS                   : [#6]{=os()}[#-]"
-    at 6,3, "Locale               : [#6]{=lang()}[#-]"
-    at 7,3, "Distribution         : [#6]{=release_name()}[#-]"
-    at 8,3, "Distribution Version : [#6]{=release_version()}[#-]"
+    at 2,2, "[#-]Hostname             : [#6]{=hostname()}[#-]"
+    at 3,2, "Bash Version         : [#6]{=bash_version()}[#-]"
+    at 4,2, "User                 : [#6]{=user()}[#-]"
+    at 5,2, "OS                   : [#6]{=os()}[#-]"
+    at 6,2, "Locale               : [#6]{=lang()}[#-]"
+    at 7,2, "Distribution         : [#6]{=release_name()}[#-]"
+    at 8,2, "Distribution Version : [#6]{=release_version()}[#-]"
 end
 
 
@@ -99,6 +111,7 @@ define showFiles()
 
         pane select "files"
         print linecolour; pane redraw
+        header("{=tink} Files [#-]")
 
         clear(1,4,1)
 
@@ -125,6 +138,7 @@ define showMem()
 
     pane select "mem"
     print linecolour; pane redraw
+    header("{=tink} Memory [#-]")
 
     cursoroff()
 
@@ -175,27 +189,27 @@ define showMem()
 
     clear(2,9,1)
 
-    at 2,1, "[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
+    at 2,2,"[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
     print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]   "
 
-    at 3,1, "[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
+    at 3,2,"[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
     print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]   "
 
-    at 4,1, "[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
+    at 4,2,"[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
     print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]   "
 
-    at 5,1, "[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
+    at 5,2,"[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
     print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]   "
 
-    at 6,1, "[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
+    at 6,2,"[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
     print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]   "
 
-    at 7,1, "[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
+    at 7,2,"[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
     print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]   "
 
     al=get_mem().alloc.int
     ts=get_mem().system.int
-    at 8,1, "[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
+    at 8,2,"[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
     print " [#6]{=hobbitsize(al*1024*1024)}B [#-]   "
 
     # display slab info
@@ -204,7 +218,7 @@ define showMem()
     on count(slabs)<8 do cs=count(slabs)
 
     comwidth=10
-    at 10,1, format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+    at 10,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
     # would normally do with fields(). showing alternative below:
     if count(slabs)>0
         for p = 0 to cs-1
@@ -331,6 +345,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     pane select "cpu"
     print linecolour; pane redraw
+    header("{=tink} CPU [#-]")
 
     activity_bg=" "
     activity_indicator="▪"
@@ -533,6 +548,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     pane select "net"
     print linecolour; pane redraw
+    header("{=tink} Network [#-]")
 
     at 2,4,"Interface [{interface}] Addr : {ipaddr} "
 
@@ -552,11 +568,16 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             rbytes  = float(F[2])
             tbytes  = float(F[10])
 
+            if net_sample_start_in>0
+                prev_rbytes=rbytes
+                prev_tbytes=tbytes
+            endif
+
             # diff from previous
             drb=rbytes-prev_rbytes
             dtb=tbytes-prev_tbytes
-            on drb < 0 do drb = 0
-            on dtb < 0 do dtb = 0
+            on drb <= 0 do drb = 0f
+            on dtb <= 0 do dtb = 0f
 
             # shift left and append new to end
             setglob rblist=rblist.tail.append(drb)
@@ -572,9 +593,9 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             clear(9,13,1)
             # log each value to with n=64, convert to a percentage, then clamp between 0-100. convert result to []int and chart.
             chart(midline-1,2,5,
-                ( (rblist[1:] -> "[20*(logn(#,64)-1),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(0,2.5*?,2.5*?)",false,false)
+                ( (rblist[1:] -> "[20*logn(#,64),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(0,2.5*?,2.5*?)",false,false)
             chart(midline+1,2,5,
-                ( (tblist[1:] -> "[20*(logn(#,64)-1),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(2.5*?,0,0)",false,true)
+                ( (tblist[1:] -> "[20*logn(#,64),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(2.5*?,0,0)",false,true)
 
             # write history
             setglob prev_rbytes = rbytes
@@ -591,21 +612,21 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     endfor
 
-    setglob net_sample_start_in -= 1
+    on net_sample_start_in>0 do setglob net_sample_start_in -= 1
 
 end
 
 define redef_layout(cpu_count,pfilter)
 
-    #            name    row            col             h        w             title                            border
-    pane define "cpu",    1,            1,         cpu_count+1,  150,  "[#b1]{=tink} Internal [##]",            "topline"
-    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",               "round"
-    pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]"+pfilter,   "round"
-    pane define "net",    cpu_count+3,  67,             19,      44,   "[#b1]{=tink} Network [##]",             "topline"
-    pane define "envs",   cpu_count+23, 67,             13,      44,   "[#b1]{=tink} Environment [##]",         "topline"
-    pane define "mem",    cpu_count+3,  112,            19,      34,   "[#b1]{=tink} Memory [##]",              "topline"
-    pane define "files",  cpu_count+23, 112,            8,       34,   "[#b1]{=tink} Files [##]",               "topline"
-    pane define "status", cpu_count+33, 1,              2,       150,  "",                                      "round"
+    #            name    row            col             h        w             title                          border
+    pane define "cpu",    1,            1,         cpu_count+1,  150,  "",                                    "none"
+    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]{=tink} Disks [##]",             "round"
+    pane define "procs",  cpu_count+12, 2,              20,      64,   "[#b1]{=tink} Processes [##]"+pfilter, "round"
+    pane define "net",    cpu_count+3,  67,             19,      44,   "",                                    "none"
+    pane define "envs",   cpu_count+23, 67,             13,      44,   "",                                    "none"
+    pane define "mem",    cpu_count+3,  112,            19,      34,   "",                                    "none"
+    pane define "files",  cpu_count+23, 112,            8,       34,   "",                                    "none"
+    pane define "status", cpu_count+33, 1,              1,       150,  "",                                    "none"
 
     setglob net_sample_count = 40
     # on net_sample_count>72 do setglob net_sample_count = 72

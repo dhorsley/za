@@ -3,11 +3,11 @@ package main
 import (
     str "strings"
     "sync"
-    "sync/atomic"
 )
 
 // global binding list - populated during phrasing
 var bindings = make([]map[string]uint64,SPACE_CAP)
+var bindlock = &sync.Mutex{}
 
 func bindResize() {
     newar:=make([]map[string]uint64,cap(bindings)*2)
@@ -40,12 +40,10 @@ func invalidate_lru_bind_cache() {
 }
 */
 
-var bindlock = &sync.RWMutex{}
 
 func bind_int(fs uint32,name string) (i uint64) {
 
-    var locked bool
-    if atomic.LoadInt32(&concurrent_funcs)>0 { bindlock.Lock() ; locked=true }
+    bindlock.Lock()
 
     for e:=range lru_bind_cache {
         if lru_bind_cache[e].used==false { break }
@@ -53,8 +51,9 @@ func bind_int(fs uint32,name string) (i uint64) {
         if fs==lru_bind_cache[e].fs {
             if strcmp(name,lru_bind_cache[e].name) {
                 // fmt.Printf("[%d] %s -> found in lru cache\n",fs,name)
-                if locked { bindlock.Unlock() }
-                return lru_bind_cache[e].res
+                res:=lru_bind_cache[e].res
+                bindlock.Unlock()
+                return res
             }
         }
     }
@@ -64,9 +63,11 @@ func bind_int(fs uint32,name string) (i uint64) {
     }
 
     var present bool
-    if i,present=bindings[fs][name]; present {
+    i,present=bindings[fs][name]
+
+    if present {
         add_lru_bind_cache(fs,name,i)
-        if locked { bindlock.Unlock() }
+        bindlock.Unlock()
         return
     }
 
@@ -77,8 +78,8 @@ func bind_int(fs uint32,name string) (i uint64) {
     i=uint64(len(bindings[fs]))
     bindings[fs][name]=i
     add_lru_bind_cache(fs,name,i)
+    bindlock.Unlock()
     // fmt.Printf("[bi] added binding in #%d for %s to %d\n",fs,name,i)
-    if locked { bindlock.Unlock() }
     return
 }
 

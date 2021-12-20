@@ -46,6 +46,12 @@ CHANGE LOG
     * added tab (7) and shift-tab (6) support in keypress()
     * added shift-up (211) and shift-down (210) support in keypress()
 
+    * modified logn to return 0 on logn(0,n) instead of +/-Inf
+        - logn has mainly been used for graphing/series processing and such results would manually
+            be converted to 0 anyway.
+        - this isn't great behaviour, but will stay this way until a better alternative presents itself.
+        - if correct behaviour is more important then ensure you don't push a zero in to logn to begin with.
+
     * checked lib-os for windows differences:
         - some calls have no direct equivalent, so ignoring those.
         - however, we did overlook parent(), fileabs() and filebase(), so added those for windows

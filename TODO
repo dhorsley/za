@@ -9,6 +9,8 @@ lots, i'm sure.
 TODO
 ----
 
+    * unify stdlib func names format
+
     * tested compilation with go 1.18beta
         - execution speed up of up to 10%, dependant on operation type.
             - most things remained at the same speed.

@@ -175,7 +175,7 @@ func vconvert(v string) (float64, error) {
 
 func isinstalled(pkg string) (bool) {
 
-    v, _ := vget(0, &gident, "@release_id")
+    v, _ := gvget("@release_id")
 
     err:=-1
     switch v.(string) {
@@ -200,7 +200,7 @@ func uninstall(pkgs string) (state int) {
 
     var pm, upopts, inopts, checkcmd1, checkcmd2 string
 
-    v, _ := vget(0, &gident, "@release_id")
+    v, _ := gvget("@release_id")
 
     switch v.(string) {
     case "ubuntu", "debian":
@@ -360,7 +360,7 @@ func install(pkgs string) (state int) {
 
     inopts = ""
 
-    v, _ := vget(0, &gident, "@release_id")
+    v, _ := gvget("@release_id")
     switch v.(string) {
     case "ubuntu", "debian":
         pm = "apt"
@@ -437,9 +437,9 @@ func install(pkgs string) (state int) {
 // take a service action. actions are permitted for upstart and systemd tools. 
 func service(name string, action string) (bool, error) {
 
-    v, _ := vget(0, &gident, "@release_id")
+    v, _ := gvget("@release_id")
     rid := v.(string)
-    v, _ = vget(0, &gident, "@release_version")
+    v, _ = gvget("@release_version")
     rv := v.(string)
 
     sys := Copper("ps -o comm= -q 1", true)
