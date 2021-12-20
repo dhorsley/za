@@ -52,6 +52,8 @@ CHANGE LOG
         - this isn't great behaviour, but will stay this way until a better alternative presents itself.
         - if correct behaviour is more important then ensure you don't push a zero in to logn to begin with.
 
+    * removed references to globlen
+
     * checked lib-os for windows differences:
         - some calls have no direct equivalent, so ignoring those.
         - however, we did overlook parent(), fileabs() and filebase(), so added those for windows
@@ -1831,7 +1833,7 @@ CHANGE LOG
 
         * amended dump() to not display read-only system variables
         * changed some sys vars to read-only naming
-        * added a shellpid() lib call for getting the pid of the co-process.
+        * added a shell_pid() lib call for getting the pid of the co-process.
 
         * fixed initialisation of var in inc/dec for not existing var names.
 

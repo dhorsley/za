@@ -387,7 +387,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             endfor
 
             # set initial value for the global store
-            if !globkey("prev","{name}_total")
+            if !glob_key("prev","{name}_total")
                 foreach i in indexlist
                     setglob prev["{name}_{i}"] = vals[i]
                 endfor
@@ -395,7 +395,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
             # now populate local prev from global prev
             foreach i in indexlist
-                if globkey("prev","{name}_{i}")
+                if glob_key("prev","{name}_{i}")
                     g=prev["{name}_{i}"]
                     if g.is_number
                         one_prev[i]=g
@@ -629,7 +629,6 @@ define redef_layout(cpu_count,pfilter)
     pane define "status", cpu_count+33, 1,              1,       150,  "",                                    "none"
 
     setglob net_sample_count = 40
-    # on net_sample_count>72 do setglob net_sample_count = 72
 
     setglob rblist = push_front(0.0)
     setglob tblist = push_front(0.0)

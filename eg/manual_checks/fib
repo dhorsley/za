@@ -2,7 +2,7 @@
 
 define fib(n)
     setglob memo["calls"] = memo["calls"]+1
-    if globkey("memo",string(n))
+    if glob_key("memo",string(n))
         m=memo[n]
     else
         m=fib(n-2)+fib(n-1)
