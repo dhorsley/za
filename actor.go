@@ -21,7 +21,7 @@ import (
 )
 
 
-func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan interface{},string) {
+func task(caller uint32, base uint32, endClose bool, call string, iargs ...interface{}) (chan interface{},string) {
 
     r:=make(chan interface{})
 
@@ -29,7 +29,7 @@ func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan
     // fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
     go func() {
-        defer close(r)
+        if endClose { defer close(r) }
         var ident [szIdent]Variable
         atomic.AddInt32(&concurrent_funcs,1)
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
@@ -45,6 +45,7 @@ func task(caller uint32, base uint32, call string, iargs ...interface{}) (<-chan
                 r<-nil
                 break
             }
+            // pf("[#3]TASK RESULT : loc %d : val (%+v)[#-]\n",loc,v.([]interface{}))
             r<-struct{l uint32;r interface{}}{loc,v.([]interface{})[0]}
         default:
             calllock.RLock()
@@ -288,67 +289,11 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8,
 }
 
 
-/*
-
-func Uint32n(maxN uint32) uint32 {
-    x := Uint32()
-    return uint32((uint64(x) * uint64(maxN)) >> 32)
-}
-
-type RNG struct {
-    x uint32
-}
-
-var rngPool sync.Pool
-
-func (r *RNG) Uint32n(maxN uint32) uint32 {
-    x := r.Uint32()
-    return uint32((uint64(x) * uint64(maxN)) >> 32)
-}
-
-
-func Uint32() uint32 {
-    v := rngPool.Get()
-    if v == nil {
-        v = &RNG{}
-    }
-    r := v.(*RNG)
-    x := r.Uint32()
-    rngPool.Put(r)
-    return x
-}
-
-func getRandomUint32() uint32 {
-    x := time.Now().UnixNano()
-    return uint32((x >> 32) ^ x)
-}
-
-func (r *RNG) Uint32() uint32 {
-    for r.x == 0 {
-        r.x = getRandomUint32()
-    }
-    x := r.x
-    x ^= x << 13
-    x ^= x >> 17
-    x ^= x << 5
-    r.x = x
-    return x
-}
-
-func formatUint32(n uint32) string {
-    return strconv.FormatUint(uint64(n), 10)
-}
-
-func formatInt32(n int32) string {
-    return strconv.FormatInt(int64(n), 10)
-}
-
-*/
-
-
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
 func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string) {
+
+    // do_lock not currently used!
 
     // fmt.Printf("Entered gnfs\n")
     calllock.Lock()
@@ -382,7 +327,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
         ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
         copy(ncs,calltable)
         calltable=ncs
-        // fmt.Printf("[gnfs] resized calltable.\n")
+        fmt.Printf("[gnfs] resized calltable.\n")
     }
 
     // generate new tagged instance name
@@ -2712,10 +2657,12 @@ tco_reentry:
                 // make Za function call
 
                 // construct a go call that includes a normal Call
-                h,id:=task(ifs,lmv,call,resu...)
-
-                // assign channel h to handles map
-                if handles!="nil" {
+                if handles=="nil" {
+                    _,_=task(ifs,lmv,true,call,resu...)
+                } else {
+                    h,id:=task(ifs,lmv,false,call,resu...)
+                    // time.Sleep(1 * time.Millisecond)
+                    // assign channel h to handles map
                     if nival==nil {
                         vsetElement(ifs,ident,handles,sf("async_%v",id),h)
                     } else {
@@ -2923,6 +2870,7 @@ tco_reentry:
                 }
             }
             retval_count=curArg
+            // pf("call() %d : args -> [%+v]\n",ifs,rargs)
 
             // tail call recursion handling:
             if inbound.TokenCount > 2 {
@@ -2975,6 +2923,7 @@ tco_reentry:
                     break
                 }
             }
+            // pf("call() #%d : rv -> [%+v]\n",ifs,retvalues)
 
             endFunc = true
             break
@@ -3997,9 +3946,9 @@ tco_reentry:
 
         // populate return variable in the caller with retvals
         if retvalues!=nil {
-            calllock.RLock()
+            calllock.Lock()
             calltable[ifs].retvals=retvalues
-            calllock.RUnlock()
+            calllock.Unlock()
         }
 
         // clean up
@@ -4021,8 +3970,6 @@ tco_reentry:
             lastlock.Lock()
             lastfunc[ifs]=fs
             lastlock.Unlock()
-
-            // calllock.Unlock()
 
             if ifs>2 {
                 fspacelock.Lock()

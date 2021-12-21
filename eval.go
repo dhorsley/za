@@ -84,7 +84,7 @@ func (p *leparser) peek() Token {
 
 func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
-    // pf("\n\ndparse query     : %+v\n",p.tokens)
+    // pf("\ndparse query     : %+v\n",p.tokens)
 
     // inlined manually:
     if p.pos>0 { p.preprev=p.prev }
@@ -248,8 +248,12 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
     }
 
-    // pf("dparse result: %+v\n",left)
-    // pf("dparse error : %#v\n",err)
+    /*
+    if err!=nil || left==nil {
+      pf("[#2]dparse result: %+v[#-]\n",left)
+      pf("[#2]dparse error : %#v[#-]\n",err)
+    }
+    */
 
 	return left,err
 }
@@ -1454,11 +1458,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
             key=el.(string)
         }
         vlock.Lock()
-        if ok {
-            (*ident)[bin].IValue.(map[string]interface{})[key] = value
-        } else {
-            (*ident)[bin].IValue.(map[string]interface{})[key] = value
-        }
+        (*ident)[bin].IValue.(map[string]interface{})[key] = value
         vlock.Unlock()
         return
     }
@@ -1614,13 +1614,6 @@ func isNumber(expr interface{}) bool {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
 
-    /*
-    if atomic.LoadInt32(&concurrent_funcs)>0 {
-        lastlock.Lock()
-        defer lastlock.Unlock()
-    }
-    */
-
     if !interpolation {
         return s
     }
@@ -1633,10 +1626,29 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
 
+    // @todo: fix this, interparse is a global - this races
+    //   interparse.mident is set to either 1 or 2 in actor.go
+    //   depending on interactive mode flag.
+    //   we also need to do that here on the local version, 
+    //   before removing the global version.
+
+    /*
     ofs:=interparse.fs
     oident:=interparse.ident
     interparse.fs=fs
     interparse.ident=ident
+    */
+
+    var interparse *leparser
+    interparse=&leparser{}
+    interparse.prectable=default_prectable
+    interparse.fs=fs
+    interparse.ident=ident
+    if interactive {
+        interparse.mident=1
+    } else {
+        interparse.mident=2
+    }
 
     for {
         os:=s
@@ -1698,8 +1710,10 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
         if !modified { redo=false }
     }
 
+    /*
     interparse.ident=oident
     interparse.fs=ofs
+    */
 
     if s=="<nil>" { s=orig }
 

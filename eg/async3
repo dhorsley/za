@@ -1,9 +1,17 @@
 #!/usr/bin/za -S
 
 doc `
+!!                                                  !!
 !! co-processing in child shell *must* be disabled  !!
-!!       in order to allow parallel execution       !!
+!!      in order to allow parallel execution        !!
+!!                                                  !!
+!!      there's still a good chance the parent      !!
+!!      shell won't keep up either!                 !!
+!!                                                  !!
 `
+
+# max=460
+max=200
 
 coproc(false)
 
@@ -19,14 +27,14 @@ define f()
 end
 
 # launch all in parallel
-for x=0 to 99
+for x=0 to max
     async hndmap f() x
 endfor
 
 # collect results
 println "Waiting for task completions."
 res=await(ref hndmap,true)
-for e=0 to 99
+for e=0 to max
     println e," -> ",res[e]
 endfor
 

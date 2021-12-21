@@ -1243,7 +1243,7 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
 
             calllock.Lock()
             res = calltable[loc].retvals
-            calltable[loc].gcShyness=20
+            calltable[loc].gcShyness=100
             calltable[loc].gc=true
             calllock.Unlock()
 
