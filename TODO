@@ -38,6 +38,13 @@ TODO
                 - i'm leaving the client-side channel close in place:
                     - it's not exactly go-flavoured, but what is in this mess?
 
+            - (done) will throw a lock around system calls in the child process.
+                - there's no good reason to ever try to run multiple shell commands
+                    at exactly the same time.
+                - tested with 1000 bash call concurrency in coproc and parent shells.
+                - TODO: lots of calls in lib-package.go need to change from
+                    Copper() to system() calls.
+
     * tested compilation with go 1.18beta
         - execution speed up of up to 10%, dependant on operation type.
             - most things remained at the same speed.

@@ -61,8 +61,8 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...inter
 }
 
 
-var testlock = &sync.RWMutex{}
-var atlock = &sync.RWMutex{}
+var testlock = &sync.Mutex{}
+var atlock = &sync.Mutex{}
 
 // finish : flag the machine state as okay or in error and
 // optionally terminates execution.
@@ -357,7 +357,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 var calllock   = &sync.RWMutex{}  // function call related
 var lastlock   = &sync.RWMutex{}  // cached globals
 var farglock   = &sync.RWMutex{}  // function args manipulation
-var fspacelock = &sync.RWMutex{}  // token storage related
+var fspacelock = &sync.Mutex{}    // token storage related
 var globlock   = &sync.RWMutex{}  // generic global related
 
 
@@ -498,7 +498,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     }
 
     // missing varargs in call result in nil assignments back to caller:
-    farglock.Lock()
+    farglock.RLock()
     /*
     fmt.Printf("[call-fa] ifs#%d source_base -> %+v\n",ifs,source_base)
     fmt.Printf("[call-fa] ifs#%d fargs       -> %+v\n",ifs,functionArgs[source_base].args)
@@ -508,7 +508,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
             va=append(va,nil)
         }
     }
-    farglock.Unlock()
+    farglock.RUnlock()
 
     // generic nesting indentation counters
     // this being local prevents re-entrance i guess
@@ -3991,7 +3991,12 @@ tco_reentry:
 
 }
 
+var cmdlock = &sync.Mutex{}
+
 func system(cmd string, display bool) (cop struct{out string; err string; code int; okay bool}) {
+    cmdlock.Lock()
+    defer cmdlock.Unlock()
+
     cmd = str.Trim(cmd," \t\n")
     if hasOuter(cmd,'`') { cmd=stripOuter(cmd,'`') }
     cop = Copper(cmd, false)
