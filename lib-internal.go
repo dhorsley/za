@@ -647,30 +647,21 @@ func buildInternalLib() {
 
             vlock.Lock()
             chanTableCopy:=(*ident)[bin].IValue.(map[string]interface{})
-            // pf("\nNext Channel Table :\n%v\n",chanTableCopy)
 
-            // for k,v:=range (*ident)[bin].IValue.(map[string]interface{}) {
             for k,v:=range chanTableCopy {
-
-                // pf(":: Entry %v -> %v\n",k,v)
 
                 select {
                 case retval := <-v.(chan interface{}):
-                    // pf("  :: Retval Entry %#v\n",retval.(struct{l uint32;r interface{}}))
 
                     if retval==nil { // shouldn't happen
                         pf("(k %v) is nil. still waiting for it.\n",k)
                         os.Exit(1) // but you never know!
                     }
 
-                    // pf("(got result for %v (%+v) - removing entry.\n",k,retval)
                     loc      :=retval.(struct{l uint32;r interface{}}).l
                     results[k]=retval.(struct{l uint32;r interface{}}).r
 
                     // close the channel, yes i know, not at the client end, etc
-                    // tried it the other way around already! :)
-                    // will change back once i find the fault.
-
                     close(v.(chan interface{}))
 
                     calllock.Lock()
@@ -679,7 +670,6 @@ func buildInternalLib() {
                     calltable[loc].gc=true
 
                     // remove async/await pair from handle list
-                    // delete((*ident)[bin].IValue.(map[string]interface{}),k)
                     delete(chanTableCopy,k)
 
                     calllock.Unlock()
@@ -698,7 +688,7 @@ func buildInternalLib() {
                     keepWaiting=true
                 }
             }
-        // pf("await looping\n")
+
         }
         return results,nil
     }
