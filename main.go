@@ -1123,9 +1123,11 @@ func main() {
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
 
                 // insert line feed by default
+                /*
                 if interactiveFeed {
                     pf("\n")
                 }
+                */
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
