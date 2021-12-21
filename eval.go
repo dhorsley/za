@@ -1626,18 +1626,8 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
     orig:=s
     r := regexp.MustCompile(`{([^{}]*)}`)
 
-    // @todo: fix this, interparse is a global - this races
     //   interparse.mident is set to either 1 or 2 in actor.go
     //   depending on interactive mode flag.
-    //   we also need to do that here on the local version, 
-    //   before removing the global version.
-
-    /*
-    ofs:=interparse.fs
-    oident:=interparse.ident
-    interparse.fs=fs
-    interparse.ident=ident
-    */
 
     var interparse *leparser
     interparse=&leparser{}
@@ -1709,11 +1699,6 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
         }
         if !modified { redo=false }
     }
-
-    /*
-    interparse.ident=oident
-    interparse.fs=ofs
-    */
 
     if s=="<nil>" { s=orig }
 
