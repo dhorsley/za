@@ -22,6 +22,22 @@ TODO
         - continuing to use snake case for stdlib calls to hopefully help avoid func name
             conflicts with user defined funcs written by sensible people.
 
+    * still something faintly whiffy about async/await on fast spawns.
+        - can't find a race cond, but you never know.
+        - seems like func result is getting sent down the channel and results in 
+            an empty assignment at the reader end.
+            - definitely something i've screwed up here, just not found it yet.
+
+        - resolved?
+            - gaps were appearing only in funcs calling out to parent shell.
+            - in theory, these should have been okay, but it looks as though
+                the rate of concurrent thread spawns was causing too much contention.
+                we expected to see that in the child shell, as it is multiplexed,
+                but thought the parent may keep up.
+            - on the plus side, the async/await code tyres got a good kicking.
+                - i'm leaving the client-side channel close in place:
+                    - it's not exactly go-flavoured, but what is in this mess?
+
     * tested compilation with go 1.18beta
         - execution speed up of up to 10%, dependant on operation type.
             - most things remained at the same speed.
