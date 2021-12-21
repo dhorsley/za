@@ -327,7 +327,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
         ncs:=make([]call_s,len(calltable)*2,cap(calltable)*2)
         copy(ncs,calltable)
         calltable=ncs
-        fmt.Printf("[gnfs] resized calltable.\n")
+        // fmt.Printf("[gnfs] resized calltable.\n")
     }
 
     // generate new tagged instance name
