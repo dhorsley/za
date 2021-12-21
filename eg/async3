@@ -1,19 +1,6 @@
 #!/usr/bin/za -S
 
-doc `
-!!                                                  !!
-!! co-processing in child shell *must* be disabled  !!
-!!      in order to allow parallel execution        !!
-!!                                                  !!
-!!      there's still a good chance the parent      !!
-!!      shell won't keep up either!                 !!
-!!                                                  !!
-`
-
-# max=460
-max=200
-
-coproc(false)
+max=100
 
 define f()
     # generally, do some work in here..
