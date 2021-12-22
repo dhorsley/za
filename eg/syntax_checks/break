@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 bc=3
-input bc optarg 1 "Break Count"
+input bc optarg 1 is "Break Count"
 
 while
 

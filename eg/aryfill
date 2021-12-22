@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 maxc=1
-input maxc param 1 "count"
+input maxc param 1 is "count"
 
 
 w=960

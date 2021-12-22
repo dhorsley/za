@@ -323,9 +323,9 @@ func main() {
     var err error
 
     // setup empty symbol tables for main
-    vlock.Lock()
+    bindlock.Lock()
     bindings[1]=make(map[string]uint64)
-    vlock.Unlock()
+    bindlock.Unlock()
 
     // create identifiers for global and main source caches
     fnlookup.lmset("global",0)
