@@ -18,6 +18,7 @@ import (
     "unicode/utf8"
     "sort"
     str "strings"
+    "sync"
     "time"
 )
 
@@ -1282,6 +1283,9 @@ func NewCoprocess(loc string,args ...string) (process *exec.Cmd, pi io.WriteClos
 
 // synchronous execution and capture
 func GetCommand(c string) (s string, err error) {
+    cmdlock.Lock()
+    defer cmdlock.Unlock()
+
     c=str.Trim(c," \t\n")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)
@@ -1412,8 +1416,15 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 }
 
 
+/// mutex for shell calls
+/// used by Copper()+NextCopper()+GetCommand()
+var cmdlock = &sync.Mutex{}
+
+
 // submit a command for coprocess execution
 func Copper(line string, squashErr bool) struct{out string; err string; code int; okay bool} {
+    cmdlock.Lock()
+    defer cmdlock.Unlock()
 
     if !permit_shell {
         panic(fmt.Errorf("Shell calls not permitted!"))

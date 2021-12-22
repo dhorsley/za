@@ -2,6 +2,27 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.1
+=====
+
+    library changes
+    ---------------
+
+    fixes
+    -----
+
+    * Moved cmdlock deeper into call stack for linux/windows shell/exec calls
+        - locks on Copper and GetCommand calls instead of system now.
+
+
+    other
+    -----
+
+    * added underscore stripping in INPUT .. PARAM|OPTARG pos fetch "is number" check
+    * added IS literal separator in INPUT .. PARAM|OPTARG .. [ IS "description" ]
+        - was to fix broken expression handling in "pos" immediately before optional IS
+
+
 1.1.0
 =====
 
@@ -31,7 +52,6 @@ CHANGE LOG
             some work to wrap the calls and the search flags differently and i have no idea how
             they perform yet either, so not rushing to fix this for windows.
 
-        - needs copyright/licenses in source and documentation pages.
 
     * experimental: added basic support for fsnotify golang lib
         - new lib funcs: ev_watch, ev_watch_close, ev_watch_add, ev_watch_remove, ev_exists, ev_event and ev_mask
