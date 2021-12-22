@@ -606,7 +606,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             dtb=humansize((1000/float(timeout))*dtb)
 
             clear_line(pane_h()-1,1)
-            at pane_h()-1,1, format("[#4] rx avg [#-] %v [#1] tx avg [#-] %v", drb, dtb)
+            at pane_h()-1,1, format("[#5] rx avg [#-] %v [#2] tx avg [#-] %v", drb, dtb)
 
         endif
 

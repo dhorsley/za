@@ -3,6 +3,7 @@ package main
 import (
     str "strings"
     "sync"
+    "sync/atomic"
 )
 
 // global binding list - populated during phrasing
@@ -43,7 +44,8 @@ func invalidate_lru_bind_cache() {
 
 func bind_int(fs uint32,name string) (i uint64) {
 
-    bindlock.Lock()
+    var locked bool
+    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; bindlock.Lock() }
 
     for e:=range lru_bind_cache {
         if lru_bind_cache[e].used==false { break }
@@ -52,7 +54,7 @@ func bind_int(fs uint32,name string) (i uint64) {
             if strcmp(name,lru_bind_cache[e].name) {
                 // fmt.Printf("[%d] %s -> found in lru cache\n",fs,name)
                 res:=lru_bind_cache[e].res
-                bindlock.Unlock()
+                if locked { bindlock.Unlock() }
                 return res
             }
         }
@@ -67,7 +69,7 @@ func bind_int(fs uint32,name string) (i uint64) {
 
     if present {
         add_lru_bind_cache(fs,name,i)
-        bindlock.Unlock()
+        if locked { bindlock.Unlock() }
         return
     }
 
@@ -78,7 +80,7 @@ func bind_int(fs uint32,name string) (i uint64) {
     i=uint64(len(bindings[fs]))
     bindings[fs][name]=i
     add_lru_bind_cache(fs,name,i)
-    bindlock.Unlock()
+    if locked { bindlock.Unlock() }
     // fmt.Printf("[bi] added binding in #%d for %s to %d\n",fs,name,i)
     return
 }
