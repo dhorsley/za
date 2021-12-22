@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 start="s"
-input start optarg 1 "word start"
+input start optarg 1 is "word start"
 
 foreach i in $in "/etc/passwd" ~f "(^|[\n])"+start+".*?:"
     println "{=key_i} - {=i[:i.len-1].collapse}"
