@@ -942,8 +942,6 @@ tco_reentry:
                         t.IValue = reflect.New(typemap[new_type_token_string]).Elem().Interface()
                     }
 
-                    vlock.Lock()
-
                     t.IName=vname
                     t.ITyped=true
                     t.declared=true
@@ -996,7 +994,6 @@ tco_reentry:
                         if sf("%T",we.result)!=new_type_token_string {
                             parser.report(inbound.SourceLine,"type mismatch in VAR assignment")
                             finish(false,ERR_EVAL)
-                            vlock.Unlock()
                             break
                         } else {
                             t.IValue=we.result
@@ -1005,6 +1002,7 @@ tco_reentry:
 
                     // write temp to ident
                     // @note: have to write all to retain the ITyped flag!
+                    vlock.Lock()
                     (*ident)[sid]=t
                     vlock.Unlock()
 
@@ -2283,7 +2281,7 @@ tco_reentry:
 
         case SYM_BOR: // Local Command
 
-            bc:=basecode[source_base][parser.pc].borcmd
+            bc:=interpolate(ifs,ident,basecode[source_base][parser.pc].borcmd)
 
             /*
             pf("\n")
@@ -2295,10 +2293,10 @@ tco_reentry:
             */
 
             if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
-                s:=stripOuter(inbound.Tokens[1].tokText,'`')
-                coprocCall(parser,ifs,ident,s)
+                s:=interpolate(ifs,ident,stripOuter(inbound.Tokens[1].tokText,'`'))
+                coprocCall(s)
             } else {
-                coprocCall(parser,ifs,ident,bc)
+                coprocCall(bc)
             }
 
 
@@ -2949,7 +2947,7 @@ tco_reentry:
             // get C_Input arguments
 
             if inbound.TokenCount < 4 {
-                usage:= "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0] [ [#i1]error_hint[#i0] ]\n"
+                usage:= "INPUT [#i1]id[#i0] PARAM | OPTARG [#i1]field_position[#i0] [ IS [#i1]error_hint[#i0] ]\n"
                 usage+= "INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0]"
                 parser.report(inbound.SourceLine,"Incorrect arguments supplied to INPUT.\n"+usage)
                 finish(false, ERR_SYNTAX)
@@ -2961,10 +2959,17 @@ tco_reentry:
             pos := inbound.Tokens[3].tokText
 
             hint:=id
-            if inbound.TokenCount==5 {
-                we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[4:])
-                if !we.evalError {
-                    hint=we.result.(string)
+            noteAt:=inbound.TokenCount
+
+            if inbound.TokenCount>5 { // must be something after the IS token too
+                noteAt = findDelim(inbound.Tokens, C_Is, 4)
+                if noteAt!=-1 {
+                    we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[noteAt+1:])
+                    if !we.evalError {
+                        hint=we.result.(string)
+                    }
+                } else {
+                    noteAt=inbound.TokenCount
                 }
             }
 
@@ -2973,7 +2978,7 @@ tco_reentry:
             switch str.ToLower(typ) {
             case "param":
 
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:noteAt])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("could not evaluate the INPUT expression\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
@@ -2994,8 +2999,13 @@ tco_reentry:
                     break
                 }
                 if d <= len(cmdargs) {
+
+                    // remove any numSeps from literal, range is a copy of numSeps from lex.go
+                    tryN := cmdargs[d-1]
+                    for _,ns:=range "_" { tryN=str.Replace(tryN,string(ns),"",-1) }
+
                     // if this is numeric, assign as an int
-                    n, er := strconv.Atoi(cmdargs[d-1])
+                    n, er := strconv.Atoi(tryN)
                     if er == nil {
                         vset(ifs, ident, id, n)
                     } else {
@@ -3008,7 +3018,7 @@ tco_reentry:
 
             case "optarg":
 
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:noteAt])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("could not evaluate the INPUT expression\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
@@ -3024,8 +3034,13 @@ tco_reentry:
                 d:=we.result.(int)
 
                 if d <= len(cmdargs) {
+
+                    // remove any numSeps from literal, range is a copy of numSeps from lex.go
+                    tryN := cmdargs[d-1]
+                    for _,ns:=range "_" { tryN=str.Replace(tryN,string(ns),"",-1) }
+
                     // if this is numeric, assign as an int
-                    n, er := strconv.Atoi(cmdargs[d-1])
+                    n, er := strconv.Atoi(tryN)
                     if er == nil {
                         vset(ifs, ident, id, n)
                     } else {
@@ -3510,14 +3525,11 @@ tco_reentry:
                 break
             }
 
-            vlock.RLock()
             if ! VarLookup(ifs,ident,vname) {
-                vlock.RUnlock()
                 parser.report(inbound.SourceLine,sf("Variable '%s' does not exist.",vname))
                 finish(false,ERR_EVAL)
                 break
             }
-            vlock.RUnlock()
 
             tfile, err:= ioutil.TempFile("","za_with_"+sf("%d",os.Getpid())+"_")
             if err!=nil {
@@ -3991,12 +4003,7 @@ tco_reentry:
 
 }
 
-var cmdlock = &sync.Mutex{}
-
 func system(cmd string, display bool) (cop struct{out string; err string; code int; okay bool}) {
-    cmdlock.Lock()
-    defer cmdlock.Unlock()
-
     cmd = str.Trim(cmd," \t\n")
     if hasOuter(cmd,'`') { cmd=stripOuter(cmd,'`') }
     cop = Copper(cmd, false)
@@ -4005,23 +4012,23 @@ func system(cmd string, display bool) (cop struct{out string; err string; code i
 }
 
 /// execute a command in the shell coprocess or parent
-func coprocCall(parser *leparser, ifs uint32,ident *[szIdent]Variable, s string) {
-    cet := ""
+/// used when string already interpolated and result is not required
+/// currently only used by SYM_BOR statement processing.
+func coprocCall(s string) {
     s=str.TrimRight(s,"\n")
     if len(s) > 0 {
 
         // find index of first pipe, then remove everything upto and including it
         pipepos := str.IndexByte(s, '|')
-        cet      = s[pipepos+1:]
+        cet     := s[pipepos+1:]
 
         // strip outer quotes
         cet      = str.Trim(cet," \t\n")
         if hasOuter(cet,'`') { cet=stripOuter(cet,'`') }
 
-        inter   := interpolate(ifs,ident,cet)
-        cop     := Copper(inter, false)
+        cop     := Copper(cet, false)
         if ! cop.okay {
-            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(inter," \t"))
+            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
             if interactive {
                 pf(cop.err)
             }
