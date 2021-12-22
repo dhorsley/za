@@ -16,7 +16,7 @@ import (
 
 
 func (p *leparser) reserved(token Token) (interface{}) {
-    panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    panic(fmt.Errorf("statement names cannot be used as dentifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
 }
 
 func UintPow(n, m uint64) (result uint64) {
@@ -59,12 +59,12 @@ type leparser struct {
     prev        Token       // bodge for post-fix operations
     preprev     Token       //   and the same for assignment
     fs          uint32      // working function space
+    prectable   [END_STATEMENTS]int8
     mident      uint32      // fs of main() (1 or 2 depending on interactive mode)
     len         int16       // assigned length to save calling len() during parsing
     line        int16       // shadows lexer source line
     pc          int16       // shadows program counter (pc)
     pos         int16       // distance through parse
-    prectable   [END_STATEMENTS]int8
 }
 
 
@@ -86,62 +86,64 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 
     // pf("\ndparse query     : %+v\n",p.tokens)
 
-    // inlined manually:
+    // inlined next() manually:
     if p.pos>0 { p.preprev=p.prev }
     if p.pos>-1 { p.prev=p.tokens[p.pos] }
     p.pos+=1
 
+    ct:=p.tokens[p.pos]
+
     // unaries
-    switch p.tokens[p.pos].tokType {
+    switch ct.tokType {
     case O_Comma,SYM_COLON,EOF:
         left=nil
     case RParen, RightSBrace:
         p.next()
         left=nil
     case NumericLiteral:
-        left=p.tokens[p.pos].tokVal
+        left=ct.tokVal
     case StringLiteral:
-        left=interpolate(p.fs,p.ident,p.tokens[p.pos].tokText)
+        left=interpolate(p.fs,p.ident,ct.tokText)
     case Identifier:
-        left=p.identifier(p.tokens[p.pos])
+        left=p.identifier(ct)
     case O_Sqr, O_Sqrt,O_InFile:
-        left=p.unary(p.tokens[p.pos])
+        left=p.unary(ct)
     case SYM_Not:
 	    right,err := p.dparse(24) // don't bind negate as tightly
         if err!=nil { panic(err) }
 		left=unaryNegate(right)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
-        left=p.unary(p.tokens[p.pos])
+        left=p.unary(ct)
     case O_Assign, O_Plus, O_Minus:      // prec variable
-        left=p.unary(p.tokens[p.pos])
-    case O_Multiply, SYM_Caret:         // unary pointery stuff
-        left=p.unary(p.tokens[p.pos])
+        left=p.unary(ct)
+    case O_Multiply:
+        left=p.unary(ct)
+    // case SYM_Caret:         // unary pointery stuff
+    //    left=p.unary(ct)
     case LParen:
-        left=p.grouping(p.tokens[p.pos])
+        left=p.grouping(ct)
     case SYM_PP, SYM_MM:
-        left=p.preIncDec(p.tokens[p.pos])
+        left=p.preIncDec(ct)
     case LeftSBrace:
-        left=p.array_concat(p.tokens[p.pos])
+        left=p.array_concat(ct)
     case O_Query:                       // ternary
-        left=p.tern_if(p.tokens[p.pos])
+        left=p.tern_if(ct)
     case O_Ref:
         left=p.reference(false)
-    case O_Mut:
-        left=p.reference(true)
+    // case O_Mut:
+    //     left=p.reference(true)
     case SYM_BOR:
         left=p.command()
     }
 
     // binaries
 
-    var token Token
-
     binloop1:
     for {
 
         if prec >= p.prectable[p.peek().tokType] { break }
 
-        token = p.next()
+        token := p.next()
         switch token.tokType {
         case EOF:
             break binloop1
@@ -290,11 +292,9 @@ func (p *leparser) list_filter(left interface{},right interface{}) interface{} {
 
     var reduceparser *leparser
     reduceparser=&leparser{}
-    // calllock.RLock()
     reduceparser.prectable=default_prectable
     reduceparser.ident=p.ident
     reduceparser.fs=p.fs
-    // calllock.RUnlock()
 
     switch left.(type) {
     case []string:
@@ -642,14 +642,12 @@ func (p *leparser) rcompare (left interface{},right interface{},insensitive bool
     if insensitive { insenStr="(?i)" }
 
     var re regexp.Regexp
-    // cachelock.Lock()
     if pre,found:=ifCompileCache[right.(string)];!found {
         re = *regexp.MustCompile(insenStr+right.(string))
         ifCompileCache[right.(string)]=re
     } else {
         re = pre
     }
-    // cachelock.Unlock()
 
     if multi { return re.FindAllString(left.(string),-1) }
 
@@ -865,12 +863,6 @@ func (p *leparser) unaryStringOp(right interface{},op uint8) string {
 func (p *leparser) unary(token Token) (interface{}) {
 
     switch token.tokType {
-    /*
-    case O_Ref:
-        return p.reference(false)
-    case O_Mut:
-        return p.reference(true)
-	*/
     case O_InFile:
 	    right,err := p.dparse(70) // higher than dot op
         if err!=nil { panic(err) }
@@ -1205,7 +1197,10 @@ var vlock = &sync.RWMutex{}
 
 // bah, why do variables have to have names!?! surely an offset would be memorable instead!
 func VarLookup(fs uint32, ident *[szIdent]Variable, name string) (bool) {
-     // fmt.Printf("vlookup : [%d] %s -> %v\n",fs,name,(*ident)[bind_int(fs,name)].declared)
+    // should probably have a read lock on this, but, in theory, only gident/mident may be shared.
+    // each ident is unique to a particular function instance, and should be referenced sequentially.
+    // bind_int() has it's own locking.
+    // fmt.Printf("vlookup : [%d] %s -> %v\n",fs,name,(*ident)[bind_int(fs,name)].declared)
     return (*ident)[bind_int(fs,name)].declared
 }
 

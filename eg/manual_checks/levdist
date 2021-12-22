@@ -16,8 +16,8 @@ define leven(s, t)
 
 end
 
-input a param 1 "word1"
-input b param 2 "word2"
+input a param 1 is "word1"
+input b param 2 is "word2"
 
 println "p1 : {a}\np2 : {b}\n"
 println "res: ",leven(a,b)

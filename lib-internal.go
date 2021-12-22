@@ -680,7 +680,6 @@ func buildInternalLib() {
             }
 
             (*ident)[bin].IValue=chanTableCopy
-            vlock.Unlock()
 
             keepWaiting=false
             if waitForAll {
@@ -688,6 +687,8 @@ func buildInternalLib() {
                     keepWaiting=true
                 }
             }
+
+            vlock.Unlock()
 
         }
         return results,nil

@@ -9,42 +9,6 @@ lots, i'm sure.
 TODO
 ----
 
-    * unify stdlib func names format
-        - done, mostly
-        - there's still some peculiarities in lib-internal
-            - getglob was left without underscore to mirror setglob statement
-            - others were left without underscore if it better reflected the common
-                library name underpinning the call.
-            - some others were just personal preference.
-        - these can be reviewed again before v2
-            - v1 is not a release version for live use with promises of backwards compatability!
-
-        - continuing to use snake case for stdlib calls to hopefully help avoid func name
-            conflicts with user defined funcs written by sensible people.
-
-    * still something faintly whiffy about async/await on fast spawns.
-        - can't find a race cond, but you never know.
-        - seems like func result is getting sent down the channel and results in 
-            an empty assignment at the reader end.
-            - definitely something i've screwed up here, just not found it yet.
-
-        - resolved?
-            - gaps were appearing only in funcs calling out to parent shell.
-            - in theory, these should have been okay, but it looks as though
-                the rate of concurrent thread spawns was causing too much contention.
-                we expected to see that in the child shell, as it is multiplexed,
-                but thought the parent may keep up.
-            - on the plus side, the async/await code tyres got a good kicking.
-                - i'm leaving the client-side channel close in place:
-                    - it's not exactly go-flavoured, but what is in this mess?
-
-            - (done) will throw a lock around system calls in the child process.
-                - there's no good reason to ever try to run multiple shell commands
-                    at exactly the same time.
-                - tested with 1000 bash call concurrency in coproc and parent shells.
-                - TODO: lots of calls in lib-package.go need to change from
-                    Copper() to system() calls.
-
     * tested compilation with go 1.18beta
         - execution speed up of up to 10%, dependant on operation type.
             - most things remained at the same speed.
@@ -55,6 +19,9 @@ TODO
             - this is mainly to figure the eventual adoption scope.
             - if it doesn't really help to slim down the masses of switch statements,
                 then it might a be non-starter anyway!
+                - there's probably a few prime candidates in lib-list.go
+        - should check for potential use case of Cut vs Index(Byte|Rune|etc) and similar.
+        - convert interface{} to any, where possible?
 
     ++ add more examples in docs/
 

@@ -4,7 +4,7 @@ permit("exitquiet",true)
 
 enum errors ( okay=0, one, two, three )
 
-input ex_state param 1 "exit status"
+input ex_state param 1 is "exit status"
 
 on ex_state in enum_all(ref errors) do exit ex_state, `ERROR #{ex_state} : {=enum_names("errors")[ex_state]}\n`
 
