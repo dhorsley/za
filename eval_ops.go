@@ -126,12 +126,16 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
         for _, b := range vl { if b == val1 { return true } }
     case []float64:
         for _, b := range vl { if b == val1 { return true } }
-    case []big.Int:
-        var b big.Int
-        for _, b = range vl { if val1.(*big.Int).Cmp(&b)==0 { return true } }
-    case []big.Float:
-        var f big.Float
-        for _, f = range vl { if val1.(*big.Float).Cmp(&f)==0 { return true } }
+    case []*big.Int:
+        var b *big.Int
+        for _, b = range vl {
+            if GetAsBigInt(val1).Cmp(b)==0 { return true }
+        }
+    case []*big.Float:
+        var f *big.Float
+        for _, f = range vl {
+            if GetAsBigFloat(val1).Cmp(f)==0 { return true }
+        }
     case []interface{}:
         for _, b := range vl { if b == val1 { return true } }
     default:
@@ -522,19 +526,27 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
 func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
 
-    var intInOne, intInTwo, i641, i642 bool
+    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
     case int:
         intInOne=true
     case int64:
         i641=true
+    case big.Int:
+        bint1=true
+    case big.Float:
+        bf1=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
     case int64:
         i642=true
+    case big.Int:
+        bint2=true
+    case big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
@@ -542,6 +554,15 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
     }
     if i641 && i642 {
         return val1.(int64) % val2.(int64)
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return *r.Mod(GetAsBigInt(val1),GetAsBigInt(val2))
+    }
+
+    if bf1 || bf2 {
+        panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
     }
 
     float1, float1OK := val1.(float64)
@@ -768,43 +789,43 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
         }
     }
 
-    // special case for NaN
+
+    // special case for NaN and big num
     var nt1,nt2 bool
+    var bi1, bi2, bf1, bf2 bool
+
     switch val1.(type) {
+    case big.Int:
+        bi1=true
+    case big.Float:
+        bf1=true
     case float64:
         if math.IsNaN(val1.(float64)) { nt1=true }
     }
     switch val2.(type) {
+    case big.Int:
+        bi2=true
+    case big.Float:
+        bf2=true
     case float64:
         if math.IsNaN(val2.(float64)) { nt2=true }
     }
     if nt1 && nt2 { return true }
     if nt1 || nt2 { return false }
 
-    /*
-    // special case for ptr nil
-    var nilcmp1,nilcmp2 bool
-    switch v1:=val1.(type) {
-    case []string:
-        if len(v1)==2 && v1[0]=="nil" && v1[1]=="nil" {
-            nilcmp1=true
-            val1=nil
-        }
+    // big num equality check
+    // float comparisons are most likely limited in precision
+    // because of this autocasting below.
+    if bf1 || bf2 {
+        v1:=GetAsBigFloat(val1)
+        v2:=GetAsBigFloat(val2)
+        return v1.Cmp(v2)==0
     }
-    switch v2:=val2.(type) {
-    case []string:
-        if len(v2)==2 && v2[0]=="nil" && v2[1]=="nil" {
-            nilcmp2=true
-            val2=nil
-        }
+    if bi1 || bi2 {
+        v1:=GetAsBigInt(val1)
+        v2:=GetAsBigInt(val2)
+        return v1.Cmp(v2)==0
     }
-    if nilcmp1 || nilcmp2 {
-        if val1==val2 {
-            return true
-        }
-    }
-    // end bodge
-    */
 
     switch typ1 := val1.(type) {
 
@@ -880,6 +901,7 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 }
 
 func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
+
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)
     if int1OK && int2OK {
@@ -900,6 +922,35 @@ func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
 
     if float1OK && float2OK {
         return compareFloat(float1, float2, operation)
+    }
+
+    // big num equality check
+    // float comparisons are most likely limited in precision
+    // because of this autocasting below.
+
+    var bf1,bf2,bi1,bi2 bool
+    switch val1.(type) {
+    case big.Float:
+        bf1=true
+    case big.Int:
+        bi1=true
+    }
+    switch val2.(type) {
+    case big.Float:
+        bf2=true
+    case big.Int:
+        bi2=true
+    }
+
+    if bf1 || bf2 {
+        v1:=GetAsBigFloat(val1)
+        v2:=GetAsBigFloat(val2)
+        return compareBigFloat(v1,v2,operation)
+    }
+    if bi1 || bi2 {
+        v1:=GetAsBigInt(val1)
+        v2:=GetAsBigInt(val2)
+        return compareBigInt(v1,v2,operation)
     }
 
     str1, str1OK := val1.(string)
@@ -950,6 +1001,34 @@ func compareFloat(val1 float64, val2 float64, operation string) (bool) {
         return val1 > val2
     case ">=":
         return val1 >= val2
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+}
+
+func compareBigFloat(val1 *big.Float, val2 *big.Float, operation string) (bool) {
+    switch operation {
+    case "<":
+        return val1.Cmp(val2)==-1
+    case "<=":
+        return val1.Cmp(val2)<1
+    case ">":
+        return val1.Cmp(val2)==1
+    case ">=":
+        return val1.Cmp(val2)>-1
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+}
+
+func compareBigInt(val1 *big.Int, val2 *big.Int, operation string) (bool) {
+    switch operation {
+    case "<":
+        return val1.Cmp(val2)==-1
+    case "<=":
+        return val1.Cmp(val2)<1
+    case ">":
+        return val1.Cmp(val2)==1
+    case ">=":
+        return val1.Cmp(val2)>-1
     }
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }

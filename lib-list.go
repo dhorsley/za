@@ -13,6 +13,7 @@ package main
 import (
     "errors"
     "math"
+    "math/big"
     "reflect"
     "runtime"
     "sort"
@@ -123,7 +124,7 @@ func buildListLib() {
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "esplit", "min", "max", "avg","eqlen",
-        "empty", "list_string", "list_float", "list_int","list_bool",
+        "empty", "list_string", "list_float", "list_int","list_bool","list_bigi","list_bigf",
         "scan_left","zip",
     }
 
@@ -1320,6 +1321,38 @@ func buildListLib() {
                 if !invalid {
                     float_list = append(float_list, v)
                 }
+            }
+        }
+        return float_list, nil
+    }
+
+    slhelp["list_bigi"] = LibHelp{in: "list", out: "[]bigi_list", action: "Returns [#i1]list[#i0] as a list of big integer containers. Invalid elements are discarded."}
+    stdlib["list_bigi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("list_bigi",args,1,
+            "1","[]interface {}"); !ok { return nil,err }
+
+        var int_list []*big.Int
+        switch args[0].(type) {
+        case []interface{}:
+            for _, q := range args[0].([]interface{}) {
+                v := GetAsBigInt(q)
+                int_list = append(int_list, v)
+            }
+        }
+        return int_list, nil
+    }
+
+    slhelp["list_bigf"] = LibHelp{in: "list", out: "[]bigf_list", action: "Returns [#i1]list[#i0] as a list of big float containers. Invalid elements are discarded."}
+    stdlib["list_bigf"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("list_bigf",args,1,
+            "1","[]interface {}"); !ok { return nil,err }
+
+        var float_list []*big.Float
+        switch args[0].(type) {
+        case []interface{}:
+            for _, q := range args[0].([]interface{}) {
+                v := GetAsBigFloat(q)
+                float_list = append(float_list, v)
             }
         }
         return float_list, nil
