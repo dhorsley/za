@@ -124,9 +124,9 @@ func GetAsBigInt(i interface{}) *big.Int {
         r.SetInt64(int64(i))
     case float64:
         r.SetInt64(int64(i))
-    case big.Int:
-        r=i
-    case big.Float:
+    case *big.Int:
+        r=*i
+    case *big.Float:
         i.Int(&r)
     case string:
         r.SetString(i,0)
@@ -151,10 +151,10 @@ func GetAsBigFloat(i interface{}) *big.Float {
         r.SetFloat64(float64(i))
     case float64:
         r.SetFloat64(i)
-    case big.Int:
-        r.SetInt(&i)
-    case big.Float:
-        r=i
+    case *big.Int:
+        r.SetInt(i)
+    case *big.Float:
+        r=*i
     case string:
         r.SetString(i)
     }
@@ -1053,10 +1053,21 @@ tco_reentry:
                         t.IKind=kbigf
                     }
 
+                    suppressTypeError:=false
+                    if hasValue {
+                        if t.IKind==kbigi {
+                            we.result=GetAsBigInt(we.result)
+                            suppressTypeError=true
+                        }
+                        if t.IKind==kbigf {
+                            we.result=GetAsBigFloat(we.result)
+                            suppressTypeError=true
+                        }
+                    }
 
                     // if we had a default value, stuff it in here...
-                    if new_type_token_string!="assoc" && hasValue {
-                        if sf("%T",we.result)!=new_type_token_string {
+                    if hasValue && new_type_token_string!="assoc" {
+                        if !suppressTypeError && sf("%T",we.result)!=new_type_token_string {
                             parser.report(inbound.SourceLine,"type mismatch in VAR assignment")
                             finish(false,ERR_EVAL)
                             break
