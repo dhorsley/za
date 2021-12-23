@@ -5,6 +5,7 @@ import (
     "io/ioutil"
     "fmt"
     "math"
+    "math/big"
     "net/http"
     "unsafe"
     "reflect"
@@ -41,7 +42,7 @@ func typeOf(val interface{}) string {
         return "object"
     }
 
-    return "<unknown type>"
+    return sf("<unhandled type [%T]>",val)
 }
 
 func asBool(val interface{}) (b bool) {
@@ -51,6 +52,8 @@ func asBool(val interface{}) (b bool) {
     case string:
         b = v!=""
     case int, int32, int64, uint, uint32, uint64:
+        b = v!=0
+    case big.Int, big.Float:
         b = v!=0
     default:
             panic(fmt.Errorf("type error: required bool, but was %s", typeOf(v)))
@@ -62,6 +65,11 @@ func as_integer(val interface{}) int {
     switch v:=val.(type) {
     case nil:
         return int(0)
+    case big.Float:
+        i64,_:=v.Int64()
+        return int(i64)
+    case big.Int:
+        return int(v.Int64())
     case int:
         return int(v)
     case int64:
@@ -118,6 +126,12 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
         for _, b := range vl { if b == val1 { return true } }
     case []float64:
         for _, b := range vl { if b == val1 { return true } }
+    case []big.Int:
+        var b big.Int
+        for _, b = range vl { if val1.(*big.Int).Cmp(&b)==0 { return true } }
+    case []big.Float:
+        var f big.Float
+        for _, f = range vl { if val1.(*big.Float).Cmp(&f)==0 { return true } }
     case []interface{}:
         for _, b := range vl { if b == val1 { return true } }
     default:
@@ -129,7 +143,7 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 
 func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
-    var intInOne, intInTwo, i641, i642 bool
+    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     // short path integers
     switch val1.(type) {
@@ -137,12 +151,20 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
         intInOne=true
     case int64:
         i641=true
+    case big.Int:
+        bint1=true
+    case big.Float:
+        bf1=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
     case int64:
         i642=true
+    case big.Int:
+        bint2=true
+    case big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
@@ -151,6 +173,16 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
     if i641 && i642 {
         return val1.(int64)+val2.(int64)
+    }
+
+    if bf1 || bf2 {
+        var r big.Float
+        return *r.Add(GetAsBigFloat(val1),GetAsBigFloat(val2))
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return *r.Add(GetAsBigInt(val1),GetAsBigInt(val2))
     }
 
     float1, float1OK := val1.(float64)
@@ -265,19 +297,27 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
 
 func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
-    var intInOne, intInTwo, i641, i642 bool
+    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
     case int:
         intInOne=true
     case int64:
         i641=true
+    case big.Int:
+        bint1=true
+    case big.Float:
+        bf1=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
     case int64:
         i642=true
+    case big.Int:
+        bint2=true
+    case big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
@@ -286,6 +326,16 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
     if i641 && i642 {
         return val1.(int64) - val2.(int64)
+    }
+
+    if bf1 || bf2 {
+        var r big.Float
+        return *r.Sub(GetAsBigFloat(val1),GetAsBigFloat(val2))
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return *r.Sub(GetAsBigInt(val1),GetAsBigInt(val2))
     }
 
     float1, float1OK := val1.(float64)
@@ -318,19 +368,27 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
 
 func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 
-    var intInOne, intInTwo, i641, i642 bool
+    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
     case int:
         intInOne=true
     case int64:
         i641=true
+    case big.Int:
+        bint1=true
+    case big.Float:
+        bf1=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
     case int64:
         i642=true
+    case big.Int:
+        bint2=true
+    case big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
@@ -339,6 +397,16 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 
     if i641 && i642 {
         return val1.(int64) * val2.(int64)
+    }
+
+    if bf1 || bf2 {
+        var r big.Float
+        return *r.Mul(GetAsBigFloat(val1),GetAsBigFloat(val2))
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return *r.Mul(GetAsBigInt(val1),GetAsBigInt(val2))
     }
 
     float1, float1OK := val1.(float64)
@@ -382,19 +450,27 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
 
 func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
-    var intInOne, intInTwo, i641, i642 bool
+    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
     case int:
         intInOne=true
     case int64:
         i641=true
+    case big.Int:
+        bint1=true
+    case big.Float:
+        bf1=true
     }
     switch val2.(type) {
     case int:
         intInTwo=true
     case int64:
         i642=true
+    case big.Int:
+        bint2=true
+    case big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
@@ -405,6 +481,16 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
     if i641 && i642 {
         if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
         return val1.(int) / val2.(int)
+    }
+
+    if bf1 || bf2 {
+        var r big.Float
+        return *r.Quo(GetAsBigFloat(val1),GetAsBigFloat(val2))
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return *r.Div(GetAsBigInt(val1),GetAsBigInt(val2))
     }
 
     float1, float1OK := val1.(float64)
@@ -609,11 +695,14 @@ func unaryPlus(val interface{}) (interface{}) {
 
     var intVal int
     intInOne:=true
+
     switch i:=val.(type) {
     case int:
         intVal=int(i)
     case int64:
         intVal=int(i)
+    case big.Int,big.Float:
+        return i
     default:
         intInOne=false
     }
@@ -635,6 +724,12 @@ func unaryMinus(val interface{}) (interface{}) {
         intVal=int(i)
     case int64:
         intVal=int(i)
+    case big.Int:
+        var r big.Int
+        return *r.Neg(GetAsBigInt(i))
+    case big.Float:
+        var r big.Float
+        return *r.Neg(GetAsBigFloat(i))
     default:
         intInOne=false
     }

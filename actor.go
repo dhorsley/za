@@ -3,6 +3,7 @@ package main
 import (
     "io/ioutil"
     "math"
+    "math/big"
     "log"
     "encoding/gob"
     "os"
@@ -104,6 +105,60 @@ func strcmpFrom1(a string, b string) (bool) {
         if a[la]!=b[la] { return false }
     if la>1 { goto strcmp_repeat_point }
     return true
+}
+
+func GetAsBigInt(i interface{}) *big.Int {
+    var r big.Int
+    switch i:=i.(type) {
+    case uint8:
+        r.SetInt64(int64(i))
+    case int32:
+        r.SetInt64(int64(i))
+    case uint32:
+        r.SetInt64(int64(i))
+    case int64:
+        r.SetInt64(i)
+    case uint64:
+        r.SetUint64(i)
+    case int:
+        r.SetInt64(int64(i))
+    case float64:
+        r.SetInt64(int64(i))
+    case big.Int:
+        r=i
+    case big.Float:
+        i.Int(&r)
+    case string:
+        r.SetString(i,0)
+    }
+    return &r
+}
+
+func GetAsBigFloat(i interface{}) *big.Float {
+    var r big.Float
+    switch i:=i.(type) {
+    case uint8:
+        r.SetFloat64(float64(i))
+    case int32:
+        r.SetFloat64(float64(i))
+    case uint32:
+        r.SetFloat64(float64(i))
+    case int64:
+        r.SetFloat64(float64(i))
+    case uint64:
+        r.SetFloat64(float64(i))
+    case int:
+        r.SetFloat64(float64(i))
+    case float64:
+        r.SetFloat64(i)
+    case big.Int:
+        r.SetInt(&i)
+    case big.Float:
+        r=i
+    case string:
+        r.SetString(i)
+    }
+    return &r
 }
 
 // GetAsFloat : converts a variety of types to a float
@@ -676,7 +731,7 @@ tco_reentry:
 
             // check for valid types:
             switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","uint8","byte","mixed","any","[]":
+            case "int","float","string","bool","uint","uint8","bigi","bigf","byte","mixed","any","[]":
             default:
                 parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
@@ -868,6 +923,8 @@ tco_reentry:
                 var ti int
                 var tf64 float64
                 var ts string
+                var tbi *big.Int
+                var tbf *big.Float
 
                 var stb     []bool
                 var stu     []uint
@@ -878,6 +935,8 @@ tco_reentry:
                 var stmixed []interface{}
 
                 // *sigh* - really need to move this stuff out of here:
+                gob.Register(tbi)
+                gob.Register(tbf)
                 gob.Register(stb)
                 gob.Register(stu)
                 gob.Register(stu8)
@@ -893,6 +952,8 @@ tco_reentry:
                 typemap["byte"]     = reflect.TypeOf(tu8)
                 typemap["int"]      = reflect.TypeOf(ti)
                 typemap["float"]    = reflect.TypeOf(tf64)
+                typemap["bigi"]     = reflect.TypeOf(tbi)
+                typemap["bigf"]     = reflect.TypeOf(tbf)
                 typemap["string"]   = reflect.TypeOf(ts)
                 typemap["[]bool"]   = reflect.TypeOf(stb)
                 typemap["[]uint"]   = reflect.TypeOf(stu)
@@ -986,6 +1047,10 @@ tco_reentry:
                         t.IKind=kmap
                         t.IValue=make(map[string]interface{},size)
                         gob.Register(t.IValue)
+                    case "bigi":
+                        t.IKind=kbigi
+                    case "bigf":
+                        t.IKind=kbigf
                     }
 
 
