@@ -7,6 +7,7 @@ import (
     "bufio"
     "bytes"
     "math"
+    "math/big"
     "reflect"
     "os"
     "strconv"
@@ -73,7 +74,7 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte","int", "int64", "float", "bool", "string", "kind", "char", "asc","uint",
+        "byte","int", "int64", "bigi", "bigf", "float", "bool", "string", "kind", "char", "asc","uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
         "btoi","itob","dtoo","otod",
@@ -294,6 +295,22 @@ func buildConversionLib() {
 
     }
 
+    slhelp["bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer."}
+    stdlib["bigi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if len(args) != 1 {
+            return -1, errors.New("invalid arguments provided to bigi()")
+        }
+        return GetAsBigInt(args[0]),nil
+    }
+
+    slhelp["bigf"] = LibHelp{in: "expr", out: "big_float", action: "Convert [#i1]expr[#i0] to a float."}
+    stdlib["bigf"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if len(args) != 1 {
+            return -1, errors.New("invalid arguments provided to float()")
+        }
+        return GetAsBigFloat(args[0]),nil
+    }
+
     slhelp["float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
     stdlib["float"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
@@ -376,12 +393,32 @@ func buildConversionLib() {
         return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in int64()",args[0],args[0]))
     }
 
-    slhelp["string"] = LibHelp{in: "var", out: "string", action: "Converts [#i1]var[#i0] to a string."}
+    slhelp["string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]expr[#i0] to a string."}
     stdlib["string"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to string()")
+        if ok,err:=expect_args("string",args,2,
+            "1","any",
+            "2","any","int"); !ok { return nil,err }
+        var i string
+        if len(args)==2 {
+            switch args[0].(type) {
+            case big.Float:
+                f:=args[0].(big.Float)
+                i = f.Text('g',args[1].(int))
+            default:
+                return "",errors.New(sf("string() was expecting a bigf type, but got a [%T]",args[0]))
+            }
+        } else {
+            switch args[0].(type) {
+            case big.Int:
+                n:=args[0].(big.Int)
+                i = n.String()
+            case big.Float:
+                f:=args[0].(big.Float)
+                i = f.String()
+            default:
+                i = sf("%v", args[0])
+            }
         }
-        i := sf("%v", args[0])
         return i, nil
     }
 

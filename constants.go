@@ -138,14 +138,16 @@ const (
     kint64
     kuint
     kfloat
-    kbig
+    kbigi
+    kbigf
     kstring
     ksbool
     ksint
     ksint64
     ksuint
     ksfloat
-    ksbig
+    ksbigi
+    ksbigf
     ksstring
     kmap
     ksany

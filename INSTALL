@@ -42,17 +42,25 @@ adjust ./GO to suitable paths, then:
 
 subsequent rebuild/update/install:
 
+  ./build [upx] [strip]
+-or-
   ./build libc [upx] [strip]
 
-if the rebuild fails, then run go build za for better output.
+If the rebuild fails, then run go build za for better output.
 the language version number will not appear at run-time unless compiled using the "build" script
 
 To cross-compile for Alpine (default):
 --------------------------------------
 
   ./build alpine [upx] [strip]
+-or-
+  ./build [upx] [strip]
 
 If you have UPX installed then the upx option above can be used to compress the binary for docker builds.
+
+Currently you may need to choose between the alpine build (internal net lib compiled in) or the default
+build (cgo-static) instead should you require the lib-pcre3 helper functions in the internal library.
+This will be resolved over time, hopefully.
 
 
 To cross-compile for Windows:
