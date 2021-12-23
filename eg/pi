@@ -10,16 +10,18 @@ n=20
 input n optarg 1
 
 var i int
-var k,acc,k2,tmp float
-den = 1f
-num = 1f
+var k,acc,k2,tmp bigf = 0
+var den,num bigf
+
+den = 1
+num = 1
 
 var buf string
 
 while i<n
 
-    k++
-    k2 = 1+ k*2f
+    k += 1
+    k2 = 1 + k*2f
     acc += num*2
     acc *= k2
     den *= k2
@@ -28,9 +30,9 @@ while i<n
     on num > acc do continue
 
     tmp = 3 * num + acc
-    d3 = int(tmp / den)
+    d3 = bigi(tmp / den)
     tmp += num
-    d4 = int(tmp / den)
+    d4 = bigi(tmp / den)
 
     on d3 != d4 do continue
 

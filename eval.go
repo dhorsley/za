@@ -1313,12 +1313,12 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
         case kbigi:
             var tv big.Int
             tv.Set(GetAsBigInt(value))
-            t.IValue=tv
+            t.IValue=&tv
             ok=true
         case kbigf:
             var tv big.Float
             tv.Set(GetAsBigFloat(value))
-            t.IValue=tv
+            t.IValue=&tv
             ok=true
         case kstring:
             _,ok=value.(string)

@@ -1,10 +1,10 @@
 #!/usr/bin/za
 
 define fib(n)
-    return fib_tr(n,0,1)
+    return fib_tr(n,bigi(0),bigi(1))
 end
 
-define fib_tr(n, a, b) 
+define fib_tr(n, a, b)
     on n==0 do return a
     on n==1 do return b
     return fib_tr(n-1,b,a+b)
