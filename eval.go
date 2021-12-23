@@ -6,6 +6,7 @@ import (
     "reflect"
     "strconv"
     "math"
+    "math/big"
     "net/http"
     "sync"
     "sync/atomic"
@@ -1287,7 +1288,6 @@ func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
     if locked { vlock.Unlock() }
 }
 
-
 func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
 
     // fmt.Printf("[vseti fs # %d] bind_int of %d = %v\n",fs,bin,value)
@@ -1310,6 +1310,16 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
         case kfloat:
             _,ok=value.(float64)
             if ok { t.IValue = value }
+        case kbigi:
+            var tv big.Int
+            tv.Set(GetAsBigInt(value))
+            t.IValue=tv
+            ok=true
+        case kbigf:
+            var tv big.Float
+            tv.Set(GetAsBigFloat(value))
+            t.IValue=tv
+            ok=true
         case kstring:
             _,ok=value.(string)
             if ok { t.IValue = value }
