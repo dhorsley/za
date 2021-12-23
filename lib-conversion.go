@@ -393,7 +393,7 @@ func buildConversionLib() {
         return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in int64()",args[0],args[0]))
     }
 
-    slhelp["string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]expr[#i0] to a string."}
+    slhelp["string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]value[#i0] to a string."}
     stdlib["string"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("string",args,2,
             "1","any",
