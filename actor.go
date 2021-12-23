@@ -108,30 +108,30 @@ func strcmpFrom1(a string, b string) (bool) {
 }
 
 func GetAsBigInt(i interface{}) *big.Int {
-    var r big.Int
+    var ri big.Int
     switch i:=i.(type) {
     case uint8:
-        r.SetInt64(int64(i))
+        ri.SetInt64(int64(i))
     case int32:
-        r.SetInt64(int64(i))
+        ri.SetInt64(int64(i))
     case uint32:
-        r.SetInt64(int64(i))
+        ri.SetInt64(int64(i))
     case int64:
-        r.SetInt64(i)
+        ri.SetInt64(i)
     case uint64:
-        r.SetUint64(i)
+        ri.SetUint64(i)
     case int:
-        r.SetInt64(int64(i))
+        ri.SetInt64(int64(i))
     case float64:
-        r.SetInt64(int64(i))
+        ri.SetInt64(int64(i))
     case *big.Int:
-        r=*i
+        ri=*i
     case *big.Float:
-        i.Int(&r)
+        i.Int(&ri)
     case string:
-        r.SetString(i,0)
+        ri.SetString(i,0)
     }
-    return &r
+    return &ri
 }
 
 func GetAsBigFloat(i interface{}) *big.Float {
@@ -1049,8 +1049,10 @@ tco_reentry:
                         gob.Register(t.IValue)
                     case "bigi":
                         t.IKind=kbigi
+                        t.IValue=0
                     case "bigf":
                         t.IKind=kbigf
+                        t.IValue=0
                     }
 
                     suppressTypeError:=false

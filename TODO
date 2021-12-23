@@ -25,8 +25,10 @@ TODO
 
     * (started) arbitrary precision number support
         - will only be to a small degree
+
            x- basic type support (bigi,bigf)
            x- support in structs (bigi,bigf)
+
            -- base operator support (+,-,*,/,%)
                 - ev_add, ev_sub, ev_mul, ev_div,ev_mod updated
                 - todo: still considering if ev_mod for big.float is required or not.
@@ -34,17 +36,27 @@ TODO
                 - added bigi() and bigf() for converting to big int and float from other types.
                 - added list_bigi() and list_bigf() for converting to []*big int and []*big float from []interface{}
                 - added == >= <= > < !=
-                - fixe "in" operator for big int/float
+                - fixed "in" operator for big int/float
                 - amended eg/pi and eg/fib.tailrec for testing
                     - eg/pi still wanders off, probably due to the algorithm
                     - eg/fib.tailrec looks fine now calculating arbitrary lengths
                         - only change needed was to cast the input ints to big ints with bigi()
-                - may add other operators over time
+                - may add other operators over time (probably not though.. maybe sqrt/power operator)
+                - added pre/post dec/inc support for bigi and bigf
+                - fixed missing default 0 for bigi/bigf when no value specified
+
             - will add slice support over time
-            - will add to math functions over time
+            - will add to math functions over time (abs,rand,exp and similar)
+
         - must declare big int/float with VAR,
             - e.g. var p bigf ; p=pi()
             - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
+
+        - big num handling is pretty slow, but seems to be working. half the problem is the 
+            number of temporary allocations happening. also, the constant type conversions are not
+            helping either. not likely to try to improve this much, the point was just to add the feature
+            to help cover a few more use cases. it's fast enough for that. use a gmp lib in your favourite
+            tool if it is not.
 
     ++ add more examples in docs/
 
