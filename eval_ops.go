@@ -181,14 +181,30 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
         return val1.(int64)+val2.(int64)
     }
 
-    if bf1 || bf2 {
+    if bf1 && bf2 {
         var r big.Float
-        return r.Add(GetAsBigFloat(val1),GetAsBigFloat(val2))
+        return r.Add(val1.(*big.Float),val2.(*big.Float))
+    }
+    if bf1 {
+        var r big.Float
+        return r.Add(val1.(*big.Float),GetAsBigFloat(val2))
+    }
+    if bf2 {
+        var r big.Float
+        return r.Add(GetAsBigFloat(val1),val2.(*big.Float))
     }
 
-    if bint1 || bint2 {
+    if bint1 && bint2 {
         var r big.Int
-        return r.Add(GetAsBigInt(val1),GetAsBigInt(val2))
+        return r.Add(val1.(*big.Int),val2.(*big.Int))
+    }
+    if bint1 {
+        var r big.Int
+        return r.Add(val1.(*big.Int),GetAsBigInt(val2))
+    }
+    if bint2 {
+        var r big.Int
+        return r.Add(GetAsBigInt(val1),val2.(*big.Int))
     }
 
     float1, float1OK := val1.(float64)
