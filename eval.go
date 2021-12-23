@@ -1002,6 +1002,12 @@ func (p *leparser) preIncDec(token Token) interface{} {
         n=v+uint(ampl)
     case float64:
         n=v+float64(ampl)
+    case *big.Int:
+        var nv big.Int
+        n=nv.Add(v,GetAsBigInt(ampl))
+    case *big.Float:
+        var nv big.Float
+        n=nv.Add(v,GetAsBigFloat(ampl))
     default:
         p.report(-1,sf("pre-inc/dec not supported on type '%T' (%s)",val,val))
         finish(false,ERR_EVAL)
@@ -1061,6 +1067,14 @@ func (p *leparser) postIncDec(token Token) interface{} {
         vset(activeFS,activePtr,vartok.tokText,v+uint(ampl))
     case float64:
         vset(activeFS,activePtr,vartok.tokText,v+float64(ampl))
+    case *big.Int:
+        var nv big.Int
+        n:=nv.Add(v,GetAsBigInt(ampl))
+        vset(activeFS,activePtr,vartok.tokText,n)
+    case *big.Float:
+        var nv big.Float
+        n:=nv.Add(v,GetAsBigFloat(ampl))
+        vset(activeFS,activePtr,vartok.tokText,n)
     default:
         panic(fmt.Errorf("post-inc/dec not supported on type '%T' (%s)",val,val))
     }
