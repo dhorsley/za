@@ -35,6 +35,10 @@ TODO
                 - added list_bigi() and list_bigf() for converting to []*big int and []*big float from []interface{}
                 - added == >= <= > < !=
                 - fixe "in" operator for big int/float
+                - amended eg/pi and eg/fib.tailrec for testing
+                    - eg/pi still wanders off, probably due to the algorithm
+                    - eg/fib.tailrec looks fine now calculating arbitrary lengths
+                        - only change needed was to cast the input ints to big ints with bigi()
                 - may add other operators over time
             - will add slice support over time
             - will add to math functions over time
