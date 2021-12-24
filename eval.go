@@ -678,6 +678,10 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case string:
         sz=len(left)
+    case []*big.Int:
+        sz=len(left)
+    case []*big.Float:
+        sz=len(left)
     case [][]int:
         sz=len(left)
     case []interface{}:
@@ -1327,9 +1331,10 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
             t.IValue.(*big.Int).Set(GetAsBigInt(value))
             ok=true
         case kbigf:
-            var tv big.Float
-            tv.Set(GetAsBigFloat(value))
-            t.IValue=&tv
+            // var tv big.Float
+            // tv.Set(GetAsBigFloat(value))
+            // t.IValue=&tv
+            t.IValue.(*big.Float).Set(GetAsBigFloat(value))
             ok=true
         case kstring:
             _,ok=value.(string)
@@ -1354,6 +1359,12 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
             if ok { t.IValue = value }
         case ksbyte:
             _,ok=value.([]uint8)
+            if ok { t.IValue = value }
+        case ksbigi:
+            _,ok=value.([]*big.Int)
+            if ok { t.IValue = value }
+        case ksbigf:
+            _,ok=value.([]*big.Float)
             if ok { t.IValue = value }
         case ksany:
             _,ok=value.([]interface{})
@@ -1561,6 +1572,30 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
         if fault {
             panic(fmt.Errorf("Could not append to float array (ele:%v) a value '%+v' of type '%T'",numel,value,value))
         }
+
+    case []*big.Int:
+        sz:=cap((*ident)[bin].IValue.([]*big.Int))
+        if numel>=sz {
+            newend:=sz*2
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
+            newar:=make([]*big.Int,newend,newend)
+            copy(newar,(*ident)[bin].IValue.([]*big.Int))
+            vset(fs,ident,name,newar)
+        }
+        (*ident)[bin].IValue.([]*big.Int)[numel]=GetAsBigInt(value)
+
+    case []*big.Float:
+        sz:=cap((*ident)[bin].IValue.([]*big.Float))
+        if numel>=sz {
+            newend:=sz*2
+            if sz==0 { newend=1 }
+            if numel>=newend { newend=numel+1 }
+            newar:=make([]*big.Float,newend,newend)
+            copy(newar,(*ident)[bin].IValue.([]*big.Float))
+            vset(fs,ident,name,newar)
+        }
+        (*ident)[bin].IValue.([]*big.Float)[numel]=GetAsBigFloat(value)
 
     case []interface{}:
         sz:=cap((*ident)[bin].IValue.([]interface{}))
@@ -2111,7 +2146,6 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
                     // get type info about left/right side of assignment
                     val:=reflect.ValueOf(tempStore)
                     typ:=val.Type()
-                    intyp:=reflect.ValueOf(results[assno]).Type()
 
                     if typ.Kind()==reflect.Struct {
 
@@ -2123,6 +2157,17 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
 
                             // get the required struct field
                             tf:=tmp.FieldByName(lhs_dotField)
+
+                            // Bodge: special case assignment of bigi/bigf to coerce type:
+                            switch tf.Type().String() {
+                            case "*big.Int":
+                                results[assno]=GetAsBigInt(results[assno])
+                            case "*big.Float":
+                                results[assno]=GetAsBigFloat(results[assno])
+                            }
+                            // end-bodge
+
+                            intyp:=reflect.ValueOf(results[assno]).Type()
 
                             if intyp.AssignableTo(tf.Type()) {
 
@@ -2203,12 +2248,6 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
                     val:=reflect.ValueOf(ts)
                     typ:=reflect.ValueOf(ts).Type()
 
-                    var intyp reflect.Type
-                    // special case, nil
-                    if results[assno]!=nil {
-                        intyp=reflect.ValueOf(results[assno]).Type()
-                    }
-
                     if typ.Kind()==reflect.Struct {
 
                         // create temp copy of struct
@@ -2218,12 +2257,30 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
                         // get the required struct field and make a r/w copy
                         // then assign the new value into the copied field
                         if _,exists:=typ.FieldByName(lhs_f); exists {
+
                             tf:=tmp.FieldByName(lhs_f)
                             if results[assno]==nil {
                                 tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-                                tf.Set(reflect.ValueOf([]string{"nil","nil"}))
+                                //tf.Set(reflect.ValueOf([]string{"nil","nil"}))
                                 vset(lfs,lident,lhs_v,tmp.Interface())
+
                             } else {
+
+                                // Bodge: special case assignment of bigi/bigf to coerce type:
+                                switch tf.Type().String() {
+                                case "*big.Int":
+                                    results[assno]=GetAsBigInt(results[assno])
+                                case "*big.Float":
+                                    results[assno]=GetAsBigFloat(results[assno])
+                                }
+                                // end-bodge
+
+                                var intyp reflect.Type
+                                // special case, nil
+                                if results[assno]!=nil {
+                                    intyp=reflect.ValueOf(results[assno]).Type()
+                                }
+
                                 if intyp.AssignableTo(tf.Type()) {
                                     tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
                                     tf.Set(reflect.ValueOf(results[assno]))
