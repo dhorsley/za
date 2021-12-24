@@ -796,9 +796,9 @@ tco_reentry:
 
         case C_Var: // permit declaration with a default value
 
-            // expand to this:
-            // 'VAR' name1 [ ',' ... nameX ] [ '[' [size] ']' ] type [ '=' expr ]
-            //  and var ary_s []struct_name
+            //   'VAR' name [ ',' ... nameX ] [ '[' [size] ']' ] type [ '=' expr ]
+            // | 'VAR' name struct_name
+            // | 'VAR' aryname []struct_name
 
             var name_list []string
             var expectingComma bool
@@ -840,8 +840,6 @@ tco_reentry:
             }
             // eqPos remains as last token index on natural loop exit
 
-            // pf("hasEqu? %v\n",hasEqu)
-            // pf("eqpos @ %d\n",eqPos)
 
             // look for ary setup
 
@@ -887,9 +885,6 @@ tco_reentry:
                     }
                 }
 
-                // pf("hasAry?  %v\n",hasAry)
-                // pf("size is  %d\n",size)
-
             } else {
                 parser.report(inbound.SourceLine,"invalid VAR syntax\nUsage: VAR varname1 [#i1][,...varnameX][#i0] [#i1][optional_size][#i0] type [#i1][=expression][#i0]")
                 finish(false,ERR_SYNTAX)
@@ -932,6 +927,8 @@ tco_reentry:
                 var sti     []int
                 var stf64   []float64
                 var sts     []string
+                var stbi    []*big.Int
+                var stbf    []*big.Float
                 var stmixed []interface{}
 
                 // *sigh* - really need to move this stuff out of here:
@@ -942,6 +939,8 @@ tco_reentry:
                 gob.Register(stu8)
                 gob.Register(sti)
                 gob.Register(stf64)
+                gob.Register(stbi)
+                gob.Register(stbf)
                 gob.Register(stmixed)
 
                 // instantiate fields with an empty expected type:
@@ -962,6 +961,8 @@ tco_reentry:
                 typemap["[]int"]    = reflect.TypeOf(sti)
                 typemap["[]float"]  = reflect.TypeOf(stf64)
                 typemap["[]string"] = reflect.TypeOf(sts)
+                typemap["[]bigi"]   = reflect.TypeOf(stbi)
+                typemap["[]bigf"]   = reflect.TypeOf(stbf)
                 typemap["[]interface {}"] = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
                 typemap["assoc"]    = nil
@@ -1053,6 +1054,12 @@ tco_reentry:
                     case "bigf":
                         t.IKind=kbigf
                         t.IValue=big.NewFloat(0)
+                    case "[]bigi":
+                        t.IKind=ksbigi
+                        t.IValue=make([]*big.Int,size,size)
+                    case "[]bigf":
+                        t.IKind=ksbigf
+                        t.IValue=make([]*big.Float,size,size)
                     }
 
                     suppressTypeError:=false
@@ -4006,10 +4013,10 @@ tco_reentry:
             }
 
             // try to eval and assign
-              //  pf("[act-eval] ifs %d, ident ptr %p\n",ifs,ident)
-              //  pf("[act-eval] toks %+v\n",inbound.Tokens)
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {
-                parser.report(inbound.SourceLine,sf("Error in evaluation\n%+v\n",we.errVal))
+                errmsg:=""
+                if we.errVal!=nil { errmsg=sf("%+v\n",we.errVal) }
+                parser.report(inbound.SourceLine,sf("Error in evaluation\n%s",errmsg))
                 finish(false,ERR_EVAL)
                 break
             }

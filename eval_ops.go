@@ -1116,7 +1116,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
                 case reflect.Slice:
 
-                    f  = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+                    f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                     slc:=f.Slice(0,f.Len())
 
                     switch f.Type().Elem().Kind() {
@@ -1130,7 +1130,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                     return f.Interface()
 
                 default:
-                    // pf("default type in accessField is [%+v]",f.Type().Name())
+                    f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                     return f.Interface()
                 }
             }
@@ -1262,6 +1262,10 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
                     if len(obj)>ifield { return obj[ifield] }
                 case []float64:
                     if len(obj)>ifield { return obj[ifield] }
+                case []*big.Int:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []*big.Float:
+                    if len(obj)>ifield { return obj[ifield] }
                 case []dirent:
                     if len(obj)>ifield { return obj[ifield] }
                 case []alloc_info:
@@ -1300,6 +1304,12 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case []float64:
         isArr=true
         arl= len(v.([]float64))
+    case []*big.Int:
+        isArr=true
+        arl= len(v.([]*big.Int))
+    case []*big.Float:
+        isArr=true
+        arl= len(v.([]*big.Float))
     case []uint:
         isArr=true
         arl= len(v.([]uint))
@@ -1366,6 +1376,10 @@ func slice(v interface{}, from, to interface{}) interface{} {
         return v.([]int)[fromInt:toInt]
     case []float64:
         return v.([]float64)[fromInt:toInt]
+    case []*big.Int:
+        return v.([]*big.Int)[fromInt:toInt]
+    case []*big.Float:
+        return v.([]*big.Float)[fromInt:toInt]
     case []uint:
         return v.([]uint)[fromInt:toInt]
     case []string:

@@ -8,6 +8,12 @@ CHANGE LOG
     library changes
     ---------------
 
+    * for arbitrary precision support:
+        - added bigi() and bigf() for converting to big int and float from other types.
+        - added list_bigi() and list_bigf() for converting to []*big int and []*big float from []interface{}
+        - string(s[,prec]) conversion updated for outputting bigi and bigf with optional precision.
+    
+
     fixes
     -----
 
@@ -18,6 +24,36 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) started arbitrary precision number support:
+
+        - basic type support for big int (bigi) and big floats (bigf)
+        - support in structs underway (bigi,bigf):
+            - can define bigi and bigf types in struct definition
+            - can assign to these types as normal and read from them with dot operator
+            - @TODO: still working on fixing default values for bigi/bigf fields
+
+            - base operator support (+,-,*,/,%)
+                - ev_add, ev_sub, ev_mul, ev_div,ev_mod (for bigi) updated
+                - @TODO: still considering if ev_mod for big.float is required or not (or should error).
+                - added type support in == >= <= > < != operators
+                - fixed "in" operator for big int/float
+                - amended eg/pi and eg/fib.tailrec for testing
+                    - eg/pi still wanders off, probably due to the algorithm
+                    - eg/fib.tailrec looks fine now calculating arbitrary lengths
+                        - only change needed was to cast the input ints to big ints with bigi()
+                - @TODO: may add other operators over time (probably not though.. maybe sqrt/power operator)
+                - added pre/post dec/inc support for bigi and bigf
+                - @TODO: fixed missing default 0 for bigi/bigf when no value specified? check
+
+            - slice support done, hopefully!
+
+            - @TODO: will add to math functions over time (abs,rand,exp and similar)
+
+        - must declare big int/float with VAR,
+            - e.g. var p bigf ; p=pi()
+            - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
+
+    ++ add more examples in docs/
     * added underscore stripping in INPUT .. PARAM|OPTARG pos fetch "is number" check
     * added IS literal separator in INPUT .. PARAM|OPTARG .. [ IS "description" ]
         - was to fix broken expression handling in "pos" immediately before optional IS
