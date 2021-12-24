@@ -7,8 +7,7 @@ module "./modules/timing.mod"
 max_count=40_000_000
 input max_count optarg 1
 
-var a bigi
-# a=0
+a=0
 
 ts=epoch_nano_time()
 for f=0 to max_count
