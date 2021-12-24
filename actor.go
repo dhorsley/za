@@ -1049,10 +1049,10 @@ tco_reentry:
                         gob.Register(t.IValue)
                     case "bigi":
                         t.IKind=kbigi
-                        t.IValue=0
+                        t.IValue=big.NewInt(0)
                     case "bigf":
                         t.IKind=kbigf
-                        t.IValue=0
+                        t.IValue=big.NewFloat(0)
                     }
 
                     suppressTypeError:=false

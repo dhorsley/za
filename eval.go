@@ -1003,11 +1003,9 @@ func (p *leparser) preIncDec(token Token) interface{} {
     case float64:
         n=v+float64(ampl)
     case *big.Int:
-        var nv big.Int
-        n=nv.Add(v,GetAsBigInt(ampl))
+        n=v.Add(v,GetAsBigInt(ampl))
     case *big.Float:
-        var nv big.Float
-        n=nv.Add(v,GetAsBigFloat(ampl))
+        n=v.Add(v,GetAsBigFloat(ampl))
     default:
         p.report(-1,sf("pre-inc/dec not supported on type '%T' (%s)",val,val))
         finish(false,ERR_EVAL)
@@ -1068,12 +1066,10 @@ func (p *leparser) postIncDec(token Token) interface{} {
     case float64:
         vset(activeFS,activePtr,vartok.tokText,v+float64(ampl))
     case *big.Int:
-        var nv big.Int
-        n:=nv.Add(v,GetAsBigInt(ampl))
+        n:=v.Add(v,GetAsBigInt(ampl))
         vset(activeFS,activePtr,vartok.tokText,n)
     case *big.Float:
-        var nv big.Float
-        n:=nv.Add(v,GetAsBigFloat(ampl))
+        n:=v.Add(v,GetAsBigFloat(ampl))
         vset(activeFS,activePtr,vartok.tokText,n)
     default:
         panic(fmt.Errorf("post-inc/dec not supported on type '%T' (%s)",val,val))
@@ -1325,9 +1321,10 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
             _,ok=value.(float64)
             if ok { t.IValue = value }
         case kbigi:
-            var tv big.Int
-            tv.Set(GetAsBigInt(value))
-            t.IValue=&tv
+            // var tv big.Int
+            // tv.Set(GetAsBigInt(value))
+            // t.IValue=&tv
+            t.IValue.(*big.Int).Set(GetAsBigInt(value))
             ok=true
         case kbigf:
             var tv big.Float
