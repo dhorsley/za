@@ -1152,11 +1152,27 @@ tco_reentry:
                                     nv :=structvalues[svpos].(string)
                                     nhd:=structvalues[svpos+2].(bool)
                                     ndv:=structvalues[svpos+3]
+
+                                    tf:=tmp.FieldByName(nv)
+
+                                    // Bodge: special case assignment of bigi/bigf to coerce type:
+                                    switch tf.Type().String() {
+                                    case "*big.Int":
+                                        // if sf("%T",ndv)=="<nil>" { ndv=0 }
+                                        ndv=GetAsBigInt(ndv)
+                                        nhd=true
+                                    case "*big.Float":
+                                        // if sf("%T",ndv)=="<nil>" { ndv=0 }
+                                        ndv=GetAsBigFloat(ndv)
+                                        nhd=true
+                                    }
+                                    // end-bodge
+
                                     if nhd {
+
                                         var intyp reflect.Type
                                         if ndv!=nil { intyp=reflect.ValueOf(ndv).Type() }
 
-                                        tf:=tmp.FieldByName(nv)
                                         if intyp.AssignableTo(tf.Type()) {
                                             tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
                                             tf.Set(reflect.ValueOf(ndv))
