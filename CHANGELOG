@@ -30,24 +30,28 @@ CHANGE LOG
         - support in structs underway (bigi,bigf):
             - can define bigi and bigf types in struct definition
             - can assign to these types as normal and read from them with dot operator
-            - @TODO: still working on fixing default values for bigi/bigf fields
+            - still working on fixing default values for bigi/bigf fields
 
             - base operator support (+,-,*,/,%)
                 - ev_add, ev_sub, ev_mul, ev_div,ev_mod (for bigi) updated
-                - @TODO: still considering if ev_mod for big.float is required or not (or should error).
+                - not doing for now: modulo operator for big.float
+                    - type errors instead
                 - added type support in == >= <= > < != operators
                 - fixed "in" operator for big int/float
                 - amended eg/pi and eg/fib.tailrec for testing
                     - eg/pi still wanders off, probably due to the algorithm
                     - eg/fib.tailrec looks fine now calculating arbitrary lengths
                         - only change needed was to cast the input ints to big ints with bigi()
-                - @TODO: may add other operators over time (probably not though.. maybe sqrt/power operator)
+                - added power operator (**) support for big int type. errors with big floats.
+                - added sqrt operator. this only returns the new value and doesn't set the passed variable
+                    - this was to keep it in line with other types behaviour with the sqrt op
+                    - not too worried about the extra allocations/reduced performance from this
+                    - works with both bigi and bigf
                 - added pre/post dec/inc support for bigi and bigf
-                - @TODO: fixed missing default 0 for bigi/bigf when no value specified? check
+                - fixed missing default 0 for bigi/bigf in struct fields:
+                - slice support done, hopefully!
 
-            - slice support done, hopefully!
-
-            - @TODO: will add to math functions over time (abs,rand,exp and similar)
+            - @TODO: will add to math functions over time (abs and similar)
 
         - must declare big int/float with VAR,
             - e.g. var p bigf ; p=pi()

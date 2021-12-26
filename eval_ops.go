@@ -611,25 +611,40 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
 
 func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
 
-    intInOne:=true; intInTwo:=true
+    var intInOne, intInTwo, bf1, bf2, bint1, bint2 bool
     var int1 int
     var int2 int
 
     switch i:=val1.(type) {
     case int:
         int1=i
-    default:
-        intInOne=false
+        intInOne=true
+    case *big.Int:
+        bint1=true
+    case *big.Float:
+        bf1=true
     }
     switch i:=val2.(type) {
     case int:
         int2=i
-    default:
-        intInTwo=false
+        intInTwo=true
+    case *big.Int:
+        bint2=true
+    case *big.Float:
+        bf2=true
     }
 
     if intInOne && intInTwo {
         return int(math.Pow(float64(int1),float64(int2)))
+    }
+
+    if bint1 || bint2 {
+        var r big.Int
+        return r.Exp(GetAsBigInt(val1),GetAsBigInt(val2),nil)
+    }
+
+    if bf1 || bf2 {
+        panic(fmt.Errorf("type error: cannot perform power operation on type %s and %s", typeOf(val1), typeOf(val2)))
     }
 
     float1, float1OK := val1.(float64)
