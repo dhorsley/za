@@ -401,8 +401,8 @@ func buildConversionLib() {
         var i string
         if len(args)==2 {
             switch args[0].(type) {
-            case big.Float:
-                f:=args[0].(big.Float)
+            case *big.Float:
+                f:=args[0].(*big.Float)
                 i = f.Text('g',args[1].(int))
             default:
                 return "",errors.New(sf("string() was expecting a bigf type, but got a [%T]",args[0]))
@@ -410,10 +410,10 @@ func buildConversionLib() {
         } else {
             switch args[0].(type) {
             case big.Int:
-                n:=args[0].(big.Int)
+                n:=args[0].(*big.Int)
                 i = n.String()
             case big.Float:
-                f:=args[0].(big.Float)
+                f:=args[0].(*big.Float)
                 i = f.String()
             default:
                 i = sf("%v", args[0])

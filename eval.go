@@ -917,6 +917,12 @@ func unOpSqrt(n interface{}) interface{} {
         return math.Sqrt(float64(n))
     case float64:
         return math.Sqrt(n)
+    case *big.Int:
+        var tmp big.Int
+        return tmp.Sqrt(n)
+    case *big.Float:
+        var tmp big.Float
+        return tmp.Sqrt(n)
     default:
         panic(fmt.Errorf("sqrt does not support type '%T'",n))
     }
