@@ -30,7 +30,7 @@ CHANGE LOG
         - support in structs underway (bigi,bigf):
             - can define bigi and bigf types in struct definition
             - can assign to these types as normal and read from them with dot operator
-            - still working on fixing default values for bigi/bigf fields
+            - fixed default values for bigi/bigf fields
 
             - base operator support (+,-,*,/,%)
                 - ev_add, ev_sub, ev_mul, ev_div,ev_mod (for bigi) updated
@@ -44,7 +44,7 @@ CHANGE LOG
                         - only change needed was to cast the input ints to big ints with bigi()
                 - added power operator (**) support for big int type. errors with big floats.
                 - added sqrt operator. this only returns the new value and doesn't set the passed variable
-                    - this was to keep it in line with other types behaviour with the sqrt op
+                    - this was to keep the sqrt op in line with other types' behaviour
                     - not too worried about the extra allocations/reduced performance from this
                     - works with both bigi and bigf
                 - added pre/post dec/inc support for bigi and bigf
