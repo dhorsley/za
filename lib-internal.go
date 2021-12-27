@@ -244,7 +244,7 @@ func buildInternalLib() {
         // "conread","conwrite","conset","conclear", : for future use.
     }
 
-
+/*
     slhelp["symtest"] = LibHelp{in: "none", out: "none", action: "(debug)"}
     stdlib["symtest"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         var q = make(map[uint64]int)
@@ -259,6 +259,7 @@ func buildInternalLib() {
         }
         return len(q),nil
     }
+*/
 
     slhelp["varbind"] = LibHelp{in: "string", out: "uint", action: "returns the name binding uint for a variable."}
     stdlib["varbind"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
