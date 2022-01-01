@@ -29,7 +29,63 @@ TODO
 LATER / UNDECIDED
 -----------------
 
-    * review/fix all of the "@todo"'s in the source! (currently about 20 of them)
+    * an actual type system:
+        - something minimal, that doesn't get in the way of the interpreter
+        - aligns with generics
+        - retains what little speed we have
+        - simplifies all the switch blocks we have hanging around
+        - releases us from special casing all the stdlib-used types like dirent, big.*, etc
+    
+      Status: under consideration. depends on how much of the heavy lifting generics can do.
+
+    * better namespacing?
+        - ... and explicit embedding of structs as struct fields without using the 'any' type.
+        - could also properly handle sane prefixing of stdlib funcs too.
+      
+      Status: unlikely to proceed. this is quite out of scope for the requirements. however, it may
+                not be difficult to add. would probably need to add another identifier sub-type for
+                namespace tokens. (as was done for constants).
+
+    * handle multi-dimensional arrays better (as lvalues)
+
+      Status: need to rework doAssign function to reduce its bulk first and handle lvalues better, 
+                or push all of the work back into the evaluator for lvalues. that would probably be
+                for the best, but i just can't bring myself to rework it for the limited benefits.
+                this one is a maybe.
+                
+    * would a vec3 base type be useful at all? probably not, but not difficult to add.
+
+      Status: unlikely. can't see the need for the type yet. this may change, but it feels like a
+                new feature just for the sake of it currently.
+
+    * add big.Rat?
+
+      Status: very little work actually needed to do this, it's just more of the same as was done
+                for big floats and ints. however, it is even more special casing without a driving
+                requirement. if i decide against proper types (see above) then maybe will add this
+                as already done for other bigs. not high on the priority list though.
+
+    * more path mangling functions?
+        - or is it worth creating some path operators?
+            - e.g.  $pb for base path
+                    $pa for absolute path
+                    $pr for relative path
+                    $pn for base name without extension
+                    $pe for path extension
+                    $pp for parent path
+                    etc
+        - and some stuff for following symbolic links?
+
+      Status: all of these are very likely. the names may change, but very likely to add operators,
+                unless they slow down evaluation to any great degree. if so, will switch them to
+                stdlib functions.
+
+    * do something about the mess that is lib-list.go
+
+      Status: again, this depends on generics adoption. it would seem to be the only sane way to 
+                reduce the mess.
+
+    * review/fix all of the "@todo"'s in the source! (only a few left now)
         - checked/partially done.
             - the remaining ones aren't anything to worry about just yet.
             - just a couple left:
@@ -37,6 +93,16 @@ LATER / UNDECIDED
                 - these are definitely not getting done yet.
                     - no technical reason not to, other than laziness on my part.
                     - they can wait for next major version - no rush for these.
+
+      Status: partially done. will only be going further with MODE_STATIC if we need something like
+                python generators. this would probably look something like:
+
+                on initial fn entrance, have it run async. (maybe a generate() stdlib function?)
+                on yield(x) just pause it and have another special statement or stdlib call to 'resume'/next()?
+                would still needs a mechanism for returning the intermediate result.
+                this could probably just be done with a channel as an extension to the existing ASYNC handling maybe.
+
+            so... not doing anything with that yet, there's bigger things to deal with first.
 
     * make fixed size variable backing stores dynamic arrays?
         - currently a fixed var count per func of 320
@@ -46,7 +112,7 @@ LATER / UNDECIDED
             to doing anything about it yet.
 
         - update: tested with a fixed size of 32 instead, but didn't change overheads significantly
-            enough to warrant making this dynamic. negligable speed differences with x10 smaller
+            enough to warrant making this dynamic. negligible speed differences with x10 smaller
             backing arrays.
 
             also tested with fixed size of 160 (half) and made no difference to mem alloc in eg/mon.
@@ -55,6 +121,8 @@ LATER / UNDECIDED
             ( empty var struct is 40 bytes. 320*40=12800 bytes per func instance )
             obviously, we wouldn't do this in a compiler or anything trying to approach optimal.
             it just doesn't feel like a burden worth reducing for expected use cases.
+
+      Status: no plans to implement.
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support
         (because I'm not likely to make many more changes to the in-built line editor):
@@ -65,4 +133,7 @@ LATER / UNDECIDED
         - cursor movement over utf8 chars in input (and utf8 char deletes) problematic.
         - update: this just hasn't proven to be much of an issue yet. it is certainly an inconvenience,
             but it is staying at the bottom of the change list indefinitely.
+
+      Status: no plans to implement.
+
 

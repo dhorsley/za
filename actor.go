@@ -125,7 +125,7 @@ func GetAsBigInt(i interface{}) *big.Int {
     case float64:
         ri.SetInt64(int64(i))
     case *big.Int:
-        ri=*i
+        ri.Set(i)
     case *big.Float:
         i.Int(&ri)
     case string:
@@ -154,7 +154,7 @@ func GetAsBigFloat(i interface{}) *big.Float {
     case *big.Int:
         r.SetInt(i)
     case *big.Float:
-        r=*i
+        r.Copy(i)
     case string:
         r.SetString(i)
     }
@@ -972,7 +972,7 @@ tco_reentry:
 
             for _,vname:=range name_list {
 
-                sid:=bind_int(ifs,vname) // sid_list[k]
+                sid:=bind_int(ifs,vname)
 
                 // get the required type
                 var new_type_token_string string
@@ -1062,26 +1062,38 @@ tco_reentry:
                         t.IValue=make([]*big.Float,size,size)
                     }
 
-                    suppressTypeError:=false
-                    if hasValue {
-                        if t.IKind==kbigi {
-                            we.result=GetAsBigInt(we.result)
-                            suppressTypeError=true
-                        }
-                        if t.IKind==kbigf {
-                            we.result=GetAsBigFloat(we.result)
-                            suppressTypeError=true
-                        }
-                    }
 
                     // if we had a default value, stuff it in here...
+
                     if hasValue && new_type_token_string!="assoc" {
-                        if !suppressTypeError && sf("%T",we.result)!=new_type_token_string {
-                            parser.report(inbound.SourceLine,"type mismatch in VAR assignment")
-                            finish(false,ERR_EVAL)
-                            break
+
+                        // deal with bigs first:
+                        var tmp interface{}
+
+                        if t.IKind==kbigi || t.IKind==kbigf {
+                            switch t.IKind {
+                            case kbigi:
+                                tmp=GetAsBigInt(we.result)
+                            case kbigf:
+                                tmp=GetAsBigFloat(we.result)
+                            }
+                            switch tmp:=tmp.(type) {
+                            case *big.Int, *big.Float:
+                                t.IValue=tmp
+                            default:
+                                parser.report(inbound.SourceLine,sf("type mismatch in VAR assignment (need a big, got %T)",tmp))
+                                finish(false,ERR_EVAL)
+                            }
                         } else {
-                            t.IValue=we.result
+                            // ... then other types:
+                            new_type_token_string=str.Replace(new_type_token_string,"float","float64",-1)
+                            if sf("%T",we.result)!=new_type_token_string {
+                                parser.report(inbound.SourceLine,sf("type mismatch in VAR assignment (need %s, got %T)",new_type_token_string,we.result))
+                                finish(false,ERR_EVAL)
+                                break
+                            } else {
+                                t.IValue=we.result
+                            }
                         }
                     }
 
@@ -1089,6 +1101,7 @@ tco_reentry:
                     // @note: have to write all to retain the ITyped flag!
                     vlock.Lock()
                     (*ident)[sid]=t
+                    // pf("wrote var with sid of #%d\n",sid)
                     vlock.Unlock()
 
                 } else {
@@ -1158,11 +1171,9 @@ tco_reentry:
                                     // Bodge: special case assignment of bigi/bigf to coerce type:
                                     switch tf.Type().String() {
                                     case "*big.Int":
-                                        // if sf("%T",ndv)=="<nil>" { ndv=0 }
                                         ndv=GetAsBigInt(ndv)
                                         nhd=true
                                     case "*big.Float":
-                                        // if sf("%T",ndv)=="<nil>" { ndv=0 }
                                         ndv=GetAsBigFloat(ndv)
                                         nhd=true
                                     }
@@ -1389,6 +1400,10 @@ tco_reentry:
                     l=len(lv)
                 case []dirent:
                     l=len(lv)
+                case []*big.Int:
+                    l=len(lv)
+                case []*big.Float:
+                    l=len(lv)
                 case []alloc_info:
                     l=len(lv)
                 case map[string]alloc_info:
@@ -1585,6 +1600,20 @@ tco_reentry:
                         vset(ifs, ident,"key_"+fid, 0)
                         vset(ifs, ident, fid, we.result.([]int)[0])
                         condEndPos = len(we.result.([]int)) - 1
+                    }
+
+                case []*big.Int:
+                    if len(we.result.([]*big.Int)) > 0 {
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]*big.Int)[0])
+                        condEndPos = len(we.result.([]*big.Int)) - 1
+                    }
+
+                case []*big.Float:
+                    if len(we.result.([]*big.Float)) > 0 {
+                        vset(ifs, ident,"key_"+fid, 0)
+                        vset(ifs, ident, fid, we.result.([]*big.Float)[0])
+                        condEndPos = len(we.result.([]*big.Float)) - 1
                     }
 
                 case int: // special case: int
@@ -1881,6 +1910,12 @@ tco_reentry:
                         case []float64:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
+                        case []*big.Int:
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]*big.Int)[(*thisLoop).counter])
+                        case []*big.Float:
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]*big.Float)[(*thisLoop).counter])
                         case [][]int:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([][]int)[(*thisLoop).counter])
