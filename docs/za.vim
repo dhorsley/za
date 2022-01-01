@@ -103,6 +103,8 @@ syntax match list_functions "\(^|.\|\s*\)eqlen\s*("he=e-1
 
 syntax match conversion_functions "\(^|.\|\s*\)byte\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)int64\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)bigi\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)bigf\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)int\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)uint\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)bool\s*("he=e-1
@@ -116,6 +118,8 @@ syntax match conversion_functions "\(^|.\|\s*\)list_float\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)list_string\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)list_int\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)list_bool\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)list_bigi\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)list_bigf\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)local\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)base64e\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)base64d\s*("he=e-1

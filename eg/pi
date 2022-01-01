@@ -1,53 +1,43 @@
 #!/usr/bin/za
 
-#
-# An obviously bad example of pi calculation.
-# 
+spaceat=10
+digs=65
+input digs optarg 1 is "Number of digits to calculate."
 
-require 1.0.11
+var q,t,k bigi   = 1n
+var l,n bigi     = 3n
+var r,nn,nr bigi = 0n
 
-n=20
-input n optarg 1
+spacecur=-1
+iter=0
 
-var i int
-var k,acc,k2,tmp bigf = 0
-var den,num bigf
+println "Iterated Value:"
 
-den = 1
-num = 1
-
-var buf string
-
-while i<n
-
-    k += 1
-    k2 = 1 + k*2f
-    acc += num*2
-    acc *= k2
-    den *= k2
-    num *= k
-
-    on num > acc do continue
-
-    tmp = 3 * num + acc
-    d3 = bigi(tmp / den)
-    tmp += num
-    d4 = bigi(tmp / den)
-
-    on d3 != d4 do continue
-
-    buf=format("%v%v",buf,d3)
-    i++
-    on i % 10 == 0 do buf=format("%s\t:%v\n",buf,i)
-
-    acc -= d3 * den
-    acc *= 10
-    num *= 10
-
+while digs>0
+    iter++        
+    if 4*q+r-t < n*t
+        print n
+        on spacecur==-1 do print "."
+        digs--
+        if ++spacecur == 10
+            print " "
+            spacecur=0
+        endif
+        nr=10*(r-n*t)
+        n=10*(3*q+r)/t-10*n
+        q=q*10
+        r=nr
+    else
+        nr=(2*q+r)*l
+        nn=(q*7*k+2+r*l)/(t*l)
+        q=q*k
+        t=t*l
+        l=l+2
+        k=k+1
+        n=nn
+        r=nr
+    endif
 endwhile
-
-println buf
-
-println format("Internal pi -> %.50f",pi())
-
+println "\n[#6]Iterations : {iter}[#-]"
+println format("[#4]System Pi:\n%.40f[#-]",pi())
 
