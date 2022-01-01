@@ -8,6 +8,7 @@ import (
     "errors"
     "fmt"
     "io/ioutil"
+    "math/big"
     "os"
     "unicode/utf8"
     "net/http" // for key()
@@ -37,6 +38,10 @@ func ulen(args interface{}) (int,error) {
     case []int:
         return len(args),nil
     case []int64:
+        return len(args),nil
+    case []*big.Int:
+        return len(args),nil
+    case []*big.Float:
         return len(args),nil
     case []uint8:
         return len(args),nil

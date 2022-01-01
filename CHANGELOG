@@ -31,6 +31,7 @@ CHANGE LOG
             - can define bigi and bigf types in struct definition
             - can assign to these types as normal and read from them with dot operator
             - fixed default values for bigi/bigf fields
+                - @note: also fixed an outstanding bug when assigning default to multiple vars
 
             - base operator support (+,-,*,/,%)
                 - ev_add, ev_sub, ev_mul, ev_div,ev_mod (for bigi) updated
@@ -50,12 +51,19 @@ CHANGE LOG
                 - added pre/post dec/inc support for bigi and bigf
                 - fixed missing default 0 for bigi/bigf in struct fields:
                 - slice support done, hopefully!
+                - same for loop constructs.
 
             - @TODO: will add to math functions over time (abs and similar)
 
         - must declare big int/float with VAR,
             - e.g. var p bigf ; p=pi()
             - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
+
+        - Please Note! big numbers are slow. there's a lot of memory allocation going on in the background
+            in order to integrate them the way we have. this is unlikely to be improved. they are, as usual,
+            just a convenience feature. most people will not need them most of the time.
+
+    * added support for 'n' suffix on big int and float literals. type is determined by presence of decimal point.
 
     ++ add more examples in docs/
     * added underscore stripping in INPUT .. PARAM|OPTARG pos fetch "is number" check

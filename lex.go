@@ -11,7 +11,7 @@ import (
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const numeric = "0123456789.f"
+const numeric = "0123456789.fn"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_"
 const doubleterms = "<>=|&-+*.?"
@@ -60,7 +60,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var twoChars bool
     var norepeat string
     var norepeatMap = make(map[byte]int)
-    var badFloat,scientific,expectant bool
+    var badFloat,scientific,expectant,hasPoint bool
     var maybeBaseChange, thisHex, thisOct, thisBin bool
 
     beforeE := "."
@@ -139,12 +139,16 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         term = "\n"
     }
 
+    if firstChar == '.' {
+        hasPoint=true
+    }
+
     // number
-    if firstChar!='f' && str.IndexByte(numeric, firstChar) != -1 {
+    if firstChar!='f' && firstChar!='n' && str.IndexByte(numeric, firstChar) != -1 {
         tokType = NumericLiteral
         nonterm = numeric+"xeE"+numSeps
         term = "\n;"
-        norepeat= "xeE."
+        norepeat= "oxOXeE."
     }
 
     // solo symbols
@@ -182,6 +186,10 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
 
         // check numbers for illegal repeated chars
         if tokType==NumericLiteral {
+
+            if input[currentChar]=='.' {
+                hasPoint=true
+            }
 
             if str.IndexByte(numSeps,input[currentChar])!=-1 {
                 continue
@@ -229,11 +237,18 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 // deal with . at end of number
                 if currentChar<lenInput-1 && input[currentChar]=='.' && input[currentChar+1]=='.' {
                     word=input[thisWordStart:currentChar]
+                    hasPoint=true
                     startNextTokenAt=currentChar
                     break
                 }
             }
 
+            // deal with 'n' at end of number
+            if input[currentChar]=='n' {
+                word=input[thisWordStart:currentChar+1]
+                startNextTokenAt=currentChar+1
+                break
+            }
             // deal with 'f' at end of number
             if !thisHex && input[currentChar]=='f' {
                 word=input[thisWordStart:currentChar+1]
@@ -373,18 +388,32 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
             // remove any numSeps from literal
             for _,ns:=range numSeps { word=str.Replace(word,string(ns),"",-1) }
 
+            // floats and big nums
             if badFloat {
                 tokType=StringLiteral
                 carton.tokVal=word
             } else {
                 tl:=str.ToLower(word)
                 switch {
+
                 case tl[len(tl)-1]=='f':
                     carton.tokVal,_=strconv.ParseFloat(tl[:len(tl)-1],64)
                     startNextTokenAt = currentChar+1
                     carton.tokType = tokType
                     carton.tokText = word
                     goto get_nt_exit_point
+
+                case tl[len(tl)-1]=='n':
+                    if hasPoint {
+                        carton.tokVal=GetAsBigFloat(tl[:len(tl)-1])
+                    } else {
+                        carton.tokVal=GetAsBigInt(tl[:len(tl)-1])
+                    }
+                    startNextTokenAt = currentChar+1
+                    carton.tokType = tokType
+                    carton.tokText = word
+                    goto get_nt_exit_point
+
                 case str.IndexByte(tl,'e')!=-1:
                     carton.tokVal,_=strconv.ParseFloat(tl,64)
                 case str.IndexByte(tl,'.')!=-1:
