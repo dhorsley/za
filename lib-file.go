@@ -6,6 +6,7 @@ import (
     "errors"
     "io/ioutil"
     "io"
+    "syscall"
     "os"
     sc "strconv"
     str "strings"
@@ -24,8 +25,8 @@ func buildFileLib() {
     features["file"] = Feature{version: 1, category: "os"}
     categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
-                        "is_file", "is_dir", "perms",
-                        "fopen", "fclose","fseek","fread","fwrite","feof",
+                        "is_file", "is_dir", "perms","stat",
+                        "fopen", "fclose","ftell","fseek","fread","fwrite","feof",
     }
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
@@ -53,6 +54,13 @@ func buildFileLib() {
             return fw,nil
         }
         return nil,nil
+    }
+
+    slhelp["ftell"] = LibHelp{in: "filehandle", out: "position", action: "The current read pointer position is returned."}
+    stdlib["ftell"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("ftell",args,1,"1","main.pfile"); !ok { return nil,err }
+        fw :=args[0].(pfile)
+        return fw.hnd.Seek(0,os.SEEK_CUR)
     }
 
     slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
@@ -137,7 +145,7 @@ func buildFileLib() {
         if ok,err:=expect_args("file_mode",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil { return f.Mode(), err }
-        return -1, err
+        return -1, nil
     }
 
     slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
@@ -193,6 +201,17 @@ func buildFileLib() {
         return true, err
     }
 
+    // @note: syscall will be deprecated eventually. should find a better way of doing this. also, linux only.
+    slhelp["stat"] = LibHelp{in: "file_name", out: "stat_struct", action: "Returns a unix file stat structure containing underlying file information."}
+    stdlib["stat"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("stat",args,1,"1","string"); !ok { return nil,err }
+        f, err := os.Stat(args[0].(string))
+        if err == nil {
+            return f.Sys().(*syscall.Stat_t), nil
+        } else {
+            return nil, nil
+        }
+    }
     slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
     stdlib["is_file"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("is_file",args,1,"1","string"); !ok { return nil,err }
