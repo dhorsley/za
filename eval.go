@@ -10,6 +10,7 @@ import (
     "net/http"
     "sync"
     "sync/atomic"
+    "path/filepath"
     str "strings"
     "unsafe"
     "regexp"
@@ -113,6 +114,10 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
 	    right,err := p.dparse(24) // don't bind negate as tightly
         if err!=nil { panic(err) }
 		left=unaryNegate(right)
+    case O_Pb,O_Pa,O_Pn,O_Pe,O_Pp:
+        right,err := p.dparse(10) // allow strings to accumulate to the right
+        if err!=nil { panic(err) }
+        left=p.unaryPathOp(right,ct.tokType)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         left=p.unary(ct)
     case O_Assign, O_Plus, O_Minus:      // prec variable
@@ -842,6 +847,35 @@ func (p *leparser) reference(mut bool) string {
     return vartok.tokText
 }
 
+func (p *leparser) unaryPathOp(right interface{},op uint8) string {
+    switch right.(type) {
+    case string:
+        switch op {
+        case O_Pb: // base path
+            return filepath.Base(right.(string))
+        case O_Pa: // abs path
+            fp,e:=filepath.Abs(right.(string))
+            if e!=nil { return "" }
+            return fp
+        case O_Pn: // base - no ext
+            fp:=filepath.Base(right.(string))
+            fe:=filepath.Ext(fp)
+            if fe=="" { return fp }
+            return fp[:len(fp)-len(fe)]
+        case O_Pe: // base - only ext
+            return filepath.Ext(right.(string))
+        case O_Pp: // parent path
+            fp,e:=filepath.Abs(right.(string))
+            if e!=nil { return "" }
+            return fp[:str.LastIndex(fp,"/")]
+        default:
+            panic(fmt.Errorf("unknown unary path operator!")) // shouldn't see this!
+        }
+    default:
+        panic(fmt.Errorf("invalid type in unary path operator"))
+    }
+}
+
 func (p *leparser) unaryStringOp(right interface{},op uint8) string {
     switch right.(type) {
     case string:
@@ -858,7 +892,7 @@ func (p *leparser) unaryStringOp(right interface{},op uint8) string {
             return str.TrimRight(right.(string)," \t\n\r")
         default:
             panic(fmt.Errorf("unknown unary string operator!"))
-    }
+        }
     default:
         panic(fmt.Errorf("invalid type in unary string operator"))
     }
@@ -888,6 +922,8 @@ func (p *leparser) unary(token Token) (interface{}) {
         return unOpSqrt(right)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         return p.unaryStringOp(right,token.tokType)
+    // case O_Pb,O_Pa,O_Pn,O_Pe,O_Pp:
+    //    return p.unaryPathOp(right,token.tokType)
     case O_Assign:
         panic(fmt.Errorf("unary assignment makes no sense"))
 	}

@@ -107,7 +107,7 @@ func strcmpFrom1(a string, b string) (bool) {
     return true
 }
 
-func GetAsBigInt(i interface{}) *big.Int {
+func GetAsBigInt(i interface{}) (*big.Int) {
     var ri big.Int
     switch i:=i.(type) {
     case uint8:
@@ -4024,7 +4024,8 @@ tco_reentry:
 
             // local command assignment (child/parent process call)
 
-            if inbound.TokenCount > 1 { // ident "=|"
+            if inbound.TokenCount > 1 {
+                // ident "=|" or "=<" check
                 if inbound.Tokens[0].tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
                     if inbound.TokenCount > 2 {
 

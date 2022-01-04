@@ -6,8 +6,8 @@ input digs optarg 1 is "Number of digits to calculate."
 
 var q,t,k bigi   = 1n
 var l,n bigi     = 3n
+var l bigi     = 3n
 var r,nn,nr bigi = 0n
-
 spacecur=-1
 iter=0
 
@@ -29,12 +29,13 @@ while digs>0
         r=nr
     else
         nr=(2*q+r)*l
-        nn=(q*7*k+2+r*l)/(t*l)
+        # nn=(q*7*k+2+r*l)/(t*l)
+        n=(q*7*k+2+r*l)/(t*l)
         q=q*k
         t=t*l
         l=l+2
         k=k+1
-        n=nn
+        # n=nn
         r=nr
     endif
 endwhile
