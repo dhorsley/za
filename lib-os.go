@@ -9,6 +9,7 @@ import (
     "path/filepath"
     "golang.org/x/sys/unix"
     "io"
+    "io/fs"
     "syscall"
     "regexp"
     "runtime"
@@ -77,44 +78,44 @@ func buildOsLib() {
 
     slhelp["is_symlink"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a symbolic link."}
     stdlib["is_symlink"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_symlink",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeSymlink) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_symlink",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeSymlink) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_device"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a device."}
     stdlib["is_device"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_device",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeDevice) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_device",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeDevice) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_pipe"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a named pipe."}
     stdlib["is_pipe"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_pipe",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeNamedPipe) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_pipe",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeNamedPipe) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_socket"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a socket."}
     stdlib["is_socket"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_socket",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeSocket) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_socket",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeSocket) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_sticky"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a sticky file."}
     stdlib["is_sticky"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_sticky",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeSticky) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_sticky",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeSticky) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_setuid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setuid file."}
     stdlib["is_setuid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_setuid",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeSetuid) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_setuid",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeSetuid) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["is_setgid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setgid file."}
     stdlib["is_setgid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("is_setgid",args,1,"1","int"); !ok { return nil,err }
-        return uint32(os.ModeSetgid) & uint32(args[0].(int)) != 0, nil
+        if ok,err:=expect_args("is_setgid",args,1,"1","fs.FileMode"); !ok { return nil,err }
+        return uint32(os.ModeSetgid) & uint32(args[0].(fs.FileMode)) != 0, nil
     }
 
     slhelp["parent"] = LibHelp{in: "string", out: "string", action: "Returns the parent directory."}
