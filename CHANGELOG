@@ -70,6 +70,14 @@ CHANGE LOG
     * added IS literal separator in INPUT .. PARAM|OPTARG .. [ IS "description" ]
         - was to fix broken expression handling in "pos" immediately before optional IS
 
+    * added operators for path strings:
+        - i.e.:
+            $pb for base path
+            $pa for absolute path
+            $pn for base name without extension
+            $pe for path extension
+            $pp for parent path
+
 
 1.1.0
 =====
