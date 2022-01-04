@@ -1,0 +1,80 @@
+#!/usr/bin/za
+
+doc `
+    rough first attempt at a logtail equivalent. based on the perl one.
+    it highlights some issues around int/uint (64) handling.
+    needed to add to library:
+        - ftell()
+        - stat()
+    and to the evaluator:
+        - some equality check support for uint64/int64
+            ( this is still not great, i may still end up forcing manual casting pre-comparison )
+    also found that i will need to add support for main.pfile on l.h.s. of field access in accessFieldOrFunc()
+`
+
+stdin="/dev/stdin"
+
+testmode=false
+logfile=stdin
+
+input logfile optarg 1 is "filename"
+input offfile optarg 2 is "offset filename"
+input tm_inp optarg 3 is "test mode"
+on tm_inp!="" do testmode=bool(tm_inp)
+
+on file_mode(logfile) == -1 do exit 66,"File {logfile} cannot be read."
+on offfile=="" and logfile!=stdin do offfile=logfile+".offset"
+
+fh=fopen(logfile,"r")
+on fh==nil do exit 66,"File {logfile} cannot be read."
+
+inode=0
+ino=0
+offset=0
+
+oh=fopen(offfile,"r")
+
+if oh!=nil
+
+    if ftell(oh)!=nil
+        inode=fread(oh,"\n").int64
+        offset=fread(oh,"\n").int64
+    endif
+    fclose(oh)
+
+    size=file_size(logfile)
+    on size==-1 do exit 65,"Cannot get {logfile} file size."
+    ino=stat(logfile).Ino
+
+    if inode==ino
+        on offset==size do exit 0
+        if offset>size
+            offset = 0
+            println "[#2]***************"
+            println "*** WARNING ***: Log file {logfile} is smaller than last time checked!"
+            println "*************** This could indicate tampering.[#-]"
+        endif
+    endif
+
+    on inode!=ino or offset>size do offset=0
+
+    fseek(fh,int(offset),0)
+
+endif
+
+while not feof(fh)
+    println fread(fh,"\n")
+endwhile
+
+size=ftell(fh)
+fclose(fh)
+
+if not testmode and offfile!=""
+    oh=fopen(offfile,"w")
+    on oh==nil do exit 73,"File {offfile} cannot be created. Check your permissions."
+    fwrite(oh,"{ino}\n{size}\n")
+    fclose(oh)
+endif
+
+exit
+

@@ -9,6 +9,7 @@ import (
     "net/http"
     "unsafe"
     "reflect"
+    "syscall"
     "strconv"
     str "strings"
 )
@@ -902,19 +903,26 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
         }
         return false
 
+    case uint64:
+        int2, ok := val2.(int)
+        if ok { return typ1 == uint64(int2) }
+        uintsixfour, ok := val2.(uint64)
+        if ok { return typ1 == uintsixfour }
+        intsixfour, ok := val2.(int64)
+        if ok { return typ1 == uint64(intsixfour) }
+        float2, ok := val2.(float64)
+        if ok { return float64(typ1) == float2 }
+        return false
+
     case int64:
         int2, ok := val2.(int)
-        if ok {
-            return typ1 == int64(int2)
-        }
+        if ok { return typ1 == int64(int2) }
+        uintsixfour, ok := val2.(uint64)
+        if ok { return typ1 == int64(uintsixfour) }
         intsixfour, ok := val2.(int64)
-        if ok {
-            return typ1 == intsixfour
-        }
+        if ok { return typ1 == intsixfour }
         float2, ok := val2.(float64)
-        if ok {
-            return float64(typ1) == float2
-        }
+        if ok { return float64(typ1) == float2 }
         return false
 
     case float64:
@@ -960,18 +968,22 @@ func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
     // float comparisons are most likely limited in precision
     // because of this autocasting below.
 
-    var bf1,bf2,bi1,bi2 bool
+    var i164,i264,bf1,bf2,bi1,bi2 bool
     switch val1.(type) {
     case *big.Float:
         bf1=true
     case *big.Int:
         bi1=true
+    case int64:
+        i164=true
     }
     switch val2.(type) {
     case *big.Float:
         bf2=true
     case *big.Int:
         bi2=true
+    case int64:
+        i264=true
     }
 
     if bf1 || bf2 {
@@ -983,6 +995,15 @@ func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
         v1:=GetAsBigInt(val1)
         v2:=GetAsBigInt(val2)
         return compareBigInt(v1,v2,operation)
+    }
+
+    if i164 || i264 {
+        i1,e1:=GetAsInt64(val1)
+        i2,e2:=GetAsInt64(val2)
+        if e1 || e2 {
+            return false
+        }
+        return compareI64(i1,i2,operation)
     }
 
     str1, str1OK := val1.(string)
@@ -1065,6 +1086,21 @@ func compareBigInt(val1 *big.Int, val2 *big.Int, operation string) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
+// meh, this bad:
+func compareI64(val1 int64, val2 int64, operation string) (bool) {
+    switch operation {
+    case "<":
+        return val1<val2
+    case "<=":
+        return val1<=val2
+    case ">":
+        return val1>val2
+    case ">=":
+        return val1>=val2
+    }
+    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+}
+
 func asObjectKey(key interface{}) (string) {
     s, ok := key.(string)
     if !ok {
@@ -1080,6 +1116,11 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
     case http.Header:
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
+        return f
+
+    case *syscall.Stat_t:
+        r := reflect.ValueOf(obj)
+        f := reflect.Indirect(r).FieldByName(field).Interface()
         return f
 
         /*
