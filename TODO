@@ -5,6 +5,9 @@ BUGS
 
 lots, i'm sure.
 
+* capture_shell / see: eg/mc
+    - hanging on external cmd requiring shell output instead of capture
+
 
 TODO
 ----
@@ -64,21 +67,6 @@ LATER / UNDECIDED
                 for big floats and ints. however, it is even more special casing without a driving
                 requirement. if i decide against proper types (see above) then maybe will add this
                 as already done for other bigs. not high on the priority list though.
-
-    * more path mangling functions?
-        - or is it worth creating some path operators?
-            - e.g.  $pb for base path
-                    $pa for absolute path
-                    $pr for relative path
-                    $pn for base name without extension
-                    $pe for path extension
-                    $pp for parent path
-                    etc
-        - and some stuff for following symbolic links?
-
-      Status: all of these are very likely. the names may change, but very likely to add operators,
-                unless they slow down evaluation to any great degree. if so, will switch them to
-                stdlib functions.
 
     * do something about the mess that is lib-list.go
 

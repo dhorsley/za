@@ -330,6 +330,11 @@ func help_ops() {
 [#4]$lt s[#-]       left trim leading whitespace from string s [\t\ \n\r]
 [#4]$rt s[#-]       right trim trailing whitespace from string s
 [#4]$st s[#-]       trim whitespace from both sides of string s
+
+[#4]$pa s[#-]       absolute path from string s  [#4]$pp s[#-]       parent path of string s
+[#4]$pb s[#-]       base file name from string s [#4]$pn s[#-]       base file name without extension
+[#4]$pe s[#-]       extension only from string s
+
 [#4]$in f[#-]       read file 'f' in as string literal
 
 [#4]?? b t [:,] f[#-]

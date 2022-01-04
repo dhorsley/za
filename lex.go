@@ -27,6 +27,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_BSLASH", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
     "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
     "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_OUTFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
+    "O_PB","O_PA","O_PN","O_PE","O_PP",
     "START_STATEMENTS", "VAR", "SETGLOB",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
@@ -565,6 +566,16 @@ get_nt_eval_point:
             tokType = O_InFile
         case "$out":
             tokType = O_OutFile
+        case "$pb":
+            tokType = O_Pb
+        case "$pa":
+            tokType = O_Pa
+        case "$pn":
+            tokType = O_Pn
+        case "$pe":
+            tokType = O_Pe
+        case "$pp":
+            tokType = O_Pp
         case "enum":
             tokType = C_Enum
         case "init":

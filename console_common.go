@@ -1292,12 +1292,13 @@ func GetCommand(c string) (s string, err error) {
     var out bytes.Buffer
     cmd.Stdin  = os.Stdin
     capture,_:=gvget("@commandCapture")
+
     if capture.(bool) {
         cmd.Stdout = &out
         err = cmd.Run()
     } else {
         cmd.Stdout = os.Stdout
-        err := cmd.Run()
+        err = cmd.Run()
         return "", err
     }
     return out.String(), err
@@ -1423,8 +1424,6 @@ var cmdlock = &sync.Mutex{}
 
 // submit a command for coprocess execution
 func Copper(line string, squashErr bool) struct{out string; err string; code int; okay bool} {
-    cmdlock.Lock()
-    defer cmdlock.Unlock()
 
     if !permit_shell {
         panic(fmt.Errorf("Shell calls not permitted!"))
@@ -1502,6 +1501,9 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             gvset("@last_out", []byte{0})
         }
     } else {
+
+        cmdlock.Lock()
+        defer cmdlock.Unlock()
 
         errorFile, err := ioutil.TempFile("", "copper.*.err")
         if err != nil {

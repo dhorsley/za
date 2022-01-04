@@ -225,6 +225,11 @@ const (
     O_Sst
     O_Slt
     O_Srt
+    O_Pb
+    O_Pa
+    O_Pn
+    O_Pe
+    O_Pp
     START_STATEMENTS
     C_Var
 	C_SetGlob
