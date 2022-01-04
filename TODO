@@ -5,9 +5,6 @@ BUGS
 
 lots, i'm sure.
 
-* capture_shell / see: eg/mc
-    - hanging on external cmd requiring shell output instead of capture
-
 
 TODO
 ----
