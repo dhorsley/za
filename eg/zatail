@@ -9,7 +9,6 @@ doc `
     and to the evaluator:
         - some equality check support for uint64/int64
             ( this is still not great, i may still end up forcing manual casting pre-comparison )
-    also found that i will need to add support for main.pfile on l.h.s. of field access in accessFieldOrFunc()
 `
 
 stdin="/dev/stdin"
@@ -36,7 +35,7 @@ oh=fopen(offfile,"r")
 
 if oh!=nil
 
-    if ftell(oh)!=nil
+    if oh.ftell!=nil
         inode=fread(oh,"\n").int64
         offset=fread(oh,"\n").int64
     endif
@@ -58,7 +57,7 @@ if oh!=nil
 
     on inode!=ino or offset>size do offset=0
 
-    fseek(fh,int(offset),0)
+    fh.fseek(int(offset),0)
 
 endif
 
@@ -66,7 +65,7 @@ while not feof(fh)
     println fread(fh,"\n")
 endwhile
 
-size=ftell(fh)
+on logfile!=stdin do size=fh.ftell
 fclose(fh)
 
 if not testmode and offfile!=""
