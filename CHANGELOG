@@ -40,11 +40,11 @@ CHANGE LOG
                 - added type support in == >= <= > < != operators
                 - fixed "in" operator for big int/float
                 - amended eg/pi and eg/fib.tailrec for testing
-                    - eg/pi still wanders off, probably due to the algorithm
                     - eg/fib.tailrec looks fine now calculating arbitrary lengths
                         - only change needed was to cast the input ints to big ints with bigi()
                 - added power operator (**) support for big int type. errors with big floats.
-                - added sqrt operator. this only returns the new value and doesn't set the passed variable
+                - added sqrt operator support.
+                    - this only returns the new value and doesn't set the passed variable
                     - this was to keep the sqrt op in line with other types' behaviour
                     - not too worried about the extra allocations/reduced performance from this
                     - works with both bigi and bigf
@@ -55,9 +55,11 @@ CHANGE LOG
 
             - @TODO: will add to math functions over time (abs and similar)
 
-        - must declare big int/float with VAR,
+        - must declare big int/float with VAR or a literal,
             - e.g. var p bigf ; p=pi()
-            - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
+                - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
+            - or, another_pi=3.1415926535n
+                - if declaring as a literal
 
         - Please Note! big numbers are slow. there's a lot of memory allocation going on in the background
             in order to integrate them the way we have. this is unlikely to be improved. they are, as usual,
@@ -72,11 +74,19 @@ CHANGE LOG
 
     * added operators for path strings:
         - i.e.:
-            $pb for base path
+            $pb for base file name
             $pa for absolute path
             $pn for base name without extension
             $pe for path extension
             $pp for parent path
+            e.g.:
+                cd("/")
+                a="tmp/test.file"
+                $pb a # -> test.file
+                $pa a # -> /tmp/test.file
+                $pn a # -> test
+                $pe a # -> .file
+                $pp a # -> /tmp
 
 
 1.1.0

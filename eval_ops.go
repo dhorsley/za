@@ -1123,14 +1123,6 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
         f := reflect.Indirect(r).FieldByName(field).Interface()
         return f
 
-        /*
-    case token_result:
-        r := reflect.ValueOf(obj)
-        f := reflect.Indirect(r).FieldByName(field)
-        pf("[TR] : r %#v : f %#v\n",r,f)
-        return f
-        */
-
     default:
 
         r := reflect.ValueOf(obj)
@@ -1191,7 +1183,9 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                 }
             }
 
-        default:
+        }
+
+        // default:
 
             // try a function call..
             // lhs_v would become the first argument of func lhs_f
@@ -1256,7 +1250,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
             return callFunction(p.fs,p.ident,name,iargs)
 
-        }
+        // }
 
     }
 
