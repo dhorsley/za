@@ -9,7 +9,7 @@ end
 
 define mixtest(a,b,c)
     println "hello, goat!"
-    | cat /etc/motd
+    | cat /etc/issue
     w=mixtest2()
  	println "Return value is {w}"
     return [w,w]

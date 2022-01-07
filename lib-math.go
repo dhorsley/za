@@ -351,7 +351,7 @@ func buildMathLib() {
         return math.Pow(p1, p2), err
     }
 
-    slhelp["abs"] = LibHelp{in: "int", out: "positive_int", action: "Calculate absolute value of [#i1]int[#i0]."}
+    slhelp["abs"] = LibHelp{in: "number", out: "positive_number", action: "Calculate absolute value of [#i1]number[#i0]."}
     stdlib["abs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("abs",args,2,
             "1","bignumber",
@@ -376,7 +376,7 @@ func buildMathLib() {
         case float64:
             return math.Abs(args[0].(float64)),nil
         default:
-            return -1, errors.New("argument to abs() must be an integer or float.")
+            return -1, errors.New("argument to abs() must be a number.")
         }
     }
 
