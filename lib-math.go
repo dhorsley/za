@@ -478,6 +478,22 @@ func buildMathLib() {
 
 }
 
+func num_min(a interface{}, b interface{}) interface{} {
+    x:=GetAsBigFloat(a)
+    y:=GetAsBigFloat(b)
+    if x.Cmp(y)==-1 { return a }
+    // otherwise a==b or a>b
+    return b
+}
+
+func num_max(a interface{}, b interface{}) interface{} {
+    x:=GetAsBigFloat(a)
+    y:=GetAsBigFloat(b)
+    if x.Cmp(y)==1 { return a }
+    // otherwise a==b or a>b
+    return b
+}
+
 func min_int16(s []int16) (m int16) {
     for i, e := range s {
         if i == 0 || e < m {

@@ -31,13 +31,11 @@ while digs>0
         r=nr
     else
         nr=(2*q+r)*l
-        # nn=(q*7*k+2+r*l)/(t*l)
         n=(q*7*k+2+r*l)/(t*l)
         q=q*k
         t=t*l
         l=l+2
         k=k+1
-        # n=nn
         r=nr
     endif
 endwhile

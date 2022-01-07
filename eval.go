@@ -662,11 +662,13 @@ func (p *leparser) rcompare (left interface{},right interface{},insensitive bool
 
 func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
 
-    var sz,start,end int
+    // var sz int
+    var start,end interface{}
     var hasStart,hasEnd,hasRange bool
     var sendNil bool
 
     switch left:=left.(type) {
+/*
     case []bool:
         sz=len(left)
     case []string:
@@ -691,6 +693,21 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
         sz=len(left)
     case []interface{}:
         sz=len(left)
+*/
+
+    // size is checked in slice()
+    case []bool:
+    case []string:
+    case []int:
+    case []uint:
+    case []float64:
+    case []dirent:
+    case []alloc_info:
+    case string:
+    case []*big.Int:
+    case []*big.Float:
+    case [][]int:
+    case []interface{}:
 
     case map[string]interface{},map[string]alloc_info,map[string]string,map[string]int:
 
@@ -723,11 +740,15 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
 
         // end map case
 
+    case uint,int,float32,float64,uint8,uint32,uint64,int32,int64,*big.Int,*big.Float:
+        // just allow these through. handled as a clamp operation later.
+        // but do flag to allow missing start/end
+        hasRange=true
     default:
         sendNil=true
     }
 
-    end=sz
+    // end=sz
 
     if p.peek().tokType!=RightSBrace { // ! == a[] - start+end unchanged
 
@@ -738,13 +759,15 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                 panic(fmt.Errorf("array range start could not be evaluated"))
             }
             switch dp.(type) {
-            case int:
-                start=dp.(int)
+                case int,float64,*big.Int,*big.Float:
+                start=dp
                 hasStart=true
             default:
+                /*
                 if !sendNil {
                     panic(fmt.Errorf("start of range must be an integer (%+v / %T)",dp,dp))
                 }
+                */
             }
         }
 
@@ -758,13 +781,15 @@ func (p *leparser) accessArray(left interface{},right Token) (interface{}) {
                     panic(fmt.Errorf("array range end could not be evaluated"))
                 }
                 switch dp.(type) {
-                case int:
-                    end=dp.(int)
+                case int,float64,*big.Int,*big.Float:
+                    end=dp
                     hasEnd=true
                 default:
+                    /*
                     if !sendNil {
                         panic(fmt.Errorf("end of range must be an integer"))
                     }
+                    */
                 }
             }
         }
