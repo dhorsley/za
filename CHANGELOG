@@ -5,8 +5,36 @@ CHANGE LOG
 1.1.2
 =====
 
+    notes
+    -----
+
+    Features now considered non-experimental:
+        - arbitrary precision numbers
+        - fsnotify support (linux)
+        - SYM_BOR unary precedence
+        - identifier reference lookup (-V)
+        - BREAK on keyword support
+        - result chaining
+        - string OR string operator
+        - VAR statement changes
+        - single level module namespaces
+        - short string operators: $lc $uc $st $lt $rt
+
+    Features still considered experimental:
+        - libpcre3 wrapper (linux)
+        - clamping operator
+        - uninstall() stdlib call (linux)
+        - logical OR auto-casting of ints and strings (needs more feedback)
+
+    Anything noted as experimental below, not explicitly mentioned above should be
+    considered as remaining experimental.
+
+
     library changes
     ---------------
+
+    * added big int and float support in abs()
+
 
     fixes
     -----
@@ -19,7 +47,7 @@ CHANGE LOG
             v[start:end]
         ... but changes form when v evaluates to a number.
             start and end are optional
-            when present, they clamp v to the floor and ceiling specified in start and end.
+            when present, they clamp v to the floor and/or ceiling specified in start and end.
             the returned type is either that of v, start or end depending on the clamp action taken.
 
             - e.g:
@@ -35,6 +63,16 @@ CHANGE LOG
 
             >> 3[pi():10.2]
             3.141592653589793
+
+            >> 11[pi():10.2]
+            11
+
+            - illustration of type change from v to end type:
+
+            >> 9.4[1:9]
+            9
+            >> kind(9.4[1:9])
+            int
 
 
 1.1.1
@@ -88,8 +126,6 @@ CHANGE LOG
                 - slice support done, hopefully!
                 - same for loop constructs.
 
-            - @TODO: will add to math functions over time (abs and similar)
-
         - must declare big int/float with VAR or a literal,
             - e.g. var p bigf ; p=pi()
                 - ... obviously, that would be rounded to uint64 precision at best, as pi() returns a constant
@@ -102,7 +138,6 @@ CHANGE LOG
 
     * added support for 'n' suffix on big int and float literals. type is determined by presence of decimal point.
 
-    ++ add more examples in docs/
     * added underscore stripping in INPUT .. PARAM|OPTARG pos fetch "is number" check
     * added IS literal separator in INPUT .. PARAM|OPTARG .. [ IS "description" ]
         - was to fix broken expression handling in "pos" immediately before optional IS
