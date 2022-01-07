@@ -1,9 +1,13 @@
 #!/usr/bin/za
 
 #
-# collison and bounce logic is all wrong in here,
+# collison and bounce logic is a bit wrong in here,
+# objects can stick to each other, i'm too lazy
+# to figure it out though!
 # but you get the idea... it's just an object test.
 #
+
+boxcount=35
 
 enum shapes { CHAR=0, BOX }
 
@@ -20,11 +24,12 @@ struct object
     dy      float
     px      float
     py      float
+    weight  float
 endstruct
 
-define is_inside(x,y,a1,b1,a2,b2)
-    on x<a1 or x>a2 do return false
-    on y<b1 or y>b2 do return false
+define is_inside(obj,obj2)
+    on obj.x+obj.w-1+obj.dx<obj2.x or obj.x+obj.dx>obj2.x+obj2.w-1 do return false
+    on obj.y+obj.h-1+obj.dy<obj2.y or obj.y+obj.dy>obj2.y+obj2.h-1 do return false
     return true
 end
 
@@ -33,8 +38,7 @@ define collides(obkey)
     for e=0 to objects.len-1
         on e==obkey || objects[e]==nil do continue
         j=objects[e]
-        cmpx=i.x+i.dx ; cmpy=i.y+i.dy
-        on is_inside(cmpx,cmpy,j.x,j.y,j.x+j.w,j.y+j.h) do return e
+        on is_inside(i,j) do return e
     endfor
     return -1
 end 
@@ -44,34 +48,63 @@ define moveall()
         on objects[e]==nil do continue
         o=objects[e]
         o.px=o.x; o.py=o.y
-        o.x+=o.dx
-        o.y+=o.dy
         colpos=collides(e)
         if colpos!=-1
             collider=objects[colpos]
-            # bounce away if smaller
-            if o.h*o.w < collider.h*collider.w
-                if o.dx<o.dy
+            # bounce away if lighter
+            if o.weight < collider.weight
+                if o.dy<o.dx
                     o.dx=-o.dx
                 else
                     o.dy=-o.dy
                 endif
+            else
+                # bounce away with smaller dx,dy if heavier
+                if o.dy<o.dx
+                    o.dx=-o.dx/2
+                else
+                    o.dy=-o.dy/2
+                endif
             endif
-            if o.h*o.w == collider.h*collider.w
-                # same size, so collision object also bounces away
-                if collider.dx<collider.dy
+
+            if o.weight == collider.weight
+                # same weight, so collision object also bounces away
+                if collider.dy<collider.dx
                     collider.dx=-collider.dx
                 else
                     collider.dy=-collider.dy
                 endif
                 setglob objects[colpos]=collider
             endif 
-            on o.bg>0 do o.bg-=1
+            # on o.bg>0 do o.bg-=1
         endif
-        on o.x<=1            do o.dx=-o.dx
-        on o.x+o.w>=term_w() do o.dx=-o.dx
-        on o.y<=1            do o.dy=-o.dy
-        on o.y+o.h>=term_h() do o.dy=-o.dy
+        o.x+=o.dx
+        o.y+=o.dy
+
+        # term edges
+        if o.x<=1
+            o.x=1f
+            o.dx=-o.dx*2
+        endif
+        if o.x+o.w>=term_w()
+            o.x=term_w().float-o.w
+            o.dx=-o.dx*2
+        endif
+        if o.y<=1
+            o.y=1f
+            o.dy=-o.dy*2
+        endif
+        if o.y+o.h>=term_h()
+            o.y=term_h().float-o.h
+            o.dy=-o.dy*2
+        endif
+
+        # set lower speed limit
+        on o.dx>0 do o.dx=o.dx[1:5].float
+        on o.dx<0 do o.dx=o.dx[-1:-5].float
+        on o.dy>0 do o.dy=o.dy[1:5].float
+        on o.dy<0 do o.dy=o.dy[-1:-5].float
+
         setglob objects[e]=o
     endfor
 end 
@@ -98,27 +131,13 @@ define hide(obj_list)
         if o.type==shapes.BOX
             for e=0 to o.h-1
                 at int(o.py+e),int(o.px)
-                print pad(" ",-1,o.w," ")
+                print " "*o.w
             endfor
         else
             at int(o.py),int(o.px)
-            print pad(" ",-1,o.w," ")
+            print " "*o.w
         endif
     endfor
-end
-
-define object_add_text(n,label,x,y,bg,fg)
-    var obj object
-    obj.text=label
-    obj.fg=fg
-    obj.bg=int(bg)
-    obj.h=1
-    obj.w=label.len
-    obj.x=x.float
-    obj.y=y.float
-    obj.px=x.float
-    obj.py=y.float
-    setglob objects[n]=obj
 end
 
 define object_add_box(n,label,x,y,h,bg,fg)
@@ -128,6 +147,7 @@ define object_add_box(n,label,x,y,h,bg,fg)
     obj.h=h             ; obj.w=label.len
     obj.x=x.float       ; obj.y=y.float
     obj.px=x.float      ; obj.py=y.float
+    obj.weight=h.float*label.len
     setglob objects[n]=obj
 end
 
@@ -153,15 +173,16 @@ cursoroff()
 
 # create some objects
 
-object_add_box(4,"###",term_w()/2,term_h()/2,3,4,7)
-objects[4].dx=0.1
-objects[4].dy=0.1
-
 seed(epoch_nano_time())
-for e=50 to 99
-    object_add_text(e,char(33+rand(10)),rand(term_w()),rand(term_h()),rand(7),rand(7))
-    objects[e].dx=(50-rand(100))/50.0
-    objects[e].dy=(50-rand(100))/100.0
+
+for e=1 to boxcount
+    sidelen=rand(5)
+    while
+        object_add_box(e,"#"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
+        on collides(e)==-1 do break while
+    endwhile
+    objects[e].dx=-3+randf()*6
+    objects[e].dy=-3+randf()*6
 endfor
 
 
@@ -184,8 +205,10 @@ while !quit
         endif
     endfor
     on colbreak do quit=true
-    objects.hide
-
+    if !quit
+        pause (1f/boxcount)*1000
+        objects.hide
+    endif
 endwhile
 
 at term_h(),1
