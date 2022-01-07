@@ -448,7 +448,7 @@ func ihelp(hargs string) {
         foundFunction := false
 
         cmd := str.ToLower(hargs)
-        cmdMatchList := ""
+        var cmdMatchList []string
         funcMatchList := ""
 
         if cmd[len(cmd)-1]=='s' {
@@ -469,13 +469,11 @@ func ihelp(hargs string) {
         default:
 
             // check for keyword first:
-            re, err := regexp.Compile(`(^|\n){1}\[#[0-9]\]` + cmd + `.*?\n`)
+            re, err := regexp.Compile(`(?m)^{1}\[#[0-9]\]` + cmd + `.*?$`)
 
             if err == nil {
-                cmdMatchList = sparkle(str.TrimSpace(re.FindString(str.ToLower(cmdpage))))
-                remspace := regexp.MustCompile(`[ ]+`)
-                cmdMatchList = remspace.ReplaceAllString(cmdMatchList, " ")
-                if cmdMatchList != "" {
+                cmdMatchList = re.FindAllString(str.ToLower(cmdpage),-1)
+                if len(cmdMatchList)>0 {
                     foundCommand = true
                 }
             }
@@ -496,7 +494,11 @@ func ihelp(hargs string) {
 
             if foundFunction || foundCommand {
                 if foundCommand {
-                    pf("keyword  : %v\n", cmdMatchList)
+                    remspace := regexp.MustCompile(`[ ]+`)
+                    for _,nextCmd:=range cmdMatchList {
+                        nextCmd = sparkle(str.TrimSpace(remspace.ReplaceAllString(nextCmd, " ")))
+                        pf("keyword  : %v\n", nextCmd)
+                    }
                 }
                 if foundFunction {
                     pf("function : %v\n", funcMatchList)

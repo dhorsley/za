@@ -756,7 +756,7 @@ func unaryPlus(val interface{}) (interface{}) {
         intVal=int(i)
     case int64:
         intVal=int(i)
-    case big.Int,big.Float:
+    case *big.Int,*big.Float:
         return i
     default:
         intInOne=false
@@ -779,12 +779,14 @@ func unaryMinus(val interface{}) (interface{}) {
         intVal=int(i)
     case int64:
         intVal=int(i)
-    case big.Int:
+    case *big.Int:
         var r big.Int
-        return *r.Neg(GetAsBigInt(i))
-    case big.Float:
+        r.Neg(GetAsBigInt(i))
+        return &r
+    case *big.Float:
         var r big.Float
-        return *r.Neg(GetAsBigFloat(i))
+        r.Neg(GetAsBigFloat(i))
+        return &r
     default:
         intInOne=false
     }
@@ -1375,6 +1377,18 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case []interface{}:
         isArr=true
         arl= len(v.([]interface{}))
+    case int, uint, int32, int64, uint32, uint64, uint8, float32, float64, *big.Int, *big.Float:
+        // clamp operator
+        if from==nil && to!=nil { // only expressing upper limit
+            return num_min(v,to)
+        }
+        if to==nil && from!=nil { // only expressing lower limit
+            return num_max(v,from)
+        }
+        if from==nil && to==nil {
+            return v
+        }
+        return num_max(from,num_min(v,to))
     default:
         panic(fmt.Errorf("syntax error: unknown array type '%T'",v))
     }
