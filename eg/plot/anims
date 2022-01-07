@@ -43,6 +43,7 @@ define collides(obkey)
     return -1
 end 
 
+# meh, this is a mess, but it kinda works.
 define moveall()
     for e=0 to objects.len-1
         on objects[e]==nil do continue
@@ -84,7 +85,7 @@ define moveall()
         # term edges
         if o.x<=1
             o.x=1f
-            o.dx=-o.dx*1.5
+            on o.dx<0 do o.dx=-o.dx*1.5
         endif
         if o.x+o.w>=term_w()
             o.x=term_w().float-o.w
@@ -92,7 +93,7 @@ define moveall()
         endif
         if o.y<=1
             o.y=1f
-            o.dy=-o.dy*1.5
+            on o.dy<0 do o.dy=-o.dy*1.5
         endif
         if o.y+o.h>=term_h()
             o.y=term_h().float-o.h
@@ -179,9 +180,7 @@ for e=1 to boxcount
     sidelen=rand(5)
     while
         object_add_box(e,"·"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
-        if collides(e)==-1
-            break while
-        endif
+        on collides(e)==-1 do break while
     endwhile
     objects[e].dx=-3+randf()*6
     objects[e].dy=-3+randf()*6
