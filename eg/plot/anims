@@ -61,9 +61,9 @@ define moveall()
             else
                 # bounce away with smaller dx,dy if heavier
                 if o.dy<o.dx
-                    o.dx=-o.dx/2
+                    o.dx=-o.dx/4
                 else
-                    o.dy=-o.dy/2
+                    o.dy=-o.dy/4
                 endif
             endif
 
@@ -76,7 +76,7 @@ define moveall()
                 endif
                 setglob objects[colpos]=collider
             endif 
-            # on o.bg>0 do o.bg-=1
+            on o.bg>0 do o.bg-=1
         endif
         o.x+=o.dx
         o.y+=o.dy
@@ -84,26 +84,26 @@ define moveall()
         # term edges
         if o.x<=1
             o.x=1f
-            o.dx=-o.dx*2
+            o.dx=-o.dx*1.5
         endif
         if o.x+o.w>=term_w()
             o.x=term_w().float-o.w
-            o.dx=-o.dx*2
+            o.dx=-o.dx*1.5
         endif
         if o.y<=1
             o.y=1f
-            o.dy=-o.dy*2
+            o.dy=-o.dy*1.5
         endif
         if o.y+o.h>=term_h()
             o.y=term_h().float-o.h
-            o.dy=-o.dy*2
+            o.dy=-o.dy*1.5
         endif
 
         # set lower speed limit
-        on o.dx>0 do o.dx=o.dx[1:5].float
-        on o.dx<0 do o.dx=o.dx[-1:-5].float
-        on o.dy>0 do o.dy=o.dy[1:5].float
-        on o.dy<0 do o.dy=o.dy[-1:-5].float
+        on o.dx>0 do o.dx=o.dx[0.1f:4f]
+        on o.dx<0 do o.dx=o.dx[-4f:-0.1f]
+        on o.dy>0 do o.dy=o.dy[0.1f:4f]
+        on o.dy<0 do o.dy=o.dy[-4f:-0.1f]
 
         setglob objects[e]=o
     endfor
@@ -178,7 +178,7 @@ seed(epoch_nano_time())
 for e=1 to boxcount
     sidelen=rand(5)
     while
-        object_add_box(e,"#"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
+        object_add_box(e,"·"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
         on collides(e)==-1 do break while
     endwhile
     objects[e].dx=-3+randf()*6
@@ -206,7 +206,7 @@ while !quit
     endfor
     on colbreak do quit=true
     if !quit
-        pause (1f/boxcount)*1000
+        pause (2f/boxcount)*1000
         objects.hide
     endif
 endwhile
