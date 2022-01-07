@@ -2,6 +2,41 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.2
+=====
+
+    library changes
+    ---------------
+
+    fixes
+    -----
+
+    other
+    -----
+
+    * (experimental) added clamping operator:
+        - this re-uses the subscript/range operators:
+            v[start:end]
+        ... but changes form when v evaluates to a number.
+            start and end are optional
+            when present, they clamp v to the floor and ceiling specified in start and end.
+            the returned type is either that of v, start or end depending on the clamp action taken.
+
+            - e.g:
+
+            >> for e=-3 to 3; print e[-2:2]; endfor
+            -2
+            -2
+            -1
+            0
+            1
+            2
+            2
+
+            >> 3[pi():10.2]
+            3.141592653589793
+
+
 1.1.1
 =====
 
