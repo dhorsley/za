@@ -2093,14 +2093,13 @@ tco_reentry:
                     }
                     if lookingForEnd {
 
-                        // before anything else, move depth marker back to nearest matching construct:
+                        // set count of back tracking in end* statements
                         for break_count:=1;break_count<depth; break_count+=1 {
                             if lastConstruct[depth-break_count]==inbound.Tokens[1].tokType {
                                 break
                             }
                         }
 
-                        // pf("(debug) efound : %v  er : %v\n",efound,er)
                         if er {
                             // lookahead error
                             parser.report(inbound.SourceLine,sf("BREAK [%s] cannot find end of construct",tokNames[breakIn]))
@@ -2114,7 +2113,6 @@ tco_reentry:
                             break
                         } else {
                             // break jump point is set, so continue pc loop 
-                            // pf("(debug) continuing at statement %d\n",parser.pc+1)
                             continue
                         }
 
