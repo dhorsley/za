@@ -6,6 +6,7 @@ import (
     "errors"
     "fmt"
     "math"
+    "math/big"
     "math/rand"
     "strconv"
 )
@@ -352,8 +353,18 @@ func buildMathLib() {
 
     slhelp["abs"] = LibHelp{in: "int", out: "positive_int", action: "Calculate absolute value of [#i1]int[#i0]."}
     stdlib["abs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
-        if ok,err:=expect_args("abs",args,1,"1","number"); !ok { return nil,err }
+        if ok,err:=expect_args("abs",args,2,
+            "1","bignumber",
+            "1","number"); !ok { return nil,err }
         switch args[0].(type) {
+        case *big.Int:
+            n:=big.NewInt(0)
+            n.Abs(args[0].(*big.Int))
+            return n,nil
+        case *big.Float:
+            n:=big.NewFloat(0)
+            n.Abs(args[0].(*big.Float))
+            return n,nil
         case int:
             n := args[0].(int)
             y := n >> 63
