@@ -4,6 +4,7 @@ package main
 
 import (
     "reflect"
+    "math/big"
     "strconv"
     "errors"
 )
@@ -48,6 +49,8 @@ func expect_args(name string, args []interface{}, variants int, types... string)
                 return false,nil
             case int,uint,float64,int64,uint64,uint8:
                 if types[p]=="number" { n+=1; continue }
+            case *big.Int,*big.Float:
+                if types[p]=="bignumber" { n+=1; continue }
             }
             if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
                 // type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
