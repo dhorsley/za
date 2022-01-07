@@ -1990,9 +1990,6 @@ tco_reentry:
                 forceEnd=false
                 if break_count>0 {
                     break_count-=1
-                    // doh: testing removal of these:
-                    // breakIn=Error
-                    // forceEnd=false
                     if break_count>0 {
                         switch lastConstruct[depth-1] {
                         case C_For,C_Foreach:
@@ -2092,9 +2089,17 @@ tco_reentry:
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]uint8{C_While},   []uint8{C_Endwhile})
                         breakIn=C_Endwhile
                         forceEnd=true
-                        parser.pc = (*thisLoop).whileContinueAt - 1
+                        parser.pc = (*thisLoop).whileContinueAt-1
                     }
                     if lookingForEnd {
+
+                        // before anything else, move depth marker back to nearest matching construct:
+                        for break_count:=1;break_count<depth; break_count+=1 {
+                            if lastConstruct[depth-break_count]==inbound.Tokens[1].tokType {
+                                break
+                            }
+                        }
+
                         // pf("(debug) efound : %v  er : %v\n",efound,er)
                         if er {
                             // lookahead error

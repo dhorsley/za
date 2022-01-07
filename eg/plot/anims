@@ -28,8 +28,8 @@ struct object
 endstruct
 
 define is_inside(obj,obj2)
-    on obj.x+obj.w-1+obj.dx<obj2.x or obj.x+obj.dx>obj2.x+obj2.w-1 do return false
-    on obj.y+obj.h-1+obj.dy<obj2.y or obj.y+obj.dy>obj2.y+obj2.h-1 do return false
+    on obj.x+obj.w+obj.dx<obj2.x or obj.x+obj.dx>obj2.x+obj2.w do return false
+    on obj.y+obj.h+obj.dy<obj2.y or obj.y+obj.dy>obj2.y+obj2.h do return false
     return true
 end
 
@@ -179,7 +179,9 @@ for e=1 to boxcount
     sidelen=rand(5)
     while
         object_add_box(e,"·"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
-        on collides(e)==-1 do break while
+        if collides(e)==-1
+            break while
+        endif
     endwhile
     objects[e].dx=-3+randf()*6
     objects[e].dy=-3+randf()*6
@@ -191,24 +193,30 @@ endfor
 quit=false
 
 while !quit
+
+    # quit=true
+
     objects.show
     moveall()
 
     # quit when everything has collided
-    colbreak=true
+    all_colours_dead=true
     for e=0 to objects.len-1
         on objects[e]==nil do continue
         o=objects[e]
         if o.bg>0
-            colbreak=false
+            all_colours_dead=false
             break
         endif
     endfor
-    on colbreak do quit=true
+
+    on all_colours_dead do quit=true
+
     if !quit
         pause (2f/boxcount)*1000
         objects.hide
     endif
+
 endwhile
 
 at term_h(),1
