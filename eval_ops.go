@@ -468,6 +468,42 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     if (intInOne && s2ok) && val1.(int)>=0 { var ary []interface{}; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2) }; return ary }
     if (intInTwo && s1ok) && val2.(int)>=0 { var ary []interface{}; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1) }; return ary }
 
+    // int * []number = multiply each element
+    switch val1.(type) {
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+        switch val2.(type) {
+        case int:
+            ary1,er:=stdlib["list_int"](0,nil,val1)
+            if er==nil && val2.(int)>=0 {
+                length,_:=ulen(ary1)
+                var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]int)[e]*val2.(int)) }; return ary
+            }
+        case float64:
+            ary1,er:=stdlib["list_float"](0,nil,val1)
+            if er==nil && val2.(float64)>=0 {
+                length,_:=ulen(ary1)
+                var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]float64)[e]*val2.(float64)) }; return ary
+            }
+        }
+    }
+    switch val2.(type) {
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+        switch val1.(type) {
+        case int:
+            ary2,er:=stdlib["list_int"](0,nil,val2)
+            if er==nil && val1.(int)>=0 {
+                length,_:=ulen(ary2)
+                var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary2.([]int)[e]*val1.(int)) }; return ary
+            }
+        case float64:
+            ary2,er:=stdlib["list_float"](0,nil,val2)
+            if er==nil && val1.(float64)>=0 {
+                length,_:=ulen(ary2)
+                var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary2.([]float64)[e]*val1.(float64)) }; return ary
+            }
+        }
+    }
+
     panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
@@ -540,6 +576,61 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
         if float2==0 { panic(fmt.Errorf("eval error: divide by zero")) }
         return float1 / float2
     }
+
+    // int / []number = divide by/into each element
+    switch val1.(type) {
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+        switch val2.(type) {
+        case int:
+            if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+            ary1,er:=stdlib["list_int"](0,nil,val1)
+            if er==nil && val2.(int)!=0 {
+                length,_:=ulen(ary1)
+                var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]int)[e]/val2.(int)) }; return ary
+            } 
+        case float64:
+            if val2.(float64)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+            ary1,er:=stdlib["list_float"](0,nil,val1)
+            if er==nil && val2.(float64)!=0 {
+                length,_:=ulen(ary1)
+                var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]float64)[e]/val2.(float64)) }; return ary
+            }
+        }
+    }
+    switch val2.(type) {
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+        switch val1.(type) {
+        case int:
+            ary2,er:=stdlib["list_int"](0,nil,val2)
+            if er==nil {
+                length,_:=ulen(ary2)
+                var ary []int
+                for e:=0; e<length; e+=1 {
+                    if ary2.([]int)[e]!=0 {
+                        ary=append(ary,val1.(int)/ary2.([]int)[e])
+                    } else {
+                        ary=append(ary,0)
+                    }
+                }
+                return ary
+            }
+        case float64:
+            ary2,er:=stdlib["list_float"](0,nil,val2)
+            if er==nil {
+                length,_:=ulen(ary2)
+                var ary []float64
+                for e:=0; e<length; e+=1 {
+                    if ary2.([]float64)[e]!=0 {
+                        ary=append(ary,val1.(float64)/ary2.([]float64)[e])
+                    } else {
+                        ary=append(ary,0)
+                    }
+                }
+                return ary
+            }
+        }
+    }
+
     panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
