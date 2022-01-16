@@ -137,6 +137,8 @@ const (
     kint
     kint64
     kuint
+    kuint32
+    kuint64
     kfloat
     kbigi
     kbigf
@@ -145,6 +147,8 @@ const (
     ksint
     ksint64
     ksuint
+    ksuint32
+    ksuint64
     ksfloat
     ksbigi
     ksbigf

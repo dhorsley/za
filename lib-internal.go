@@ -16,6 +16,7 @@ import (
     "runtime"
     "sort"
     str "strings"
+    "sync/atomic"
 //     "golang.org/x/sys/unix"
 )
 
@@ -241,7 +242,7 @@ func buildInternalLib() {
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "glob_key", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
-        "eval", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
+        "eval", "feval", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
@@ -433,6 +434,48 @@ func buildInternalLib() {
         calllock.RUnlock()
         // pf("-- [eval] q:|%s|\n",args[0].(string))
         return ev(p,evalfs,args[0].(string))
+    }
+
+    slhelp["feval"] = LibHelp{in: "string,args...", out: "", action: "execute code in [#i1]string[#i0]."}
+    stdlib["feval"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+
+        var code string
+        if len(args)>0 {
+            switch args[0].(type) {
+            case string:
+                code=args[0].(string)+"\n"
+            default:
+                return nil,errors.New("feval requires a string to lex.")
+            }
+        }
+
+        loc,fn:=GetNextFnSpace(true,"feval@",call_s{prepared:true,caller:evalfs})
+        calltable[loc].base=loc
+
+        badword,_:=phraseParse(fn, code, 0)
+        if badword {
+            return nil,errors.New("feval could not lex input.")
+        }
+
+        // pf("(debug-feval) : loc -> %d\n",loc)
+        // pf("(debug-feval) :\n%+v\n",functionspaces[:loc])
+
+        atomic.AddInt32(&concurrent_funcs,1)
+        var rcount uint8
+        if len(args)>1 {
+            rcount,_=Call(MODE_NEW, ident, loc, ciEval, args[1:]...)
+        } else {
+            rcount,_=Call(MODE_NEW, ident, loc, ciEval)
+        }
+        if rcount == 0 {}
+
+        atomic.AddInt32(&concurrent_funcs,-1)
+
+        // todo: remove code stored in functionspaces
+        fnlookup.lmdelete(fn)
+        numlookup.lmdelete(loc)
+
+        return nil,nil
     }
 
     slhelp["get_row"] = LibHelp{in: "", out: "int", action: "reads the row position of console text cursor."}

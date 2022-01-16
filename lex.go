@@ -13,7 +13,7 @@ const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.fn"
 const numSeps = "_"
-const identifier_set = alphanumeric + "_"
+const identifier_set = alphanumeric + "_{}"
 const doubleterms = "<>=|&-+*.?"
 const expExpect="0123456789-+"
 

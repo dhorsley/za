@@ -812,7 +812,9 @@ tco_reentry:
                     if expectingComma { // syntax error
                         break var_comma_loop
                     }
-                    name_list=append(name_list,inbound.Tokens[c].tokText)
+                    // PIG
+                    inter:=interpolate(ifs,ident,inbound.Tokens[c].tokText)
+                    name_list=append(name_list,inter)
                 case O_Comma:
                     if !expectingComma { // syntax error
                         varSyntaxError=true
@@ -875,6 +877,8 @@ tco_reentry:
                             size=int(se.result.(int64))
                         case uint:
                             size=int(se.result.(uint))
+                        case uint32:
+                            size=int(se.result.(uint32))
                         case uint64:
                             size=int(se.result.(uint64))
                         default:
@@ -914,6 +918,8 @@ tco_reentry:
                 // ++
                 var tb bool
                 var tu8 uint8
+                var tu32 uint32
+                var tu64 uint64
                 var tu uint
                 var ti int
                 var tf64 float64
@@ -924,6 +930,8 @@ tco_reentry:
                 var stb     []bool
                 var stu     []uint
                 var stu8    []uint8
+                var stu32   []uint32
+                var stu64   []uint64
                 var sti     []int
                 var stf64   []float64
                 var sts     []string
@@ -937,6 +945,8 @@ tco_reentry:
                 gob.Register(stb)
                 gob.Register(stu)
                 gob.Register(stu8)
+                gob.Register(stu32)
+                gob.Register(stu64)
                 gob.Register(sti)
                 gob.Register(stf64)
                 gob.Register(stbi)
@@ -948,6 +958,10 @@ tco_reentry:
                 typemap["bool"]     = reflect.TypeOf(tb)
                 typemap["uint"]     = reflect.TypeOf(tu)
                 typemap["uint8"]    = reflect.TypeOf(tu8)
+                typemap["uint32"]   = reflect.TypeOf(tu32)
+                typemap["uint64"]   = reflect.TypeOf(tu64)
+                typemap["long"]     = reflect.TypeOf(tu32)
+                typemap["xlong"]   = reflect.TypeOf(tu64)
                 typemap["byte"]     = reflect.TypeOf(tu8)
                 typemap["int"]      = reflect.TypeOf(ti)
                 typemap["float"]    = reflect.TypeOf(tf64)
@@ -1023,6 +1037,10 @@ tco_reentry:
                         t.IKind=kstring
                     case "uint8","byte":
                         t.IKind=kbyte
+                    case "uint32","long":
+                        t.IKind=kuint32
+                    case "uint64","xlong":
+                        t.IKind=kuint64
                     case "[]bool":
                         t.IKind=ksbool
                         t.IValue=make([]bool,size,size)
@@ -1032,6 +1050,12 @@ tco_reentry:
                     case "[]uint":
                         t.IKind=ksuint
                         t.IValue=make([]uint,size,size)
+                    case "[]uint32","[]long":
+                        t.IKind=ksuint32
+                        t.IValue=make([]uint32,size,size)
+                    case "[]uint64","[]xlong":
+                        t.IKind=ksuint64
+                        t.IValue=make([]uint64,size,size)
                     case "[]float":
                         t.IKind=ksfloat
                         t.IValue=make([]float64,size,size)
@@ -1898,6 +1922,12 @@ tco_reentry:
                         case []uint:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
+                        case []uint32:
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint32)[(*thisLoop).counter])
+                        case []uint64:
+                            vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint64)[(*thisLoop).counter])
                         case []string:
                             vset(ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])

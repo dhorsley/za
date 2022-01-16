@@ -1,0 +1,32 @@
+
+a=0; b=0; c=0
+
+input a param 1
+while a>0
+    
+    input b param 2
+    while b>0
+
+        input c param 3
+        while c>0
+
+            println "{a} {b} {c}"
+
+            k=keypress().char
+
+            on k=="q" do break while
+
+            c--
+
+        endwhile
+
+        b--
+
+    endwhile
+
+    a--
+
+endwhile
+
+println "done"
+
