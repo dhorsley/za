@@ -1262,6 +1262,7 @@ func (p *leparser) identifier(token Token) (interface{}) {
     pf("-----------------------\n")
     pf("fs      : %d\n",p.fs)
     pf("toktext : %s\n",token.tokText)
+    pf("bin     : %d\n",bin)
     */
 
     panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
@@ -2143,7 +2144,10 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
             ///////////// CHECK FOR a       /////////////////////////////////////////////
             // normal assignment
             // pf("-- normal assignment to (ifs:%d) %s of %+v [%T]\n", lfs, assignee[0].tokText, results[assno],results[assno])
-            vset(lfs, lident, assignee[0].tokText, results[assno])
+            // PIG
+            // vset(lfs, lident, assignee[0].tokText, results[assno])
+            inter:=interpolate(rfs,rident,assignee[0].tokText)
+            vset(lfs, lident, inter, results[assno])
             /////////////////////////////////////////////////////////////////////////////
 
         case len(assignee)==2:
@@ -2153,6 +2157,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
             ///////////// CHECK FOR a[e]    /////////////////////////////////////////////
             // check for lbrace and rbrace
             if assignee[1].tokType != LeftSBrace || assignee[rbAt].tokType != RightSBrace {
+                pf("\n->%d:%v",assno,assignee)
                 expr.errVal=fmt.Errorf("syntax error in assignment")
                 expr.evalError=true
                 return
@@ -2387,6 +2392,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
 
         default:
             pf("syntax error in assignment")
+                pf("\n->%d:%v",assno,assignee)
             expr.evalError=true
             expr.errVal=err
 

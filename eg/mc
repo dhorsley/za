@@ -155,7 +155,7 @@ def show_left(ld,lrow,lwinheight,cursorl)
         on colmax>maxsl do colmax=maxsl
         doinvert=?? (leftside && lrow_count==cursorl) "[#invert]":""
         ital    =?? (leftside && doinvert!="") "[#i1][#ul]":""
-        mt,found=get_mode_char(f.mode.int)
+        mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
             if f.isdir
@@ -184,7 +184,7 @@ def show_right(rd,rrow,rwinheight,cursorr)
         on colmax>maxsr do colmax=maxsr
         doinvert=?? (not leftside and rrow_count==cursorr) "[#invert]":""
         ital    =?? (not leftside && doinvert!="") "[#i1][#ul]":""
-        mt,found=get_mode_char(f.mode.int)
+        mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
             if f.isdir
