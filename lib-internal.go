@@ -242,7 +242,7 @@ func buildInternalLib() {
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "glob_key", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
-        "eval", "feval", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
+        "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
@@ -436,8 +436,12 @@ func buildInternalLib() {
         return ev(p,evalfs,args[0].(string))
     }
 
-    slhelp["feval"] = LibHelp{in: "string,args...", out: "", action: "execute code in [#i1]string[#i0]."}
-    stdlib["feval"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    slhelp["exec"] = LibHelp{in: "string,args...", out: "", action: "execute code in [#i1]string[#i0]."}
+    stdlib["exec"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+
+        if !permit_eval {
+            panic(fmt.Errorf("exec() not permitted!"))
+        }
 
         var code string
         if len(args)>0 {
@@ -445,21 +449,24 @@ func buildInternalLib() {
             case string:
                 code=args[0].(string)+"\n"
             default:
-                return nil,errors.New("feval requires a string to lex.")
+                return nil,errors.New("exec requires a string to lex.")
             }
         }
 
-        loc,fn:=GetNextFnSpace(true,"feval@",call_s{prepared:true,caller:evalfs})
+        // allocate function space
+        loc,fn:=GetNextFnSpace(true,"exec@",call_s{prepared:true,caller:evalfs})
         calltable[loc].base=loc
 
+        // parse
         badword,_:=phraseParse(fn, code, 0)
         if badword {
-            return nil,errors.New("feval could not lex input.")
+            return nil,errors.New("exec could not lex input.")
         }
 
-        // pf("(debug-feval) : loc -> %d\n",loc)
-        // pf("(debug-feval) :\n%+v\n",functionspaces[:loc])
+        // pf("(debug-exec) : loc -> %d\n",loc)
+        // pf("(debug-exec) :\n%+v\n",functionspaces[:loc])
 
+        // execute code
         atomic.AddInt32(&concurrent_funcs,1)
         var rcount uint8
         if len(args)>1 {
@@ -467,15 +474,27 @@ func buildInternalLib() {
         } else {
             rcount,_=Call(MODE_NEW, ident, loc, ciEval)
         }
-        if rcount == 0 {}
-
-        atomic.AddInt32(&concurrent_funcs,-1)
-
-        // todo: remove code stored in functionspaces
         fnlookup.lmdelete(fn)
         numlookup.lmdelete(loc)
+        atomic.AddInt32(&concurrent_funcs,-1)
 
-        return nil,nil
+        // get return values
+        calllock.Lock()
+        res := calltable[loc].retvals
+        calltable[loc].gcShyness=100
+        calltable[loc].gc=true
+        calllock.Unlock()
+
+        switch rcount {
+        case 0:
+            return nil,nil
+        case 1:
+            return res.([]interface{})[0],nil
+        default:
+            return res,nil
+        }
+        return res,nil
+
     }
 
     slhelp["get_row"] = LibHelp{in: "", out: "int", action: "reads the row position of console text cursor."}

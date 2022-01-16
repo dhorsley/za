@@ -23,6 +23,12 @@ TODO
         - should check for potential use case of Cut vs Index(Byte|Rune|etc) and similar.
         - convert interface{} to any, where possible?
 
+    * clean up error:
+        - when trying to pass []interface{} using dot operator (result chaining)
+            - this may happen if preceeding lhs of dot was a func that returns multiple values
+            - should return a better error
+                - unless, of course, first arg expected []
+
     ++ add more examples in docs/
 
     * 1.1.2: bug fixes
