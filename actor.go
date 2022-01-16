@@ -812,7 +812,6 @@ tco_reentry:
                     if expectingComma { // syntax error
                         break var_comma_loop
                     }
-                    // PIG
                     inter:=interpolate(ifs,ident,inbound.Tokens[c].tokText)
                     name_list=append(name_list,inter)
                 case O_Comma:
