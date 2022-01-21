@@ -321,22 +321,17 @@ func buildConversionLib() {
         return i, nil
     }
 
-    slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors. The type is still [#bold]int[#boff] however the bounds are limited between 0-255."}
+    slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors."}
     stdlib["byte"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to byte()")
         }
         i, invalid := GetAsInt(args[0])
         if !invalid {
-            if i>=0 && i<256 {
-                return i, nil
-            } else {
-                return 0,errors.New("out of range value in byte()")
-            }
+            return byte(i),nil
         }
-        return 0, err
+        return byte(0), err
     }
-
 
     slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert [#i1]string[#i0] to a boolean value, or errors"}
     stdlib["bool"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {

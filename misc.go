@@ -42,7 +42,8 @@ func showCallChain(base string) {
             break
         }
         v.name=getReportFunctionName(v.loc,false)
-        pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
+        // pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
+        pf("-> %s(#%d) ",v.name,v.line)
     }
     calllock.RUnlock()
     pf("-> [#6]"+base+"[#-]\n[#CTE]")
@@ -67,6 +68,10 @@ func (parser *leparser) report(line int16,s string) {
     } else {
         baseId,_ = fnlookup.lmget(funcName)         //      -> id of base func  
     }
+    if execMode {
+        pf("\nswitched fs from %d to %d\n",baseId,execFs)
+        baseId=execFs
+    }
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
 
     var line_content string
@@ -90,7 +95,8 @@ func (parser *leparser) report(line int16,s string) {
 
     var msg string
     if !permit_exitquiet {
-        msg = sparkle("[#CTE]\n[#bred]\n[#CTE]"+submsg) +
+        // msg = sparkle("[#CTE]\n[#bred]\n[#CTE]"+submsg) +
+        msg = sparkle("[#bred]\n[#CTE]"+submsg) +
             line_content+"\n"+
             sparkle("[##][#-][#CTE]")+
             sparkle(sf("%s\n",s))+

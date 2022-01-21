@@ -13,7 +13,6 @@ CHANGE LOG
         - fsnotify support (linux)
         - SYM_BOR unary precedence
         - identifier reference lookup (-V)
-        - BREAK on keyword support
         - result chaining
         - string OR string operator
         - VAR statement changes
@@ -25,6 +24,8 @@ CHANGE LOG
         - clamping operator
         - uninstall() stdlib call (linux)
         - logical OR auto-casting of ints and strings (needs more feedback)
+        - exec()
+        - BREAK on keyword support (avoid this for now)
 
     Anything noted as experimental below, not explicitly mentioned above should be
     considered as remaining experimental.
@@ -34,10 +35,11 @@ CHANGE LOG
     ---------------
 
     * added big int and float support in abs()
-    * added exec() for evaluating code blocks. can be blocked using permit("eval",false)
+    * (experimental) added exec() for evaluating code blocks. can be blocked using permit("eval",false)
         - added return value processing, e.g:
             a,b=exec("for e = 1 to 10; endfor; return e,e*2")
             # a==10, b==20
+        - will possibly add a separate permit() key for this action.
 
 
     fixes

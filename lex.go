@@ -262,7 +262,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                 switch input[currentChar] {
                 case 'x','X':
                     thisHex=true
-                    nonterm="0123456789abcdefxX"
+                    nonterm="0123456789abcdefABCDEFxX"
                 case 'b','B':
                     thisBin=true
                     nonterm="01bB"

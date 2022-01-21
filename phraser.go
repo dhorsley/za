@@ -122,6 +122,12 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     var defNest int             // C_Define nesting
 
     lmv,_:=fnlookup.lmget(fs)
+
+    fspacelock.Lock()
+    functionspaces[lmv] = []Phrase{}
+    basecode[lmv]=[]BaseCode{}
+    fspacelock.Unlock()
+
     addToPhrase:=false
     vref_found:=false
 
