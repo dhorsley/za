@@ -21,6 +21,9 @@ import (
 )
 
 
+var execMode bool   // used by report() for errors
+var execFs   uint32 // used by report() for errors
+
 const (
     _AT_NULL             = 0
     _AT_CLKTCK           = 17
@@ -246,7 +249,7 @@ func buildInternalLib() {
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all",
-        "ast","varbind",
+        "ast","varbind","sizeof",
         // "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -266,6 +269,12 @@ func buildInternalLib() {
         return len(q),nil
     }
 */
+
+    slhelp["sizeof"] = LibHelp{in: "string", out: "uint", action: "returns the size of an object."}
+    stdlib["sizeof"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("sizeof",args,1,"1","any"); !ok { return nil,err }
+        return Of(args[0]),nil
+    }
 
     slhelp["varbind"] = LibHelp{in: "string", out: "uint", action: "returns the name binding uint for a variable."}
     stdlib["varbind"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
@@ -436,12 +445,15 @@ func buildInternalLib() {
         return ev(p,evalfs,args[0].(string))
     }
 
-    slhelp["exec"] = LibHelp{in: "string,args...", out: "", action: "execute code in [#i1]string[#i0]."}
+    slhelp["exec"] = LibHelp{in: "string,args...", out: "return_values", action: "execute code in [#i1]string[#i0]."}
     stdlib["exec"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
 
         if !permit_eval {
             panic(fmt.Errorf("exec() not permitted!"))
         }
+
+        execMode=true // racey: don't care, error reporting stuff
+        execFs=evalfs
 
         var code string
         if len(args)>0 {
@@ -453,38 +465,56 @@ func buildInternalLib() {
             }
         }
 
-        // allocate function space
-        loc,fn:=GetNextFnSpace(true,"exec@",call_s{prepared:true,caller:evalfs})
-        calltable[loc].base=loc
+        // allocate function space for source
+        sloc,sfn:=GetNextFnSpace(true,"exec@",call_s{prepared:true,caller:evalfs})
 
         // parse
-        badword,_:=phraseParse(fn, code, 0)
+        badword,_:=phraseParse(sfn, code, 0)
         if badword {
             return nil,errors.New("exec could not lex input.")
         }
 
-        // pf("(debug-exec) : loc -> %d\n",loc)
-        // pf("(debug-exec) :\n%+v\n",functionspaces[:loc])
+        // allocate function space for execution
+        eloc,efn:=GetNextFnSpace(true,sfn+"@",call_s{prepared:true})
+        cs := calltable[eloc]
+        cs.caller   = evalfs
+        cs.base     = sloc
+        cs.retvals  = nil
+        cs.fs       = efn
+        calltable[eloc]=cs
+        var instance_ident [szIdent]Variable
+
+        // pf("[#5](debug-exec) : sloc -> %d eloc -> %d[#-]\n",sloc,eloc)
+        // pf("[#5](debug-exec) : executing -> [%+v][#-]\n",code)
 
         // execute code
         atomic.AddInt32(&concurrent_funcs,1)
         var rcount uint8
         if len(args)>1 {
-            rcount,_=Call(MODE_NEW, ident, loc, ciEval, args[1:]...)
+            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, args[1:]...)
         } else {
-            rcount,_=Call(MODE_NEW, ident, loc, ciEval)
+            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval)
         }
-        fnlookup.lmdelete(fn)
-        numlookup.lmdelete(loc)
+
+        execMode=false
         atomic.AddInt32(&concurrent_funcs,-1)
 
         // get return values
         calllock.Lock()
-        res := calltable[loc].retvals
-        calltable[loc].gcShyness=100
-        calltable[loc].gc=true
+        res := calltable[eloc].retvals
+        calltable[eloc].gcShyness=50
+        calltable[eloc].gc=true
         calllock.Unlock()
 
+        // throw away the tokenised source
+        fnlookup.lmdelete(sfn)
+        numlookup.lmdelete(sloc)
+
+        // throw away the code instance block
+        fnlookup.lmdelete(efn)
+        numlookup.lmdelete(eloc)
+
+        // parse return'ed values
         switch rcount {
         case 0:
             return nil,nil
