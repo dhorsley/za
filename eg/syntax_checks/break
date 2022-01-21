@@ -3,13 +3,14 @@
 bc=3
 input bc optarg 1 is "Break Count"
 
-while
+while #b4
 
-    while
-        for e=1 to 50
-            if e > 20
+    while #b3
+        for e=1 to 50 # b2
+            when # b1
+            has e > 0
                 break bc
-            endif
+            endwhen
             println e
         endfor
         println "FOR COMPLETE!"

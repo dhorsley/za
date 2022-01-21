@@ -124,8 +124,8 @@ func (p *leparser) dparse(prec int8) (left interface{},err error) {
         left=p.unary(ct)
     case O_Multiply:
         left=p.unary(ct)
-    // case SYM_Caret:         // unary pointery stuff
-    //    left=p.unary(ct)
+    case SYM_Caret:         // unary pointery stuff
+        left=p.unary(ct)
     case LParen:
         left=p.grouping(ct)
     case SYM_PP, SYM_MM:
@@ -901,6 +901,24 @@ func (p *leparser) unaryPathOp(right interface{},op uint8) string {
     }
 }
 
+
+// none of this pointer stuff is live. just tinkering here. move along!
+func (p *leparser) unaryPointerOp(right interface{},op uint8) interface{} {
+    switch op {
+    case SYM_Caret:
+        switch right.(type) {
+        case string:
+            if VarLookup(p.fs,p.ident,right.(string)) {
+                bin:=bind_int(p.fs,right.(string))
+                return &(p.ident[bin])
+            }
+        }
+    case O_Multiply:
+        return (*right.(*Variable)).IValue
+    }
+    return nil
+}
+
 func (p *leparser) unaryStringOp(right interface{},op uint8) string {
     switch right.(type) {
     case string:
@@ -945,10 +963,12 @@ func (p *leparser) unary(token Token) (interface{}) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
+    case SYM_Caret: // address of
+        return p.unaryPointerOp(right,token.tokType)
+    case O_Multiply: // peek
+        return p.unaryPointerOp(right,token.tokType)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         return p.unaryStringOp(right,token.tokType)
-    // case O_Pb,O_Pa,O_Pn,O_Pe,O_Pp:
-    //    return p.unaryPathOp(right,token.tokType)
     case O_Assign:
         panic(fmt.Errorf("unary assignment makes no sense"))
 	}
@@ -1225,21 +1245,24 @@ func (p *leparser) identifier(token Token) (interface{}) {
             p.tokens[p.pos].subtype=subtypeStandard
             return token.tokText
         }
-        panic(fmt.Errorf("function '%v' does not exist",token.tokText))
+        if !permit_uninit { panic(fmt.Errorf("function '%v' does not exist",token.tokText)) }
     }
 
 
+    inter:=interpolate(p.fs,p.ident,token.tokText)
+
     // local variable lookup:
-    bin:=bind_int(p.fs,token.tokText)
+    bin:=bind_int(p.fs,inter)
     if (*p.ident)[bin].declared {
+        // fmt.Printf("\nlocal identifier fetching (in %d) vget for name : %s\n",p.fs,inter)
         return (*p.ident)[bin].IValue
     }
 
     // global lookup:
     var val interface{}
     var there bool
-    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
-    if val,there=vget(p.mident,&mident,token.tokText); there {
+    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,inter)
+    if val,there=vget(p.mident,&mident,inter); there {
         return val
     }
 
@@ -1249,12 +1272,12 @@ func (p *leparser) identifier(token Token) (interface{}) {
     }
 
     // permit module names
-    if modlist[token.tokText]==true {
+    if modlist[inter]==true {
         return nil
     }
 
     // permit enum names
-    if enum[token.tokText]!=nil {
+    if enum[inter]!=nil {
         return nil
     }
 
@@ -1262,10 +1285,11 @@ func (p *leparser) identifier(token Token) (interface{}) {
     pf("-----------------------\n")
     pf("fs      : %d\n",p.fs)
     pf("toktext : %s\n",token.tokText)
+    pf("inter   : %s\n",inter)
     pf("bin     : %d\n",bin)
     */
 
-    panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
+    panic(fmt.Errorf("variable '%s' is uninitialised.",inter))
 
 }
 
@@ -1393,15 +1417,9 @@ func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
             _,ok=value.(float64)
             if ok { t.IValue = value }
         case kbigi:
-            // var tv big.Int
-            // tv.Set(GetAsBigInt(value))
-            // t.IValue=&tv
             t.IValue.(*big.Int).Set(GetAsBigInt(value))
             ok=true
         case kbigf:
-            // var tv big.Float
-            // tv.Set(GetAsBigFloat(value))
-            // t.IValue=&tv
             t.IValue.(*big.Float).Set(GetAsBigFloat(value))
             ok=true
         case kstring:
@@ -1532,6 +1550,8 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
     list, ok = vget(fs,ident,name)
 
     if !ok {
+        // pf("vseti-notokay-newlist\nfs->%v  %+v\nelement:%+v\n",fs,name,el)
+        // pf("got list [%T]: %#v\n",list,list)
        list = make(map[string]interface{}, LIST_SIZE_CAP)
         vset(fs,ident,name,list)
     }
@@ -2078,6 +2098,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
         largs[0]=tks[:eqPos]
     }
 
+    // pf("(da) largs -> %#v\n",largs)
+
     var results []interface{}
 
     if len(largs)==1 {
@@ -2293,8 +2315,10 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
                     pf("negative element index!! (%s[%v])\n",assignee[0].tokText,element)
                     expr.evalError=true
                     expr.errVal=err
+                } else {
+                    // pf("(da) vsetei : lfs:%v att:%v el:%v\n",lfs,assignee[0].tokText,element)
+                    vsetElementi(lfs, lident, assignee[0].tokText, element.(int), results[assno])
                 }
-                vsetElementi(lfs, lident, assignee[0].tokText, element.(int), results[assno])
             default:
                 pf("unhandled element type!! [%T]\n",element)
                 expr.evalError=true

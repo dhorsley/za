@@ -355,14 +355,16 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 
     // : sets up a re-use value
     var reuse,e uint32
-    if globseq<gcModulus*2 || (globseq % gcModulus) < 2 {
+    if (globseq % 8)==0 {
         for e=0; e<globseq; e+=1 {
             if calltable[e].gc {
                 if calltable[e].gcShyness>0 { calltable[e].gcShyness-=1 }
-                if calltable[e].gcShyness==0 { break }
+                if calltable[e].gcShyness==0 {
+                    reuse=e
+                    break
+                }
             }
         }
-        if e<globseq { reuse=e }
     }
 
     // find a reservation
@@ -385,14 +387,17 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
         // fmt.Printf("[gnfs] resized calltable.\n")
     }
 
+    if reuse==0 { reuse=globseq } // else { fmt.Printf("** reusing fs %d\n",reuse) }
+
     // generate new tagged instance name
     newName := requiredName
     if newName[len(newName)-1]=='@' {
-        newName+=strconv.FormatUint(uint64(globseq), 10)
+        newName+=strconv.FormatUint(uint64(reuse), 10)
     }
 
     // allocate
-    if reuse==0 { reuse=globseq } // else { fmt.Printf("** reusing fs %d\n",reuse) }
+    calltable[reuse].gc=false
+    calltable[reuse].gcShyness=0
     numlookup.lmset(reuse, newName)
     fnlookup.lmset(newName,reuse)
     if cs.prepared==true {
@@ -427,18 +432,12 @@ var symbolised = make(map[uint32]bool)
 // everything about what is to be executed is contained in calltable[csloc]
 func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint8, va ...interface{}) (retval_count uint8,endFunc bool) {
 
-    // register call
+    if debug_level>7 { pf("-- Call()\n  - ident addr : %v\n",&ident) }
+
     calllock.Lock()
-
-    /*
-    pf("\n[#1]Entered call (csloc#%d) -> %#v[#-]\n",csloc,calltable[csloc])
-    pf(" with caller of  -> %v\n",calltable[csloc].caller)
-    pf(" with new ifs of -> %v fs-> %v\n",csloc,calltable[csloc].fs)
-    */
-
+    // register call
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
-
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.prectable=default_prectable
@@ -497,12 +496,17 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     fs = calltable[csloc].fs
 
     // the source code to be read for this function
-    /*
-    fmt.Printf("[call] csloc: %d\n",csloc)
-    fmt.Printf("[call] cstab: %+v\n",calltable[csloc])
-    */
+    if debug_level>7 {
+        fmt.Printf("  - fs   : %v\n",fs)
+        fmt.Printf("  - csloc: %d\n",csloc)
+        // fmt.Printf("  - cstab: %+v\n",calltable[csloc])
+    }
 
     source_base = calltable[csloc].base
+
+    if debug_level>7 {
+        fmt.Printf("\n(call) function space source:\n%+v\n\n",functionspaces[source_base])
+    }
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
@@ -524,6 +528,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     }
     if locked { lastlock.Unlock() }
 
+    /*
     bindlock.Lock()
     if bindings[ifs]==nil && ifs>1 {
         // pf("-- RESETTING BINDINGS FOR IFS %d\n",ifs)
@@ -532,24 +537,20 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     for k,v:=range bindings[source_base] {
         bindings[ifs][k]=v
-        // pf("[call #ifs %d] BASE COPYING FROM #%d : bound %s to id %d\n",ifs,source_base,k,bindings[ifs][k])
+         pf("[call #ifs %d] BASE COPYING FROM #%d : bound %s to id %d\n",ifs,source_base,k,bindings[ifs][k])
     }
     /*
      fmt.Printf("Just copied symbols for ifs #%d\n",ifs)
      fmt.Printf("%+v\n",bindings[ifs])
-    */
     bindlock.Unlock()
-
+    */
 
     if varmode==MODE_NEW {
-        // create the local variable storage for the function
-
         testlock.Lock()
         test_group = ""
         test_name = ""
         test_assert = ""
         testlock.Unlock()
-
     }
 
     // missing varargs in call result in nil assignments back to caller:
@@ -565,21 +566,13 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     }
     farglock.RUnlock()
 
-    // generic nesting indentation counters
+    // generic nesting indentation counter
     // this being local prevents re-entrance i guess
     var depth int
 
     // stores the active construct/loop types outer->inner
     //  for the break and continue statements
     var lastConstruct = []uint8{}
-
-    /*
-    if varmode == MODE_NEW {
-        // in_tco: currently in an iterative tail-call.
-        in_tco=false
-        // vset(ifs,ident, "@in_tco",false)
-    }
-    */
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
@@ -676,7 +669,20 @@ tco_reentry:
 
 
         /////// LINE ////////////////////////////////////////////////////////////
-               // pf("(%20s) (line:%5d) [#b7][#2]%5d : %+v[##][#-]\n",fs,inbound.SourceLine,parser.pc,inbound.Tokens)
+            // should probably comment this in release mode, it's slow:
+               if lineDebug {
+                   clr:="2"
+                   if defining {
+                       clr="4"
+                   }
+                   
+                   if inbound.Tokens[0].tokType==C_Define {
+                       pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
+                   }
+                   
+                   // pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,inbound.Tokens)
+                   pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+               }
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -1323,6 +1329,7 @@ tco_reentry:
                 forceEnd=false
                 break_count-=1
                 if break_count>0 {
+                    // pf("ewhile: bc %v type %v\n",break_count,tokNames[lastConstruct[depth-1]])
                     switch lastConstruct[depth-1] {
                     case C_For,C_Foreach:
                         breakIn=C_Endfor
@@ -2020,6 +2027,7 @@ tco_reentry:
                 if break_count>0 {
                     break_count-=1
                     if break_count>0 {
+                    // pf("efor: bc %v type %v\n",break_count,tokNames[lastConstruct[depth-1]])
                         switch lastConstruct[depth-1] {
                         case C_For,C_Foreach:
                             breakIn=C_Endfor
@@ -2123,11 +2131,19 @@ tco_reentry:
                     if lookingForEnd {
 
                         // set count of back tracking in end* statements
-                        for break_count:=1;break_count<depth; break_count+=1 {
-                            if lastConstruct[depth-break_count]==inbound.Tokens[1].tokType {
+                        for break_count=1;break_count<depth; break_count+=1 {
+                            // pf("(cbreak) increasing break_count to %v\n",break_count)
+                            lce:=lastConstruct[depth-break_count]
+                            // pf("(cbreak) now processing lc type of %v\n",tokNames[lce])
+                            if lce==C_When {
+                                // reduce WHEN depth
+                                wccount-=1
+                            }
+                            if lce==inbound.Tokens[1].tokType {
                                 break
                             }
                         }
+                        // pf("(cbreak) final break_count value is %v\n",break_count)
 
                         if er {
                             // lookahead error
@@ -2621,7 +2637,7 @@ tco_reentry:
 
             if inbound.TokenCount > 2 {
 
-                doAt := findDelim(inbound.Tokens, C_Do, 2)
+                doAt := findDelim(inbound.Tokens, C_Do, 1)
                 if doAt == -1 {
                     parser.report(inbound.SourceLine,"DO not found in ON")
                     finish(false, ERR_SYNTAX)
@@ -2937,6 +2953,8 @@ tco_reentry:
                 defining = true
                 definitionName = inbound.Tokens[1].tokText
 
+                // pf("[#4]Now defining %s[#-]\n",definitionName)
+
                 loc, _ := GetNextFnSpace(true,definitionName,call_s{prepared:false})
                 var dargs []string
 
@@ -2993,6 +3011,7 @@ tco_reentry:
 
             if inbound.TokenCount == 2 {
                 fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
+                fn =  interpolate(ifs,ident,fn)
                 if _, exists := fnlookup.lmget(fn); exists {
                     ShowDef(fn)
                 } else {
@@ -3578,6 +3597,7 @@ tco_reentry:
             if break_count>0 {
                 break_count-=1
                 if break_count>0 {
+                    // pf("ewhen: bc %v type %v\n",break_count,tokNames[lastConstruct[depth-1]])
                     switch lastConstruct[depth-1] {
                     case C_For,C_Foreach:
                         breakIn=C_Endfor
@@ -4154,8 +4174,8 @@ tco_reentry:
 
             if ifs>2 {
                 fspacelock.Lock()
-                functionspaces[ifs] = []Phrase{}
-                basecode[ifs] = []BaseCode{}
+                // functionspaces[ifs] = []Phrase{}
+                // basecode[ifs] = []BaseCode{}
                 fspacelock.Unlock()
             }
 
@@ -4218,16 +4238,19 @@ func coprocCall(s string) {
 func ShowDef(fn string) bool {
 
     if str.HasPrefix(fn,"@mod_") {
+        // pf("(sd) MOD CHECK FAILED!\n")
         return false
     }
 
     var ifn uint32
     var present bool
     if ifn, present = fnlookup.lmget(fn); !present {
-        ifn = calltable[ifn].base
+        // pf("COULD NOT FIND NAME IN FNLOOKUP!\n")
         return false
     }
 
+    // pf("(sd) ifn -> %v , max -> %v\n",ifn,len(functionspaces))
+    // pf("(sd) basecode ->\n%+v\n",basecode[ifn])
     if ifn < uint32(len(functionspaces)) {
 
         var falist []string

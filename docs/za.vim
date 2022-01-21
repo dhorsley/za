@@ -156,6 +156,7 @@ syntax match internal_functions "\(^|.\|\s*\)hostname\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)argv\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)argc\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)dump\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)exec\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)eval\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)keypress\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)tokens\s*("he=e-1
