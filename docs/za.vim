@@ -287,6 +287,8 @@ syntax match file_functions "\(^|.\|\s*\)fseek\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)fread\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)fwrite\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)feof\s*("he=e-1
+syntax match file_functions "\(^|.\|\s*\)ftell\s*("he=e-1
+syntax match file_functions "\(^|.\|\s*\)stat\s*("he=e-1
 
 syntax match web_functions "\(^|.\|\s*\)download\s*("he=e-1
 syntax match web_functions "\(^|.\|\s*\)web_download\s*("he=e-1
