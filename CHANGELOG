@@ -40,7 +40,18 @@ CHANGE LOG
             a,b=exec("for e = 1 to 10; endfor; return e,e*2")
             # a==10, b==20
         - will possibly add a separate permit() key for this action.
+    * ftell() and stat() file functions added.
+        - ftell(): returns file pointer position in open file handle.
+        - stat(): returns a struct of more detailed file attributes.
+            - e.g.
+            >> stat("/tmp")
+            &{Dev:2049 Ino:1048578 Nlink:18 Mode:17407 Uid:0 Gid:0 X__pad0:0 Rdev:0 Size:20480 Blksize:4096
+            Blocks:48 Atim:{Sec:1640215603 Nsec:898341080} Mtim:{Sec:1642869189 Nsec:805359276}
+            Ctim:{Sec:1642869189 Nsec:805359276} X__unused:[0 0 0]}
+            >> stat("/tmp").Nlink
+            18
 
+        - these were in the previous version, but only now documented.
 
     fixes
     -----
