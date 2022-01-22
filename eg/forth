@@ -2,7 +2,6 @@
 
 doc `
     todo:
-    * fixup input as is
     * swap bits out for more za idiomatic stuff where possible.
     * tidy
     * optimise some stuff
@@ -20,15 +19,13 @@ doc `
     * pointers all converted to memory offsets.
     * added a few minor things, like backspace support
     * increased the base memory/stack sizes
-    * default memory unit size is int, but stack cells
-        are clamped to -32768 to +32767 for the vm.
     * it's going to be slow - nothing clever done to take
         advantage of za library/builtins and, of course, 
         it's an interpreter written in another interpreter.
     * lots of bugs:
-        - initscript func defs not all built right
+        - initscript func defs not all built right (hence currently commented)
         - some oddities around keyboard input
-        - console output still hit and miss near edges!
+        - console output hinky, needs some attention
         - i.e. it's pretty broken
     * it's not finished, was just taken this far as a test.
 `
@@ -197,7 +194,7 @@ initscript = `
     : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
 `
 
-# initscript=""
+initscript=""
 
 ################################################################################
 
@@ -217,7 +214,7 @@ end
 
 # The primary data output function.
 define putkey(c)
-    print c.char
+    print c.string
 end
 
 define putBackspace()
@@ -231,8 +228,11 @@ end
 define llkey()
     if initscript_pos<len(initscript)-1
         setglob initscript_pos++
+        print "."
         return initscript[initscript_pos-1].asc
     endif
+    on initialising do reprompt("")
+    setglob initialising=false
     c=keypress(0)
     print c.char
     return c
@@ -240,15 +240,17 @@ end
 
 # Anything waiting in the keyboard buffer?
 define keyWaiting()
-    return ?? positionInLineBuffer<charsInLineBuffer -1:0
+    return positionInLineBuffer<charsInLineBuffer
 end
+    # print "pil {=positionInLineBuffer} cil {=charsInLineBuffer}\n"
 
 define getkey()
-    if keyWaiting()!=0
+    if keyWaiting()
         setglob positionInLineBuffer++
         return lineBuffer[positionInLineBuffer-1]
     endif
     setglob charsInLineBuffer = 0
+
     c=llkey()
     while c!=0
         add=true
@@ -265,12 +267,11 @@ define getkey()
             setglob lineBuffer[charsInLineBuffer] = c
             setglob charsInLineBuffer++
         endif
+        on c==13 do break
         if c==4
-            add=true
             setglob exitReq=true
             break
         endif
-        on c==10 or c==13 do break
         c=llkey()
     endwhile 
     setglob positionInLineBuffer = 1
@@ -317,7 +318,7 @@ define push16(data)
         setglob errorFlag = true
         return
     endif
-    setglob memory[stack+sp] = data[-32768:32767]
+    setglob memory[stack+sp] = data
     setglob sp=sp+1
 end
 
@@ -384,22 +385,28 @@ define stackPreview()
     return pre
 end
 
+define reprompt(add)
+    on get_row()>=term_h() do print "\n",add
+    print "\n","s-size {=sp-1} | {=stackPreview()} {=linePrompt}"
+end
+
 # Reading a word into the input line buffer
 define readWord()
 
     while
         c=getkey()
-        # print "<{c}>"
-        if c==4 or c==0
+        # handle whitespace input
+        if c==4
             setglob exitReq=true
             break
         endif
-        on c == 32 do continue
+        on c==32 do continue
         if c==13
-            print "\n","s-size {=sp-1} | {=stackPreview()} {=linePrompt}"
+            reprompt("")
             continue
         endif
-        on c != asc(`\\`) do break
+        # handle escaped input
+        on c != 92 do break # backslash
         while c != 0
             c=getkey()
             on c == 13 do break
@@ -408,20 +415,16 @@ define readWord()
 
     line=""
     length=0
-    while not (c in [0,4,13,32])
+    # handle word input
+    while not (c in [0,4,10,13,32])
         on length>=(INPUT_LINE_SIZE - 1) do break
-        if c==13
-            on get_row()>=term_h() do print "\n"
-            print "\n","s-size {=sp-1} | {=stackPreview()} {=linePrompt}"
-        else
-            line=line+char(c)
-            length++
-        endif
+        line=line+char(c)
+        length++
         c = getkey()
     endwhile
 
     # println "(debug-rw) line->|%#v|\n".format(line)
-    return line,length
+    return line
 
 end
 
@@ -511,7 +514,7 @@ BUILTIN(14, "]",         "gotoCompiler",    0,                `setglob state = 1
 BUILTIN(15, "HIDE",      "hide",            0,                `pos=memory[latest+CELL_SIZE]; setglob memory[pos] = memory[pos] ^ FLAG_HIDDEN`)
 BUILTIN(16, "R>",        "rtos",            0,                `rpop().push16`)
 BUILTIN(17, ">R",        "stor",            0,                `pop16().rpush`)
-BUILTIN(18, "KEY?",      "key_p",           0,                `keyWaiting().push16`)
+BUILTIN(18, "KEY?",      "key_p",           0,                `keyWaiting().itob.push16`)
 BUILTIN(19, "BRANCH",    "branch",          0,                `setglob next += readMem(next)`)
 BUILTIN(20, "0BRANCH",   "zbranch",         0,                `setglob next += ?? pop16() CELL_SIZE:readMem(next)`)
 BUILTIN(21, "IMMEDIATE", "toggleImmediate", FLAG_IMMEDIATE,   `pos=memory[latest+CELL_SIZE];setglob memory[pos] = memory[pos] ^ FLAG_IMMEDIATE`)
@@ -541,10 +544,10 @@ BUILTIN(31, ",", "comma", 0,nil)
 BUILTIN(32, "C,", "commaByte", 0,nil)
 
 BUILTIN(33, "WORD", "word", 0,
-` word,length = readWord()
+` word = readWord()
   writeStringToMemory(word,1)
   push16(1)
-  push16(length)
+  push16(word.len)
 `)
 
 BUILTIN(34, "FIND", "find", 0,
@@ -593,7 +596,8 @@ BUILTIN(37, "LIT", "lit", 0,
 # Outer and inner interpreter
 BUILTIN(38, "QUIT", "quit", 0,
 `
-    print linePrompt
+    setglob initialising=true
+    # on initscript_pos==len(initscript) do print linePrompt
     while not exitReq
 
         setglob next = quit_address
@@ -602,8 +606,10 @@ BUILTIN(38, "QUIT", "quit", 0,
 
         word()
         find()
+            on not initialising do print "\n"
 
         address = pop16()
+        # print "(addr:{address}) "
         if address!=0
             immediate = memory[address+CELL_SIZE] & FLAG_IMMEDIATE
             setglob commandAddress = getcfa(address)
@@ -633,8 +639,8 @@ BUILTIN(38, "QUIT", "quit", 0,
             endif
         else
             number,notRead,isDouble=parseNumber(1)
-            if notRead
-                print "Unknown word: "
+            if notRead and number!=0
+                print "Unknown word: ({number}) "
                 for i=0 to memory[0]
                     putkey(memory[i+1])
                 endfor
@@ -675,7 +681,7 @@ BUILTIN(38, "QUIT", "quit", 0,
             setglob rsp=1
             setglob sp=rsp
         else
-            on keyWaiting()==0 and initscript_pos==len(initscript) do print " OK\n"
+            on keyWaiting() and initscript_pos==len(initscript) do print " OK\n"
         endif
 
     endwhile
