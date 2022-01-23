@@ -50,7 +50,7 @@ STATE_POSITION  = (BASE_POSITION + CELL_SIZE)
 STACK_POSITION  = (STATE_POSITION + CELL_SIZE)
 RSTACK_POSITION = (STACK_POSITION + STACK_SIZE * CELL_SIZE)
 HERE_START      = (RSTACK_POSITION + RSTACK_SIZE * CELL_SIZE)
-MAX_BUILTIN_ID  = 71
+MAX_BUILTIN_ID  = 72
 
 # Flags and masks for the dictionary 
 FLAG_IMMEDIATE  = 0x80
@@ -77,6 +77,10 @@ var lineBuffer[128] int
 var charsInLineBuffer int 
 var positionInLineBuffer int
 
+var builtins[MAX_BUILTIN_ID] string
+var btoname[MAX_BUILTIN_ID] string
+
+
 # A basic setup for defining builtins.
 # func calls are stored as strings, then created as za functions
 # for later execution.
@@ -98,10 +102,6 @@ define ADD_BUILTIN(za_name)
     addBuiltin(id,za_name,fname,flags,func)
 end
 
-var builtins[MAX_BUILTIN_ID] string
-var btoname[MAX_BUILTIN_ID] string
-
-
 define banner()
     println "\n[#6]Quarter[#-] - [#i1]the slowest Forth[#i0]\n"
     println "[#2] Use this at your own peril![#-]\n"
@@ -122,15 +122,9 @@ initscript = `
     : TUCK SWAP OVER ;
     : / /MOD NIP ;
     : MOD /MOD DROP ;
-    : BL 32 ;
-    : CR 10 EMIT ;
-    : SPACE BL EMIT ;
-    : NEGATE 0 SWAP - ;
     : DNEGATE 0. 2SWAP D- ;
     : CELLS CELL * ;
     : ALLOT HERE @ + HERE ! ;
-    : TRUE -1 ;
-    : FALSE 0 ;
     : 0= 0 = ;
     : 0< 0 < ;
     : 0> 0 > ;
@@ -178,8 +172,6 @@ initscript = `
     : COUNTPOS SWAP 1 + SWAP BASE @ / ?DUP IF RECURSE THEN ;
     : DIGITS DUP 0< IF 1 ELSE 0 THEN SWAP COUNTPOS ;
     : .R OVER DIGITS - SPACES . ;
-    : . . SPACE ;
-    : ? @ . ;
     : .S DSP@ BEGIN DUP S0@ > WHILE DUP ? CELL - REPEAT DROP ;
     : TYPE 0 DO DUP C@ EMIT 1 + LOOP DROP ;
     : ALIGN BEGIN HERE @ CELL MOD WHILE 0 C, REPEAT ;
@@ -194,7 +186,16 @@ initscript = `
     : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
 `
 
-initscript=""
+initscript=`
+    : CR 10 EMIT ;
+    : BL 32 ;
+    : SPACE BL EMIT ;
+    : NEGATE 0 SWAP - ;
+    : . . SPACE ;
+    : ? @ . ;
+    : TRUE -1 ;
+    : FALSE 0 ;
+`
 
 ################################################################################
 
@@ -218,20 +219,21 @@ define putkey(c)
 end
 
 define putBackspace()
-    putkey(27); putkey("[".asc); putkey(49); putkey(68)
-    putkey(32)
-    putkey(27); putkey("[".asc); putkey(49); putkey(68)
+    print "[#CSI]1D [#CSI]1D"
+    # putkey(27); putkey("[".asc); putkey(49); putkey(68)
+    # putkey(32)
+    # putkey(27); putkey("[".asc); putkey(49); putkey(68)
 end
 
 
 # The primary data input function.
 define llkey()
-    if initscript_pos<len(initscript)-1
+    if initscript_pos<initscript_end_pos
         setglob initscript_pos++
         print "."
         return initscript[initscript_pos-1].asc
     endif
-    on initialising do reprompt("")
+    on initialising do reprompt()
     setglob initialising=false
     c=keypress(0)
     print c.char
@@ -242,7 +244,6 @@ end
 define keyWaiting()
     return positionInLineBuffer<charsInLineBuffer
 end
-    # print "pil {=positionInLineBuffer} cil {=charsInLineBuffer}\n"
 
 define getkey()
     if keyWaiting()
@@ -267,7 +268,7 @@ define getkey()
             setglob lineBuffer[charsInLineBuffer] = c
             setglob charsInLineBuffer++
         endif
-        on c==13 do break
+        on c==13 or c==10 do break
         if c==4
             setglob exitReq=true
             break
@@ -385,15 +386,17 @@ define stackPreview()
     return pre
 end
 
-define reprompt(add)
-    on get_row()>=term_h() do print "\n",add
+define reprompt()
+    # on get_row()>=term_h() do print "\n"
     print "\n","s-size {=sp-1} | {=stackPreview()} {=linePrompt}"
 end
 
 # Reading a word into the input line buffer
 define readWord()
+    c=13
 
     while
+        on not initialising and (c==13 or c==10) do reprompt()
         c=getkey()
         # handle whitespace input
         if c==4
@@ -401,15 +404,14 @@ define readWord()
             break
         endif
         on c==32 do continue
-        if c==13
-            reprompt("")
+        if c==13 or c==10
             continue
         endif
         # handle escaped input
         on c != 92 do break # backslash
         while c != 0
             c=getkey()
-            on c == 13 do break
+            on c==10 do break
         endwhile
     endwhile
 
@@ -423,7 +425,6 @@ define readWord()
         c = getkey()
     endwhile
 
-    # println "(debug-rw) line->|%#v|\n".format(line)
     return line
 
 end
@@ -457,12 +458,14 @@ define findWord(address,length)
 
         ret = readMem(ret)
         on ret==0 or errorFlag do break
+    
 
         on (memory[ret+CELL_SIZE] & MASK_NAMELENGTH) != length do continue
         on (memory[ret+CELL_SIZE] & FLAG_HIDDEN) != 0          do continue
 
         found = true
         for i=1 to length
+            ch=memory[ret+i+CELL_SIZE].char
             if $uc (memory[ret+i+CELL_SIZE].char) != $uc name[i-1]
                 found = false
                 break
@@ -521,7 +524,7 @@ BUILTIN(21, "IMMEDIATE", "toggleImmediate", FLAG_IMMEDIATE,   `pos=memory[latest
 BUILTIN(22, "FREE",      "doFree",          0,                `push16(MEM_SIZE-here)`)
 BUILTIN(23, "S0@",       "s0_r",            0,                `push16(STACK_POSITION+CELL_SIZE)`)
 BUILTIN(24, "DSP@",      "dsp_r",           0,                `push16(STACK_POSITION+sp*CELL_SIZE)`)
-BUILTIN(25, "NOT",       "not",             0,                `push16(not pop16())`)
+BUILTIN(25, "NOT",       "not",             0,                `push16(btoi(not pop16()))`)
 BUILTIN(26, "DUP",       "dup",             0,                `push16(tos())`)
 BUILTIN(27, "!", "memWrite", 0,nil)
 BUILTIN(28, "C!", "memWriteByte", 0,nil)
@@ -544,7 +547,8 @@ BUILTIN(31, ",", "comma", 0,nil)
 BUILTIN(32, "C,", "commaByte", 0,nil)
 
 BUILTIN(33, "WORD", "word", 0,
-` word = readWord()
+`
+  word = readWord()
   writeStringToMemory(word,1)
   push16(1)
   push16(word.len)
@@ -592,12 +596,9 @@ BUILTIN(37, "LIT", "lit", 0,
   setglob next += CELL_SIZE
 `)
 
-
 # Outer and inner interpreter
 BUILTIN(38, "QUIT", "quit", 0,
 `
-    setglob initialising=true
-    # on initscript_pos==len(initscript) do print linePrompt
     while not exitReq
 
         setglob next = quit_address
@@ -606,10 +607,9 @@ BUILTIN(38, "QUIT", "quit", 0,
 
         word()
         find()
-            on not initialising do print "\n"
+        on not keyWaiting() and initscript_pos==initscript_end_pos do print "\n"
 
         address = pop16()
-        # print "(addr:{address}) "
         if address!=0
             immediate = memory[address+CELL_SIZE] & FLAG_IMMEDIATE
             setglob commandAddress = getcfa(address)
@@ -640,7 +640,7 @@ BUILTIN(38, "QUIT", "quit", 0,
         else
             number,notRead,isDouble=parseNumber(1)
             if notRead and number!=0
-                print "Unknown word: ({number}) "
+                print "Unknown word: (",number,") "
                 for i=0 to memory[0]
                     putkey(memory[i+1])
                 endfor
@@ -681,7 +681,7 @@ BUILTIN(38, "QUIT", "quit", 0,
             setglob rsp=1
             setglob sp=rsp
         else
-            on keyWaiting() and initscript_pos==len(initscript) do print " OK\n"
+            on keyWaiting() and initscript_pos==initscript_end_pos do print " OK\n"
         endif
 
     endwhile
@@ -851,7 +851,7 @@ BUILTIN(58, "*/", "timesDivide", 0,
     n1 = pop16()
     r = (n1 * n2) / n3
     push16(r)
-    if r != r # todo: need to mask here
+    if r != r
         print "Arithmetic overflow\n"
         setglob errorFlag = true
     endif
@@ -866,7 +866,7 @@ BUILTIN(59, "*/MOD", "timesDivideMod", 0,
     m = (n1 * n2) % n3
     push16(m)
     push16(r)
-    if (r != r) # need to mask here
+    if r != r
         print "Arithmetic overflow\n"
         setglob errorFlag = true
     endif
@@ -955,6 +955,22 @@ BUILTIN(70, "2ROT", "drot", 0,
     push32(c)
 `)
 
+BUILTIN(71, "WORDS", "wordlist", 0,
+`
+    ret = latest
+    while
+        ret = readMem(ret)
+        on ret==0 or errorFlag do break
+        length=memory[ret+CELL_SIZE]
+        on (memory[ret+CELL_SIZE] & MASK_NAMELENGTH) != length do continue
+        on (memory[ret+CELL_SIZE] & FLAG_HIDDEN) != 0          do continue
+        for i=1 to length
+            print $uc (memory[ret+i+CELL_SIZE].char)
+        endfor
+        print " "
+    endwhile
+    print
+`)
 
 #
 # Loose ends
@@ -1031,6 +1047,8 @@ end
 #
 # Program setup and jump to outer interpreter
 #
+
+initialising=true
 
 errorFlag = false
 
@@ -1121,15 +1139,18 @@ ADD_BUILTIN("ddiv")
 ADD_BUILTIN("dswap")
 ADD_BUILTIN("dover")
 ADD_BUILTIN("drot")
+ADD_BUILTIN("wordlist")
 
 maxBuiltinAddress = here - 1
 
 on errorFlag do return 1
 
 initscript_pos = 0
+initscript_end_pos=len(initscript)-1
 linePrompt="> "
 banner()
 quit()
+print
 return 0
 
 

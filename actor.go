@@ -2670,7 +2670,7 @@ tco_reentry:
 
                             }
                         default:
-                            pf("Result Type -> %T expression was -> %s\n", we.text, we.result)
+                            pf("Result Type -> %T expression was -> %v\n", we.text, we.result)
                             parser.report(inbound.SourceLine,"ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
                             break
