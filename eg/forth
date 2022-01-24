@@ -50,7 +50,7 @@ STATE_POSITION  = (BASE_POSITION + CELL_SIZE)
 STACK_POSITION  = (STATE_POSITION + CELL_SIZE)
 RSTACK_POSITION = (STACK_POSITION + STACK_SIZE * CELL_SIZE)
 HERE_START      = (RSTACK_POSITION + RSTACK_SIZE * CELL_SIZE)
-MAX_BUILTIN_ID  = 72
+MAX_BUILTIN_ID  = 73
 
 # Flags and masks for the dictionary 
 FLAG_IMMEDIATE  = 0x80
@@ -79,6 +79,7 @@ var positionInLineBuffer int
 
 var builtins[MAX_BUILTIN_ID] string
 var btoname[MAX_BUILTIN_ID] string
+var wordtofunc assoc
 
 
 # A basic setup for defining builtins.
@@ -112,6 +113,36 @@ end
 #  Jonesforth (see top of file).
 
 initscript = `
+    : .DIGIT DUP 9 > IF 55 ELSE 48 THEN + EMIT ;
+    : .SIGN DUP 0< IF 45 EMIT NEGATE THEN ;
+    : .POS BASE @ /MOD ?DUP IF RECURSE THEN .DIGIT ;
+    : . .SIGN DUP IF .POS ELSE .DIGIT THEN ;
+    : COUNTPOS SWAP 1 + SWAP BASE @ / ?DUP IF RECURSE THEN ;
+    : DIGITS DUP 0< IF 1 ELSE 0 THEN SWAP COUNTPOS ;
+    : .R OVER DIGITS - SPACES . ;
+    : .S DSP@ BEGIN DUP S0@ > WHILE DUP ? CELL - REPEAT DROP ;
+    : TYPE 0 DO DUP C@ EMIT 1 + LOOP DROP ;
+    : ALIGN BEGIN HERE @ CELL MOD WHILE 0 C, REPEAT ;
+    : s" ' LITSTRING , HERE @ 0 , BEGIN KEY DUP 34 <> WHILE C, REPEAT DROP DUP HERE @ SWAP - CELL - SWAP ! ALIGN ; IMMEDIATE
+    : ." [COMPILE] s" ' TYPE , ; IMMEDIATE
+    : ( BEGIN KEY [CHAR] ) = UNTIL ; IMMEDIATE
+    : COUNT DUP 1+ SWAP C@ ;
+    : MIN 2DUP < IF DROP ELSE NIP THEN ;
+    : MAX 2DUP > IF DROP ELSE NIP THEN ;
+    : D0= OR 0= ;
+    : DMIN 2OVER 2OVER D< IF 2DROP ELSE 2NIP THEN ;
+    : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
+`
+
+initscript=`
+    : CR 10 EMIT ;
+    : BL 32 ;
+    : SPACE BL EMIT ;
+    : NEGATE 0 SWAP - ;
+    : . . SPACE ;
+    : ? @ . ;
+    : TRUE 1 ;
+    : FALSE 0 ;
     : DECIMAL 10 BASE ! ;
     : HEX 16 BASE ! ;
     : OCTAL 8 BASE ! ;
@@ -161,40 +192,14 @@ initscript = `
     : DO HERE @ ' SWAP , ' >R , ' >R , ; IMMEDIATE
     : LOOP ' R> , ' R> , ' SWAP , ' 1+ , ' 2DUP , ' = , ' 0BRANCH , HERE @ - , ' 2DROP , ; IMMEDIATE
     : +LOOP ' R> , ' R> , ' SWAP , ' ROT , ' + , ' 2DUP , ' <= , ' 0BRANCH , HERE @ - , ' 2DROP , ; IMMEDIATE
-    : I ' R@ , ; IMMEDIATE
     : SPACES DUP 0> IF 0 DO SPACE LOOP ELSE DROP THEN ;
-    : ABS DUP 0< IF NEGATE THEN ;
-    : DABS 2DUP 0. D< IF DNEGATE THEN ;
-    : .DIGIT DUP 9 > IF 55 ELSE 48 THEN + EMIT ;
-    : .SIGN DUP 0< IF 45 EMIT NEGATE THEN ;
-    : .POS BASE @ /MOD ?DUP IF RECURSE THEN .DIGIT ;
-    : . .SIGN DUP IF .POS ELSE .DIGIT THEN ;
-    : COUNTPOS SWAP 1 + SWAP BASE @ / ?DUP IF RECURSE THEN ;
-    : DIGITS DUP 0< IF 1 ELSE 0 THEN SWAP COUNTPOS ;
-    : .R OVER DIGITS - SPACES . ;
-    : .S DSP@ BEGIN DUP S0@ > WHILE DUP ? CELL - REPEAT DROP ;
-    : TYPE 0 DO DUP C@ EMIT 1 + LOOP DROP ;
-    : ALIGN BEGIN HERE @ CELL MOD WHILE 0 C, REPEAT ;
-    : s" ' LITSTRING , HERE @ 0 , BEGIN KEY DUP 34 <> WHILE C, REPEAT DROP DUP HERE @ SWAP - CELL - SWAP ! ALIGN ; IMMEDIATE
-    : ." [COMPILE] s" ' TYPE , ; IMMEDIATE
-    : ( BEGIN KEY [CHAR] ) = UNTIL ; IMMEDIATE
-    : COUNT DUP 1+ SWAP C@ ;
-    : MIN 2DUP < IF DROP ELSE NIP THEN ;
-    : MAX 2DUP > IF DROP ELSE NIP THEN ;
-    : D0= OR 0= ;
-    : DMIN 2OVER 2OVER D< IF 2DROP ELSE 2NIP THEN ;
-    : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
+
 `
 
-initscript=`
-    : CR 10 EMIT ;
-    : BL 32 ;
-    : SPACE BL EMIT ;
-    : NEGATE 0 SWAP - ;
-    : . . SPACE ;
-    : ? @ . ;
-    : TRUE -1 ;
-    : FALSE 0 ;
+doc `
+    : I ' R@ , ; IMMEDIATE
+    : ABS DUP 0< IF NEGATE THEN ;
+    : DABS 2DUP 0. D< IF DNEGATE THEN ;
 `
 
 ################################################################################
@@ -388,7 +393,7 @@ end
 
 define reprompt()
     # on get_row()>=term_h() do print "\n"
-    print "\n","s-size {=sp-1} | {=stackPreview()} {=linePrompt}"
+    print "\n","ssz [{=sp-1}] | {=stackPreview()} {=linePrompt}"
 end
 
 # Reading a word into the input line buffer
@@ -499,7 +504,7 @@ end
 
 # Builtin definitions
 
-BUILTIN( 0, "RUNDOCOL",  "docol",           0,                `rpush(lastIp); setglob next = commandAddress + CELL_SIZE`)
+BUILTIN( 0, "RUNDOCOL",  "docol",           0,                `rpush(lastIp);setglob next = commandAddress + CELL_SIZE`)
 BUILTIN( 1, "CELL",      "doCellSize",      0,                `push16(CELL_SIZE)`)
 BUILTIN( 2, "@",         "memRead",         0,                `push16(readMem(pop16()))`)
 BUILTIN( 3, "C@",        "memReadByte",     0,                `push16(memory[pop16()])`)
@@ -517,14 +522,14 @@ BUILTIN(14, "]",         "gotoCompiler",    0,                `setglob state = 1
 BUILTIN(15, "HIDE",      "hide",            0,                `pos=memory[latest+CELL_SIZE]; setglob memory[pos] = memory[pos] ^ FLAG_HIDDEN`)
 BUILTIN(16, "R>",        "rtos",            0,                `rpop().push16`)
 BUILTIN(17, ">R",        "stor",            0,                `pop16().rpush`)
-BUILTIN(18, "KEY?",      "key_p",           0,                `keyWaiting().itob.push16`)
+BUILTIN(18, "KEY?",      "key_p",           0,                `keyWaiting().btoi.push16`)
 BUILTIN(19, "BRANCH",    "branch",          0,                `setglob next += readMem(next)`)
 BUILTIN(20, "0BRANCH",   "zbranch",         0,                `setglob next += ?? pop16() CELL_SIZE:readMem(next)`)
 BUILTIN(21, "IMMEDIATE", "toggleImmediate", FLAG_IMMEDIATE,   `pos=memory[latest+CELL_SIZE];setglob memory[pos] = memory[pos] ^ FLAG_IMMEDIATE`)
 BUILTIN(22, "FREE",      "doFree",          0,                `push16(MEM_SIZE-here)`)
 BUILTIN(23, "S0@",       "s0_r",            0,                `push16(STACK_POSITION+CELL_SIZE)`)
 BUILTIN(24, "DSP@",      "dsp_r",           0,                `push16(STACK_POSITION+sp*CELL_SIZE)`)
-BUILTIN(25, "NOT",       "not",             0,                `push16(btoi(not pop16()))`)
+BUILTIN(25, "NOT",       "fnot",            0,                `(!itob(pop16())).btoi.push16()`)
 BUILTIN(26, "DUP",       "dup",             0,                `push16(tos())`)
 BUILTIN(27, "!", "memWrite", 0,nil)
 BUILTIN(28, "C!", "memWriteByte", 0,nil)
@@ -595,6 +600,14 @@ BUILTIN(37, "LIT", "lit", 0,
 ` readMem(next).push16
   setglob next += CELL_SIZE
 `)
+
+define getWord(addr)
+    w=""
+    for e=1 to memory[addr+2]&MASK_NAMELENGTH
+        w=w+char(memory[addr+2+e])
+    endfor
+    return w
+end
 
 # Outer and inner interpreter
 BUILTIN(38, "QUIT", "quit", 0,
@@ -681,12 +694,13 @@ BUILTIN(38, "QUIT", "quit", 0,
             setglob rsp=1
             setglob sp=rsp
         else
-            on keyWaiting() and initscript_pos==initscript_end_pos do print " OK\n"
+            on keyWaiting() and not initialising do print " OK\n"
         endif
 
     endwhile
 
 `)
+            # initscript_pos==initscript_end_pos do print " OK\n"
 
 
 BUILTIN(39, "+", "plus", 0,
@@ -737,8 +751,7 @@ BUILTIN(44, "CREATE", "doCreate", 0,
 `)
 
 BUILTIN(45, ":", "colon", 0,
-`
-    doCreate()
+`   doCreate()
     push16(forth_docol_id)
     comma()
     hide()
@@ -788,21 +801,21 @@ BUILTIN(50, "=", "equals", 0,
 `
     a1 = pop16()
     a2 = pop16()
-    push16(?? a2==a1 -1:0)
+    push16(?? a2==a1 1:0)
 `)
 
 BUILTIN(51, "<", "smaller", 0,
 `
     a1 = pop16()
     a2 = pop16()
-    push16(?? a2<a1 -1:0)
+    push16(?? a2<a1 1:0)
 `)
 
 BUILTIN(52, ">", "larger", 0,
 `
     a1 = pop16()
     a2 = pop16()
-    push16(?? a2>a1 -1:0)
+    push16(?? a2>a1 1:0)
 `)
 
 BUILTIN(53, "AND", "doAnd", 0,
@@ -876,28 +889,28 @@ BUILTIN(60, "D=", "dequals", 0,
 `
     a1 = pop32()
     a2 = pop32()
-    push16(?? a2==a1 -1:0)
+    push16(?? a2==a1 1:0)
 `)
 
 BUILTIN(61, "D<", "dsmaller", 0,
 `
     a1 = pop32()
     a2 = pop32()
-    push16(?? a2<a1 -1:0)
+    push16(?? a2<a1 1:0)
 `)
 
 BUILTIN(62, "D>", "dlarger", 0,
 `
     a1 = pop32()
     a2 = pop32()
-    push16(?? a2>a1 -1:0)
+    push16(?? a2>a1 1:0)
 `)
 
 BUILTIN(63, "DU<", "dusmaller", 0,
 `
     a1 = pop32()
     a2 = pop32()
-    push16(?? a2<a1 -1:0)
+    push16(?? a2<a1 1:0)
 `)
 
 BUILTIN(64, "D+", "dplus", 0,
@@ -972,6 +985,36 @@ BUILTIN(71, "WORDS", "wordlist", 0,
     print
 `)
 
+define showdeflist()
+    ret = latest
+    while
+        ret = readMem(ret)
+        on ret==0 or errorFlag do break
+        length=memory[ret+CELL_SIZE]
+        on (memory[ret+CELL_SIZE] & MASK_NAMELENGTH) != length do continue
+        on (memory[ret+CELL_SIZE] & FLAG_HIDDEN) != 0          do continue
+
+        ns=""
+        for i=1 to length
+            c=$uc (memory[ret+i+CELL_SIZE].char)
+            ns=ns+c
+            print c
+        endfor
+        if wordtofunc[ns]!=nil
+            showdef "{=wordtofunc[ns]}"
+        else
+            print "\n : USER WORD\n"
+        endif
+        print "\n"
+    endwhile
+    print
+end
+
+BUILTIN(72, "DEFS", "deflist", 0,
+`   showdeflist()
+`)
+
+
 #
 # Loose ends
 #
@@ -1019,6 +1062,8 @@ define addBuiltin(code,za_name,fname,flags,f)
     endif
 
     if f==nil
+        setglob wordtofunc[fname] = za_name
+        setglob btoname[code]  = za_name
         println "  aB - no func - {code},{fname}"
     else
         if fname=="" or f==""
@@ -1027,6 +1072,7 @@ define addBuiltin(code,za_name,fname,flags,f)
             if builtins[code]!=""
                 println "[#5]BUILTIN {code} already defined!\nCannot add {za_name}.[#-]"
             else
+                setglob wordtofunc[fname] = za_name
                 setglob btoname[code]  = za_name
                 setglob builtins[code] = f
                 defcmd="\ndefine {za_name}()\n{f}\nend\n"
@@ -1124,7 +1170,7 @@ ADD_BUILTIN("p_dup")
 ADD_BUILTIN("s0_r")
 ADD_BUILTIN("dsp_r")
 ADD_BUILTIN("litstring")
-ADD_BUILTIN("not")
+ADD_BUILTIN("fnot")
 ADD_BUILTIN("xor")
 ADD_BUILTIN("timesDivide")
 ADD_BUILTIN("timesDivideMod")
@@ -1140,6 +1186,7 @@ ADD_BUILTIN("dswap")
 ADD_BUILTIN("dover")
 ADD_BUILTIN("drot")
 ADD_BUILTIN("wordlist")
+ADD_BUILTIN("deflist")
 
 maxBuiltinAddress = here - 1
 
