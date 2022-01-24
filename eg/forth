@@ -112,28 +112,6 @@ end
 #  Forth for convenience. Focus is on simplicity, not speed. Partly copied from
 #  Jonesforth (see top of file).
 
-initscript = `
-    : .DIGIT DUP 9 > IF 55 ELSE 48 THEN + EMIT ;
-    : .SIGN DUP 0< IF 45 EMIT NEGATE THEN ;
-    : .POS BASE @ /MOD ?DUP IF RECURSE THEN .DIGIT ;
-    : . .SIGN DUP IF .POS ELSE .DIGIT THEN ;
-    : COUNTPOS SWAP 1 + SWAP BASE @ / ?DUP IF RECURSE THEN ;
-    : DIGITS DUP 0< IF 1 ELSE 0 THEN SWAP COUNTPOS ;
-    : .R OVER DIGITS - SPACES . ;
-    : .S DSP@ BEGIN DUP S0@ > WHILE DUP ? CELL - REPEAT DROP ;
-    : TYPE 0 DO DUP C@ EMIT 1 + LOOP DROP ;
-    : ALIGN BEGIN HERE @ CELL MOD WHILE 0 C, REPEAT ;
-    : s" ' LITSTRING , HERE @ 0 , BEGIN KEY DUP 34 <> WHILE C, REPEAT DROP DUP HERE @ SWAP - CELL - SWAP ! ALIGN ; IMMEDIATE
-    : ." [COMPILE] s" ' TYPE , ; IMMEDIATE
-    : ( BEGIN KEY [CHAR] ) = UNTIL ; IMMEDIATE
-    : COUNT DUP 1+ SWAP C@ ;
-    : MIN 2DUP < IF DROP ELSE NIP THEN ;
-    : MAX 2DUP > IF DROP ELSE NIP THEN ;
-    : D0= OR 0= ;
-    : DMIN 2OVER 2OVER D< IF 2DROP ELSE 2NIP THEN ;
-    : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
-`
-
 initscript=`
     : CR 10 EMIT ;
     : BL 32 ;
@@ -193,13 +171,29 @@ initscript=`
     : LOOP ' R> , ' R> , ' SWAP , ' 1+ , ' 2DUP , ' = , ' 0BRANCH , HERE @ - , ' 2DROP , ; IMMEDIATE
     : +LOOP ' R> , ' R> , ' SWAP , ' ROT , ' + , ' 2DUP , ' <= , ' 0BRANCH , HERE @ - , ' 2DROP , ; IMMEDIATE
     : SPACES DUP 0> IF 0 DO SPACE LOOP ELSE DROP THEN ;
-
-`
-
-doc `
     : I ' R@ , ; IMMEDIATE
     : ABS DUP 0< IF NEGATE THEN ;
     : DABS 2DUP 0. D< IF DNEGATE THEN ;
+    : .DIGIT DUP 9 > IF 55 ELSE 48 THEN + EMIT ;
+    : .SIGN DUP 0< IF 45 EMIT NEGATE THEN ;
+    : .POS BASE @ /MOD ?DUP IF RECURSE THEN .DIGIT ;
+    : . .SIGN DUP IF .POS ELSE .DIGIT THEN ;
+    : COUNTPOS SWAP 1 + SWAP BASE @ / ?DUP IF RECURSE THEN ;
+    : DIGITS DUP 0< IF 1 ELSE 0 THEN SWAP COUNTPOS ;
+    : .R OVER DIGITS - SPACES . ;
+    : .S DSP@ BEGIN DUP S0@ > WHILE DUP ? CELL - REPEAT DROP ;
+    : TYPE 0 DO DUP C@ EMIT 1 + LOOP DROP ;
+    : ALIGN BEGIN HERE @ CELL MOD WHILE 0 C, REPEAT ;
+    : s" ' LITSTRING , HERE @ 0 , BEGIN KEY DUP 34 <> WHILE C, REPEAT DROP DUP HERE @ SWAP - CELL - SWAP ! ALIGN ; IMMEDIATE
+    : ." [COMPILE] s" ' TYPE , ; IMMEDIATE
+    : ( BEGIN KEY [CHAR] ) = UNTIL ; IMMEDIATE
+    : COUNT DUP 1+ SWAP C@ ;
+    : MIN 2DUP < IF DROP ELSE NIP THEN ;
+    : MAX 2DUP > IF DROP ELSE NIP THEN ;
+    : D0= OR 0= ;
+    : DMIN 2OVER 2OVER D< IF 2DROP ELSE 2NIP THEN ;
+    : DMAX 2OVER 2OVER D> IF 2DROP ELSE 2NIP THEN ;
+
 `
 
 ################################################################################
