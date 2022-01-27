@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-bc=3
+bc=4
 input bc optarg 1 is "Break Count"
 
 while #b4
