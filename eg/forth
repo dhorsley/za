@@ -23,9 +23,11 @@ doc `
         advantage of za library/builtins and, of course, 
         it's an interpreter written in another interpreter.
     * lots of bugs:
-        - initscript func defs not all built right (hence currently commented)
+        - initscript func defs not all built right
         - some oddities around keyboard input
-        - console output hinky, needs some attention
+            - not exactly a full line editor!
+        - console output hinky
+            - needs some attention, very basic currently
         - i.e. it's pretty broken
     * it's not finished, was just taken this far as a test.
 `
@@ -741,6 +743,7 @@ BUILTIN(44, "CREATE", "doCreate", 0,
     length = pop16() & 255
     address = pop16()
     name,l = readStringFromMemory(address)
+    print "<: ",name," ",l,":> "
     createWord(name, length, 0)
 `)
 
