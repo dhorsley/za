@@ -195,7 +195,9 @@ define box_view(opts,val,selector)
         is "q"
             break while
         has selector and k==13
+            cls
             break while
+            println "POST_BREAK_1"
         has selector and k==211 # shift-up
             sp--
             on sp<0 do sp=0

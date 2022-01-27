@@ -1315,6 +1315,7 @@ tco_reentry:
 
             cond := loops[depth]
 
+            if forceEnd { pf("ENDWHILE force flag\n") }
             if !forceEnd && cond.loopType != C_While {
                 parser.report(inbound.SourceLine,"ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
@@ -1879,6 +1880,7 @@ tco_reentry:
             //.. take address of loop info store entry
             thisLoop = &loops[depth]
 
+            if forceEnd { pf("ENDFOR force flag\n") }
             if (*thisLoop).optNoUse == Opt_LoopStart {
                 if !forceEnd && lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
                     parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
@@ -2099,116 +2101,107 @@ tco_reentry:
                 // break by construct type
                 if inbound.TokenCount==2 {
                     thisLoop = &loops[depth]
-                    lookingForEnd:=false
                     var efound,er bool
                     forceEnd=false
                     switch inbound.Tokens[1].tokType {
                     case C_When:
-                        lookingForEnd=true
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhen, []uint8{C_When},    []uint8{C_Endwhen})
                         breakIn=C_Endwhen
                         forceEnd=true
                         parser.pc = wc[wccount].endLine - 1
                     case C_For:
-                        lookingForEnd=true
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]uint8{C_For,C_Foreach},[]uint8{C_Endfor})
                         breakIn=C_Endfor
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_Foreach:
-                        lookingForEnd=true
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,  []uint8{C_Foreach}, []uint8{C_Endfor})
                         breakIn=C_Endfor
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_While:
-                        lookingForEnd=true
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]uint8{C_While},   []uint8{C_Endwhile})
                         breakIn=C_Endwhile
                         forceEnd=true
                         parser.pc = (*thisLoop).whileContinueAt-1
                     }
-                    if lookingForEnd {
-
-                        // set count of back tracking in end* statements
-                        for break_count=1;break_count<depth; break_count+=1 {
-                            // pf("(cbreak) increasing break_count to %v\n",break_count)
-                            lce:=lastConstruct[depth-break_count]
-                            // pf("(cbreak) now processing lc type of %v\n",tokNames[lce])
-                            if lce==C_When {
-                                // reduce WHEN depth
-                                wccount-=1
-                            }
-                            if lce==inbound.Tokens[1].tokType {
-                                break
-                            }
-                        }
-                        // pf("(cbreak) final break_count value is %v\n",break_count)
-
-                        if er {
-                            // lookahead error
-                            parser.report(inbound.SourceLine,sf("BREAK [%s] cannot find end of construct",tokNames[breakIn]))
-                            finish(false, ERR_SYNTAX)
-                            break
-                        }
-                        if ! efound {
-                            // nesting error
-                            parser.report(inbound.SourceLine,sf("BREAK [%s] without surrounding construct",tokNames[breakIn]))
-                            finish(false, ERR_SYNTAX)
-                            break
-                        } else {
-                            // break jump point is set, so continue pc loop 
-                            continue
-                        }
-
+                    if er {
+                        // lookahead error
+                        parser.report(inbound.SourceLine,sf("BREAK [%s] cannot find end of construct",tokNames[breakIn]))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                    if efound {
+                        // break jump point is set, so continue pc loop 
+                        continue
                     }
                 }
 
-                // break by expression
-                break_depth:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
-                switch break_depth.result.(type) {
-                case int:
-                    break_count=break_depth.result.(int)
-                default:
-                    parser.report(inbound.SourceLine,"Could not evaluate BREAK depth argument")
-                    finish(false,ERR_EVAL)
-                    break
+                if !forceEnd {
+                    // break by expression
+                    break_depth:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
+                    switch break_depth.result.(type) {
+                    case int:
+                        break_count=break_depth.result.(int)
+                        // pf("-- break/expr int->%v\n",break_count)
+                    default:
+                        parser.report(inbound.SourceLine,"Could not evaluate BREAK depth argument")
+                        finish(false,ERR_EVAL)
+                        break
+                    }
                 }
+
+                if forceEnd {
+                    // set count of back tracking in end* statements
+                    for break_count=1;break_count<=depth; break_count+=1 {
+                        // pf("(cbreak) increasing break_count to %v\n",break_count)
+                        lce:=lastConstruct[depth-break_count]
+                        // pf("(cbreak) now processing lc type of %v\n",tokNames[lce])
+                        if lce==C_When {
+                            wccount-=1
+                        }
+                        if lce==C_While {
+                        }
+                        if lce==inbound.Tokens[1].tokType {
+                            break
+                        }
+                    }
+                    // pf("(cbreak) final break_count value is %v\n",break_count)
+                }
+
             }
 
-            if depth < break_count {
-                parser.report(inbound.SourceLine,"Attempting to BREAK without a valid surrounding construct.")
+            // jump calc, depending on break context
+
+
+            thisLoop = &loops[depth]
+
+            switch lastConstruct[depth-1] {
+
+            case C_For:
+                parser.pc = (*thisLoop).forEndPos - 1
+                breakIn = C_Endfor
+
+            case C_Foreach:
+                parser.pc = (*thisLoop).forEndPos - 1
+                breakIn = C_Endfor
+
+            case C_While:
+                parser.pc = (*thisLoop).whileContinueAt - 1
+                breakIn = C_Endwhile
+
+            case C_When:
+                parser.pc = wc[wccount].endLine - 1
+                breakIn = C_Endwhen
+
+            default:
+                parser.report(inbound.SourceLine,"A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
+                // pf("breakin->%v depth->%v wccount->%v thisloop->%#v\n",breakIn,depth,wccount,thisLoop)
+                // pf("breakcount->%v lastConstruct->%#v\n",break_count,lastConstruct[depth-1])
                 finish(false, ERR_SYNTAX)
-            } else {
-
-                // jump calc, depending on break context
-
-                thisLoop = &loops[depth]
-
-                switch lastConstruct[depth-1] {
-
-                case C_For:
-                    parser.pc = (*thisLoop).forEndPos - 1
-                    breakIn = C_Endfor
-
-                case C_Foreach:
-                    parser.pc = (*thisLoop).forEndPos - 1
-                    breakIn = C_Endfor
-
-                case C_While:
-                    parser.pc = (*thisLoop).whileContinueAt - 1
-                    breakIn = C_Endwhile
-
-                case C_When:
-                    parser.pc = wc[wccount].endLine - 1
-
-                default:
-                    parser.report(inbound.SourceLine,"A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
-
+                break
             }
+
 
         case C_Enum:
 
@@ -3583,6 +3576,7 @@ tco_reentry:
 
         case C_Endwhen:
 
+            if forceEnd { pf("ENDWHEN force flag\n") }
             if !forceEnd && lastConstruct[len(lastConstruct)-1] != C_When {
                 parser.report(inbound.SourceLine, "Not currently in a WHEN block.")
                 break

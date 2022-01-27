@@ -19,13 +19,15 @@ CHANGE LOG
         - single level module namespaces
         - short string operators: $lc $uc $st $lt $rt
 
-    Features still considered experimental:
-        - libpcre3 wrapper (linux)
+    Features almost out of test:
         - clamping operator
-        - uninstall() stdlib call (linux)
-        - logical OR auto-casting of ints and strings (needs more feedback)
+        - libpcre3 wrapper (linux)
         - exec()
         - BREAK on keyword support (avoid this for now)
+
+    Features still considered experimental:
+        - uninstall() stdlib call (linux)
+        - logical OR auto-casting of ints and strings (needs more feedback)
 
     Anything noted as experimental below, not explicitly mentioned above should be
     considered as remaining experimental.
