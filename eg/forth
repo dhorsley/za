@@ -743,7 +743,6 @@ BUILTIN(44, "CREATE", "doCreate", 0,
     length = pop16() & 255
     address = pop16()
     name,l = readStringFromMemory(address)
-    print "<: ",name," ",l,":> "
     createWord(name, length, 0)
 `)
 
@@ -1033,6 +1032,29 @@ define createWord(name,length,flags)
         push16(0)
         commaByte()
     endwhile
+
+    doc `
+    print "\n[#5]{name}[#-]\n"
+    print "MEMORY [%04X:%04X] : ".format(newLatest,here)
+    for e=newLatest to here+1
+        if memory[e]<256
+            print "%02X ".format(memory[e])
+        else
+            print "%04X ".format(memory[e])
+        endif
+    endfor
+    print " | "
+    for e=newLatest to here+1
+        if memory[e]<128
+            print char(memory[e])
+        else
+            print "."
+        endif
+        print " "
+    endfor
+    print
+    `
+
     setglob latest = newLatest
 end
 
