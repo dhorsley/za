@@ -675,11 +675,11 @@ tco_reentry:
                    if defining {
                        clr="4"
                    }
-                   
+
                    if inbound.Tokens[0].tokType==C_Define {
                        pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
                    }
-                   
+
                    // pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,inbound.Tokens)
                    pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
                }
@@ -965,8 +965,8 @@ tco_reentry:
                 typemap["uint8"]    = reflect.TypeOf(tu8)
                 typemap["uint32"]   = reflect.TypeOf(tu32)
                 typemap["uint64"]   = reflect.TypeOf(tu64)
-                typemap["long"]     = reflect.TypeOf(tu32)
-                typemap["xlong"]   = reflect.TypeOf(tu64)
+                typemap["ulong"]    = reflect.TypeOf(tu32)
+                typemap["uxlong"]   = reflect.TypeOf(tu64)
                 typemap["byte"]     = reflect.TypeOf(tu8)
                 typemap["int"]      = reflect.TypeOf(ti)
                 typemap["float"]    = reflect.TypeOf(tf64)
@@ -1042,9 +1042,9 @@ tco_reentry:
                         t.IKind=kstring
                     case "uint8","byte":
                         t.IKind=kbyte
-                    case "uint32","long":
+                    case "uint32","ulong":
                         t.IKind=kuint32
-                    case "uint64","xlong":
+                    case "uint64","uxlong":
                         t.IKind=kuint64
                     case "[]bool":
                         t.IKind=ksbool
@@ -1055,10 +1055,10 @@ tco_reentry:
                     case "[]uint":
                         t.IKind=ksuint
                         t.IValue=make([]uint,size,size)
-                    case "[]uint32","[]long":
+                    case "[]uint32","[]ulong":
                         t.IKind=ksuint32
                         t.IValue=make([]uint32,size,size)
-                    case "[]uint64","[]xlong":
+                    case "[]uint64","[]uxlong":
                         t.IKind=ksuint64
                         t.IValue=make([]uint64,size,size)
                     case "[]float":
@@ -3749,13 +3749,13 @@ tco_reentry:
 
 
         case C_Print:
-            parser.console_output(inbound.Tokens[1:],ifs,ident,interactive,false,false)
+            parser.console_output(inbound.Tokens[1:],ifs,ident,inbound.SourceLine,interactive,false,false)
 
         case C_Println:
-            parser.console_output(inbound.Tokens[1:],ifs,ident,interactive,true,false)
+            parser.console_output(inbound.Tokens[1:],ifs,ident,inbound.SourceLine,interactive,true,false)
 
         case C_Log:
-            parser.console_output(inbound.Tokens[1:],ifs,ident,false,false,true)
+            parser.console_output(inbound.Tokens[1:],ifs,ident,inbound.SourceLine,false,false,true)
 
 
         case C_Hist:
@@ -3797,7 +3797,7 @@ tco_reentry:
 
                 // print surplus, no LF
                 if inbound.TokenCount>nextCommaAt+1 {
-                    parser.console_output(inbound.Tokens[nextCommaAt+1:],ifs,ident,interactive,false,false)
+                    parser.console_output(inbound.Tokens[nextCommaAt+1:],ifs,ident,inbound.SourceLine,interactive,false,false)
                 }
 
             }
@@ -4347,7 +4347,7 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []inter
 
 // print / println / log handler
 // when logging, user must decide for themselves if they want a LF at end.
-func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent]Variable,interactive bool,lf bool,logging bool) {
+func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent]Variable,sourceLine int16,interactive bool,lf bool,logging bool) {
     plog_out := ""
     if len(tokens) > 0 {
         evnest:=0
@@ -4357,7 +4357,12 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent
             if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
             if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
             if evnest==0 && (term==len(tokens)-1 || nt.tokType == O_Comma) {
-                v, _ := parser.Eval(ifs,tokens[newstart:term+1])
+                v, e := parser.Eval(ifs,tokens[newstart:term+1])
+                if e!=nil {
+                    parser.report(sourceLine,sf("Error in PRINT term evaluation\n%s",e))
+                    finish(false,ERR_EVAL)
+                    break
+                }
                 newstart=term+1
                 switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
                 if logging {

@@ -53,7 +53,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var eol,eof bool
     var tokType uint8
     var word string
-    var matchQuote bool
+    var matchQuote,matchComment,foundComment bool
     var nonterm string
     var term string
     var firstChar byte
@@ -71,7 +71,11 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
 
     // skip past whitespace
     var currentChar int
-    for currentChar = start; currentChar<lenInput ; currentChar++ {
+    currentChar=start
+
+rescan: // used by /*...*/ comments
+
+    for ; currentChar<lenInput ; currentChar+=1 {
         if input[currentChar] == ' ' || input[currentChar]=='\r' || input[currentChar] == '\t' {
             continue
         }
@@ -96,75 +100,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         goto get_nt_exit_point
     }
 
-    // set word terminator depending on first char
     firstChar = input[thisWordStart]
-    if thisWordStart < (lenInput-1) {
-        secondChar = input[thisWordStart+1]
-        twoChars = true
-    }
-
-    // some special cases
-    if twoChars {
-
-        c1 := str.IndexByte(doubleterms, firstChar)
-        if c1!=-1 && firstChar==secondChar {
-            word = string(firstChar)+string(secondChar)
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        }
-
-        switch string(firstChar)+string(secondChar) {
-        case "!=":
-            word="!="
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "<=":
-            word="<="
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case ">=":
-            word=">="
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        case "-=","+=","*=","/=","%=","=<","=@","=|","->","~i","~f","?>":
-            word=string(firstChar)+string(secondChar)
-            startNextTokenAt=thisWordStart+2
-            goto get_nt_eval_point
-        }
-    }
-
-    if firstChar == '#' {
-        tokType = SingleComment
-        nonterm = ""
-        eol=true
-        term = "\n"
-    }
-
-    if firstChar == '.' {
-        hasPoint=true
-    }
-
-    // number
-    if firstChar!='f' && firstChar!='n' && str.IndexByte(numeric, firstChar) != -1 {
-        tokType = NumericLiteral
-        nonterm = numeric+"xeE"+numSeps
-        term = "\n;"
-        norepeat= "oxOXeE."
-    }
-
-    // solo symbols
-    switch firstChar {
-    case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&','{','}':
-        word = string(firstChar)
-        startNextTokenAt=thisWordStart+1
-        goto get_nt_eval_point
-    }
-
-    // identifier or statement
-    if str.IndexByte(alphaplus, firstChar) != -1 {
-        nonterm = identifier_set
-        term = "\n;"
-    }
 
     // string literal
     if firstChar == '"' || firstChar == '`' || firstChar == '\'' {
@@ -174,16 +110,122 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         nonterm = ""
     }
 
-    if !matchQuote && firstChar == '\\' {
-        word = string(firstChar)
-        startNextTokenAt=thisWordStart+1
-        goto get_nt_eval_point
+    if !matchQuote {
+
+        // set word terminator depending on first char
+        if thisWordStart < (lenInput-1) {
+            secondChar = input[thisWordStart+1]
+            twoChars = true
+        }
+
+        // some special cases
+        if twoChars {
+
+            c1 := str.IndexByte(doubleterms, firstChar)
+            if c1!=-1 && firstChar==secondChar {
+                word = string(firstChar)+string(secondChar)
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            }
+
+            switch string(firstChar)+string(secondChar) {
+            case "!=":
+                word="!="
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            case "<=":
+                word="<="
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            case ">=":
+                word=">="
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            case "-=","+=","*=","/=","%=","=<","=@","=|","->","~i","~f","?>":
+                word=string(firstChar)+string(secondChar)
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            case "/*":
+                matchComment=true
+            }
+        }
+
+        // skip book-ended comments
+        if matchComment {
+            foundComment=false
+            for currentChar = thisWordStart + 2; currentChar < lenInput-1; currentChar++ {
+                if input[currentChar]!='*' { continue }
+                if input[currentChar+1]!='/' { continue }
+                foundComment=true
+                break
+            }
+            if !foundComment || thisWordStart>=lenInput {
+                pf("Invalid comment in '%s'\n",str.TrimRight(input,"\n"))
+                os.Exit(ERR_LEX)
+            }
+            matchComment=false; foundComment=false
+            currentChar+=2
+            goto rescan
+        }
+
+
+        if firstChar == '#' {
+            tokType = SingleComment
+            nonterm = ""
+            eol=true
+            term = "\n"
+        }
+
+
+        if firstChar == '.' {
+            hasPoint=true
+        }
+
+        // number
+        if firstChar!='f' && firstChar!='n' && str.IndexByte(numeric, firstChar) != -1 {
+            tokType = NumericLiteral
+            nonterm = numeric+"xeE"+numSeps
+            term = "\n;"
+            norepeat= "oxOXeE."
+        }
+
+        // solo symbols
+        switch firstChar {
+        case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&','{','}':
+            word = string(firstChar)
+            startNextTokenAt=thisWordStart+1
+            goto get_nt_eval_point
+        }
+
+        // identifier or statement
+        if str.IndexByte(alphaplus, firstChar) != -1 {
+            nonterm = identifier_set
+            term = "\n;"
+        }
+
+
+    /*
+    // string literal
+    if firstChar == '"' || firstChar == '`' || firstChar == '\'' {
+        matchQuote = true
+        tokType = StringLiteral
+        term = string(firstChar)
+        nonterm = ""
     }
+    */
+
+        if firstChar == '\\' {
+            word = string(firstChar)
+            startNextTokenAt=thisWordStart+1
+            goto get_nt_eval_point
+        }
+
+    } // eo-not-matchQuote
 
 
     // start looking for word endings, (terms+nonterms)
 
-    for currentChar = thisWordStart + 1; currentChar < lenInput; currentChar++ {
+    for currentChar = thisWordStart + 1; currentChar < lenInput; currentChar+=1 {
 
         // check numbers for illegal repeated chars
         if tokType==NumericLiteral {
