@@ -26,7 +26,7 @@ func buildFileLib() {
     categories["file"] = []string{
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "perms","stat",
-                        "fopen", "fclose","ftell","fseek","fread","fwrite","feof",
+                        "fopen", "fclose","ftell","fseek","fread","fwrite","feof","fflush",
     }
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
@@ -54,6 +54,13 @@ func buildFileLib() {
             return fw,nil
         }
         return nil,nil
+    }
+
+    slhelp["fflush"] = LibHelp{in: "filehandle", out: "position", action: "Flushes [#i1]filehandle[#i0] write buffer to disk."}
+    stdlib["fflush"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("fflush",args,1,"1","main.pfile"); !ok { return nil,err }
+        fw :=args[0].(pfile)
+        return fw.hnd.Sync(),nil
     }
 
     slhelp["ftell"] = LibHelp{in: "filehandle", out: "position", action: "The current read pointer position is returned."}

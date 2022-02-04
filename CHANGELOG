@@ -21,12 +21,18 @@ CHANGE LOG
 
     Features almost out of test:
         - clamping operator
+            - not enough robustness checking done yet
         - libpcre3 wrapper (linux)
+            - may add some more calls from libpcre as quite limited currently
         - exec()
+            - still some misbehaviour when exec string contains comments or string interpolation
+            - also not reporting detailed enough locations on error
         - BREAK on keyword support (avoid this for now)
+            - some more tweaks done recently to BREAK <keyword> and BREAK <count>, but
+                not thoroughly tested yet.
 
     Features still considered experimental:
-        - uninstall() stdlib call (linux)
+        - uninstall() stdlib call (linux) (doesn't cover enough OS)
         - logical OR auto-casting of ints and strings (needs more feedback)
 
     Anything noted as experimental below, not explicitly mentioned above should be
@@ -55,6 +61,11 @@ CHANGE LOG
 
         - these were in the previous version, but only now documented.
 
+    * added fflush() file function.
+        - write buffer flush.
+        - not previously present. equivalent of (*os.File).Sync() in Go.
+
+
     fixes
     -----
 
@@ -64,7 +75,7 @@ CHANGE LOG
 
     * added lhs interpolation back in for simple assignments.
     * added uint32 and uint64 as available types for VAR.
-        - added aliases of long and xlong respectively.
+        - added aliases of ulong and uxlong respectively.
 
     * added float*[]float and int*[]int support. these return []float and []int respectively.
         - multiplies each element
@@ -97,7 +108,7 @@ CHANGE LOG
             3.141592653589793
 
             >> 11[pi():10.2]
-            11
+            10.2
 
             - illustration of type change from v to end type:
 
