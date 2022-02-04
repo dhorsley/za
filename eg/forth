@@ -1,13 +1,13 @@
 #!/usr/bin/za
 
-doc `
+/*
     todo:
     * swap bits out for more za idiomatic stuff where possible.
     * tidy
     * optimise some stuff
-`
+*/
 
-doc `
+/*
 
   A terrible conversion of lbForth.c
 
@@ -30,7 +30,8 @@ doc `
             - needs some attention, very basic currently
         - i.e. it's pretty broken
     * it's not finished, was just taken this far as a test.
-`
+
+*/
 
 
 # Basic memory configuration
