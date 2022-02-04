@@ -53,7 +53,8 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var eol,eof bool
     var tokType uint8
     var word string
-    var matchQuote,matchComment,foundComment bool
+    var matchQuote bool
+    // var matchComment,foundComment bool
     var nonterm string
     var term string
     var firstChar byte
@@ -73,7 +74,9 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
     var currentChar int
     currentChar=start
 
-rescan: // used by /*...*/ comments
+
+// rescan: // used by /*...*/ comments
+
 
     for ; currentChar<lenInput ; currentChar+=1 {
         if input[currentChar] == ' ' || input[currentChar]=='\r' || input[currentChar] == '\t' {
@@ -145,17 +148,22 @@ rescan: // used by /*...*/ comments
                 word=string(firstChar)+string(secondChar)
                 startNextTokenAt=thisWordStart+2
                 goto get_nt_eval_point
+            /*
             case "/*":
                 matchComment=true
+            */
             }
         }
+
+
+        /* not currently reliable, due to mishandling of tokens in | shell command file paths.
 
         // skip book-ended comments
         if matchComment {
             foundComment=false
             for currentChar = thisWordStart + 2; currentChar < lenInput-1; currentChar++ {
-                if input[currentChar]!='*' { continue }
-                if input[currentChar+1]!='/' { continue }
+                if input[currentChar]!='/' { continue }
+                if input[currentChar+1]!='*' { continue }
                 foundComment=true
                 break
             }
@@ -167,6 +175,8 @@ rescan: // used by /*...*/ comments
             currentChar+=2
             goto rescan
         }
+
+        */
 
 
         if firstChar == '#' {
