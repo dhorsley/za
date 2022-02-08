@@ -1315,7 +1315,7 @@ tco_reentry:
 
             cond := loops[depth]
 
-            if forceEnd { pf("ENDWHILE force flag\n") }
+            // if forceEnd { pf("ENDWHILE force flag\n") }
             if !forceEnd && cond.loopType != C_While {
                 parser.report(inbound.SourceLine,"ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
@@ -1880,7 +1880,7 @@ tco_reentry:
             //.. take address of loop info store entry
             thisLoop = &loops[depth]
 
-            if forceEnd { pf("ENDFOR force flag\n") }
+            // if forceEnd { pf("ENDFOR force flag\n") }
             if (*thisLoop).optNoUse == Opt_LoopStart {
                 if !forceEnd && lastConstruct[depth-1]!=C_Foreach && lastConstruct[depth-1]!=C_For {
                     parser.report(inbound.SourceLine,"ENDFOR without a FOR or FOREACH")
@@ -3576,7 +3576,7 @@ tco_reentry:
 
         case C_Endwhen:
 
-            if forceEnd { pf("ENDWHEN force flag\n") }
+            // if forceEnd { pf("ENDWHEN force flag\n") }
             if !forceEnd && lastConstruct[len(lastConstruct)-1] != C_When {
                 parser.report(inbound.SourceLine, "Not currently in a WHEN block.")
                 break
