@@ -514,6 +514,21 @@ func (p *leparser) list_map(left interface{},right interface{}) interface{} {
         }
         return new_list
 
+    case string:
+        var new_list []string
+        for e:=0; e<len(left.(string)); e+=1 {
+            new_right:=str.Replace(right.(string),"#",`"`+string(left.(string)[e])+`"`,-1)
+            val,err:=ev(reduceparser,p.fs,new_right)
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case string:
+                new_list=append(new_list,val.(string))
+            default:
+                panic(fmt.Errorf("invalid expression (%s) in map",new_right))
+            }
+        }
+        return new_list
+
     case []int:
         var new_list []int
         for e:=0; e<len(left.([]int)); e+=1 {

@@ -47,12 +47,12 @@ DCELL_SIZE=2
 
 # A few constants that describe the memory layout of this implementation
 LATEST_POSITION = INPUT_LINE_SIZE
-HERE_POSITION   = (LATEST_POSITION + CELL_SIZE)
-BASE_POSITION   = (HERE_POSITION + CELL_SIZE)
-STATE_POSITION  = (BASE_POSITION + CELL_SIZE)
-STACK_POSITION  = (STATE_POSITION + CELL_SIZE)
-RSTACK_POSITION = (STACK_POSITION + STACK_SIZE * CELL_SIZE)
-HERE_START      = (RSTACK_POSITION + RSTACK_SIZE * CELL_SIZE)
+HERE_POSITION   = LATEST_POSITION + CELL_SIZE
+BASE_POSITION   = HERE_POSITION + CELL_SIZE
+STATE_POSITION  = BASE_POSITION + CELL_SIZE
+STACK_POSITION  = STATE_POSITION + CELL_SIZE
+RSTACK_POSITION = STACK_POSITION + STACK_SIZE * CELL_SIZE
+HERE_START      = RSTACK_POSITION + RSTACK_SIZE * CELL_SIZE
 MAX_BUILTIN_ID  = 73
 
 # Flags and masks for the dictionary 
@@ -61,10 +61,8 @@ FLAG_HIDDEN     = 0x40
 MASK_NAMELENGTH = 0x1F
 
 # This is the main memory to be used by this Forth.
-# There will be no malloc in this file.
 var memory [MEM_SIZE]int
 
-# [ Pointers to Forth variables stored inside the main memory array ]
 # we don't have pointers, so these are offsets from memory[0]
 var latest,here,sp,stack,rsp,rstack int
 
@@ -111,9 +109,6 @@ define banner()
     println "[#2] Use this at your own peril![#-]\n"
 end
 
-# This is our initialization script containing all the words we define in
-#  Forth for convenience. Focus is on simplicity, not speed. Partly copied from
-#  Jonesforth (see top of file).
 
 initscript=`
     : CR 10 EMIT ;
@@ -213,9 +208,6 @@ define commaByte()
   setglob here = here + 1
 end
 
-################################################################################
-
-# The primary data output function.
 define putkey(c)
     print c.string
 end
