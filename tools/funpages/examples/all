@@ -15,3 +15,6 @@
  insert btoi  ln2  ppid  ev_exists  web_get  web_serve_log  pad  append_to  stripansi  glob_key net_interfaces stripquotes  dir  cos  avg  file_size
  cosh  env  read_file  acosh  read_struct shell_pid  format write_file
 
+ ftell fflush
+
+

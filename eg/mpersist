@@ -1,0 +1,62 @@
+#!/usr/bin/za
+
+def per(n)
+    setglob steps=1
+    per_tr(n,n)
+    return steps-1
+end
+
+def per_tr(start,n)
+
+    if n<10
+        println
+        return
+    endif
+
+    var total bigi = 1
+    foreach d in ( n.string -> "#" ) . list_int
+        total*=d
+    endfor
+
+    println "start %d | step #%2d | persist-total [digits] = %d".format(start,steps,total)
+
+    setglob steps++
+    per_tr(start,total)
+
+end
+
+#
+# MAIN
+#
+
+var start bigi = 277777788888899
+var reach bigi = 1000
+
+input start optarg 1
+input reach optarg 2
+next=start
+final=start+reach
+
+maxc=0
+maxn=0
+steps=0
+var summary assoc
+for i=0 to 19
+    summary[i]=[]
+endfor
+
+while next<=final
+    c=per(next)
+    if c>maxc
+        maxc=c
+        maxn=bigi(next)
+    endif
+    summary[c]+=[bigi(next)]
+    next++
+endwhile
+
+println "\n[#6]Summary[#-]"
+println "Max persistence found for {=maxn} with {maxc} steps."
+println "Similar matches:"
+println summary[maxc]
+

@@ -295,7 +295,7 @@ func buildConversionLib() {
 
     }
 
-    slhelp["bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer."}
+    slhelp["bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer. Also ensures this is a copy."}
     stdlib["bigi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to bigi()")
@@ -303,7 +303,7 @@ func buildConversionLib() {
         return GetAsBigInt(args[0]),nil
     }
 
-    slhelp["bigf"] = LibHelp{in: "expr", out: "big_float", action: "Convert [#i1]expr[#i0] to a float."}
+    slhelp["bigf"] = LibHelp{in: "expr", out: "big_float", action: "Convert [#i1]expr[#i0] to a float. Also ensures this is a copy."}
     stdlib["bigf"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to float()")
