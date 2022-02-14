@@ -1346,11 +1346,11 @@ func vcreatetable(fs uint32, ident *[szIdent]Variable, vtable_maxreached *uint32
 */
 
 func vunset(fs uint32, ident *[szIdent]Variable, name string) {
-    vlock.Lock()
+    if fs<2 { vlock.Lock() }
     if VarLookup(fs, ident, name) {
         (*ident)[bind_int(fs,name)] = Variable{declared:false}
     }
-    vlock.Unlock()
+    if fs<2 { vlock.Unlock() }
 }
 
 func vdelete(fs uint32, ident *[szIdent]Variable, name string, ename string) {
@@ -1400,13 +1400,13 @@ func gvset(name string, value interface{}) {
 }
 
 func vset(fs uint32, ident *[szIdent]Variable, name string, value interface{}) {
-    var locked bool
-    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
+    // var locked bool
+    // if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; vlock.Lock() }
     bin:=bind_int(fs,name)
     (*ident)[bin].IName=name
     (*ident)[bin].declared=true
     vseti(fs,ident,bin,value)
-    if locked { vlock.Unlock() }
+    // if locked { vlock.Unlock() }
 }
 
 func vseti(fs uint32, ident *[szIdent]Variable, bin uint64, value interface{}) {
@@ -1587,16 +1587,16 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
         case string:
             key=el.(string)
         }
-        vlock.Lock()
+        if fs<2 { vlock.Lock() }
         (*ident)[bin].IValue.(map[string]interface{})[key] = value
-        vlock.Unlock()
+        if fs<2 { vlock.Unlock() }
         return
     }
 
     numel:=el.(int)
     var fault bool
 
-    vlock.Lock()
+    if fs<2 { vlock.Lock() }
     atype:=(*ident)[bin].IValue
 
     switch atype.(type) {
@@ -1721,7 +1721,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
 
     }
 
-    vlock.Unlock()
+    if fs<2 { vlock.Unlock() }
 
 }
 
@@ -1740,7 +1740,7 @@ func gvget(name string) (interface{}, bool) {
 func vget(fs uint32, ident *[szIdent]Variable,name string) (interface{}, bool) {
     if VarLookup(fs,ident, name) {
         bin:=bind_int(fs,name)
-        if atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
+        if fs<2 && atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
         return (*ident)[bin].IValue,true
     }
     return nil, false
