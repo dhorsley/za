@@ -1346,11 +1346,11 @@ func vcreatetable(fs uint32, ident *[szIdent]Variable, vtable_maxreached *uint32
 */
 
 func vunset(fs uint32, ident *[szIdent]Variable, name string) {
-    if fs<2 { vlock.Lock() }
+    if fs<3 { vlock.Lock() }
     if VarLookup(fs, ident, name) {
         (*ident)[bind_int(fs,name)] = Variable{declared:false}
     }
-    if fs<2 { vlock.Unlock() }
+    if fs<3 { vlock.Unlock() }
 }
 
 func vdelete(fs uint32, ident *[szIdent]Variable, name string, ename string) {
@@ -1587,16 +1587,16 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
         case string:
             key=el.(string)
         }
-        if fs<2 { vlock.Lock() }
+        if fs<3 { vlock.Lock() }
         (*ident)[bin].IValue.(map[string]interface{})[key] = value
-        if fs<2 { vlock.Unlock() }
+        if fs<3 { vlock.Unlock() }
         return
     }
 
     numel:=el.(int)
     var fault bool
 
-    if fs<2 { vlock.Lock() }
+    if fs<3 { vlock.Lock() }
     atype:=(*ident)[bin].IValue
 
     switch atype.(type) {
@@ -1721,7 +1721,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el interface
 
     }
 
-    if fs<2 { vlock.Unlock() }
+    if fs<3 { vlock.Unlock() }
 
 }
 
@@ -1740,7 +1740,7 @@ func gvget(name string) (interface{}, bool) {
 func vget(fs uint32, ident *[szIdent]Variable,name string) (interface{}, bool) {
     if VarLookup(fs,ident, name) {
         bin:=bind_int(fs,name)
-        if fs<2 && atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
+        if fs<3 && atomic.LoadInt32(&concurrent_funcs)>0 { vlock.RLock() ; defer vlock.RUnlock() }
         return (*ident)[bin].IValue,true
     }
     return nil, false
