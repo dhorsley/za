@@ -1128,10 +1128,10 @@ tco_reentry:
 
                     // write temp to ident
                     // @note: have to write all to retain the ITyped flag!
-                    vlock.Lock()
+                    if ifs<2 { vlock.Lock() }
                     (*ident)[sid]=t
                     // pf("wrote var with sid of #%d\n",sid)
-                    vlock.Unlock()
+                    if ifs<2 { vlock.Unlock() }
 
                 } else {
                     // unknown type: check if it is a struct name
@@ -1149,7 +1149,7 @@ tco_reentry:
                     }
 
                     if isStruct {
-                        vlock.Lock()
+                        if ifs<2 { vlock.Lock() }
 
                         // holding temp var
                         t:=(*ident)[sid]
@@ -1238,7 +1238,7 @@ tco_reentry:
                         // write temp to ident
                         (*ident)[sid]=t
 
-                        vlock.Unlock()
+                        if ifs<2 { vlock.Unlock() }
 
                     } else {
                         parser.report(inbound.SourceLine,sf("unknown data type requested '%v'",type_token_string))
