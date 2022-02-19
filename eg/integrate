@@ -1,0 +1,47 @@
+#!/usr/bin/za
+
+doc `
+    Just to prove how bad Za is at math...
+    Not really willing to do anything about this without rewriting the whole language!
+    Obviously, that isn't happening just yet. Basic value types are wrapped in both
+    a struct and an inner interface{} in Go. They also have to be checked, potentially
+    through a mutex in some cases, for safe multi-threaded use.
+    This is not going to lead to great performance. However, it makes the design easy
+    and offers a lot of flexibility without much work. Numeric processing performance
+    is not exactly a design goal!
+    (Also, on a side note, while loops are much slower than for loops in Za. I could 
+    do something about this one day, or improve the syntax of FOR to do away with while.
+    That may additionally fold in the missing 'until' syntax and similar variations.)
+    Inlining myexp() only leads to a small reduction in run-time, so the slowness is 
+    all in a) the disjointed lhs assignment work, b) setup time for operator precedence
+    in each function call, and c) variable storage overheads. The evaluator itself is,
+    surprisingly, not all that slow.
+`
+
+explimit = 100
+nstep = 0.000001
+
+def myexp(val)
+    sum = 0f
+    fact = 1f
+    x = 1f
+    for i = 1 to explimit
+        fact = fact*i
+        x = x*val
+        sum = sum+x/fact
+    endfor
+    return sum + 1f
+end
+
+def integrate(min, max)
+    sum=0f
+    while min < max
+        sum = sum+myexp(min)*nstep
+        min = min+nstep
+    endwhile
+    return sum
+end
+
+println "exponent( 1.0)=%f".format (myexp(1.0))
+println "integral(0..1)=%f".format (integrate(0.0,1.0))
+

@@ -20,7 +20,7 @@ func buildMathLib() {
         "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
         "floor", "ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
         "e", "pi", "phi", "ln2", "ln10","ibase",
-        "ubin8","uhex32","numcomma",
+        "ubin8","uhex32","numcomma","prec",
     }
 
     slhelp["e"] = LibHelp{in: "", out: "float", action: "Returns the value of e."}
@@ -349,6 +349,26 @@ func buildMathLib() {
             p2 = args[1].(float64)
         }
         return math.Pow(p1, p2), err
+    }
+
+    slhelp["prec"] = LibHelp{in: "bigfloat,prec", out: "bigfloat", action: "Returns a big float with a set precision ([#i1]prec[#i0] bits)."}
+    stdlib["prec"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+        if ok,err:=expect_args("prec",args,1,
+            "2","bignumber","number"); !ok { return nil,err }
+        prec,invalid:=GetAsUint(args[1])
+        if invalid {
+            return nil, errors.New("argument 2 to prec() must be a positive integer.")
+        }
+        switch args[0].(type) {
+        case *big.Float:
+            n:=big.NewFloat(0)
+            n.SetMode(big.ToZero)
+            n.SetPrec(prec)
+            n.Set(args[0].(*big.Float))
+            return n,nil
+        default:
+            return nil, errors.New("argument 1 to prec() must be a big float.")
+        }
     }
 
     slhelp["abs"] = LibHelp{in: "number", out: "positive_number", action: "Calculate absolute value of [#i1]number[#i0]."}
