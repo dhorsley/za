@@ -273,6 +273,7 @@ syntax match math_functions "\(^|.\|\s*\)uhex32*\s*("he=e-1
 syntax match math_functions "\(^|.\|\s*\)abs*\s*("he=e-1
 syntax match math_functions "\(^|.\|\s*\)floor*\s*("he=e-1
 syntax match math_functions "\(^|.\|\s*\)ibase*\s*("he=e-1
+syntax match math_functions "\(^|.\|\s*\)prec*\s*("he=e-1
 
 syntax match file_functions "\(^|.\|\s*\)file_mode\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)file_size\s*("he=e-1
