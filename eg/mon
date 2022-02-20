@@ -116,7 +116,8 @@ define showFiles()
         clear(1,4,1)
 
         ofd=open_fd.field(1,"\t")
-        mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t ").float
+        # mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t ").float
+        mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t").float
         at 2,2, "[#-]Open Descr. : [#6]{ofd}[#-]"
         at 3,2, "Max         : [#6]"
         if mfd>1e8
@@ -124,8 +125,10 @@ define showFiles()
         else
             print format("%.7g",mfd),"[#-]"
         endif
-        fin=open_inode.field(2," \t\n")
-        tin=open_inode.field(1," \t").float
+        # fin=open_inode.field(2," \t\n")
+        # tin=open_inode.field(1," \t").float
+        fin=open_inode.field(2,"\t")
+        tin=open_inode.field(1,"\t").float
         at 4,2, "Free Inodes : [#6]{fin}[#-]"
         at 5,2, "Total       : [#6]",format("%.7g",tin),"[#-]"
 
@@ -155,9 +158,9 @@ define showMem()
     slabs=""
     if slab_file.count>1
         foreach l in slab_file.lines("2:")
-            name=l.field(1," \t")
-            s_sz=l.field(3," \t")
-            s_cn=l.field(4," \t")
+            name=l.field(1," ")
+            s_sz=l.field(3," ")
+            s_cn=l.field(4," ")
             on s_sz==0 or s_cn==0 do continue
             slabs+="%s %3v\n".format(name,(s_sz.float*s_cn.float)/1024/1024)
         endfor
