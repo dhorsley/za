@@ -546,11 +546,16 @@ func buildStringLib() {
         pos := args[1].(int)
 
         // find column <position>
+
+        /*
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
+        */
+        // ta := str.FieldsFunc(fstr, f)
 
-        ta := str.FieldsFunc(fstr, f)
+        ta := str.Split(fstr, sep)
+
         if pos > 0 && pos <= len(ta) {
             return ta[pos-1], nil
         }
@@ -574,10 +579,14 @@ func buildStringLib() {
         lf:="\r\n"
         fstr:=str.TrimRight(args[0].(string),lf)
 
+        /* FieldsFunc allows for multiple runs of separator
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
-        ta := append([]string{""},str.FieldsFunc(fstr, f)...)
+        */
+
+        // ta := append([]string{""},str.FieldsFunc(fstr, f)...)
+        ta := append([]string{""},str.Split(fstr, sep)...)
 
         c:=len(ta)-1
         vset(evalfs,ident, "F", ta)
