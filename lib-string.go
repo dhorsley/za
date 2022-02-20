@@ -547,14 +547,16 @@ func buildStringLib() {
 
         // find column <position>
 
-        /*
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
-        */
-        // ta := str.FieldsFunc(fstr, f)
 
-        ta := str.Split(fstr, sep)
+        var ta []string
+        if sep==" " {
+            ta = str.FieldsFunc(fstr, f)
+        } else {
+            ta = str.Split(fstr, sep)
+        }
 
         if pos > 0 && pos <= len(ta) {
             return ta[pos-1], nil
@@ -564,7 +566,7 @@ func buildStringLib() {
 
     }
 
-    slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]", out: "int", action: "Splits up [#i1]input_string[#i0] into variables in the current namespace. Variables are named [#i1]F1[#i0] through to [#i1]Fn[#i0]. Field count is stored in [#i1]NF[#i0]. Returns -1 on error, or field count."}
+    slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]", out: "int", action: "Splits up [#i1]input_string[#i0] in local array [#i1]F[#i0], with fields starting at index 1. Field count is stored in [#i1]NF[#i0]. Also squeezes repeat spaces when separator is a space char (default). Returns -1 on error, or field count."}
     stdlib["fields"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
         if ok,err:=expect_args("fields",args,2,
             "1","string",
@@ -579,14 +581,16 @@ func buildStringLib() {
         lf:="\r\n"
         fstr:=str.TrimRight(args[0].(string),lf)
 
-        /* FieldsFunc allows for multiple runs of separator
         f := func(c rune) bool {
             return str.ContainsRune(sep, c)
         }
-        */
 
-        // ta := append([]string{""},str.FieldsFunc(fstr, f)...)
-        ta := append([]string{""},str.Split(fstr, sep)...)
+        var ta []string
+        if sep==" " {
+            ta = append([]string{""},str.FieldsFunc(fstr, f)...)
+        } else {
+            ta = append([]string{""},str.Split(fstr, sep)...)
+        }
 
         c:=len(ta)-1
         vset(evalfs,ident, "F", ta)
