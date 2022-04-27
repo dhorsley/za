@@ -53,7 +53,7 @@ var web_handles = make( map[string]web_table_entry )
 type web_rule struct {
     code string
     in   string
-    mutation interface{}
+    mutation any
 }
 
 var web_rules = make(map[string][]web_rule)
@@ -83,7 +83,7 @@ func limitNumClients(f http.HandlerFunc, maxClients int, evalfs uint32, ident *[
 }
 
 // web access logging
-func wlog(s string,va... interface{}) {
+func wlog(s string,va... any) {
     lastlock.Lock()
     if log_web {
         if len(va)>0 {
@@ -172,7 +172,7 @@ type webstruct struct {
     remote  string
     query   string
     fragment string
-    data    []interface{}
+    data    []any
 }
 
 
@@ -391,7 +391,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 }
 
                 // add parameters
-                iargs := []interface{}{}
+                iargs := []any{}
                 var query string
                 var fragment string
 
@@ -446,10 +446,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         // translate bad func call to error page
                         http.NotFound(w, r)
                     default:
-                        w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
+                        w.Write([]byte(sf("%v",tmp.([]any)[0])))
                     }
                 default:
-                    w.Write([]byte(sf("%v",tmp.([]interface{})[0])))
+                    w.Write([]byte(sf("%v",tmp.([]any)[0])))
                 }
 
                 calltable[loc].gcShyness=40
@@ -575,7 +575,7 @@ func buildNetLib() {
     // error under all circumstances. We'll have track handles against ip/port here.
 
     slhelp["net_interfaces"] = LibHelp{in: "", out: "device_string", action: "newline separated list of device names."}
-    stdlib["net_interfaces"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["net_interfaces"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("net_interfaces",args,0); !ok { return nil,err }
         i,_:=net.Interfaces()
         a:=""
@@ -586,20 +586,20 @@ func buildNetLib() {
     }
 
     slhelp["web_display"] = LibHelp{in: "", out: "", action: "Show configured request routing."}
-    stdlib["web_display"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_display"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_display",args,0); !ok { return nil,err }
         webRoutesAll()
         return nil,nil
     }
 
     slhelp["web_max_clients"] = LibHelp{in: "", out: "int", action: "(read-only) returns the maximum permitted client count for a web server."}
-    stdlib["web_max_clients"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_max_clients"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_max_clients",args,0); !ok { return nil,err }
         return int(MAX_CLIENTS),nil
     }
 
     slhelp["web_serve_log"] = LibHelp{in: "args", out: "", action: "Write arguments to the web log file, if available."}
-    stdlib["web_serve_log"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_log"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_log",args,0); !ok { return nil,err }
         switch len(args) {
         case 0:
@@ -617,7 +617,7 @@ func buildNetLib() {
                     "web_serve_decode() returns the following member fields:\n"+
                     "  .host (host:port), .method, .path, .remote (remote_ip:port) and .data (POST data).",
 }
-    stdlib["web_serve_decode"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_decode"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_decode",args,1,"1","main.webstruct"); !ok { return nil,err }
         if len(args)==1 {
             switch args[0].(type) {
@@ -629,7 +629,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_start"] = LibHelp{in: "docroot,port[,vhost]", out: "handle", action: "Returns an identifier for a new http server."}
-    stdlib["web_serve_start"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_start"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_start",args,2,
             "3","string","int","string",
             "2","string","int"); !ok { return nil,err }
@@ -707,7 +707,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_stop"] = LibHelp{in: "handle", out: "success_flag", action: "Stops and discards a running http server."}
-    stdlib["web_serve_stop"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_stop"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_stop",args,1,"1","string"); !ok { return nil,err }
         uid:=args[0].(string)
         webClose(uid)
@@ -719,20 +719,20 @@ func buildNetLib() {
     }
 
     slhelp["html_escape"] = LibHelp{in: "string", out: "string", action: "Converts HTML special characters to ampersand values."}
-    stdlib["html_escape"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["html_escape"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("html_escape",args,1,"1","string"); !ok { return nil,err }
         return html.EscapeString(args[0].(string)),nil
     }
 
     slhelp["html_unescape"] = LibHelp{in: "string", out: "string", action: "Converts a string containing ampersand values to include HTML special characters."}
-    stdlib["html_unescape"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["html_unescape"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("html_unescape",args,1,"1","string"); !ok { return nil,err }
         return html.UnescapeString(args[0].(string)),nil
     }
 
 
     slhelp["web_serve_up"] = LibHelp{in: "handle", out: "bool", action: "Checks if a web server is still running."}
-    stdlib["web_serve_up"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_up"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_up",args,1,"1","string"); !ok { return nil,err }
         uid:=args[0].(string)
         // @note: we should maybe change this into a test instead of an assumption
@@ -743,7 +743,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_path"] = LibHelp{in: "handle,action_type,request_regex,new_path", out: "string", action: "Provides a traffic routing instruction to a web server."}
-    stdlib["web_serve_path"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_path"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_path",args,1,
             "4","string","string","string","string"); !ok { return nil,err }
 
@@ -772,7 +772,7 @@ func buildNetLib() {
     }
 
     slhelp["web_serve_log_throttle"] = LibHelp{in: "start,freq", out: "", action: "Set the throttle controls for web server logging."}
-    stdlib["web_serve_log_throttle"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_serve_log_throttle"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_serve_log_throttle",args,1,"2","int","int"); !ok { return nil,err }
         lastWlogStart=args[0].(int)
         lastWlogEvery=args[1].(int)
@@ -786,13 +786,13 @@ func buildNetLib() {
 //  than the few seconds I've considered it for.
 
     slhelp["web_template"] = LibHelp{in: "handle,template_path", out: "processed_string", action: "Reads from either an absolute path or a docroot relative path (if handle not nil), with template instructions interpolated."}
-    stdlib["web_template"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_template"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
     return nil,errors.New("Not implemented.")
     }
 */
 
     slhelp["web_head"] = LibHelp{in: "loc_string", out: "bool", action: "Makes a HEAD request of the given [#i1]loc_string[#i0]. Returns true if retrieved successfully."}
-    stdlib["web_head"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_head"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_head",args,1,"1","string"); !ok { return nil,err }
         _, down_code := head(args[0].(string))
         if down_code>299 {
@@ -802,7 +802,7 @@ func buildNetLib() {
     }
 
     slhelp["web_get"] = LibHelp{in: "loc_string", out: "structure", action: "Returns a [#i1]structure[#i0] with content downloaded from [#i1]loc_string[#i0]. [#i1].result[#i0] is the content string. [#i1].code[#i0] is the status code."}
-    stdlib["web_get"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_get"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_get",args,1,"1","string"); !ok { return nil,err }
         s, down_code, _ := download(args[0].(string))
         if down_code>299 {
@@ -812,9 +812,9 @@ func buildNetLib() {
     }
 
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[string]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
-    stdlib["web_custom"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_custom"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_custom",args,2,
-            "3","string","string","map[string]interface {}",
+            "3","string","string","map[string]any",
             "2","string","string"); !ok { return nil,err }
 
         method_string   := args[0].(string)
@@ -823,12 +823,12 @@ func buildNetLib() {
         var headers =make(map[string]string)
         switch len(args) {
         case 3:
-            for k,v:=range args[2].(map[string]interface{}) { headers[k]=v.(string) }
+            for k,v:=range args[2].(map[string]any) { headers[k]=v.(string) }
         }
 
         // headers
         request, err := http.NewRequest(method_string, loc_string, nil)
-        if err != nil { return []interface{}{"Could not create a new HTTP request in web_custom()",nil,400},nil }
+        if err != nil { return []any{"Could not create a new HTTP request in web_custom()",nil,400},nil }
         for k,v:=range headers {
             request.Header.Add(k,v)
         }
@@ -837,18 +837,18 @@ func buildNetLib() {
         if err == nil {
             defer resp.Body.Close()
             if resp.StatusCode>299 {
-                return []interface{}{"",nil,resp.StatusCode},nil
+                return []any{"",nil,resp.StatusCode},nil
             }
             s, err := ioutil.ReadAll(resp.Body)
             if err == nil {
-                return []interface{}{string(s), resp.Header, resp.StatusCode},nil
+                return []any{string(s), resp.Header, resp.StatusCode},nil
             }
         }
-        return []interface{}{"404 - Not found in web_custom()",nil,404},nil
+        return []any{"404 - Not found in web_custom()",nil,404},nil
     }
 
     slhelp["web_post"] = LibHelp{in: "loc_string,[]key_value_list", out: "result_string", action: "Perform a HTTP POST."}
-    stdlib["web_post"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_post"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_post",args,1,
             "2","string","[]interface {}"); !ok { return nil,err }
 
@@ -860,7 +860,7 @@ func buildNetLib() {
     }
 
     slhelp["download"] = LibHelp{in: "url_string", out: "local_name", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_name[#i0]. Includes console feedback."}
-    stdlib["download"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["download"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("download",args,1,"1","string"); !ok { return nil,err }
 
         fname, down_code := FileDownload(args[0].(string))
@@ -869,7 +869,7 @@ func buildNetLib() {
     }
 
     slhelp["web_download"] = LibHelp{in: "url_string,local_file", out: "bool_okay", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_file[#i0]."}
-    stdlib["web_download"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["web_download"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_download",args,1,"2","string","string"); !ok { return nil,err }
         cont, down_code, _ := download(args[0].(string))
         if down_code<300 {
@@ -881,7 +881,7 @@ func buildNetLib() {
 
 }
 
-func post(loc string,valueMap interface{}) ([]byte,bool) {
+func post(loc string,valueMap any) ([]byte,bool) {
     var s []byte
     vlist := url.Values{}
     switch valueMap:=valueMap.(type) {
@@ -891,7 +891,7 @@ func post(loc string,valueMap interface{}) ([]byte,bool) {
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     case map[string]string:
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
-    case map[string]interface{}:
+    case map[string]any:
         for k,val := range valueMap { vlist.Set(k,sf("%v",val)) }
     default:
         return []byte{},false

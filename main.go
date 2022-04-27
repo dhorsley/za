@@ -83,6 +83,7 @@ var sourceMap = make(map[uint32]uint32)
 // this is where all the translated source ends up
 var functionspaces = make([][]Phrase, SPACE_CAP)
 var basecode       = make([][]BaseCode, SPACE_CAP)
+var isSource       = make([]bool, SPACE_CAP)
 var bytecode       = make([]bc_block, 0)
 
 // expected parameters for each defined function
@@ -92,7 +93,6 @@ var functionArgs = make([]fa_s, SPACE_CAP)
 var fairydust = make(map[string]string, FAIRY_CAP)
 
 // enum storage
-// var enum = make(map[string]map[string]interface{})
 var enum = make(map[string]*enum_s)
 
 // basename of module currently being processed.
@@ -220,7 +220,7 @@ var keywordset map[string]struct{}
 
 // list of struct fields per struct type
 // - used by INIT when defining a struct
-var structmaps map[string][]interface{}
+var structmaps map[string][]any
 
 // compile cache for regex operator
 var ifCompileCache map[string]regexp.Regexp
@@ -362,7 +362,7 @@ func main() {
     }
 
     // create the structure definition storage area
-    structmaps = make(map[string][]interface{})
+    structmaps = make(map[string][]any)
 
     // compile cache for regex operator
     ifCompileCache = make(map[string]regexp.Regexp)
@@ -413,7 +413,7 @@ func main() {
     gvset("mark_time", false)
 
     // - name of Za function that handles ctrl-c.
-    vset(2,&mident,"trapInt", "")
+    vset(nil,2,&mident,"trapInt", "")
 
     // - show user stdin input
     gvset("@echo", true)
@@ -430,11 +430,11 @@ func main() {
 
     // initialise global parser
     parser=&leparser{}
-    parser.prectable=default_prectable
+    // parser.prectable=default_prectable
 
     // interpolation parser
     interparse=&leparser{}
-    interparse.prectable=default_prectable
+    // interparse.prectable=default_prectable
 
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
@@ -745,7 +745,7 @@ func main() {
 
             // user-trap handling
 
-            userSigIntHandler,usihfound:=vget(2,&mident,"trapInt")
+            userSigIntHandler,usihfound:=vget(nil,2,&mident,"trapInt")
             usih:=""
             if usihfound {
                 switch userSigIntHandler.(type) {
@@ -764,7 +764,7 @@ func main() {
 
                 // calc arguments from string
 
-                var iargs []interface{}
+                var iargs []any
                 if argString!="" {
                     argString = stripOuter(argString, '(')
                     argString = stripOuter(argString, ')')
@@ -809,7 +809,7 @@ func main() {
                 var trident [szIdent]Variable
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
-                    sigintreturn := calltable[loc].retvals.([]interface{})
+                    sigintreturn := calltable[loc].retvals.([]any)
                     if len(sigintreturn)>0 {
                         switch sigintreturn[0].(type) {
                         case int:
@@ -821,8 +821,8 @@ func main() {
                         }
                     }
                 }
-                calltable[loc].gcShyness=20
-                calltable[loc].gc=true
+                calltable[loc].gcShyness=0
+                calltable[loc].gc=false
             } else {
                 finish(false, 0)
                 pf("\n[#2]User Interrupt![#-] ")
@@ -1007,7 +1007,7 @@ func main() {
 
             sig_int = false
 
-            var emask interface{}
+            var emask any
             var echoMask string
             var ok bool
 
@@ -1082,7 +1082,7 @@ func main() {
 
                 for p := 0; p < len(input);  {
 
-                    t := nextToken(input, &cl, p)
+                    t := nextToken(input, 0, &cl, p)
                     if t.tokPos != -1 {
                         p = t.tokPos
                     }
@@ -1229,8 +1229,10 @@ func main() {
         currentModule="main"
         // pf("[main] loc -> %d\n",mainloc)
         Call(MODE_NEW, &mident, mainloc, ciMain)
-        calltable[mainloc].gcShyness=20
-        calltable[mainloc].gc=true
+        // calltable[mainloc].gcShyness=20
+        // calltable[mainloc].gc=true
+        calltable[mainloc].gcShyness=0
+        calltable[mainloc].gc=false
     }
 
     // a little paranoia to finish things off...

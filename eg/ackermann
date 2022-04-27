@@ -7,6 +7,7 @@ define ackermann(m,n)
     setglob calls = calls + 1
 #    print "[#"+rand(7)+"]*",calls,"*"
     if glob_key("memoA",`{m},{n}`)
+#        println "found cache for {m},{n}."
         return memoA[`{m},{n}`]
     endif
 
@@ -15,7 +16,7 @@ define ackermann(m,n)
 
     o=ackermann(m-1,ackermann(m,n-1))
     setglob memoA[`{m},{n}`] = o
-
+#    println "memoized {m},{n}."
     return o
 
 end

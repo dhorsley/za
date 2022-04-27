@@ -7,12 +7,14 @@ module "./modules/timing.mod"
 max_count=100_000_000
 input max_count optarg 1
 
+interpol(false)
 ts=epoch_nano_time()
 for x=1 to max_count
 endfor
 println "x: ",kind(x)," ",x
 te=epoch_nano_time()
 assert x==max_count
+interpol(true)
 
 #
 # END

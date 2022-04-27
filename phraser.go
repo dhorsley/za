@@ -3,12 +3,13 @@ package main
 import (
     str "strings"
     "sync"
-    "sync/atomic"
+//    "sync/atomic"
+    "fmt"
 )
 
 // global binding list - populated during phrasing
 var bindings = make([]map[string]uint64,SPACE_CAP)
-var bindlock = &sync.Mutex{}
+var bindlock = &sync.RWMutex{}
 
 func bindResize() {
     newar:=make([]map[string]uint64,cap(bindings)*2)
@@ -16,74 +17,51 @@ func bindResize() {
     bindings=newar
 }
 
-// @catwalk: var ;p/09<F7>
-
-type lru_bind struct {
-    name string
-    res uint64
-    fs uint32
-    used bool
-}
-
-var lru_bind_cache [sz_lru_cache]lru_bind
-
-func add_lru_bind_cache(fs uint32,name string,res uint64) {
-    copy(lru_bind_cache[1:],lru_bind_cache[:sz_lru_cache-1])
-    lru_bind_cache[0]=lru_bind{fs:fs,name:name,res:res,used:true}
-}
-
-/*
-func invalidate_lru_bind_cache() {
-    for e:=0; e<sz_lru_cache; e+=1 {
-        lru_bind_cache[e]=lru_bind{fs:0,name:"",res:0}
-    }
-    // fmt.Printf("cache invalidated!\n")
-}
-*/
-
 
 func bind_int(fs uint32,name string) (i uint64) {
 
-    var locked bool
-    if atomic.LoadInt32(&concurrent_funcs)>0 { locked=true; bindlock.Lock() }
+    // fmt.Printf("Bind request for %s (fs:%d)\nToken: %#v\n",name,fs,tok)
 
-    for e:=range lru_bind_cache {
-        if lru_bind_cache[e].used==false { break }
-        // fmt.Printf("cache entry [%d] -> %+v\n",e,lru_bind_cache[e])
-        if fs==lru_bind_cache[e].fs {
-            if strcmp(name,lru_bind_cache[e].name) {
-                // fmt.Printf("[%d] %s -> found in lru cache\n",fs,name)
-                res:=lru_bind_cache[e].res
-                if locked { bindlock.Unlock() }
-                return res
-            }
-        }
+    bindlock.Lock()
+    defer bindlock.Unlock()
+
+    /*
+    // create room for bindings if higher fs than previous max:
+    if fs>=uint32(cap(bindings)) {
+        bindResize()
     }
+    */
 
     if bindings[fs]==nil {
         bindings[fs]=make(map[string]uint64)
+        // fmt.Printf("** CLEANED BINDINGS FOR FS %d\n",fs)
     }
 
     var present bool
     i,present=bindings[fs][name]
-
     if present {
-        add_lru_bind_cache(fs,name,i)
-        if locked { bindlock.Unlock() }
         return
     }
 
-    if fs>=uint32(cap(bindings)) {
-        bindResize()
+    // assign if unused:
+    loop:=true
+    i=uint64(len(bindings[fs]))
+    for ; loop ; {
+        loop=false
+        for _,vp:=range bindings[fs] {
+            if vp==i {
+                i++
+                loop=true
+                break
+            }
+        }
+        if !loop { break }
     }
 
-    i=uint64(len(bindings[fs]))
     bindings[fs][name]=i
-    add_lru_bind_cache(fs,name,i)
-    if locked { bindlock.Unlock() }
-    // fmt.Printf("[bi] added binding in #%d for %s to %d\n",fs,name,i)
     return
 }
+
 
 func getFileFromIFS(ifs uint32) (string) {
     if ifs==1 { return "main" }
@@ -122,6 +100,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     var defNest int             // C_Define nesting
 
     lmv,_:=fnlookup.lmget(fs)
+    isSource[lmv]=true
 
     fspacelock.Lock()
     functionspaces[lmv] = []Phrase{}
@@ -137,7 +116,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     for ; pos < len(input); {
 
-        tempToken = nextToken(input, &curLine, pos)
+        tempToken = nextToken(input, lmv, &curLine, pos)
         eof=tempToken.eof
 
         if on_found && do_found || ! (on_found || do_found) {
@@ -205,7 +184,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
         if tokenType == Error {
-            pf("Error found on line %d in %s\n", curLine+1, tempToken.carton.tokText)
+            fmt.Printf("Error found on line %d in %s\n", curLine+1, tempToken.carton.tokText)
             break
         }
 
@@ -234,18 +213,9 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                     base.Original=input[lstart:pos]
                     if borpos>=0 {
                         base.borcmd=input[borpos:pos]
-                        // base.borcmd=str.Replace(base.borcmd, `\\`, "\\", -1)
-                        /*
-                        pf("borcmd found @ %d\n",borpos)
-                        pf("start        @ %d\n",lstart)
-                        pf("in from start -> %s\n",input[lstart:pos])
-                        pf("borcmd -> ·%s·\n",base.borcmd)
-                        */
                     }
-                    // if tempToken.carton.tokType == EOL { base.Original=base.Original[:pos-lstart-1] }
                     if tempToken.carton.tokType == EOL {
                         base.Original=base.Original[:pos-lstart-1]
-                        // base.Original=str.Replace(base.Original, `\\`, "\\", -1)
                     }
 
                 } else {
@@ -269,7 +239,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             // -- discard empty lines, add phrase to func store
             if phrase.TokenCount!=0 {
                 // -- add phrase to function
-                // fmt.Printf("adding phrase (in #%d): %+v\n",lmv,phrase)
+                // pf("\n[#4]for phrase text : %v\n",phrase.Tokens)
+                // pf("\n[#6]adding phrase (in #%d): %#v[#-]\n",lmv,phrase)
                 fspacelock.Lock()
                 functionspaces[lmv] = append(functionspaces[lmv], phrase)
                 basecode[lmv]       = append(basecode[lmv], base)

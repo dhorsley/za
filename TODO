@@ -9,7 +9,7 @@ lots, i'm sure.
 TODO
 ----
 
-    * tested compilation with go 1.18beta
+    * tested compilation with go 1.18
         - execution speed up of up to 10%, dependant on operation type.
             - most things remained at the same speed.
         - no issues with build compilation on linux (libc+alpine).
@@ -22,46 +22,21 @@ TODO
                 - there's probably a few prime candidates in lib-list.go
         - should check for potential use case of Cut vs Index(Byte|Rune|etc) and similar.
         - convert interface{} to any, where possible?
+            - DONE - changed references (where possible) of 'interface{}' to 'any'
+            - DONE - needed to update required go version in the Go modules file.
 
-    * 1.1.2: bug fixes
 
+    * add a hex_string=s3sum(filename_string[,blocksize_int]) call?
+        - need to convert s3checksum C source to Go.
+        - would be used to compare against an S3 header ETAG field to verify 
+            either single or multi-part downloads
+        - may need to do something to auto-detect block size based on size of first
+            block when multi-part formulated and block size not provided as param?
+        - would assume a default blocksize of 8192*1024 if not provided, but needed.
+            
 
 LATER / UNDECIDED
 -----------------
-
-    * look at lvalue evaluation possibilities in dparse():
-
-        - at first glance, needs something like this doing...
-
-            add a rvalue flag to identifiers, default to false ( assume lvalue )
-            in phraser: add loop, setting rvalue only after equals sign
-            if no assignment present then reset all identifiers in line to rvalue
-            change associativity of = assignment in dparse() (prec->0?)
-                needs to bind less tightly to left than right
-            deal with compound assignments too
-            add code to handle storage to lvalues if flag unset in dparse()
-                i.e. if !rvalue in identifier lookup then store current value?
-            change default expression behaviour in actor.go and eval.go to push
-                assignments through dparse instead of doAssign and similar.
-
-            also need to check if any of the above conflicts with pre/post inc/dec
-             or if that also needs attention.
-
-            additionally, how does this work with eval() and string interpolation?
-
-        - if the above is even close to the correct course of action, then this would be
-            a fairly substantial set of changes, which would require a minor version to
-            themselves. 
-
-        - hard to say if there would be any performance benefits of doing this without
-            actually doing it! compound assignments would definitely be faster, but 
-            probably not enough to justify forging ahead with this yet.
-
-      Status : will hold off doing this until we have a feature requirement that demands
-                it. we should probably look at namespacing changes at same time if doing
-                this. i.e. we have not yet considered how the above would impact dot 
-                operator use either.
-
 
     * an actual type system:
         - something minimal, that doesn't get in the way of the interpreter
@@ -95,6 +70,22 @@ LATER / UNDECIDED
       Status: unlikely. can't see the need for the type yet. this may change, but it feels like a
                 new feature just for the sake of it currently.
 
+    * remaining issues post bind_int() changes:
+        - race cond on ident write (vset): see ~/ttest
+            - mainly to do with the time between reading a value and performing 
+                doAssign() to update it in wrappedEval() function.
+            - we can't lock the read+write as the read may invoke further 
+                function calls recursively calling back through wrappedEval().
+        - this is to be expected. you can't protect shared globals during fast
+            switches without agressive locking.
+        - we have a little protection around some operations, but it breaks down
+            at high speeds. the protection is more for the implementation internals.
+
+      Status: don't think i'll be doing much about this, except:
+                - advising avoiding using shared memory at speed
+                - maybe add some locking capability at the user level
+                - advising to make changes to shared state sporadically in batches.
+            it's a lot of work to fix this for a toy language.
 
     * add big.Rat?
 
@@ -108,47 +99,6 @@ LATER / UNDECIDED
 
       Status: again, this depends on generics adoption. it would seem to be the only sane way to 
                 reduce the mess.
-
-
-    * review/fix all of the "@todo"'s in the source! (only a few left now)
-        - checked/partially done.
-            - the remaining ones aren't anything to worry about just yet.
-            - just a couple left:
-                - MODE_STATIC entry points and web page proxy body rewrites
-                - these are definitely not getting done yet.
-                    - no technical reason not to, other than laziness on my part.
-                    - they can wait for next major version - no rush for these.
-
-      Status: partially done. will only be going further with MODE_STATIC if we need something like
-                python generators. this would probably look something like:
-
-                on initial fn entrance, have it run async. (maybe a generate() stdlib function?)
-                on yield(x) just pause it and have another special statement or stdlib call to 'resume'/next()?
-                would still needs a mechanism for returning the intermediate result.
-                this could probably just be done with a channel as an extension to the existing ASYNC handling maybe.
-
-            so... not doing anything with that yet, there's bigger things to deal with first.
-
-
-    * make fixed size variable backing stores dynamic arrays?
-        - currently a fixed var count per func of 320
-        - this should be autoscaled instead as it slows down recursion and reserves a little more
-            memory than really necessary.
-        - it was previously dynamic under the last var storage scheme, just have not got around
-            to doing anything about it yet.
-
-        - update: tested with a fixed size of 32 instead, but didn't change overheads significantly
-            enough to warrant making this dynamic. negligible speed differences with x10 smaller
-            backing arrays.
-
-            also tested with fixed size of 160 (half) and made no difference to mem alloc in eg/mon.
-
-            so, probably going to scrap the dynamic change and may even increase the fixed size.
-            ( empty var struct is 40 bytes. 320*40=12800 bytes per func instance )
-            obviously, we wouldn't do this in a compiler or anything trying to approach optimal.
-            it just doesn't feel like a burden worth reducing for expected use cases.
-
-      Status: no plans to implement.
 
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support

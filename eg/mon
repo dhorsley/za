@@ -41,7 +41,6 @@ define bar(row,col,hsize,pc,colour)
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        # on e<d.int do c="█"
         on e<d.int do c="▪"
         if e>=d.int and e<int(d+1)
             on r>=0.25*us do c=part_1q
@@ -81,7 +80,7 @@ end
 define showEnv()
     pane select "envs"
     print linecolour; pane redraw
-    header("{=tink} Environment [#-]")
+    header(tink+" Environment [#-]")
 
     clear(2,11,1)
     cursoroff()
@@ -111,7 +110,7 @@ define showFiles()
 
         pane select "files"
         print linecolour; pane redraw
-        header("{=tink} Files [#-]")
+        header(tink+" Files [#-]")
 
         clear(1,4,1)
 
@@ -141,7 +140,7 @@ define showMem()
 
     pane select "mem"
     print linecolour; pane redraw
-    header("{=tink} Memory [#-]")
+    header(tink+" Memory [#-]")
 
     cursoroff()
 
@@ -348,7 +347,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     pane select "cpu"
     print linecolour; pane redraw
-    header("{=tink} CPU [#-]")
+    header(tink+" CPU [#-]")
 
     activity_bg=" "
     activity_indicator="▪"
@@ -551,7 +550,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     pane select "net"
     print linecolour; pane redraw
-    header("{=tink} Network [#-]")
+    header(tink+" Network [#-]")
 
     at 2,4,"Interface [{interface}] Addr : {ipaddr} "
 
@@ -594,7 +593,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             # traffic plots
             clear(3,7,1)
             clear(9,13,1)
-            # log each value to with n=64, convert to a percentage, then clamp between 0-100. convert result to []int and chart.
+            # logn each value with n=64, convert to a percentage, then clamp between 0-100. convert result to []int and chart.
             chart(midline-1,2,5,
                 ( (rblist[1:] -> "[20*logn(#,64),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(0,2.5*?,2.5*?)",false,false)
             chart(midline+1,2,5,
@@ -760,6 +759,7 @@ while !quit
 
     t  = epoch_nano_time()
     d  = date_human(t/1_000_000_000)
+
     dt = float(t-lt) / 1_000_000
     dts= format("frame: %.2fms",dt)
     lt = t

@@ -14,7 +14,7 @@ import (
  *  called by stdlib functions for validating parameter types from user.
  *  it adds a small performance penalty but seemed the only sane option.
 */
-func expect_args(name string, args []interface{}, variants int, types... string) (bool,error) {
+func expect_args(name string, args []any, variants int, types... string) (bool,error) {
     next:=0
     var tryNext bool
     var triedOne bool

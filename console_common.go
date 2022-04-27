@@ -720,7 +720,7 @@ func printWithWrap(s string) {
 // generic vararg print handler. also moves cursor in interactive mode
 // @TODO: this could use some attention to reduce the differences
 //        between interactive/non-interactive source
-func pf(s string, va ...interface{}) {
+func pf(s string, va ...any) {
 
     s = sf(sparkle(s), va...)
 
@@ -762,7 +762,7 @@ func pf(s string, va ...interface{}) {
 }
 
 // apply ansi code translation to inbound strings
-func sparkle(a interface{}) string {
+func sparkle(a any) string {
     switch a:=a.(type) {
     case string:
         return fairyReplacer.Replace(a)
@@ -771,7 +771,7 @@ func sparkle(a interface{}) string {
 }
 
 // logging output printer
-func plog(s string, va ...interface{}) {
+func plog(s string, va ...any) {
 
     // print if not silent logging
     if v, _ := gvget("@silentlog"); v.(bool) {

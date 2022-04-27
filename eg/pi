@@ -6,7 +6,7 @@ input digs optarg 1 is "Number of digits to calculate."
 
 var q,t,k bigi   = 1n
 var l,n bigi     = 3n
-var l bigi     = 3n
+var l bigi       = 3n
 var r,nn,nr bigi = 0n
 spacecur=-1
 iter=0

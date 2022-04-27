@@ -1,4 +1,4 @@
-#!/usr/local/bin/gawk -f
+#!/usr/bin/gawk -f
 BEGIN {
     n=20000000
 
