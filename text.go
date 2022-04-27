@@ -86,7 +86,7 @@ func sanitise(s string) string {
     var ns str.Builder
     pass:=true
     nest:=0
-    for p:=0;p<len(s); p++ {
+    for p:=0;p<len(s); p+=1 {
         if s[p]=='{' { nest+=1; pass=false }
         if s[p]=='}' {
             if nest!=0 {
@@ -126,7 +126,7 @@ func stripDoubleQuotes(s string) string {
 
 func stripOuterQuotes(s string, maxdepth int) string {
 
-	for ; maxdepth > 0; maxdepth-- {
+	for ; maxdepth > 0; maxdepth-=1 {
 		s = stripSingleQuotes(s)
 		s = stripDoubleQuotes(s)
 		if !(hasOuterSingleQuotes(s) || hasOuterDoubleQuotes(s)) {

@@ -12,9 +12,7 @@ gridstyle           = `stroke:yellow;`
 
 # create an image file
 h=svg_start(loc,500,500)
-if h==nil
-    exit 1, "Invalid handle."
-endif
+on h==nil do exit 1, "Invalid handle."
 
 # meta tags
 svg_title(h,"svg demo")

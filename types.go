@@ -37,13 +37,13 @@ type fa_s struct { // function args struct
 
 
 // ExpressionFunction can be called from within expressions.
-type ExpressionFunction = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (interface{}, error)
+type ExpressionFunction = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (any, error)
 
 
 // za variable
 type Variable struct {
     IName       string
-    IValue      interface{}
+    IValue      any
     IKind       uint8
     ITyped      bool
     declared    bool
@@ -51,10 +51,12 @@ type Variable struct {
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
-    tokVal              interface{} // raw value storage
+    tokVal              any         // raw value storage
 	tokText             string      // the content of the token
 	tokType             uint8       // token type from list in constants.go
     subtype             uint8       // sub type of identifiers
+    bound               bool
+    bindpos             uint64
     la_else_distance    int16       // look ahead markers
     la_end_distance     int16
     la_has_else         bool
@@ -73,8 +75,9 @@ type call_s struct {
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
     gcShyness   uint32      // how many turns of the allocator before final disposal
+    disposable  bool
 	fs          string      // the text name of the calling party
-	retvals     interface{} // returned values from the call
+	retvals     any         // returned values from the call
 }
 
 func (cs call_s) String() string {
@@ -116,7 +119,7 @@ type whenCarton struct {
 	endLine   int16       // where is the endWhen, so that we can break or skip to it
 	performed bool        // set to true by the matching clause
 	dodefault bool        // set false when another clause has been active
-	value     interface{} // the value should only ever be a string, int or float. IN only works with numbers.
+	value     any         // the value should only ever be a string, int or float. IN only works with numbers.
 }
 
 
@@ -124,7 +127,7 @@ type whenCarton struct {
 type ExpressionCarton struct {
 	assignVar string      // name of var to assign to
 	text      string      // total expression
-	result    interface{} // result of evaluation
+	result    any         // result of evaluation
     errVal    error
     assignPos int
 	assign    bool        // is this an assignment expression
@@ -133,7 +136,7 @@ type ExpressionCarton struct {
 
 // struct for enum members
 type enum_s struct {
-    members   map[string]interface{}
+    members   map[string]any
     ordered   []string
 }
 
@@ -141,6 +144,7 @@ type enum_s struct {
 // struct for loop internals
 type s_loop struct {
 	loopVar          string           // name of counter
+	loopVarBinding   uint64           // name binding lookup from loop name token
 	counter          int              // current position in loop
 	condEnd          int              // terminating position value
 	forEndPos        int16            // ENDFOR location (statement number in functionspace)
@@ -149,7 +153,7 @@ type s_loop struct {
 	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
 	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
     iterOverMap      *reflect.MapIter // stored iterator
-	iterOverArray    interface{}      // stored value to iterate over from start expression
+	iterOverArray    any              // stored value to iterate over from start expression
 	repeatCond       []Token          // tested with wrappedEval() // used by while
 	repeatActionStep int              // size of repeatAction
 	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC

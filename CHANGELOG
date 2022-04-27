@@ -48,6 +48,7 @@ CHANGE LOG
             a,b=exec("for e = 1 to 10; endfor; return e,e*2")
             # a==10, b==20
         - will possibly add a separate permit() key for this action.
+    * added some additional type conversions to some of the list_*() functions
     * ftell() and stat() file functions added.
         - ftell(): returns file pointer position in open file handle.
         - stat(): returns a struct of more detailed file attributes.
@@ -65,6 +66,8 @@ CHANGE LOG
         - write buffer flush.
         - not previously present. equivalent of (*os.File).Sync() in Go.
 
+    * added md5sum, sha1sum, sha224sum and sha256sum library calls.
+
 
     fixes
     -----
@@ -73,7 +76,6 @@ CHANGE LOG
     other
     -----
 
-    * added lhs interpolation back in for simple assignments.
     * added uint32 and uint64 as available types for VAR.
         - added aliases of ulong and uxlong respectively.
 
@@ -84,6 +86,8 @@ CHANGE LOG
         - divides each element by other operand or operand by each element
         - element divide by int/float zero returns error
         - int/float divide by element of zero, returns zero
+        - these were added mainly for scaling sets of values.
+            - if there is a requirement for similar operations using addition and subtraction they may be added.
 
     * (experimental) added clamping operator:
         - this re-uses the subscript/range operators:

@@ -15,7 +15,7 @@ func buildRegexLib() {
     }
 
     slhelp["reg_replace"] = LibHelp{in: "var,regex,replacement[,int_flags]", out: "string", action: "Replaces matches found in [#i1]var[#i0] with [#i1]regex[#i0] to [#i1]replacement[#i0]."}
-    stdlib["reg_replace"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["reg_replace"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("reg_replace",args,2,
             "3","string","string","string",
             "4","string","string","string","int"); !ok { return nil,err }
@@ -33,7 +33,7 @@ func buildRegexLib() {
     }
 
     slhelp["reg_match"] = LibHelp{in: "string,regex", out: "bool", action: "Does [#i1]string[#i0] contain a match for regular expression [#i1]regex[#i0]?"}
-    stdlib["reg_match"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["reg_match"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("reg_match",args,1,"2","string","string"); !ok { return "",err }
         b:=args[0].(string)
         if args[1].(string)=="" { return true,nil }
@@ -47,7 +47,7 @@ func buildRegexLib() {
     }
 
     slhelp["reg_filter"] = LibHelp{in: "string,regex[,count]", out: "[][start_pos,end_pos]", action: "Returns a list of start and end positions where matches were encountered."}
-    stdlib["reg_filter"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+    stdlib["reg_filter"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("reg_filter",args,1,
             "2","string","string"); !ok { return "",err }
         re := pcre.MustCompileParseJIT(args[1].(string),pcre.STUDY_JIT_COMPILE)
