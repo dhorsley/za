@@ -8,8 +8,8 @@ tgt="default"
 ipath="/usr/bin"
 gobin="go"
 
-for e = 1 to argc()
-    input do_what optarg e
+for a = 1 to argc()
+    input do_what optarg a
     when $lc do_what
         is "help"
             exit 0,`\n./build [libc|win|alpine] [upx] [strip] [-path "install_path"]\n`
@@ -20,8 +20,8 @@ for e = 1 to argc()
         is "win"    ; tgt="win"
         is "beta"   ; gobin="gobe"
         is "-path"
-            ipath=argv()[e]
-            e++
+            ipath=argv()[a]
+            a++
             println "install path changed to {ipath}"
     endwhen
 endfor
@@ -35,11 +35,11 @@ GCLIMIT = "madvdontneed=0 GOGC=80 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
 GCCGOFLAGS=""
-doc ` uncomment line below for testing with GCC-GO compiler:
+doc " uncomment line below for testing with GCC-GO compiler:
     GCCGOFLAGS = `-compiler=gccgo -gccgoflags='-O3 -march=native -ffast-math -lpthread'`
-`
+"
 
-bvers =  "1.1.2"
+bvers = "1.1.2"
 bdate =< date "+%d-%m-%Y %H:%M"
 
 strStrip    = ?? strip_enable "-stripped" : ""

@@ -122,6 +122,10 @@ func (parser *leparser) report(line int16,s string) {
         pf("\n[#CTE]")
     }
 
+    if debug_level>0 {
+        pf("\nBindings : %#v\n",bindings[ifs])
+    }
+
 }
 
 
@@ -143,10 +147,10 @@ func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string
 }
 
 
-// I'm so lazy... snippet below for calculating byte size of interface{}
+// I'm so lazy... snippet below for calculating byte size of any
 // DmitriyVTitov @ https://github.com/DmitriyVTitov/size/blob/master/size.go
 
-func Of(v interface{}) int {
+func Of(v any) int {
     cache := make(map[uintptr]bool) // cache with every visited Pointer for recursion detection
     return sizeOf(reflect.Indirect(reflect.ValueOf(v)), cache)
 }

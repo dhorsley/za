@@ -15,4 +15,4 @@ q()
 
 println "post def"
 println z
-dump("main")
+

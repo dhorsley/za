@@ -44,7 +44,7 @@ type lcstruct struct {
 
 
 /// get the next available token, as a struct, from a given string and starting position.
-func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
+func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct) {
 
     lenInput:=len(input)
 
@@ -279,7 +279,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
                     expectant=true
                     tu='E'
                 }
-                norepeatMap[input[currentChar]]++
+                norepeatMap[input[currentChar]]+=1
                 if norepeatMap[tu]>1 {
                     // end word at char before
                     word=input[thisWordStart:currentChar]
@@ -330,7 +330,7 @@ func nextToken(input string, curLine *int16, start int) (rv *lcstruct) {
         } // eo-numeric-literal
 
         if matchQuote && input[currentChar]=='\n' {
-            (*curLine)++
+            (*curLine)+=1
         }
 
         if matchQuote && input[currentChar]=='\\' {
@@ -760,9 +760,17 @@ get_nt_eval_point:
     }
 
     if tokType == 0 { // assume it was an identifier
-        // pf("(lex) fallthrough to default with '%v'.\n",word)
         tokType = Identifier
         startNextTokenAt=currentChar
+
+        // add token's bind_int value
+        if len(word)>0 {
+            bin:=bind_int(fs,word)
+            carton.bindpos=bin
+            carton.bound=true
+            // pf("[#3]lex:bound %s in fs %d with bin %d[#-]\n",word,fs,bin)
+        }
+
         if strcmp(word,"true")  { carton.subtype=subtypeConst ; carton.tokVal=true }
         if strcmp(word,"false") { carton.subtype=subtypeConst ; carton.tokVal=false }
         if strcmp(word,"nil")   { carton.subtype=subtypeConst ; carton.tokVal=nil }
@@ -771,6 +779,7 @@ get_nt_eval_point:
 
     carton.tokType = tokType
     carton.tokText = word
+
 
 get_nt_exit_point:
     // you have to set carton.tokType + startNextTokenAt by hand if you jump directly to this exit point.

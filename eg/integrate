@@ -13,13 +13,14 @@ doc `
     do something about this one day, or improve the syntax of FOR to do away with while.
     That may additionally fold in the missing 'until' syntax and similar variations.)
     Inlining myexp() only leads to a small reduction in run-time, so the slowness is 
-    all in a) the disjointed lhs assignment work, b) setup time for operator precedence
-    in each function call, and c) variable storage overheads. The evaluator itself is,
-    surprisingly, not all that slow.
+    all in a) the disjointed lhs assignment work and/or b) variable storage overheads.
+    The evaluator itself is, surprisingly, not all that slow.
 `
-
 explimit = 100
 nstep = 0.000001
+
+input strNstep optarg 1
+on strNstep!="" do nstep=float(strNstep)
 
 def myexp(val)
     sum = 0f

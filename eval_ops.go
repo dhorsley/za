@@ -15,7 +15,7 @@ import (
 )
 
 
-func typeOf(val interface{}) string {
+func typeOf(val any) string {
     if val == nil {
         return "nil"
     }
@@ -34,19 +34,19 @@ func typeOf(val interface{}) string {
         // pf("[ kind %#v ]\n", kind.String())
     }
 
-    if _, ok := val.([]interface{}); ok {
+    if _, ok := val.([]any); ok {
         pf("[ typeOf: array : %+v ]\n",val)
         return "array"
     }
 
-    if _, ok := val.(map[string]interface{}); ok {
+    if _, ok := val.(map[string]any); ok {
         return "object"
     }
 
     return sf("<unhandled type [%T]>",val)
 }
 
-func asBool(val interface{}) (b bool) {
+func asBool(val any) (b bool) {
     switch v:=val.(type) {
     case bool:
         b = v
@@ -64,7 +64,7 @@ func asBool(val interface{}) (b bool) {
     return b
 }
 
-func as_integer(val interface{}) int {
+func as_integer(val any) int {
     switch v:=val.(type) {
     case nil:
         return int(0)
@@ -86,7 +86,7 @@ func as_integer(val interface{}) int {
 }
 
 
-func ev_range(val1 interface{}, val2 interface{}) ([]int) {
+func ev_range(val1 any, val2 any) ([]int) {
 
     if sf("%T",val1)!=sf("%T",val2) {
         // error, types must match
@@ -117,7 +117,7 @@ func ev_range(val1 interface{}, val2 interface{}) ([]int) {
 
 }
 
-func ev_in(val1 interface{}, val2 interface{}) (bool) {
+func ev_in(val1 any, val2 any) (bool) {
     switch vl:=val2.(type) {
     case []string:
         for _, b := range vl { if b == val1 { return true } }
@@ -139,7 +139,7 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
         for _, f = range vl {
             if GetAsBigFloat(val1).Cmp(f)==0 { return true }
         }
-    case []interface{}:
+    case []any:
         for _, b := range vl { if b == val1 { return true } }
     default:
         panic(fmt.Errorf("IN operator requires a list to search"))
@@ -148,7 +148,7 @@ func ev_in(val1 interface{}, val2 interface{}) (bool) {
 }
 
 
-func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
+func ev_add(val1 any, val2 any) (r any) {
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -277,8 +277,8 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     }
 
     // array concatenation
-    arr1, arr1OK := val1.([]interface{})
-    arr2, arr2OK := val2.([]interface{})
+    arr1, arr1OK := val1.([]any)
+    arr2, arr2OK := val2.([]any)
     if arr1OK && arr2OK { return append(arr1, arr2...) }
 
     arrb1, arrb1OK := val1.([]bool)
@@ -301,11 +301,11 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     arrs2, arrs2OK := val2.([]string)
     if arrs1OK && arrs2OK { return append(arrs1, arrs2...) }
 
-    obj1, obj1OK := val1.(map[string]interface{})
-    obj2, obj2OK := val2.(map[string]interface{})
+    obj1, obj1OK := val1.(map[string]any)
+    obj2, obj2OK := val2.(map[string]any)
 
     if obj1OK && obj2OK {
-        sum := make(map[string]interface{})
+        sum := make(map[string]any)
         for k, v := range obj1 {
             sum[k] = v
         }
@@ -318,7 +318,7 @@ func ev_add(val1 interface{}, val2 interface{}) (r interface{}) {
     panic(fmt.Errorf("type error: cannot add or concatenate type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_sub(val1 any, val2 any) (any) {
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -389,7 +389,7 @@ func ev_sub(val1 interface{}, val2 interface{}) (interface{}) {
     panic(fmt.Errorf("type error: cannot subtract type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
-func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_mul(val1 any, val2 any) (any) {
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -465,12 +465,12 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     // int * struct = repeat
     s1ok := reflect.ValueOf(val1).Kind() == reflect.Struct
     s2ok := reflect.ValueOf(val2).Kind() == reflect.Struct
-    if (intInOne && s2ok) && val1.(int)>=0 { var ary []interface{}; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2) }; return ary }
-    if (intInTwo && s1ok) && val2.(int)>=0 { var ary []interface{}; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1) }; return ary }
+    if (intInOne && s2ok) && val1.(int)>=0 { var ary []any; for e:=0; e<val1.(int); e+=1 { ary=append(ary,val2) }; return ary }
+    if (intInTwo && s1ok) && val2.(int)>=0 { var ary []any; for e:=0; e<val2.(int); e+=1 { ary=append(ary,val1) }; return ary }
 
     // int * []number = multiply each element
     switch val1.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
         switch val2.(type) {
         case int:
             ary1,er:=stdlib["list_int"](0,nil,val1)
@@ -487,7 +487,7 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
         }
     }
     switch val2.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
         switch val1.(type) {
         case int:
             ary2,er:=stdlib["list_int"](0,nil,val2)
@@ -507,7 +507,7 @@ func ev_mul(val1 interface{}, val2 interface{}) (interface{}) {
     panic(fmt.Errorf("type error: cannot multiply type %T (val:%v) and %T (val:%v)", val1, val1, val2, val2))
 }
 
-func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_div(val1 any, val2 any) (any) {
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -579,7 +579,7 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
 
     // int / []number = divide by/into each element
     switch val1.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
         switch val2.(type) {
         case int:
             if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
@@ -598,7 +598,7 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
         }
     }
     switch val2.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []interface{}:
+    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
         switch val1.(type) {
         case int:
             ary2,er:=stdlib["list_int"](0,nil,val2)
@@ -634,7 +634,7 @@ func ev_div(val1 interface{}, val2 interface{}) (interface{}) {
     panic(fmt.Errorf("type error: cannot divide type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_mod(val1 any, val2 any) (any) {
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -701,7 +701,7 @@ func ev_mod(val1 interface{}, val2 interface{}) (interface{}) {
     panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
+func ev_pow(val1 any, val2 any) (any) {
 
     var intInOne, intInTwo, bf1, bf2, bint1, bint2 bool
     var int1 int
@@ -757,7 +757,7 @@ func ev_pow(val1 interface{}, val2 interface{}) (interface{}) {
     panic(fmt.Errorf("type error: cannot perform exponentiation on type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func ev_shift_left(left,right interface{}) (interface{}) {
+func ev_shift_left(left,right any) (any) {
     // both must be integers
     intInOne:=true; uintInTwo:=true; uintInOne:=false
     var uint1 uint
@@ -793,7 +793,7 @@ func ev_shift_left(left,right interface{}) (interface{}) {
 
 }
 
-func ev_shift_right(left,right interface{}) (interface{}) {
+func ev_shift_right(left,right any) (any) {
     // both must be integers
     intInOne:=true; uintInTwo:=true; uintInOne:=false
     var uint1 uint
@@ -828,7 +828,7 @@ func ev_shift_right(left,right interface{}) (interface{}) {
     panic(fmt.Errorf("shift operations only work with integers"))
 }
 
-func unaryNegate(val interface{}) (interface{}) {
+func unaryNegate(val any) (any) {
     switch i:=val.(type) {
     case bool:
         // pf("returning negative\n")
@@ -837,7 +837,7 @@ func unaryNegate(val interface{}) (interface{}) {
     panic(fmt.Errorf("cannot negate a non-bool"))
 }
 
-func unaryPlus(val interface{}) (interface{}) {
+func unaryPlus(val any) (any) {
 
     var intVal int
     intInOne:=true
@@ -861,7 +861,7 @@ func unaryPlus(val interface{}) (interface{}) {
     panic(fmt.Errorf("type error: unary positive requires number, but was %s", typeOf(val)))
 }
 
-func unaryMinus(val interface{}) (interface{}) {
+func unaryMinus(val any) (any) {
 
     var intVal int
     intInOne:=true
@@ -891,7 +891,7 @@ func unaryMinus(val interface{}) (interface{}) {
 }
 
 
-func unaryFileInput(i interface{}) (string) {
+func unaryFileInput(i any) (string) {
     switch i.(type) {
     case string:
         s, err := ioutil.ReadFile(i.(string))
@@ -905,7 +905,7 @@ func unaryFileInput(i interface{}) (string) {
 }
 
 
-func deepEqual(val1 interface{}, val2 interface{}) (bool) {
+func deepEqual(val1 any, val2 any) (bool) {
 
     // special case for nil
     if val1==nil && val2==nil {
@@ -955,9 +955,9 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
 
     switch typ1 := val1.(type) {
 
-    case []interface{}:
+    case []any:
 
-        typ2, ok := val2.([]interface{})
+        typ2, ok := val2.([]any)
         if !ok || len(typ1) != len(typ2) {
             return false
         }
@@ -969,8 +969,8 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
         }
         return true
 
-    case map[string]interface{}:
-        typ2, ok := val2.(map[string]interface{})
+    case map[string]any:
+        typ2, ok := val2.(map[string]any)
         if !ok || len(typ1) != len(typ2) {
             return false
         }
@@ -1033,7 +1033,7 @@ func deepEqual(val1 interface{}, val2 interface{}) (bool) {
     return val1 == val2
 }
 
-func compare(val1 interface{}, val2 interface{}, operation string) (bool) {
+func compare(val1 any, val2 any, operation string) (bool) {
 
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)
@@ -1194,7 +1194,7 @@ func compareI64(val1 int64, val2 int64, operation string) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func asObjectKey(key interface{}) (string) {
+func asObjectKey(key any) (string) {
     s, ok := key.(string)
     if !ok {
         panic(fmt.Errorf("type error: object key must be string, but was %s", typeOf(key)))
@@ -1202,7 +1202,7 @@ func asObjectKey(key interface{}) (string) {
     return s
 }
 
-func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}) {
+func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
     switch obj:=obj.(type) {
 
@@ -1264,7 +1264,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
                     case reflect.Interface,reflect.String:
                         return slc.Interface()
                     default:
-                        return []interface{}{}
+                        return []any{}
                     }
 
                 case reflect.Interface:
@@ -1278,72 +1278,68 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 
         }
 
-        // default:
+        // try a function call..
+        // lhs_v would become the first argument of func lhs_f
 
-            // try a function call..
-            // lhs_v would become the first argument of func lhs_f
+        var isFunc bool
+        name:=field
 
-            var isFunc bool
-            name:=field
+        // parse the function call as module '.' funcname
+        nonlocal:=false
+        var there bool
 
-            // parse the function call as module '.' funcname
-            nonlocal:=false
-            var there bool
+        if _,there=funcmap[p.preprev.tokText+"."+name] ; there {
+            nonlocal=true
+            name=p.preprev.tokText+"."+name
+            isFunc=true
+        }
 
-            if _,there=funcmap[p.preprev.tokText+"."+name] ; there {
-                nonlocal=true
-                name=p.preprev.tokText+"."+name
-                isFunc=true
+        // check if stdlib or user-defined function
+        if !isFunc {
+            if _, isFunc = stdlib[name]; !isFunc {
+                isFunc = fnlookup.lmexists(name)
             }
+        }
 
-            // check if stdlib or user-defined function
-            if !isFunc {
-                if _, isFunc = stdlib[name]; !isFunc {
-                    isFunc = fnlookup.lmexists(name)
-                }
+        if !isFunc {
+            // before failing, check if this is a valid enum reference
+            globlock.RLock()
+            defer globlock.RUnlock()
+            if enum[p.preprev.tokText]!=nil {
+                return enum[p.preprev.tokText].members[name]
             }
+            // pf("\n\nobject: %v\n\n",obj)
+            panic(fmt.Errorf("no function, enum or record field found for %v", field))
+        }
 
-            if !isFunc {
-                // before failing, check if this is a valid enum reference
-                globlock.RLock()
-                defer globlock.RUnlock()
-                if enum[p.preprev.tokText]!=nil {
-                    return enum[p.preprev.tokText].members[name]
-                }
-                // pf("\n\nobject: %v\n\n",obj)
-                panic(fmt.Errorf("no function, enum or record field found for %v", field))
-            }
+        // user-defined or stdlib call 
 
-            // user-defined or stdlib call 
+        var iargs []any
+        if !nonlocal {
+            iargs=[]any{obj}
+        }
 
-            var iargs []interface{}
-            if !nonlocal {
-                iargs=[]interface{}{obj}
-            }
-
-            if p.peek().tokType==LParen {
-                p.next()
-                if p.peek().tokType!=RParen {
-                    for {
-                        dp,err:=p.dparse(0)
-                        if err!=nil {
-                            return nil
-                        }
-                        iargs=append(iargs,dp)
-                        if p.peek().tokType!=O_Comma {
-                            break
-                        }
-                        p.next()
+        if p.peek().tokType==LParen {
+            p.next()
+            if p.peek().tokType!=RParen {
+                for {
+                    dp,err:=p.dparse(0)
+                    if err!=nil {
+                        return nil
                     }
-                }
-                if p.peek().tokType==RParen {
-                    p.next() // consume rparen 
+                    iargs=append(iargs,dp)
+                    if p.peek().tokType!=O_Comma {
+                        break
+                    }
+                    p.next()
                 }
             }
+            if p.peek().tokType==RParen {
+                p.next() // consume rparen 
+            }
+        }
 
-            return callFunction(p.fs,p.ident,name,iargs)
-
-        // }
+        return callFunction(p.fs,p.ident,name,iargs)
 
     }
 
@@ -1351,7 +1347,7 @@ func (p *leparser) accessFieldOrFunc(obj interface{}, field string) (interface{}
 }
 
 
-func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (interface{}) {
+func accessArray(ident *[szIdent]Variable, obj any, field any) (any) {
 
      // pf("aa-typ : (%T)\n",obj)
      // pf("aa-obj : (%T) %+v\n",obj,obj)
@@ -1379,7 +1375,7 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
         return obj[field.(string)]
     case map[string]uint:
         return obj[field.(string)]
-    case map[string]interface{}:
+    case map[string]any:
         return obj[field.(string)]
     default:
 
@@ -1415,7 +1411,7 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
                     if len(obj)>ifield { return obj[ifield] }
                 case [][]int:
                     if len(obj)>ifield { return obj[ifield] }
-                case []interface{}:
+                case []any:
                     if len(obj)>ifield { return obj[ifield] }
                 default:
                     panic(fmt.Errorf("unhandled type %T in array access.",obj))
@@ -1433,7 +1429,7 @@ func accessArray(ident *[szIdent]Variable, obj interface{}, field interface{}) (
 
 }
 
-func slice(v interface{}, from, to interface{}) interface{} {
+func slice(v any, from, to any) any {
     str, isStr := v.(string)
     isArr:=false
     var arl int
@@ -1465,9 +1461,9 @@ func slice(v interface{}, from, to interface{}) interface{} {
     case [][]int:
         isArr=true
         arl= len(v.([][]int))
-    case []interface{}:
+    case []any:
         isArr=true
-        arl= len(v.([]interface{}))
+        arl= len(v.([]any))
     case int, uint, int32, int64, uint32, uint64, uint8, float32, float64, *big.Int, *big.Float:
         // clamp operator
         if from==nil && to!=nil { // only expressing upper limit
@@ -1543,28 +1539,14 @@ func slice(v interface{}, from, to interface{}) interface{} {
         return v.(string)[fromInt:toInt]
     case [][]int:
         return v.([][]int)[fromInt:toInt]
-    case []interface{}:
-        return v.([]interface{})[fromInt:toInt]
+    case []any:
+        return v.([]any)[fromInt:toInt]
     }
     return nil
 }
 
 
-func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []interface{}) (res interface{}) {
-
-    /*
-    pf("callFunction started with\nfs %v fn %v\n",evalfs,name)
-    pf("+ident of : %v\n",*ident)
-    */
-
-    /* // test removal - should probably not be interpolating arguments
-    for a:=0; a<len(args); a++ {
-        switch args[a].(type) {
-        case string:
-            args[a]=interpolate(evalfs,args[a].(string))
-        }
-    }
-    */
+func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []any) (res any) {
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1611,7 +1593,7 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []i
             case 0:
                 return nil
             case 1:
-                return res.([]interface{})[0]
+                return res.([]any)[0]
             default:
                 return res
             }

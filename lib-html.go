@@ -10,7 +10,7 @@ import (
 
 
 // convert string 'o' into a set of html element arguments.
-func getHtmlOptionsInterface(o map[string]interface{}) string {
+func getHtmlOptionsInterface(o map[string]any) string {
     var s string
     for k,v:=range o {
         s=sf(`%s%v='%v' `,s,k,v)
@@ -34,7 +34,7 @@ func getHtmlOptionsInt(o map[string]int) string {
     return s
 }
 
-func parseHtmlArgs(arg interface{}) (o string,e error) {
+func parseHtmlArgs(arg any) (o string,e error) {
     switch arg.(type) {
     case string:
         o=arg.(string)
@@ -42,8 +42,8 @@ func parseHtmlArgs(arg interface{}) (o string,e error) {
         o=getHtmlOptionsString(arg.(map[string]string))
     case map[string]int:
         o=getHtmlOptionsInt(arg.(map[string]int))
-    case map[string]interface{}:
-        o=getHtmlOptionsInterface(arg.(map[string]interface{}))
+    case map[string]any:
+        o=getHtmlOptionsInterface(arg.(map[string]any))
     default:
         return "",errors.New(sf("Bad arguments provided to argument parser (%T/%v)",arg,arg))
     }
@@ -61,7 +61,7 @@ func buildHtmlLib() {
     }
 
 	slhelp["wpage"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML page tag wrapping."}
-	stdlib["wpage"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wpage"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wpage",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -71,7 +71,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wbody"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML body tag wrapping."}
-	stdlib["wbody"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wbody"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wbody",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -81,7 +81,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["whead"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML head tag wrapping."}
-	stdlib["whead"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["whead"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("whead",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -91,7 +91,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wdiv"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML division tag wrapping."}
-	stdlib["wdiv"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wdiv"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wdiv",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -101,7 +101,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wp"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML paragraph tag wrapping."}
-	stdlib["wp"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wp"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wp",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -111,7 +111,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wimg"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML image tag."}
-	stdlib["wimg"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wimg"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wimg",args,1,"1","any"); !ok { return nil,err }
         var o string
         o,err=parseHtmlArgs(args[0])
@@ -120,7 +120,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wlink"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML hyper-link tag."}
-	stdlib["wlink"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wlink"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wlink",args,1,"1","any","0"); !ok { return nil,err }
         var o string
         o,err=parseHtmlArgs(args[0])
@@ -129,7 +129,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wa"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML anchor tag."}
-	stdlib["wa"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wa"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wa",args,2,"2","string","any","1","string"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -139,7 +139,7 @@ func buildHtmlLib() {
 	}
 
 	slhelp["wtable"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table tag wrapping."}
-	stdlib["wtable"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtable"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wtable",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -149,7 +149,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wthead"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table head tag wrapping."}
-	stdlib["wthead"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wthead"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         var content,o string
         if ok,err:=expect_args("wthead",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         content=sf("%v",args[0])
@@ -159,7 +159,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtbody"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML table body tag wrapping."}
-	stdlib["wtbody"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtbody"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wtbody",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -169,7 +169,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtr"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TR table row tag wrapping."}
-	stdlib["wtr"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtr"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wtr",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -179,7 +179,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wth"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TH table header tag wrapping."}
-	stdlib["wth"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wth"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wth",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -189,7 +189,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wtd"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML TD table data tag wrapping."}
-	stdlib["wtd"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wtd"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wtd",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -199,7 +199,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh1"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h1 header tag wrapping."}
-	stdlib["wh1"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh1"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wh1",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -209,7 +209,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh2"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h2 header tag wrapping."}
-	stdlib["wh2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wh2",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -219,7 +219,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh3"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h3 header tag wrapping."}
-	stdlib["wh3"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh3"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wh3",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -229,7 +229,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh4"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h4 header tag wrapping."}
-	stdlib["wh4"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh4"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wh4",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -239,7 +239,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wh5"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML h5 header tag wrapping."}
-	stdlib["wh5"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wh5"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wh5",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -249,7 +249,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wol"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML ordered list tag wrapping."}
-	stdlib["wol"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wol"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wol",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -259,7 +259,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wul"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML unordered list tag wrapping."}
-	stdlib["wul"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wul"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wul",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])
@@ -269,7 +269,7 @@ func buildHtmlLib() {
 	}
 
     slhelp["wli"] = LibHelp{in: "content[,options]", out: "string", action: "Create a HTML list tag wrapping."}
-	stdlib["wli"] = func(evalfs uint32,ident *[szIdent]Variable,args ...interface{}) (ret interface{}, err error) {
+	stdlib["wli"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("wli",args,3,"2","string","any","1","string","0"); !ok { return nil,err }
         var content,o string
         content=sf("%v",args[0])

@@ -5,6 +5,7 @@ rep=1
 input rep optarg 1
 
 define bar(row,col,hsize,pc,colour)
+    # colour=colour #bodge
     part_3q="▊"
     part_2q="▌"
     part_1q="▎"
@@ -48,7 +49,7 @@ for i=0 to rep.int-1
         on e==100 do spinmsg=" "
         print spinmsg,msg
         on e%5==0 do sp=++sp%4
-        pause 4
+        pause 2
     endfor
     println
     hs=8+rand(16)

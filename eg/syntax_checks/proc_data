@@ -46,3 +46,13 @@ println "New list,unique numbers :\n",newlist
 
 print
 
+println "[#2]Commutative Operations[#-]\n"
+println "Set Multiplication: newlist * 2.0 : {=newlist*2f}\n"
+println "Set Multiplication: 2.0 * newlist : {=2f*newlist}\n"
+
+println "[#2]Non-commutative Operations[#-]\n"
+println "Set Division: newlist / 2.0 : {=newlist/2f}\n"
+println "Set Division: 2.0 / newlist : {=2f/newlist}\n"
+
+print
+
