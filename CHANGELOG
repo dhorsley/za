@@ -76,6 +76,8 @@ CHANGE LOG
     other
     -----
 
+    * reworked name binding routine. much faster now. had to get rid of l.h.s. name interpolation again though :)
+
     * added uint32 and uint64 as available types for VAR.
         - added aliases of ulong and uxlong respectively.
 
@@ -88,6 +90,12 @@ CHANGE LOG
         - int/float divide by element of zero, returns zero
         - these were added mainly for scaling sets of values.
             - if there is a requirement for similar operations using addition and subtraction they may be added.
+
+    * added dir entry support to filter operator ?>
+        - may add other struct types later, depending on performance. it's another hack job.
+        - e.g.:
+           dir() ?> `#.name ~i "^lib-" and #.size<3000` 
+            [{name:lib-pcre.go size:2334 mode:416 mtime:1648825572 isdir:false}]
 
     * (experimental) added clamping operator:
         - this re-uses the subscript/range operators:

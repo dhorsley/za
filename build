@@ -45,7 +45,7 @@ bdate =< date "+%d-%m-%Y %H:%M"
 strStrip    = ?? strip_enable "-stripped" : ""
 stripFlags  = ?? strip_enable "-s -w" : ""
 
-upxfound= | "which upx | wc -l" . trim(0) . int
+upxfound= | "which upx | wc -l" . trim(0) . bool
 
 if ! os() ~ "^freebsd"
     when tgt
@@ -68,7 +68,7 @@ endif
 
 if is_file("za")
     if not os() ~ "^freebsd"
-        if upxfound==1
+        if upxfound
             if tgt!="win"
                 on strip_enable and not tgt ~i "^(alpine|aws)$" do | strip -s -w za
                 on upx_enable                                   do | upx za
