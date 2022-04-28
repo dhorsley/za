@@ -1,0 +1,39 @@
+
+Interacting with shell, process results, format output
+
+foreach f in | "ls -1" . grep(".*\.go")
+    print format("-- %s --", f.pad(0,40))
+endfor
+
+Same example, using builtin instead of shell:
+
+foreach f in dir() ?> `#.name ~i ".*\.go"`
+    print format("-- %s --", f.name.pad(0,40))
+endfor
+
+Notes:
+
+    | as a unary operator executes following string as a shell command.
+    grep, format, pad and dir are builtin functions.
+    ~i is the case-insensitive regex matching operator.
+    on..do.. is a short-form if statement without an else clause.
+
+------------------------------------------------------------------------------
+Is the 'upx' command on the path?
+
+print | "which upx | wc -l" . bool
+
+Notes:
+
+    '.' when not between a struct-bearing expression and a non-field name is 
+     used to pass the preceding expression as the first argument of the 
+     following named function (bool() in this case.)
+    the bool() builtin converts an int/string to a bool type. 
+     (0/"0|false"==false, 1/"1|true"==true)
+
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+

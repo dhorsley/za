@@ -295,6 +295,56 @@ func (p *leparser) list_filter(left any,right any) any {
     reduceparser.fs=p.fs
 
     switch left.(type) {
+
+    case []dirent:
+
+        // find # refs
+
+        var fields []string
+        var fieldpos []int
+
+        cond:=right.(string)
+        for e:=0; e<len(cond)-1; e+=1 {
+            if cond[e]=='#' && cond[e+1]=='.' {
+                for f:=e+2; f<len(cond); f+=1 {
+                    if str.IndexByte(identifier_set,cond[f])==-1 {
+                        fields=append(fields,cond[e+2:f])
+                        e=f
+                        fieldpos=append(fieldpos,f-1)
+                        break
+                    }
+                }
+            }
+        }
+
+        // filter
+
+        var new_list []dirent
+        for e:=0; e<len(left.([]dirent)); e+=1 {
+            nm:=s2m(left.([]dirent)[e])
+            var new_right str.Builder
+            fnum:=0
+            for f:=0; f<len(cond); f+=1 {
+                switch cond[f] {
+                case '#':
+                    new_right.WriteString(sf("%#v",nm[fields[fnum]]))
+                    f=fieldpos[fnum]
+                    fnum+=1
+                default:
+                    new_right.WriteByte(cond[f])
+                }
+            }
+            val,err:=ev(reduceparser,p.fs,new_right.String())
+            if err!=nil { panic(err) }
+            switch val.(type) {
+            case bool:
+                if val.(bool) { new_list=append(new_list,left.([]dirent)[e]) }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter",new_right.String()))
+            }
+        }
+        return new_list
+
     case []string:
         // var new_list []string
         new_list:=make([]string,0,len(left.([]string)))
