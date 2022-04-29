@@ -4,7 +4,7 @@
 # Procedures for alternative binary compilations
 #
 
-enum e { okay=0, build, syntax, notfound }
+enum e ( okay=0, build, syntax, notfound )
 
 
 define warning(s) ; println "[#6]Warning: {s}[#-]"; end

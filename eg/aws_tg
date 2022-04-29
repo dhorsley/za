@@ -14,7 +14,7 @@ doc `
 `
 
 # globals
-enum e { ok=0, syntax, range, remote_create, remote_query }
+enum e ( ok=0, syntax, range, remote_create, remote_query )
 valid_tg_regex      = "^arn:aws:elasticloadbalancing:[a-z0-9\-]+:[0-9]+:targetgroup/"
 valid_listener_regex= "^arn:aws:elasticloadbalancing:[a-z0-9\-]+:[0-9]+:listener/"
 valid_rule_regex    = "^arn:aws:elasticloadbalancing:[a-z0-9\-]+:[0-9]+:listener\-rule/"

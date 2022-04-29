@@ -13,7 +13,7 @@ const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.fn"
 const numSeps = "_"
-const identifier_set = alphanumeric + "_" // {}"
+const identifier_set = alphanumeric + "_"
 const doubleterms = "<>=|&-+*.?"
 const expExpect="0123456789-+"
 
@@ -35,7 +35,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","BLOCK","ABLOCK","RBLOCK",
 }
 
 type lcstruct struct {
@@ -53,6 +53,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var eol,eof bool
     var tokType uint8
     var word string
+    var matchBlock bool
     var matchQuote bool
     // var matchComment,foundComment bool
     var nonterm string
@@ -115,6 +116,14 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
     if !matchQuote {
 
+        // block
+        if firstChar == '{' {
+            matchBlock=true
+            tokType=ResultBlock
+            term="}"
+            nonterm=""
+        }
+
         // set word terminator depending on first char
         if thisWordStart < (lenInput-1) {
             secondChar = input[thisWordStart+1]
@@ -148,6 +157,18 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 word=string(firstChar)+string(secondChar)
                 startNextTokenAt=thisWordStart+2
                 goto get_nt_eval_point
+            case "${": //  block
+                matchBlock=true
+                tokType=Block
+                term="}"
+                nonterm=""
+                currentChar+=1
+            case "&{": // async block
+                matchBlock=true
+                tokType=AsyncBlock
+                term="}"
+                nonterm=""
+                currentChar+=1
             /*
             case "/*":
                 matchComment=true
@@ -178,56 +199,48 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         */
 
+        if !matchBlock {
 
-        if firstChar == '#' {
-            tokType = SingleComment
-            nonterm = ""
-            eol=true
-            term = "\n"
-        }
-
-
-        if firstChar == '.' {
-            hasPoint=true
-        }
-
-        // number
-        if firstChar!='f' && firstChar!='n' && str.IndexByte(numeric, firstChar) != -1 {
-            tokType = NumericLiteral
-            nonterm = numeric+"xeE"+numSeps
-            term = "\n;"
-            norepeat= "oxOXeE."
-        }
-
-        // solo symbols
-        switch firstChar {
-        case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&','{','}':
-            word = string(firstChar)
-            startNextTokenAt=thisWordStart+1
-            goto get_nt_eval_point
-        }
-
-        // identifier or statement
-        if str.IndexByte(alphaplus, firstChar) != -1 {
-            nonterm = identifier_set
-            term = "\n;"
-        }
+            if firstChar == '#' {
+                tokType = SingleComment
+                nonterm = ""
+                eol=true
+                term = "\n"
+            }
 
 
-    /*
-    // string literal
-    if firstChar == '"' || firstChar == '`' || firstChar == '\'' {
-        matchQuote = true
-        tokType = StringLiteral
-        term = string(firstChar)
-        nonterm = ""
-    }
-    */
+            if firstChar == '.' {
+                hasPoint=true
+            }
 
-        if firstChar == '\\' {
-            word = string(firstChar)
-            startNextTokenAt=thisWordStart+1
-            goto get_nt_eval_point
+            // number
+            if firstChar!='f' && firstChar!='n' && str.IndexByte(numeric, firstChar) != -1 {
+                tokType = NumericLiteral
+                nonterm = numeric+"xeE"+numSeps
+                term = "\n;"
+                norepeat= "oxOXeE."
+            }
+
+            // solo symbols
+            switch firstChar {
+            case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&': // ,'{','}':
+                word = string(firstChar)
+                startNextTokenAt=thisWordStart+1
+                goto get_nt_eval_point
+            }
+
+            // identifier or statement
+            if str.IndexByte(alphaplus, firstChar) != -1 {
+                nonterm = identifier_set
+                term = "\n;"
+            }
+
+            if firstChar == '\\' {
+                word = string(firstChar)
+                startNextTokenAt=thisWordStart+1
+                goto get_nt_eval_point
+            }
+
         }
 
     } // eo-not-matchQuote
@@ -329,11 +342,11 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         } // eo-numeric-literal
 
-        if matchQuote && input[currentChar]=='\n' {
+        if (matchBlock||matchQuote) && input[currentChar]=='\n' {
             (*curLine)+=1
         }
 
-        if matchQuote && input[currentChar]=='\\' {
+        if (matchBlock||matchQuote) && input[currentChar]=='\\' {
             // skip past
             continue
         }
@@ -349,6 +362,15 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         if len(term)!=0 && str.IndexByte(term, input[currentChar]) != -1 {
             // found a terminator character
+
+            if matchBlock {
+                carton.tokType = tokType
+                add:=2
+                if tokType == ResultBlock { add=1 }
+                carton.tokText  = input[thisWordStart+add:currentChar]
+                startNextTokenAt= currentChar+1
+                goto get_nt_exit_point
+            }
 
             if tokType == SingleComment {
                 carton.tokType = SingleComment
@@ -389,7 +411,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
     // catch any eol strays
     if currentChar<lenInput {
-        if !matchQuote && input[currentChar] == '\n' {
+        if !(matchBlock||matchQuote) && input[currentChar] == '\n' {
             startNextTokenAt=currentChar
             carton.tokText = input[thisWordStart:currentChar]
         }
@@ -511,10 +533,12 @@ get_nt_eval_point:
         tokType = LeftSBrace
     case "]":
         tokType = RightSBrace
+/*
     case "{":
         tokType = LeftCBrace
     case "}":
         tokType = RightCBrace
+*/
     case "+=":
         tokType = SYM_PLE
     case "-=":
