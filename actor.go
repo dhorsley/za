@@ -4217,11 +4217,60 @@ tco_reentry:
 
 }
 
-func system(cmd string, display bool) (cop struct{out string; err string; code int; okay bool}) {
-    cmd = str.Trim(cmd," \t\n")
-    if hasOuter(cmd,'`') { cmd=stripOuter(cmd,'`') }
-    cop = Copper(cmd, false)
-    if display { pf("%s",cop.out) }
+func system(cmds string, display bool) (cop struct{out string; err string; code int; okay bool}) {
+
+    if hasOuter(cmds,'`') { cmds=stripOuter(cmds,'`') }
+    cmds = str.Trim(cmds," \t\n")
+
+    // cmdList:=str.Split(cmds,"\\n")
+    var cmdList []string
+    lastpos:=0
+    var squote, dquote, bquote bool
+    var escMode bool
+    var e int
+    for ; e<len(cmds); e++ {
+        if escMode {
+            switch cmds[e] {
+            case 'n':
+                if ! (dquote || squote || bquote) {
+                    cmdList=append(cmdList,cmds[lastpos:e-1])
+                    lastpos=e+1
+                }
+            }
+        } else {
+            switch cmds[e] {
+            case '"':
+                dquote=!dquote
+            case '\'':
+                squote=!squote
+            case '`':
+                bquote=!bquote
+            case '\\':
+                if !escMode {
+                    escMode=true
+                    continue
+                }
+            }
+        }
+        escMode=false
+    }
+    cmdList=append(cmdList,cmds[lastpos:e])
+
+    final_out:=""
+    for _,cmd:=range cmdList {
+        cop = Copper(cmd, false)
+        if display {
+            pf("%s",cop.out)
+        } else {
+            final_out+=cop.out+"\n"
+        }
+        // pf("sys: [%3d] : %s\n",k,cmd)
+    }
+
+    if ! display {
+        cop.out=str.Trim(final_out,"\n")
+    }
+
     return cop
 }
 

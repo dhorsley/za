@@ -9,7 +9,7 @@
 
 boxcount=35
 
-enum shapes { CHAR=0, BOX }
+enum shapes ( CHAR=0, BOX )
 
 struct object
     type    int

@@ -141,6 +141,13 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         left=p.reference(false)
     case SYM_BOR:
         left=p.command()
+    case Block: // ${
+        _,left,_,_=p.blockCommand(ct.tokText,false)
+    case AsyncBlock: // &{
+        _,_,_,left=p.blockCommand(ct.tokText,true)
+    case ResultBlock: // {
+        _,_,left,_=p.blockCommand(ct.tokText,false)
+        // pf("%s\n",left.(cmd_result).out)
     }
 
     // binaries
@@ -204,6 +211,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             left = compare(left,right,">=")
 
         case SYM_LOR,C_Or:
+
             switch left.(type) {
             case string:
                 switch right.(type) {
@@ -215,6 +223,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
                 }
             }
             left = asBool(left) || asBool(right)
+
         case SYM_LAND:
             left = asBool(left) && asBool(right)
 
@@ -1213,6 +1222,16 @@ func (p *leparser) number(token Token) (num any) {
 	return num
 }
 
+type cmd_result struct{out string; err string; code int; okay bool}
+
+func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, handle uint64) {
+
+    result=system(interpolate(p.fs,p.ident,cmd),false)
+    if async { // do stuff
+    }
+    return result.okay,result.out,result,0
+
+}
 
 func (p *leparser) command() (string) {
 
@@ -1732,7 +1751,7 @@ func isNumber(expr any) bool {
 /// convert variable placeholders in strings to their values
 func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
 
-    if !interpolation {
+    if !interpolation || len(s)==0 {
         return s
     }
 

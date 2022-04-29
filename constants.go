@@ -298,6 +298,9 @@ const (
     C_As
     C_Do
     C_Enum
+    Block
+    AsyncBlock
+    ResultBlock
     END_STATEMENTS
 )
 
