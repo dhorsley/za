@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-enum err { okay, openq, notquoted }
+enum err ( okay, openq, notquoted )
 
 expect_quotes       = false
 break_on_badquote   = true

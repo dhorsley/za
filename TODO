@@ -25,6 +25,14 @@ TODO
             - DONE - changed references (where possible) of 'interface{}' to 'any'
             - DONE - needed to update required go version in the Go modules file.
 
+    * block execution
+        - added support for {...} blocks in the lexer.
+            - first use case would be as an alternative for the | unary op.
+            - i.e. { echo ; # etc } instead of | echo
+                - could also then add multiline shell execution without semi-colons
+                - should be fairly easy to also add async post-fix operator &
+                    (or some alternative) after that.
+                    ( could maybe extend ASYNC statement instead, to special case block expressions )                    
 
     * add a hex_string=s3sum(filename_string[,blocksize_int]) call?
         - need to convert s3checksum C source to Go.

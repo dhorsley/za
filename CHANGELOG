@@ -76,6 +76,22 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added {...} and ${...} token pairs for delimiting system command lines
+        - e.g. { echo "test" } returns a struct containing:
+            - .err : stderr ("")
+            - .out : stdout ("test")
+            - .code: status code (0), and
+            - .okay: bool confirming exit status of last shell command in the {...} construct
+        - ${ echo "test" } returns a string containing just the .out field from above.
+        - @todo: &{...} async block execute which would return a handle to the block execution.
+        - these blocks are expressions, and can be used as such. e.g.:
+            on {ls -l | wc -l}.out.int > 2 do print "more than 2 files"
+
+        - still ironing out some newline issues with these, before creating the async version.
+            - looks like the Split() in system() is breaking on newlines in quotes in commands.
+            - *update* thrown in some slightly better splitting to avoid unbalanced quotes.
+                - will see how it goes, but probably needs something more robust in here.
+
     * reworked name binding routine. much faster now. had to get rid of l.h.s. name interpolation again though :)
 
     * added uint32 and uint64 as available types for VAR.

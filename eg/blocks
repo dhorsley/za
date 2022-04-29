@@ -1,0 +1,39 @@
+#!/usr/bin/za
+
+# CAVEATS:
+#  1. escaped chars are probably going to cause problems.
+#  2. you have to avoid or, at least, be very careful with curly braces
+#       (they are used by Za for string interpolation too)
+#  3. if you need to use curly braces, then you should probably use the 
+#       |, =| =< variants as they can be more tolerant
+#  4. for clarity, be consistent with the shell call methods you use.
+#       ( we have | , =| , =< , {...} , ${...} , system() and other methods )
+#  5. you can mix in things like the Za colour codes as the strings are
+#       interpolated before getting passed to the shell.
+#  6. the default child shell is Bash. you can specify others, but be
+#       aware that it is the one your shell script snippets most likely
+#       will need to be compatible with. (specify other shells with -s Za argument)
+#  7. You can specify the -S argument to disable the child shell and cause
+#       shell commands lines to execute separately in the parent process.
+#       This happens by default in Windows.
+#  8. we use a command output separator byte to break apart activity in the
+#       child shell. if for any reason you need the default separator (0x1e),
+#       then an alternative can be specified with the -U Za argument.
+#
+
+done = ${
+    echo "[#1]Za/Shell call test.[#-]"
+    echo
+    if [[ "$HOME" != "" ]]; then
+        echo "Home Directory : [#fyellow]$HOME[#-]"
+    fi
+}
+
+println done
+
+on {ls -l | wc -l}.out.int > 30 do println "Many files!"
+
+| echo
+| ls {=home()}
+| echo -e "\nend of script\n"
+

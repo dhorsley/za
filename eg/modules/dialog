@@ -47,9 +47,9 @@ define longest(l)
     return (l->"#.len").list_int.max
 end
 
-enum swatch_bg { 0="b0", 1="b1", 2="b2", 3="b3", 4="b4", 5="b5", 6="b6", 7="b7", 8="bgray",9="bbblue",10="bbred",11="bbmagenta",12="bbgreen",13="bbcyan",14="bbyellow",15="" }
+enum swatch_bg ( 0="b0", 1="b1", 2="b2", 3="b3", 4="b4", 5="b5", 6="b6", 7="b7", 8="bgray",9="bbblue",10="bbred",11="bbmagenta",12="bbgreen",13="bbcyan",14="bbyellow",15="" )
 
-enum swatch_fg { 0="0", 1="1", 2="2", 3="3", 4="4", 5="5", 6="6", 7="7", 8="fbgray",9="fbblue",10="fbred",11="fbmagenta",12="fbgreen",13="fbcyan",14="fbyellow",15="" }
+enum swatch_fg ( 0="0", 1="1", 2="2", 3="3", 4="4", 5="5", 6="6", 7="7", 8="fbgray",9="fbblue",10="fbred",11="fbmagenta",12="fbgreen",13="fbcyan",14="fbyellow",15="" )
 
 define style(s)
     when s.len
