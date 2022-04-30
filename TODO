@@ -9,30 +9,27 @@ lots, i'm sure.
 TODO
 ----
 
-    * tested compilation with go 1.18
-        - execution speed up of up to 10%, dependant on operation type.
-            - most things remained at the same speed.
-        - no issues with build compilation on linux (libc+alpine).
-            - not tested freebsd or windows yet.
-        - not done any debug, profiling or other internal work yet.
-        - need to identify a suitable component for generics testing.
-            - this is mainly to figure the eventual adoption scope.
-            - if it doesn't really help to slim down the masses of switch statements,
-                then it might a be non-starter anyway!
-                - there's probably a few prime candidates in lib-list.go
-        - should check for potential use case of Cut vs Index(Byte|Rune|etc) and similar.
-        - convert interface{} to any, where possible?
-            - DONE - changed references (where possible) of 'interface{}' to 'any'
-            - DONE - needed to update required go version in the Go modules file.
+    * block execution (DONE)
+        - better (or any!) handling of nested curly braces for interpolation in blocks
 
-    * block execution
-        - added support for {...} blocks in the lexer.
-            - first use case would be as an alternative for the | unary op.
-            - i.e. { echo ; # etc } instead of | echo
-                - could also then add multiline shell execution without semi-colons
-                - should be fairly easy to also add async post-fix operator &
-                    (or some alternative) after that.
-                    ( could maybe extend ASYNC statement instead, to special case block expressions )                    
+    * process and/or job control support (TODO)
+        - only currently have a few read-only calls for process IDs.
+        - we should really support the following in some way:
+            bg/fg/job/detach
+            pidof/kill/ps
+            daemonise (an async func call) without creating an event loop by hand.
+            stream redirection and channel creation (maybe)
+
+
+LATER / UNDECIDED
+-----------------
+
+    * revise source for generics support (go 1.18):
+        - done. it doesn't look like there are a lot of places that generics would help us in terms
+            of the primary functionality of the code. there are a few places around the standard lib
+            it would help and a few other smaller parts of base functionality that could be converted
+            but not as much as i'd hoped for! 
+        - will pick away at these periodically.
 
     * add a hex_string=s3sum(filename_string[,blocksize_int]) call?
         - need to convert s3checksum C source to Go.
@@ -42,9 +39,10 @@ TODO
             block when multi-part formulated and block size not provided as param?
         - would assume a default blocksize of 8192*1024 if not provided, but needed.
             
-
-LATER / UNDECIDED
------------------
+    * user and group builtins for linux?
+        - i don't think this is necessary, especially as it would be so different between OS.
+        - however, it makes scripting the stuff easier for a user by far if we support with builtins.
+        - not doing this one yet, but still a possibility.
 
     * an actual type system:
         - something minimal, that doesn't get in the way of the interpreter

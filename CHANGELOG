@@ -83,14 +83,29 @@ CHANGE LOG
             - .code: status code (0), and
             - .okay: bool confirming exit status of last shell command in the {...} construct
         - ${ echo "test" } returns a string containing just the .out field from above.
-        - @todo: &{...} async block execute which would return a handle to the block execution.
+        - &{...} async block execute
+            - returns a struct containing id and handle to the block execution.
+            - these can be discarded for anonymous background jobs
+                - stderr and stdout are hidden for these. you have to take the results, as
+                indicated below, if you want those or the status code.
+            - if you wish to collate the results, then the id and handle must be assigned to
+                a map and parsed using the await(ref mapname,block_flag) call.
+                - the same struct as for {...} is returned in the map value of map[id] after
+                  the await() call if the call is complete, (otherwise nil).
+                - the block_flag must be 'true' to wait for the results of all map entries,
+                  otherwise each map entry's job handle is only polled once.
+                - see eg/blocks for an example.
+
         - these blocks are expressions, and can be used as such. e.g.:
             on {ls -l | wc -l}.out.int > 2 do print "more than 2 files"
 
-        - still ironing out some newline issues with these, before creating the async version.
-            - looks like the Split() in system() is breaking on newlines in quotes in commands.
+        - still ironing out some newline issues with these.
             - *update* thrown in some slightly better splitting to avoid unbalanced quotes.
                 - will see how it goes, but probably needs something more robust in here.
+                - we currently don't handle nested curly braces in these blocks.
+                    - this obviously will change nearer acceptance time for this feature.
+                    - it won't be all that useful otherwise!
+                    - hopefully, this is just a simple change in the lexer to count open braces.
 
     * reworked name binding routine. much faster now. had to get rid of l.h.s. name interpolation again though :)
 

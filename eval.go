@@ -14,6 +14,7 @@ import (
     "unsafe"
     "regexp"
 //    "os"
+    "crypto/md5"
 )
 
 
@@ -1223,13 +1224,38 @@ func (p *leparser) number(token Token) (num any) {
 }
 
 type cmd_result struct{out string; err string; code int; okay bool}
+type bg_result  struct{name string;handle chan any}
 
-func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, handle uint64) {
+func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, bgresult bg_result) {
+
+    if async {
+
+        // make a new fn name
+        csumName:=sf("_bg_block_%x",md5.Sum([]byte(cmd)))
+
+        // define fn
+        stdlib["exec"](p.fs,p.ident,"define "+csumName+"()\nr={"+cmd+"\n}\nreturn r;end\n")
+
+        // exec it async
+        lmv, isfunc := fnlookup.lmget(csumName)
+
+        if isfunc {
+            // call
+            h,id:=task(p.fs,lmv,false,csumName+"@",nil)
+            // destroy fn def before leaving
+            fnlookup.lmdelete(csumName)
+            numlookup.lmdelete(lmv)
+            // return
+            return true,"",cmd_result{},bg_result{name:id,handle:h}
+        }
+
+        pf("some kind of error here...\n")
+        return false,"",cmd_result{},bg_result{}
+
+    }
 
     result=system(interpolate(p.fs,p.ident,cmd),false)
-    if async { // do stuff
-    }
-    return result.okay,result.out,result,0
+    return result.okay,result.out,result,bg_result{}
 
 }
 
