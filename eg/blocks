@@ -34,8 +34,8 @@ println "[#1]Async Test[#-]"
 cmd="find /usr -maxdepth 5"
 println "\nnow calling in background '{cmd}'\n"
 
-h=&{{=cmd}}
-# find /usr -maxdepth 5}
+h=&{{cmd}}
+
 m[h.name]=h.handle
 
 done = ${

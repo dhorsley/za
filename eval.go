@@ -1251,6 +1251,8 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
 
     if async {
 
+        cmd=interpolate(p.fs,p.ident,cmd)
+
         // make a new fn name
         csumName:=sf("_bg_block_%x",md5.Sum([]byte(cmd)))
 

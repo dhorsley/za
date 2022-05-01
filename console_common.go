@@ -1464,6 +1464,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             } else {
                 pf("in coproc\n[#-]")
             }
+            pf("[#4]command : [%s][#-]\n",line)
         }
     }
 
