@@ -6,6 +6,8 @@
 #       (they are used by Za for string interpolation too)
 #  3. if you need to use curly braces, then you should probably use the 
 #       |, =| =< variants as they can be more tolerant
+#       however, nested curly braces are now possible inside shell blocks,
+#       if you need to pass Za expressions. {=...}
 #  4. for clarity, be consistent with the shell call methods you use.
 #       ( we have | , =| , =< , {...} , ${...} , system() and other methods )
 #  5. you can mix in things like the Za colour codes as the strings are
@@ -32,7 +34,8 @@ println "[#1]Async Test[#-]"
 cmd="find /usr -maxdepth 5"
 println "\nnow calling in background '{cmd}'\n"
 
-h=&{find /usr -maxdepth 5}
+h=&{{=cmd}}
+# find /usr -maxdepth 5}
 m[h.name]=h.handle
 
 done = ${
