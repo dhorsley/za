@@ -20,6 +20,8 @@ TODO
             daemonise (an async func call) without creating an event loop by hand.
             stream redirection and channel creation (maybe)
 
+    * remove ident/binding table debug info from error messages
+
 
 LATER / UNDECIDED
 -----------------

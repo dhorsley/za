@@ -942,11 +942,8 @@ func buildInternalLib() {
         if ok,err:=expect_args("last",args,0); !ok { return nil,err }
         v, found := gvget("@last")
         if found {
-            i, bool_err := GetAsInt(v.(string))
-            if !bool_err {
-                return i, nil
-            }
-            return i, errors.New("could not convert last status to integer.")
+            i:=v.(int)
+            return i, nil
         }
         return -1,errors.New("no co-process command has been executed yet.")
     }

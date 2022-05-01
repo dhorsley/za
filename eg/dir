@@ -11,6 +11,6 @@ foreach f in d
 endfor
 
 foreach f in d
-    print ("%s %-{maxs}s %10d[#-]\n").format(??f.isdir "D[#1]":"F[#4]",f.name,f.size)
+    print ("%s %-{maxs}s %10d[#-]\n").format(??f.is_dir "D[#1]":"F[#4]",f.name,f.size)
 endfor
 

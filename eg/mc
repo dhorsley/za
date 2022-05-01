@@ -69,14 +69,14 @@ define sort_dir(d)
         sort(nd)
         # move dirs to top, dotted files to bottom
         foreach f in nd
-            on f.isdir do append_to(ref fd,f)
+            on f.is_dir do append_to(ref fd,f)
         endfor
         foreach f in nd
-            on f.isdir do continue
+            on f.is_dir do continue
             on f.name[0]!="." do append_to(ref fd,f)
         endfor
         foreach f in nd
-            on f.isdir do continue
+            on f.is_dir do continue
             on f.name[0]=="." do append_to(ref fd,f)
         endfor
     endif
@@ -158,7 +158,7 @@ def show_left(ld,lrow,lwinheight,cursorl)
         mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
-            if f.isdir
+            if f.is_dir
                 mt="[#1]d"
             else
                 mt="[#4]f"
@@ -187,7 +187,7 @@ def show_right(rd,rrow,rwinheight,cursorr)
         mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
-            if f.isdir
+            if f.is_dir
                 mt="[#1]d"
             else
                 mt="[#4]f"
@@ -599,7 +599,7 @@ while !quit
             path=rpath
         endif
 
-        if file.isdir
+        if file.is_dir
             if leftside
                 lpath=join([path,file.name],"/").tr("s","/").fileabs
                 if can_read(lpath)

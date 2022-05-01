@@ -535,17 +535,10 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     if ifs>=uint32(cap(bindings)) {
         bindResize()
     }
+    if varmode==MODE_NEW {
     bindings[ifs]=make(map[string]uint64)
-    bindlock.Unlock()
-
-    /*
-    for k,v:=range bindings[source_base] {
-        bindings[ifs][k]=v
-        // pf("[call #ifs %d] BASE COPYING FROM #%d : bound %s to id %d\n",ifs,source_base,k,bindings[ifs][k])
     }
-    // fmt.Printf("Just copied symbols for ifs %d from base %d\n",ifs,source_base)
-    // fmt.Printf("%+v\n",bindings[ifs])
-    */
+    bindlock.Unlock()
 
     // copy bindings from source tokens
     for _,phrase:=range functionspaces[source_base] {
@@ -4222,7 +4215,6 @@ func system(cmds string, display bool) (cop struct{out string; err string; code 
     if hasOuter(cmds,'`') { cmds=stripOuter(cmds,'`') }
     cmds = str.Trim(cmds," \t\n")
 
-    // cmdList:=str.Split(cmds,"\\n")
     var cmdList []string
     lastpos:=0
     var squote, dquote, bquote bool

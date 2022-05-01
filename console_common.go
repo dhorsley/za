@@ -1481,23 +1481,27 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
         if err != nil {
 
-            gvset("@last","0")
+            gvset("@last",0)
             gvset("@lastout",[]byte{0})
 
             if !squashErr {
 
                 if exitError, ok := err.(*exec.ExitError); ok {
-                    gvset("@last",sf("%v",exitError.ExitCode()))
-                    gvset( "@last_out", []byte(err.Error()))
+                    errint=exitError.ExitCode()
+                    errout=err.Error()
+                    gvset("@last",errint)
+                    gvset("@last_out",errout)
                 } else { // probably a command not found?
-                    gvset("@last","1")
-                    gvset("@last_out", []byte("Command not found."))
+                    errint=1
+                    errout="Command not found."
+                    gvset("@last",errint)
+                    gvset("@last_out",errout)
                 }
 
             }
 
         } else {
-            gvset("@last", "0")
+            gvset("@last",0)
             gvset("@last_out", []byte{0})
         }
     } else {
@@ -1511,7 +1515,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             log.Fatal(err)
         }
         defer os.Remove(errorFile.Name())
-        gvset("@last", "0")
+        gvset("@last",0)
 
         read_out := bufio.NewReader(po)
 
@@ -1543,7 +1547,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
                     errint = -2
                 }
                 if !squashErr {
-                    gvset("@last", string(code))
+                    gvset("@last",errint)
                 }
             } else {
                 errint = -1
@@ -1560,8 +1564,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             gvset("@last_out", []byte{0})
             errout=""
         }
-
-        // os.Remove(errorFile.Name())
 
     }
 
