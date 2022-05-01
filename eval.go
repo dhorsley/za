@@ -148,7 +148,6 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         _,_,_,left=p.blockCommand(ct.tokText,true)
     case ResultBlock: // {
         _,_,left,_=p.blockCommand(ct.tokText,false)
-        // pf("%s\n",left.(cmd_result).out)
     }
 
     // binaries
@@ -159,6 +158,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         if prec >= p.prectable[p.peek().tokType] { break }
 
         token := p.next()
+
         switch token.tokType {
         case EOF:
             break binloop1
@@ -179,11 +179,32 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             }
         }
 
-        right,err := p.dparse(p.prectable[token.tokType] + 1)
 
-        if err!=nil {
-            left = nil
+        /*
+        // short-circuiting operators here, so that
+        // 'right' avoids evaluation.
+        // NOTE: THESE CURRENTLY COMMENTED AS UNRELIABLE
+        // PROBLEM 1 : how to skip the rhs expr to the correct continuation point
+        // PROBLEM 2 : may be undesirable behaviour anyway
+
+        switch token.tokType {
+        case SYM_LOR,C_Or:
+            switch left.(type) {
+            case bool:
+                if left.(bool) == true { continue }
+            }
+        case SYM_LAND:
+            switch left.(type) {
+            case bool:
+                if left.(bool) == false { continue }
+            }
         }
+        */
+
+        // ... then proceed as normal:
+
+        right,err := p.dparse(p.prectable[token.tokType] + 1)
+        if err!=nil { panic(err) }
 
         switch token.tokType {
 
@@ -211,7 +232,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         case SYM_GE:
             left = compare(left,right,">=")
 
-        case SYM_LOR,C_Or:
+        case SYM_LOR,C_Or: // OR and AND here for non-bool types
 
             switch left.(type) {
             case string:

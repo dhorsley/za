@@ -72,6 +72,8 @@ CHANGE LOG
     fixes
     -----
 
+    * occasional name binding issue in interactive mode fixed, hopefully!
+
 
     other
     -----
@@ -126,7 +128,7 @@ CHANGE LOG
         - may add other struct types later, depending on performance. it's another hack job.
         - e.g.:
            dir() ?> `#.name ~i "^lib-" and #.size<3000` 
-            [{name:lib-pcre.go size:2334 mode:416 mtime:1648825572 isdir:false}]
+            [{name:lib-pcre.go size:2334 mode:416 mtime:1648825572 is_dir:false}]
 
     * (experimental) added clamping operator:
         - this re-uses the subscript/range operators:
@@ -1828,7 +1830,7 @@ CHANGE LOG
         * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
         * added dir() lib function. dir(path[,filter]). returns a list of directory entries as an assoc array.
-            * each entry consists of these keys: "name", "size", "mode", "mtime", "isdir" 
+            * each entry consists of these keys: "name", "size", "mode", "mtime", "is_dir" 
 
         * added a check in ASSERT to warn if an assignment is present.  
             * For example, the following would cause a fatal exit:

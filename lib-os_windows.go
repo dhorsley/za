@@ -53,7 +53,7 @@ func buildOsLib() {
         "delete", "rename", "copy",
     }
 
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and isdir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
+    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and is_dir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("dir",args,3,
             "2","string","string",
@@ -82,7 +82,7 @@ func buildOsLib() {
             fs.size=file.Size()
             fs.mode=uint32(file.Mode())
             fs.mtime=file.ModTime().Unix()
-            fs.isdir=file.IsDir()
+            fs.is_dir=file.IsDir()
             dl=append(dl,fs)
         }
 
