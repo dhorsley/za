@@ -1249,9 +1249,9 @@ type bg_result  struct{name string;handle chan any}
 
 func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, bgresult bg_result) {
 
-    if async {
+    cmd=sparkle(interpolate(p.fs,p.ident,cmd))
 
-        cmd=interpolate(p.fs,p.ident,cmd)
+    if async {
 
         // make a new fn name
         csumName:=sf("_bg_block_%x",md5.Sum([]byte(cmd)))
@@ -1272,12 +1272,12 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
             return true,"",cmd_result{},bg_result{name:id,handle:h}
         }
 
-        pf("some kind of error here...\n")
+        pf("Background process could not be generated.\n")
         return false,"",cmd_result{},bg_result{}
 
     }
 
-    result=system(interpolate(p.fs,p.ident,cmd),false)
+    result=system(cmd,false)
     return result.okay,result.out,result,bg_result{}
 
 }
