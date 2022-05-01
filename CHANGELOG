@@ -101,14 +101,6 @@ CHANGE LOG
         - these blocks are expressions, and can be used as such. e.g.:
             on {ls -l | wc -l}.out.int > 2 do print "more than 2 files"
 
-        - still ironing out some newline issues with these.
-            - *update* thrown in some slightly better splitting to avoid unbalanced quotes.
-                - will see how it goes, but probably needs something more robust in here.
-                - we currently don't handle nested curly braces in these blocks.
-                    - this obviously will change nearer acceptance time for this feature.
-                    - it won't be all that useful otherwise!
-                    - hopefully, this is just a simple change in the lexer to count open braces.
-
     * reworked name binding routine. much faster now. had to get rid of l.h.s. name interpolation again though :)
 
     * added uint32 and uint64 as available types for VAR.

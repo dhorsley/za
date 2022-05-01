@@ -65,6 +65,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var norepeatMap = make(map[byte]int)
     var badFloat,scientific,expectant,hasPoint bool
     var maybeBaseChange, thisHex, thisOct, thisBin bool
+    var blockBraceLevel int
 
     beforeE := "."
     thisWordStart := -1
@@ -122,6 +123,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             tokType=ResultBlock
             term="}"
             nonterm=""
+            blockBraceLevel=1
         }
 
         // set word terminator depending on first char
@@ -163,41 +165,19 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 term="}"
                 nonterm=""
                 currentChar+=1
+                thisWordStart+=1
+                blockBraceLevel=1
             case "&{": // async block
                 matchBlock=true
                 tokType=AsyncBlock
                 term="}"
                 nonterm=""
                 currentChar+=1
-            /*
-            case "/*":
-                matchComment=true
-            */
+                thisWordStart+=1
+                blockBraceLevel=1
             }
         }
 
-
-        /* not currently reliable, due to mishandling of tokens in | shell command file paths.
-
-        // skip book-ended comments
-        if matchComment {
-            foundComment=false
-            for currentChar = thisWordStart + 2; currentChar < lenInput-1; currentChar++ {
-                if input[currentChar]!='/' { continue }
-                if input[currentChar+1]!='*' { continue }
-                foundComment=true
-                break
-            }
-            if !foundComment || thisWordStart>=lenInput {
-                pf("Invalid comment in '%s'\n",str.TrimRight(input,"\n"))
-                os.Exit(ERR_LEX)
-            }
-            matchComment=false; foundComment=false
-            currentChar+=2
-            goto rescan
-        }
-
-        */
 
         if !matchBlock {
 
@@ -342,6 +322,15 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         } // eo-numeric-literal
 
+        if matchBlock && input[currentChar]=='{' {
+            blockBraceLevel+=1
+        }
+
+        if matchBlock && input[currentChar]=='}' {
+            blockBraceLevel-=1
+            if blockBraceLevel>0 { continue }
+        }
+
         if (matchBlock||matchQuote) && input[currentChar]=='\n' {
             (*curLine)+=1
         }
@@ -350,6 +339,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             // skip past
             continue
         }
+
 
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
             // didn't find a non-terminator, so get word and finish, but don't
@@ -365,9 +355,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
             if matchBlock {
                 carton.tokType = tokType
-                add:=2
-                if tokType == ResultBlock { add=1 }
-                carton.tokText  = input[thisWordStart+add:currentChar]
+                carton.tokText  = input[thisWordStart+1:currentChar]
                 startNextTokenAt= currentChar+1
                 goto get_nt_exit_point
             }

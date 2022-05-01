@@ -1371,6 +1371,7 @@ func (p *leparser) identifier(token *Token) (any) {
         return nil
     }
 
+    /*
     pf("This ident table:\n")
     for k,v:=range p.ident {
         // if v.declared {
@@ -1379,7 +1380,10 @@ func (p *leparser) identifier(token *Token) (any) {
             }
         // }
     }
-    panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",inter,p.fs,bin))
+    // panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",inter,p.fs,bin))
+    */
+
+    panic(fmt.Errorf("variable '%s' is uninitialised.",inter))
 
 }
 
