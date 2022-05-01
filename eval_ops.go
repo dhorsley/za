@@ -59,7 +59,7 @@ func asBool(val any) (b bool) {
     case *big.Float:
         b = v.Cmp(GetAsBigFloat(0))!=0
     default:
-            panic(fmt.Errorf("type error: required bool, but was %s", typeOf(v)))
+            panic(fmt.Errorf("type error: required bool'able, but was %s", typeOf(v)))
     }
     return b
 }

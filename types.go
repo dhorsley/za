@@ -176,7 +176,7 @@ type Pane struct {
         size    int64
         mode    uint32
         mtime   int64
-        isdir   bool
+        is_dir  bool
     }
 
     type token_result struct {

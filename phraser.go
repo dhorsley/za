@@ -20,17 +20,10 @@ func bindResize() {
 
 func bind_int(fs uint32,name string) (i uint64) {
 
-    // fmt.Printf("Bind request for %s (fs:%d)\nToken: %#v\n",name,fs,tok)
+    // fmt.Printf("Bind request for %s (fs:%d)\n",name,fs)
 
     bindlock.Lock()
     defer bindlock.Unlock()
-
-    /*
-    // create room for bindings if higher fs than previous max:
-    if fs>=uint32(cap(bindings)) {
-        bindResize()
-    }
-    */
 
     if bindings[fs]==nil {
         bindings[fs]=make(map[string]uint64)
@@ -40,6 +33,7 @@ func bind_int(fs uint32,name string) (i uint64) {
     var present bool
     i,present=bindings[fs][name]
     if present {
+        // fmt.Printf("present @ %d\n",i)
         return
     }
 
@@ -59,6 +53,7 @@ func bind_int(fs uint32,name string) (i uint64) {
     }
 
     bindings[fs][name]=i
+    // fmt.Printf("new binding @ %d\n",i)
     return
 }
 
@@ -192,7 +187,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
         if tokenType==SingleComment {
             // at this point we have returned the full comment so throw it away!
-            // pf("[parse] Discarding comment : '%+v'\n",tempToken.carton.tokText)
+            // fmt.Printf("[parse] Discarding comment : '%+v'\n",tempToken.carton.tokText)
             addToPhrase=false
         }
 
