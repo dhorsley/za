@@ -9,8 +9,8 @@ define f()
     datecmd="{datepath}/date --rfc-3339=ns"
     on has_start(os(),"freebsd") do datecmd="date"
     on os()=="windows" do datecmd="date /T"
-    z =| {datecmd}
-    return z.out
+    z =< {datecmd}
+    return z
 end
 
 # launch all in parallel
