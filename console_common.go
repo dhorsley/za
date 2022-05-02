@@ -467,7 +467,6 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 // completion hinting setup
                 if hintEnable {
                     if !startedContextHelp {
-
                         funcnames = nil
 
                         startedContextHelp = true
@@ -531,9 +530,9 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             helpColoured = []string{}
 
             for _, v := range funcnames {
-                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
+                if str.HasPrefix(str.ToLower(v), str.ReplaceAll(str.ToLower(wordUnderCursor),"(","")) {
                     helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
-                    helpList = append(helpList, v+"()")
+                    helpList = append(helpList, v+"(")
                 }
             }
 
@@ -609,7 +608,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             pos=keynum
                         }
                         hla:=helpList[pos]
-                        hla=hla[:len(hla)-2]
+                        hla=hla[:len(hla)-1]
                         helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
                     }
                 }
