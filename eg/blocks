@@ -61,6 +61,7 @@ println "\n[#1]Async result:[#-]\n"
 r=await(ref m,true)
 println "Tail :\n",r[h.name].out.line_tail(10)
 println "Status : ",r[h.name].code
+on not r[h.name].okay do println "Stderr: ",r[h.name].err
 
 | echo -e "\nend of script\n"
 

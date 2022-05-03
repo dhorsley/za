@@ -244,7 +244,7 @@ define showProcs(ct,uptime)
     # get filenames
     procs =< ls -1 /proc/*/stat
     procs = line_filter(procs,"/[0-9]+/")
-    var proc_list assoc
+    var proc_list map
 
     foreach p in procs
         on !is_file(p) do break
@@ -705,7 +705,7 @@ pfilter=""
 redef_layout(cpu_count,pfilter)
 
 # cpu history setup
-var prev assoc
+var prev map
 
 # net graph setup
 prev_rbytes=0

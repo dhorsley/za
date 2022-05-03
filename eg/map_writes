@@ -2,9 +2,8 @@
 
 input n param 1
 
-var d assoc
+var d map
 for i = 0 to n-1
     d[i%1000]=i
 endfor
-
-
+println i
