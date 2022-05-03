@@ -40,7 +40,7 @@ final=start+reach
 maxc=0
 maxn=0
 steps=0
-var summary assoc
+var summary map
 for i=0 to 19
     summary[i]=[]
 endfor

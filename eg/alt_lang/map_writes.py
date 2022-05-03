@@ -6,7 +6,7 @@ import sys
 def f(NUMBER):
     d = {}
     for i in range(0, NUMBER):
-        d[ i % 1000] = i
+        d[i % 1000] = i
     print(i)
 
 

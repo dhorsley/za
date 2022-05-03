@@ -1333,14 +1333,14 @@ func (p *leparser) identifier(token *Token) (any) {
         }
     }
 
-    inter:=token.tokText
+    // inter:=token.tokText
 
     // local variable lookup:
     // fmt.Printf("\n(identifier) checking binding for token : %#v\n",token)
     bin:=token.bindpos
 
     /*
-        fmt.Printf("\nlocal identifier fetching (in %d) vget for name : %s\n",p.fs,inter)
+        fmt.Printf("\nlocal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
         fmt.Printf("-- (this token : %#v)\n",token)
         fmt.Printf("-- (this bin : %v)\n",bin)
         fmt.Printf("-- (this ident entry : %#v)\n\n",(*p.ident)[bin])
@@ -1351,8 +1351,8 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // global lookup:
-    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,inter)
-    if val,there:=vget(nil,p.mident,&mident,inter); there {
+    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
+    if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
         return val
     }
 
@@ -1363,13 +1363,13 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // permit module names
-    if modlist[inter]==true {
+    if modlist[token.tokText]==true {
         return nil
     }
 
     // permit enum names
-    if enum[inter]!=nil {
-        // fmt.Printf("Returned from identifier() with enum result for '%s'\n",inter)
+    if enum[token.tokText]!=nil {
+        // fmt.Printf("Returned from identifier() with enum result for '%s'\n",token.tokText)
         return nil
     }
 
@@ -1385,7 +1385,7 @@ func (p *leparser) identifier(token *Token) (any) {
     // panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",inter,p.fs,bin))
     */
 
-    panic(fmt.Errorf("variable '%s' is uninitialised.",inter))
+    panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
 
 }
 
@@ -1819,7 +1819,6 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
     //   interparse.mident is set to either 1 or 2 in actor.go
     //   depending on interactive mode flag.
 
-
     var interparse *leparser
     interparse=&leparser{}
     interparse.fs=fs
@@ -1877,14 +1876,29 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
         modified=false
         for p:=0;p<len(s)-1;p+=1 {
             if s[p]=='{' && s[p+1]=='=' {
-                q:=str.IndexByte(s[p:],'}') // don't start at greater offset or have to make assumptions about len
-                if q==-1 { break }
-                if aval, err := ev(interparse,fs,s[p+2:p+q]); err==nil {
-                    s=s[:p]+sf("%v",aval)+s[p+q+1:]
+                nest:=0
+                var close_index int
+                for close_index=p;close_index<len(s);close_index+=1 {
+                    if s[close_index]=='{' { nest+=1 }
+                    if s[close_index]=='}' { nest-=1 }
+                    if s[close_index]=='}' && nest==0 {
+                        break
+                    }
+                }
+                if nest>0 { break }
+
+                // q:=str.IndexByte(s[p:],'}') // don't start at greater offset or have to make assumptions about len
+                // if q==-1 { break }
+
+                if aval, err := ev(interparse,fs,s[p+2:close_index]); err==nil {
+                // if aval, err := ev(interparse,fs,s[p+2:p+q]); err==nil {
+                    // s=s[:p]+sf("%v",aval)+s[p+q+1:]
+                    s=s[:p]+sf("%v",aval)+s[close_index+1:]
                     modified=true
                     break
                 }
-                p=q+1
+                // p=q+1
+                p=close_index+1
             }
         }
         if !modified { redo=false }

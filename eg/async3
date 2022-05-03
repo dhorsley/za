@@ -3,24 +3,31 @@
 max=100
 
 define f()
-    # generally, do some work in here..
+
     datepath="/usr/bin"
     on release_id()=="ubuntu" do datepath="/bin"
+
     datecmd="{datepath}/date --rfc-3339=ns"
+
     on has_start(os(),"freebsd") do datecmd="date"
-    on os()=="windows" do datecmd="date /T"
-    z =< {datecmd}
-    return z
+    on os()=="windows"           do datecmd="date /T"
+
+    return ${{datecmd}}
+
 end
 
 # launch all in parallel
+println "Launching tasks."
 for x=0 to max
     async hndmap f() x
 endfor
 
 # collect results
+
 println "Waiting for task completions."
 res=await(ref hndmap,true)
+
+# display results
 for e=0 to max
     println e," -> ",res[e]
 endfor

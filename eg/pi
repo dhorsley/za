@@ -10,7 +10,7 @@ var l bigi       = 3n
 var r,nn,nr bigi = 0n
 spacecur=-1
 iter=0
-var dist assoc
+var dist map
 
 println "Iterated Value:"
 
