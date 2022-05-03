@@ -35,7 +35,7 @@ GCLIMIT = "madvdontneed=0 GOGC=80 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
 GCCGOFLAGS=""
-doc " uncomment line below for testing with GCC-GO compiler:
+doc " uncomment line below when testing with GCC-GO compiler:
     GCCGOFLAGS = `-compiler=gccgo -gccgoflags='-O3 -march=native -ffast-math -lpthread'`
 "
 

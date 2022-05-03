@@ -1007,7 +1007,7 @@ tco_reentry:
                 typemap["[]bigf"]   = reflect.TypeOf(stbf)
                 typemap["[]interface {}"] = reflect.TypeOf(stmixed)
                 typemap["[]"]       = reflect.TypeOf(stmixed)
-                typemap["assoc"]    = nil
+                typemap["map"]    = nil
                 // --
 
             // name iterations
@@ -1047,7 +1047,7 @@ tco_reentry:
 
                     t:=Variable{}
 
-                    if new_type_token_string!="assoc" {
+                    if new_type_token_string!="map" {
                         t.IValue = reflect.New(typemap[new_type_token_string]).Elem().Interface()
                     }
 
@@ -1101,7 +1101,7 @@ tco_reentry:
                     case "[]","[]mixed","[]any":
                         t.IKind=ksany
                         t.IValue=make([]any,size,size)
-                    case "assoc":
+                    case "map":
                         t.IKind=kmap
                         t.IValue=make(map[string]any,size)
                         gob.Register(t.IValue)
@@ -1122,7 +1122,7 @@ tco_reentry:
 
                     // if we had a default value, stuff it in here...
 
-                    if hasValue && new_type_token_string!="assoc" {
+                    if hasValue && new_type_token_string!="map" {
 
                         // deal with bigs first:
                         var tmp any

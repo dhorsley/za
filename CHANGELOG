@@ -73,7 +73,7 @@ CHANGE LOG
     -----
 
     * occasional name binding issue in interactive mode fixed, hopefully!
-
+    * testing a change to interpolation nesting in eval.go
 
     other
     -----

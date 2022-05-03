@@ -9,13 +9,45 @@ lots, i'm sure.
 TODO
 ----
 
-    * process and/or job control support (TODO)
+    * process and/or job control support (TODO maybe?)
         - only currently have a few read-only calls for process IDs.
         - we should really support the following in some way:
             bg/fg/job/detach
             pidof/kill/ps
             daemonise (an async func call) without creating an event loop by hand.
             stream redirection and channel creation (maybe)
+        - some of these are important enough facilities for a shell (pidof/kill/ps), but
+          not sure i care enough about the job system beyond allow the supporting commands through
+          unhindered to the coproc shell. job control would be important if we were primarily a shell,
+          however, we aren't and the intention was always to supervise an existing shell.
+            - if we end up moving more in that direction, then we should better support job control
+              with first-class facilities.
+        - not even convinced that pidof/kill/ps support are worthwhile either...
+            - the chances are you are going to have to fetch from procfs files in some way, at which
+              point, you may as well just have used the external commands in the bash co-process.
+              - even tools like kubernetes do this. (harvesting /proc/).
+            - we could do something similar for pidof as a test, but ps is already a pretty good tool.
+            - kill is easy enough, assuming we own the process by exposing syscall.Kill() as a library call.
+
+        - when done, we should maybe tie in &{...} to the job support.
+
+            - currently &{...} *will* launch shell snippets inside an async func
+                in Za, but they still bottleneck on the child process as that *has* to 
+                be a synchronous thing to avoid interleaving. 
+                - with -S option [coproc(false)] commands are run in separate processes depending 
+                on env, which isn't much of an improvement as you lose other facilities in doing that.
+                - instead, we should maybe be making a "{ ..code.. } &"  on coproc(true) calls,
+                   in order to create a background job? 
+                - doing that, of course, creates issues with exec()'ed coproc(false) calls and
+                   potential issues on windows/other os/other shells than bash. 
+                   - not too worried about this, i don't mind special casing a few major shells in linux.
+
+            - if background processing is currently needed, then adding the & manually is possible.
+                - i.e. {find /usr &} would work fine, for coproc(true) calls, you just don't get a
+                  separate output capture as it interleaves.
+                  - to be honest, i don't really see that as a problem as background processes should not
+                    be reading from/writing to the console if well designed.
+                  - you can also redirect to file i.e. {find /usr >filename &} as usual.
 
 
 LATER / UNDECIDED
@@ -67,11 +99,6 @@ LATER / UNDECIDED
                 for the best, but i just can't bring myself to rework it for the limited benefits.
                 this one is a maybe.
 
-
-    * would a vec3 base type be useful at all? probably not, but not difficult to add.
-
-      Status: unlikely. can't see the need for the type yet. this may change, but it feels like a
-                new feature just for the sake of it currently.
 
     * remaining issues post bind_int() changes:
         - race cond on ident write (vset): see ~/ttest
