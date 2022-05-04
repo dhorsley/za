@@ -244,16 +244,38 @@ func buildInternalLib() {
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
-        "local", "clktck", "glob_key", "getglob", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
+        "local", "clktck", "glob_key", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
-        "enum_names","enum_all",
+        "enum_names","enum_all","dump",
         "ast","varbind","sizeof",
         // "conread","conwrite","conset","conclear", : for future use.
     }
 
-/*
+    slhelp["gdump"] = LibHelp{in: "function_name", out: "", action: "Displays system variable list."}
+    stdlib["gdump"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("gdump",args,1,"0"); !ok { return nil,err }
+        for e:=0;e<szIdent;e++ {
+            if gident[e].declared {
+                pf("%s = %v\n", gident[e].IName, gident[e].IValue)
+            }
+        }
+        return nil, nil
+    }
+
+    slhelp["dump"] = LibHelp{in: "function_name", out: "", action: "Displays in-scope variable list."}
+    stdlib["dump"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("dump",args,1,"0"); !ok { return nil,err }
+        for e:=0;e<szIdent;e++ {
+            if (*ident)[e].declared {
+                pf("%s = %v\n", (*ident)[e].IName, (*ident)[e].IValue)
+            }
+        }
+        return nil, nil
+    }
+
+    /*
     slhelp["symtest"] = LibHelp{in: "none", out: "none", action: "(debug)"}
     stdlib["symtest"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         var q = make(map[uint64]int)

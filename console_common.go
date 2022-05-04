@@ -19,6 +19,7 @@ import (
     "sort"
     str "strings"
     "sync"
+    "syscall"
     "time"
 )
 
@@ -1523,7 +1524,8 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         CMDSEP,_:=gvget("@cmdsep")
         cmdsep:=CMDSEP.(byte)
         hexenc:=hex.EncodeToString([]byte{cmdsep})
-        io.WriteString(pi, line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
+        // PIG
+        io.WriteString(pi, "\n"+line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
 
         // get output
         ns, commandErr = NextCopper(line, read_out)
@@ -1535,8 +1537,13 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         code, err := NextCopper("#Status", read_out)
         // pull cwd from /proc
         childProc,_:=gvget("@shell_pid")
-        pwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
-        gvset("@pwd", pwd)
+
+        cwd,_:=os.Readlink(sf("/proc/%v/cwd",childProc))
+        prevdir,_:=gvget("@cwd")
+        if cwd!=prevdir {
+            err=syscall.Chdir(cwd)
+            gvset("@cwd", cwd)
+        }
 
         if commandErr != nil {
             errint = -3
