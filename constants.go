@@ -33,8 +33,8 @@ const WHEN_CAP = 8              // how many placeholders to create for WHEN...EN
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "
-const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@pwd}[#-] > "
-const promptStringShort = "[#1]{@user}[#-] : [#invert]{@pwd}[#-] : "
+const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@cwd}[#-] > "
+const promptStringShort = "[#1]{@user}[#-] : [#invert]{@cwd}[#-] : "
 const defaultPromptColour = "[#6]"
 const recolour = "[#5][#i1]"
 
