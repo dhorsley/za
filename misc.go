@@ -83,19 +83,23 @@ func (parser *leparser) report(line int16,s string) {
         }
     }
 
-    filename:=getFileFromIFS(baseId)
-    if filename=="" { filename="main" }
+    moduleName:="main"
+    for _,fun:=range funcmap {
+        if fun.fs==baseId && fun.name==baseName {
+            moduleName=fun.module
+            break
+        }
+    }
 
     var submsg string
     if interactive {
-        submsg="[#7]Error (interactive) : "
+        submsg="[#7]Error (interactive) (baseId=%d): "
     } else {
-        submsg=sf("[#7]Error in %+v/%s (line #%d) : ",filename,baseName,line+1)
+        submsg=sf("[#7]Error in %+v/%s (line #%d) : ",moduleName,baseName,line+1)
     }
 
     var msg string
     if !permit_exitquiet {
-        // msg = sparkle("[#CTE]\n[#bred]\n[#CTE]"+submsg) +
         msg = sparkle("[#bred]\n[#CTE]"+submsg) +
             line_content+"\n"+
             sparkle("[##][#-][#CTE]")+

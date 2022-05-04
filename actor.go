@@ -1411,7 +1411,7 @@ tco_reentry:
             switch inbound.Tokens[3].tokType {
 
             // cause evaluation of all terms following IN
-            case SYM_BOR, O_InFile, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
+            case SYM_BOR, O_InFile, ResultBlock, Block, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
                 if we.evalError {
@@ -1419,6 +1419,18 @@ tco_reentry:
                     finish(false,ERR_EVAL)
                     break
                 }
+
+                // ensure result block has content:
+                switch we.result.(type) {
+                case string:
+                default:
+                    if inbound.Tokens[3].tokType==ResultBlock {
+                        parser.report(inbound.SourceLine,"system command did not return a string in FOREACH statement\n")
+                        finish(false,ERR_EVAL)
+                        break
+                    }
+                }
+
                 var l int
                 switch lv:=we.result.(type) {
                 case string:
@@ -1495,7 +1507,7 @@ tco_reentry:
                 case string:
 
                     // split and treat as array if multi-line
-
+                    pf("working value : %#v\n",we.result.(string))
                     // remove a single trailing \n from string
                     elast := len(we.result.(string)) - 1
                     if we.result.(string)[elast] == '\n' {
