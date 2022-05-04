@@ -5,7 +5,7 @@ package main
 //
 
 const MaxUint64 = ^uint64(0)
-const MaxUint32 = ^uint32(0)
+// const MaxUint32 = ^uint32(0)
 const Maxint16  = ^int16(0)
 
 const MAX_LOOPS = 8
@@ -137,7 +137,6 @@ const (
     kint
     kint64
     kuint
-    kuint32
     kuint64
     kfloat
     kbigi
@@ -147,7 +146,6 @@ const (
     ksint
     ksint64
     ksuint
-    ksuint32
     ksuint64
     ksfloat
     ksbigi

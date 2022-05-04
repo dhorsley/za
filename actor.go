@@ -113,10 +113,6 @@ func GetAsBigInt(i any) (*big.Int) {
     switch i:=i.(type) {
     case uint8:
         ri.SetInt64(int64(i))
-    case int32:
-        ri.SetInt64(int64(i))
-    case uint32:
-        ri.SetInt64(int64(i))
     case int64:
         ri.SetInt64(i)
     case uint64:
@@ -139,10 +135,6 @@ func GetAsBigFloat(i any) *big.Float {
     var r big.Float
     switch i:=i.(type) {
     case uint8:
-        r.SetFloat64(float64(i))
-    case int32:
-        r.SetFloat64(float64(i))
-    case uint32:
         r.SetFloat64(float64(i))
     case int64:
         r.SetFloat64(float64(i))
@@ -173,8 +165,6 @@ func GetAsFloat(unk any) (float64, bool) {
         return float64(i), false
     case uint8:
         return float64(i), false
-    case uint32:
-        return float64(i), false
     case uint64:
         return float64(i), false
     case float64:
@@ -200,8 +190,6 @@ func GetAsInt64(expr any) (int64, bool) {
         return i, false
     case uint64:
         return int64(i), false
-    case uint32:
-        return int64(i), false
     case uint8:
         return int64(i), false
     case string:
@@ -223,8 +211,6 @@ func GetAsInt(expr any) (int, bool) {
     case int64:
         return int(i), false
     case uint64:
-        return int(i), false
-    case uint32:
         return int(i), false
     case uint8:
         return int(i), false
@@ -899,14 +885,10 @@ tco_reentry:
                         switch se.result.(type) {
                         case int:
                             size=se.result.(int)
-                        case int32:
-                            size=int(se.result.(int32))
                         case int64:
                             size=int(se.result.(int64))
                         case uint:
                             size=int(se.result.(uint))
-                        case uint32:
-                            size=int(se.result.(uint32))
                         case uint64:
                             size=int(se.result.(uint64))
                         default:
@@ -1070,8 +1052,6 @@ tco_reentry:
                         t.IKind=kstring
                     case "uint8","byte":
                         t.IKind=kbyte
-                    case "uint32","ulong":
-                        t.IKind=kuint32
                     case "uint64","uxlong":
                         t.IKind=kuint64
                     case "[]bool":
@@ -1083,9 +1063,6 @@ tco_reentry:
                     case "[]uint":
                         t.IKind=ksuint
                         t.IValue=make([]uint,size,size)
-                    case "[]uint32","[]ulong":
-                        t.IKind=ksuint32
-                        t.IValue=make([]uint32,size,size)
                     case "[]uint64","[]uxlong":
                         t.IKind=ksuint64
                         t.IValue=make([]uint64,size,size)
@@ -1960,9 +1937,6 @@ tco_reentry:
                         case []uint:
                             vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
-                        case []uint32:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
-                            vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint32)[(*thisLoop).counter])
                         case []uint64:
                             vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint64)[(*thisLoop).counter])

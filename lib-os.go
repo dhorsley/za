@@ -67,7 +67,7 @@ func buildOsLib() {
             var fs dirent
             fs.name=file.Name()
             fs.size=file.Size()
-            fs.mode=uint32(file.Mode())
+            fs.mode=int(file.Mode())
             fs.mtime=file.ModTime().Unix()
             fs.is_dir=file.IsDir()
             dl=append(dl,fs)
@@ -78,119 +78,98 @@ func buildOsLib() {
 
     slhelp["is_symlink"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a symbolic link."}
     stdlib["is_symlink"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_symlink",args,3,
+        if ok,err:=expect_args("is_symlink",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeSymlink) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeSymlink) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeSymlink) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_device"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a device."}
     stdlib["is_device"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_device",args,3,
+        if ok,err:=expect_args("is_device",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeDevice) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeDevice) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeDevice) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_pipe"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a named pipe."}
     stdlib["is_pipe"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_pipe",args,3,
+        if ok,err:=expect_args("is_pipe",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeNamedPipe) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeNamedPipe) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeNamedPipe) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_socket"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a socket."}
     stdlib["is_socket"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_socket",args,3,
+        if ok,err:=expect_args("is_socket",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeSocket) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeSocket) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeSocket) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_sticky"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a sticky file."}
     stdlib["is_sticky"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_sticky",args,3,
+        if ok,err:=expect_args("is_sticky",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeSticky) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeSticky) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeSticky) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_setuid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setuid file."}
     stdlib["is_setuid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_setuid",args,3,
+        if ok,err:=expect_args("is_setuid",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeSetuid) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeSetuid) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeSetuid) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }
 
     slhelp["is_setgid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setgid file."}
     stdlib["is_setgid"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("is_setgid",args,3,
+        if ok,err:=expect_args("is_setgid",args,2,
         "1","int",
-        "1","uint32",
         "1","fs.FileMode"); !ok { return nil,err }
         switch args[0].(type) {
         case fs.FileMode:
             return uint32(os.ModeSetgid) & uint32(args[0].(fs.FileMode)) != 0, nil
         case int:
             return uint32(os.ModeSetgid) & uint32(args[0].(int)) != 0, nil
-        case uint32:
-            return uint32(os.ModeSetgid) & args[0].(uint32) != 0, nil
         }
         return false,nil
     }

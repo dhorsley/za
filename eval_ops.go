@@ -52,7 +52,7 @@ func asBool(val any) (b bool) {
         b = v
     case string:
         b = v!=""
-    case int, int32, int64, uint, uint32, uint64:
+    case int, int64, uint, uint64:
         b = v!=0
     case *big.Int:
         b = v.Cmp(GetAsBigInt(0))!=0
@@ -470,7 +470,7 @@ func ev_mul(val1 any, val2 any) (any) {
 
     // int * []number = multiply each element
     switch val1.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
+    case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val2.(type) {
         case int:
             ary1,er:=stdlib["list_int"](0,nil,val1)
@@ -487,7 +487,7 @@ func ev_mul(val1 any, val2 any) (any) {
         }
     }
     switch val2.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
+    case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val1.(type) {
         case int:
             ary2,er:=stdlib["list_int"](0,nil,val2)
@@ -579,7 +579,7 @@ func ev_div(val1 any, val2 any) (any) {
 
     // int / []number = divide by/into each element
     switch val1.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
+    case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val2.(type) {
         case int:
             if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
@@ -598,7 +598,7 @@ func ev_div(val1 any, val2 any) (any) {
         }
     }
     switch val2.(type) {
-    case []int, []float64, []uint, []uint8, []uint32, []uint64, []int32, []int64, []any:
+    case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val1.(type) {
         case int:
             ary2,er:=stdlib["list_int"](0,nil,val2)
@@ -1250,8 +1250,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                     return uint(f.Uint())
                 case reflect.Uint8:
                     return uint8(f.Uint())
-                case reflect.Uint32:
-                    return uint32(f.Uint())
                 case reflect.Uint64:
                     return uint64(f.Uint())
 
@@ -1464,7 +1462,7 @@ func slice(v any, from, to any) any {
     case []any:
         isArr=true
         arl= len(v.([]any))
-    case int, uint, int32, int64, uint32, uint64, uint8, float32, float64, *big.Int, *big.Float:
+    case int, uint, int64, uint64, uint8, float64, *big.Int, *big.Float:
         // clamp operator
         if from==nil && to!=nil { // only expressing upper limit
             return num_min(v,to)

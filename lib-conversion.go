@@ -425,7 +425,7 @@ func buildConversionLib() {
             return -1, errors.New("invalid arguments provided to is_number()")
         }
         switch args[0].(type) {
-        case uint, uint8, uint32, uint64, int, int32, int64, float32, float64:
+        case uint, uint8, uint64, int, int64, float64:
             return isNumber(args[0]), nil
         case string:
             if len(args[0].(string))==0 {
