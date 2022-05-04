@@ -1507,7 +1507,7 @@ tco_reentry:
                 case string:
 
                     // split and treat as array if multi-line
-                    pf("working value : %#v\n",we.result.(string))
+
                     // remove a single trailing \n from string
                     elast := len(we.result.(string)) - 1
                     if we.result.(string)[elast] == '\n' {
