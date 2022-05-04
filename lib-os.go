@@ -219,7 +219,10 @@ func buildOsLib() {
     slhelp["cd"] = LibHelp{in: "string", out: "bool", action: "Changes directory to a given path."}
     stdlib["cd"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
-        err=syscall.Chdir(args[0].(string))
+        cwd:=args[0].(string)
+        err=syscall.Chdir(cwd)
+        system(sf("cd %s",cwd),false)
+        gvset("@cwd",cwd)
         if err==nil { return true,nil }
         return false, nil
     }
