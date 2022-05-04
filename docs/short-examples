@@ -32,8 +32,32 @@ Notes:
      (0/"0|false"==false, 1/"1|true"==true)
 
 ------------------------------------------------------------------------------
+Pick even numbers from a list:
+
+1..15 ?> "#%2==0"
+
+Returns: [2 4 6 8 10 12 14]
+
 ------------------------------------------------------------------------------
+Sorting numbers:
+
+Note: Please remember that list literals are untyped by default, so, should
+you require a numeric sort, you should cast to []int first:
+
+# i.e. wrong:
+[2,1,10,20,3,7,40].kind
+[]interface {}
+[2,1,10,20,3,7,40].sort
+[1 10 2 20 3 40 7]
+
+# correct:
+[2,1,10,20,3,7,40].list_int.kind
+[]int
+[2,1,10,20,3,7,40].list_int.sort
+[1 2 3 7 10 20 40]
+
 ------------------------------------------------------------------------------
+
 ------------------------------------------------------------------------------
 
 
