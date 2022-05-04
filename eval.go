@@ -801,7 +801,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
         // end map case
 
-    case uint,int,float32,float64,uint8,uint32,uint64,int32,int64,*big.Int,*big.Float:
+    case uint,int,float64,uint8,uint64,int64,*big.Int,*big.Float:
         // just allow these through. handled as a clamp operation later.
         // but do flag to allow missing start/end
         hasRange=true

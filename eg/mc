@@ -111,21 +111,25 @@ define execute(f,args)
     return
 end
 
+define clear_pane_line(x)
+    at x,1,pad(" ",-1,pane_w()-2," ")
+end
+
 define popup(path,file)
     fullname=join([path,file.name],"/")
     fullname=fullname.tr("s","/")
     ftype=|file "{fullname}"
     px=sh/2-1
-    print "[#b7][#1]"
-    pane define "popup",px,1,8,sw,"Info","topline"
+    print "[#b0][#5]"
+    pane define "popup",px,1,8,sw," Info ","round"
     pane select "popup"
-    for e=1 to 7; clear_line(e,1); endfor
-    at 1,1; print "path     : {path}"
-    at 2,1; print "name     : {=file.name}"
-    at 3,1; print "size     : {=file.size}"
-    at 4,1; print "mode     : {=file.mode}"
-    at 5,1; print "mod time : {=date_human(file.mtime)}"
-    at 7,1; print wrap(ftype.out)
+    for e=1 to 7; clear_pane_line(e); endfor
+    at 1,1, "path     : {path}"
+    at 2,1, "name     : {=file.name}"
+    at 3,1, "size     : {=file.size}"
+    at 4,1, "mode     : {=file.mode}"
+    at 5,1, "mod time : {=date_human(file.mtime)}"
+    at 7,1, wrap(ftype.out)
     k=keypress()
     print "[#b0][#7]"
     clear_pane("left")
@@ -245,8 +249,8 @@ def redef_layout()
 
     ltitle=" [#b1][#0]Path : [#5]%s[#-] ".format(lpath)
     rtitle=" [#b1][#0]Path : [#6]%s[#-] ".format(rpath)
-    pane define "left" ,lx,ly,lh,lw,ltitle,"double"
-    pane define "right",rx,ry,rh,rw,rtitle,"double"
+    pane define "left" ,lx,ly,lh,lw,ltitle,"square"
+    pane define "right",rx,ry,rh,rw,rtitle,"square"
 
     setglob maxsl=lw-25
     setglob maxsr=rw-25

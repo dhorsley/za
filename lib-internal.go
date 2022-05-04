@@ -821,7 +821,7 @@ func buildInternalLib() {
 
         switch v.(type) {
         case map[string]any,map[string]int,map[string]float64,map[string]int64:
-        case map[string]int32,map[string]bool,map[string]uint:
+        case map[string]bool,map[string]uint:
         default:
             return false, errors.New("unmap requires a map")
         }
@@ -855,11 +855,7 @@ func buildInternalLib() {
             if _, found = v[key]; found { return true, nil }
         case map[string]uint:
             if _, found = v[key]; found { return true, nil }
-        case map[string]uint32:
-            if _, found = v[key]; found { return true, nil }
         case map[string]uint64:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]int32:
             if _, found = v[key]; found { return true, nil }
         case map[string]int64:
             if _, found = v[key]; found { return true, nil }
@@ -911,11 +907,7 @@ func buildInternalLib() {
             if _, found = v[key]; found { return true, nil }
         case map[string]uint:
             if _, found = v[key]; found { return true, nil }
-        case map[string]uint32:
-            if _, found = v[key]; found { return true, nil }
         case map[string]uint64:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]int32:
             if _, found = v[key]; found { return true, nil }
         case map[string]int64:
             if _, found = v[key]; found { return true, nil }

@@ -174,7 +174,7 @@ type Pane struct {
     type dirent struct {
         name    string
         size    int64
-        mode    uint32
+        mode    int // from uint32
         mtime   int64
         is_dir  bool
     }
