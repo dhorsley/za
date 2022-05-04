@@ -59,7 +59,7 @@ func bind_int(fs uint32,name string) (i uint64) {
 
 
 func getFileFromIFS(ifs uint32) (string) {
-    if ifs==1 { return "main" }
+    // if ifs==1 { return "main" }
     return fileMap[ifs]
 }
 
