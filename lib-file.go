@@ -151,7 +151,7 @@ func buildFileLib() {
     stdlib["file_mode"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("file_mode",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
-        if err == nil { return f.Mode(), err }
+        if err == nil { return int(f.Mode()), err }
         return -1, nil
     }
 
