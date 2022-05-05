@@ -290,8 +290,10 @@ func main() {
     default_prectable[SYM_BAND]     =20
     default_prectable[SYM_BOR]      =20
     default_prectable[SYM_Caret]    =20
-    default_prectable[SYM_LSHIFT]   =23
-    default_prectable[SYM_RSHIFT]   =23
+    default_prectable[SYM_LSHIFT]   =21
+    default_prectable[SYM_RSHIFT]   =21
+    default_prectable[O_Query]      =23
+    // unary not @ 24
     default_prectable[SYM_Tilde]    =25
     default_prectable[SYM_ITilde]   =25
     default_prectable[SYM_FTilde]   =25
@@ -309,7 +311,7 @@ func main() {
     default_prectable[O_Percent]    =35
     default_prectable[O_Multiply]   =35
     default_prectable[O_OutFile]    =37
-    default_prectable[O_Query]      =39
+    // default_prectable[O_Query]      =39
     default_prectable[SYM_POW]      =40
     default_prectable[SYM_PP]       =45
     default_prectable[SYM_MM]       =45
