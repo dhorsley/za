@@ -35,42 +35,36 @@ import (
 // ALIASES
 //
 
-var sf = fmt.Sprintf
+var sf  = fmt.Sprintf
 var pln = fmt.Println
 var fpf = fmt.Fprintln
 var fef = fmt.Errorf
 
 
 //
-// CONSTS AND GLOBALS
+// GLOBALS
 //
-
-// co-proc connection timeout, in milli-seconds
-var MAX_TIO time.Duration = 120000
 
 // build-time constants made available at run-time
 var BuildComment string
 var BuildVersion string
-var BuildDate string
+var BuildDate    string
 
 // global unique name counter
 var globseq uint32
 
 // global parser init
-var parser *leparser
+var parser     *leparser
 var interparse *leparser
-
-// open function calls
-var calltable = make([]call_s,CALL_CAP)
-
-// defined console panes.
-var panes = make(map[string]Pane)
 
 // list of stdlib categories.
 var features = make(map[string]Feature)
 
-// console cursor location and terminal dimensions.
-var orow, ocol, ow, oh int
+// open function call info
+var calltable = make([]call_s,CALL_CAP)
+
+// enum storage
+var enum = make(map[string]*enum_s)
 
 // func space to source file name mappings
 var fileMap   = make(map[uint32]string)
@@ -84,16 +78,20 @@ var sourceMap = make(map[uint32]uint32)
 var functionspaces = make([][]Phrase, SPACE_CAP)
 var basecode       = make([][]BaseCode, SPACE_CAP)
 var isSource       = make([]bool, SPACE_CAP)
-var bytecode       = make([]bc_block, 0)
 
 // expected parameters for each defined function
 var functionArgs = make([]fa_s, SPACE_CAP)
 
+
+// defined console panes.
+var panes = make(map[string]Pane)
+
+// console cursor location and terminal dimensions.
+var orow, ocol, ow, oh int
+
 // ANSI colour code mappings (key: colour alias)
 var fairydust = make(map[string]string, FAIRY_CAP)
 
-// enum storage
-var enum = make(map[string]*enum_s)
 
 // basename of module currently being processed.
 var currentModule string
@@ -113,7 +111,7 @@ var mident [szIdent]Variable
 var fnlookup = lmcreate(SPACE_CAP)
 var numlookup = nlmcreate(SPACE_CAP)
 
-// tracker for recent function allocations.. probably will slow down function calls!
+// tracker for recent function allocations.
 var lastfunc = make(map[uint32]string)
 
 // interactive mode and prompt handling flag
@@ -134,8 +132,14 @@ var stdlib = make(map[string]ExpressionFunction, FUNC_CAP)
 //  library calls for flagging an "update".
 var firstInstallRun bool = true
 
+// co-proc connection timeout, in milli-seconds
+var MAX_TIO time.Duration = 120000
+
+var cmdargs []string        // cli args
+var interpolation bool      // false to disable string interpolation
+
+// Global: DB related
 // mysql connection variables 
-// - these should really be in the library 
 // these would normally be provided in ZA_DB_* environmental
 // variables and be initialised during db_init().
 var dbhost string
@@ -144,41 +148,40 @@ var dbport int
 var dbuser string
 var dbpass string
 
+// Global: shell related
 var bgproc *exec.Cmd        // holder for the coprocess
 var pi io.WriteCloser       // process input stream
 var po io.ReadCloser        // process output stream
 var pe io.ReadCloser        // process error stream
 
+// Global: console related
 var row, col int            // for pane + terminal use
 var MW, MH int              // for pane + terminal use
 var BMARGIN int             // bottom offset to stop io at
 var currentpane string      // for pane use
-
-var cmdargs []string        // cli args
-
-var interpolation bool      // false to disable string interpolation
 var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // to disable ansi colour output
 var lineWrap bool           // optional pane line wrap.
 var promptColour string
-
 // setup getInput() history for interactive mode
 var curHist int
 var lastHist int
 var hist []string
 var histEmpty bool
 
-// setup logging - could use better defaults
+// Global: logging related
 var logFile string
 var loggingEnabled bool
 var log_web bool
 var web_log_file string = "/var/log/za_access.log"
 
-// trap handling
-var sig_int bool       // ctrl-c pressed?
-var coproc_active bool // for resetting co-proc if interrupted
+// Global: generic flags
+var sig_int       bool          // ctrl-c pressed?
+var coproc_active bool          // for resetting co-proc if interrupted
+var no_shell      bool          // disable sub-shell
+var shellrep      bool          // enable shell command reporting
 
-// behaviours
+// Global: behaviours
 var permit_uninit       bool    // default:false, will evaluation cause a run-time failure if it
                                 //  encounters an uninitialised variable usage.
                                 //  this can be altered with the permit("uninit",bool) call
@@ -188,6 +191,7 @@ var permit_exitquiet    bool    // default:false, squash (true) or display (fals
 var permit_shell        bool    // default: true, when false, exit script if shell command encountered
 var permit_eval         bool    // default: true, when false, exit script if eval call encountered
 
+// Global: test related
 // test related setup, completely non thread safe
 var testMode bool
 var under_test bool
@@ -202,31 +206,24 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
-// for disabling the coprocess entirely:
-var no_shell bool
-var shellrep bool
 
-// pane resize indicator
-// var winching bool
-
-// 0:off, >0 max displayed debug level
 // - not currently used too much. may eventually be removed
-var debug_level int
-var lineDebug bool
+var debug_level int             // 0:off, >0 max displayed debug level
+var lineDebug   bool            // 
 
 // list of keywords for lookups
 // - used in interactive mode TAB completion
 var keywordset map[string]struct{}
 
 // list of struct fields per struct type
-// - used by INIT when defining a struct
+// - used by VAR when defining a struct
 var structmaps map[string][]any
 
 // compile cache for regex operator
 var ifCompileCache map[string]regexp.Regexp
 
 // highest numbered variable table entry created
-var vtable_maxreached uint32
+// var vtable_maxreached uint32
 
 // repl prompt
 var PromptTemplate string
