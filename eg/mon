@@ -73,7 +73,7 @@ test "fn_ip" group "mon" assert fail
 endtest
 
 define shorten(s,l)
-    on len(s)>=l do s=s[:l-2]+(?? utf8supported() "…","~")
+    on len(s)>=l do s=s[:l-2]+(utf8supported() ? "…" : "~")
     return s
 end
 

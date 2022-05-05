@@ -93,7 +93,7 @@ func (parser *leparser) report(line int16,s string) {
 
     var submsg string
     if interactive {
-        submsg="[#7]Error (interactive) (baseId=%d): "
+        submsg="[#7]Error (interactive) : "
     } else {
         submsg=sf("[#7]Error in %+v/%s (line #%d) : ",moduleName,baseName,line+1)
     }
@@ -353,7 +353,7 @@ func help_ops() {
 
 [#4]$in f[#-]       read file 'f' in as string literal
 
-[#4]?? b t [:,] f[#-]
+[#4]b ? t : f[#-]
   if expression b is true then t else f
 
 [#4]| s[#-]         return successful command output (of s) as a string
@@ -526,17 +526,29 @@ func ihelp(hargs string) {
     }
 }
 
+/* bit verbose with these ones listed too:
+[#5]SHOWDEF[#-]                                         - list function definitions.
+[#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
+[#2]LOGGING OFF | ON [#i1]name[#i0][#-]                           - disable or enable logging and specify the log file name.
+[#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
+[#6]REQUIRE [#i1]feature[#i0] [ [#i1]num[#i0] ][#-]                         - assert feature availability and optional version level, or exit.
+[#7]SHOWSTRUCT[#-]                                      - display structure definitions.
+[#7]WITH [#i1]var[#i0] AS [#i1]name[#i0][#-]                                - starts a WITH construct.
+[#7]ENDWITH[#-]                                         - ends a WITH construct.
+[#7]NOP[#-]                                             - no operation - dummy command.
+[#7]VERSION[#-]                                         - show Za version.
+[#7]HELP[#-]                                            - this page.
+
+*/
+
 var cmdpage string = `
 Available commands:
 [#5]DEFINE [#i1]name[#i0] ([#i1]arg1,...,argN[#i0])[#-]                     - create a function.
-[#5]END[#-]                                             - end a function definition.
 [#5]RETURN [#i1]retval[#i0][#-]                                   - return from function, with value.
+[#5]END[#-]                                             - end a function definition.
 [#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
-[#5]SHOWDEF[#-]                                         - list function definitions.
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
-[#4]IF [#i1]condition[#i0][#-]                                    - test condition and start execution block if true.
-[#4]ELSE[#-]                                            - start execution block for false state.
-[#4]ENDIF[#-]                                           - terminate IF execution block.
+[#4]IF [#i1]condition[#i0][#-] ... [#4]ELSE[#-] ... [#4]ENDIF[#-]                 - conditional execution.
 [#4]WHILE [#i1]condition[#i0][#-]                                 - start while...end loop block.
 [#4]ENDWHILE[#-]                                        - end of while...end loop block.
 [#4]FOR [#i1]var[#i0] = [#i1]start[#i0] TO [#i1]end[#i0] [ STEP [#i1]step[#i0] ][#-]            - start FOR loop block. (integer iteration only)
@@ -548,44 +560,31 @@ Available commands:
 [#4]ENDWHEN[#-]                                         - terminates the WHEN block.
 [#4]BREAK[#-]                                           - exit a loop or WHEN clause immediately.
 [#4]CONTINUE[#-]                                        - proceed to next loop iteration immediately.
-[#4]EXIT [#i1]code[#i0][#-]                                       - exit script with status code.
+[#4]EXIT [#i1]code[#i0] [,[#i1]error_string[#i0] ][#-]                      - exit script with status code.
 [#2]PRINT[LN] [#i1]expression [ , expression ][#i0][#-]           - local echo. (PRINTLN adds a trailing newline character.)
-[#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
-[#2]LOGGING OFF | ON [#i1]name[#i0][#-]                           - disable or enable logging and specify the log file name.
-[#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
 [#2]CLS [ [#i1]pane_id[#i0] ][#-]                                 - clear console screen/pane.
-[#2]AT [#i1]row,column[#i0][#-]                                   - move cursor to [#i1]row,column[#i0].
+[#2]AT [#i1]row,column[#i0] [ , [#i1]expression[#i0] ][#-]                  - move cursor to [#i1]row,column[#i0]. Optionally display result of [#i1]expression[#i0].
 [#2]PANE DEFINE [#i1]name,row,col,h,w[,title[,border]][#i0][#-]   - Define a new coordinate pane.
 [#2]PANE SELECT [#i1]name[#i0][#-]                                - Select a defined pane as active.
 [#2]PANE OFF[#-]                                        - Disable panes.
-[#6]REQUIRE [#i1]feature[#i0] [ [#i1]num[#i0] ][#-]                         - assert feature availability and optional version level, or exit.
-[#6]INPUT [#i1]id[#i0] [#i1]type[#i0] [#i1]position[#i0] [ IS [#i1]hint[#i0] ][#-]              - set variable [#i1]id[#i0] from external value or exits.
-[#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]
+[#6]INPUT [#i1]id[#i0] [#i1](PARAM|OPTARG)[#i0] [#i1]position[#i0] [ IS [#i1]hint[#i0] ][#-]    - set variable [#i1]id[#i0] from argument.
+[#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]                           - set variable [#i1]id[#i0] from environmental variable.         
 [#6]PROMPT [#i1]var prompt[#i0] [ [#i1]validator[#i0] ][#-]                 - set [#i1]var[#i0] from stdin. loops until [#i1]validator[#i0] satisfied.
 [#3]MODULE [#i1]modname[#i0][#-]                                  - reads in state from a module file.
 [#3]TEST [#i1]name[#i0] GROUP [#i1]gname[#i0] [ ASSERT FAIL|CONTINUE ][#-]  - Define a test
 [#3]ENDTEST[#-]                                         - End a test definition
-[#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit. In test mode, asserts should instead be collected.
+[#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit.
 [#3]DOC [ [#i1]function_name[#i0] ] [#i1]comment[#i0][#-]                   - Create an exportable comment, for test mode.
 [#7]VAR[#-] [#i1]var type[#i0]                                    - declare an optional type or dimension an array.
 [#7]ENUM[#-] [#i1]name[#i0] ( member[=val][,...,memberN[=val]] )  - declare an enumeration.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
-[#7]NOP[#-]                                             - no operation - dummy command.
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
-[#7]SHOWSTRUCT[#-]                                      - display structure definitions.
-[#7]WITH [#i1]var[#i0] AS [#i1]name[#i0][#-]                                - starts a WITH construct.
-[#7]ENDWITH[#-]                                         - ends a WITH construct.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
-[#7]VERSION[#-]                                         - show Za version.
-[#7]HELP[#-]                                            - this page.
-
 [#i1]name[#i0][#i1](params)[#i0]                                    - call a function, with parameters <params>
 [#i1]var[#i0] = [#i1]value[#i0]                                     - assign to variable.
 [#i1]var[#i0] =| [#i1]expression[#i0]                               - store result of a local shell command to variable.
-
 # comment                                       - comment to end of line.
-
 `
 
 func commands() {
