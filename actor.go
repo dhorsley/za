@@ -85,6 +85,7 @@ func finish(hard bool, i int) {
 // slightly faster string comparison.
 // have to use gotos here as loops can't be inlined
 // @note: testing new version since Go 1.18 changed this.
+/*
 func ostrcmp(a string, b string) (bool) {
     la:=len(a)
     if la!=len(b)   { return false }
@@ -95,6 +96,7 @@ func ostrcmp(a string, b string) (bool) {
     if la>0 { goto strcmp_repeat_point }
     return true
 }
+*/
 
 func strcmp(a string, b string) (bool) {
     la:=len(a)
@@ -253,7 +255,6 @@ func GetAsUint(expr any) (uint, bool) {
 
 
 // check for value in slice - used by lookahead()
-// @note: not inlined!
 func InSlice(a uint8, list []uint8) bool {
     for _, b := range list {
         if b == a {
@@ -434,6 +435,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     // register call
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
     callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.ident=ident
@@ -484,7 +486,8 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
 
     // set up the function space
 
-    // ..get call details
+    // -- get call details
+
     calllock.RLock()
 
     // unique name for this execution, pre-generated before call
@@ -510,12 +513,6 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     // -- generate bindings
 
     bindlock.Lock()
-    /*
-    if bindings[ifs]==nil {
-        // pf("-- RESETTING BINDINGS FOR IFS %d\n",ifs)
-        bindings[ifs]=make(map[string]uint64)
-    }
-    */
 
     // reset bindings
     if ifs>=uint32(cap(bindings)) {
@@ -578,6 +575,7 @@ func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint
     // counters per loop type
     var loops = make([]s_loop, MAX_LOOPS)
 
+
 tco_reentry:
 
     // assign value to local vars named in functionArgs (the call parameters)
@@ -636,7 +634,7 @@ tco_reentry:
     for {
 
         // *sigh*
-        //  turns out, pc++ is much slower than pc = pc + 1, at least on x64 test build
+        //  turns out, pc++ is slower than pc = pc + 1, at least on x64 test build
 
         //  pprof didn't capture this reliably (probably to do with sample rate)
         //  however, if you check against eg/long_loop or eg/addition_loop over a sufficiently
@@ -646,8 +644,8 @@ tco_reentry:
 
         // @note: sig_int can be a race condition. alternatives?
         // if sig_int removed from below then user ctrl-c handler cannot
-        // return a custom error code (unless it exits instead of returning maybe)
-        // also, having this cond check every iteration slows down execution.
+        // return a custom error code. also, having this cond check every
+        // iteration slows down execution.
 
         if parser.pc >= finalline || endFunc || sig_int {
             break
@@ -656,30 +654,30 @@ tco_reentry:
         // get the next Phrase
         inbound = &functionspaces[source_base][parser.pc]
 
-        //
+
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
                     //  we want to leave the program counter unaffected.
 
 
-        /////////////////////////////////////////////////////////////////////////
-
         // finally... start processing the statement.
 
 
-        /////// LINE ////////////////////////////////////////////////////////////
-            // should probably comment this in release mode, it's slow:
-               if lineDebug {
-                   clr:="2"
-                   if defining {
-                       clr="4"
-                   }
+        /////// LINE DEBUG //////////////////////////////////////////////////////
 
-                   if inbound.Tokens[0].tokType==C_Define {
-                       pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
-                   }
+        // should probably comment this in release mode, it's slow:
+        if lineDebug {
+            clr:="2"
+            if defining {
+                clr="4"
+            }
 
-                   pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
-               }
+            if inbound.Tokens[0].tokType==C_Define {
+                pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
+            }
+
+            pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+        }
+
         /////////////////////////////////////////////////////////////////////////
 
         // append statements to a function if currently inside a DEFINE block.
@@ -1754,6 +1752,12 @@ tco_reentry:
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
                     loopType: C_Foreach,
                 }
+
+            default:
+                    parser.report(inbound.SourceLine,"Unexpected expression type in FOREACH.")
+                    finish(false, ERR_SYNTAX)
+                    break
+
 
             }
 
