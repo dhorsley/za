@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+input arg1 param 1 is "path to check"
+
+println is_dir(arg1) ? ${
+    stat {arg1}
+} : ${
+    echo "nope"
+}
+

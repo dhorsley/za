@@ -57,6 +57,16 @@ you require a numeric sort, you should cast to []int first:
 [1 2 3 7 10 20 40]
 
 ------------------------------------------------------------------------------
+Stranger example... ternary with code blocks
+
+is_dir(path_string) ? ${
+    stat {path_string}
+} : ${
+    echo "nope"
+}
+
+Note: may be useful as an alternative to if..else..endif when processing
+shell commands.
 
 ------------------------------------------------------------------------------
 
