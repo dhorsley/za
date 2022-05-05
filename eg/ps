@@ -1,0 +1,46 @@
+#!/usr/bin/za
+
+doc `
+    not portable example for getting the process list. requires compatible procfs.
+`
+
+struct process
+    pid         int
+    name        string
+    state       string
+    ppid        int
+    priority    int
+    starttime   int
+endstruct
+
+define ps(filter)
+    on filter==nil do filter="^.*$"
+    procs = ${ls -1 /proc/*/stat}.line_filter("/[0-9]+/")
+
+    var proc_list map
+    var proc process
+    foreach p in procs
+        on !is_file(p) do continue
+        ps = $in p      # @race: these files can go away
+        cmd=ps.filter(`\(.*?\)`).tr("d","()")
+        on !match(cmd,filter) do continue
+        fields(ps)
+        proc.pid      = F[1].int
+        proc.state    = F[3]
+        proc.ppid     = F[4].int
+        proc.priority = F[18].int
+        proc.starttime= F[22].int
+        proc.name     = cmd
+        proc_list[proc.pid] = proc
+    endfor
+    return proc_list
+end
+
+input filter optarg 1
+
+foreach p in ps(filter)
+    println format("%#v",p)
+endfor
+
+
+
