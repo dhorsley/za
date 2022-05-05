@@ -936,6 +936,7 @@ func main() {
     // special case: aliases in bash
     if shelltype=="bash" {
         Copper("shopt -s expand_aliases",true)
+        Copper("set -o pipefail",true)
     }
 
     if shelltype=="bash" || shelltype=="ash" {
