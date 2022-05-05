@@ -242,8 +242,11 @@ define showProcs(ct,uptime)
     cursoroff()
 
     # get filenames
-    procs =< ls -1 /proc/*/stat
-    procs = line_filter(procs,"/[0-9]+/")
+    # procs =< ls -1 /proc/*/stat
+    # procs = line_filter(procs,"/[0-9]+/")
+
+    procs = ${ls -1 /proc/*/stat}.line_filter("/[0-9]+/")
+
     var proc_list map
 
     foreach p in procs
