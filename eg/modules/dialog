@@ -183,7 +183,7 @@ define box_view(opts,val,selector)
                 at e,1,pb," "*(pane_w()-2),"[#-]"
             endfor
             foreach l in val.lines("{cursor}:{=cursor+panelheight-1}").inset(1)
-                invertor=?? (selector && sp==cursor+key_l) "[#invert]":""
+                invertor=(selector && sp==cursor+key_l) ? "[#invert]":""
                 at 1+key_l,0,pb,pf,invertor,l,"[#-]"
             endfor
             at boxheight-1,1,"(q) quit  (↓) down  (↑) up  (pgdn) page down  (pgup) page up"
@@ -407,7 +407,7 @@ define select(opts,list_buttons,multiple,orientation)
                 print pb,pf
                 # multiples checkbox:
                 if multiple
-                    print ?? checked[key_b] "[x] ":"[ ] "
+                    print checked[key_b] ? "[x] " : "[ ] "
                 endif
                 # caption:
                 show=b

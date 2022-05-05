@@ -14,7 +14,7 @@ const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 const numeric = "0123456789.fn"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_"
-const doubleterms = "<>=|&-+*.?"
+const doubleterms = "<>=|&-+*."
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
@@ -203,7 +203,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
             // solo symbols
             switch firstChar {
-            case '+','-','/','*','.','^','!','%',';','<','>','~','=','|',',','(',')',':','[',']','&': // ,'{','}':
+            case '+','-','/','*','.','^','!','%','?',';','<','>','~','=','|',',','(',')',':','[',']','&':
                 word = string(firstChar)
                 startNextTokenAt=thisWordStart+1
                 goto get_nt_eval_point
@@ -551,7 +551,7 @@ get_nt_eval_point:
         tokType = SYM_ITilde
     case "~f":
         tokType = SYM_FTilde
-    case "??":
+    case "?":
         tokType = O_Query
     case "?>":
         tokType = O_Filter

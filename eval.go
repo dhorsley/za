@@ -126,18 +126,18 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         left=p.unary(ct)
     case O_Assign, O_Plus, O_Minus:      // prec variable
         left=p.unary(ct)
+    /*
     case O_Multiply:
         left=p.unary(ct)
     case SYM_Caret:         // unary pointery stuff
         left=p.unary(ct)
+    */
     case LParen:
         left=p.grouping(ct)
     case SYM_PP, SYM_MM:
         left=p.preIncDec(ct)
     case LeftSBrace:
         left=p.array_concat(ct)
-    case O_Query:                       // ternary
-        left=p.tern_if(ct)
     case O_Ref:
         left=p.reference(false)
     case SYM_BOR:
@@ -218,6 +218,9 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             left = ev_div(left,right)
         case O_Percent:
             left = ev_mod(left,right)
+
+        case O_Query:                       // ternary
+            left=p.tern_if(left,right)
 
         case SYM_EQ:
             left = deepEqual(left,right)
@@ -1011,10 +1014,12 @@ func (p *leparser) unary(token *Token) (any) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
+    /*
     case SYM_Caret: // address of
         return p.unaryPointerOp(right,token.tokType)
     case O_Multiply: // peek
         return p.unaryPointerOp(right,token.tokType)
+    */
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         return p.unaryStringOp(right,token.tokType)
     case O_Assign:
@@ -1058,21 +1063,25 @@ func unOpSqrt(n any) any {
     // unreachable: // return nil
 }
 
-func (p *leparser) tern_if(tok *Token) (any) {
-    // '??' expr tv [':'|','] fv
-    // tv/fv cannot be parenthesised
-    dp,err1:=p.dparse(0)
-    tv,err2:=p.dparse(0)
-    if p.peek().tokType==SYM_COLON || p.peek().tokType==O_Comma {
-        p.next()
-    }
-    fv,err3:=p.dparse(0)
-    if err1!=nil || err2!=nil || err3!=nil {
-        panic(fmt.Errorf("malformed conditional in expression"))
-    }
-    switch dp.(type) {
+func (p *leparser) tern_if(left any,tv any) (any) {
+    // expr '?' tv ':' fv
+    switch left.(type) {
     case bool:
-        if dp.(bool) { return tv }
+    default:
+        panic(fmt.Errorf("not a boolean on left of ternary"))
+    }
+    if p.peek().tokType==SYM_COLON {
+        p.next()
+    } else {
+        panic(fmt.Errorf("missing colon in ternary"))
+    }
+    fv,err:=p.dparse(0)
+    if err!=nil {
+        panic(fmt.Errorf("malformed false expression in ternary"))
+    }
+    switch left.(type) {
+    case bool:
+        if left.(bool) { return tv }
     }
     return fv
 }
@@ -1385,7 +1394,7 @@ func (p *leparser) identifier(token *Token) (any) {
     // panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",inter,p.fs,bin))
     */
 
-    panic(fmt.Errorf("variable '%s' is uninitialised.",token.tokText))
+    panic(fmt.Errorf("'%s' is uninitialised.",token.tokText))
 
 }
 

@@ -863,13 +863,11 @@ func unaryPlus(val any) (any) {
 
 func unaryMinus(val any) (any) {
 
-    var intVal int
-    intInOne:=true
     switch i:=val.(type) {
     case int:
-        intVal=int(i)
+        return -int(i)
     case int64:
-        intVal=int(i)
+        return -int(i)
     case *big.Int:
         var r big.Int
         r.Neg(GetAsBigInt(i))
@@ -878,11 +876,7 @@ func unaryMinus(val any) (any) {
         var r big.Float
         r.Neg(GetAsBigFloat(i))
         return &r
-    default:
-        intInOne=false
     }
-
-    if intInOne { return -intVal }
 
     floatVal, ok := val.(float64)
     if ok { return -floatVal }
@@ -1276,11 +1270,19 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
         }
 
+        name:=field
+
+        // check for enum membership:
+        globlock.RLock()
+        defer globlock.RUnlock()
+        if enum[p.preprev.tokText]!=nil {
+            return enum[p.preprev.tokText].members[name]
+        }
+
         // try a function call..
         // lhs_v would become the first argument of func lhs_f
 
         var isFunc bool
-        name:=field
 
         // parse the function call as module '.' funcname
         nonlocal:=false
@@ -1300,13 +1302,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
         }
 
         if !isFunc {
-            // before failing, check if this is a valid enum reference
-            globlock.RLock()
-            defer globlock.RUnlock()
-            if enum[p.preprev.tokText]!=nil {
-                return enum[p.preprev.tokText].members[name]
-            }
-            // pf("\n\nobject: %v\n\n",obj)
             panic(fmt.Errorf("no function, enum or record field found for %v", field))
         }
 

@@ -309,6 +309,7 @@ func main() {
     default_prectable[O_Percent]    =35
     default_prectable[O_Multiply]   =35
     default_prectable[O_OutFile]    =37
+    default_prectable[O_Query]      =39
     default_prectable[SYM_POW]      =40
     default_prectable[SYM_PP]       =45
     default_prectable[SYM_MM]       =45
