@@ -160,8 +160,8 @@ def show_left(ld,lrow,lwinheight,cursorl)
         f=ld[lfp-1]
         colmax=f.name.len
         on colmax>maxsl do colmax=maxsl
-        doinvert=?? (leftside && lrow_count==cursorl) "[#invert]":""
-        ital    =?? (leftside && doinvert!="") "[#i1][#ul]":""
+        doinvert=(leftside && lrow_count==cursorl) ? "[#invert]":""
+        ital    =(leftside && doinvert!="") ? "[#i1][#ul]":""
         mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
@@ -189,8 +189,8 @@ def show_right(rd,rrow,rwinheight,cursorr)
         f=rd[rfp-1]
         colmax=f.name.len
         on colmax>maxsr do colmax=maxsr
-        doinvert=?? (not leftside and rrow_count==cursorr) "[#invert]":""
-        ital    =?? (not leftside && doinvert!="") "[#i1][#ul]":""
+        doinvert=(not leftside and rrow_count==cursorr) ? "[#invert]":""
+        ital    =(not leftside && doinvert!="") ? "[#i1][#ul]":""
         mt,found=get_mode_char(f.mode)
         sz=" "*15
         if !found
@@ -233,7 +233,7 @@ def redef_layout()
 
     sm=int(sw/2)
     odd=sm!=(sw/2.0)
-    right_offset=??odd 1,0
+    right_offset=odd ? 1:0
 
     setglob lx=2
     setglob ly=1

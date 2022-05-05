@@ -42,8 +42,8 @@ doc " uncomment line below when testing with GCC-GO compiler:
 bvers = "1.1.2"
 bdate =< date "+%d-%m-%Y %H:%M"
 
-strStrip    = ?? strip_enable "-stripped" : ""
-stripFlags  = ?? strip_enable "-s -w" : ""
+strStrip    = strip_enable ? "-stripped" : ""
+stripFlags  = strip_enable ? "-s -w"     : ""
 
 upxfound= | "which upx | wc -l" . trim(0) . bool
 
