@@ -3837,7 +3837,7 @@ tco_reentry:
             // prompt variable assignment:
             if inbound.TokenCount > 1 { // um, should not do this but...
                 if inbound.Tokens[1].tokType == O_Assign {
-                    we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[2:])
+                    we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[2:])
                     if we.evalError {
                         parser.report(inbound.SourceLine,sf("could not evaluate expression prompt assignment\n%+v",we.errVal))
                         finish(false, ERR_EVAL)

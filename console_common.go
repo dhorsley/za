@@ -553,7 +553,8 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
             // @todo: move the dir+stat list generation to pre-input loop
             fileList=make(map[string]os.FileInfo)
-            for _,v := range dir("^"+str.ToLower(wordUnderCursor)) {
+            // for _,v := range dir("^"+str.ToLower(wordUnderCursor)) {
+            for _,v := range dir("^"+wordUnderCursor) {
                 f, err := os.Stat(v.name)
                 if err==nil {
                     appendEntry:=""
