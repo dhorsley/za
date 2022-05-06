@@ -1001,6 +1001,8 @@ func main() {
         fnlookup.lmset("main",1)
         numlookup.lmset(1,"main")
 
+        vset(nil,mainloc,&mident,"prompt_bash", promptBashlike)
+
         for {
 
             functionspaces[1] = []Phrase{}
