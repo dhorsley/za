@@ -48,6 +48,13 @@ const (
     WEB_REDIRECT
 )
 
+const (
+    HELP_UNKNOWN int=iota
+    HELP_FUNC
+    HELP_KEYWORD
+    HELP_DIRENT
+)
+
     //  chainInfoRegistrants:
     //               0: Trap Handler
     //               1: Call Function

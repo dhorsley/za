@@ -3845,7 +3845,8 @@ tco_reentry:
                     }
                     switch we.result.(type) {
                     case string:
-                        PromptTemplate=stripOuterQuotes(inbound.Tokens[2].tokText,1)
+                        // PromptTemplate=stripOuterQuotes(inbound.Tokens[2].tokText,1)
+                        PromptTemplate=we.result.(string)
                     }
                 } else {
                     // prompt command:

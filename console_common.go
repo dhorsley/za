@@ -175,6 +175,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
+    var helpType []int
 
     // files in cwd for tab completion
     var fileList map[string]os.FileInfo
@@ -532,11 +533,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             // populate helpstring
             helpList = []string{}
             helpColoured = []string{}
+            helpType = []int{}
 
             for _, v := range funcnames {
                 if str.HasPrefix(str.ToLower(v), str.ReplaceAll(str.ToLower(wordUnderCursor),"(","")) {
                     helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
                     helpList = append(helpList, v+"(")
+                    helpType = append(helpType, HELP_FUNC)
                 }
             }
 
@@ -544,23 +547,27 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
                     helpColoured = append(helpColoured, "[#6]"+v+"[#-]")
                     helpList = append(helpList, v)
+                    helpType = append(helpType, HELP_KEYWORD)
                 }
             }
 
             // @todo: move the dir+stat list generation to pre-input loop
             fileList=make(map[string]os.FileInfo)
             for _,v := range dir("^"+str.ToLower(wordUnderCursor)) {
-                f, _ := os.Stat(v.name)
-                appendEntry:=""
-                if f.IsDir() {
-                    appendEntry+="[#3]"
-                } else {
-                    appendEntry+="[#4]"
+                f, err := os.Stat(v.name)
+                if err==nil {
+                    appendEntry:=""
+                    if f.IsDir() {
+                        appendEntry+="[#3]"
+                    } else {
+                        appendEntry+="[#4]"
+                    }
+                    appendEntry+=v.name+"[#-]"
+                    helpColoured = append(helpColoured,appendEntry)
+                    helpList = append(helpList, v.name)
+                    helpType = append(helpType, HELP_DIRENT)
+                    fileList[v.name] = f
                 }
-                appendEntry+=v.name+"[#-]"
-                helpColoured = append(helpColoured,appendEntry)
-                helpList = append(helpList, v.name)
-                fileList[v.name] = f
             }
 
             /*
@@ -613,37 +620,32 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             if len(helpList)>0 {
                 if keynum<len(helpList) {
                     if _,found:=keywordset[helpList[keynum]]; !found {
-                        pos:=0
-                        isLib:=false
+                        pos:=keynum
                         if keynum==0 {
                             if len(helpList)>1 {
                                 // show of desc+function help if current word completes a function (but still other completion options)
                                 for p,v:=range helpList {
                                     if wordUnderCursor==v {
                                         pos=p
-                                        isLib=true
                                         break
                                     }
                                 }
                             }
-                        } else {
-                            pos=keynum
                         }
                         hla:=helpList[pos]
-                        if isLib {
+                        switch helpType[pos] {
+                        case HELP_FUNC:
                             hla=hla[:len(hla)-1]
                             helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
-                        } else {
-                            if _,found:=fileList[helpList[keynum]]; found {
-                                f:=fileList[helpList[keynum]]
-                                helpstring+="\n"+helpList[keynum]
-                                if f.IsDir() {
-                                    helpstring+=" [#bold]Directory[#boff]"
-                                } else {
-                                    helpstring+=" [#bold]File[#boff]"
-                                }
-                                helpstring+=sf(" Size:%d Mode:%o Last Modification:%v",f.Size(),f.Mode(),f.ModTime())
+                        case HELP_DIRENT:
+                            f:=fileList[helpList[pos]]
+                            helpstring+="\n"+helpList[pos]
+                            if f.IsDir() {
+                                helpstring+=" [#bold]Directory[#boff]"
+                            } else {
+                                helpstring+=" [#bold]File[#boff]"
                             }
+                            helpstring+=sf(" Size:%d Mode:%o Last Modification:%v",f.Size(),f.Mode(),f.ModTime())
                         }
                     }
                 }
