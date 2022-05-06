@@ -9,6 +9,17 @@ import (
     str "strings"
 )
 
+func startupOptions() {
+    shelltype, _ := gvget("@shelltype")
+    if shelltype=="bash" {
+        Copper("shopt -s expand_aliases",true)
+        Copper("set -o pipefail",true)
+    }
+    if shelltype=="bash" || shelltype=="ash" {
+        Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
+    }
+
+}
 
 func dir(filter string) ([]dirent) {
 
