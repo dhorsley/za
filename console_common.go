@@ -1561,7 +1561,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         CMDSEP,_:=gvget("@cmdsep")
         cmdsep:=CMDSEP.(byte)
         hexenc:=hex.EncodeToString([]byte{cmdsep})
-        // PIG
         io.WriteString(pi, "\n"+line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
 
         // get output
@@ -1584,6 +1583,12 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
 
         if commandErr != nil {
             errint = -3
+            lastlock.Lock()
+            coproc_reset = true
+            lastlock.Unlock()
+            os.Remove(errorFile.Name())
+            syscall.Kill(os.Getpid(),syscall.SIGINT)
+            return struct{out string;err string;code int;okay bool}{"","interrupt",-3,false}
         } else {
             if err == nil {
                 errint, err = strconv.Atoi(string(code))
