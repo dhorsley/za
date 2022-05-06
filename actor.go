@@ -117,6 +117,8 @@ func GetAsBigInt(i any) (*big.Int) {
         ri.SetInt64(int64(i))
     case int64:
         ri.SetInt64(i)
+    case uint32:
+        ri.SetUint64(uint64(i))
     case uint64:
         ri.SetUint64(i)
     case int:
@@ -139,6 +141,8 @@ func GetAsBigFloat(i any) *big.Float {
     case uint8:
         r.SetFloat64(float64(i))
     case int64:
+        r.SetFloat64(float64(i))
+    case uint32:
         r.SetFloat64(float64(i))
     case uint64:
         r.SetFloat64(float64(i))
@@ -167,6 +171,8 @@ func GetAsFloat(unk any) (float64, bool) {
         return float64(i), false
     case uint8:
         return float64(i), false
+    case uint32:
+        return float64(i), false
     case uint64:
         return float64(i), false
     case float64:
@@ -190,6 +196,8 @@ func GetAsInt64(expr any) (int64, bool) {
         return int64(i), false
     case int64:
         return i, false
+    case uint32:
+        return int64(i), false
     case uint64:
         return int64(i), false
     case uint8:
@@ -211,6 +219,8 @@ func GetAsInt(expr any) (int, bool) {
     case uint:
         return int(i), false
     case int64:
+        return int(i), false
+    case uint32:
         return int(i), false
     case uint64:
         return int(i), false
@@ -236,6 +246,8 @@ func GetAsUint(expr any) (uint, bool) {
     case int:
         return uint(i), false
     case int64:
+        return uint(i), false
+    case uint32:
         return uint(i), false
     case uint64:
         return uint(i), false

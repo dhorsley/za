@@ -2348,12 +2348,16 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
                             // get the required struct field
                             tf:=tmp.FieldByName(lhs_dotField)
 
-                            // Bodge: special case assignment of bigi/bigf to coerce type:
+                            // Bodge: special case assignments to coerce type:
                             switch tf.Type().String() {
                             case "*big.Int":
                                 results[assno]=GetAsBigInt(results[assno])
                             case "*big.Float":
                                 results[assno]=GetAsBigFloat(results[assno])
+                            }
+                            switch results[assno].(type) {
+                            case uint32:
+                                results[assno]=int(results[assno].(uint32))
                             }
                             // end-bodge
 
@@ -2458,12 +2462,17 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
 
                             } else {
 
-                                // Bodge: special case assignment of bigi/bigf to coerce type:
+                                // Bodge: special case assignments to coerce type:
                                 switch tf.Type().String() {
                                 case "*big.Int":
                                     results[assno]=GetAsBigInt(results[assno])
                                 case "*big.Float":
                                     results[assno]=GetAsBigFloat(results[assno])
+                                }
+
+                                switch results[assno].(type) {
+                                case uint32:
+                                    results[assno]=int(results[assno].(uint32))
                                 }
                                 // end-bodge
 
