@@ -177,7 +177,8 @@ var web_log_file string = "/var/log/za_access.log"
 
 // Global: generic flags
 var sig_int       bool          // ctrl-c pressed?
-var coproc_active bool          // for resetting co-proc if interrupted
+var coproc_reset  bool          // for resetting locked coproc instances
+var coproc_active bool          // 
 var no_shell      bool          // disable sub-shell
 var shellrep      bool          // enable shell command reporting
 
@@ -230,6 +231,7 @@ var PromptTemplate string
 
 var concurrent_funcs int32
 
+var breaksig chan os.Signal
 
 //
 // MAIN
@@ -709,25 +711,23 @@ func main() {
 
 
     // ctrl-c handler
-    breaksig := make(chan os.Signal, 1)
-    signal.Notify(breaksig, syscall.SIGINT)
+    var breaksig = make(chan os.Signal, 1)
+    signal.Notify(breaksig,syscall.SIGINT)
 
     // - name of Za function that handles ctrl-c.
     vset(nil,2,&mident,"trapInt", "")
 
     go func() {
         for {
-            <-breaksig
+            bs := <-breaksig
+            // pf("Received signal : [%#v]\n",bs)
+            quiet:=false
 
-            lastlock.RLock()
-            caval:=coproc_active
-            lastlock.RUnlock()
-
-            if caval {
+            if coproc_reset {
                 // out with the old
                 if bgproc != nil {
                     // pid := bgproc.Process.Pid
-                    // debug(13, "\nkilling pid %v\n", pid)
+                    // pf("\nkilling pid %v\n", pid)
                     // drain io before killing the process:
                     pi.Close()
                     // now kill:
@@ -736,15 +736,17 @@ func main() {
                 }
                 // in with the new
                 bgproc, pi, po, pe = NewCoprocess(coprocLoc,coprocArgs...)
-                // debug(13, "\nnew pid %v\n", bgproc.Process.Pid)
+                // pf("\nnew pid %v\n", bgproc.Process.Pid)
                 gvset("@shell_pid",bgproc.Process.Pid)
+                gvset("@last_signal",sf("%v %v",bs,bgproc.Process.Pid))
                 lastlock.Lock()
                 coproc_active = false
+                coproc_reset  = false
+                quiet = true
                 lastlock.Unlock()
             }
 
             // user-trap handling
-
             userSigIntHandler,usihfound:=vget(nil,2,&mident,"trapInt")
             usih:=""
             if usihfound {
@@ -825,8 +827,12 @@ func main() {
                 calltable[loc].gc=false
             } else {
                 finish(false, 0)
-                pf("\n[#2]User Interrupt![#-] ")
-                if !interactive { pf("\n") }
+                if !quiet {
+                    pf("[#2]System Interrupt![#-]\n")
+                    // if !interactive { pf("\n") }
+                } else {
+                    startupOptions()
+                }
             }
         }
     }()
@@ -935,15 +941,8 @@ func main() {
     } // endif not windows
 
 
-    // special case: aliases in bash
-    if shelltype=="bash" {
-        Copper("shopt -s expand_aliases",true)
-        Copper("set -o pipefail",true)
-    }
-
-    if shelltype=="bash" || shelltype=="ash" {
-        Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
-    }
+    // special case: aliases+pipefail in bash and/or ash
+    startupOptions()
 
     if testMode {
         testStart(exec_file_name)
