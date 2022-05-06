@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 doc `
-    not portable example for getting the process list. requires compatible procfs.
+    not portable example for getting the process list. requires compatible procfs and sane defaults.
 `
 
 struct process
@@ -11,6 +11,8 @@ struct process
     ppid        int
     priority    int
     starttime   int
+    uid         string
+    gid         string
 endstruct
 
 define ps(filter)
@@ -36,10 +38,39 @@ define ps(filter)
     return proc_list
 end
 
+define gen_users()
+    foreach u in $in "/etc/passwd"
+        userlist[u.field(3,":")]=u.field(1,":")
+    endfor
+    return userlist
+end
+
+define gen_groups()
+    foreach g in $in "/etc/group"
+        grouplist[g.field(3,":")]=g.field(1,":")
+    endfor
+    return grouplist
+end
+
 input filter optarg 1
 
+groups=gen_groups()
+users=gen_users()
+
+println format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-32s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
 foreach p in ps(filter)
-    println format("%#v",p)
+    if can_read("/proc/{=p.pid}")
+        s=stat("/proc/{=p.pid}")
+        p.uid=s.Uid.string
+        p.gid=s.Gid.string
+        on users[p.uid]!=nil  do p.uid=users[p.uid]
+        on groups[p.gid]!=nil do p.gid=groups[p.gid]
+    endif
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
+            p.pid,p.ppid,p.state,
+            string(p.uid),string(p.gid),
+            p.priority,p.name
+    )
 endfor
 
 

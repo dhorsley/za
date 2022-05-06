@@ -6,6 +6,7 @@ package main
 import (
     "errors"
     "os"
+    "os/user"
     "path/filepath"
     "golang.org/x/sys/unix"
     "io"
@@ -40,7 +41,7 @@ func buildOsLib() {
     // os level
 
     features["os"] = Feature{version: 1, category: "os"}
-    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "filebase", "fileabs", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", }
+    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "filebase", "fileabs", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", "username", "groupname", }
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and is_dir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
@@ -172,6 +173,28 @@ func buildOsLib() {
             return uint32(os.ModeSetgid) & uint32(args[0].(int)) != 0, nil
         }
         return false,nil
+    }
+
+    slhelp["username"] = LibHelp{in: "int", out: "string", action: "Lookup a username by user id."}
+    stdlib["username"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("username",args,1,"1","number"); !ok { return nil,err }
+        uid,_:=GetAsInt(args[0])
+        str_uid:=sf("%d",uid)
+        if s_user,err:=user.LookupId(str_uid); err==nil {
+            return (*s_user).Username,nil
+        }
+        return "",nil
+    }
+
+    slhelp["groupname"] = LibHelp{in: "int", out: "string", action: "Lookup a group name by group id."}
+    stdlib["groupname"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("groupname",args,1,"1","number"); !ok { return nil,err }
+        gid,_:=GetAsInt(args[0])
+        str_gid:=sf("%d",gid)
+        if s_group,err:=user.LookupGroupId(str_gid); err==nil && s_group!=nil {
+            return (*s_group).Name,nil
+        }
+        return "",nil
     }
 
     slhelp["parent"] = LibHelp{in: "string", out: "string", action: "Returns the parent directory."}
