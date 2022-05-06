@@ -248,7 +248,7 @@ func buildInternalLib() {
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
-        "enum_names","enum_all","dump",
+        "enum_names","enum_all","dump","sysvar",
         "ast","varbind","sizeof",
         // "conread","conwrite","conset","conclear", : for future use.
     }
@@ -345,6 +345,13 @@ func buildInternalLib() {
         return sttyFlag(args[0].(string),true),nil
     }
     */
+
+    slhelp["sysvar"] = LibHelp{in: "system_variable_name", out: "struct", action: "Returns the value of a system variable."}
+    stdlib["sysvar"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("sysvar",args,1,"1","string"); !ok { return nil,err }
+        v,_:=gvget(args[0].(string))
+        return v,nil
+    }
 
     slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     stdlib["zainfo"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {

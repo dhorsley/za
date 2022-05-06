@@ -412,9 +412,6 @@ func main() {
     // - don't show co-proc command progress
     gvset("mark_time", false)
 
-    // - name of Za function that handles ctrl-c.
-    vset(nil,2,&mident,"trapInt", "")
-
     // - show user stdin input
     gvset("@echo", true)
 
@@ -715,6 +712,9 @@ func main() {
     breaksig := make(chan os.Signal, 1)
     signal.Notify(breaksig, syscall.SIGINT)
 
+    // - name of Za function that handles ctrl-c.
+    vset(nil,2,&mident,"trapInt", "")
+
     go func() {
         for {
             <-breaksig
@@ -1000,8 +1000,6 @@ func main() {
         mainloc,_ := GetNextFnSpace(true,"main",call_s{prepared:false})
         fnlookup.lmset("main",1)
         numlookup.lmset(1,"main")
-
-        vset(nil,mainloc,&mident,"prompt_bash", promptBashlike)
 
         for {
 
