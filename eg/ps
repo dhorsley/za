@@ -81,7 +81,7 @@ foreach r in fs
         p.uid=s.Uid.string
         p.gid=s.Gid.string
         on username(p.uid.int)!="" do p.uid=username(p.uid.int)
-        on groupname(p.gid.int)!="" do p.gid=username(p.gid.int)
+        on groupname(p.gid.int)!="" do p.gid=groupname(p.gid.int)
     endif
     println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
