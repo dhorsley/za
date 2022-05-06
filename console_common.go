@@ -164,7 +164,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
 
     // init
     cpos := 0                    // cursor pos as extent of printable chars from start
-    os := ""                     // original string before history navigation begins
+    orig_s := ""                 // original string before history navigation begins
     navHist := false             // currently navigating history entries?
     startedContextHelp := false  // currently displaying auto-completion options
     contextHelpSelected := false // final selection made during auto-completion?
@@ -175,6 +175,9 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
+
+    // files in cwd for tab completion
+    var fileList map[string]os.FileInfo
 
     // for special case differences:
     var winmode bool
@@ -416,7 +419,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                         if !navHist {
                             navHist = true
                             curHist = lastHist
-                            os = s
+                            orig_s = s
                         }
                         if curHist > 0 {
                             curHist--
@@ -444,7 +447,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             curHist++
                             s = hist[curHist]
                         } else {
-                            s = os
+                            s = orig_s
                             navHist = false
                         }
                         cpos = len(s)
@@ -544,6 +547,22 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 }
             }
 
+            // @todo: move the dir+stat list generation to pre-input loop
+            fileList=make(map[string]os.FileInfo)
+            for _,v := range dir("^"+str.ToLower(wordUnderCursor)) {
+                f, _ := os.Stat(v.name)
+                appendEntry:=""
+                if f.IsDir() {
+                    appendEntry+="[#3]"
+                } else {
+                    appendEntry+="[#4]"
+                }
+                appendEntry+=v.name+"[#-]"
+                helpColoured = append(helpColoured,appendEntry)
+                helpList = append(helpList, v.name)
+                fileList[v.name] = f
+            }
+
             /*
             for _, v := range varnames {
                 if v!="" {
@@ -595,12 +614,14 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if keynum<len(helpList) {
                     if _,found:=keywordset[helpList[keynum]]; !found {
                         pos:=0
+                        isLib:=false
                         if keynum==0 {
                             if len(helpList)>1 {
                                 // show of desc+function help if current word completes a function (but still other completion options)
                                 for p,v:=range helpList {
                                     if wordUnderCursor==v {
                                         pos=p
+                                        isLib=true
                                         break
                                     }
                                 }
@@ -609,8 +630,21 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                             pos=keynum
                         }
                         hla:=helpList[pos]
-                        hla=hla[:len(hla)-1]
-                        helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
+                        if isLib {
+                            hla=hla[:len(hla)-1]
+                            helpstring+="\n[#bold]"+hla+"("+slhelp[hla].in+")[#boff] : [#4]"+slhelp[hla].action+"[#-]"
+                        } else {
+                            if _,found:=fileList[helpList[keynum]]; found {
+                                f:=fileList[helpList[keynum]]
+                                helpstring+="\n"+helpList[keynum]
+                                if f.IsDir() {
+                                    helpstring+=" [#bold]Directory[#boff]"
+                                } else {
+                                    helpstring+=" [#bold]File[#boff]"
+                                }
+                                helpstring+=sf(" Size:%d Mode:%o Last Modification:%v",f.Size(),f.Mode(),f.ModTime())
+                            }
+                        }
                     }
                 }
             }

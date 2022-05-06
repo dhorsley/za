@@ -10,6 +10,30 @@ import (
 )
 
 
+func dir(filter string) ([]dirent) {
+
+    cdir,_:=gvget("@cwd")
+    f, err := os.Open(cdir.(string))
+    if err != nil { return []dirent{} }
+    files, err := f.Readdir(-1)
+    f.Close()
+    if err != nil { return []dirent{} }
+
+    var dl []dirent
+    for _, file := range files {
+        if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
+        var fs dirent
+        fs.name=file.Name()
+        fs.size=file.Size()
+        fs.mode=int(file.Mode())
+        fs.mtime=file.ModTime().Unix()
+        fs.is_dir=file.IsDir()
+        dl=append(dl,fs)
+    }
+    return dl
+
+}
+
 // does file exist?
 func fexists(fp string) bool {
     f,err:=os.Stat(fp)
