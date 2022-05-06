@@ -29,10 +29,15 @@ define fsort(m)
     return fieldsort(s,1,"n")
 end
 
+define splitOnZero(s)
+    return split(s,string(char(0)))
+end
+
 define ps(filter)
     on filter==nil do filter="^.*$"
     procs = ${ls -1 /proc/*/stat}.line_filter("/[0-9]+/")
 
+    var args map
     var proc_list map
     var proc process
     foreach p in procs
@@ -47,6 +52,7 @@ define ps(filter)
         proc.priority = F[18].int
         proc.starttime= F[22].int
         proc.name     = cmd
+        args[proc.pid]= $in "/proc/{=proc.pid}/cmdline".splitOnZero
         proc_list[proc.pid] = proc
     endfor
     var keys []pid_lookup
@@ -56,7 +62,7 @@ define ps(filter)
         l.index=v.name
         append_to(ref keys,l)
     endfor
-    return proc_list,keys
+    return proc_list,keys,args
 end
 
 
@@ -68,11 +74,14 @@ end
 input filter optarg 1
 
 # fetch process list and sort by pid
-res,keys=ps(filter)
+res,keys,arglists=ps(filter)
 fs=fsort(keys)
 
 # display
-println format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-32s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
+title=format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-32s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
+
+println title
+lines=0
 foreach r in fs
     findpid=field(r,1)
     p=res[findpid]
@@ -83,11 +92,24 @@ foreach r in fs
         on username(p.uid.int)!="" do p.uid=username(p.uid.int)
         on groupname(p.gid.int)!="" do p.gid=groupname(p.gid.int)
     endif
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
+
+    args=format("%v",arglists[p.pid][1:])
+    args=args.trim(0,"[]")
+    l=args.len
+    args=args[0:min([args.len,term_w()-77])]
+    on args.len!=l do args+="[#2]…[#-]"
+
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s %v[#-]",
             p.pid,p.ppid,p.state,
             string(p.uid),string(p.gid),
-            p.priority,p.name
+            p.priority,p.name,args
     )
+
+    lines++
+    if lines>=term_h()-1
+        println title
+        lines=0
+    endif
 endfor
 
 
