@@ -111,7 +111,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     case StringLiteral:
         left=interpolate(p.fs,p.ident,(*ct).tokText)
     case Identifier:
-        left=p.identifier(ct) // &p.tokens[p.pos])
+        left=p.identifier(ct)
     case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(ct)
     case SYM_Not:
@@ -1348,12 +1348,13 @@ func (p *leparser) identifier(token *Token) (any) {
     // fmt.Printf("\n(identifier) checking binding for token : %#v\n",token)
     bin:=token.bindpos
 
-    /*
+        /*
         fmt.Printf("\nlocal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
         fmt.Printf("-- (this token : %#v)\n",token)
         fmt.Printf("-- (this bin : %v)\n",bin)
         fmt.Printf("-- (this ident entry : %#v)\n\n",(*p.ident)[bin])
-    */
+        fmt.Printf("\n\n\n\n\n")
+        */
 
     if (*p.ident)[bin].declared {
         return (*p.ident)[bin].IValue
