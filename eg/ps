@@ -2,6 +2,9 @@
 
 doc `
     not portable example for getting the process list. requires compatible procfs and sane defaults.
+
+    this is pretty slow, as we are combing through every /proc/$pid for a variety of things.
+
 `
 
 struct process
@@ -37,10 +40,15 @@ define ps(filter)
     on filter==nil do filter="^.*$"
     procs = ${ls -1 /proc/*/stat}.line_filter("/[0-9]+/")
 
-    var args map
-    var proc_list map
-    var proc process
+    var args        map
+    var virt_size   map
+    var rss_size    map
+    var pss_size    map
+    var proc_list   map
+    var proc        process
+
     foreach p in procs
+
         on !is_file(p) do continue
         ps = $in p      # @race: these files can go away
         cmd=ps.filter(`\(.*?\)`).tr("d","()")
@@ -54,7 +62,14 @@ define ps(filter)
         proc.name     = cmd
         args[proc.pid]= $in "/proc/{=proc.pid}/cmdline".splitOnZero
         proc_list[proc.pid] = proc
+
+        smap_file="/proc/{=proc.pid}/smaps"
+        virt_size[proc.pid] = $in smap_file.grep("^Size:").tr("s"," ").col(2," ").list_int.sum.int
+        rss_size[proc.pid]  = $in smap_file.grep("^Rss:").tr("s"," ").col(2," ").list_int.sum.int
+        pss_size[proc.pid]  = $in smap_file.grep("^Pss:").tr("s"," ").col(2," ").list_int.sum.int
+
     endfor
+
     var keys []pid_lookup
     var l pid_lookup
     foreach v in proc_list
@@ -62,9 +77,17 @@ define ps(filter)
         l.index=v.name
         append_to(ref keys,l)
     endfor
-    return proc_list,keys,args
+    return proc_list,keys,args,virt_size,rss_size,pss_size
 end
 
+define short_size(d)
+    # inbound value is in kb
+    unit="K"
+    if d>1024; d=d/1024f; unit="M"; endif
+    if d>1024; d=d/1024f; unit="G"; endif
+    on d!=0 do return d.int.string+unit
+    return ""
+end
 
 #
 # MAIN
@@ -74,11 +97,13 @@ end
 input filter optarg 1
 
 # fetch process list and sort by pid
-res,keys,arglists=ps(filter)
+res,keys,arglists,virt_size,rss,pss=ps(filter)
 fs=fsort(keys)
 
 # display
-title=format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-"+string(term_w()-77)+"s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
+title=format("\n[#bold][#ul]%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(term_w()-98)+"s[#-]",
+                "PID","PPID","ST","VIRT","RSS","PSS","USER","GROUP","PRI","CMD"
+)
 
 println title
 lines=0
@@ -96,16 +121,24 @@ foreach r in fs
     args=format("%v",arglists[p.pid])
     args=args.trim(0,"[]")
     l=args.len
-    when l
-    is 0
+    if l==0
         args+="[#1]["+p.name+"][#-]"
-    or
-        args=args[0:min([args.len,term_w()-77])]
+    else
+        args=args[0:min([args.len,term_w()-99])]
         on args.len!=l do args+="[#2]…[#-]"
-    endwhen
+    endif
 
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
+    vsize = virt_size[p.pid]
+    rsize = rss[p.pid]
+    psize = pss[p.pid]
+
+    vsize_string = vsize!=-1 ? short_size(vsize) : ""
+    rsize_string = rsize!=-1 ? short_size(rsize) : ""
+    psize_string = psize!=-1 ? short_size(psize) : ""
+
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
+            vsize_string,rsize_string,psize_string,
             string(p.uid),string(p.gid),
             p.priority,args
     )
