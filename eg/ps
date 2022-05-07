@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+coproc(false)
+
 doc `
     not portable example for getting the process list. requires compatible procfs and sane defaults.
     this is pretty slow, as we are combing through every /proc/$pid for a variety of things.
@@ -125,6 +127,9 @@ end
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 PAGESIZE = ${getconf PAGESIZE}.int
 
+TW = max([160,term_w()])
+TH = max([25,term_h()])
+
 # args
 input filter optarg 1
 
@@ -133,7 +138,7 @@ res,keys,arglists,mem=ps(filter)
 on keys.len>0 do keys=fsort(keys)
 
 # display
-title=format("\n[#bold][#ul]%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(term_w()-98)+"s[#-]",
+title=format("\n[#bold][#ul]%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(TW-98)+"s[#-]",
                 "PID","PPID","ST","VIRT","RSS","SHARED","USER","GROUP","PRI","CMD"
 )
 
@@ -150,8 +155,7 @@ foreach r in keys
     endif
     odd=not odd
 
-    findpid=field(r,1)
-    p=res[findpid]
+    p=res[field(r,1)]
     if can_read("/proc/{=p.pid}")
         s=stat("/proc/{=p.pid}")
         p.uid=s.Uid.string
@@ -166,7 +170,7 @@ foreach r in keys
     if l==0
         args+="[#1]["+p.name+"][#-]"
     else
-        args=args[0:min([args.len,term_w()-99])]
+        args=args[0:min([args.len,TW-99])]
         on args.len!=l do args+="[#2]…[#-]"
     endif
 
@@ -181,15 +185,15 @@ foreach r in keys
     println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
             vsize_string,rsize_string,ssize_string,
-            string(p.uid),string(p.gid),
+            p.uid,p.gid,
             p.priority,args
     )
 
-    lines++
-    if lines>=term_h()-1
+    if ++lines>=TH
         println title
         lines=0
     endif
+
 endfor
 
 
