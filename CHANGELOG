@@ -74,6 +74,8 @@ CHANGE LOG
 
     * occasional name binding issue in interactive mode fixed, hopefully!
     * testing a change to interpolation nesting in eval.go
+    * damped ansi output from bg/fg 256/rgb funcs.
+    * fixed one of the issues in -r mode.
 
     other
     -----
