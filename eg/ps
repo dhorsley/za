@@ -127,8 +127,8 @@ end
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 PAGESIZE = ${getconf PAGESIZE}.int
 
-TW = max([100,term_w()])
-TH = max([25,term_h()])
+TW= term_w()==-1 ? 250 : term_w()
+TH= term_h()==-1 ? 25  : term_h()
 
 # args
 input filter optarg 1
