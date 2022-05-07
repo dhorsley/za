@@ -5,6 +5,7 @@ package main
 //
 
 import (
+//    "bufio"
     "flag"
     "fmt"
     "path"
@@ -1173,25 +1174,35 @@ func main() {
                 os.Exit(ERR_EXISTS)
             }
         } else {
+
             data, err = ioutil.ReadAll(os.Stdin)
             if err != nil {
                 panic(err)
             }
+
         }
     }
 
     // awk-like mode
     if *a_program_loop {
+
+        data,err=ioutil.ReadAll(os.Stdin)
+        if err!=nil {
+            panic(err)
+        }
+
         s:= `NL=0` + "\n" +
-            `foreach _line in read_file("/dev/stdin")` + "\n" +
-            `NL++` + "\n"
+            `foreach _line in _stdin` + "\n" +
+            `NL+=1` + "\n"
+
         if *a_program_fs=="" {
-            s+=`fields(_line); `
+            s+=`fields(_line) `
         } else {
-            s+=`fields(_line,"`+*a_program_fs+`"); `
+            s+=`fields(_line,"`+*a_program_fs+`") `
         }
         s += "\n" + *a_program + "\nendfor\n"
         *a_program=s
+
     }
 
 
@@ -1228,6 +1239,9 @@ func main() {
         calllock.Unlock()
         currentModule="main"
         // pf("[main] loc -> %d\n",mainloc)
+        if *a_program!="" {
+            vset(nil,1,&mident,"_stdin", string(data))
+        }
         Call(MODE_NEW, &mident, mainloc, ciMain)
         // calltable[mainloc].gcShyness=20
         // calltable[mainloc].gc=true

@@ -239,14 +239,20 @@ func buildStringLib() {
     stdlib["bg256"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("bg256",args,1,"1","number"); !ok { return nil,err }
         i,_:=GetAsInt(args[0])
-        return sf("\033[48;5;%dm",i),nil
+        if ansiMode {
+            return sf("\033[48;5;%dm",i),nil
+        }
+        return "",nil
     }
 
     slhelp["fg256"] = LibHelp{in: "int_colour", out: "string", action: "Returns an ANSI code string for expressing an 8-bit foreground colour code."}
     stdlib["fg256"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fg256",args,1,"1","number"); !ok { return nil,err }
         i,_:=GetAsInt(args[0])
-        return sf("\033[38;5;%dm",i),nil
+        if ansiMode {
+            return sf("\033[38;5;%dm",i),nil
+        }
+        return "",nil
     }
 
     slhelp["bgrgb"] = LibHelp{in: "int_r,int_g,int_b", out: "string", action: "Returns an ANSI code string for expressing an rgb background colour code."}
@@ -255,7 +261,10 @@ func buildStringLib() {
         r,_:=GetAsInt(args[0])
         g,_:=GetAsInt(args[1])
         b,_:=GetAsInt(args[2])
-        return sf("\033[48;2;%d;%d;%dm",r,g,b),nil
+        if ansiMode {
+            return sf("\033[48;2;%d;%d;%dm",r,g,b),nil
+        }
+        return "",nil
     }
 
     slhelp["fgrgb"] = LibHelp{in: "int_r,int_g,int_b", out: "string", action: "Returns an ANSI code string for expressing an rgb foreground colour code."}
@@ -264,7 +273,10 @@ func buildStringLib() {
         r,_:=GetAsInt(args[0])
         g,_:=GetAsInt(args[1])
         b,_:=GetAsInt(args[2])
-        return sf("\033[38;2;%d;%d;%dm",r,g,b),nil
+        if ansiMode {
+            return sf("\033[38;2;%d;%d;%dm",r,g,b),nil
+        }
+        return "",nil
     }
 
     slhelp["md5sum"] = LibHelp{in: "string", out: "string", action: "Returns the MD5 checksum of the input string."}

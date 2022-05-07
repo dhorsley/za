@@ -5,6 +5,18 @@ BUGS
 
 lots, i'm sure.
 
+    * piping za | za has issues.
+
+        - for example:
+
+            za -c eg/ps "d$" | za -r -e 'on NF>2 do on F[3]=="S" do println _line'
+
+        ... with the example ps script into an awk-like one liner.
+
+        - presumably, stdin is getting thwacked in parallel. not sure what to do about it yet.
+        - also, probably relatedly, execution may stop, waiting for a newline, at start of pipe input.
+        - the problems go away when using a temporary file instead of a pipe to pass the input->output
+        
 
 TODO
 ----
