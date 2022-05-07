@@ -78,7 +78,7 @@ res,keys,arglists=ps(filter)
 fs=fsort(keys)
 
 # display
-title=format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-32s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
+title=format("\n[#bold][#ul]%-7s %-7s %2s %16s %16s %4s %-"+string(term_w()-77)+"s[#-]","PID","PPID","ST","USER","GROUP","PRI","CMD")
 
 println title
 lines=0
@@ -93,16 +93,21 @@ foreach r in fs
         on groupname(p.gid.int)!="" do p.gid=groupname(p.gid.int)
     endif
 
-    args=format("%v",arglists[p.pid][1:])
+    args=format("%v",arglists[p.pid])
     args=args.trim(0,"[]")
     l=args.len
-    args=args[0:min([args.len,term_w()-77])]
-    on args.len!=l do args+="[#2]…[#-]"
+    when l
+    is 0
+        args+="[#1]["+p.name+"][#-]"
+    or
+        args=args[0:min([args.len,term_w()-77])]
+        on args.len!=l do args+="[#2]…[#-]"
+    endwhen
 
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s %v[#-]",
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
             string(p.uid),string(p.gid),
-            p.priority,p.name,args
+            p.priority,args
     )
 
     lines++
