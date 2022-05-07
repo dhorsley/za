@@ -890,7 +890,7 @@ func unaryFileInput(i any) (string) {
     case string:
         s, err := ioutil.ReadFile(i.(string))
         if err!=nil {
-            panic(fmt.Errorf("error importing file '%s' as string",i.(string)))
+            return "" // panic(fmt.Errorf("error importing file '%s' as string",i.(string)))
         }
         if len(s)>0 && s[len(s)-1]==10 { s=s[:len(s)-1] }
         return string(s)
