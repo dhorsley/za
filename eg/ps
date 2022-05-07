@@ -2,9 +2,7 @@
 
 doc `
     not portable example for getting the process list. requires compatible procfs and sane defaults.
-
     this is pretty slow, as we are combing through every /proc/$pid for a variety of things.
-
 `
 
 struct process
@@ -23,6 +21,7 @@ struct pid_lookup
     index       string
 endstruct
 
+
 # (even more) hacky sort, as there's no builtin sort by struct field
 define fsort(m)
     s=""
@@ -36,37 +35,66 @@ define splitOnZero(s)
     return split(s,string(char(0)))
 end
 
+struct statm_line
+    size    int # tot prog size
+    rss     int # page count
+    shared  int # page count
+    text    int # code 
+    lib     int # 0
+    data    int # data+stack
+    dt      int # dirty page count (0)
+endstruct
+
 define ps(filter)
+
     on filter==nil do filter="^.*$"
-    procs = ${ls -1 /proc/*/stat}.line_filter("/[0-9]+/")
+    procs = ${ls -1 /proc}.line_filter("^[0-9]+$")
 
     var args        map
-    var virt_size   map
-    var rss_size    map
-    var pss_size    map
     var proc_list   map
     var proc        process
+    var parts       statm_line
+    var mem         []
 
     foreach p in procs
 
-        on !is_file(p) do continue
-        ps = $in p      # @race: these files can go away
+        dn="/proc/"+p
+        on !is_dir(dn) do continue
+
+        # read data from .../stat
+        ps = $in "{dn}/stat"
+
+        # ignore name filtered processes
         cmd=ps.filter(`\(.*?\)`).tr("d","()")
         on !match(cmd,filter) do continue
+
+        # populate line from stat
         ps.replace("\(.*?\)","command").fields
+
+        proc.name     = cmd
         proc.pid      = F[1].int
         proc.state    = F[3]
         proc.ppid     = F[4].int
         proc.priority = F[18].int
         proc.starttime= F[22].int
-        proc.name     = cmd
-        args[proc.pid]= $in "/proc/{=proc.pid}/cmdline".splitOnZero
-        proc_list[proc.pid] = proc
 
-        smap_file="/proc/{=proc.pid}/smaps"
-        virt_size[proc.pid] = $in smap_file.grep("^Size:").tr("s"," ").col(2," ").list_int.sum.int
-        rss_size[proc.pid]  = $in smap_file.grep("^Rss:").tr("s"," ").col(2," ").list_int.sum.int
-        pss_size[proc.pid]  = $in smap_file.grep("^Pss:").tr("s"," ").col(2," ").list_int.sum.int
+        # fetch command line arguments
+        args[proc.pid]= $in "{dn}/cmdline".splitOnZero
+
+        # read data from .../statm
+        pm = $in "{dn}/statm"
+        pm.fields
+        parts.size    = F[mem_parts.size].int     # tot prog size
+        parts.rss     = F[mem_parts.rss].int      # page count
+        parts.shared  = F[mem_parts.shared].int   # page count
+        parts.text    = F[mem_parts.text].int     # code 
+        parts.lib     = F[mem_parts.lib].int      # 0
+        parts.data    = F[mem_parts.data].int     # data+stack
+        parts.dt      = F[mem_parts.dt].int       # dirty page count (0)
+        mem[proc.pid] = parts
+
+        # add process to list
+        proc_list[proc.pid] = proc
 
     endfor
 
@@ -77,15 +105,16 @@ define ps(filter)
         l.index=v.name
         append_to(ref keys,l)
     endfor
-    return proc_list,keys,args,virt_size,rss_size,pss_size
+    return proc_list,keys,args,mem
 end
 
 define short_size(d)
     # inbound value is in kb
-    unit="K"
+    unit=""
+    if d>1024; d=d/1024f; unit="K"; endif
     if d>1024; d=d/1024f; unit="M"; endif
     if d>1024; d=d/1024f; unit="G"; endif
-    on d!=0 do return d.int.string+unit
+    on d!=0 do return format("%.3f",d)+unit
     return ""
 end
 
@@ -93,21 +122,34 @@ end
 # MAIN
 #
 
+enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
+PAGESIZE = ${getconf PAGESIZE}.int
+
 # args
 input filter optarg 1
 
 # fetch process list and sort by pid
-res,keys,arglists,virt_size,rss,pss=ps(filter)
-fs=fsort(keys)
+res,keys,arglists,mem=ps(filter)
+on keys.len>0 do keys=fsort(keys)
 
 # display
 title=format("\n[#bold][#ul]%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(term_w()-98)+"s[#-]",
-                "PID","PPID","ST","VIRT","RSS","PSS","USER","GROUP","PRI","CMD"
+                "PID","PPID","ST","VIRT","RSS","SHARED","USER","GROUP","PRI","CMD"
 )
 
 println title
 lines=0
-foreach r in fs
+odd=false
+
+foreach r in keys
+
+    if odd
+        print bgrgb(0,10,5)
+    else
+        print bgrgb(0,5,10)
+    endif
+    odd=not odd
+
     findpid=field(r,1)
     p=res[findpid]
     if can_read("/proc/{=p.pid}")
@@ -128,17 +170,17 @@ foreach r in fs
         on args.len!=l do args+="[#2]…[#-]"
     endif
 
-    vsize = virt_size[p.pid]
-    rsize = rss[p.pid]
-    psize = pss[p.pid]
+    vsize = mem[p.pid].size * PAGESIZE
+    rsize = mem[p.pid].rss * PAGESIZE
+    ssize = mem[p.pid].shared * PAGESIZE
 
     vsize_string = vsize!=-1 ? short_size(vsize) : ""
     rsize_string = rsize!=-1 ? short_size(rsize) : ""
-    psize_string = psize!=-1 ? short_size(psize) : ""
+    ssize_string = ssize!=-1 ? short_size(ssize) : ""
 
     println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
-            vsize_string,rsize_string,psize_string,
+            vsize_string,rsize_string,ssize_string,
             string(p.uid),string(p.gid),
             p.priority,args
     )
