@@ -3,6 +3,7 @@
 doc `
     not portable example for getting the process list. requires compatible procfs and sane defaults.
     this is pretty slow, as we are combing through every /proc/$pid for a variety of things.
+    also, priority may well be wrong. not properly adjusted for different scheduling types.
 `
 
 struct process
@@ -76,7 +77,8 @@ define ps(filter)
         proc.pid      = F[1].int
         proc.state    = F[3]
         proc.ppid     = F[4].int
-        proc.priority = F[18].int
+        rawpri=F[18].int
+        proc.priority = (rawpri < 0) ? (abs(rawpri+1)) : rawpri
         proc.starttime= F[22].int
 
         # fetch command line arguments
@@ -125,8 +127,10 @@ end
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 PAGESIZE = ${getconf PAGESIZE}.int
 
-termless = (term_w()==-1 and term_h()==-1)
-TW= termless ? 250 : term_w()
+termless = term_w()==-1 and term_h()==-1
+ansi(!termless)
+
+TW= termless ? 100 : term_w()
 TH= termless ? 25  : term_h()
 
 # args
@@ -137,8 +141,8 @@ res,keys,arglists,mem=ps(filter)
 on keys.len>0 do keys=fsort(keys)
 
 # display
-title=format("\n[#bold]"+(termless?"":"[#ul]")+"%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(TW-98)+"s[#-]",
-                "PID","PPID","ST","VIRT","RSS","SHARED","USER","GROUP","PRI","CMD"
+title=format("\n[#bold]"+(termless?"":"[#ul]")+"%-7s %-7s %2s %9s %9s %9s %16s %4s %-"+string(TW-72)+"s[#-]",
+                "PID","PPID","ST","VIRT","RSS","SHARED","USER","PRI","CMD"
 )
 
 println title
@@ -148,9 +152,9 @@ odd=false
 foreach r in keys
 
     if odd
-        print bgrgb(0,10,5)
+        print bgrgb(0,28,19)
     else
-        print bgrgb(0,5,10)
+        print bgrgb(3,10,37)
     endif
     odd=not odd
 
@@ -163,28 +167,40 @@ foreach r in keys
         on groupname(p.gid.int)!="" do p.gid=groupname(p.gid.int)
     endif
 
+    tempwidth=TW-72
     args=format("%v",arglists[p.pid])
     args=args.trim(0,"[]")
-    l=args.len
-    if l==0
-        args+="[#1]["+p.name+"][#-]"
-    else
-        args=args[0:min([args.len,TW-99])]
+
+    defName=false
+
+    if args=="" # no args list entry, resort to provided name
+        args="["+p.name+"]"
+        defName=true
+    endif
+
+    if !termless
+        l=args.len
+        args=args[0:(l<tempwidth ? l:tempwidth)]
         on args.len!=l do args+="[#2]…[#-]"
+
+        if defName
+            args="[#1]"+args
+            tempwidth+=4
+        endif
     endif
 
     vsize = mem[p.pid].size * PAGESIZE
     rsize = mem[p.pid].rss * PAGESIZE
     ssize = mem[p.pid].shared * PAGESIZE
 
-    vsize_string = vsize!=0 ? short_size(vsize) : ""
-    rsize_string = rsize!=0 ? short_size(rsize) : ""
-    ssize_string = ssize!=0 ? short_size(ssize) : ""
+    vsize_string = vsize!=0 ? short_size(vsize) : "-"
+    rsize_string = rsize!=0 ? short_size(rsize) : "-"
+    ssize_string = ssize!=0 ? short_size(ssize) : "-"
 
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s [#7]%4d [#bold]%-"+tempwidth.string+"s[#-]",
             p.pid,p.ppid,p.state,
             vsize_string,rsize_string,ssize_string,
-            p.uid,p.gid,
+            p.uid,
             p.priority,args
     )
 
