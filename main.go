@@ -5,7 +5,6 @@ package main
 //
 
 import (
-//    "bufio"
     "flag"
     "fmt"
     "path"
@@ -164,7 +163,8 @@ var tt * term.Term          // keystroke input receiver
 var ansiMode bool           // to disable ansi colour output
 var lineWrap bool           // optional pane line wrap.
 var promptColour string
-// setup getInput() history for interactive mode
+
+// Global: setup getInput() history for interactive mode
 var curHist int
 var lastHist int
 var hist []string
@@ -208,7 +208,6 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 
-
 // - not currently used too much. may eventually be removed
 var debug_level int             // 0:off, >0 max displayed debug level
 var lineDebug   bool            // 
@@ -224,8 +223,6 @@ var structmaps map[string][]any
 // compile cache for regex operator
 var ifCompileCache map[string]regexp.Regexp
 
-// highest numbered variable table entry created
-// var vtable_maxreached uint32
 
 // repl prompt
 var PromptTemplate string
@@ -320,6 +317,7 @@ func main() {
     default_prectable[SYM_MM]       =45
     default_prectable[LeftSBrace]   =45
     default_prectable[SYM_DOT]      =61
+    // default_prectable[O_InFile]     =70
     default_prectable[LParen]       =100
 
 
@@ -430,11 +428,9 @@ func main() {
 
     // initialise global parser
     parser=&leparser{}
-    // parser.prectable=default_prectable
 
     // interpolation parser
     interparse=&leparser{}
-    // interparse.prectable=default_prectable
 
     // arg parsing
     var a_help         =   flag.Bool("h",false,"help page")
@@ -705,6 +701,7 @@ func main() {
             gvset("@shell_pid",bgproc.Process.Pid)
         }
 
+        // PIG
         // prepare for getInput() keyboard input (from main process)
         tt, _ = term.Open("/dev/tty")
 
@@ -1154,8 +1151,8 @@ func main() {
         finish(true, 0)
     }
 
-    row,col=GetCursorPos()
-    if runtime.GOOS=="windows" { row++ ; col++ }
+    //row,col=GetCursorPos()
+    //if runtime.GOOS=="windows" { row++ ; col++ }
 
     // if not in interactive mode, then get input from either file or stdin:
     if *a_program=="" {
@@ -1213,6 +1210,9 @@ func main() {
     } else {
         input=string(data)
     }
+
+    row,col=GetCursorPos()
+    if runtime.GOOS=="windows" { row++ ; col++ }
 
     // tokenise and part-parse the input
     if len(input) > 0 {
