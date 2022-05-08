@@ -5,7 +5,6 @@ package main
 //
 
 const MaxUint64 = ^uint64(0)
-// const MaxUint32 = ^uint32(0)
 const Maxint16  = ^int16(0)
 
 const MAX_LOOPS = 8
@@ -15,14 +14,14 @@ const szIdent       = 600       // max vars per func
 const sz_mru_cache  = 4         // size of recently used cache of variable name-position lookups
 
 const gnfsModulus = 48000       // used by calltable to set max size, mainly impacts recursion
- const gcModulus   = 100         // as subdivision of gnfsModulus
+const gcModulus   = 100         // as subdivision of gnfsModulus
 
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 
 const SPACE_CAP = gnfsModulus   // initial instance and source functions cap
 
 const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
-const FUNC_CAP = 300            // max stdlib functions
+const FUNC_CAP = 300            // stdlib functions storage space, starting point.
 const LOOP_START_CAP = 8        // max loops per function 
 const VAR_CAP = 8               // max vars per function (scales up)
 const FAIRY_CAP = 64            // max ansi mappings
