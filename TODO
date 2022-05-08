@@ -5,7 +5,7 @@ BUGS
 
 lots, i'm sure.
 
-    * piping za | za has issues.
+    * (MOSTLY RESOLVED? to confirm) piping za | za has issues.
 
         - for example:
 
@@ -15,8 +15,25 @@ lots, i'm sure.
 
         - presumably, stdin is getting thwacked in parallel. not sure what to do about it yet.
         - also, probably relatedly, execution may stop, waiting for a newline, at start of pipe input.
-        - the problems go away when using a temporary file instead of a pipe to pass the input->output
-        
+        - the problems go away when using a temporary file instead of a pipe to pass the za output->za input
+
+        - (PARTIAL RESOLUTION)
+          Console input and output, in Linux Za, is mainly underpinned by the Term package.
+          This requires setting a device to use (/dev/tty in our case) and tracking variables for the row,col position.
+          That tracking is handled by GetCursorPos() which interprets the ansi console sequence \033[6n
+          via the term package. We don't do this very often as it's a costly call.
+          However, during startup we do! It just needed shuffling beyond conflicting reads of os.Stdin to the point
+          where we know whether input will be from console, file or pipe and have read those in.
+
+    * possible bug... eg/ps requires coproc(false) when piped out. 
+        - maybe related to above issue, but may be something else. subshell stdin/out/err manipulation
+            could be interfering where it shouldn't.
+
+        - not fixed yet, but added support in -> (map) operator so dir() could be used instead of ${ls -1} in eg/ps.
+
+        - (UPDATE) it's something else :) resolution of piping bug didn't affect it. 
+            - with the original ${ls -1}.grep() line back in place it still blows up without the za -S option.
+
 
 TODO
 ----
