@@ -1,7 +1,5 @@
 #!/usr/bin/za
 
-coproc(false)
-
 doc `
     not portable example for getting the process list. requires compatible procfs and sane defaults.
     this is pretty slow, as we are combing through every /proc/$pid for a variety of things.
@@ -50,7 +48,8 @@ endstruct
 define ps(filter)
 
     on filter==nil do filter="^.*$"
-    procs = ${ls -1 /proc}.line_filter("^[0-9]+$")
+    procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
+    # was: procs = ${ls -1 /proc}.grep("^[0-9]+$")
 
     var args        map
     var proc_list   map
@@ -111,12 +110,11 @@ define ps(filter)
 end
 
 define short_size(d)
-    # inbound value is in kb
     unit=""
-    if d>1024; d=d/1024f; unit="K"; endif
-    if d>1024; d=d/1024f; unit="M"; endif
-    if d>1024; d=d/1024f; unit="G"; endif
-    on d!=0 do return format("%.3f",d)+unit
+    if d>=1024; d=d/1024f; unit="K"; endif
+    if d>=1024; d=d/1024f; unit="M"; endif
+    if d>=1024; d=d/1024f; unit="G"; endif
+    on d!=0 do return format("%.2f%s",d,unit)
     return ""
 end
 
@@ -127,8 +125,9 @@ end
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 PAGESIZE = ${getconf PAGESIZE}.int
 
-TW= term_w()==-1 ? 250 : term_w()
-TH= term_h()==-1 ? 25  : term_h()
+termless = (term_w()==-1 and term_h()==-1)
+TW= termless ? 250 : term_w()
+TH= termless ? 25  : term_h()
 
 # args
 input filter optarg 1
@@ -138,7 +137,7 @@ res,keys,arglists,mem=ps(filter)
 on keys.len>0 do keys=fsort(keys)
 
 # display
-title=format("\n[#bold][#ul]%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(TW-98)+"s[#-]",
+title=format("\n[#bold]"+(termless?"":"[#ul]")+"%-7s %-7s %2s %9s %9s %9s %16s %16s %4s %-"+string(TW-98)+"s[#-]",
                 "PID","PPID","ST","VIRT","RSS","SHARED","USER","GROUP","PRI","CMD"
 )
 
@@ -178,9 +177,9 @@ foreach r in keys
     rsize = mem[p.pid].rss * PAGESIZE
     ssize = mem[p.pid].shared * PAGESIZE
 
-    vsize_string = vsize!=-1 ? short_size(vsize) : ""
-    rsize_string = rsize!=-1 ? short_size(rsize) : ""
-    ssize_string = ssize!=-1 ? short_size(ssize) : ""
+    vsize_string = vsize!=0 ? short_size(vsize) : ""
+    rsize_string = rsize!=0 ? short_size(rsize) : ""
+    ssize_string = ssize!=0 ? short_size(ssize) : ""
 
     println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s %16s [#7]%4d [#bold]%s[#-]",
             p.pid,p.ppid,p.state,
@@ -189,9 +188,11 @@ foreach r in keys
             p.priority,args
     )
 
-    if ++lines>=TH
-        println title
-        lines=0
+    if not termless
+        if ++lines>=TH
+            println title
+            lines=0
+        endif
     endif
 
 endfor
