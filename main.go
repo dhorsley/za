@@ -274,7 +274,13 @@ func main() {
             globlock.Unlock()
             shelltype, _ := gvget("@shelltype")
             if shelltype=="bash" || shelltype=="ash" {
-                Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
+                if MW!=-1 {
+                    if runtime.GOOS=="freebsd" {
+                        Copper(sf(`alias ls="COLUMNS=%d ls -C"`,MW),true)
+                    } else {
+                        Copper(sf(`alias ls="ls -x -w %d"`,MW),true)
+                    }
+                }
             }
         }
     }()

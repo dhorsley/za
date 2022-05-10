@@ -77,6 +77,21 @@ CHANGE LOG
     * damped ansi output from bg/fg 256/rgb funcs.
     * fixed one of the issues in -r mode.
 
+    * had an issue with some scripts requiring coproc(false) when piped out. 
+        - Doh! fixed.
+            - was setting an alias for multi-column ls width at startup/sig_winch resize to the term_width.
+            - termwidth (TW) defaults to -1 when running without an attached terminal.
+            - the ls was failing with an invalid -w option from the alias.
+            - changed to not create the alias when TW==-1.
+            - at least it's not as catastrophic as i thought!
+        - also added support in -> (map) operator so dir() could be used instead of ${ls -1} in eg/ps.
+
+    * post test rebuild with freebsd 13.x + go1.18.x:
+        - updated interactive mode ls alias for freebsd/bash
+        - updated build script to remove error in upx detection.
+	- otherwise, freebsd build appeared to be fine, against very limited testing.
+
+
     other
     -----
 
