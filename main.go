@@ -983,9 +983,31 @@ func main() {
         if runtime.GOOS=="windows" { row++ ; col++ }
         pcol := defaultPromptColour
 
-        // banner
-        title:=sparkle("Za Interactive Mode")
-        pf("\n%s\n\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
+        // startup script preparation:
+
+        hasScript:=false
+        startScript:=""
+        home, _ := gvget("@home")
+        startScriptLoc:=home.(string)+"/.zarc"
+        if f, err := os.Stat(startScriptLoc); err==nil {
+            if f.Mode().IsRegular() {
+                startScriptRaw, err := ioutil.ReadFile(startScriptLoc)
+                startScript=string(startScriptRaw)
+                if err==nil {
+                    hasScript=true
+                } else {
+                    pf("Error: cannot read startup file.\n")
+                    os.Exit(ERR_EXISTS)
+                }
+            } else {
+                pf("Error: startup script is not a file.\n")
+                os.Exit(ERR_EXISTS)
+            }
+        } else {
+            // banner
+            title:=sparkle("Za Interactive Mode")
+            pf("\n%s\n\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
+        }
 
         if row>=MH-BMARGIN {
             if row>MH { row=MH }
@@ -995,7 +1017,6 @@ func main() {
 
         // state control
         endFunc := false
-
         curHist = 0
         lastHist = 0
         histEmpty = true
@@ -1003,6 +1024,8 @@ func main() {
         mainloc,_ := GetNextFnSpace(true,"main",call_s{prepared:false})
         fnlookup.lmset("main",1)
         numlookup.lmset(1,"main")
+
+        started:=false
 
         for {
 
@@ -1038,6 +1061,20 @@ func main() {
             cs.base = 1
             cs.fs = "main"
             calltable[mainloc]=cs
+
+            // startup script processing:
+            if !started && hasScript {
+                phraseParse("main", startScript, 0)
+                currentModule="main"
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
+                pf("\n\n")
+                if row>=MH-BMARGIN {
+                    if row>MH { row=MH }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
+                    row=MH-BMARGIN
+                }
+                started=true
+            }
 
             // multi-line input loop
             for {
@@ -1132,13 +1169,6 @@ func main() {
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
-
-                // insert line feed by default
-                /*
-                if interactiveFeed {
-                    pf("\n")
-                }
-                */
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
