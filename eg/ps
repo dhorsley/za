@@ -50,7 +50,7 @@ define ps(filter)
 
     on filter==nil do filter="^.*$"
     procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
-    # was: procs = ${ls -1 /proc}.grep("^[0-9]+$")
+    # was : procs = ${ls -1 /proc}.grep("^[0-9]+$")
 
     var args        map
     var proc_list   map
@@ -152,9 +152,9 @@ odd=false
 foreach r in keys
 
     if odd
-        print bgrgb(0,28,19)
+        print bgrgb(0,50,29)
     else
-        print bgrgb(3,10,37)
+        print bgrgb(10,20,47)
     endif
     odd=not odd
 
@@ -205,7 +205,7 @@ foreach r in keys
     )
 
     if not termless
-        if ++lines>=TH
+        if ++lines>=TH-2
             println title
             lines=0
         endif

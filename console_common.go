@@ -109,6 +109,7 @@ func setupAnsiPalette() {
         fairydust["framed"] = "\033[51m"
         fairydust["CSI"] = "\033["
         fairydust["CTE"] = "\033[0K"
+        fairydust["."] = "\033[39m"
 
         ansiReplacables=[]string{}
 
@@ -124,7 +125,7 @@ func setupAnsiPalette() {
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
                 "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",
-                "fbblue","fbmagenta","fbcyan","fwhite","dim","blink","hidden","crossed","framed","CSI","CTE",
+                "fbblue","fbmagenta","fbcyan","fwhite","dim","blink","hidden","crossed","framed","CSI","CTE",".",
         }
 
         ansiReplacables=[]string{}

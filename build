@@ -45,7 +45,7 @@ bdate =< date "+%d-%m-%Y %H:%M"
 strStrip    = strip_enable ? "-stripped" : ""
 stripFlags  = strip_enable ? "-s -w"     : ""
 
-upxfound= | "which upx | wc -l" . trim(0) . bool
+upxfound= ${which upx | wc -l} . trim(0) . bool
 
 if ! os() ~ "^freebsd"
     when tgt

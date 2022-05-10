@@ -4260,6 +4260,7 @@ func system(cmds string, display bool) (cop struct{out string; err string; code 
             final_out+=cop.out+"\n"
         }
         // pf("sys: [%3d] : %s\n",k,cmd)
+        // pf("cmdout: %+v\n",cop)
     }
 
     if ! display {
