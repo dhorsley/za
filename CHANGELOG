@@ -95,6 +95,10 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added startup script processing.
+        - a startup script can now be located at $HOME/.zarc
+        - this script will be executed only in interactive mode.
+
     * (experimental) added dir/filenames back into tab completion in interactive mode
 
     * (experimental) added {...} and ${...} token pairs for delimiting system command lines
