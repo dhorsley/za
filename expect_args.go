@@ -6,6 +6,7 @@ import (
     "reflect"
     "math/big"
     "strconv"
+    str "strings"
     "errors"
 )
 
@@ -63,6 +64,8 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
         next+=nc
         if ! tryNext { break }
     }
+
+    type_errs=str.ReplaceAll(type_errs,"interface {}","any")
 
     if tryNext || !triedOne {
         return false,errors.New(sf("\nInvalid arguments in %v",name)+type_errs)
