@@ -1,10 +1,17 @@
 
 prompt=sysvar("@bashprompt")
 
-banner=` {="@language".sysvar} - version {="@version".sysvar}`
+banner=` {="@language".sysvar} - version {="@version".sysvar} `
 
-if is_file("/usr/share/figlet/ivrit.flf")
-    p=${toilet -f ivrit -k -w {=term_w()} "{=banner}"}
+seed(-1)
+variants=["ivrit","future","shadow","pagga"]
+fv=variants[variants.len.rand-1]
+
+tlf=false
+on is_file("/usr/share/figlet/{fv}.tlf") do tlf=true
+
+if is_file("/usr/share/figlet/{fv}."+(tlf?"tlf":"flf"))
+    p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
 endif
 
 println "[#5]{p}[#-]\n"
