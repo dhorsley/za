@@ -633,6 +633,15 @@ func buildInternalLib() {
             default:
                 return nil,errors.New("permit(uninit) accepts a boolean value only.")
             }
+        case "fallback":
+            switch args[1].(type) {
+            case bool:
+                permit_fallback:=args[1].(bool)
+                gvset("@command_fallback",permit_fallback)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(fallback) accepts a boolean value only.")
+            }
         case "dupmod":
             switch args[1].(type) {
             case bool:

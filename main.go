@@ -386,6 +386,9 @@ func main() {
 
     // start processing startup flags
 
+    // fall back to command processing if unrecognised.
+    gvset("@command_fallback",false)
+
     // command output unit separator
     gvset("@cmdsep",byte(0x1e))
 
@@ -1000,7 +1003,7 @@ func main() {
                     os.Exit(ERR_EXISTS)
                 }
             } else {
-                pf("Error: startup script is not a file.\n")
+                pf("Error: startup script is not a regular file.\n")
                 os.Exit(ERR_EXISTS)
             }
         } else {

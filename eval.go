@@ -1383,30 +1383,16 @@ func (p *leparser) identifier(token *Token) (any) {
         }
     }
 
-    // inter:=token.tokText
-
     // local variable lookup:
-    // fmt.Printf("\n(identifier) checking binding for token : %#v\n",token)
     bin:=token.bindpos
-
-        /*
-        fmt.Printf("\nlocal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
-        fmt.Printf("-- (this token : %#v)\n",token)
-        fmt.Printf("-- (this bin : %v)\n",bin)
-        fmt.Printf("-- (this ident entry : %#v)\n\n",(*p.ident)[bin])
-        fmt.Printf("\n\n\n\n\n")
-        */
-
     if (*p.ident)[bin].declared {
         return (*p.ident)[bin].IValue
     }
 
     // global lookup:
-    // fmt.Printf("\nglobal identifier fetching (in %d) vget for name : %s\n",p.fs,token.tokText)
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
         return val
     }
-
 
     // permit references to uninitialised variables
     if permit_uninit {
@@ -1420,7 +1406,6 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // permit enum names
     if enum[token.tokText]!=nil {
-        // fmt.Printf("Returned from identifier() with enum result for '%s'\n",token.tokText)
         return nil
     }
 
