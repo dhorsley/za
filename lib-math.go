@@ -9,6 +9,7 @@ import (
     "math/big"
     "math/rand"
     "strconv"
+    "time"
 )
 
 func buildMathLib() {
@@ -497,7 +498,7 @@ func buildMathLib() {
         return rand.Float64(), nil
     }
 
-    slhelp["seed"] = LibHelp{in: "number", out: "", action: "Set the random seed."}
+    slhelp["seed"] = LibHelp{in: "number", out: "", action: "Set the random seed. [#i1]number[#i0] of -1 sets the seed using current nano-second time."}
     stdlib["seed"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("seed",args,2,"1","int64","1","int"); !ok { return nil,err }
         var r int64
@@ -506,6 +507,9 @@ func buildMathLib() {
             r = int64(args[0].(int))
         case int64:
             r = args[0].(int64)
+        }
+        if r==-1 {
+		    r=time.Now().UnixNano()
         }
         rand.Seed(r)
         return nil, err
