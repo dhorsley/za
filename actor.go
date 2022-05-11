@@ -4126,7 +4126,6 @@ tco_reentry:
                             cmd = interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         } else {
                             cmd = interpolate(ifs,ident,bc[2:])
-
                         }
 
                         cop:=system(cmd,false)
@@ -4151,6 +4150,7 @@ tco_reentry:
                 finish(false,ERR_EVAL)
                 break
             }
+
 
             if interactive && !we.assign && we.result!=nil {
                 pf("%+v\n",we.result)

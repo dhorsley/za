@@ -1,7 +1,11 @@
 
 prompt=sysvar("@bashprompt")
 
-p=${toilet -f ivrit -k -w {=term_w()} " {="@language".sysvar} - version {="@version".sysvar}"}
+banner=` {="@language".sysvar} - version {="@version".sysvar}`
+
+if is_file("/usr/share/figlet/ivrit.flf")
+    p=${toilet -f ivrit -k -w {=term_w()} "{=banner}"}
+endif
 
 println "[#5]{p}[#-]\n"
 help
