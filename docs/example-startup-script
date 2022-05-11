@@ -1,8 +1,8 @@
 
 prompt=sysvar("@bashprompt")
 
-p=${toilet -f ivrit -k -w 100 "{="@language".sysvar} - version {="@version".sysvar}"}
+p=${toilet -f ivrit -k -w {=term_w()} " {="@language".sysvar} - version {="@version".sysvar}"}
 
-println "[#b1][#5][#CTE]{p}[#-]\n"
+println "[#5]{p}[#-]\n"
 help
 
