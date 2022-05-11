@@ -2,18 +2,31 @@
 prompt=sysvar("@bashprompt")
 
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
+fontdir="/usr/share/figlet"
+
+variants = (
+    dir(fontdir)
+    ?> `($pe #.name) ~i "^(flf|tlf)"` 
+    -> "$pn #.name"
+)
 
 seed(-1)
-variants=["ivrit","future","shadow","pagga"]
 fv=variants[variants.len.rand-1]
 
 tlf=false
-on is_file("/usr/share/figlet/{fv}.tlf") do tlf=true
+on is_file("{fontdir}/{fv}.tlf") do tlf=true
 
-if is_file("/usr/share/figlet/{fv}."+(tlf?"tlf":"flf"))
+if is_file( "{fontdir}/{fv}." + (tlf?"tlf":"flf") )
     p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
 endif
 
-println "[#5]{p}[#-]\n"
+println "\n\n[#5]{p}[#-]\n"
 help
+
+# some cleanup - not strictly necessary
+unset variants
+unset fv
+unset tlf
+unset p
+unset fontdir
 
