@@ -16,8 +16,7 @@ bank2=[34,70,106,142,178,214]
 for e = 0 to 5
     c=bank1[e]
     for f = 0 to 17
-        print bg256(c),format(" %02x ",c)
-	c++
+        print bg256(c),format(" %02x ",c++)
     endfor
     println "[#-]"
 endfor
@@ -25,8 +24,7 @@ endfor
 for e = 0 to 5
     c=bank2[e]
     for f = 0 to 17
-        print bg256(c),format(" %02x ",c)
-	c++
+        print bg256(c),format(" %02x ",c++)
     endfor
     println "[#-]"
 endfor
