@@ -1383,12 +1383,15 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
                 break
             }
-
+            
+            globlock.Lock()
             if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
+                globlock.Unlock()
                 finish(false,ERR_EVAL)
                 break
             }
+            globlock.Unlock()
 
 
         case C_Foreach:

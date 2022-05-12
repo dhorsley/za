@@ -9,6 +9,21 @@ lots, i'm sure.
 TODO
 ----
 
+    * fix the missing things from the windows build?
+        - talking about kernel level stuff like kill() and similar.
+
+    Status: At this point, I'm mainly concerned with FreeBSD and a variety of linux builds remaining
+        intact. Seriously considering throwing away Windows compatibility as it's a lot of work to 
+        keep it viable for a platform that just isn't a target use case. 
+
+        It would be a shame to lose it, as it is probably around 95% comparable to the linux/bsd
+        releases (barring the still terrible ANSI support in Windows terminal apps). However, it would
+        really reduce the complexity of the build, the insanity of the source base and the 
+        requirements for testing.
+
+
+    * add flock() and/or pid file handling?
+
     * process and/or job control support (TODO maybe?)
         - only currently have a few read-only calls for process IDs.
         - we should really support the following in some way:
@@ -60,6 +75,7 @@ LATER / UNDECIDED
             but not as much as i'd hoped for! 
         - will pick away at these periodically.
 
+
     * add a hex_string=s3sum(filename_string[,blocksize_int]) call?
         - need to convert s3checksum C source to Go.
         - would be used to compare against an S3 header ETAG field to verify 
@@ -67,11 +83,13 @@ LATER / UNDECIDED
         - may need to do something to auto-detect block size based on size of first
             block when multi-part formulated and block size not provided as param?
         - would assume a default blocksize of 8192*1024 if not provided, but needed.
-            
+
+
     * user and group builtins for linux?
         - i don't think this is necessary, especially as it would be so different between OS.
         - however, it makes scripting the stuff easier for a user by far if we support with builtins.
         - not doing this one yet, but still a possibility.
+
 
     * an actual type system:
         - something minimal, that doesn't get in the way of the interpreter
@@ -81,6 +99,19 @@ LATER / UNDECIDED
         - releases us from special casing all the stdlib-used types like dirent, big.*, etc
     
       Status: under consideration. depends on how much of the heavy lifting generics can do.
+
+
+    * short-circuit evaluation of booleans
+        - there is a case to be made, and it has been done previously by many others, that you should
+            not permit short-circuiting when there is a possibility of side-effects in the elided 
+            expressions. 
+        - because of this, our current stance is that we do not perform short-circuiting.
+        - however, it is also true that the evaluation strategy we use does not allow for it anyway :)
+        - this may change in the future, it's open to debate. it would mean changing some
+            fundamentals in the behaviour of our evaluator, which may cause slower evaluation as
+            more state will need passing around.
+
+      Status: t.b.d.
 
 
     * better namespacing?
@@ -100,22 +131,12 @@ LATER / UNDECIDED
                 this one is a maybe.
 
 
-    * remaining issues post bind_int() changes:
-        - race cond on ident write (vset): see ~/ttest
-            - mainly to do with the time between reading a value and performing 
-                doAssign() to update it in wrappedEval() function.
-            - we can't lock the read+write as the read may invoke further 
-                function calls recursively calling back through wrappedEval().
-        - this is to be expected. you can't protect shared globals during fast
-            switches without agressive locking.
-        - we have a little protection around some operations, but it breaks down
-            at high speeds. the protection is more for the implementation internals.
+      Status: not fixing.
+            - advising avoiding using shared memory at speed with concurrency.
+            - will maybe add some locking capability at the user level
+            - this mainly affects async calls trying to read/write their parents variables
+                concurrently.
 
-      Status: don't think i'll be doing much about this, except:
-                - advising avoiding using shared memory at speed
-                - maybe add some locking capability at the user level
-                - advising to make changes to shared state sporadically in batches.
-            it's a lot of work to fix this for a toy language.
 
     * add big.Rat?
 
