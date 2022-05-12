@@ -2106,10 +2106,10 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
 
     if eqPos==-1 {
         // pf("[#5]-- w.e. (in fs %d) calling eval on : %#v[#-]\n",fs,tks)
-        newEval=make([]Token,len(tks))
-        copy(newEval,tks)
-        // expr.result, err = p.Eval(fs,tks)
-        expr.result, err = p.Eval(fs,newEval)
+        //.. newEval=make([]Token,len(tks))
+        //.. copy(newEval,tks)
+        //.. expr.result, err = p.Eval(fs,newEval)
+        expr.result, err = p.Eval(fs,tks)
         expr.assignPos=-1
     } else {
         expr.assign=true

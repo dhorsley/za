@@ -131,13 +131,6 @@ LATER / UNDECIDED
                 this one is a maybe.
 
 
-      Status: not fixing.
-            - advising avoiding using shared memory at speed with concurrency.
-            - will maybe add some locking capability at the user level
-            - this mainly affects async calls trying to read/write their parents variables
-                concurrently.
-
-
     * add big.Rat?
 
       Status: very little work actually needed to do this, it's just more of the same as was done
