@@ -1812,9 +1812,6 @@ func vget(token *Token,fs uint32, ident *[szIdent]Variable,name string) (any, bo
         bin=token.bindpos
     }
 
-    // vlock.RLock()
-    // defer vlock.RUnlock()
-
     if (*ident)[bin].declared {
         return (*ident)[bin].IValue,true
     }
@@ -2002,7 +1999,7 @@ func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     var crushedOpcodes str.Builder
-    crushedOpcodes.Grow(16)
+    // crushedOpcodes.Grow(16)
 
     for t:=range intoks {
         crushedOpcodes.WriteString(intoks[t].tokText)
@@ -2020,7 +2017,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
 
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
-
 
     eqPos:=-1
     var newEval []Token
@@ -2108,10 +2104,12 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
         }
     }
 
-
     if eqPos==-1 {
         // pf("[#5]-- w.e. (in fs %d) calling eval on : %#v[#-]\n",fs,tks)
-        expr.result, err = p.Eval(fs,tks)
+        newEval=make([]Token,len(tks))
+        copy(newEval,tks)
+        // expr.result, err = p.Eval(fs,tks)
+        expr.result, err = p.Eval(fs,newEval)
         expr.assignPos=-1
     } else {
         expr.assign=true
@@ -2158,15 +2156,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
 
 }
 
-/*
-func getExpressionType(e any) uint8 {
-    switch e.(type) {
-    case string:
-        return StringLiteral
-    }
-    return NumericLiteral
-}
-*/
 
 func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, rident *[szIdent]Variable, tks []Token,expr *ExpressionCarton,eqPos int) {
 
