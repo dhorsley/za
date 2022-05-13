@@ -170,6 +170,6 @@ on s_children=="all" do children=true
 on s_children!="" and not children do exit 2,"Error: argument 2 must be 'all' or nothing."
 
 # fetch process list and sort by pid
-println pidof(s_filter,children)
+println pidof(s_filter,children).list_string.join(" ")
 
 
