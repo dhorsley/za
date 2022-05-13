@@ -1274,10 +1274,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
         // check for enum membership:
         globlock.RLock()
-        defer globlock.RUnlock()
         if enum[p.preprev.tokText]!=nil {
+            globlock.RUnlock()
             return enum[p.preprev.tokText].members[name]
         }
+        globlock.RUnlock()
 
         // try a function call..
         // lhs_v would become the first argument of func lhs_f

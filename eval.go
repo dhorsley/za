@@ -1390,9 +1390,12 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // global lookup:
+    globlock.RLock()
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
+        globlock.RUnlock()
         return val
     }
+    globlock.RUnlock()
 
     // permit references to uninitialised variables
     if permit_uninit {
