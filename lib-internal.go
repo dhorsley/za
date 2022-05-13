@@ -921,7 +921,12 @@ func buildInternalLib() {
 
         var v any
         var found bool
-        globlock.RLock()
+
+        locked:=false
+        if atomic.LoadUint32(&has_global_lock)!=evalfs {
+            sglock.RLock(); locked=true
+        }
+
         var mloc uint32
         if interactive {
             mloc=1
@@ -929,10 +934,10 @@ func buildInternalLib() {
             mloc=2
         }
         if v, found = vget(nil,mloc,&mident, args[0].(string)); !found {
-            globlock.RUnlock()
+            if locked { sglock.RUnlock() }
             return false, nil
         }
-        globlock.RUnlock()
+        if locked { sglock.RUnlock() }
 
         key:=interpolate(evalfs,ident,args[1].(string))
 
