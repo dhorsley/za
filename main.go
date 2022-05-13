@@ -228,6 +228,7 @@ var ifCompileCache map[string]regexp.Regexp
 var PromptTemplate string
 
 var concurrent_funcs int32
+var has_global_lock  uint32
 
 var breaksig chan os.Signal
 
@@ -269,9 +270,9 @@ func main() {
     go func() {
         for {
             <-sigs
-            globlock.Lock()
+            sglock.Lock()
             MW, MH, _ = GetSize(1)
-            globlock.Unlock()
+            sglock.Unlock()
             shelltype, _ := gvget("@shelltype")
             if shelltype=="bash" || shelltype=="ash" {
                 if MW!=-1 {

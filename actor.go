@@ -421,7 +421,8 @@ var calllock   = &sync.RWMutex{}  // function call related
 var lastlock   = &sync.RWMutex{}  // cached globals
 var farglock   = &sync.RWMutex{}  // function args manipulation
 var fspacelock = &sync.RWMutex{}  // token storage related
-var globlock   = &sync.RWMutex{}  // generic global related
+var globlock   = &sync.RWMutex{}  // enum access lock
+var sglock     = &sync.RWMutex{}  // setglob lock
 
 
 // for error reporting : keeps a list of parent->child function calls
@@ -1383,14 +1384,16 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
                 break
             }
-            
-            if parser.mident==ifs { globlock.Lock() }
+           
+            sglock.Lock()
+            atomic.StoreUint32(&has_global_lock,ifs)
             if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
                 finish(false,ERR_EVAL)
                 break
             }
-            if parser.mident==ifs { globlock.Unlock() }
+            atomic.StoreUint32(&has_global_lock,0)
+            sglock.Unlock()
 
 
         case C_Foreach:
