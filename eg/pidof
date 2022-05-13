@@ -1,0 +1,175 @@
+#!/usr/bin/za
+
+doc `
+    example pidof script.
+
+    returns all process whose name or arg[0] match $1
+    when $2 is empty return only those which also have
+    no parent in the same list.
+    when $2 is "all" return everything that matches.
+
+    this script doesn't check for every potential match.
+    it's just an example! you could probably dig through
+    other parts of procfs to get everything. we only
+    match on full base names.
+
+`
+
+struct process
+    pid         int
+    name        string
+    state       string
+    ppid        int
+    priority    int
+    starttime   int
+    uid         string
+    gid         string
+endstruct
+
+struct pid_lookup
+    pid         int
+    index       string
+endstruct
+
+
+# (even more) hacky sort, as there's no builtin sort by struct field
+define fsort(m)
+    s=""
+    foreach q in m
+        s+="{=q.pid} {=q.index}\n"
+    endfor
+    return fieldsort(s,1,"n")
+end
+
+define splitOnZero(s)
+    return split(s,string(char(0)))
+end
+
+struct statm_line
+    size    int # tot prog size
+    rss     int # page count
+    shared  int # page count
+    text    int # code 
+    lib     int # 0
+    data    int # data+stack
+    dt      int # dirty page count (0)
+endstruct
+
+define ps(filter)
+
+    on filter==nil do filter="^.*$"
+    procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
+
+    var args        map
+    var proc_list   map
+    var proc        process
+    var parts       statm_line
+    var mem         []
+
+    mychildpid="@shell_pid".sysvar
+    thispid=pid()
+
+    foreach p in procs
+
+        on p.int in [pid(),mychildpid] do continue # pid() is current process
+
+        dn="/proc/"+p
+        on !is_dir(dn) do continue
+
+        # read data from .../stat
+        ps = $in "{dn}/stat"
+
+        # ignore name filtered processes
+        cmd=ps.filter(`\(.*?\)`).tr("d","()")
+        on !match(cmd,filter) do continue
+
+        # populate line from stat
+        ps.replace("\(.*?\)","command").fields
+
+        proc.name     = cmd
+        proc.pid      = F[1].int
+        proc.state    = F[3]
+        proc.ppid     = F[4].int
+        rawpri=F[18].int
+        proc.priority = (rawpri < 0) ? (abs(rawpri+1)) : rawpri
+        proc.starttime= F[22].int
+
+        # fetch command line arguments
+        args[proc.pid]= $in "{dn}/cmdline".splitOnZero
+
+        # read data from .../statm
+        pm = $in "{dn}/statm"
+        pm.fields
+        parts.size    = F[mem_parts.size].int     # tot prog size
+        parts.rss     = F[mem_parts.rss].int      # page count
+        parts.shared  = F[mem_parts.shared].int   # page count
+        parts.text    = F[mem_parts.text].int     # code 
+        parts.lib     = F[mem_parts.lib].int      # 0
+        parts.data    = F[mem_parts.data].int     # data+stack
+        parts.dt      = F[mem_parts.dt].int       # dirty page count (0)
+        mem[proc.pid] = parts
+
+        # add process to list
+        proc_list[proc.pid] = proc
+
+    endfor
+
+    var keys []pid_lookup
+    var l pid_lookup
+    foreach v in proc_list
+        l.pid=v.pid
+        l.index=v.name
+        append_to(ref keys,l)
+    endfor
+    return proc_list,keys,args,mem
+end
+
+
+define pidof(name,children)
+
+    pl,keys,args,mem=ps(name)
+
+    pids=[]
+    foreach p in pl
+        on p.state=="Z" do continue # don't report zombies
+        if p.name == name
+            pids=pids.append(key_p)
+            continue
+        endif
+        if args[key_p][0] == name
+            pids=pids.append(key_p)
+        endif 
+    endfor
+
+    pids=pids.list_int
+    if not children
+        ppids=[]
+        foreach pc in pids
+            if (pids ?> "#==pl[pc].ppid").len==0 # ppid not found in pid list
+                ppids=ppids.append(pc)
+            endif
+        endfor
+        return ppids
+    endif
+    return pids
+end
+
+
+#
+# MAIN
+#
+
+enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
+
+# args
+input s_filter    optarg 1
+input s_children  optarg 2
+on s_filter=="" do exit 1,"Error: no name specified."
+children=false
+on s_children=="all" do children=true
+on s_children!="" and not children do exit 2,"Error: argument 2 must be 'all' or nothing."
+
+# fetch process list and sort by pid
+println pidof(s_filter,children)
+
+
