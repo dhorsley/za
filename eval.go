@@ -9,7 +9,6 @@ import (
     "math/big"
     "net/http"
     "sync"
-    "sync/atomic"
     "path/filepath"
     str "strings"
     "unsafe"
@@ -1391,15 +1390,12 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // global lookup:
-    unlock:=false
-    if atomic.LoadUint32(&has_global_lock)!=p.fs {
-        sglock.RLock(); unlock=true
-    }
+    globlock.RLock()
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
-        if unlock { sglock.RUnlock() }
+        globlock.RUnlock()
         return val
     }
-    if unlock { sglock.RUnlock() }
+    globlock.RUnlock()
 
     // permit references to uninitialised variables
     if permit_uninit {
