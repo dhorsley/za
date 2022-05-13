@@ -670,7 +670,7 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                     if newstart>0 { dpos=newstart-1 }
 
                     if str.IndexByte(helpList[0],'(')!=-1 && dpos<len(s) && s[dpos]=='.' {
-                        helpList[0]=helpList[0][:len(helpList[0])-2]
+                        helpList[0]=helpList[0][:len(helpList[0])-1]
                     }
 
                     s = insertWord(s, newstart, helpList[0])
