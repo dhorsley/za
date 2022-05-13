@@ -1,0 +1,5 @@
+#!/usr/bin/za
+
+println "current :",cwd()
+println "execpath:",execpath()
+
