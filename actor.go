@@ -1384,7 +1384,8 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
                 break
             }
-           
+          
+            // fmt.Printf("(sg) in fs %d (mident->%d) eval -> %+v\n",ifs,parser.mident,inbound.Tokens[1:])
             sglock.Lock()
             atomic.StoreUint32(&has_global_lock,ifs)
             if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {

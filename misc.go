@@ -377,27 +377,20 @@ func help_ops() {
 [#1][#bold]Supported Operators[#boff][#-]
 
 [#1]Prefix Operators[#-]
+[#4]--n[#-]         pre-decrement               [#4]++n[#-]         pre-increment
+[#4]sqr n[#-]       square (n*n)                [#4]sqrt n[#-]      square root
 [#4]-n[#-]          unary negative              [#4]+n[#-]          unary positive
 [#4]!b[#-]          boolean negation   ( or not b )
 
-[#4]--n[#-]         pre-decrement               [#4]++n[#-]         pre-increment
-[#4]sqr n[#-]       square (n*n)                [#4]sqrt n[#-]      square root
-
 [#4]$uc s[#-]       upper case string s         [#4]$lc s[#-]       lower case string s
-
 [#4]$lt s[#-]       left trim leading whitespace from string s [\t\ \n\r]
 [#4]$rt s[#-]       right trim trailing whitespace from string s
 [#4]$st s[#-]       trim whitespace from both sides of string s
-
 [#4]$pa s[#-]       absolute path from string s  [#4]$pp s[#-]       parent path of string s
 [#4]$pb s[#-]       base file name from string s [#4]$pn s[#-]       base file name without extension
 [#4]$pe s[#-]       extension only from string s
-
 [#4]$in f[#-]       read file 'f' in as string literal
-
-[#4]b ? t : f[#-]
-  if expression b is true then t else f
-
+[#4]b ? t : f[#-]   if expression b is true then t else f
 [#4]| s[#-]         return successful command output (of s) as a string
 
 [#1]Infix Operators[#-]
@@ -411,21 +404,18 @@ func help_ops() {
 [#4]a %= b[#-]      modulo assignment
 
 [#4]a || b[#-]      boolean OR  ( or a or b  )  [#4]a && b[#-]      boolean AND ( or a and b )
+[#4]a << b[#-]      bitwise left shift          [#4]a >> b[#-]      bitwise right shift
 [#4]a | b[#-]       bitwise OR                  [#4]a & b[#-]       bitwise AND
 [#4]a ^ b[#-]       bitwise XOR                 
-[#4]a << b[#-]      bitwise left shift          [#4]a >> b[#-]      bitwise right shift
 
 [#4]a ~f b[#-]      array of matches from string a using regex b[#-]
 [#4]s.f[#-]         field access                [#4]s .. e[#-]      builds an array of values in the range s to e
 [#4]s $out f[#-]    write string 's' to file 'f'
 
 [#4]array|map ?> "bool_expr"[#-]
-  Filters matches of "bool_expr" against elements in array or map to return 
-  a new array. Each # in bool_expr is replaced by each array/map value.
-
-[#4]array|map -> "expr"[#-]
-  Maps each element of array or map using "expr" to formulate new elements.
-  Each # in expr is replaced by each array/map value.
+[#4]array|map -> "expression"[#-]
+  Filters (?>) or maps (->) matches of 'bool_expr' (?>) or values of 'expression' (->) against elements in 
+  an array/map to return a new array/map. Each # in bool_expr/expression is replaced by each array/map value in turn.
 
 [#1]Comparisons[#-]
 [#4]a == b[#-]      equality                    [#4]a != b[#-]      inequality
