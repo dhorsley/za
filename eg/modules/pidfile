@@ -1,0 +1,46 @@
+
+def pid_name()
+    return [pid_dir(),app_name()].join("/")
+end
+
+def has_pidfile()
+    on pid_name().is_file do return true
+    return false
+end
+
+def pid_dir()
+    return "/run/user/{=this_uid}"
+end
+
+def app_name()
+    return $in "/proc/{=pid()}/comm".trim(0)
+end
+
+def make_pidfile()
+    return pid().string $out pid_name()
+end
+
+def get_pidfile()
+    return $in pid_name()
+end
+
+def remove_pidfile()
+    on has_pidfile() do pid_name().delete
+end
+
+def monitor_pidfile()
+    w,er=pid_name().ev_watch
+    on er!=0 do exit 3,"Error: could not create a pidfile watcher."
+    while
+        e=w.ev_event
+        on e.ev_mask("remove")!=nil do on e.Name==pid_name() do setglob quit=true
+        #if e.ev_mask("remove")!=nil
+        #    if e.Name==pid_name()
+        #        setglob quit=true
+        #    endif
+        #endif
+        pause 500
+    endwhile
+end
+
+

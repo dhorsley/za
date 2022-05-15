@@ -1396,6 +1396,7 @@ func (p *leparser) identifier(token *Token) (any) {
         sglock.RLock(); unlock=true
     }
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
+        // fmt.Printf("(ig) fetched %s->%v from fs %d\n",token.tokText,val,p.mident)
         if unlock { sglock.RUnlock() }
         return val
     }
@@ -1495,7 +1496,7 @@ func vset(tok *Token,fs uint32, ident *[szIdent]Variable, name string, value any
 
     var bin uint64
 
-    if tok==nil {
+    if tok==nil || fs<3 {
         bin=bind_int(fs,name)
         ident[bin]=Variable{IKind:0,ITyped:false}
     } else {
@@ -2285,7 +2286,6 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
             // inter:=interpolate(rfs,rident,assignee[0].tokText)
             // @note: this is slow, mainly due to allowing interpolation.
             //  if we didn't, then we could re-use the binding value from the assignee[0] token *CHANGED*
-
             vset(&assignee[0], lfs, lident, assignee[0].tokText, results[assno])
 
 
