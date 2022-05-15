@@ -1,0 +1,37 @@
+#!/usr/bin/za
+
+module "modules/pidfile"
+
+this_uid =< id -u
+
+def begin()
+    print "Started.\n"
+    while not quit
+        pause 500
+    endwhile
+end
+
+op="status"
+input op optarg 1 is "operation type"
+
+when op
+is "start"
+    on has_pidfile() do exit 1,"Error: already started."
+    on !pid().make_pidfile do exit 2,"Error: could not create pidfile."
+    quit=false
+    async nil monitor_pidfile()
+    begin()
+is "stop"
+    if has_pidfile()
+        println "stopping ",app_name(), " : ",pid_name()
+        remove_pidfile()
+    else
+        exit 3,"Error: already stopped."
+    endif
+is "status"
+    println "appname : ",app_name()
+    println "pidfile : ",pid_name()
+    println "has pid : ",has_pidfile()
+endwhen
+
+

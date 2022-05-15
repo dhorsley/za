@@ -891,24 +891,27 @@ func main() {
         cop = Copper("echo -n $HOME", true)
         gvset("@home", cop.out)
 
-        var tmp string
-
         gvset("@release_name", "unknown")
         gvset("@release_version", "unknown")
 
+        release_info := Copper("cat /etc/*-release",true)
+        s:=lgrep(release_info.out,"^ID=")
+        s=lcut(s,2,"=")
+        release_id := stripOuterQuotes(s, 1)
+
         if runtime.GOOS=="linux" {
 
-            cop = Copper("cat /etc/*-release",true)
-            s:=lgrep(cop.out,"^NAME=")
+            // cop = Copper("cat /etc/*-release",true)
+            s:=lgrep(release_info.out,"^NAME=")
             s=lcut(s,2,"=")
             gvset("@release_name", stripOuterQuotes(s,1))
 
-            cop = Copper("cat /etc/*-release",true)
-            s=lgrep(cop.out,"^VERSION_ID=")
+            // cop = Copper("cat /etc/*-release",true)
+            s=lgrep(release_info.out,"^VERSION_ID=")
             s=lcut(s,2,"=")
             gvset("@release_version", stripOuterQuotes(s,1))
-        }
 
+        }
 
         // special cases for release version:
 
@@ -919,17 +922,11 @@ func main() {
         }
         gvset("@release_version", vtmp)
 
-        cop = Copper("cat /etc/*-release",true)
-        s:=lgrep(cop.out,"^ID=")
-        s=lcut(s,2,"=")
-
-        tmp = stripOuterQuotes(s, 1)
-
         // special cases for release id:
 
         // case 1: opensuse
-        if str.HasPrefix(tmp, "opensuse-") {
-            tmp = "opensuse"
+        if str.HasPrefix(release_id, "opensuse-") {
+            release_id = "opensuse"
         }
 
         // case 2: ubuntu under wsl
@@ -937,10 +934,10 @@ func main() {
         wsl, _ := gvget("@wsl")
         if str.HasPrefix(wsl.(string), "Ubuntu-") {
             gvset("@winterm", true)
-            tmp = "ubuntu"
+            release_id = "ubuntu"
         }
 
-        gvset("@release_id", tmp)
+        gvset("@release_id", release_id)
 
         // get hostname
         h, _ := os.Hostname()
