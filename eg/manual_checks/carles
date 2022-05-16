@@ -7,7 +7,7 @@ var ic int
 
 doc `
     this is slow!
-    not really the loop performance (~129 secs without calculations)
+    not really the loop performance (~18 secs without calculations)
     but instead is the evaluations (inc and cmp) which are slowing it
     down so much. 
 

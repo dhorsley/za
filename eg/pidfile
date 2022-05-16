@@ -5,9 +5,10 @@ module "modules/pidfile"
 this_uid =< id -u
 
 def begin()
-    print "Started.\n"
+    # print "Started.\n"
     while not quit
-        pause 500
+        nop
+        # pause 500
     endwhile
 end
 
@@ -20,6 +21,7 @@ is "start"
     on !pid().make_pidfile do exit 2,"Error: could not create pidfile."
     quit=false
     async nil monitor_pidfile()
+    println "Starting ",app_name()
     begin()
 is "stop"
     if has_pidfile()

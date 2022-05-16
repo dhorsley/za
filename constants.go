@@ -10,9 +10,8 @@ const Maxint16  = ^int16(0)
 const MAX_LOOPS = 8
 const DEFAULT_INIT_SIZE = 32   // start size of INIT'ed arrays
 
-const szIdent       = 600       // max vars per func
-const sz_mru_cache  = 4         // size of recently used cache of variable name-position lookups
-
+const identInitialSize = 8      // initial ident size on creation
+const identGrowthSize = 8       // how many extra spaces to add when ident needs to grow
 const gnfsModulus = 48000       // used by calltable to set max size, mainly impacts recursion
 const gcModulus   = 100         // as subdivision of gnfsModulus
 
