@@ -91,6 +91,29 @@ CHANGE LOG
         - updated build script to remove error in upx detection.
 	- otherwise, freebsd build appeared to be fine, against very limited testing.
 
+    * (experimental) remove gc bottleneck during recursion
+        - previously, we assigned a fixed (szIdent) array for variables to each new function environment.
+        - it really needed to be dynamically sized instead.
+        - this allows us to not hit gc anywhere near as hard every single time we call a function.
+        - expected changes were:
+            - change the var ident[szIdent]Variable in a few places, to create a ident *[]Variable instead.
+            - add a make() call for the ident somewhere in Call() before it is required (probably just
+              before functionArgs need populating.)
+            - amend vset to bounds check and reallocate if ident[bin] is greater than len(ident).
+            - maybe change vget too, so that it doesn't try to read from above the length.
+            - hunt down the other places where we assign to ident directly (e.g. endfor iteration) and
+                shove through similar realloc process (or push through vset/vget instead)
+            - ... and possibly other things needed changing too (like all the function declarations in each
+                library file for ident[szIdent]Variable, only about 350 of them to do!)
+
+        Update: all of the changes above have been done. Still testing, but recursion is now considerably
+        faster. It has slowed down normal var allocation a little as we have to bounds check and realloc
+        ident arrays dynamically now, but not a big drain so far. 
+
+        There are two consts, identGrowthSize and identInitialSize which control the process. The exception
+        is global and sysvar storage which are now initialised at len 64 by default as they are likely to
+        require more variable space anyway.
+
 
     other
     -----

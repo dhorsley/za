@@ -37,7 +37,7 @@ type fa_s struct { // function args struct
 
 
 // ExpressionFunction can be called from within expressions.
-type ExpressionFunction = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (any, error)
+type ExpressionFunction = func(evalfs uint32,ident *[]Variable,args ...any) (any, error)
 
 
 // za variable

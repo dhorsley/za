@@ -31,7 +31,8 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
 
     go func() {
         if endClose { defer close(r) }
-        var ident [szIdent]Variable
+        var ident = make([]Variable,identInitialSize)
+
         atomic.AddInt32(&concurrent_funcs,1)
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
 
@@ -432,7 +433,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[szIdent]Variable, csloc uint32, registrant uint8, va ...any) (retval_count uint8,endFunc bool) {
+func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va ...any) (retval_count uint8,endFunc bool) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -1012,6 +1013,13 @@ tco_reentry:
                     sid=inbound.Tokens[name_pos[nlp]].bindpos
                 } else {
                     sid=bind_int(ifs,vname)
+                }
+
+                // resize ident if required:
+                if sid>=uint64(len(*ident)) {
+                    newIdent:=make([]Variable,sid+identGrowthSize)
+                    copy(newIdent,*ident)
+                    *ident=newIdent
                 }
 
                 // get the required type
@@ -2329,7 +2337,7 @@ tco_reentry:
             } else {
                 removee := inbound.Tokens[1].tokText
                 // should have a lock around varlookup really:
-                if ident[inbound.Tokens[1].bindpos].declared {
+                if (*ident)[inbound.Tokens[1].bindpos].declared {
                     vunset(ifs, ident, removee)
                 } else {
                     parser.report(inbound.SourceLine,sf("Variable %s does not exist.", removee))
@@ -3266,7 +3274,7 @@ tco_reentry:
                 } else {
                     // nothing provided but var didn't exist, so create it empty
                     // otherwise, just continue
-                    if ! ident[bin].declared {
+                    if ! (*ident)[bin].declared {
                         vset(&inbound.Tokens[1],ifs,ident,id,"")
                     }
                 }
@@ -3279,7 +3287,7 @@ tco_reentry:
                 } else {
                     // when env var empty either create the id var or
                     // leave it alone if it already exists.
-                    if ! ident[bin].declared {
+                    if ! (*ident)[bin].declared {
                         vset(&inbound.Tokens[1],ifs,ident,id,"")
                     }
                 }
@@ -3409,7 +3417,7 @@ tco_reentry:
 
                 calllock.Unlock()
 
-                var modident [szIdent]Variable
+                var modident = make([]Variable,identInitialSize)
 
                 // pf("[mod] loc -> %d\n",loc)
                 if debug_level>10 {
@@ -3745,7 +3753,7 @@ tco_reentry:
                 break
             }
 
-            if ! ident[bin].declared {
+            if ! (*ident)[bin].declared {
                 parser.report(inbound.SourceLine,sf("Variable '%s' does not exist.",vname))
                 finish(false,ERR_EVAL)
                 break
@@ -4430,7 +4438,7 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []any, 
 
 // print / println / log handler
 // when logging, user must decide for themselves if they want a LF at end.
-func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[szIdent]Variable,sourceLine int16,interactive bool,lf bool,logging bool) {
+func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variable,sourceLine int16,interactive bool,lf bool,logging bool) {
     plog_out := ""
     if len(tokens) > 0 {
         evnest:=0

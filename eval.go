@@ -14,7 +14,6 @@ import (
     str "strings"
     "unsafe"
     "regexp"
-//    "os"
     "crypto/md5"
 )
 
@@ -22,19 +21,6 @@ import (
 func (p *leparser) reserved(token Token) (any) {
     panic(fmt.Errorf("statement names cannot be used as dentifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
 }
-
-/*
-func UintPow(n, m uint64) (result uint64) {
-    if m == 0 {
-        return 1
-    }
-    result = n
-    for i := uint64(2); i <= m; i+=1 {
-        result *= n
-    }
-    return result
-}
-*/
 
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
@@ -60,11 +46,10 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
 
 type leparser struct {
     tokens      []Token     // the thing getting evaluated
-    ident       *[szIdent]Variable // where are the local variables at?
+    ident       *[]Variable // where are the local variables at?
     prev        Token       // bodge for post-fix operations
     preprev     Token       //   and the same for assignment
     fs          uint32      // working function space
-    entranceCount uint16
     mident      uint32      // fs of main() (1 or 2 depending on interactive mode)
     len         int16       // assigned length to save calling len() during parsing
     line        int16       // shadows lexer source line
@@ -184,7 +169,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         /*
         // short-circuiting operators here, so that
         // 'right' avoids evaluation.
-        // NOTE: THESE CURRENTLY COMMENTED AS UNRELIABLE
+        // NOTE: THESE CURRENTLY COMMENTED AS INCOMPLETE
         // PROBLEM 1 : how to skip the rhs expr to the correct continuation point
         // PROBLEM 2 : may be undesirable behaviour anyway
 
@@ -1003,7 +988,7 @@ func (p *leparser) unaryPointerOp(right any,op uint8) any {
         switch right.(type) {
         case string:
             if (*p.ident)[bin].declared {
-                return &(p.ident[bin])
+                return &((*p.ident)[bin])
             }
         }
     case O_Multiply:
@@ -1386,6 +1371,13 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // local variable lookup:
     bin:=token.bindpos
+
+    if bin>=uint64(len(*p.ident)) {
+        newg:=make([]Variable,bin+identGrowthSize)
+        copy(newg,*p.ident)
+        *p.ident=newg
+    }
+
     if (*p.ident)[bin].declared {
         return (*p.ident)[bin].IValue
     }
@@ -1418,15 +1410,15 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     /*
-    pf("This ident table:\n")
-    for k,v:=range p.ident {
+    pf("This ident table with length %d:\n",len(*p.ident))
+    for k,v:=range *p.ident {
         // if v.declared {
-            if v.IName!="" {
+        //    if v.IName!="" {
                 pf("-- %3d : (bind %3d) %v -> %+v\n",k,bind_int(p.fs,v.IName),v.IName,v)
-            }
+        //    }
         // }
     }
-    // panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",inter,p.fs,bin))
+     panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",token.tokText,p.fs,bin))
     */
 
     panic(fmt.Errorf("'%s' is uninitialised.",token.tokText))
@@ -1443,7 +1435,7 @@ var glock = &sync.RWMutex{}
 var vlock = &sync.RWMutex{}
 
 
-func vunset(fs uint32, ident *[szIdent]Variable, name string) {
+func vunset(fs uint32, ident *[]Variable, name string) {
     bin:=bind_int(fs,name)
     vlock.Lock()
     if (*ident)[bin].declared {
@@ -1452,7 +1444,7 @@ func vunset(fs uint32, ident *[szIdent]Variable, name string) {
     vlock.Unlock()
 }
 
-func vdelete(fs uint32, ident *[szIdent]Variable, name string, ename string) {
+func vdelete(fs uint32, ident *[]Variable, name string, ename string) {
 
     bin:=bind_int(fs,name)
     vlock.RLock()
@@ -1486,24 +1478,40 @@ func vdelete(fs uint32, ident *[szIdent]Variable, name string, ename string) {
 func gvset(name string, value any) {
     glock.Lock()
     bin:=bind_int(0,name)
+    if bin>=uint64(len(gident)) {
+        newg:=make([]Variable,bin+identGrowthSize)
+        copy(newg,gident)
+        gident=newg
+    }
     gident[bin].IName=name
     gident[bin].IValue=value
     gident[bin].declared=true
     glock.Unlock()
 }
 
-func vset(tok *Token,fs uint32, ident *[szIdent]Variable, name string, value any) {
+func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
 
     var bin uint64
 
-    if tok==nil || fs<3 {
+    if tok==nil {
         bin=bind_int(fs,name)
-        ident[bin]=Variable{IKind:0,ITyped:false}
+        if bin>=uint64(len(*ident)) {
+            newident:=make([]Variable,bin+identGrowthSize)
+            copy(newident,*ident)
+            *ident=newident
+        }
+        (*ident)[bin]=Variable{IKind:0,ITyped:false}
     } else {
         bin=tok.bindpos
     }
 
-    t:=ident[bin]
+    if bin>=uint64(len(*ident)) {
+        newident:=make([]Variable,bin+identGrowthSize)
+        copy(newident,*ident)
+        *ident=newident
+    }
+
+    t:=(*ident)[bin]
     t.IName=name
     t.declared=true
 
@@ -1574,13 +1582,13 @@ func vset(tok *Token,fs uint32, ident *[szIdent]Variable, name string, value any
         t.IValue=value
     }
 
-    ident[bin]=t
+    (*ident)[bin]=t
 
     return
 }
 
 
-func vgetElementi(fs uint32, ident *[szIdent]Variable, name string, el string) (any, bool) {
+func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bool) {
     var v any
     var ok bool
     v, ok = vget(nil,fs,ident,name)
@@ -1630,7 +1638,7 @@ func vgetElementi(fs uint32, ident *[szIdent]Variable, name string, el string) (
 }
 
 
-func vsetElement(fs uint32, ident *[szIdent]Variable, name string, el any, value any) {
+func vsetElement(fs uint32, ident *[]Variable, name string, el any, value any) {
     if ! (*ident)[bind_int(fs,name)].declared {
         list := make(map[string]any, LIST_SIZE_CAP)
         vset(nil,fs,ident,name,list)
@@ -1641,7 +1649,7 @@ func vsetElement(fs uint32, ident *[szIdent]Variable, name string, el any, value
 }
 
 // this could probably be faster. not a great idea duplicating the list like this...
-func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el any, value any) {
+func vsetElementi(fs uint32, ident *[]Variable, name string, el any, value any) {
 
     var list any
     var ok bool
@@ -1802,7 +1810,7 @@ func vsetElementi(fs uint32, ident *[szIdent]Variable, name string, el any, valu
 
 func gvget(name string) (any, bool) {
     bin:=bind_int(0,name)
-    if gident[bin].declared {
+    if bin<uint64(len(gident)) && gident[bin].declared {
         glock.RLock()
         tv:=gident[bin].IValue
         glock.RUnlock()
@@ -1811,7 +1819,7 @@ func gvget(name string) (any, bool) {
     return nil,false
 }
 
-func vget(token *Token,fs uint32, ident *[szIdent]Variable,name string) (any, bool) {
+func vget(token *Token,fs uint32, ident *[]Variable,name string) (any, bool) {
 
     var bin uint64
     if token==nil {
@@ -1820,7 +1828,7 @@ func vget(token *Token,fs uint32, ident *[szIdent]Variable,name string) (any, bo
         bin=token.bindpos
     }
 
-    if (*ident)[bin].declared {
+    if bin<uint64(len(*ident)) && (*ident)[bin].declared {
         return (*ident)[bin].IValue,true
     }
     // pf("[#2]-- vget miss for %s on fs %d bin %d (not declared)[#-]\n",name,fs,bin)
@@ -1847,7 +1855,7 @@ func isNumber(expr any) bool {
 
 
 /// convert variable placeholders in strings to their values
-func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
+func interpolate(fs uint32, ident *[]Variable, s string) (string) {
 
     if !interpolation || len(s)==0 {
         return s
@@ -1932,17 +1940,11 @@ func interpolate(fs uint32, ident *[szIdent]Variable, s string) (string) {
                 }
                 if nest>0 { break }
 
-                // q:=str.IndexByte(s[p:],'}') // don't start at greater offset or have to make assumptions about len
-                // if q==-1 { break }
-
                 if aval, err := ev(interparse,fs,s[p+2:close_index]); err==nil {
-                // if aval, err := ev(interparse,fs,s[p+2:p+q]); err==nil {
-                    // s=s[:p]+sf("%v",aval)+s[p+q+1:]
                     s=s[:p]+sf("%v",aval)+s[close_index+1:]
                     modified=true
                     break
                 }
-                // p=q+1
                 p=close_index+1
             }
         }
@@ -2021,7 +2023,7 @@ func crushEvalTokens(intoks []Token) ExpressionCarton {
 /// the main call point for actor.go evaluation.
 /// this function handles boxing the ev() call
 
-func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32, rident *[szIdent]Variable, tks []Token) (expr ExpressionCarton) {
+func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident *[]Variable, tks []Token) (expr ExpressionCarton) {
 
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
@@ -2114,9 +2116,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
 
     if eqPos==-1 {
         // pf("[#5]-- w.e. (in fs %d) calling eval on : %#v[#-]\n",fs,tks)
-        //.. newEval=make([]Token,len(tks))
-        //.. copy(newEval,tks)
-        //.. expr.result, err = p.Eval(fs,newEval)
         expr.result, err = p.Eval(fs,tks)
         expr.assignPos=-1
     } else {
@@ -2127,7 +2126,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
         if !standardAssign {
             if lfs!=fs {
                 if newEval[0].tokType==Identifier {
-                    if ! lident[newEval[0].bindpos].declared {
+                    if ! (*lident)[newEval[0].bindpos].declared {
                         p.report(-1,"you may only amend existing variables outside of local scope")
                         expr.evalError=true
                         finish(false,ERR_SYNTAX)
@@ -2165,7 +2164,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[szIdent]Variable, fs uint32,
 }
 
 
-func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, rident *[szIdent]Variable, tks []Token,expr *ExpressionCarton,eqPos int) {
+func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *[]Variable, tks []Token,expr *ExpressionCarton,eqPos int) {
 
     // (left)  lfs is the function space to assign to
     // (right) rfs is the function space to evaluate with (calculating indices expressions, etc)
@@ -2286,8 +2285,11 @@ func (p *leparser) doAssign(lfs uint32, lident *[szIdent]Variable, rfs uint32, r
             // inter:=interpolate(rfs,rident,assignee[0].tokText)
             // @note: this is slow, mainly due to allowing interpolation.
             //  if we didn't, then we could re-use the binding value from the assignee[0] token *CHANGED*
-            vset(&assignee[0], lfs, lident, assignee[0].tokText, results[assno])
-
+            if lfs==rfs {
+                vset(&assignee[0], lfs, lident, assignee[0].tokText, results[assno])
+            } else {
+                vset(nil, lfs, lident, assignee[0].tokText, results[assno])
+            }
 
         case len(assignee)==2:
 
