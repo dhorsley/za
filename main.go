@@ -103,8 +103,8 @@ var modlist = make(map[string]bool)
 var funcmap = make(map[string]Funcdef)
 
 // global variable storage
-var gident [szIdent]Variable
-var mident [szIdent]Variable
+var gident []Variable
+var mident []Variable
 
 // lookup tables for converting between function name 
 //  and functionspaces[] index.
@@ -330,6 +330,10 @@ func main() {
 
     // generic error flag - used through main
     var err error
+
+    // create shared storage
+    gident = make([]Variable,64)
+    mident = make([]Variable,64)
 
     // setup empty symbol tables for main
     bindlock.Lock()
@@ -816,7 +820,8 @@ func main() {
 
                 // execute call
 
-                var trident [szIdent]Variable
+                var trident = make([]Variable,identInitialSize)
+
                 Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]any)

@@ -22,12 +22,16 @@ TODO
         requirements for testing.
 
 
+
     * add flock() and/or pid file handling?
         - there is a syscall.Flock() already. needs file descriptor and 'how' int.
         - could probably expose this indirectly for fopen'ed files.
             - would need a few modes depending on the 'how' int states.
         - would only be linux/bsd compatible for sure. maybe a few others, not windows though.
         - pid file generation probably a bit easier, just needs some existing stuff wrapping up.
+            - there's an example for pid file setup in Za in eg/pidfile + eg/modules/pidfile.
+            - ideally that stuff should be in Go in our std lib instead.
+
 
     * process and/or job control support (TODO maybe?)
         - only currently have a few read-only calls for process IDs.

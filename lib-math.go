@@ -25,28 +25,28 @@ func buildMathLib() {
     }
 
     slhelp["e"] = LibHelp{in: "", out: "float", action: "Returns the value of e."}
-    stdlib["e"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["e"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return 2.71828182845904523536028747135266249775724709369995957496696763, nil
     }
     slhelp["pi"] = LibHelp{in: "", out: "float", action: "Returns the value of pi."}
-    stdlib["pi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["pi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return 3.14159265358979323846264338327950288419716939937510582097494459, nil
     }
     slhelp["phi"] = LibHelp{in: "", out: "float", action: "Returns the value of phi."}
-    stdlib["phi"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["phi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return 1.61803398874989484820458683436563811772030917980576286213544862, nil
     }
     slhelp["ln2"] = LibHelp{in: "", out: "float", action: "Returns the value of ln2."}
-    stdlib["ln2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ln2"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return 0.693147180559945309417232121458176568075500134360255254120680009, nil
     }
     slhelp["ln10"] = LibHelp{in: "", out: "float", action: "Returns the value of ln10."}
-    stdlib["ln10"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ln10"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return 2.30258509299404568401799145468436420760110148862877297603332790, nil
     }
 
     slhelp["numcomma"] = LibHelp{in: "number[,precision]", out: "string", action: "Returns formatted number. This does not work with big ints or floats."}
-    stdlib["numcomma"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["numcomma"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("numcomma",args,6,
         "2","float64","number",
         "2","int64","number",
@@ -86,7 +86,7 @@ func buildMathLib() {
     }
 
     slhelp["ln"] = LibHelp{in: "number", out: "float", action: "Calculate natural logarithm of [#i1]number[#i0]."}
-    stdlib["ln"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ln"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ln",args,1,"1","number"); !ok { return nil,err }
 
         var n float64
@@ -99,7 +99,7 @@ func buildMathLib() {
     }
 
     slhelp["log10"] = LibHelp{in: "number", out: "float", action: "Calculate logarithm (base 10) of [#i1]number[#i0]."}
-    stdlib["log10"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["log10"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("log10",args,3,"1","number"); !ok { return nil,err }
         var n float64
         switch args[0].(type) {
@@ -111,7 +111,7 @@ func buildMathLib() {
     }
 
     slhelp["log2"] = LibHelp{in: "number", out: "float", action: "Calculate logarithm (base 2) of [#i1]number[#i0]."}
-    stdlib["log2"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["log2"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("log2",args,3,"1","number"); !ok { return nil,err }
         var n float64
         switch args[0].(type) {
@@ -123,7 +123,7 @@ func buildMathLib() {
     }
 
     slhelp["logn"] = LibHelp{in: "number,base", out: "float", action: "Calculate logarithm (base [#i1]base[#i0]) of [#i1]number[#i0]. FP results may be fuzzy. logn(0,x) is reported as 0f."}
-    stdlib["logn"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["logn"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("logn",args,3,
         "2","float64","number",
         "2","int64","number",
@@ -149,7 +149,7 @@ func buildMathLib() {
     }
 
     slhelp["deg2rad"] = LibHelp{in: "number", out: "float", action: "Convert degrees to radians."}
-    stdlib["deg2rad"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["deg2rad"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("deg2rad",args,1,"1","number"); !ok { return nil,err }
         var radians float64
         switch args[0].(type) {
@@ -163,7 +163,7 @@ func buildMathLib() {
     }
 
     slhelp["rad2deg"] = LibHelp{in: "number", out: "float", action: "Convert radians to degrees."}
-    stdlib["rad2deg"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["rad2deg"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("rad2deg",args,1,"1","number"); !ok { return nil,err }
         var degrees float64
         switch args[0].(type) {
@@ -177,7 +177,7 @@ func buildMathLib() {
     }
 
     slhelp["asin"] = LibHelp{in: "number", out: "float", action: "Calculate arc sine of [#i1]number[#i0]."}
-    stdlib["asin"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["asin"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("asin",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -190,7 +190,7 @@ func buildMathLib() {
     }
 
     slhelp["acos"] = LibHelp{in: "number", out: "float", action: "Calculate arc cosine of [#i1]number[#i0]."}
-    stdlib["acos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["acos"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("acos",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -203,7 +203,7 @@ func buildMathLib() {
     }
 
     slhelp["atan"] = LibHelp{in: "number", out: "float", action: "Calculate arc tangent of [#i1]number[#i0]."}
-    stdlib["atan"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["atan"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("atan",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -216,7 +216,7 @@ func buildMathLib() {
     }
 
     slhelp["sinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic sine of [#i1]number[#i0]."}
-    stdlib["sinh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["sinh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sinh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -229,7 +229,7 @@ func buildMathLib() {
     }
 
     slhelp["asinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc sine of [#i1]number[#i0]."}
-    stdlib["asinh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["asinh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("asinh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -242,7 +242,7 @@ func buildMathLib() {
     }
 
     slhelp["cosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic cosine of [#i1]number[#i0]."}
-    stdlib["cosh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["cosh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cosh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -255,7 +255,7 @@ func buildMathLib() {
     }
 
     slhelp["acosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc cosine of [#i1]number[#i0]."}
-    stdlib["acosh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["acosh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("acosh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -268,7 +268,7 @@ func buildMathLib() {
     }
 
     slhelp["tanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic tangent of [#i1]number[#i0]."}
-    stdlib["tanh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["tanh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tanh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -281,7 +281,7 @@ func buildMathLib() {
     }
 
     slhelp["atanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc tangent of [#i1]number[#i0]."}
-    stdlib["atanh"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["atanh"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("atanh",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -294,7 +294,7 @@ func buildMathLib() {
     }
 
     slhelp["sin"] = LibHelp{in: "number", out: "float", action: "Calculate sine of [#i1]number[#i0]."}
-    stdlib["sin"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["sin"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sin",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -307,7 +307,7 @@ func buildMathLib() {
     }
 
     slhelp["cos"] = LibHelp{in: "number", out: "float", action: "Calculate cosine of [#i1]number[#i0]."}
-    stdlib["cos"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["cos"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cos",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -320,7 +320,7 @@ func buildMathLib() {
     }
 
     slhelp["tan"] = LibHelp{in: "number", out: "float", action: "Calculate tangent of [#i1]number[#i0]."}
-    stdlib["tan"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["tan"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tan",args,2, "1","int", "1","float64"); !ok { return nil,err }
         var r float64
         switch args[0].(type) {
@@ -333,7 +333,7 @@ func buildMathLib() {
     }
 
     slhelp["pow"] = LibHelp{in: "number,n", out: "float", action: "Calculate [#i1]number[#i0] raised to the power [#i1]n[#i0]."}
-    stdlib["pow"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["pow"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("pow",args,4,
             "2","int","int",
             "2","int","float64",
@@ -357,7 +357,7 @@ func buildMathLib() {
     }
 
     slhelp["prec"] = LibHelp{in: "bigfloat,prec", out: "bigfloat", action: "Returns a big float with a set precision ([#i1]prec[#i0] bits)."}
-    stdlib["prec"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["prec"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("prec",args,1,
             "2","bignumber","number"); !ok { return nil,err }
         prec,invalid:=GetAsUint(args[1])
@@ -377,7 +377,7 @@ func buildMathLib() {
     }
 
     slhelp["abs"] = LibHelp{in: "number", out: "positive_number", action: "Calculate absolute value of [#i1]number[#i0]."}
-    stdlib["abs"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["abs"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("abs",args,2,
             "1","bignumber",
             "1","number"); !ok { return nil,err }
@@ -406,7 +406,7 @@ func buildMathLib() {
     }
 
     slhelp["round"] = LibHelp{in: "float", out: "float", action: "Round float to nearest integer."}
-    stdlib["round"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["round"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("round",args,2,"1","float64","1","int"); !ok { return nil,err }
         switch args[0].(type) {
         case float64:
@@ -424,7 +424,7 @@ func buildMathLib() {
     }
 
     slhelp["floor"] = LibHelp{in: "float", out: "float", action: "Round float down to nearest integer."}
-    stdlib["floor"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["floor"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("floor",args,2,"1","float64","1","int"); !ok { return nil,err }
         switch args[0].(type) {
         case float64:
@@ -442,7 +442,7 @@ func buildMathLib() {
     }
 
     slhelp["ubin8"] = LibHelp{in: "unsigned_binary_string", out: "int", action: "unsigned binary to decimal. (8-bit)"}
-    stdlib["ubin8"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ubin8"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ubin8",args,1,"1","string"); !ok { return nil,err }
         if i,err:=strconv.ParseUint(args[0].(string), 2, 8); err==nil {
             return int(i),nil
@@ -452,7 +452,7 @@ func buildMathLib() {
     }
 
     slhelp["uhex32"] = LibHelp{in: "unsigned_hex_string", out: "int", action: "unsigned hexadecimal to decimal. (16-bit)"}
-    stdlib["uhex32"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["uhex32"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("uhex32",args,1,"1","string"); !ok { return nil,err }
         if i,err:=strconv.ParseUint(args[0].(string), 16, 16); err==nil {
             return int(i),nil
@@ -462,7 +462,7 @@ func buildMathLib() {
     }
 
     slhelp["ibase"] = LibHelp{in: "n,int", out: "string", action: "Returns a string holding a conversion of [#i1]int[#i0] to base [#i1]n[#i0]"}
-    stdlib["ibase"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ibase"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ibase",args,1,"2","number","number"); !ok { return nil,err }
         var i int64
         var n int
@@ -477,7 +477,7 @@ func buildMathLib() {
     }
 
     slhelp["rand"] = LibHelp{in: "positive_max_int", out: "int", action: "Generate a random integer between 1 and [#i1]positive_max_int[#i0] inclusive."}
-    stdlib["rand"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["rand"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("rand",args,1,"1","int"); !ok { return nil,err }
         if args[0].(int) <= 0 {
             pf("Error: Argument to rand() must be a positive integer.\n")
@@ -488,7 +488,7 @@ func buildMathLib() {
     }
 
     slhelp["randf"] = LibHelp{in: "", out: "float", action: "Generate a random float between 0 and 1."}
-    stdlib["randf"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["randf"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("randf",args,2,
         "1","int",
         "0"); !ok { return nil,err }
@@ -499,7 +499,7 @@ func buildMathLib() {
     }
 
     slhelp["seed"] = LibHelp{in: "number", out: "", action: "Set the random seed. [#i1]number[#i0] of -1 sets the seed using current nano-second time."}
-    stdlib["seed"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["seed"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("seed",args,2,"1","int64","1","int"); !ok { return nil,err }
         var r int64
         switch args[0].(type) {

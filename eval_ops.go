@@ -1341,7 +1341,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 }
 
 
-func accessArray(ident *[szIdent]Variable, obj any, field any) (any) {
+func accessArray(ident *[]Variable, obj any, field any) (any) {
 
      // pf("aa-typ : (%T)\n",obj)
      // pf("aa-obj : (%T) %+v\n",obj,obj)
@@ -1540,7 +1540,7 @@ func slice(v any, from, to any) any {
 }
 
 
-func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []any) (res any) {
+func callFunction(evalfs uint32, ident *[]Variable, name string, args []any) (res any) {
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1571,7 +1571,7 @@ func callFunction(evalfs uint32, ident *[szIdent]Variable, name string, args []a
 
             loc,_ := GetNextFnSpace(do_lock,name+"@",call_s{prepared:true,base: lmv, caller: evalfs})
 
-            var ident [szIdent]Variable
+            var ident = make([]Variable,identInitialSize)
 
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
 

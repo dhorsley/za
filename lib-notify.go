@@ -30,7 +30,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_exists"] = LibHelp{in: "watcher", out: "bool", action: "True if [#i1]watcher[#i0] should still be available for use."}
-    stdlib["ev_exists"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_exists"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ev_exists",args,1,"1","*fsnotify.Watcher"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
         if _,there:=notify_handler_list[id]; !there {
@@ -40,7 +40,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_watch_close"] = LibHelp{in: "watcher", out: "bool", action: "Dispose of a watcher object."}
-    stdlib["ev_watch_close"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_watch_close"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
 
         if ok,err:=expect_args("ev_watch_close",args,1,"1","*fsnotify.Watcher"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
@@ -55,7 +55,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_watch"] = LibHelp{in: "filepath_string", out: "watcher,int_error_code", action: "Initialise a file system watch object. Returns the new watcher and 0 error code on success, otherwise nil and >0 code. 1->create_watcher_failed, 2->file_path_failure"}
-    stdlib["ev_watch"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_watch"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
 
         if ok,err:=expect_args("ev_watch",args,1,"1","string"); !ok { return nil,err }
         fspath:=args[0].(string)
@@ -71,7 +71,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_watch_add"] = LibHelp{in: "watcher,filepath_string", out: "int_error_code", action: "Add another file path to [#i1]watcher[#i0]. Returns 0 on success, otherwise >0 code. e.g. 13->file permissions."}
-    stdlib["ev_watch_add"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_watch_add"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ev_watch_add",args,1,"2","*fsnotify.Watcher","string"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
         fspath:=args[1].(string)
@@ -81,7 +81,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_watch_remove"] = LibHelp{in: "watcher,filepath_string", out: "int_error_code", action: "Remove an existing file path in [#i1]watcher[#i0]. Returns 0 on success, otherwise >0 code."}
-    stdlib["ev_watch_remove"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_watch_remove"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ev_watch_remove",args,1,"2","*fsnotify.Watcher","string"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
         fspath:=args[1].(string)
@@ -91,7 +91,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_event"] = LibHelp{in: "watcher", out: "notify_event", action: "Sample events in [#i1]watcher[#i0]. Returns an event or nil."}
-    stdlib["ev_event"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_event"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ev_event",args,1,"1","*fsnotify.Watcher"); !ok { return nil,err }
         id:=args[0].(*fsnotify.Watcher)
         var event fsnotify.Event
@@ -110,7 +110,7 @@ func buildNotifyLib() {
     }
 
     slhelp["ev_mask"] = LibHelp{in: "notify_event,str_event_type", out: "filename_or_nil", action: "Is [#i1]notify_event[#i0] of type [#i1]str_event_type[#i0]? str_event_type can be one of create, write, remove, rename or chmod."}
-    stdlib["ev_mask"] = func(evalfs uint32,ident *[szIdent]Variable,args ...any) (ret any, err error) {
+    stdlib["ev_mask"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ev_mask",args,1,"2","fsnotify.Event","string"); !ok { return nil,err }
         ev:=args[0].(fsnotify.Event)
         mask_op:=args[1].(string)
