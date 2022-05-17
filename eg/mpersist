@@ -20,7 +20,7 @@ def per_tr(start,n)
 
     println "start %d | step #%2d | persist-total [digits] = %d".format(start,steps,total)
 
-    setglob steps++
+    setglob steps+=1
     per_tr(start,total)
 
 end

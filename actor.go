@@ -3203,17 +3203,17 @@ tco_reentry:
             switch str.ToLower(typ) {
             case "param":
 
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[3:noteAt])
+                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:noteAt])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("could not evaluate the INPUT expression\n%+v",we.errVal))
-                    finish(false, ERR_EVAL)
+                    finish(true, ERR_EVAL)
                     break
                 }
                 switch we.result.(type) {
                 case int:
                 default:
                     parser.report(inbound.SourceLine,"INPUT expression must evaluate to an integer")
-                    finish(false,ERR_EVAL)
+                    finish(true,ERR_EVAL)
                     break
                 }
                 d:=we.result.(int)
