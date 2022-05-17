@@ -5,10 +5,10 @@ module "modules/pidfile"
 this_uid =< id -u
 
 def begin()
-    # print "Started.\n"
+    print "Started.\n"
     while not quit
         nop
-        # pause 500
+        pause 500
     endwhile
 end
 

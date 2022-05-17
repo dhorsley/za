@@ -1224,17 +1224,21 @@ func (p *leparser) postIncDec(token Token) any {
 
     activePtr:=p.ident
 
-    if ! (*p.ident)[bin].declared {
-        gbin:=bind_int(mloc,vartok.tokText)
-        if mident[gbin].declared {
-            val,_=vget(&token,mloc,&mident,vartok.tokText)
-            activeFS=mloc
-            activePtr=&mident
+    if strcmp((*p.ident)[bin].IName,vartok.tokText) {
+        if ! (*p.ident)[bin].declared {
+            gbin:=bind_int(mloc,vartok.tokText)
+            if mident[gbin].declared {
+                val,_=vget(&token,mloc,&mident,vartok.tokText)
+                activeFS=mloc
+                activePtr=&mident
+            } else {
+                panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText))
+            }
         } else {
-            panic(fmt.Errorf("invalid variable name in post-inc/dec '%s'",vartok.tokText))
+                val,_=vget(&vartok,p.fs,p.ident,vartok.tokText)
         }
     } else {
-        val,_=vget(&vartok,p.fs,p.ident,vartok.tokText)
+        panic(fmt.Errorf("'%s' not a local variable.",vartok.tokText))
     }
 
     // act according to var type
