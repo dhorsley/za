@@ -9,104 +9,18 @@ lots, i'm sure.
 TODO
 ----
 
-    * fix the missing things from the windows build?
-        - talking about kernel level stuff like kill() and similar.
+    * see github.com/dhorsley/za/issues for TODO work which is under really consideration.
 
-    Status: At this point, I'm mainly concerned with FreeBSD and a variety of linux builds remaining
-        intact. Seriously considering throwing away Windows compatibility as it's a lot of work to 
-        keep it viable for a platform that just isn't a target use case. 
-
-        It would be a shame to lose it, as it is probably around 95% comparable to the linux/bsd
-        releases (barring the still terrible ANSI support in Windows terminal apps). However, it would
-        really reduce the complexity of the build, the insanity of the source base and the 
-        requirements for testing.
-
-
-
-    * add flock() and/or pid file handling?
-        - there is a syscall.Flock() already. needs file descriptor and 'how' int.
-        - could probably expose this indirectly for fopen'ed files.
-            - would need a few modes depending on the 'how' int states.
-        - would only be linux/bsd compatible for sure. maybe a few others, not windows though.
-        - pid file generation probably a bit easier, just needs some existing stuff wrapping up.
-            - there's an example for pid file setup in Za in eg/pidfile + eg/modules/pidfile.
-            - ideally that stuff should be in Go in our std lib instead.
-
-
-    * process and/or job control support (TODO maybe?)
-        - only currently have a few read-only calls for process IDs.
-        - we should really support the following in some way:
-            bg/fg/job/detach
-            pidof/kill/ps
-            stream redirection and channel creation (maybe)
-        - some of these are important enough facilities for a shell (pidof/kill/ps), but
-          not sure i care enough about the job system beyond allow the supporting commands through
-          unhindered to the coproc shell. job control would be important if we were primarily a shell,
-          however, we aren't and the intention was always to supervise an existing shell.
-            - if we end up moving more in that direction, then we should better support job control
-              with first-class facilities.
-        - not even convinced that pidof/kill/ps support are worthwhile either...
-            - the chances are you are going to have to fetch from procfs files in some way, at which
-              point, you may as well just have used the external commands in the bash co-process.
-              - even tools like kubernetes do this. (harvesting /proc/).
-            - we could do something similar for pidof as a test, but ps is already a pretty good tool.
-            - kill is easy enough, assuming we own the process by exposing syscall.Kill() as a library call.
-
-        - when done, we should maybe tie in &{...} to the job support.
-
-            - currently &{...} *will* launch shell snippets inside an async func
-                in Za, but they still bottleneck on the child process as that *has* to 
-                be a synchronous thing to avoid interleaving. 
-                - with -S option [coproc(false)] commands are run in separate processes depending 
-                on env, which isn't much of an improvement as you lose other facilities in doing that.
-                - instead, we should maybe be making a "{ ..code.. } &"  on coproc(true) calls,
-                   in order to create a background job? 
-                - doing that, of course, creates issues with exec()'ed coproc(false) calls and
-                   potential issues on windows/other os/other shells than bash. 
-                   - not too worried about this, i don't mind special casing a few major shells in linux.
-
-            - if background processing is currently needed, then adding the & manually is possible.
-                - i.e. {find /usr &} would work fine, for coproc(true) calls, you just don't get a
-                  separate output capture as it interleaves.
-                  - to be honest, i don't really see that as a problem as background processes should not
-                    be reading from/writing to the console if well designed.
-                  - you can also redirect to file i.e. {find /usr >filename &} as usual.
-
+    * anything else below is more, um, aspirational or undecided.
+    
 
 LATER / UNDECIDED
 -----------------
-
-    * revise source for generics support (go 1.18):
-        - done. it doesn't look like there are a lot of places that generics would help us in terms
-            of the primary functionality of the code. there are a few places around the standard lib
-            it would help and a few other smaller parts of base functionality that could be converted
-            but not as much as i'd hoped for! 
-        - will pick away at these periodically.
-
-
-    * add a hex_string=s3sum(filename_string[,blocksize_int]) call?
-        - need to convert s3checksum C source to Go.
-        - would be used to compare against an S3 header ETAG field to verify 
-            either single or multi-part downloads
-        - may need to do something to auto-detect block size based on size of first
-            block when multi-part formulated and block size not provided as param?
-        - would assume a default blocksize of 8192*1024 if not provided, but needed.
-
 
     * user and group builtins for linux?
         - i don't think this is necessary, especially as it would be so different between OS.
         - however, it makes scripting the stuff easier for a user by far if we support with builtins.
         - not doing this one yet, but still a possibility.
-
-
-    * an actual type system:
-        - something minimal, that doesn't get in the way of the interpreter
-        - aligns with generics
-        - retains what little speed we have
-        - simplifies all the switch blocks we have hanging around
-        - releases us from special casing all the stdlib-used types like dirent, big.*, etc
-    
-      Status: under consideration. depends on how much of the heavy lifting generics can do.
 
 
     * short-circuit evaluation of booleans
@@ -145,12 +59,6 @@ LATER / UNDECIDED
                 for big floats and ints. however, it is even more special casing without a driving
                 requirement. if i decide against proper types (see above) then maybe will add this
                 as already done for other bigs. not high on the priority list though.
-
-
-    * do something about the mess that is lib-list.go
-
-      Status: again, this depends on generics adoption. it would seem to be the only sane way to 
-                reduce the mess.
 
 
     * ultimately, change interactive mode to use readline or similar with better utf-8 support

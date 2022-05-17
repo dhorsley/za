@@ -10,8 +10,13 @@ define fib_tr(n, a, b)
     return fib_tr(n-1,b,a+b)
 end
 
-input x param 1
-input y param 2
+input x param 1 is "start of range"
+input y param 2 is "end of range"
+
+when
+has x.kind!="int" or y.kind!="int"
+    exit 1,"parameters must be integers."
+endwhen
 
 for i=x to y
     println i," ",fib(i)
