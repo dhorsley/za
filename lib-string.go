@@ -3,7 +3,10 @@
 package main
 
 import (
+    "encoding/hex"
     "errors"
+    "io"
+    "os"
     "regexp"
     "runtime"
     "strconv"
@@ -64,6 +67,74 @@ func tr(s string, action int, cases string, xlates string) string {
 }
 
 
+func s3sum(filename string, blocksize int64) (string, error) {
+    f, err := os.Open(filename)
+    if err != nil { return "", err }
+    defer f.Close()
+    return s3calc(f, blocksize)
+}
+
+// Calculate calculates the S3 hash of a given io.ReadSeeker with the given chunk size.
+func s3calc(f io.ReadSeeker, blocksize int64) (string, error) {
+
+    if blocksize==0 {
+        blocksize=8192
+    }
+
+    sz, err := f.Seek(0, io.SeekEnd)
+    if err != nil {
+        return "", err
+    }
+
+    var runsum  []byte
+    var parts   int
+
+    for i := int64(0); i < sz; i += blocksize {
+        length := blocksize
+        if i+blocksize > sz {
+            length = sz - i
+        }
+        sum, err := md5sum(f, i, length)
+        if err != nil {
+            return "", err
+        }
+        runsum = append(runsum, sum...)
+        parts+=1
+    }
+
+    var totsum []byte
+
+    if parts == 1 {
+        totsum = runsum
+    } else {
+        h := md5.New()
+        _, err := h.Write(runsum)
+        if err != nil {
+            return "", err
+        }
+        totsum = h.Sum(nil)
+    }
+
+    sumHex := hex.EncodeToString(totsum)
+
+    if parts>1 {
+        sumHex += "-" + strconv.Itoa(parts)
+    }
+
+    return sumHex, nil
+}
+
+func md5sum(r io.ReadSeeker, start, length int64) ([]byte, error) {
+    r.Seek(start, io.SeekStart)
+    h := md5.New()
+    if _, err := io.CopyN(h, r, length); err != nil {
+        return nil, err
+    }
+    return h.Sum(nil), nil
+}
+
+
+
 func buildStringLib() {
 
     // string handling
@@ -74,7 +145,7 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc","clean",
-        "md5sum","sha1sum","sha224sum","sha256sum",
+        "md5sum","sha1sum","sha224sum","sha256sum","s3sum",
     }
 
     replaceCompileCache:=make(map[string]regexp.Regexp)
@@ -279,6 +350,20 @@ func buildStringLib() {
         return "",nil
     }
 
+    slhelp["s3sum"] = LibHelp{in: "filename", out: "string", action: "Returns the file checksum for comparison to an S3 ETag field"}
+    stdlib["s3sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("s3sum",args,2,
+            "2","string","number",
+            "1","string"); !ok { return nil,err }
+
+        var blksize int64
+        if len(args)==2 {
+            blksize,_=GetAsInt64(args[1])
+        }
+
+        return s3sum(args[0].(string),blksize)
+    }
+
     slhelp["md5sum"] = LibHelp{in: "string", out: "string", action: "Returns the MD5 checksum of the input string."}
     stdlib["md5sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("md5sum",args,1,"1","string"); !ok { return nil,err }
@@ -326,11 +411,11 @@ func buildStringLib() {
         return tr(args[0].(string), COPY, args[2].(string), translations), nil
     }
 
-	slhelp["addansi"] = LibHelp{in: "string", out: "ansi_string", action: "Return a string with za colour codes replaced with ANSI values."}
-	stdlib["addansi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["addansi"] = LibHelp{in: "string", out: "ansi_string", action: "Return a string with za colour codes replaced with ANSI values."}
+    stdlib["addansi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("addansi",args,1,"1","string"); !ok { return nil,err }
         return sparkle(args[0].(string)),nil
-	}
+    }
 
     slhelp["stripansi"] = LibHelp{in: "string", out: "string", action: "Remove escaped ansi codes."}
     stdlib["stripansi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
