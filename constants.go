@@ -53,6 +53,12 @@ const (
     HELP_DIRENT
 )
 
+const (
+    S3_PT_NONE uint=iota
+    S3_PT_SINGLE
+    S3_PT_MULTI
+)
+
     //  chainInfoRegistrants:
     //               0: Trap Handler
     //               1: Call Function

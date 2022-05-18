@@ -3,17 +3,11 @@
 package main
 
 import (
-    "encoding/hex"
     "errors"
-    "io"
-    "os"
     "regexp"
     "runtime"
     "strconv"
     str "strings"
-    "crypto/md5"
-    "crypto/sha1"
-    "crypto/sha256"
 )
 
 const ( // tr_actions
@@ -67,74 +61,6 @@ func tr(s string, action int, cases string, xlates string) string {
 }
 
 
-func s3sum(filename string, blocksize int64) (string, error) {
-    f, err := os.Open(filename)
-    if err != nil { return "", err }
-    defer f.Close()
-    return s3calc(f, blocksize)
-}
-
-// Calculate calculates the S3 hash of a given io.ReadSeeker with the given chunk size.
-func s3calc(f io.ReadSeeker, blocksize int64) (string, error) {
-
-    if blocksize==0 {
-        blocksize=8192
-    }
-
-    sz, err := f.Seek(0, io.SeekEnd)
-    if err != nil {
-        return "", err
-    }
-
-    var runsum  []byte
-    var parts   int
-
-    for i := int64(0); i < sz; i += blocksize {
-        length := blocksize
-        if i+blocksize > sz {
-            length = sz - i
-        }
-        sum, err := md5sum(f, i, length)
-        if err != nil {
-            return "", err
-        }
-        runsum = append(runsum, sum...)
-        parts+=1
-    }
-
-    var totsum []byte
-
-    if parts == 1 {
-        totsum = runsum
-    } else {
-        h := md5.New()
-        _, err := h.Write(runsum)
-        if err != nil {
-            return "", err
-        }
-        totsum = h.Sum(nil)
-    }
-
-    sumHex := hex.EncodeToString(totsum)
-
-    if parts>1 {
-        sumHex += "-" + strconv.Itoa(parts)
-    }
-
-    return sumHex, nil
-}
-
-func md5sum(r io.ReadSeeker, start, length int64) ([]byte, error) {
-    r.Seek(start, io.SeekStart)
-    h := md5.New()
-    if _, err := io.CopyN(h, r, length); err != nil {
-        return nil, err
-    }
-    return h.Sum(nil), nil
-}
-
-
-
 func buildStringLib() {
 
     // string handling
@@ -145,7 +71,6 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc","clean",
-        "md5sum","sha1sum","sha224sum","sha256sum","s3sum",
     }
 
     replaceCompileCache:=make(map[string]regexp.Regexp)
@@ -348,44 +273,6 @@ func buildStringLib() {
             return sf("\033[38;2;%d;%d;%dm",r,g,b),nil
         }
         return "",nil
-    }
-
-    slhelp["s3sum"] = LibHelp{in: "filename", out: "string", action: "Returns the file checksum for comparison to an S3 ETag field"}
-    stdlib["s3sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("s3sum",args,2,
-            "2","string","number",
-            "1","string"); !ok { return nil,err }
-
-        var blksize int64
-        if len(args)==2 {
-            blksize,_=GetAsInt64(args[1])
-        }
-
-        return s3sum(args[0].(string),blksize)
-    }
-
-    slhelp["md5sum"] = LibHelp{in: "string", out: "string", action: "Returns the MD5 checksum of the input string."}
-    stdlib["md5sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("md5sum",args,1,"1","string"); !ok { return nil,err }
-        return sf("%x",md5.Sum([]byte(args[0].(string)))),nil
-    }
-
-    slhelp["sha1sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA1 checksum of the input string."}
-    stdlib["sha1sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("sha1sum",args,1,"1","string"); !ok { return nil,err }
-        return sf("%x",sha1.Sum([]byte(args[0].(string)))),nil
-    }
-
-    slhelp["sha224sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA224 checksum of the input string."}
-    stdlib["sha224sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("sha224sum",args,1,"1","string"); !ok { return nil,err }
-        return sf("%x",sha256.Sum224([]byte(args[0].(string)))),nil
-    }
-
-    slhelp["sha256sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA256 checksum of the input string."}
-    stdlib["sha256sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("sha256sum",args,1,"1","string"); !ok { return nil,err }
-        return sf("%x",sha256.Sum256([]byte(args[0].(string)))),nil
     }
 
     slhelp["tr"] = LibHelp{in: "string,action,case_string[,translation_string]", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]. translate (action "t") can be used, along with the optional [#i1]translation_string[#i0] to specify direct replacements for existing characters. Please note: this is a very restricted subset of the tr tool.`}
