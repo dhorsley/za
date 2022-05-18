@@ -30,3 +30,6 @@ unset tlf
 unset p
 unset fontdir
 
+# enum helps
+enum s3sum ( okay=0, warn, file, sum )
+

@@ -535,7 +535,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
     if varmode==MODE_NEW {
     bindings[ifs]=make(map[string]uint64)
     }
-    bindlock.Unlock()
 
     // copy bindings from source tokens
     for _,phrase:=range functionspaces[source_base] {
@@ -546,6 +545,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
         }
     }
     // pf("Binding table from tokens is:\n%#v\n",bindings[ifs])
+
+    bindlock.Unlock()
 
 
     if varmode==MODE_NEW {

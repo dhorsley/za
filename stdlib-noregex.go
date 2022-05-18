@@ -18,6 +18,7 @@ func buildStandardLib() {
     buildPackageLib()
     buildStringLib()
     buildOsLib()
+    buildSumLib()
     buildDateLib()
     buildMathLib()
     buildListLib()

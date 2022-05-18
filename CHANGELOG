@@ -39,6 +39,9 @@ CHANGE LOG
     library changes
     ---------------
 
+    * s3sum(filename[,blocksize]) added for calculating checksum of local file.
+         - this and other *sum funcs have been moved to separate source file.
+
 
     other
     -----
