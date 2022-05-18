@@ -5,11 +5,19 @@ package main
 import (
     "bytes"
     "fmt"
+    "os"
     "syscall"
     "unsafe"
     "unicode/utf16"
     "time"
 )
+
+
+func procKill(pid int) {
+    p, _ := os.FindProcess(pid)
+    p.Signal(syscall.SIGTERM)
+}
+
 
 func setEcho(s bool) {
 
