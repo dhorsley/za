@@ -7,8 +7,14 @@ import (
     term "github.com/pkg/term"
     "golang.org/x/sys/unix"
     str "strings"
+    "syscall"
     "time"
 )
+
+
+func procKill(pid int) {
+    syscall.Kill(pid,syscall.SIGINT)
+}
 
 
 func setEcho(s bool) {

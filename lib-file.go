@@ -6,7 +6,6 @@ import (
     "errors"
     "io/ioutil"
     "io"
-    "syscall"
     "os"
     sc "strconv"
     str "strings"
@@ -212,12 +211,7 @@ func buildFileLib() {
     slhelp["stat"] = LibHelp{in: "file_name", out: "stat_struct", action: "Returns a unix file stat structure containing underlying file information."}
     stdlib["stat"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("stat",args,1,"1","string"); !ok { return nil,err }
-        f, err := os.Stat(args[0].(string))
-        if err == nil {
-            return f.Sys().(*syscall.Stat_t), nil
-        } else {
-            return nil, nil
-        }
+        return fileStatSys(args[0].(string)),nil
     }
     slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
     stdlib["is_file"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {

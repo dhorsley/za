@@ -35,6 +35,8 @@ CHANGE LOG
         is global and sysvar storage which are now initialised at len 64 by default as they are likely to
         require more variable space anyway.
 
+    * added some dummy funcs and struct changes (for stat()) to allow windows build to at least compile again!
+
 
     library changes
     ---------------
