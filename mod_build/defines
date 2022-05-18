@@ -23,7 +23,7 @@ define buildMusl(build_version,build_date)
     | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}"' -tags 'osusergo netgo' -installsuffix netgo
     r=last()
     on r>0 do print last_out()
-    | cp za za.alpine
+    on r==0 do { cp za za.alpine }
     return r
 enddef
 
@@ -32,7 +32,7 @@ define buildLibc(build_version,build_date)
     | {=GCLIMIT} {=gobin} build {=GCCGOFLAGS} {=GCFLAGS} -ldflags '{=stripFlags} -extldflags "-static -O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
-    | cp za za.dynamic
+    on r==0 do { cp za za.dynamic }
     return r
 enddef
 
@@ -41,7 +41,7 @@ define buildFreeBSD(build_version,build_date)
     | {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -extldflags "-static -O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=bsd{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
-    | cp za za.dynamic
+    on r==0 do { cp za za.dynamic }
     return r
 enddef
 
@@ -50,7 +50,7 @@ define buildWin(build_version,build_date)
     | CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ GOOS="windows" GOARCH="amd64" {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -extldflags "-Ofast" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=windows{=strStrip}"' za
     r=last()
     on r>0 do println last_out()
-    | cp za.exe za.win64
+    on r==0 do { cp za.exe za.win64 }
     return r
 enddef
 

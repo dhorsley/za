@@ -12,6 +12,14 @@ import (
 )
 
 
+// not implemented! will eventually fix this to return a common structure
+// that re-interprets either *syscall.Win32FileAttributeData or Stat_t
+// depending on the system in use.
+func fileStatSys(fp string) (*syscall.Win32FileAttributeData) {
+    return nil
+}
+
+
 func fcopy(s, d string) (int64, error) {
 
         sfs, err := os.Stat(s)
@@ -80,7 +88,7 @@ func buildOsLib() {
             var fs dirent
             fs.name=file.Name()
             fs.size=file.Size()
-            fs.mode=uint32(file.Mode())
+            fs.mode=int(file.Mode())
             fs.mtime=file.ModTime().Unix()
             fs.is_dir=file.IsDir()
             dl=append(dl,fs)

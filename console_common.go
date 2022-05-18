@@ -1588,7 +1588,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             coproc_reset = true
             lastlock.Unlock()
             os.Remove(errorFile.Name())
-            syscall.Kill(os.Getpid(),syscall.SIGINT)
+            procKill(os.Getpid())
             return struct{out string;err string;code int;okay bool}{"","interrupt",-3,false}
         } else {
             if err == nil {
