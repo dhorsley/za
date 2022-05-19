@@ -17,6 +17,9 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * change parser.prev and parser.preprev to pointers?
+        - maybe won't make much difference, but should check.
+
     * user and group builtins for linux?
         - i don't think this is necessary, especially as it would be so different between OS.
         - however, it makes scripting the stuff easier for a user by far if we support with builtins.
