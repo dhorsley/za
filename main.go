@@ -692,6 +692,7 @@ func main() {
         gvset("@user", "")
         gvset("@home", "")
         gvset("@lang", "")
+        gvset("@cwd", ".")
         gvset("@wsl", "")
         gvset("@release_id", "windows")
         gvset("@release_name", "windows")
