@@ -1236,9 +1236,9 @@ func main() {
             `NL+=1` + "\n"
 
         if *a_program_fs=="" {
-            s+=`fields(_line) `
+            s+=`_=fields(_line) `
         } else {
-            s+=`fields(_line,"`+*a_program_fs+`") `
+            s+=`_=fields(_line,"`+*a_program_fs+`") `
         }
         s += "\n" + *a_program + "\nendfor\n"
         *a_program=s
