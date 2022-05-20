@@ -319,7 +319,6 @@ func (p *leparser) list_filter(left any,right any) any {
     case []dirent:
 
         // find # refs
-
         var fields []string
         var fieldpos []int
 
@@ -338,7 +337,6 @@ func (p *leparser) list_filter(left any,right any) any {
         }
 
         // filter
-
         var new_list []dirent
         for e:=0; e<len(left.([]dirent)); e+=1 {
             nm:=s2m(left.([]dirent)[e])
@@ -557,6 +555,15 @@ func (p *leparser) list_map(left any,right any) any {
     reduceparser=&leparser{}
     reduceparser.ident=p.ident
     reduceparser.fs=p.fs
+
+    // to generalise the []dirent case to all []structs we need:
+    //  1. something to detect field access in the condition ahead of the switch/case.
+    //  2. to move the []dirent case block out to its own generic function so that 
+    //      the s2m() and outer for loop length check work.
+    //  alternatively, we could combine the []any (no field access) and []dirent/struct cases
+    //    and check for field access from within it.. that way the switch could instead assign
+    //    the case left.(type) below to a scoped variable instead and we could possibly remove
+    //    the type assertions that way. (maybe - need to check)
 
     switch left.(type) {
 
@@ -1642,23 +1649,28 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
 }
 
 
+/*
 func vsetElement(fs uint32, ident *[]Variable, name string, el any, value any) {
     if ! (*ident)[bind_int(fs,name)].declared {
         list := make(map[string]any, LIST_SIZE_CAP)
         vset(nil,fs,ident,name,list)
     }
 
-    vsetElementi(fs,ident,name,el,value)
+    vsetElementi(nil,fs,ident,name,el,value)
 
 }
+*/
 
-// this could probably be faster. not a great idea duplicating the list like this...
-func vsetElementi(fs uint32, ident *[]Variable, name string, el any, value any) {
+func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, value any) {
 
     var list any
     var ok bool
 
+    if tok==nil {
     list, ok = vget(nil,fs,ident,name)
+    } else {
+        list, ok = vget(tok,fs,ident,name)
+    }
 
     if !ok {
         list = make(map[string]any, LIST_SIZE_CAP)
@@ -2399,15 +2411,26 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 
                                 ////////////////////////////////////////////////////////////////
                                 // write the copy back to the 'real' variable
-                                switch element.(type) {
-                                case int:
-                                    vsetElementi(lfs,lident,aryName,element.(int),tmp.Interface())
-                                case string:
-                                    vsetElementi(lfs,lident,aryName,element.(string),tmp.Interface())
-                                default:
-                                    vsetElementi(lfs,lident,aryName,element.(string),tmp.Interface())
+                                if lfs==rfs {
+                                    switch element.(type) {
+                                    case int:
+                                        vsetElement(&assignee[0],lfs,lident,aryName,element.(int),tmp.Interface())
+                                    case string:
+                                        vsetElement(&assignee[0],lfs,lident,aryName,element.(string),tmp.Interface())
+                                    default:
+                                        vsetElement(&assignee[0],lfs,lident,aryName,element.(string),tmp.Interface())
+                                    }
+                                } else {
+                                    switch element.(type) {
+                                    case int:
+                                        vsetElement(nil,lfs,lident,aryName,element.(int),tmp.Interface())
+                                    case string:
+                                        vsetElement(nil,lfs,lident,aryName,element.(string),tmp.Interface())
+                                    default:
+                                        vsetElement(nil,lfs,lident,aryName,element.(string),tmp.Interface())
+                                    }
                                 }
-                                return
+                               return
                                 ////////////////////////////////////////////////////////////////
 
                             } else {
@@ -2438,15 +2461,22 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             switch element.(type) {
             case string:
                 element = interpolate(rfs,rident,element.(string))
-                vsetElementi(lfs, lident, assignee[0].tokText, element.(string), results[assno])
+                if lfs==rfs {
+                    vsetElement(&assignee[0], lfs, lident, assignee[0].tokText, element.(string), results[assno])
+                } else {
+                    vsetElement(nil, lfs, lident, assignee[0].tokText, element.(string), results[assno])
+                }
             case int:
                 if element.(int)<0 {
                     pf("negative element index!! (%s[%v])\n",assignee[0].tokText,element)
                     expr.evalError=true
                     expr.errVal=err
                 } else {
-                    // pf("(da) vsetei : lfs:%v att:%v el:%v\n",lfs,assignee[0].tokText,element)
-                    vsetElementi(lfs, lident, assignee[0].tokText, element.(int), results[assno])
+                    if lfs==rfs {
+                        vsetElement(&assignee[0], lfs, lident, assignee[0].tokText, element.(int), results[assno])
+                    } else {
+                        vsetElement(nil, lfs, lident, assignee[0].tokText, element.(int), results[assno])
+                    }
                 }
             default:
                 pf("unhandled element type!! [%T]\n",element)
@@ -2485,8 +2515,11 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                             tf:=tmp.FieldByName(lhs_f)
                             if results[assno]==nil {
                                 tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-                                //tf.Set(reflect.ValueOf([]string{"nil","nil"}))
-                                vset(nil,lfs,lident,lhs_v,tmp.Interface())
+                                if lfs==rfs {
+                                    vset(&assignee[0],lfs,lident,lhs_v,tmp.Interface())
+                                } else {
+                                    vset(nil,lfs,lident,lhs_v,tmp.Interface())
+                                }
 
                             } else {
 
@@ -2514,7 +2547,11 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                                     tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
                                     tf.Set(reflect.ValueOf(results[assno]))
                                     // write the copy back to the 'real' variable
-                                    vset(nil,lfs,lident,lhs_v,tmp.Interface())
+                                    if lfs==rfs {
+                                        vset(&assignee[0],lfs,lident,lhs_v,tmp.Interface())
+                                    } else {
+                                        vset(nil,lfs,lident,lhs_v,tmp.Interface())
+                                    }
                                 } else {
                                     pf("cannot assign result (%T) to %v (%v)",results[assno],assignee[0].tokText,tf.Type())
                                     expr.evalError=true

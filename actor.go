@@ -564,7 +564,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va .
     fmt.Printf("[call-fa] ifs#%d fargs       -> %+v\n",ifs,functionArgs[source_base].args)
     */
     if len(functionArgs[source_base].args)>len(va) {
-        for e:=0; e<(len(functionArgs[source_base].args)-len(va)); e+=1 {
+        for e:=0; e<=(len(functionArgs[source_base].args)-len(va)); e+=1 {
             va=append(va,nil)
         }
     }
@@ -2848,7 +2848,7 @@ tco_reentry:
             if rightParenLoc!=inbound.TokenCount-1 {
                 var err error
                 nival,err = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
-                nival=sf("%v",nival)
+                //nival=sf("%v",nival)
                 if err!=nil {
                     parser.report(inbound.SourceLine,sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
                     finish(false,ERR_EVAL)
@@ -2885,9 +2885,9 @@ tco_reentry:
                     // time.Sleep(1 * time.Millisecond)
                     // assign channel h to handles map
                     if nival==nil {
-                        vsetElement(ifs,ident,handles,sf("async_%v",id),h)
+                        vsetElement(nil,ifs,ident,handles,sf("async_%v",id),h)
                     } else {
-                        vsetElement(ifs,ident,handles,sf("%v",nival),h)
+                        vsetElement(nil,ifs,ident,handles,sf("%v",nival),h)
                     }
                 }
 

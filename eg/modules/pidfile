@@ -34,11 +34,6 @@ def monitor_pidfile()
     while
         e=w.ev_event
         on e.ev_mask("remove")!=nil do on e.Name==pid_name() do setglob quit=true
-        #if e.ev_mask("remove")!=nil
-        #    if e.Name==pid_name()
-        #        setglob quit=true
-        #    endif
-        #endif
         pause 500
     endwhile
 end

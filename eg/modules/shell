@@ -1,13 +1,13 @@
 #!/usr/bin/za -f
 
 define ll(dir)
-    on dir=="" do dir="."
+    on dir==nil do dir="."
     cmd=|ls -l --color {dir}
     return cmd.out
 end
 
-define dir(dir)
-    on dir=="" do dir="."
+define ddir(dir)
+    on dir==nil do dir="."
     cmd=| dir --color {dir}
     return cmd.out
 end
@@ -19,7 +19,7 @@ end
 
 # return each filename on a separate line
 define line_ls(dir)
-    on dir=="" do dir="."
+    on dir==nil do dir="."
     cmd=|ls -1 {dir}
     return cmd.out
 end
@@ -29,7 +29,7 @@ define wcw(str)
     wc=0
     foreach l in str
         l=tr(l,"s"," \t")
-        fields(l)
+        _=fields(l)
         wc=wc+NF
     endfor
     return wc
@@ -37,9 +37,9 @@ end
 
 # return all filenames on the same line, with a specific separator 
 define word_ls(dir,sep)
-    on dir=="" do dir="."
-    on sep=="" do sep=" "
-    ls=|ls -1 {dir}
+    on dir==nil do dir="."
+    on sep==nil do sep=" "
+    ls=|ls -1a {dir}
     word_out=""
     foreach w in ls.out
         word_out+=w+sep
