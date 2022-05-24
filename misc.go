@@ -422,7 +422,8 @@ func help_ops() {
 [#4]a < b[#-]       less than                   [#4]a > b[#-]       greater than
 [#4]a <= b[#-]      less than or equal to       [#4]a >= b[#-]      greater than or equal to
 [#4]a ~ b[#-]       string a matches regex b    [#4]a ~i b[#-]      string a matches regex b (case insensitive)
-[#4]a in b[#-]      array b contains value a
+[#4]a in b[#-]      array b contains value a    [#4]a is <type>[#-] expression a has underlying type of:
+                                                           bool|int|uint|float|bigi|bigf|number|string|map|array|nil
 
 [#1]Postfix Operators[#-]
 [#4]n--[#-]         post-decrement (local scope only, command not expression)
