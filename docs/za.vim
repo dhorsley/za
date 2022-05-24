@@ -419,7 +419,7 @@ syntax match notify_functions "\(^|.\|\s*\)ev_mask\s*("he=e-1
 
 syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
-syntax match statements "\( do \| to \| as \| in \)"
+syntax match statements "\( do \| to \| as \| in \| is \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(end\|and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
@@ -430,11 +430,14 @@ syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(endstruct\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(accessfile\|showstruct\)\($\|\s\+\)"
 
+syntax match types "\sany\(\s\|$\)"
 syntax match types "\sint\(\s\|$\)"
 syntax match types "\suint\(\s\|$\)"
 syntax match types "\sbool\(\s\|$\)"
 syntax match types "\sfloat\(\s\|$\)"
 syntax match types "\sstring\(\s\|$\)"
+syntax match types "\smap\(\s\|$\)"
+syntax match types "\sarray\(\s\|$\)"
 
 " Color Matching {{{1
 " ===============

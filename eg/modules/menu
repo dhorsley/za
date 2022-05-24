@@ -16,7 +16,7 @@ define menu(p,opts)
         key_range = "1".asc .. "1".asc+ol-1
         break
     has ol<30
-        key_range = ( "1".asc .. "9".asc ) + ( "a".asc .. "a".asc+ol-10 )
+        key_range = ( "1".asc .. "9".asc ) +  ( "a".asc .. "a".asc+ol-10 )
         break
     has ol>=30
         key_range = nil
