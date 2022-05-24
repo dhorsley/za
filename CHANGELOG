@@ -8,6 +8,11 @@ CHANGE LOG
     notes
     -----
 
+    * added IS as a binary operator for type checking:
+
+        lhs IS (int|uint|float|bigi|bigf|string|bool|nil|map|array|number) -> returns bool
+
+
 
     fixes
     -----

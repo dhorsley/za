@@ -294,6 +294,7 @@ func main() {
     default_prectable[SYM_LAND]     =15
     default_prectable[SYM_LOR]      =15
     default_prectable[C_Or]         =15
+    default_prectable[C_Is]         =18
     default_prectable[SYM_BAND]     =20
     default_prectable[SYM_BOR]      =20
     default_prectable[SYM_Caret]    =20
