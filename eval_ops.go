@@ -12,35 +12,49 @@ import (
 )
 
 
+func ev_slice_get_type(arr interface{}) reflect.Type {
+      return reflect.TypeOf(arr).Elem()
+}
+
 func typeOf(val any) string {
+
     if val == nil {
         return "nil"
     }
 
     kind := reflect.TypeOf(val).Kind()
+
     if kind.String()=="map" { return "map" }
+
+    if kind.String()=="ptr" {
+        switch sf("%T",val) {
+        case "*big.Int":
+            return "bigi"
+        case "*big.Float":
+            return "bigf"
+        }
+    }
+
+    if kind.String()=="slice" {
+        // pf("esgt->%#v\n",ev_slice_get_type(val))
+        return sf("%T",val)
+    }
 
     switch kind {
     case reflect.Bool:
         return "bool"
-    case reflect.Uint, reflect.Int, reflect.Float64:
-        return "number"
+    case reflect.Uint:
+        return "uint"
+    case reflect.Int:
+        return "int"
+    case reflect.Float64:
+        return "float"
     case reflect.String:
         return "string"
     default:
-        // pf("[ kind %#v ]\n", kind.String())
     }
 
-    if _, ok := val.([]any); ok {
-        pf("[ typeOf: array : %+v ]\n",val)
-        return "array"
-    }
-
-    if _, ok := val.(map[string]any); ok {
-        return "object"
-    }
-
-    return sf("<unhandled type [%T]>",val)
+    return sf("<unhandled type [%T] ks (%s)>",val,kind.String())
 }
 
 func asBool(val any) (b bool) {
@@ -113,6 +127,54 @@ func ev_range(val1 any, val2 any) ([]int) {
     // unreachable: // return nil
 
 }
+
+func ev_kind_compare(val1 any, val2tok Token) (bool) {
+
+    v1:=typeOf(val1)
+
+    switch val2tok.tokType {
+    case T_Number:
+        switch v1 {
+        case "int","uint","float","bigi","bigf":
+            return true
+        }
+        return false
+    }
+
+    switch val2tok.tokType {
+    case T_Nil:
+        return v1=="nil"
+    case T_Bool:
+        return v1=="bool"
+    case T_Int:
+        return v1=="int"
+    case T_Uint:
+        return v1=="uint"
+    case T_Float:
+        return v1=="float"
+    case T_Bigi:
+        return v1=="bigi"
+    case T_Bigf:
+        return v1=="bigf"
+    case T_String:
+        return v1=="string"
+    case T_Map:
+        return v1=="map"
+    case T_Array:
+        switch v1 {
+        case "[]int","[]uint","[]bool","[]string","[]float","[]*big.Int","[]*big.Float","[]interface {}":
+            return true
+        }
+        return false
+    case T_Any:
+        return v1=="any"
+    }
+
+    panic(fmt.Errorf("type error: Unknown type specifier on right-side of IS"))
+    // pf("%s\nType [%T] on left of comparison.\n",v1,val1)
+
+}
+
 
 func ev_in(val1 any, val2 any) (bool) {
     switch vl:=val2.(type) {
@@ -348,6 +410,16 @@ func ev_sub(val1 any, val2 any) (any) {
         return val1.(int64) - val2.(int64)
     }
 
+    if bf1 && bf2 {
+        var r big.Float
+        return r.Sub(val1.(*big.Float),val2.(*big.Float))
+    }
+
+    if bint1 && bint2 {
+        var r big.Int
+        return r.Sub(val1.(*big.Int),val2.(*big.Int))
+    }
+
     if bf1 || bf2 {
         var r big.Float
         return r.Sub(GetAsBigFloat(val1),GetAsBigFloat(val2))
@@ -417,6 +489,16 @@ func ev_mul(val1 any, val2 any) (any) {
 
     if i641 && i642 {
         return val1.(int64) * val2.(int64)
+    }
+
+    if bint1 && bint2 {
+        var r big.Int
+        return r.Mul(val1.(*big.Int),val2.(*big.Int))
+    }
+
+    if bf1 && bf2 {
+        var r big.Float
+        return r.Mul(val1.(*big.Float),val2.(*big.Float))
     }
 
     if bf1 || bf2 {
@@ -535,8 +617,21 @@ func ev_div(val1 any, val2 any) (any) {
     }
 
     if i641 && i642 {
-        if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
-        return val1.(int) / val2.(int)
+        if val2.(int64)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+        return val1.(int64) / val2.(int64)
+    }
+
+    if bf2 && val2.(*big.Float).Sign()==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+    if bint2 && val2.(*big.Int).Sign()==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+
+    if bf1 && bf2 {
+        var r big.Float
+        return r.Quo(val1.(*big.Float),val2.(*big.Float))
+    }
+
+    if bint1 && bint2 {
+        var r big.Int
+        return r.Div(val1.(*big.Int),val2.(*big.Int))
     }
 
     if bf1 || bf2 {
@@ -546,7 +641,9 @@ func ev_div(val1 any, val2 any) (any) {
 
     if bint1 || bint2 {
         var r big.Int
-        return r.Div(GetAsBigInt(val1),GetAsBigInt(val2))
+        b:=GetAsBigInt(val2)
+        if b.Sign()==0 { panic(fmt.Errorf("eval error: divide by zero")) }
+        return r.Div(GetAsBigInt(val1),b)
     }
 
     float1, float1OK := val1.(float64)

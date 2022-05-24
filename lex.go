@@ -36,6 +36,8 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","BLOCK","ABLOCK","RBLOCK",
+    "T_NUMBER", "T_NIL", "T_BOOL", "T_INT", "T_UINT", "T_FLOAT", "T_BIGI",
+    "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY",
 }
 
 type lcstruct struct {
@@ -768,6 +770,30 @@ get_nt_eval_point:
             tokType = C_As
         case "do":
             tokType = C_Do
+        case "number":
+            tokType = T_Number
+        case "nil":
+            tokType = T_Nil
+        case "bool":
+            tokType = T_Bool
+        case "int":
+            tokType = T_Int
+        case "uint":
+            tokType = T_Uint
+        case "float":
+            tokType = T_Float
+        case "bigi":
+            tokType = T_Bigi
+        case "bigf":
+            tokType = T_Bigf
+        case "string":
+            tokType = T_String
+        case "map":
+            tokType = T_Map
+        case "array":
+            tokType = T_Array
+        case "any":
+            tokType = T_Any
         }
     }
 
