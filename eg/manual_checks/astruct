@@ -16,7 +16,7 @@ println "random:"
 
 for e = 0 to 9
     b=a[e]
-    b.b=float(rand(50))
+    b.b=as_float(rand(50))
     a[e]=b
 endfor
 

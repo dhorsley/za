@@ -49,6 +49,10 @@ CHANGE LOG
     * s3sum(filename[,blocksize]) added for calculating checksum of local file.
          - this and other *sum funcs have been moved to separate source file.
 
+    * BREAKING CHANGE!! renamed float, int, uint, bool, bigi, bigf, string functions with prefix "as_"
+        - SORRY!
+        - this was done to accommodate float, int, uint, bool, string, bigi, bigf as type keywords
+        
 
     other
     -----

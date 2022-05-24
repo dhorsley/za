@@ -709,7 +709,7 @@ func avg_inter(s []any) (m float64) {
     panic(fmt.Errorf("divide by zero generating an average"))
 }
 
-func sum_uint(s []uint) (m uint) {
+func sum_uint(s []uint) (uint) {
     sum := float64(0)
     for _, e := range s {
         sum += float64(e)
@@ -717,7 +717,7 @@ func sum_uint(s []uint) (m uint) {
     return uint(sum)
 }
 
-func sum_int(s []int) (m int) {
+func sum_int(s []int) (int) {
     sum := float64(0)
     for _, e := range s {
         sum += float64(e)
@@ -725,7 +725,7 @@ func sum_int(s []int) (m int) {
     return int(sum)
 }
 
-func sum_int64(s []int64) (m int64) {
+func sum_int64(s []int64) (int64) {
     sum := float64(0)
     for _, e := range s {
         sum += float64(e)
@@ -733,7 +733,7 @@ func sum_int64(s []int64) (m int64) {
     return int64(sum)
 }
 
-func sum_float64(s []float64) (m float64) {
+func sum_float64(s []float64) (float64) {
     sum := float64(0)
     for _, e := range s {
         sum += float64(e)
@@ -741,7 +741,7 @@ func sum_float64(s []float64) (m float64) {
     return sum
 }
 
-func sum_inter(s []any) (m float64) {
+func sum_inter(s []any) (float64) {
     sum := float64(0)
     for _, e := range s {
         ee, _ := GetAsFloat(sf("%v", e))

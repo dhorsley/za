@@ -37,12 +37,12 @@ define bar(row,col,hsize,pc,colour)
     part_1q="▎"
     us = hsize / 100f   # 1% width of total
     d  = pc*us          # width of input percent
-    r  = d-d.int        # remainder
+    r  = d-d.as_int        # remainder
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.int do c="▪"
-        if e>=d.int and e<int(d+1)
+        on e<d.as_int do c="▪"
+        if e>=d.as_int and e<as_int(d+1)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
@@ -115,8 +115,7 @@ define showFiles()
         clear(1,4,1)
 
         ofd=open_fd.field(1,"\t")
-        # mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t ").float
-        mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t").float
+        mfd=open_fd.tr("d","\n").tr("s","\t ").field(3,"\t").as_float
         at 2,2, "[#-]Open Descr. : [#6]{ofd}[#-]"
         at 3,2, "Max         : [#6]"
         if mfd>1e8
@@ -124,10 +123,8 @@ define showFiles()
         else
             print format("%.7g",mfd),"[#-]"
         endif
-        # fin=open_inode.field(2," \t\n")
-        # tin=open_inode.field(1," \t").float
         fin=open_inode.field(2,"\t")
-        tin=open_inode.field(1,"\t").float
+        tin=open_inode.field(1,"\t").as_float
         at 4,2, "Free Inodes : [#6]{fin}[#-]"
         at 5,2, "Total       : [#6]",format("%.7g",tin),"[#-]"
 
@@ -161,7 +158,7 @@ define showMem()
             s_sz=l.field(3," ")
             s_cn=l.field(4," ")
             on s_sz==0 or s_cn==0 do continue
-            slabs+="%s %3v\n".format(name,(s_sz.float*s_cn.float)/1024/1024)
+            slabs+="%s %3v\n".format(name,(s_sz.as_float*s_cn.as_float)/1024/1024)
         endfor
         slabs=slabs.fieldsort(2,"n",true) 
     endif
@@ -191,27 +188,27 @@ define showMem()
 
     clear(2,9,1)
 
-    at 2,2,"[#4]Total  : "; bar(2,10,16,mem_total.float*100,1)
-    print " [#6]{=hobbitsize(1024*mem_total.float)}B[#-]   "
+    at 2,2,"[#4]Total  : "; bar(2,10,16,mem_total.as_float*100,1)
+    print " [#6]{=hobbitsize(1024*mem_total.as_float)}B[#-]   "
 
-    at 3,2,"[#4]Free   : "; bar(3,10,16,(mem_free.int/mem_total.float)*100,4)
-    print " [#6]{=hobbitsize(1024*mem_free.float)}B[#-]   "
+    at 3,2,"[#4]Free   : "; bar(3,10,16,(mem_free.as_int/mem_total.as_float)*100,4)
+    print " [#6]{=hobbitsize(1024*mem_free.as_float)}B[#-]   "
 
-    at 4,2,"[#4]Avail  : "; bar(4,10,16,(mem_avail.int/mem_total.float)*100,4)
-    print " [#6]{=hobbitsize(1024*mem_avail.float)}B[#-]   "
+    at 4,2,"[#4]Avail  : "; bar(4,10,16,(mem_avail.as_int/mem_total.as_float)*100,4)
+    print " [#6]{=hobbitsize(1024*mem_avail.as_float)}B[#-]   "
 
-    at 5,2,"[#4]Cached : "; bar(5,10,16,(mem_cached.int/mem_total.float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_cached.float)}B[#-]   "
+    at 5,2,"[#4]Cached : "; bar(5,10,16,(mem_cached.as_int/mem_total.as_float)*100,3)
+    print " [#6]{=hobbitsize(1024*mem_cached.as_float)}B[#-]   "
 
-    at 6,2,"[#4]Active : "; bar(6,10,16,(mem_active.int/mem_total.float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_active.float)}B[#-]   "
+    at 6,2,"[#4]Active : "; bar(6,10,16,(mem_active.as_int/mem_total.as_float)*100,3)
+    print " [#6]{=hobbitsize(1024*mem_active.as_float)}B[#-]   "
 
-    at 7,2,"[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.int/mem_swap_total.float)*100,5)
-    print " [#6]{=hobbitsize(1024*mem_swap_free.float)}B[#-]   "
+    at 7,2,"[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.as_int/mem_swap_total.as_float)*100,5)
+    print " [#6]{=hobbitsize(1024*mem_swap_free.as_float)}B[#-]   "
 
-    al=get_mem().alloc.int
-    ts=get_mem().system.int
-    at 8,2,"[#4]Mon Use:"; bar(8,10,16,(al.float/mem_avail.int)*100,2)
+    al=get_mem().alloc.as_int
+    ts=get_mem().system.as_int
+    at 8,2,"[#4]Mon Use:"; bar(8,10,16,(al.as_float/mem_avail.as_int)*100,2)
     print " [#6]{=hobbitsize(al*1024*1024)}B [#-]   "
 
     # display slab info
@@ -228,7 +225,7 @@ define showMem()
             sa=strpos(l," ",0)
             c1=substr(l,0,sa)
             c2=substr(l,sa+1,len(l)-sa-1)
-            at 11+p,1, format("%20s  [#6]%-"+comwidth.string+"d[#-]",c1,int(c2))
+            at 11+p,1, format("%20s  [#6]%-"+comwidth.as_string+"d[#-]",c1,as_int(c2))
         endfor
     endif
 end
@@ -258,25 +255,27 @@ define showProcs(ct,uptime)
 
         # split up
         fields(ps)
-        pid=int(F[1])
+        pid=as_int(F[1])
 
         state=F[3]; ppid=F[4]
-        utime=float(F[14]); stime=float(F[15]); cutime=float(F[16]); cstime=float(F[17])
-        priority=F[18]; nice=F[19]; threads=F[20]; procstarttime=float(F[22])
+        utime=as_float(F[14]); stime=as_float(F[15]); cutime=as_float(F[16]); cstime=as_float(F[17])
+        priority=F[18]; nice=F[19]; threads=F[20]; procstarttime=as_float(F[22])
 
-        on kind(procstarttime)!="float" || kind(utime)!="float" || kind(stime)!="float" do continue
-        on kind(cstime)!="float" || kind(cutime)!="float" do continue
+        on not procstarttime is float || not utime is float || not stime is float do continue
+        on not cstime is float || not cutime is float do continue
+        # on kind(procstarttime)!="float" || kind(utime)!="float" || kind(stime)!="float" do continue
+        # on kind(cstime)!="float" || kind(cutime)!="float" do continue
 
         on procstarttime==0 do continue
 
         # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
 
         if pid!=pid()
-            putime=float(uptime-(procstarttime/ct))
+            putime=as_float(uptime-(procstarttime/ct))
             on putime==0 do continue
 
-            proc_list[pid]=[ state, ppid, 100*float(utime/ct/putime), 100*float(stime/ct/putime), 
-                            100*float(cutime/ct/putime), 100*float(cstime/ct/putime), 
+            proc_list[pid]=[ state, ppid, 100*as_float(utime/ct/putime), 100*as_float(stime/ct/putime), 
+                            100*as_float(cutime/ct/putime), 100*as_float(cstime/ct/putime), 
                             threads, procstarttime, gsub(comm," ","_") 
             ]
 
@@ -308,9 +307,11 @@ define showProcs(ct,uptime)
             fields(p," ")
             on proc_filter!="" and not reg_match($lc F[10],$lc proc_filter) do continue
             # skip low activity processes
-            # on float(F[4])<0.2 or float(F[5])<0.2 do continue
+            # on as_float(F[4])<0.2 or as_float(F[5])<0.2 do continue
             on len(F[10])>=comwidth do F[10]=substr(F[10],0,comwidth-1)
-            print format("%2s %8d %8d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",F[1],int(F[2]),int(F[3]),float(F[4]),float(F[5]),float(F[8]),collapse(F[10]))
+            print format("%2s %8d %8d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",
+                F[1],as_int(F[2]),as_int(F[3]),as_float(F[4]),as_float(F[5]),as_float(F[8]),collapse(F[10])
+            )
             on lcount--==0 do break
         endfor
 
@@ -320,17 +321,17 @@ end
 
 define humansize(i)
     unit="B"
-    if i>=1e9; unit="GB"; i=float(i/1e9); endif
-    if i>=1e6; unit="MB"; i=float(i/1e6); endif
-    if i>=1e3; unit="KB"; i=float(i/1e3); endif
+    if i>=1e9; unit="GB"; i=as_float(i/1e9); endif
+    if i>=1e6; unit="MB"; i=as_float(i/1e6); endif
+    if i>=1e3; unit="KB"; i=as_float(i/1e3); endif
     return format("%.1f %s/sec",i,unit)
 end
 
 define hobbitsize(i)
-    on i>=1e9 do return "%.1f G".format(float(i/1e9))
-    on i>=1e6 do return "%.1f M".format(float(i/1e6))
-    on i>=1e3 do return "%.1f K".format(float(i/1e3))
-    return "%.1f ".format(i.float)
+    on i>=1e9 do return "%.1f G".format(as_float(i/1e9))
+    on i>=1e6 do return "%.1f M".format(as_float(i/1e6))
+    on i>=1e3 do return "%.1f K".format(as_float(i/1e3))
+    return "%.1f ".format(i.as_float)
 end
 
 
@@ -358,7 +359,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     row=1
 
-    mult            = float(timeout)/10.0
+    mult            = as_float(timeout)/10.0
     indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
     partindexlist   = tail(indexlist)
 
@@ -370,7 +371,8 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         on len(F)==0 do continue
 
         name=F[1]
-        on kind(name)!="string" do continue
+        on not name is string do continue
+        # on kind(name)!="string" do continue
         on name=="cpu" do continue
 
         if reg_match(name,"^cpu")
@@ -390,7 +392,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 endif
                 on f.len>0 do f = f.tail
             endfor
-
+            
             # set initial value for the global store
             if !glob_key("prev","{name}_total")
                 foreach i in indexlist
@@ -414,13 +416,13 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
             if one_prev["total"]!=nil
-                diff_total = float(vals["total"]-one_prev["total"])
+                diff_total = as_float(vals["total"]-one_prev["total"])
                 foreach i in partindexlist
                     if diff_total==0
-                        diff[i]=int(0)
+                        diff[i]=as_int(0)
                     else
                         if is_number(one_prev[i])
-                            diff[i] = ((vals[i]-int(one_prev[i])) / diff_total ) * mult
+                            diff[i] = ((vals[i]-as_int(one_prev[i])) / diff_total ) * mult
                         endif
                     endif
                 endfor
@@ -444,8 +446,8 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             # ensure positive and bounded
             if one_prev["total"]!=nil
                 foreach i in partindexlist
-                    on int(diff[i])<0   do diff[i]=0
-                    on int(diff[i])>100 do diff[i]=100
+                    on as_int(diff[i])<0   do diff[i]=0
+                    on as_int(diff[i])>100 do diff[i]=100
                 endfor
             endif
             
@@ -461,8 +463,8 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 if showCpuDetails
                     at row,pos, format(
                                         "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
-                                        float(diff["user"]),float(diff["sys"]),float(diff["softirq"]),
-                                        float(diff["irq"]),float(diff["guest"]),float(diff["steal"]),float(diff["iowait"])
+                                        as_float(diff["user"]),as_float(diff["sys"]),as_float(diff["softirq"]),
+                                        as_float(diff["irq"]),as_float(diff["guest"]),as_float(diff["steal"]),as_float(diff["iowait"])
                                     )
                     pos=pos+59
                 endif
@@ -483,13 +485,13 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
                     # populate with values
                     at row,pos
-                    print col_sys;      print pad(activity_indicator,1,w_sys.int,       activity_indicator)
-                    print col_user;     print pad(activity_indicator,1,w_user.int,      activity_indicator)
-                    print col_softirq;  print pad(activity_indicator,1,w_softirq.int,   activity_indicator)
-                    print col_irq;      print pad(activity_indicator,1,w_irq.int,       activity_indicator)
-                    print col_guest;    print pad(activity_indicator,1,w_guest.int,     activity_indicator)
-                    print col_steal;    print pad(activity_indicator,1,w_steal.int,     activity_indicator)
-                    print col_iowait;   print pad(activity_indicator,1,w_iowait.int,    activity_indicator)
+                    print col_sys;      print pad(activity_indicator,1,w_sys.as_int,       activity_indicator)
+                    print col_user;     print pad(activity_indicator,1,w_user.as_int,      activity_indicator)
+                    print col_softirq;  print pad(activity_indicator,1,w_softirq.as_int,   activity_indicator)
+                    print col_irq;      print pad(activity_indicator,1,w_irq.as_int,       activity_indicator)
+                    print col_guest;    print pad(activity_indicator,1,w_guest.as_int,     activity_indicator)
+                    print col_steal;    print pad(activity_indicator,1,w_steal.as_int,     activity_indicator)
+                    print col_iowait;   print pad(activity_indicator,1,w_iowait.as_int,    activity_indicator)
                     print "[#-][##]"
                     pos=pos+49
                 endif
@@ -531,7 +533,8 @@ define showHdd()
     foreach d in disks
         if d!=""
             fields(d)
-            on kind(F[1])!="string" do continue
+            on not F[1] is string do continue 
+            # on kind(F[1])!="string" do continue
             if !key("devices",F[1])
                 devices[F[1]]=F[6]
                 at row,1, format(`%20s %5s %5s %5s %-23s`,shorten(F[1],19),F[2],F[3],F[4],F[5])
@@ -570,8 +573,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
         if has_start(int_name,interface)
 
             # current counters 
-            rbytes  = float(F[2])
-            tbytes  = float(F[10])
+            rbytes  = as_float(F[2])
+            tbytes  = as_float(F[10])
 
             if net_sample_start_in>0
                 prev_rbytes=rbytes
@@ -607,8 +610,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             setglob prev_tbytes = tbytes
 
             # avg over a second:
-            drb=humansize((1000/float(timeout))*drb)
-            dtb=humansize((1000/float(timeout))*dtb)
+            drb=humansize((1000/as_float(timeout))*drb)
+            dtb=humansize((1000/as_float(timeout))*dtb)
 
             clear_line(pane_h()-1,1)
             at pane_h()-1,1, format("[#5] rx avg [#-] %v [#2] tx avg [#-] %v", drb, dtb)
@@ -742,7 +745,7 @@ while !quit
     endif
 
     # capture system uptime
-    on is_file("/proc/uptime") do uptime=float(field($in "/proc/uptime",1))
+    on is_file("/proc/uptime") do uptime=as_float(field($in "/proc/uptime",1))
 
     # show panes
     sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
@@ -763,12 +766,12 @@ while !quit
     t  = epoch_nano_time()
     d  = date_human(t/1_000_000_000)
 
-    dt = float(t-lt) / 1_000_000
+    dt = as_float(t-lt) / 1_000_000
     dts= format("frame: %.2fms",dt)
     lt = t
 
     at 1,1,ccformat("[#bold]%"+
-            string(pane_w()-2)+
+            as_string(pane_w()-2)+
             "s[#boff][#-]",d+
             " | {dts} | Current Timeout : {timeout} ms"
     )
@@ -795,7 +798,7 @@ while !quit
     is "t"
         clear(1,1,1); at 1,1
         prompt timeout "New Timeout (ms) : " "^[0-9]+$"
-        key_timeout=timeout.int
+        key_timeout=timeout.as_int
     is "D"
         showCpuDetails = ! showCpuDetails
     is "B"

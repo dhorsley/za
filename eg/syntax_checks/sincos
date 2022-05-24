@@ -12,8 +12,8 @@ end
 
 cr=term_h()/2
 cw=term_w()/2
-ymag=float(20)
-xmag=float(43)
+ymag=as_float(20)
+xmag=as_float(43)
 
 cls
 

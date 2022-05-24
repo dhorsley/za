@@ -65,13 +65,13 @@ while !empty(av)
             println "Help requested."
         is "-s"
             println "string"
-            svar=string(next())
+            svar=as_string(next())
         is "-b"
             println "bool"
-            bvar=bool(next())
+            bvar=as_bool(next())
         is "-n"
             println "number"
-            nvar=int(next())
+            nvar=as_int(next())
         endwhen
     else
         println "unprocessed argument found: {arg}"
