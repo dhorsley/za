@@ -33,7 +33,7 @@ define fsort(m)
 end
 
 define splitOnZero(s)
-    return split(s,string(char(0)))
+    return split(s,as_string(char(0)))
 end
 
 struct statm_line
@@ -74,12 +74,12 @@ define ps(filter)
         ps.replace("\(.*?\)","command").fields
 
         proc.name     = cmd
-        proc.pid      = F[1].int
+        proc.pid      = F[1].as_int
         proc.state    = F[3]
-        proc.ppid     = F[4].int
-        rawpri=F[18].int
+        proc.ppid     = F[4].as_int
+        rawpri=F[18].as_int
         proc.priority = (rawpri < 0) ? (abs(rawpri+1)) : rawpri
-        proc.starttime= F[22].int
+        proc.starttime= F[22].as_int
 
         # fetch command line arguments
         args[proc.pid]= $in "{dn}/cmdline".splitOnZero
@@ -87,13 +87,13 @@ define ps(filter)
         # read data from .../statm
         pm = $in "{dn}/statm"
         pm.fields
-        parts.size    = F[mem_parts.size].int     # tot prog size
-        parts.rss     = F[mem_parts.rss].int      # page count
-        parts.shared  = F[mem_parts.shared].int   # page count
-        parts.text    = F[mem_parts.text].int     # code 
-        parts.lib     = F[mem_parts.lib].int      # 0
-        parts.data    = F[mem_parts.data].int     # data+stack
-        parts.dt      = F[mem_parts.dt].int       # dirty page count (0)
+        parts.size    = F[mem_parts.size].as_int     # tot prog size
+        parts.rss     = F[mem_parts.rss].as_int      # page count
+        parts.shared  = F[mem_parts.shared].as_int   # page count
+        parts.text    = F[mem_parts.text].as_int     # code 
+        parts.lib     = F[mem_parts.lib].as_int      # 0
+        parts.data    = F[mem_parts.data].as_int     # data+stack
+        parts.dt      = F[mem_parts.dt].as_int       # dirty page count (0)
         mem[proc.pid] = parts
 
         # add process to list
@@ -125,7 +125,7 @@ end
 #
 
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
-PAGESIZE = ${getconf PAGESIZE}.int
+PAGESIZE = ${getconf PAGESIZE}.as_int
 
 termless = term_w()==-1 and term_h()==-1
 ansi(!termless)
@@ -141,7 +141,7 @@ res,keys,arglists,mem=ps(filter)
 on keys.len>0 do keys=fsort(keys)
 
 # display
-title=format("\n[#bold]"+(termless?"":"[#ul]")+"%-7s %-7s %2s %9s %9s %9s %16s %4s %-"+string(TW-72)+"s[#-]",
+title=format("\n[#bold]"+(termless?"":"[#ul]")+"%-7s %-7s %2s %9s %9s %9s %16s %4s %-"+as_string(TW-72)+"s[#-]",
                 "PID","PPID","ST","VIRT","RSS","SHARED","USER","PRI","CMD"
 )
 
@@ -161,10 +161,10 @@ foreach r in keys
     p=res[field(r,1)]
     if can_read("/proc/{=p.pid}")
         s=stat("/proc/{=p.pid}")
-        p.uid=s.Uid.string
-        p.gid=s.Gid.string
-        on username(p.uid.int)!="" do p.uid=username(p.uid.int)
-        on groupname(p.gid.int)!="" do p.gid=groupname(p.gid.int)
+        p.uid=s.Uid.as_string
+        p.gid=s.Gid.as_string
+        on username(p.uid.as_int)!="" do p.uid=username(p.uid.as_int)
+        on groupname(p.gid.as_int)!="" do p.gid=groupname(p.gid.as_int)
     endif
 
     tempwidth=TW-72
@@ -197,7 +197,7 @@ foreach r in keys
     rsize_string = rsize!=0 ? short_size(rsize) : "-"
     ssize_string = ssize!=0 ? short_size(ssize) : "-"
 
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s [#7]%4d [#bold]%-"+tempwidth.string+"s[#-]",
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s [#7]%4d [#bold]%-"+tempwidth.as_string+"s[#-]",
             p.pid,p.ppid,p.state,
             vsize_string,rsize_string,ssize_string,
             p.uid,

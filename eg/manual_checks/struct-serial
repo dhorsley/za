@@ -34,8 +34,8 @@ else
 endif
 
 z.c="blah"
-z.d=float(100000)
-z.e=uint(200)
+z.d=as_float(100000)
+z.e=as_uint(200)
 
 println "Updated value : ",z
 

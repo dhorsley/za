@@ -19,7 +19,7 @@ end
 input c optarg 1
 
 if c!=""
-    c=int(c)
+    c=as_int(c)
     println F(c)
     println M(c)
     exit

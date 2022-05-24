@@ -4,7 +4,7 @@ define q(val)
     delay=rand(4)
     println val
     pause delay*100
-    return string(val)
+    return as_string(val)
 end
 
 # MAIN

@@ -21,7 +21,7 @@ define renderWave(yv,height,glyph)
     on len(yv)==0 do return
     on glyph==nil do glyph="+"
     for x = 0 to len(yv)-1
-        y=int(height/2)+int(yv[x])
+        y=as_int(height/2)+as_int(yv[x])
         at y,x+1
         print glyph
     endfor
@@ -42,7 +42,7 @@ theta = 45.0
 period = 120.0
 
 height=term_h()
-amplitude = int(height/2)
+amplitude = as_int(height/2)
 width=term_w()
 yvalues=[]
 

@@ -115,11 +115,11 @@ define show(obj_list)
         on o==nil do continue
         if o.type==shapes.BOX
             for e=0 to o.h-1
-                at int(o.y+e),int(o.x)
+                at as_int(o.y+e),as_int(o.x)
                 print "[#b"+o.bg+"][#"+o.fg+"]"+o.text+"[#-][##]"
             endfor
         else
-            at int(o.y),int(o.x)
+            at as_int(o.y),as_int(o.x)
             print "[#b"+o.bg+"][#"+o.fg+"]"+o.text+"[#-][##]"
         endif
     endfor
@@ -128,14 +128,14 @@ end
 define hide(obj_list)
     foreach o in obj_list
         on o==nil do continue
-        on int(o.px)==int(o.x) && int(o.py)==int(o.y) do continue
+        on as_int(o.px)==as_int(o.x) && as_int(o.py)==as_int(o.y) do continue
         if o.type==shapes.BOX
             for e=0 to o.h-1
-                at int(o.py+e),int(o.px)
+                at as_int(o.py+e),as_int(o.px)
                 print " "*o.w
             endfor
         else
-            at int(o.py),int(o.px)
+            at as_int(o.py),as_int(o.px)
             print " "*o.w
         endif
     endfor
@@ -144,7 +144,7 @@ end
 define object_add_box(n,label,x,y,h,bg,fg)
     var obj object
     obj.type=shapes.BOX ; obj.text=label
-    obj.fg=fg           ; obj.bg=int(bg)
+    obj.fg=fg           ; obj.bg=as_int(bg)
     obj.h=h             ; obj.w=label.len
     obj.x=x.float       ; obj.y=y.float
     obj.px=x.float      ; obj.py=y.float

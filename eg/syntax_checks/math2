@@ -9,9 +9,9 @@ foreach t in tests
         ary=split(t,"=")
         println "q->[#1]",ary[0],"[#-]"
         println "a->",ary[1]
-        ans=eval($st ary[0]).float
+        ans=eval($st ary[0]).as_float
         println "answer->",ans
-        assert ans==float($st  ary[1])
+        assert ans==as_float($st ary[1])
         print
     endtest
 endfor

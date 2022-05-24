@@ -17,8 +17,8 @@ cls
 h=term_h()
 w=term_w()
 
-cx=int(w/2)
-cy=int(h/2)
+cx=as_int(w/2)
+cy=as_int(h/2)
 
 seed(epoch_nano_time())
 

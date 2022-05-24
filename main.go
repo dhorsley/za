@@ -294,7 +294,6 @@ func main() {
     default_prectable[SYM_LAND]     =15
     default_prectable[SYM_LOR]      =15
     default_prectable[C_Or]         =15
-    default_prectable[C_Is]         =18
     default_prectable[SYM_BAND]     =20
     default_prectable[SYM_BOR]      =20
     default_prectable[SYM_Caret]    =20
@@ -305,6 +304,7 @@ func main() {
     default_prectable[SYM_Tilde]    =25
     default_prectable[SYM_ITilde]   =25
     default_prectable[SYM_FTilde]   =25
+    default_prectable[C_Is]         =25
     default_prectable[SYM_EQ]       =25
     default_prectable[SYM_NE]       =25
     default_prectable[SYM_LT]       =25
@@ -312,7 +312,7 @@ func main() {
     default_prectable[SYM_LE]       =25
     default_prectable[SYM_GE]       =25
     default_prectable[C_In]         =27
-    default_prectable[SYM_RANGE]    =29
+    default_prectable[SYM_RANGE]    =30
     default_prectable[O_Plus]       =31
     default_prectable[O_Minus]      =31
     default_prectable[O_Divide]     =35
