@@ -8,7 +8,7 @@
 
 input column param 1
 assert( is_number(column)   )
-column=int(column)
+column=as_int(column)
 assert( column>0            )
 
 

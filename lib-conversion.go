@@ -74,7 +74,7 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte","int", "int64", "bigi", "bigf", "float", "bool", "string", "kind", "char", "asc","uint",
+        "byte","as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "kind", "char", "asc","as_uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
         "btoi","itob","dtoo","otod",
@@ -297,26 +297,26 @@ func buildConversionLib() {
 
     }
 
-    slhelp["bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer. Also ensures this is a copy."}
-    stdlib["bigi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer. Also ensures this is a copy."}
+    stdlib["as_bigi"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to bigi()")
+            return -1, errors.New("invalid arguments provided to as_bigi()")
         }
         return GetAsBigInt(args[0]),nil
     }
 
-    slhelp["bigf"] = LibHelp{in: "expr", out: "big_float", action: "Convert [#i1]expr[#i0] to a float. Also ensures this is a copy."}
-    stdlib["bigf"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_bigf"] = LibHelp{in: "expr", out: "big_float", action: "Convert [#i1]expr[#i0] to a float. Also ensures this is a copy."}
+    stdlib["as_bigf"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to float()")
+            return -1, errors.New("invalid arguments provided to as_bigf()")
         }
         return GetAsBigFloat(args[0]),nil
     }
 
-    slhelp["float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
-    stdlib["float"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_float"] = LibHelp{in: "var", out: "float", action: "Convert [#i1]var[#i0] to a float. Returns NaN on error."}
+    stdlib["as_float"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to float()")
+            return -1, errors.New("invalid arguments provided to as_float()")
         }
         i, e := GetAsFloat(args[0])
         if e { return math.NaN(),nil }
@@ -335,10 +335,10 @@ func buildConversionLib() {
         return byte(0), err
     }
 
-    slhelp["bool"] = LibHelp{in: "string", out: "bool", action: "Convert [#i1]string[#i0] to a boolean value, or errors"}
-    stdlib["bool"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_bool"] = LibHelp{in: "string", out: "bool", action: "Convert [#i1]string[#i0] to a boolean value, or errors"}
+    stdlib["as_bool"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to bool()")
+            return -1, errors.New("invalid arguments provided to as_bool()")
         }
         switch args[0].(type) {
         case bool:
@@ -350,49 +350,49 @@ func buildConversionLib() {
                 return b, nil
             }
         }
-        return false, errors.New(sf("could not convert [%T] (%v) to bool in bool()",args[0],args[0]))
+        return false, errors.New(sf("could not convert [%T] (%v) to bool in as_bool()",args[0],args[0]))
     }
 
 
-    slhelp["int"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an integer, or errors."}
-    stdlib["int"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_int"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an integer, or errors."}
+    stdlib["as_int"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to int()")
+            return -1, errors.New("invalid arguments provided to as_int()")
         }
         i, invalid := GetAsInt(args[0])
         if !invalid {
             return i, nil
         }
-        return 0, errors.New(sf("could not convert [%T] (%v) to integer in int()",args[0],args[0]))
+        return 0, errors.New(sf("could not convert [%T] (%v) to integer in as_int()",args[0],args[0]))
     }
 
-    slhelp["uint"] = LibHelp{in: "var", out: "unsigned_integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
-    stdlib["uint"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_uint"] = LibHelp{in: "var", out: "unsigned_integer", action: "Convert [#i1]var[#i0] to a uint type, or errors."}
+    stdlib["as_uint"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to uint()")
+            return -1, errors.New("invalid arguments provided to as_uint()")
         }
         i, invalid := GetAsUint(args[0])
         if !invalid {
             return i, nil
         }
-        return uint(0), errors.New(sf("could not convert [%T] (%v) to integer in uint()",args[0],args[0]))
+        return uint(0), errors.New(sf("could not convert [%T] (%v) to integer in as_uint()",args[0],args[0]))
     }
 
-    slhelp["int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
-    stdlib["int64"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["as_int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
+    stdlib["as_int64"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return -1, errors.New("invalid arguments provided to int64()")
+            return -1, errors.New("invalid arguments provided to as_int64()")
         }
         i, invalid := GetAsInt(args[0])
         if !invalid {
             return int64(i), nil
         }
-        return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in int64()",args[0],args[0]))
+        return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in as_int64()",args[0],args[0]))
     }
 
-    slhelp["string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]value[#i0] to a string."}
-    stdlib["string"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("string",args,2,
+    slhelp["as_string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]value[#i0] to a string."}
+    stdlib["as_string"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("as_string",args,2,
             "1","any",
             "2","any","int"); !ok { return nil,err }
         var i string
@@ -402,7 +402,7 @@ func buildConversionLib() {
                 f:=args[0].(*big.Float)
                 i = f.Text('g',args[1].(int))
             default:
-                return "",errors.New(sf("string() was expecting a bigf type, but got a [%T]",args[0]))
+                return "",errors.New(sf("as_string() was expecting a bigf type, but got a [%T]",args[0]))
             }
         } else {
             switch args[0].(type) {

@@ -20,7 +20,7 @@ explimit = 100
 nstep = 0.000001
 
 input strNstep optarg 1
-on strNstep!="" do nstep=float(strNstep)
+on strNstep!="" do nstep=as_float(strNstep)
 
 def myexp(val)
     sum = 0f

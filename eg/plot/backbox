@@ -32,8 +32,8 @@ cls
 cursoroff()
 while !quit
 
-    row_count=int(h/bh)
-    col_count=int(w/bw)
+    row_count=as_int(h/bh)
+    col_count=as_int(w/bw)
     
     for r=0 to row_count
         on r*bh>=term_h() do continue

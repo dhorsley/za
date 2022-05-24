@@ -17,8 +17,9 @@ println "Iterated Value:"
 while digs>0
     iter++        
     if 4*q+r-t < n*t
-        dist[n.string]+=1
-        print fg256(string(n+1).int),n
+        dist[n.as_string]+=1
+        print fg256(as_int(n+1)),n
+        # print fg256(as_string(n+1).int),n
         on spacecur==-1 do print "."
         digs--
         if ++spacecur == 10

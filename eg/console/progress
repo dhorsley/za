@@ -11,12 +11,12 @@ define bar(row,col,hsize,pc,colour)
     part_1q="▎"
     us = hsize / 100f   # 1% width of total
     d  = pc*us          # width of input percent
-    r  = d-d.int        # remainder
+    r  = d-d.as_int     # remainder
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.int do c="█"
-        if e>=d.int and e<int(d+1)
+        on e<d.as_int do c="█"
+        if e>=d.as_int and e<as_int(d+1)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
@@ -37,7 +37,7 @@ end
 cursoroff()
 seed(epoch_time())
 
-for i=0 to rep.int-1
+for i=0 to rep.as_int-1
     row=get_row()
     c=rand(7)
     sp=0

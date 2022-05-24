@@ -19,7 +19,7 @@ import (
 
 
 func (p *leparser) reserved(token Token) (any) {
-    panic(fmt.Errorf("statement names cannot be used as dentifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
 }
 
 
@@ -159,6 +159,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             continue
         case C_Is:
             left = p.kind_compare(left)
+            continue
         case LParen:
             switch left.(type) {
             case string:

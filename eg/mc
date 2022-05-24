@@ -24,19 +24,19 @@ end
 define bytesize(i)
     unit="B"
     if i>=1099511627776
-        unit="TB"; i=float(i)/1099511627776
+        unit="TB"; i=as_float(i)/1099511627776
     endif
     if i>=1073741824
-        unit="GB"; i=float(i)/1073741824
+        unit="GB"; i=as_float(i)/1073741824
     endif
     if i>=1048576
-        unit="MB"; i=float(i)/1048576
+        unit="MB"; i=as_float(i)/1048576
     endif
     if i>=1024
-        unit="KB"; i=float(i)/1024
+        unit="KB"; i=as_float(i)/1024
     endif
     on unit=="B" do return "%d B".format(i)
-    return format("%.3f %s",float(i),unit)
+    return format("%.3f %s",as_float(i),unit)
 end
 
 # @todo: add split on space:
@@ -174,7 +174,7 @@ def show_left(ld,lrow,lwinheight,cursorl)
         else
             mt="[#5]"+mt
         endif
-        om=dtoo(f.mode.int%512)
+        om=dtoo(f.mode.as_int%512)
         at lrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsl}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return lrow_count
@@ -203,7 +203,7 @@ def show_right(rd,rrow,rwinheight,cursorr)
         else
             mt="[#5]"+mt
         endif
-        om=dtoo(f.mode.int%512)
+        om=dtoo(f.mode.as_int%512)
         at rrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsr}s %s[#-]".format(mt,om,f.name[:colmax],sz)
     endfor
     return rrow_count
@@ -231,7 +231,7 @@ def redef_layout()
     setglob sw=term_w()
     setglob sh=term_h()
 
-    sm=int(sw/2)
+    sm=as_int(sw/2)
     odd=sm!=(sw/2.0)
     right_offset=odd ? 1:0
 

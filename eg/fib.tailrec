@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 define fib(n)
-    return fib_tr(n,bigi(0),bigi(1))
+    return fib_tr(n,as_bigi(0),as_bigi(1))
 end
 
 define fib_tr(n, a, b)
@@ -14,7 +14,7 @@ input x param 1 is "start of range"
 input y param 2 is "end of range"
 
 when
-has x.kind!="int" or y.kind!="int"
+has not (x is int and y is int)
     exit 1,"parameters must be integers."
 endwhen
 

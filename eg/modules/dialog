@@ -54,20 +54,20 @@ enum swatch_fg ( 0="0", 1="1", 2="2", 3="3", 4="4", 5="5", 6="6", 7="7", 8="fbgr
 define style(s)
     when s.len
     is 4 
-        bb="[#"+enum_all(ref swatch_bg)[s[0].int]+"]" 
-        bf="[#"+enum_all(ref swatch_fg)[s[1].int]+"]" 
-        pb="[#"+enum_all(ref swatch_bg)[s[2].int]+"]" 
-        pf="[#"+enum_all(ref swatch_fg)[s[3].int]+"]" 
+        bb="[#"+enum_all(ref swatch_bg)[s[0].as_int]+"]" 
+        bf="[#"+enum_all(ref swatch_fg)[s[1].as_int]+"]" 
+        pb="[#"+enum_all(ref swatch_bg)[s[2].as_int]+"]" 
+        pf="[#"+enum_all(ref swatch_fg)[s[3].as_int]+"]" 
         return bb,bf,pb,pf,0
     is 8
         br0 = $lc s[0]=="b"
         br1 = $lc s[2]=="b"
         br2 = $lc s[4]=="b"
         br3 = $lc s[6]=="b"
-        bb=enum_all(ref swatch_bg)[s[1].int+btoi(br0)*8]
-        bf=enum_all(ref swatch_fg)[s[3].int+btoi(br1)*8]
-        pb=enum_all(ref swatch_bg)[s[5].int+btoi(br2)*8]
-        pf=enum_all(ref swatch_fg)[s[7].int+btoi(br3)*8]
+        bb=enum_all(ref swatch_bg)[s[1].as_int+btoi(br0)*8]
+        bf=enum_all(ref swatch_fg)[s[3].as_int+btoi(br1)*8]
+        pb=enum_all(ref swatch_bg)[s[5].as_int+btoi(br2)*8]
+        pf=enum_all(ref swatch_fg)[s[7].as_int+btoi(br3)*8]
         on bb=="" or bf=="" or pb=="" or pf=="" do return "","","","",2
         bb="[#"+bb+"]" ; bf="[#"+bf+"]" ; pb="[#"+pb+"]" ; pf="[#"+pf+"]"
         return bb,bf,pb,pf,0
@@ -497,12 +497,12 @@ define hbar(row,col,hsize,pc,colour)
     part_1q="▎"
     us = hsize / 100f   # 1% width of total
     d  = pc*us          # width of input percent
-    r  = d-d.int        # remainder
+    r  = d-d.as_int     # remainder
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.int do c="█"
-        if e>=d.int and e<int(d+1)
+        on e<d.as_int do c="█"
+        if e>=d.as_int and e<as_int(d+1)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
@@ -555,8 +555,8 @@ define vbar(row,col,vsize,pc,colour,label,down)
 
     us = vsize / 100f   # 1% height of total
     d  = pc*us          # height of input percent
-    r  = d-d.int        # remainder
-    d  = int(d)
+    r  = d-d.as_int     # remainder
+    d  = as_int(d)
     offset=-1
     on down do offset=1
     # whole parts
@@ -585,11 +585,11 @@ end
 
 define chart(row,col,max_height,series,colour,label,down)
     for e = 0 to series.len-1
-        c=colour.gsub("?",string(series[e])).eval
+        c=colour.gsub("?",as_string(series[e])).eval
         vbar(row,col+e,max_height,series[e],c,false,down)
         offset=1-btoi(down)*2
         doc `if label and e%2==0
-            s=e.string
+            s=e.as_string
             l=s.len
             for j=0 to l-1
                 at row+j+1,col+e,s[j]
