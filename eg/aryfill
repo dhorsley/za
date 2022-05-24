@@ -36,7 +36,7 @@ td=epoch_nano_time()-ts
 
 loop_payload= 4*w*h
 bytes_xfer  = loop_payload * maxc
-throughput  = bytes_xfer.float / td
+throughput  = bytes_xfer.as_float / td
 
 println "payload copied:"
 println "4 x 960 x 540 = ",loop_payload
