@@ -157,6 +157,8 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         case SYM_DOT:
             left = p.accessFieldOrFunc(left,p.next().tokText)
             continue
+        case C_Is:
+            left = p.kind_compare(left)
         case LParen:
             switch left.(type) {
             case string:
@@ -1277,6 +1279,11 @@ func (p *leparser) grouping(tok *Token) (any) {
     p.next() // consume RParen
     return val
 
+}
+
+func (p *leparser) kind_compare(left any) bool {
+    typeTok:=p.next()
+    return ev_kind_compare(left,typeTok)
 }
 
 func (p *leparser) number(token Token) (num any) {

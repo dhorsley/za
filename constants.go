@@ -167,6 +167,7 @@ const (
     ksbyte
 )
 
+
 // Lexeme values
 //  a few of these are unused now and some should probably be renamed.
 //  they should be checked and tidied next time there is any change to be done here.
@@ -310,6 +311,19 @@ const (
     Block
     AsyncBlock
     ResultBlock
+    T_Number
+    T_Nil
+    T_Bool
+    T_Int
+    T_Uint
+    T_Float
+    T_Bigi
+    T_Bigf
+    T_String
+    T_Map
+    T_Array
+    T_Any
     END_STATEMENTS
 )
+
 
