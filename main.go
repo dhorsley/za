@@ -312,7 +312,7 @@ func main() {
     default_prectable[SYM_LE]       =25
     default_prectable[SYM_GE]       =25
     default_prectable[C_In]         =27
-    default_prectable[SYM_RANGE]    =30
+    default_prectable[SYM_RANGE]    =29
     default_prectable[O_Plus]       =31
     default_prectable[O_Minus]      =31
     default_prectable[O_Divide]     =35

@@ -279,7 +279,7 @@ define box_message(opts,msg,list_buttons)
     # panel...
 
     pane select "bv"
-    foreach e in 1..panelheight-1; at e,1,pb," "*(pane_w()-2),"[#-]"; endfor
+    foreach e in 1..(panelheight-1); at e,1,pb," "*(pane_w()-2),"[#-]"; endfor
     at 1,0; print pb,pf
     print msg.lines("0:{=panelheight}").inset(1)
 
