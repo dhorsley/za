@@ -48,7 +48,7 @@ endstruct
 
 define ps(filter)
 
-    on filter==nil do filter="^.*$"
+    on filter=="" do filter="^.*$"
     procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
     # was : procs = ${ls -1 /proc}.grep("^[0-9]+$")
 
@@ -135,6 +135,7 @@ TH= termless ? 25  : term_h()
 
 # args
 input filter optarg 1
+filter=filter.as_string
 
 # fetch process list and sort by pid
 res,keys,arglists,mem=ps(filter)
@@ -197,7 +198,7 @@ foreach r in keys
     rsize_string = rsize!=0 ? short_size(rsize) : "-"
     ssize_string = ssize!=0 ? short_size(ssize) : "-"
 
-    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s [#7]%4d [#bold]%-"+tempwidth.as_string+"s[#-]",
+    println format("[#5][#bold]%-7d[#boff] %-7d [#2]%2s %9s %9s %9s [#6]%16s [#7]%4d [#bold]%-"+tempwidth+"s[#-]",
             p.pid,p.ppid,p.state,
             vsize_string,rsize_string,ssize_string,
             p.uid,

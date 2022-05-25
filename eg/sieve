@@ -4,23 +4,23 @@ doc `
     Simple Sieve of Eratosthenes
 `
 
-var number,i,j int
+var num,i,j int
 
-input number optarg 1
+input num optarg 1
 
-var primes [number+1] int
+var primes [num+1] int
 
-for i = 2 to number
+for i = 2 to num
     primes[i] = i
 endfor
 
 
 i = 2
-while i*i <= number
+while i*i <= num
 
     if primes[i] != 0
-        for j=2 to number-1
-            if primes[i]*j > number
+        for j=2 to num-1
+            if primes[i]*j > num
                 break
             else
                 primes[primes[i]*j]=0
@@ -33,7 +33,7 @@ while i*i <= number
 endwhile
 
 
-for i = 2 to number
+for i = 2 to num
     on primes[i]!=0 do println "%d".format(primes[i])
 endfor
 

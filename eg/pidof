@@ -165,6 +165,7 @@ enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 input s_filter    optarg 1
 input s_children  optarg 2
 on s_filter=="" do exit 1,"Error: no name specified."
+
 children=false
 on s_children=="all" do children=true
 on s_children!="" and not children do exit 2,"Error: argument 2 must be 'all' or nothing."

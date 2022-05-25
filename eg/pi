@@ -19,7 +19,6 @@ while digs>0
     if 4*q+r-t < n*t
         dist[n.as_string]+=1
         print fg256(as_string(n+1).as_int),n
-        # print fg256(as_string(n+1).int),n
         on spacecur==-1 do print "."
         digs--
         if ++spacecur == 10

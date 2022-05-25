@@ -21,6 +21,12 @@ import (
     "unsafe"
 )
 
+func showIdent(ident *[]Variable) {
+    for k,e:=range (*ident) {
+        pf("%3d -- %s -> %+v -- decl -> %v\n",k,e.IName,e.IValue,e.declared)
+    }
+}
+
 
 func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) (chan any,string) {
 
@@ -3182,7 +3188,13 @@ tco_reentry:
             id := inbound.Tokens[1].tokText
             typ := inbound.Tokens[2].tokText
             pos := inbound.Tokens[3].tokText
-            bin:=inbound.Tokens[1].bindpos
+
+            bin := bind_int(ifs,id)
+            if bin>=uint64(len(*ident)) {
+                newident:=make([]Variable,bin+identGrowthSize)
+                copy(newident,*ident)
+                *ident=newident
+            }
 
             hint:=id
             noteAt:=inbound.TokenCount
@@ -3233,9 +3245,9 @@ tco_reentry:
                     // if this is numeric, assign as an int
                     n, er := strconv.Atoi(tryN)
                     if er == nil {
-                        vset(&inbound.Tokens[1],ifs, ident, id, n)
+                        vset(nil,ifs, ident, id, n)
                     } else {
-                        vset(&inbound.Tokens[1],ifs, ident, id, cmdargs[d-1])
+                        vset(nil,ifs, ident, id, cmdargs[d-1])
                     }
                 } else {
                     parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
@@ -3268,30 +3280,32 @@ tco_reentry:
                     // if this is numeric, assign as an int
                     n, er := strconv.Atoi(tryN)
                     if er == nil {
-                        vset(&inbound.Tokens[1],ifs, ident, id, n)
+                        vset(nil,ifs, ident, id, n)
                     } else {
-                        vset(&inbound.Tokens[1],ifs, ident, id, cmdargs[d-1])
+                        vset(nil,ifs, ident, id, cmdargs[d-1])
                     }
                 } else {
-                    // nothing provided but var didn't exist, so create it empty
-                    // otherwise, just continue
                     if ! (*ident)[bin].declared {
-                        vset(&inbound.Tokens[1],ifs,ident,id,"")
+                        // nothing provided but var didn't exist, so create it empty
+                        vset(nil,ifs,ident,id,"")
                     }
+                    // showIdent(ident)
                 }
 
             case "env":
 
+                vset(nil,ifs,ident,id,os.Getenv(pos))
+
+                /*
                 if os.Getenv(pos)!="" {
                     // non-empty env var so set id var to value.
-                    vset(&inbound.Tokens[1],ifs, ident,id, os.Getenv(pos))
+                    vset(nil,ifs, ident,id, os.Getenv(pos))
                 } else {
                     // when env var empty either create the id var or
                     // leave it alone if it already exists.
-                    if ! (*ident)[bin].declared {
-                        vset(&inbound.Tokens[1],ifs,ident,id,"")
-                    }
+                    vset(nil,ifs,ident,id,"")
                 }
+                */
             }
 
 

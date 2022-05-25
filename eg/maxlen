@@ -9,7 +9,7 @@ doc `
 
 
 define longest(ar_s,fld,sep)
-    return (ar_s -> `field(#,fld,sep).len.string`) . list_int . max
+    return (ar_s -> `field(#,fld,sep).len.as_string`) . list_int . max
 end
 
 

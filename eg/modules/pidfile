@@ -17,7 +17,7 @@ def app_name()
 end
 
 def make_pidfile()
-    return pid().string $out pid_name()
+    return pid().as_string $out pid_name()
 end
 
 def get_pidfile()

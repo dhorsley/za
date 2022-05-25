@@ -20,5 +20,5 @@ define maxParenDepth(s)
 end
 
 input expression param 1
-println expression.string.maxParenDepth
+println expression.as_string.maxParenDepth
 
