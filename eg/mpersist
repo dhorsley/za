@@ -14,7 +14,7 @@ def per_tr(start,n)
     endif
 
     var total bigi = 1
-    foreach d in ( n.string -> "#" ) . list_int
+    foreach d in ( n.as_string -> "#" ) . list_int
         total*=d
     endfor
 
@@ -49,9 +49,9 @@ while next<=final
     c=per(next)
     if c>maxc
         maxc=c
-        maxn=bigi(next)
+        maxn=as_bigi(next)
     endif
-    summary[c]+=[bigi(next)]
+    summary[c]+=[as_bigi(next)]
     next++
 endwhile
 
