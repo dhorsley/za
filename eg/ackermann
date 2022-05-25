@@ -1,13 +1,9 @@
 #!/usr/bin/za
 
-var calls int
 
 define ackermann(m,n)
 
-    setglob calls = calls + 1
-#    print "[#"+rand(7)+"]*",calls,"*"
     if glob_key("memoA",`{m},{n}`)
-#        println "found cache for {m},{n}."
         return memoA[`{m},{n}`]
     endif
 
@@ -16,7 +12,6 @@ define ackermann(m,n)
 
     o=ackermann(m-1,ackermann(m,n-1))
     setglob memoA[`{m},{n}`] = o
-#    println "memoized {m},{n}."
     return o
 
 end
@@ -31,13 +26,11 @@ memoA[`1,1`] = 3
 
 input a param 1
 input b param 2
-a=int(a)
-b=int(b)
+a=a.as_int
+b=b.as_int
 
 println a
 println b
 
 println "A({a},{b}) = ",ackermann(a,b)
-println "Calls : {=calls}"
 
-# println "mem_summary : %#v".format(mem_summary(true)["main"])

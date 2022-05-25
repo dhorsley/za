@@ -146,7 +146,7 @@ foreach lb in load_balancers.split(",")
     endif
 
     # forwarding rule setup
-    listener_query=`.Listeners[]|select(.Port==`+listener_port.string+`)`
+    listener_query=`.Listeners[]|select(.Port==`+listener_port.as_string+`)`
     listener_result=json_query(lsnr_det.out,listener_query,true)[0]
     listener_arn=listener_result["ListenerArn"]
 
@@ -171,7 +171,7 @@ foreach lb in load_balancers.split(",")
         is nil
             print format("%40s : ","DEFAULT")
         or
-            print format("%40s : P%03d ",cond["Values"][0],int(r["Priority"]))
+            print format("%40s : P%03d ",cond["Values"][0],as_int(r["Priority"]))
         endwhen
         println field(acts["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"],6,":")
     endfor

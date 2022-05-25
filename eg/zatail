@@ -19,7 +19,7 @@ logfile=stdin
 input logfile optarg 1 is "filename"
 input offfile optarg 2 is "offset filename"
 input tm_inp optarg 3 is "test mode"
-on tm_inp!="" do testmode=bool(tm_inp)
+on tm_inp!="" do testmode=as_bool(tm_inp)
 
 on file_mode(logfile) == -1 do exit 66,"File {logfile} cannot be read."
 on offfile=="" and logfile!=stdin do offfile=logfile+".offset"
@@ -36,8 +36,8 @@ oh=fopen(offfile,"r")
 if oh!=nil
 
     if oh.ftell!=nil
-        inode=fread(oh,"\n").int64
-        offset=fread(oh,"\n").int64
+        inode=fread(oh,"\n").as_int64
+        offset=fread(oh,"\n").as_int64
     endif
     fclose(oh)
 
@@ -57,7 +57,7 @@ if oh!=nil
 
     on inode!=ino or offset>size do offset=0
 
-    fh.fseek(int(offset),0)
+    fh.fseek(as_int(offset),0)
 
 endif
 
