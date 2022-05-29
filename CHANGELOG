@@ -12,7 +12,7 @@ CHANGE LOG
     fixes
     -----
 
-    * added Pop_OS! as a recognised release_id ("pop")
+    * added Pop!_OS as a recognised release_id ("pop")
     * altered UNSET statement to take a comma-separated list of var names
     * amended INPUT statement to fix an var allocation bug
 
@@ -20,7 +20,7 @@ CHANGE LOG
     library changes
     ---------------
 
-    * amended lib-package funcs to recognise Pop_OS!
+    * amended lib-package funcs to recognise Pop!_OS
     * added a dup() function for copying arrays/maps
 
 
