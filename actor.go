@@ -2265,7 +2265,7 @@ tco_reentry:
                 break
             }
 
-            resu:=parser.splitCommaArray(ifs, inbound.Tokens[3:inbound.TokenCount-1])
+            resu:=parser.splitCommaArray(inbound.Tokens[3:inbound.TokenCount-1])
 
             globlock.Lock()
             enum_name:=inbound.Tokens[1].tokText
@@ -2336,19 +2336,28 @@ tco_reentry:
             }
 
 
-        case C_Unset: // remove a variable
+        case C_Unset: // undeclare variables
 
-            if inbound.TokenCount != 2 {
+            if inbound.TokenCount < 2 {
                 parser.report(inbound.SourceLine,"Incorrect arguments supplied for UNSET.")
                 finish(false, ERR_SYNTAX)
             } else {
-                removee := inbound.Tokens[1].tokText
-                // should have a lock around varlookup really:
-                if (*ident)[inbound.Tokens[1].bindpos].declared {
-                    vunset(ifs, ident, removee)
-                } else {
-                    parser.report(inbound.SourceLine,sf("Variable %s does not exist.", removee))
-                    finish(false, ERR_EVAL)
+                resu:=parser.splitCommaArray(inbound.Tokens[1:])
+                for e:=0; e<len(resu); e++ {
+                    if len(resu[e])==1 {
+                        removee := resu[e][0].tokText
+                        if (*ident)[resu[e][0].bindpos].declared {
+                            vunset(ifs, ident, removee)
+                        } else {
+                            parser.report(inbound.SourceLine,sf("Variable %s does not exist.", removee))
+                            finish(false, ERR_EVAL)
+                            break
+                        }
+                    } else {
+                        parser.report(inbound.SourceLine,sf("Invalid variable specification '%v' in UNSET.",resu[e]))
+                        finish(false, ERR_EVAL)
+                        break
+                    }
                 }
             }
 
@@ -4387,7 +4396,7 @@ func findDelim(tokens []Token, delim uint8, start int16) (pos int16) {
 }
 
 
-func (parser *leparser) splitCommaArray(ifs uint32, tokens []Token) (resu [][]Token) {
+func (parser *leparser) splitCommaArray(tokens []Token) (resu [][]Token) {
 
     evnest:=0
     newstart:=0

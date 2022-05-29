@@ -2,33 +2,32 @@
 prompt=sysvar("@bashprompt")
 
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
-fontdir="/usr/share/figlet"
 
-variants = (
-    dir(fontdir)
-    ?> `($pe #.name) ~i "^(flf|tlf)"` 
-    -> "$pn #.name"
-)
+if is_installed("figlet")
 
-seed(-1)
-fv=variants[variants.len.rand-1]
+        fontdir="/usr/share/figlet"
 
-tlf=false
-on is_file("{fontdir}/{fv}.tlf") do tlf=true
+        variants = (
+            dir(fontdir)
+            ?> `($pe #.name) ~i "^(flf|tlf)"` 
+            -> "$pn #.name"
+        )
 
-if is_file( "{fontdir}/{fv}." + (tlf?"tlf":"flf") )
-    p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
+        seed(-1)
+        fv=variants[variants.len.rand-1]
+        tlf=false
+        on is_file("{fontdir}/{fv}.tlf") do tlf=true
+        on is_file("{fontdir}/{fv}." + (tlf?"tlf":"flf")) do p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
+        unset variants, fontdir, fv, tlf
+else
+    p=banner
 endif
 
 println "\n\n[#5]{p}[#-]\n"
 help
 
 # some cleanup - not strictly necessary
-unset variants
-unset fv
-unset tlf
-unset p
-unset fontdir
+unset banner,p
 
 # enum helpers
 enum s3sum ( okay=0, warn, file, sum )

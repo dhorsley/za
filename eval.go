@@ -2179,7 +2179,8 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     }
 
     if expr.assign {
-        // pf("[#4]Assigning : lfs %d rfs %d toks->%#v[#-]\n",lfs,fs,tks)
+	// pf("[#4]Assigning : lfs %d rfs %d toks->%#v[#-]\n",lfs,fs,tks)
+	// pf("[#5]This expression box result address -> %v\n",&expr.result)
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
     }
 

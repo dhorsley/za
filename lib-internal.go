@@ -231,7 +231,7 @@ func sttyFlag(flags string,state bool) (okay bool) {
                 newState.Lflag &^= unix.ECHO
             }
         }
-	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+        unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
     }
     return true
 }
@@ -249,7 +249,7 @@ func buildInternalLib() {
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all","dump","sysvar",
-        "ast","varbind","sizeof",
+        "ast","varbind","sizeof","dup",
         // "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -292,6 +292,96 @@ func buildInternalLib() {
     }
 */
 
+    slhelp["dup"] = LibHelp{in: "map", out: "copy_of_map", action: "returns a duplicate copy of [#i1]map[#i0]."}
+    stdlib["dup"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("dup",args,16,
+            "1","map[string]string",
+            "1","map[string]bool",
+            "1","map[string]int",
+            "1","map[string]uint",
+            "1","map[string]float64",
+            "1","map[string]*big.Int",
+            "1","map[string]*big.Float",
+            "1","map[string]interface {}",
+            "1","[]string",
+            "1","[]bool",
+            "1","[]int",
+            "1","[]uint",
+            "1","[]float64",
+            "1","[]*big.Int",
+            "1","[]*big.Float",
+            "1","[]interface {}"); !ok { return nil,err }
+
+        switch m:=args[0].(type) {
+        case map[string]string:
+            m2:=make(map[string]string)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]bool:
+            m2:=make(map[string]bool)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]int:
+            m2:=make(map[string]int)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]uint:
+            m2:=make(map[string]uint)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]float64:
+            m2:=make(map[string]float64)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]*big.Int:
+            m2:=make(map[string]*big.Int)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]*big.Float:
+            m2:=make(map[string]*big.Float)
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case map[string]interface{}:
+            m2:=make(map[string]interface{})
+            for id, v := range m { m2[id] = v }
+            return m2,nil
+        case []bool:
+            a2:=make([]bool,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []int:
+            a2:=make([]int,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []uint:
+            a2:=make([]uint,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []float64:
+            a2:=make([]float64,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []string:
+            a2:=make([]string,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []*big.Int:
+            a2:=make([]*big.Int,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []*big.Float:
+            a2:=make([]*big.Float,len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+        case []interface{}:
+            a2:=make([]interface{},len(m),cap(m))
+            copy(a2,m)
+            return a2,nil
+
+        default:
+            return nil,errors.New(sf("dup requires a map, not a %T",args[0]))
+        }
+    }
     slhelp["sizeof"] = LibHelp{in: "string", out: "uint", action: "returns the size of an object."}
     stdlib["sizeof"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sizeof",args,1,"1","any"); !ok { return nil,err }
@@ -330,7 +420,7 @@ func buildInternalLib() {
     slhelp["conwrite"] = LibHelp{in: "", out: "int", action: "writes console state struct."}
     stdlib["conwrite"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("conwrite",args,1,"1","*unix.Termios"); !ok { return nil,err }
-	    return nil,unix.IoctlSetTermios(0, ioctlWriteTermios, args[0].(*unix.Termios))
+        return nil,unix.IoctlSetTermios(0, ioctlWriteTermios, args[0].(*unix.Termios))
     }
 
     slhelp["conclear"] = LibHelp{in: "string", out: "bool", action: "resets console state bits. returns success flag.\nFlags are n:ICRNL i:IGNCR u:IUCLC s:ISIG c:ICANON e:ECHO\nSee man page termios (3) for further details."}
@@ -1304,7 +1394,7 @@ func buildInternalLib() {
         if ok,err:=expect_args("has_colour",args,0); !ok { return false,err }
         term:=os.Getenv("TERM")
         cterms:=regexp.MustCompile("(?i)^xterm|^vt100|^vt220|^rxvt|^screen|color|ansi|cygwin|linux")
-	    return ansiMode && cterms.MatchString(term),nil
+        return ansiMode && cterms.MatchString(term),nil
     }
 
     slhelp["has_shell"] = LibHelp{in: "", out: "bool", action: "Check if a child co-process has been launched."}

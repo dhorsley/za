@@ -13,10 +13,7 @@ end
 input x param 1 is "start of range"
 input y param 2 is "end of range"
 
-when
-has not (x is int and y is int)
-    exit 1,"parameters must be integers."
-endwhen
+on not (x is int and y is int) do exit 1,"parameters must be integers."
 
 for i=x to y
     println i," ",fib(i)

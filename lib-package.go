@@ -179,7 +179,7 @@ func isinstalled(pkg string) (bool) {
 
     err:=-1
     switch v.(string) {
-    case "ubuntu", "debian":
+    case "ubuntu", "debian","pop":
         err = Copper("dpkg -V "+pkg+" 2>/dev/null", true).code
     case "opensuse":
         err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
@@ -203,7 +203,7 @@ func uninstall(pkgs string) (state int) {
     v, _ := gvget("@release_id")
 
     switch v.(string) {
-    case "ubuntu", "debian":
+    case "ubuntu", "debian", "pop":
         pm = "apt"
         upopts = "-y update"
         inopts = "-y remove"
@@ -362,7 +362,7 @@ func install(pkgs string) (state int) {
 
     v, _ := gvget("@release_id")
     switch v.(string) {
-    case "ubuntu", "debian":
+    case "ubuntu", "debian", "pop":
         pm = "apt"
         upopts = "-y update"
         inopts = "-y install"
@@ -451,9 +451,9 @@ func service(name string, action string) (bool, error) {
     expected := ""
 
     switch rid {
-    case "ubuntu", "debian":
+    case "ubuntu", "debian", "pop":
         switch rid {
-        case "ubuntu": // default from v15.04
+        case "ubuntu","pop": // default from v15.04
             if vc, _ := vcmp(rv, "15.4"); vc >= 0 {
                 expected = "systemd"
             } else {
