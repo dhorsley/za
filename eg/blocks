@@ -48,9 +48,6 @@ done = ${
 
 println done
 
-# doing this directly is probably bad as you don't know if the command succeeded:
-# on {ls -l | wc -l}.out.as_int > 30 do println "Many files!"
-
 r={ls -l | wc -l}
 on r.okay do on r.out.as_int > 30 do println "Many files!"
 

@@ -6,6 +6,7 @@ module "./modules/timing.mod"
 
 max_count=100_000_000
 input max_count optarg 1
+on not max_count is number do exit 1,"Invalid argument."
 
 interpol(false)
 ts=epoch_nano_time()
