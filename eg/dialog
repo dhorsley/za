@@ -6,7 +6,7 @@ module "modules/menu"
 
 # MAIN
 
-seed(epoch_nano_time())
+seed(-1)
 cls
 cursoroff()
 
@@ -72,7 +72,9 @@ while not done
     endwhen
 
     on choice in 2..7 or choice==9 do at 26,10,"Selection : ",sel
+
     on choice==9 do at 27,10,"Selected Text : |{text}|"
+
     if choice in 2..9
         at 29,1,"Press a key to return to menu."
         keypress()

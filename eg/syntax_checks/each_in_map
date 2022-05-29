@@ -1,5 +1,5 @@
 
-
+var a map
 a[0]="one"
 a[1]="two"
 a[2]="three"
