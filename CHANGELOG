@@ -5,16 +5,13 @@ CHANGE LOG
 1.1.4
 =====
 
-    notes
-    -----
-
-
     fixes
     -----
 
     * added Pop!_OS as a recognised release_id ("pop")
     * altered UNSET statement to take a comma-separated list of var names
     * amended INPUT statement to fix an var allocation bug
+    * added type validation to bigi and bigf typed assignments
 
 
     library changes
@@ -22,6 +19,7 @@ CHANGE LOG
 
     * amended lib-package funcs to recognise Pop!_OS
     * added a dup() function for copying arrays/maps
+    * added uint and int as valid types for as_bool() call.
 
 
     other
@@ -29,6 +27,7 @@ CHANGE LOG
 
     * updated example startup script
     * updated vim file
+
 
 
 1.1.3

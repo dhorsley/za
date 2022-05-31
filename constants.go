@@ -97,7 +97,6 @@ const (
 	MODE_CALL uint8 = iota
 	MODE_NEW                // instantiate and execute named function
     MODE_STATIC             // execute named function, from start, without reinit'ing local variable storage
-                            //   @todo: add a variable entry point capability to MODE_STATIC
 )
 
 // FOR loop counter direction:

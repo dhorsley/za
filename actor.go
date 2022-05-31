@@ -126,6 +126,8 @@ func GetAsBigInt(i any) (*big.Int) {
         ri.SetInt64(i)
     case uint32:
         ri.SetUint64(uint64(i))
+    case uint:
+        ri.SetUint64(uint64(i))
     case uint64:
         ri.SetUint64(i)
     case int:
@@ -150,6 +152,8 @@ func GetAsBigFloat(i any) *big.Float {
     case int64:
         r.SetFloat64(float64(i))
     case uint32:
+        r.SetFloat64(float64(i))
+    case uint:
         r.SetFloat64(float64(i))
     case uint64:
         r.SetFloat64(float64(i))
