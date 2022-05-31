@@ -1550,14 +1550,18 @@ func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
             _,ok=value.(float64)
             if ok { t.IValue = value }
 
-        // @todo: bigi and bigf don't currently enforce type
-        //        as they accept conversions. need to rework this.
         case kbigi:
-            t.IValue.(*big.Int).Set(GetAsBigInt(value))
-            ok=true
+            switch value.(type) {
+            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+                t.IValue.(*big.Int).Set(GetAsBigInt(value))
+                ok=true
+            }
         case kbigf:
-            t.IValue.(*big.Float).Set(GetAsBigFloat(value))
-            ok=true
+            switch value.(type) {
+            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+                t.IValue.(*big.Float).Set(GetAsBigFloat(value))
+                ok=true
+            }
 
         case kstring:
             _,ok=value.(string)
