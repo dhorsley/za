@@ -343,6 +343,10 @@ func buildConversionLib() {
         switch args[0].(type) {
         case bool:
             return args[0].(bool),nil
+        case uint:
+            return args[0].(uint)!=0, nil
+        case int:
+            return args[0].(int)!=0, nil
         case string:
             if args[0]=="" { args[0]="false" }
             b, err := strconv.ParseBool(args[0].(string))
