@@ -207,6 +207,7 @@ syntax match internal_functions "\(^|.\|\s*\)wrap\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)permit\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)enum_names\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)enum_all\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)dup\s*("he=e-1
 
 syntax match image_functions "\(^|.\|\s*\)svg_start\s*("he=e-1
 syntax match image_functions "\(^|.\|\s*\)svg_end\s*("he=e-1
@@ -291,6 +292,7 @@ syntax match file_functions "\(^|.\|\s*\)feof\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)ftell\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)fflush\s*("he=e-1
 syntax match file_functions "\(^|.\|\s*\)stat\s*("he=e-1
+syntax match file_functions "\(^|.\|\s*\)flock\s*("he=e-1
 
 syntax match web_functions "\(^|.\|\s*\)download\s*("he=e-1
 syntax match web_functions "\(^|.\|\s*\)web_download\s*("he=e-1
