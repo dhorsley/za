@@ -20,7 +20,7 @@ CHANGE LOG
     * amended lib-package funcs to recognise Pop!_OS
     * added a dup() function for copying arrays/maps
     * added uint and int as valid types for as_bool() call.
-
+    * (experimental) added flock() call for application-level file locking in Linux.
 
     other
     -----

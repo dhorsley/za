@@ -9,6 +9,7 @@ import (
     "os"
     sc "strconv"
     str "strings"
+    "syscall"
 )
 
 
@@ -26,6 +27,7 @@ func buildFileLib() {
                         "file_mode", "file_size", "read_file", "write_file",
                         "is_file", "is_dir", "perms","stat",
                         "fopen", "fclose","ftell","fseek","fread","fwrite","feof","fflush",
+                        "flock",
     }
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
@@ -53,6 +55,34 @@ func buildFileLib() {
             return fw,nil
         }
         return nil,nil
+    }
+
+    slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool", 
+        action: "(experimental,linux only) Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\nReturns true if the file could not be locked."}
+    stdlib["flock"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("flock",args,2,
+            "2","main.pfile","string",
+            "1","main.pfile"); !ok { return nil,err }
+
+        fh:=args[0].(pfile)
+        lock_type:=syscall.LOCK_SH
+        if len(args)>1 {
+            switch args[1].(string) {
+            case "r","read":
+                lock_type=syscall.LOCK_SH
+            case "w","write":
+                lock_type=syscall.LOCK_EX
+            case "u","unlock":
+                lock_type=syscall.LOCK_UN
+            default:
+                return true,errors.New("Invalid lock type specifier in flock()")
+            }
+        }
+        err=syscall.Flock(int(fh.hnd.Fd()),int(lock_type|syscall.LOCK_NB))
+        if err!=nil {
+            return true,nil // errors.New("Could not lock file in flock()")
+        }
+        return false,nil
     }
 
     slhelp["fflush"] = LibHelp{in: "filehandle", out: "position", action: "Flushes [#i1]filehandle[#i0] write buffer to disk."}
