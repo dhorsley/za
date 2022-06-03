@@ -8,9 +8,20 @@ CHANGE LOG
     fixes
     -----
 
+    * changed doAssign() so that struct fields can be assigned to in multi-return assignments.
+        - e.g.
+
+          > struct t_vss; server string; volume int; state bool; endstruct
+          > var vss t_vss
+          > vss
+            {server: volume:0 state:false}
+          > vss.server,vss.volume,vss.state=["sname",127,true]
+          > vss
+            {server:sname volume:127 state:true}
+
     * added Pop!_OS as a recognised release_id ("pop")
     * altered UNSET statement to take a comma-separated list of var names
-    * amended INPUT statement to fix an var allocation bug
+    * amended INPUT statement to fix a var allocation bug
     * added type validation to bigi and bigf typed assignments
 
 

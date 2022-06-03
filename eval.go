@@ -2497,7 +2497,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                 expr.errVal=err
             }
 
-        case eqPos==3:
+        // case eqPos==3:
+        case len(assignee)==3:
             ///////////// CHECK FOR a.f=    /////////////////////////////////////////////
             // dotted
             if assignee[1].tokType == SYM_DOT {
@@ -2599,7 +2600,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 
         default:
             pf("syntax error in assignment")
-            // pf("\n->%d:%v",assno,assignee)
+            pf(":\n->%d:%v\n",assno,assignee)
             expr.evalError=true
             expr.errVal=err
 
