@@ -21,6 +21,12 @@ input offfile optarg 2 is "offset filename"
 input tm_inp optarg 3 is "test mode"
 on tm_inp!="" do testmode=as_bool(tm_inp)
 
+if argc()==0
+    println "Usage:"
+    println "   zatail [file_name] [offset_file_name] [test_mode_bool]"
+    exit 126
+endif
+
 on file_mode(logfile) == -1 do exit 66,"File {logfile} cannot be read."
 on offfile=="" and logfile!=stdin do offfile=logfile+".offset"
 
