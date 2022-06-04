@@ -270,7 +270,7 @@ func buildFileLib() {
         if ok,err:=expect_args("perms",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil {
-            return f.Mode().Perm(), err
+            return int(f.Mode().Perm()), err
         } else {
             return 0, err
         }
