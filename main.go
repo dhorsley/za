@@ -451,8 +451,9 @@ func main() {
     var a_help         =   flag.Bool("h",false,"help page")
     var a_version      =   flag.Bool("v",false,"display the Za version")
     var a_interactive  =   flag.Bool("i",false,"run interactively")
+    var a_scriptBypass =   flag.Bool("b",false,"bypass startup script")
     var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
-    var a_lineDebug    =    flag.Bool("D",false,"enable line debug")
+    var a_lineDebug    =   flag.Bool("D",false,"enable line debug")
     var a_profile      =   flag.Bool("p",false,"enable profiler")
     var a_trace        =   flag.Bool("P",false,"enable trace capture")
     var a_test         =   flag.Bool("t",false,"enable tests")
@@ -992,12 +993,11 @@ func main() {
         pcol := defaultPromptColour
 
         // startup script preparation:
-
         hasScript:=false
         startScript:=""
         home, _ := gvget("@home")
         startScriptLoc:=home.(string)+"/.zarc"
-        if f, err := os.Stat(startScriptLoc); err==nil {
+        if f, err := os.Stat(startScriptLoc); err==nil && ! *a_scriptBypass {
             if f.Mode().IsRegular() {
                 startScriptRaw, err := ioutil.ReadFile(startScriptLoc)
                 startScript=string(startScriptRaw)

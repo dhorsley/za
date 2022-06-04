@@ -1,0 +1,1 @@
+Faster, but less safe, functions for searching and replacing matches in strings, using the pcre3 library.<br>
