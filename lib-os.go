@@ -223,10 +223,18 @@ func buildOsLib() {
         return syscall.Getwd()
     }
 
-    slhelp["umask"] = LibHelp{in: "int", out: "int", action: "Sets the umask value. Returns the previous value."}
+    slhelp["umask"] = LibHelp{in: "int", out: "int", action: "Sets the umask value. Returns the previous value. umask() with args just returns the current value."}
     stdlib["umask"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("umask",args,1,"1","int"); !ok { return nil,err }
+        if ok,err:=expect_args("umask",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
         if runtime.GOOS=="windows" { return -1,errors.New("umask not supported on this OS") }
+        if len(args)==0 {
+            // @note: maybe racey?
+            tmp:=syscall.Umask(0)
+            syscall.Umask(tmp)
+            return tmp,nil
+        }
         return syscall.Umask(args[0].(int)), nil
     }
 
