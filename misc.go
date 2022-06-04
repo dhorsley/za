@@ -195,7 +195,7 @@ func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string
 }
 
 
-// I'm so lazy... snippet below for calculating byte size of any
+// I'm so lazy... snippet below for calculating byte size of interface
 // DmitriyVTitov @ https://github.com/DmitriyVTitov/size/blob/master/size.go
 
 func Of(v any) int {
@@ -437,7 +437,7 @@ func help_ops() {
 func help(hargs string) {
 
     helppage := `
-[#1]za [-v] [-h] [-i] [-m] [-c] [-C] [-Q] [-S] [-W]  \
+[#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W]  \
     [-s [#i1]path[#i0]] [-V] [#i1]varname[#i0]                       \
     [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]              \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]          \
@@ -451,6 +451,7 @@ func help(hargs string) {
     [#4]-S[#-] : Disable the co-process shell
     [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-i[#-] : Interactive mode
+    [#4]-b[#-] : Bypass startup script
     [#4]-c[#-] : Ignore colour code macros at startup
     [#4]-C[#-] : Enable colour code macros at startup
     [#4]-r[#-] : Wraps a -e argument in a loop iterating standard input. Each line is automatically split into fields
