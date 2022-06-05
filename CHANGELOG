@@ -15,7 +15,7 @@ CHANGE LOG
           > var vss t_vss
           > vss
             {server: volume:0 state:false}
-          > vss.server,vss.volume,vss.state=["sname",127,true]
+          > vss.server,vss.volume,vss.state=["sname.fqdn",127,true]
           > vss
             {server:sname volume:127 state:true}
 
