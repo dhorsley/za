@@ -2,8 +2,7 @@
 
 module "aws/common"
 
-println "\n[#5]Account ID[#-]"
-println aws_account()
+println "\n[#5]Account ID[#-]\n",aws_account()
 
 println "\n[#5]Keypairs[#-]"
 foreach k in aws_keypairs()

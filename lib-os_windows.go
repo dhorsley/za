@@ -57,9 +57,10 @@ func buildOsLib() {
 	features["os"] = Feature{version: 1, category: "os"}
 	categories["os"] = []string{"env", "get_env", "set_env",
         "cwd", "cd", "dir",
-        "parent", "filebase", "fileabs",
+        "parent", 
         "delete", "rename", "copy",
     }
+    // replaced by operators: "filebase", "fileabs",
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and is_dir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -143,6 +144,7 @@ func buildOsLib() {
         return filepath.Dir(args[0].(string)),nil
     }
 
+    /*
     slhelp["filebase"] = LibHelp{in: "string", out: "string", action: "Returns the base name of filename string."}
     stdlib["filebase"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("filebase",args,1,"1","string"); !ok { return nil,err }
@@ -156,6 +158,7 @@ func buildOsLib() {
         fp,err:=filepath.Abs(args[0].(string))
         return fp,nil
     }
+    */
 
 	slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
 	stdlib["env"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
