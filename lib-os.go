@@ -1,4 +1,4 @@
-// +build !windows linux freebsd
+//+build !windows linux freebsd
 //+build !test
 
 package main
@@ -41,7 +41,8 @@ func buildOsLib() {
     // os level
 
     features["os"] = Feature{version: 1, category: "os"}
-    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "filebase", "fileabs", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", "username", "groupname", }
+    categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read", "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy", "parent", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", "username", "groupname", }
+    // "fileabs", "filebase" - replaced by operator
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and is_dir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -203,6 +204,7 @@ func buildOsLib() {
         return filepath.Dir(args[0].(string)),nil
     }
 
+    /* replaced by operators:
     slhelp["filebase"] = LibHelp{in: "string", out: "string", action: "Returns the base name of filename string."}
     stdlib["filebase"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("filebase",args,1,"1","string"); !ok { return nil,err }
@@ -216,6 +218,7 @@ func buildOsLib() {
         fp,err:=filepath.Abs(args[0].(string))
         return fp,nil
     }
+    */
 
     slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
     stdlib["cwd"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -252,9 +255,11 @@ func buildOsLib() {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
         cwd:=args[0].(string)
         err=syscall.Chdir(cwd)
-        system(sf("cd %s",cwd),false)
-        gvset("@cwd",cwd)
-        if err==nil { return true,nil }
+        if err==nil {
+            system(sf("cd %s",cwd),false)
+            gvset("@cwd",cwd)
+            return true,nil
+        }
         return false, nil
     }
 
