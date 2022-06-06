@@ -13,7 +13,7 @@ end
 
 # full instance list, selected fields
 define aws_instances()
-    instances=|aws --region=eu-west-1 ec2 describe-instances
+    instances=|aws ec2 describe-instances
     return instances.out.json_query(
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
         true

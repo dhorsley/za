@@ -2,6 +2,30 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.5
+=====
+
+    notes
+    -----
+
+
+    fixes
+    -----
+
+
+    library changes
+    ---------------
+
+    * removed fileabs and filebase. replaced by $pa and $pb operators.
+    * fixed bug in cd: internal dir tracking var synchronisation.
+
+
+    other
+    -----
+
+    * updated za.vim
+
+
 1.1.4
 =====
 
