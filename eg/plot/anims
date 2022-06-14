@@ -88,7 +88,7 @@ define moveall()
             on o.dx<0 do o.dx=-o.dx*1.5
         endif
         if o.x+o.w>=term_w()
-            o.x=term_w().float-o.w
+            o.x=term_w().as_float-o.w
             o.dx=-o.dx*1.5
         endif
         if o.y<=1
@@ -96,7 +96,7 @@ define moveall()
             on o.dy<0 do o.dy=-o.dy*1.5
         endif
         if o.y+o.h>=term_h()
-            o.y=term_h().float-o.h
+            o.y=term_h().as_float-o.h
             o.dy=-o.dy*1.5
         endif
 
@@ -146,9 +146,9 @@ define object_add_box(n,label,x,y,h,bg,fg)
     obj.type=shapes.BOX ; obj.text=label
     obj.fg=fg           ; obj.bg=as_int(bg)
     obj.h=h             ; obj.w=label.len
-    obj.x=x.float       ; obj.y=y.float
-    obj.px=x.float      ; obj.py=y.float
-    obj.weight=h.float*label.len
+    obj.x=x.as_float    ; obj.y=y.as_float
+    obj.px=x.as_float   ; obj.py=y.as_float
+    obj.weight=h.as_float*label.len
     setglob objects[n]=obj
 end
 
