@@ -10,15 +10,13 @@ var l bigi       = 3n
 var r,nn,nr bigi = 0n
 spacecur=-1
 iter=0
-var dist map
 
 println "Iterated Value:"
 
 while digs>0
     iter++        
     if 4*q+r-t < n*t
-        dist[n.as_string]+=1
-        print fg256(as_string(n+1).as_int),n
+        print n
         on spacecur==-1 do print "."
         digs--
         if ++spacecur == 10
@@ -41,5 +39,4 @@ while digs>0
 endwhile
 println "\n[#6]Iterations : {iter}[#-]"
 println format("[#4]System Pi:\n%.40f[#-]",pi())
-println "distributions : \n",dist
 

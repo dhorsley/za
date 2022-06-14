@@ -5,7 +5,6 @@ rep=1
 input rep optarg 1
 
 define bar(row,col,hsize,pc,colour)
-    # colour=colour #bodge
     part_3q="▊"
     part_2q="▌"
     part_1q="▎"
@@ -21,7 +20,7 @@ define bar(row,col,hsize,pc,colour)
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
         endif
-        print "[#{colour}]{c}[#-]"
+        print colour,c,"[#-]"
     endfor
 end
 
@@ -39,7 +38,7 @@ seed(epoch_time())
 
 for i=0 to rep.as_int-1
     row=get_row()
-    c=rand(7)
+    c=fgrgb(rand(255),rand(255),rand(255))
     sp=0
     for e = 0 to 100
         at row,1,"Progress : "
@@ -47,6 +46,7 @@ for i=0 to rep.as_int-1
         msg=" {e} % "
         spinmsg=" "+spin(sp)
         on e==100 do spinmsg=" "
+        cursorx(38)
         print spinmsg,msg
         on e%5==0 do sp=++sp%4
         pause 2

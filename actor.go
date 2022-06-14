@@ -3324,8 +3324,34 @@ tco_reentry:
 
         case C_Module:
 
+            // MODULE str_name_or_path [ AS alias_name ]
+
+            asAt := findDelim(inbound.Tokens, C_As, 2)
+            modGivenAlias:=""
+            aliased:=false
+
+            if asAt > 1 {
+                // optional AS
+                // if present, set the name of the namespace for this inclusion
+                /* debug
+                pf("in.aa->%d\n",asAt)
+                pf("in.tc->%d\n",inbound.TokenCount)
+                pf("in.tk->%+v\n",inbound.Tokens)
+                */
+                if inbound.TokenCount-asAt!=2 {
+                    // too much junk or not enough alias text at command end
+                    parser.report(inbound.SourceLine,"MODULE only accepts a single token for AS aliases")
+                    finish(false,ERR_MODULE)
+                    break
+                }
+                aliased=true
+                modGivenAlias=inbound.Tokens[asAt+1].tokText
+            } else {
+                asAt=inbound.TokenCount
+            }
+
             if inbound.TokenCount > 1 {
-                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[1:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[1:asAt])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("could not evaluate expression in MODULE statement\n%+v",we.errVal))
                     finish(false,ERR_MODULE)
@@ -3337,9 +3363,9 @@ tco_reentry:
                 break
             }
 
-            fom := we.result.(string)
+            modGivenPath := we.result.(string)
 
-            if strcmp(fom,"") {
+            if strcmp(modGivenPath,"") {
                 parser.report(inbound.SourceLine,"Empty module name provided.")
                 finish(false, ERR_MODULE)
                 break
@@ -3349,12 +3375,12 @@ tco_reentry:
 
             var moduleloc string = ""
 
-            if str.IndexByte(fom, '/') > -1 {
-                if filepath.IsAbs(fom) {
-                    moduleloc = fom
+            if str.IndexByte(modGivenPath, '/') > -1 {
+                if filepath.IsAbs(modGivenPath) {
+                    moduleloc = modGivenPath
                 } else {
                     mdir, _ := gvget("@execpath")
-                    moduleloc = mdir.(string)+"/"+fom
+                    moduleloc = mdir.(string)+"/"+modGivenPath
                 }
             } else {
 
@@ -3367,7 +3393,7 @@ tco_reentry:
                     modhome = os.Getenv("ZA_MODPATH")
                 }
 
-                moduleloc = modhome.(string) + "/modules/" + fom + ".fom"
+                moduleloc = modhome.(string) + "/modules/" + modGivenPath + ".fom"
 
             }
 
@@ -3382,7 +3408,7 @@ tco_reentry:
             }
 
             if !f.Mode().IsRegular() {
-                parser.report(inbound.SourceLine,  "Module is not a regular file.")
+                parser.report(inbound.SourceLine,"Module is not a regular file.")
                 finish(false, ERR_MODULE)
                 break
             }
@@ -3391,23 +3417,30 @@ tco_reentry:
 
             mod, err := ioutil.ReadFile(moduleloc)
             if err != nil {
-                parser.report(inbound.SourceLine,  "Problem reading the module file.")
+                parser.report(inbound.SourceLine,"Problem reading the module file.")
                 finish(false, ERR_MODULE)
                 break
+            }
+
+            // override module name with alias at this point, if provided
+           
+            modRealAlias:=modGivenPath
+            if aliased {
+                modRealAlias=modGivenAlias
             }
 
             // tokenise and parse into a new function space.
 
             //.. error if it has already been defined
-            if fnlookup.lmexists("@mod_"+fom) && !permit_dupmod {
-                parser.report(inbound.SourceLine,"Module file "+fom+" already processed once.")
+            if fnlookup.lmexists("@mod_"+modRealAlias) && !permit_dupmod {
+                parser.report(inbound.SourceLine,"Module file "+modRealAlias+" already processed once.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            if !fnlookup.lmexists("@mod_"+fom) {
+            if !fnlookup.lmexists("@mod_"+modRealAlias) {
 
-                loc, _ := GetNextFnSpace(true,"@mod_"+fom,call_s{prepared:false})
+                loc, _ := GetNextFnSpace(true,"@mod_"+modRealAlias,call_s{prepared:false})
 
                 calllock.Lock()
 
@@ -3421,8 +3454,12 @@ tco_reentry:
                 farglock.Unlock()
 
                 oldModule:=currentModule
-                currentModule=path.Base(fom)
-                currentModule=str.TrimSuffix(currentModule,".mod")
+                if aliased {
+                    currentModule=modRealAlias
+                } else {
+                    currentModule=path.Base(modGivenPath)
+                    currentModule=str.TrimSuffix(currentModule,".mod")
+                }
                 modlist[currentModule]=true
 
                 //.. parse and execute
@@ -3431,16 +3468,16 @@ tco_reentry:
 
                 if debug_level>10 {
                     start := time.Now()
-                    phraseParse("@mod_"+fom, string(mod), 0)
+                    phraseParse("@mod_"+modRealAlias, string(mod), 0)
                     elapsed := time.Since(start)
-                    pf("(timings-module) elapsed in mod translation for '%s' : %v\n",fom,elapsed)
+                    pf("(timings-module) elapsed in mod translation for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    phraseParse("@mod_"+fom, string(mod), 0)
+                    phraseParse("@mod_"+modRealAlias, string(mod), 0)
                 }
                 modcs := call_s{}
                 modcs.base = loc
                 modcs.caller = ifs
-                modcs.fs = "@mod_" + fom
+                modcs.fs = "@mod_" + modRealAlias
                 calltable[loc] = modcs
 
                 calllock.Unlock()
@@ -3452,7 +3489,7 @@ tco_reentry:
                     start := time.Now()
                     Call(MODE_NEW, &modident, loc, ciMod)
                     elapsed := time.Since(start)
-                    pf("(timings-module) elapsed in mod execution for '%s' : %v\n",fom,elapsed)
+                    pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
                     Call(MODE_NEW, &modident, loc, ciMod)
                 }

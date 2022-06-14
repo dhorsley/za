@@ -303,6 +303,7 @@ func buildInternalLib() {
             "1","map[string]*big.Int",
             "1","map[string]*big.Float",
             "1","map[string]interface {}",
+            "1","string",
             "1","[]string",
             "1","[]bool",
             "1","[]int",
@@ -361,6 +362,8 @@ func buildInternalLib() {
             a2:=make([]float64,len(m),cap(m))
             copy(a2,m)
             return a2,nil
+        case string:
+            return str.Clone(m),nil
         case []string:
             a2:=make([]string,len(m),cap(m))
             copy(a2,m)

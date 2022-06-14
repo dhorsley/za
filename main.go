@@ -287,46 +287,74 @@ func main() {
     }()
 
 
+    // lower number means : "binding is less tight than operators with higher number"
+    // e.g. a+b>c  : + is 31 : > is 25 : a+b performed before evaluating >c
+    // in general: conjunctions and comparisons should have lower number than other operators
+    // assignment should be among the lowest bp.
+    // map/filter are low because they act in a similar way to assignment
+    // The misc_x bindings are still perhaps not in their best positions.
+
+    // Lm notations are how most other people organise these operations
+    // with L01 being the most precedent and L15 the least.
+
     default_prectable[EOF]          =-1
-    default_prectable[O_Assign]     =5
+
+    // assignment-type group
+    default_prectable[O_Assign]     =5          // L09
     default_prectable[O_Map]        =7
     default_prectable[O_Filter]     =9
-    default_prectable[SYM_LAND]     =15
-    default_prectable[SYM_LOR]      =15
-    default_prectable[C_Or]         =15
-    default_prectable[SYM_BAND]     =20
-    default_prectable[SYM_BOR]      =20
-    default_prectable[SYM_Caret]    =20
-    default_prectable[SYM_LSHIFT]   =21
-    default_prectable[SYM_RSHIFT]   =21
-    default_prectable[O_Query]      =23
-    // unary not @ 24
+
+    // booleans @note: and/or + &&/|| tokenisation needs tidying
+    default_prectable[SYM_LOR]      =15         // L13
+    default_prectable[C_Or]         =15         // L13
+    default_prectable[SYM_LAND]     =15         // L12
+
+    // bit-wise
+    default_prectable[SYM_BAND]     =20         // L07
+    default_prectable[SYM_BOR]      =20         // L07
+    default_prectable[SYM_Caret]    =20         // L07
+    default_prectable[SYM_LSHIFT]   =21         // L07
+    default_prectable[SYM_RSHIFT]   =21         // L07
+
+    // misc 1
+    default_prectable[O_Query]      =23 // tern // L14
+    // unary not @ 24                   // !    // L03
+
+    // equality type tests
     default_prectable[SYM_Tilde]    =25
     default_prectable[SYM_ITilde]   =25
     default_prectable[SYM_FTilde]   =25
     default_prectable[C_Is]         =25
-    default_prectable[SYM_EQ]       =25
-    default_prectable[SYM_NE]       =25
-    default_prectable[SYM_LT]       =25
-    default_prectable[SYM_GT]       =25
-    default_prectable[SYM_LE]       =25
-    default_prectable[SYM_GE]       =25
+    default_prectable[SYM_EQ]       =25         // L11
+    default_prectable[SYM_NE]       =25         // L11
+    default_prectable[SYM_LT]       =25         // L10
+    default_prectable[SYM_GT]       =25         // L10
+    default_prectable[SYM_LE]       =25         // L10
+    default_prectable[SYM_GE]       =25         // L10
     default_prectable[C_In]         =27
-    default_prectable[SYM_RANGE]    =29
-    default_prectable[O_Plus]       =31
-    default_prectable[O_Minus]      =31
-    default_prectable[O_Divide]     =35
-    default_prectable[O_Percent]    =35
-    default_prectable[O_Multiply]   =35
+
+    // misc 2
+    default_prectable[SYM_RANGE]    =29         // L08
+
+    // arithmetic
+    default_prectable[O_Plus]       =31         // L06
+    default_prectable[O_Minus]      =31         // L06
+    default_prectable[O_Divide]     =35         // L05
+    default_prectable[O_Percent]    =35 // mod  // L05
+    default_prectable[O_Multiply]   =35         // L05
+    default_prectable[SYM_POW]      =37
+
+    // @note: should these be 
+    default_prectable[SYM_PP]       =45         // L02
+    default_prectable[SYM_MM]       =45         // L02
+
+    // misc 3
     default_prectable[O_OutFile]    =37
-    // default_prectable[O_Query]      =39
-    default_prectable[SYM_POW]      =40
-    default_prectable[SYM_PP]       =45
-    default_prectable[SYM_MM]       =45
-    default_prectable[LeftSBrace]   =45
-    default_prectable[SYM_DOT]      =61
-    // default_prectable[O_InFile]     =70
-    default_prectable[LParen]       =100
+
+    // sub-access
+    default_prectable[LeftSBrace]   =45         // L02
+    default_prectable[SYM_DOT]      =61 //field // L02
+    default_prectable[LParen]       =100        // L01
 
 
     // generic error flag - used through main
