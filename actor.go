@@ -371,6 +371,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
                 if calltable[e].gcShyness>0 { calltable[e].gcShyness-=1 }
                 if calltable[e].gcShyness==0 {
                     reuse=e
+                    // runtime.GC()
                     break
                 }
             }
@@ -3515,9 +3516,11 @@ tco_reentry:
             }
 
             // make comparator True if missing.
+            /*
             if inbound.TokenCount==1 {
                 inbound.Tokens=append(inbound.Tokens,Token{tokType:Identifier,subtype:subtypeConst,tokVal:true,tokText:"true"})
             }
+            */
 
             // lookahead
             endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
@@ -3534,14 +3537,20 @@ tco_reentry:
                 break
             }
 
-            we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
-            if we.evalError {
-                parser.report(inbound.SourceLine,sf("could not evaluate the WHEN condition\n%+v",we.errVal))
-                finish(false, ERR_EVAL)
-                break
+            if inbound.TokenCount>1 {
+                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
+                if we.evalError {
+                    parser.report(inbound.SourceLine,sf("could not evaluate the WHEN condition\n%+v",we.errVal))
+                    finish(false, ERR_EVAL)
+                    break
+                }
             }
 
             // create storage for WHEN details and increase the nesting level
+
+            if inbound.TokenCount==1 {
+                we.result=true
+            }
 
             wccount+=1
             wc[wccount] = whenCarton{endLine: parser.pc + enddistance, value: we.result, performed:false, dodefault: true}
@@ -3696,6 +3705,7 @@ tco_reentry:
             forceEnd=false
             lastConstruct = lastConstruct[:depth-1]
             depth-=1
+            wc[wccount] = whenCarton{}
             wccount-=1
 
             if break_count>0 {

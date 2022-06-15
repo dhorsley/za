@@ -7,7 +7,7 @@ doc `
 h=term_h()
 w=term_w()
 
-delay=50
+delay=10
 flipWeight  = 0.2f
 dimWeight   = 0.2f
 medWeight   = 0.8f
@@ -17,7 +17,16 @@ var colShow [w]bool
 quit=false
 cursoroff()
 print "[#4][#dim]"
+
 while not quit
+
+    # winched
+    if w!=term_w()
+        h=term_h()
+        w=term_w()
+        unset colShow
+        var colShow [w]bool
+    endif
 
     # recalc row zero
     row=""
@@ -46,6 +55,7 @@ while not quit
 
     # re-draw
     at 0,0,row+"[#CSI]1T"
+    # at 0,10," {=get_mem()}  "
 
     on keypress(delay)==32 do quit=true
 
