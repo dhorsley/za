@@ -4,7 +4,7 @@
 
 define stddev(set)
 
-    avg=avg(set)
+    avg=set.avg
 
     deviances=[]
     foreach x in set
@@ -20,7 +20,7 @@ define stddev(set)
         devsqr=append(devsqr,x*x)
     endfor
 
-    ssd=sqrt(sum(devsqr)/(len(set)-1))
+    ssd=sqrt(devsqr.sum/(set.len-1))
 
     # println "Deviance Squares : ",devsqr
     # println "Sample Std Dev   : ",ssd
@@ -34,6 +34,5 @@ end
 #
 
 a=[1,2,3,4,5]
-println "Sample Standard Deviation of ",a," is ",stddev(a)
-
+println "Sample Standard Deviation of ",a," is ",a.stddev
 
