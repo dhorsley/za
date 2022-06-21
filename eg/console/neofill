@@ -9,14 +9,11 @@ w=term_w()
 
 delay=10
 flipWeight  = 0.2f
-dimWeight   = 0.2f
-medWeight   = 0.8f
 
 var colShow [w]bool
 
 quit=false
 cursoroff()
-print "[#4][#dim]"
 
 while not quit
 
@@ -31,26 +28,12 @@ while not quit
     # recalc row zero
     row=""
     for c=0 to w-1 step 2
-
-        # colour
-        intensity=randf()
-        when
-        has intensity<dimWeight
-            s_int="[#dim]"
-        has intensity<medWeight
-            s_int="[#boff]"
-        or
-            s_int="[#bold]"
-        endwhen
-
-        # shape
         on randf()<flipWeight do colShow[c]=not colShow[c]
         if colShow[c]
-            row+=s_int+char(33+rand(94))+" "
+            row+=fgrgb(0,50+rand(200),0)+char(33+rand(94))+" "
         else
             row+="  "
         endif
-
     endfor
 
     # re-draw
