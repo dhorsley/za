@@ -602,7 +602,7 @@ Available commands:
 [#6]INPUT [#i1]id[#i0] [#i1](PARAM|OPTARG)[#i0] [#i1]position[#i0] [ IS [#i1]hint[#i0] ][#-]    - set variable [#i1]id[#i0] from argument.
 [#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]                           - set variable [#i1]id[#i0] from environmental variable.         
 [#6]PROMPT [#i1]var prompt[#i0] [ [#i1]validator[#i0] ][#-]                 - set [#i1]var[#i0] from stdin. loops until [#i1]validator[#i0] satisfied.
-[#3]MODULE [#i1]modname[#i0][#-]                                  - reads in state from a module file.
+[#3]MODULE [#i1]modname[#i0] [ AS [#i1]alias[#i0] ][#-]                     - reads in state from a module file.
 [#3]TEST [#i1]name[#i0] GROUP [#i1]gname[#i0] [ ASSERT FAIL|CONTINUE ][#-]  - Define a test
 [#3]ENDTEST[#-]                                         - End a test definition
 [#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit.
