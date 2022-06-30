@@ -248,6 +248,7 @@ type (
         Window            SMALL_RECT
         MaximumWindowSize COORD
     }
+
 )
 
 func checkError(r1, r2 uintptr, err error) error {
