@@ -67,6 +67,7 @@ define negreg(inp,matcher)
     return out
 end
 
+logging testfile "mon.test.out"
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
     assert has_start(iip,"127.0.0.")
@@ -689,7 +690,7 @@ if ct==0
     exit 1, "Could not find clock ticks."
 endif
 
-cls
+print "[#ASB]"
 
 user=get_env("USER")
 on user=="" do user=<whoami
@@ -819,7 +820,9 @@ while !quit
 
 endwhile
 
-at term_h()-1,1
+print "[#RSB]"
+println
+# at term_h()-1,1
 cursoron()
 
 

@@ -3400,7 +3400,7 @@ tco_reentry:
 
             //.. validate module exists
 
-            f, err := os.Stat(moduleloc)
+            f,err:=os.Stat(moduleloc)
 
             if err != nil {
                 parser.report(inbound.SourceLine, sf("Module is not accessible. (path:%v)",moduleloc))
@@ -4012,9 +4012,9 @@ tco_reentry:
 
         case C_Logging:
 
-            if inbound.TokenCount < 2 || inbound.TokenCount > 3 {
-                parser.report(inbound.SourceLine,  "LOGGING command malformed.")
-                finish(false, ERR_SYNTAX)
+            if inbound.TokenCount < 2 { // || inbound.TokenCount > 3 {
+                parser.report(inbound.SourceLine,"LOGGING command malformed.")
+                finish(false,ERR_SYNTAX)
                 break
             }
 
@@ -4041,6 +4041,32 @@ tco_reentry:
 
             case "loud":
                 gvset("@silentlog", false)
+
+            case "testfile":
+                if testMode {
+                    if inbound.TokenCount > 2 {
+                        we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[2:])
+                        if we.evalError {
+                            parser.report(inbound.SourceLine, sf("could not evaluate filename in LOGGING TESTFILE statement\n%+v",we.errVal))
+                            finish(false, ERR_EVAL)
+                            break
+                        }
+                        old_name:=test_output_file
+                        test_output_file=we.result.(string)
+                        _,err=os.Stat(test_output_file)
+                        if err==nil {
+                            err=os.Remove(test_output_file)
+                        }
+                        err=os.Rename(old_name,test_output_file)
+                        if err!=nil {
+                            parser.report(inbound.SourceLine,sf("Error during test file instantiation:\n%v",err))
+                            finish(false,ERR_FILE)
+                        }
+                    } else {
+                        parser.report(inbound.SourceLine, "Invalid test filename provided for LOGGING TESTFILE command.")
+                        finish(false, ERR_SYNTAX)
+                    }
+                } // else do nothing with this command outside of test mode.
 
             case "accessfile":
                 if inbound.TokenCount > 2 {

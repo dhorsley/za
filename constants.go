@@ -136,6 +136,7 @@ const (
 	ERR_REQUIRE
 	ERR_UNSUPPORTED
 	ERR_ASSERT
+    ERR_FILE
     ERR_LEX int = 127
 )
 

@@ -1714,6 +1714,26 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     switch (*ident)[bin].IValue.(type) {
 
+    case string:
+        if numel<0 || numel>=len((*ident)[bin].IValue.(string)) {
+            panic(fmt.Errorf("Out of bounds access [element %d] of %s",numel,name))
+        }
+        switch value.(type) {
+        case string:
+        default:
+            panic(fmt.Errorf("Invalid type [%T] in string element access",value))
+        }
+
+        nv:=(*ident)[bin].IValue.(string)
+        switch len(nv) {
+        case 1:
+            (*ident)[bin].IValue=str.Join([]string{nv[:numel]},string(value.(string)[0]))
+        case 0:
+            panic(fmt.Errorf("Assignee empty in element write"))
+        default:
+            (*ident)[bin].IValue=str.Join([]string{nv[:numel],nv[numel+1:]},string(value.(string)[0]))
+        }
+
     case []int:
         sz:=cap((*ident)[bin].IValue.([]int))
         if numel>=sz {

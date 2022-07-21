@@ -294,7 +294,7 @@ func buildInternalLib() {
 
     slhelp["dup"] = LibHelp{in: "map", out: "copy_of_map", action: "returns a duplicate copy of [#i1]map[#i0]."}
     stdlib["dup"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("dup",args,16,
+        if ok,err:=expect_args("dup",args,17,
             "1","map[string]string",
             "1","map[string]bool",
             "1","map[string]int",
