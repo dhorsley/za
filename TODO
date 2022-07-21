@@ -17,6 +17,10 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * add a test mode that *does not* test imported modules.
+        - i.e. only test the main file and assume the modules are already tested.
+        - currently, everything gets tested all the time.
+
     * change parser.prev and parser.preprev to pointers?
         - maybe won't make much difference, but should check.
 

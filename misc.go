@@ -561,7 +561,8 @@ func ihelp(hargs string) {
 /* bit verbose with these ones listed too:
 [#5]SHOWDEF[#-]                                         - list function definitions.
 [#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
-[#2]LOGGING OFF | ON [#i1]name[#i0][#-]                           - disable or enable logging and specify the log file name.
+[#2]LOGGING [WEB] OFF|ON [#i1]name[#i0][#-]                        - disable or enable logging and specify the log file name.
+[#2]LOGGING ACCESSFILE|TESTFILE [#i1]filename[#i0][#-]                    - option to squash console echo of LOG messages.
 [#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
 [#6]REQUIRE [#i1]feature[#i0] [ [#i1]num[#i0] ][#-]                         - assert feature availability and optional version level, or exit.
 [#7]SHOWSTRUCT[#-]                                      - display structure definitions.
