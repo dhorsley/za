@@ -22,6 +22,7 @@ CHANGE LOG
     -----
 
     * updated za.vim
+
     * added user aliasing for MODULE command:
         - new syntax: MODULE str_expr_name [ AS alias_name ]
         - n.b. str_expr_name must eval down to a string literal whereas alias_name is an unquoted single name.
@@ -29,6 +30,12 @@ CHANGE LOG
         - this places the responsibility on the script writer to use aliases to avoid namespace collisions.
         - the alias name must follow the usual rules for identifier syntax (^[a-zA-Z_][a-zA-Z0-9_]*$)
         - when no alias is provided the existing rules are used for checking namespace membership.
+
+    * added test output file filename specifier to LOGGING command, i.e.:
+        LOGGING TESTFILE filename_string
+        - this will rename the current/default test file and append further logs to the new named file.
+        - this command does nothing outside of test mode (-t flag).
+        - the default file name is still "za_test.out".
 
 
 1.1.4

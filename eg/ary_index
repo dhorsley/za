@@ -7,6 +7,8 @@ define index(ary,e)
     return -1
 end
 
+logging testfile "ary_test.txt"
+
 test "t_index" group "funcs" assert fail
     assert index([1,2,3,4],3) == 2
     assert index([1,2,3,4],5) == -1

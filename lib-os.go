@@ -279,27 +279,21 @@ func buildOsLib() {
     stdlib["delete"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("delete",args,1,"1","string"); !ok { return nil,err }
         err=os.Remove(args[0].(string))
-        suc:=true
-        if err!=nil { suc=false }
-        return suc, err
+        return err==nil, err
     }
 
     slhelp["rename"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Rename a file."}
     stdlib["rename"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("rename",args,1,"2","string","string"); !ok { return nil,err }
         err=os.Rename(args[0].(string),args[1].(string))
-        suc:=true
-        if err!=nil { suc=false }
-        return suc, err
+        return err==nil, err
     }
 
     slhelp["copy"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Copy a single file."}
     stdlib["copy"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("copy",args,1,"2","string","string"); !ok { return nil,err }
         _,err=fcopy(args[0].(string),args[1].(string))
-        suc:=true
-        if err!=nil { suc=false }
-        return suc, err
+        return err==nil, err
     }
 
     slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
