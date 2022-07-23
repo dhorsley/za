@@ -293,6 +293,9 @@ func buildStringLib() {
             return tr(args[0].(string), SQUEEZE, args[2].(string), translations), nil
         }
         if args[1].(string) == "t" {
+            if len(args[2].(string))!=len(translations) {
+                return "",errors.New("Error: tr() translate action requires equal length case and transposition strings")
+            }
             return tr(args[0].(string), TRANSLATE, args[2].(string), translations), nil
         }
         return tr(args[0].(string), COPY, args[2].(string), translations), nil
