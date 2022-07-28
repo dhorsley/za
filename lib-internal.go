@@ -1088,7 +1088,7 @@ func buildInternalLib() {
         if ok,err:=expect_args("last_out",args,0); !ok { return nil,err }
         v, found := gvget("@last_out")
         if found {
-            return string(v.([]byte)), err
+            return v.(string), err
         }
         return "",errors.New("No co-process error has been detected yet.")
     }

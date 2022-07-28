@@ -1528,20 +1528,18 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
                 if exitError, ok := err.(*exec.ExitError); ok {
                     errint=exitError.ExitCode()
                     errout=err.Error()
-                    gvset("@last",errint)
-                    gvset("@last_out",errout)
                 } else { // probably a command not found?
                     errint=1
                     errout="Command not found."
-                    gvset("@last",errint)
-                    gvset("@last_out",errout)
                 }
+                gvset("@last",errint)
+                gvset("@last_out",string(errout))
 
             }
 
         } else {
             gvset("@last",0)
-            gvset("@last_out", []byte{0})
+            gvset("@last_out", "")
         }
     } else {
 
@@ -1608,12 +1606,11 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         b, err := ioutil.ReadFile(errorFile.Name())
 
         if len(b) > 0 {
-            gvset("@last_out", b)
             errout=string(b)
         } else {
-            gvset("@last_out", []byte{0})
             errout=""
         }
+        gvset("@last_out", errout)
 
     }
 
