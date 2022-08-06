@@ -499,19 +499,21 @@ func ihelp(hargs string) {
         var cmdMatchList []string
         funcMatchList := ""
 
-        if cmd[len(cmd)-1]=='s' {
-            cmd=cmd[:len(cmd)-1]
-        }
-
         switch cmd {
 
         case "command":
+            fallthrough
+        case "commands":
             commands()
 
         case "op":
+            fallthrough
+        case "ops":
             help_ops()
 
         case "colour":
+            fallthrough
+        case "colours":
             help_colour()
 
         default:
@@ -538,6 +540,8 @@ func ihelp(hargs string) {
                 funcMatchList += sf(sparkle("[#"+colour+"]%s%s(%s)[#-]\n"), lhs, cmd, params)
                 funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
                 foundFunction = true
+            } else {
+                pf("(no match):%s\n",cmd)
             }
 
             if foundFunction || foundCommand {

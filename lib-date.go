@@ -33,7 +33,9 @@ func buildDateLib() {
 		return st, err
 	}
 
-	slhelp["date_human"] = LibHelp{in: "[integer]", out: "string", action: "Returns the current date and time in a readable format (RFC822Z). If optional [#i1]integer[#i0] present, uses that as the epoch timestamp to convert."}
+	slhelp["date_human"] = LibHelp{in: "[integer]", out: "string",
+        action: "Returns the current date and time in a readable format (RFC822Z).\n"+
+            "If optional [#i1]integer[#i0] present, uses that as the epoch timestamp to convert."}
 	stdlib["date_human"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("date_human",args,2,
             "1","int",
@@ -84,7 +86,9 @@ func buildDateLib() {
 		return t.Minute(), nil
 	}
 
-	slhelp["time_seconds"] = LibHelp{in: "[epochnano]", out: "integer", action: "Returns the current second of the day (no arguments) or the second of the day specified by the epoch nano time in [#i1]epochnano[#i0]."}
+	slhelp["time_seconds"] = LibHelp{in: "[epochnano]", out: "integer",
+        action: "Returns the current second of the day (no arguments) or the second of the day specified by\n"+
+            "the epoch nano time in [#i1]epochnano[#i0]."}
 	stdlib["time_seconds"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("time_seconds",args,2,
             "1","int",
@@ -101,7 +105,9 @@ func buildDateLib() {
 		return t.Second(), nil
 	}
 
-	slhelp["time_nanos"] = LibHelp{in: "[epochnano]", out: "integer", action: "Returns the offset within the current second, in nanoseconds, (no arguments) or the offset within the epoch nano time specified in [#i1]epochnano[#i0]."}
+	slhelp["time_nanos"] = LibHelp{in: "[epochnano]", out: "integer",
+        action: "Returns the offset within the current second, in nanoseconds, (no arguments) or the\n"+
+            "offset within the epoch nano time specified in [#i1]epochnano[#i0]."}
 	stdlib["time_nanos"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("time_nanos",args,2,
             "1","int",
