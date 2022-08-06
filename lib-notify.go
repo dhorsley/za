@@ -54,7 +54,10 @@ func buildNotifyLib() {
         return nil,nil
     }
 
-    slhelp["ev_watch"] = LibHelp{in: "filepath_string", out: "watcher,int_error_code", action: "Initialise a file system watch object. Returns the new watcher and 0 error code on success, otherwise nil and >0 code. 1->create_watcher_failed, 2->file_path_failure"}
+    slhelp["ev_watch"] = LibHelp{in: "filepath_string",
+        out: "watcher,int_error_code",
+        action: "Initialise a file system watch object. Returns the new watcher and 0 error code on success,\n"+
+            "otherwise nil and >0 code. 1->create_watcher_failed, 2->file_path_failure"}
     stdlib["ev_watch"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
 
         if ok,err:=expect_args("ev_watch",args,1,"1","string"); !ok { return nil,err }

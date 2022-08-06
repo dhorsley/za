@@ -488,7 +488,9 @@ func buildInternalLib() {
         return GetWinInfo(hnd), nil
     }
 
-    slhelp["get_mem"] = LibHelp{in: "", out: "struct", action: "Returns the current heap allocated memory and total system memory usage in MB. Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
+    slhelp["get_mem"] = LibHelp{in: "", out: "struct",
+        action: "Returns the current heap allocated memory and total system memory usage in MB.\n"+
+        "Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
     stdlib["get_mem"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("get_mem",args,0); !ok { return nil,err }
         a,s:=getMemUsage()
@@ -680,7 +682,9 @@ func buildInternalLib() {
         return c, nil
     }
 
-    slhelp["echo"] = LibHelp{in: "[bool[,mask]]", out: "bool", action: "Optionally, enable or disable local echo. Optionally, set the mask character to be used during input. Current visibility state is returned."}
+    slhelp["echo"] = LibHelp{in: "[bool[,mask]]", out: "bool",
+        action: "Enable or disable local echo. Optionally, set the mask character to be used during input.\n"+
+            "Current visibility state is returned when no arguments are provided."}
     stdlib["echo"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("echo",args,2,
         "2","bool","string",
@@ -800,7 +804,9 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["interpol"] = LibHelp{in: "bool", out: "bool", action: "Enable (default) or disable string interpolation at runtime. This is useful for ensuring that braced phrases remain unmolested. Returns the previous state."}
+    slhelp["interpol"] = LibHelp{in: "bool", out: "bool",
+        action: "Enable (default) or disable string interpolation at runtime.\n"+
+            "This is useful for ensuring that braced phrases remain unmolested. Returns the previous state."}
     stdlib["interpol"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("interpol",args,1,"1","bool"); !ok { return nil,err }
         lastlock.Lock()
@@ -1115,7 +1121,9 @@ func buildInternalLib() {
         return v.(string), err
     }
 
-    slhelp["keypress"] = LibHelp{in: "[timeout_ms]", out: "int", action: "Returns an integer corresponding with a keypress. Internally, the minimum timeout value is currently 1 decisecond. See the termios(3) man page for reasoning about VMIN/VTIME."}
+    slhelp["keypress"] = LibHelp{in: "[timeout_ms]", out: "int", action: "Returns an integer corresponding with a keypress.\n"+
+        "Internally, the minimum timeout value is currently 1 decisecond.\n"+
+        "See the termios(3) man page for reasoning about VMIN/VTIME."}
     stdlib["keypress"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("keypress",args,3,
         "2","int","bool",
@@ -1356,8 +1364,9 @@ func buildInternalLib() {
                             colour = "3"
                         }
                         params := slhelp[q].in
+                        s_inset,_:=stdlib["inset"](evalfs,ident,sparkle(slhelp[q].action),8)
                         matchList += sf(sparkle("\n  [#6]Function : [#"+colour+"]%s%s(%s)[#-]\n"), lhs, q, params)
-                        matchList += sf(sparkle("           [#6]:[#-] %s\n"), sparkle(slhelp[q].action))
+                        matchList += sf(sparkle("[#7]%s[#-]\n"),s_inset)
                     }
                     foundOne = true
                 }
