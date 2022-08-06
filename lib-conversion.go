@@ -247,7 +247,10 @@ func buildConversionLib() {
         return string(pj.Bytes()),nil
     }
 
-    slhelp["json_query"] = LibHelp{in: "input_string,query_string[,map_bool]", out: "string", action: "Returns the result of processing [#i1]input_string[#i0] using the gojq library. [#i1]query_string[#i0] is a jq-like query to operate with. If [#i1]map_bool[#i0] is false (default) then a string is returned, otherwise an iterable list is returned."}
+    slhelp["json_query"] = LibHelp{in: "input_string,query_string[,map_bool]", out: "string",
+        action: "Returns the result of processing [#i1]input_string[#i0] using the gojq library.\n"+
+            "[#i1]query_string[#i0] is a jq-like query to operate with. If [#i1]map_bool[#i0] is false (default)\n"+
+            "then a string is returned, otherwise an iterable list is returned."}
     stdlib["json_query"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("json_query",args,2,
             "2","string","string",

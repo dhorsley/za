@@ -99,7 +99,10 @@ func buildFileLib() {
         return fw.hnd.Seek(0,os.SEEK_CUR)
     }
 
-    slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position", action: "Move the current position of reads or writes to an open file. relativity indicates where the offset is relative to. (0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
+    slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position",
+        action: "Move the current position of reads or writes to an open file.\n"+
+        "[#i1]relativity[#i0] indicates where the offset is relative to.\n"+
+        "(0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
     stdlib["fseek"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fseek",args,1,"3","main.pfile","int","int"); !ok { return nil,err }
         fw :=args[0].(pfile)

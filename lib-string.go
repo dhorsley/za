@@ -275,7 +275,11 @@ func buildStringLib() {
         return "",nil
     }
 
-    slhelp["tr"] = LibHelp{in: "string,action,case_string[,translation_string]", out: "string", action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0]. translate (action "t") can be used, along with the optional [#i1]translation_string[#i0] to specify direct replacements for existing characters. Please note: this is a very restricted subset of the tr tool.`}
+    slhelp["tr"] = LibHelp{in: "string,action,case_string[,translation_string]",
+        out: "string",
+        action: `delete (action "d") or squeeze (action "s") extra characters (in [#i1]case_string[#i0]) from [#i1]string[#i0].`+"\n"+
+                `Translate (action "t") can be used, along with the optional [#i1]translation_string[#i0] to specify direct`+"\n"+
+                `replacements for existing characters. Please note: this is a very restricted subset of the tr tool.`}
     stdlib["tr"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tr",args,2,
             "3","string","string","string",
@@ -579,7 +583,11 @@ func buildStringLib() {
 
     }
 
-    slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]", out: "int", action: "Splits up [#i1]input_string[#i0] in local array [#i1]F[#i0], with fields starting at index 1. Field count is stored in [#i1]NF[#i0]. Also squeezes repeat spaces when separator is a space char (default). Returns -1 on error, or field count."}
+    slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]",
+        out: "int",
+        action: "Splits up [#i1]input_string[#i0] in local array [#i1]F[#i0], with fields starting at index 1.\n"+
+        "Field count is stored in [#i1]NF[#i0]. Also squeezes repeat spaces when separator is a space char (default).\n"+
+        "Returns -1 on error, or field count."}
     stdlib["fields"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fields",args,2,
             "1","string",
@@ -696,7 +704,10 @@ func buildStringLib() {
         return nil, err
     }
 
-    slhelp["lines"] = LibHelp{in: "string_name,string_range", out: "string", action: "Returns lines from [#i1]string_name[#i0]. [#i1]string_range[#i0] is specified in the form [#i1]start:end[#i0]. Either optional term can be [#i1]last[#i0] to indicate the last line of the file. Numbering starts from 0."}
+    slhelp["lines"] = LibHelp{in: "string_name,string_range",
+        out: "string",
+        action: "Returns lines from [#i1]string_name[#i0]. [#i1]string_range[#i0] is specified in the form [#i1]start:end[#i0].\n"+
+        "Either optional term can be [#i1]last[#i0] to indicate the last line of the file. Numbering starts from 0."}
     stdlib["lines"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("lines",args,2,
             "2","string","string",
@@ -1038,7 +1049,10 @@ func buildStringLib() {
         return str.Replace(args[0].(string), args[1].(string), args[2].(string), -1), err
     }
 
-    slhelp["trim"] = LibHelp{in: "string,int_type[,removal_list_string]", out: "string", action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0]. -1 ltrim, 0 both, 1 rtrim. By default, space (ASCII:32) and horizontal tabs (ASCII:9) are removed."}
+    slhelp["trim"] = LibHelp{in: "string,int_type[,removal_list_string]",
+        out: "string",
+        action: "Removes whitespace from [#i1]string[#i0], depending on [#i1]int_type[#i0].\n"+
+        "-1 ltrim, 0 both, 1 rtrim. By default, space (ASCII:32) and horizontal tabs (ASCII:9) are removed."}
     stdlib["trim"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("trim",args,2,
             "2","string","int",

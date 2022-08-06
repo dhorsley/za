@@ -119,7 +119,11 @@ func buildPackageLib() {
         return done, err
     }
 
-    slhelp["vcmp"] = LibHelp{in: "string_v1,string_v2", out: "int", action: "Returns -1, 0, or +1 depending on semantic version string [#i1]string_v1[#i0] being less than, equal to, or greater than version string [#i1]string_v2[#i0]."}
+    slhelp["vcmp"] = LibHelp{
+        in: "string_v1,string_v2",
+        out: "int",
+        action: "Returns -1, 0, or +1 depending on semantic version string [#i1]string_v1[#i0] being less than,\n"+
+        "equal to, or greater than version string [#i1]string_v2[#i0]."}
     stdlib["vcmp"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("vcmp",args,1,"2","string","string"); !ok { return nil,err }
         return vcmp(args[0].(string), args[1].(string))
