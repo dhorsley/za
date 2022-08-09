@@ -1,0 +1,131 @@
+#!/usr/bin/za
+
+doc `
+    getopts
+        Simple parsing module for cli args.
+        will handle short and long arguments.
+        in: [optstring]
+            optstring is converted to an array of option structs
+        returns: map name->value pairs [ret#1] and []string [ret#2] containing none option args
+`
+
+enum optNature ( n=0, m, o )
+enum optErr ( NoError, General=126, Mandatory=125, Casting=124 )
+
+define opthelp(reqs)
+    # reqs_entry key:name, value []any ( type: (s)string, (b)bool, (n)numeric , nature: novalue/optional/mandatory )
+    println "Help:"
+    foreach o in reqs
+        print ("[#4]"+key_o).inset(4).pad(-1,20)
+        when o[0]
+        is "s"; print "[#3]STRING".pad(-1,10)
+        is "n"; print "[#3]NUMERIC".pad(-1,10)
+        is "b"; print "[#3]BOOLEAN".pad(-1,10)
+        endwhen
+        when o[1]
+        is optNature.n; println "[#7]No value".pad(-1,20)
+        is optNature.m; println "[#2]Mandatory".pad(-1,20)
+        is optNature.o; println "[#6]Optional".pad(-1,20)
+        endwhen
+        print "[#-]"
+    endfor
+    exit optErr.NoError
+end
+
+define getopt(reqs)
+
+    var opts map
+    expecting_value=false
+    argn=0
+    var undashed_args []string
+    undashed_count=0
+
+    av=argv()
+    while !empty(av)
+
+        argn++
+        arg=head(av)
+        av=tail(av)
+
+        on strpos(arg,"?")!=-1 do opthelp(reqs)
+
+        if expecting_value
+            opts[name]=arg
+            expecting_value=false
+            continue
+        endif
+
+        for p=0 to arg.len-1
+            on arg[p]!="-" do break
+        endfor
+
+        undashed=false
+        when p
+        is 1
+            name=arg[1:]
+            on !key(ref reqs,name) do exit optErr.General,"Invalid argument name '{name}'"
+        is 2
+            name=arg[2:]
+            on !key(ref reqs,name) do exit optErr.General,"Invalid argument name '{name}'"
+        or
+            #on !key(ref reqs,arg) do exit optErr.General,"Invalid argument name '{arg}'"
+            undashed_args[undashed_count++]=arg
+            undashed=true
+        endwhen 
+
+        on undashed do continue
+
+        r=reqs[name]
+        if r[1]!=optNature.n
+            expecting_value=true 
+        else
+            when r[0]
+            is "b"
+                opts[name]="true"
+            is "s"
+                opts[name]=""
+            is "n"
+                opts[name]=0
+            endwhen
+        endif
+
+    endwhile
+
+    # loop through checking for arguments
+    foreach r in reqs
+        typ     = r[0]
+        nature  = r[1]
+        on nature==optNature.m do on !key(ref opts,key_r) do exit optErr.Mandatory,"Missing mandatory parameter : {=key_r} ({typ})"
+        if key(ref opts,key_r)
+            when typ
+            is "n"
+                if not is_number(opts[key_r])
+                    exit optErr.Casting,"Parameter {=key_r} must be a number"
+                    opts[key_r]=opts[key_r].as_int
+                endif
+            is "b"
+                when opts[key_r]
+                contains "^(0|1|false|true)$"
+                    opts[key_r]=opts[key_r].as_bool
+                or
+                    exit optErr.Casting,"Parameter {=key_r} must be a boolean equivalent"
+                endwhen
+            endwhen
+        else
+            if nature!=optNature.m
+                when typ
+                is "n"
+                    opts[key_r]=0
+                is "b"
+                    opts[key_r]=false
+                is "s"
+                    opts[key_r]=""
+                endwhen
+            endif
+        endif
+    endfor
+
+    return opts,undashed_args
+
+end
+
