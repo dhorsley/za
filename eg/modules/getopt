@@ -52,19 +52,21 @@ define getopt(reqs)
     av=argv()
     while !empty(av)
 
+        # fetch next word
         argn++
         arg=head(av)
         av=tail(av)
 
-        on arg=="--" do break # stop processing args
-
-        on strpos(arg,"?")!=-1 do opthelp(reqs)
-
+        # populate value when expected
         if expecting_value
             opts[name]=arg
             expecting_value=false
             continue
         endif
+
+        # handle oddities
+        on arg=="--" do break # stop processing args
+        on strpos(arg,"?")!=-1 do opthelp(reqs)
 
         for p=0 to arg.len-1
             on arg[p]!="-" do break
