@@ -6,6 +6,8 @@ doc `
 
         Simple parsing module for cli args.
         will handle short and long arguments.
+        [-]{2}       stops arg processing
+        [\-]{1,2}\?  displays help
 
         in: 
             options requirements map
@@ -54,6 +56,8 @@ define getopt(reqs)
         arg=head(av)
         av=tail(av)
 
+        on arg=="--" do break # stop processing args
+
         on strpos(arg,"?")!=-1 do opthelp(reqs)
 
         if expecting_value
@@ -101,7 +105,7 @@ define getopt(reqs)
     foreach r in reqs
         typ     = r[0]
         nature  = r[1]
-        on nature==optNature.m do on !key(ref opts,key_r) do exit optErr.Mandatory,"Missing mandatory parameter : {=key_r} ({typ})"
+        on nature==optNature.m and !key(ref opts,key_r) do exit optErr.Mandatory,"Missing mandatory parameter : {=key_r} ({typ})"
         if key(ref opts,key_r)
             when typ
             is "n"
