@@ -1,19 +1,26 @@
 #!/usr/bin/za
 
 doc `
+
     getopts
+
         Simple parsing module for cli args.
         will handle short and long arguments.
-        in: [optstring]
-            optstring is converted to an array of option structs
-        returns: map name->value pairs [ret#1] and []string [ret#2] containing none option args
+
+        in: 
+            options requirements map
+            reqs_entry format:
+            key:name, value []any ( [0]type: (s)string, (b)bool, (n)numeric , [1]nature: novalue/optional/mandatory )
+
+        out:
+            map name->value pairs (option_name,value) [ret#1] and []string [ret#2] (contains remnant args, in acceptance order)
+
 `
 
 enum optNature ( n=0, m, o )
 enum optErr ( NoError, General=126, Mandatory=125, Casting=124 )
 
 define opthelp(reqs)
-    # reqs_entry key:name, value []any ( type: (s)string, (b)bool, (n)numeric , nature: novalue/optional/mandatory )
     println "Help:"
     foreach o in reqs
         print ("[#4]"+key_o).inset(4).pad(-1,20)
@@ -68,7 +75,6 @@ define getopt(reqs)
             name=arg[2:]
             on !key(ref reqs,name) do exit optErr.General,"Invalid argument name '{name}'"
         or
-            #on !key(ref reqs,arg) do exit optErr.General,"Invalid argument name '{arg}'"
             undashed_args[undashed_count++]=arg
             undashed=true
         endwhen 
