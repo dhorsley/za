@@ -10,10 +10,15 @@ reqs["long"]=["s",optNature.m]
 
 opts,args=go.getopt(reqs)
 
-println "final opts map :"
-println opts
-println "remnant args :"
+println "request map:"
+println reqs
+println "\nresults map:"
+println "[#4]arg".pad(-1,20),"value".pad(-1,20),"type[#-]"
+foreach v in opts
+    println key_v.pad(-1,20),v.as_string.pad(-1,20),v.kind
+endfor
+println "\nremnant args :"
 println args
-
+println
 
 

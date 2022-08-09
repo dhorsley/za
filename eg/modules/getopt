@@ -6,8 +6,8 @@ doc `
 
         Simple parsing module for cli args.
         will handle short and long arguments.
-        [-]{2}       stops arg processing
-        [\-]{1,2}\?  displays help
+        --  stops arg processing
+        ?   displays help
 
         in: 
             options requirements map
@@ -113,8 +113,8 @@ define getopt(reqs)
             is "n"
                 if not is_number(opts[key_r])
                     exit optErr.Casting,"Parameter {=key_r} must be a number"
-                    opts[key_r]=opts[key_r].as_int
                 endif
+                opts[key_r]=opts[key_r].as_int
             is "b"
                 when opts[key_r]
                 contains "^(0|1|false|true)$"
