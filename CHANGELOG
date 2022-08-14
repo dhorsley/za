@@ -21,6 +21,21 @@ CHANGE LOG
     other
     -----
 
+    * Added syntax for struct initialisation with user values.
+        - struct_name() returns a struct literal with default values (as specified in struct statement for the struct type)
+        - struct_name(args) returns a struct literal populated in struct field order with the args from left-to-right.
+
+            - e.g.
+            struct person; name string; age int; endstruct
+            person()
+            {name: age:0}
+            instance=person("bob",42)
+            {name:bob age:42}
+            instance.age
+            42
+
+        - another example in eg/struct3
+
     * updated za.vim
 
     * added user aliasing for MODULE command:

@@ -910,17 +910,31 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 func (p *leparser) callFunction(left any,right Token) (any) {
 
     name:=left.(string)
+    isStruct:=false
 
-    // filter for functions here
-    var isFunc bool
+    // filter for struct type names here:
+    //   if found, then return a constructed struct literal
+    //   using the evaluated terms inside the paren pair
 
-    // check if exists in user defined function space
-    if _, isFunc = stdlib[name]; !isFunc {
-        isFunc = fnlookup.lmexists(name)
+    structvalues:=[]any{}
+    found:=false
+    if structvalues,found=structmaps[name];found {
+        isStruct=true
     }
+    // end-struct-filter
 
-    if !isFunc {
-        panic(fmt.Errorf("'%v' is not a function",name))
+    if !isStruct {
+        // filter for functions here
+        var isFunc bool
+
+        // check if exists in user defined function space
+        if _, isFunc = stdlib[name]; !isFunc {
+            isFunc = fnlookup.lmexists(name)
+        }
+
+        if !isFunc {
+            panic(fmt.Errorf("'%v' is not a function",name))
+        }
     }
 
     iargs:=[]any{}
@@ -944,6 +958,99 @@ func (p *leparser) callFunction(left any,right Token) (any) {
     }
 
     // fmt.Printf("callfunction using (len:%d) ident of %v\n",len(*(p.ident)),*(p.ident))
+
+    if isStruct {
+
+        // @note: this typemap set up is also in actor.go 
+        // it needs reworking with even more urgency now!
+        // but, leaving it here while testing:
+
+        var tb bool
+        var tu8 uint8
+        var tu32 uint32
+        var tu64 uint64
+        var tu uint
+        var ti int
+        var tf64 float64
+        var ts string
+        var tbi *big.Int
+        var tbf *big.Float
+
+        var stb     []bool
+        var stu     []uint
+        var stu8    []uint8
+        var stu32   []uint32
+        var stu64   []uint64
+        var sti     []int
+        var stf64   []float64
+        var sts     []string
+        var stbi    []*big.Int
+        var stbf    []*big.Float
+        var stmixed []any
+
+        // instantiate fields with an empty expected type:
+        typemap:=make(map[string]reflect.Type)
+        typemap["bool"]     = reflect.TypeOf(tb)
+        typemap["uint"]     = reflect.TypeOf(tu)
+        typemap["uint8"]    = reflect.TypeOf(tu8)
+        typemap["uint32"]   = reflect.TypeOf(tu32)
+        typemap["uint64"]   = reflect.TypeOf(tu64)
+        typemap["ulong"]    = reflect.TypeOf(tu32)
+        typemap["uxlong"]   = reflect.TypeOf(tu64)
+        typemap["byte"]     = reflect.TypeOf(tu8)
+        typemap["int"]      = reflect.TypeOf(ti)
+        typemap["float"]    = reflect.TypeOf(tf64)
+        typemap["bigi"]     = reflect.TypeOf(tbi)
+        typemap["bigf"]     = reflect.TypeOf(tbf)
+        typemap["string"]   = reflect.TypeOf(ts)
+        typemap["[]bool"]   = reflect.TypeOf(stb)
+        typemap["[]uint"]   = reflect.TypeOf(stu)
+        typemap["[]uint8"]  = reflect.TypeOf(stu8)
+        typemap["[]byte"]   = reflect.TypeOf(stu8)
+        typemap["[]int"]    = reflect.TypeOf(sti)
+        typemap["[]uint32"]  = reflect.TypeOf(stu32)
+        typemap["[]uint64"]  = reflect.TypeOf(stu64)
+        typemap["[]float"]  = reflect.TypeOf(stf64)
+        typemap["[]string"] = reflect.TypeOf(sts)
+        typemap["[]bigi"]   = reflect.TypeOf(stbi)
+        typemap["[]bigf"]   = reflect.TypeOf(stbf)
+        typemap["[]interface {}"] = reflect.TypeOf(stmixed)
+        typemap["[]"]       = reflect.TypeOf(stmixed)
+        typemap["map"]    = nil
+
+        // end-of-typemap-dogshit
+
+        var t Variable
+
+        switch len(iargs) {
+        case 0:
+            // leave 0 args as unhandle, for a default constructor here
+        case len(structvalues)/4:
+            // work through iargs, populating struct fields here
+            // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+            n:=0
+            for i:=3; i<len(structvalues); i+=4 {
+                structvalues[i-1]=true
+                structvalues[i]=iargs[n]
+                n+=1
+            }
+        default:
+            // error
+            panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
+            finish(false,ERR_EVAL)
+            return nil
+        }
+
+        err:=fillStruct(&t,structvalues,typemap,false)
+        if err!=nil {
+            panic(err.Error())
+            finish(false,ERR_EVAL)
+            return nil
+        }
+
+        return t.IValue
+
+    }
 
     return callFunction(p.fs,p.ident,name,iargs)
 
@@ -1426,6 +1533,12 @@ func (p *leparser) identifier(token *Token) (any) {
     // permit enum names
     if enum[token.tokText]!=nil {
         return nil
+    }
+
+    // permit struct names
+    if _,found:=structmaps[token.tokText];found {
+        // pf("<struct id : %s> ",token.tokText)
+        return token.tokText
     }
 
     /*

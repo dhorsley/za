@@ -27,6 +27,82 @@ func showIdent(ident *[]Variable) {
     }
 }
 
+// populate a struct.
+func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,hasAry bool) (error) {
+
+    if len(structvalues)>0 {
+        var sfields []reflect.StructField
+        offset:=uintptr(0)
+        for svpos:=0; svpos<len(structvalues); svpos+=4 {
+            // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+            nv :=structvalues[svpos].(string)
+            nt :=structvalues[svpos+1].(string)
+            if nt=="any" || nt=="mixed" { nt="[]" }
+            sfields=append(sfields,
+                reflect.StructField{
+                    Name:nv,PkgPath:"main",
+                    Type:typemap[nt],
+                    Offset:offset,
+                    Anonymous:false,
+                },
+            )
+            offset+=typemap[nt].Size()
+        }
+        new_struct:=reflect.StructOf(sfields)
+        v:=(reflect.New(new_struct).Elem()).Interface()
+
+        if !hasAry {
+            // default values setting:
+
+            val:=reflect.ValueOf(v)
+            tmp:=reflect.New(val.Type()).Elem()
+            tmp.Set(val)
+
+            for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                nv :=structvalues[svpos].(string)
+                nhd:=structvalues[svpos+2].(bool)
+                ndv:=structvalues[svpos+3]
+
+                tf:=tmp.FieldByName(nv)
+
+                // Bodge: special case assignment of bigi/bigf to coerce type:
+                switch tf.Type().String() {
+                case "*big.Int":
+                    ndv=GetAsBigInt(ndv)
+                    nhd=true
+                case "*big.Float":
+                    ndv=GetAsBigFloat(ndv)
+                    nhd=true
+                }
+                // end-bodge
+
+                if nhd {
+
+                    var intyp reflect.Type
+                    if ndv!=nil { intyp=reflect.ValueOf(ndv).Type() }
+
+                    if intyp.AssignableTo(tf.Type()) {
+                        tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
+                        tf.Set(reflect.ValueOf(ndv))
+                    } else {
+                        return fmt.Errorf("cannot set field default (%T) for %v (%v)",ndv,nv,tf.Type())
+                    }
+                }
+            }
+
+            (*t).IValue=tmp.Interface()
+
+        } else {
+            (*t).IValue=[]any{}
+        }
+
+    } // end-len>0
+
+    return nil
+}
+
+
 
 func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) (chan any,string) {
 
@@ -1007,6 +1083,8 @@ tco_reentry:
             typemap["[]uint8"]  = reflect.TypeOf(stu8)
             typemap["[]byte"]   = reflect.TypeOf(stu8)
             typemap["[]int"]    = reflect.TypeOf(sti)
+            typemap["[]uint32"]  = reflect.TypeOf(stu32)
+            typemap["[]uint64"]  = reflect.TypeOf(stu64)
             typemap["[]float"]  = reflect.TypeOf(stf64)
             typemap["[]string"] = reflect.TypeOf(sts)
             typemap["[]bigi"]   = reflect.TypeOf(stbi)
@@ -1186,95 +1264,18 @@ tco_reentry:
 
                     if isStruct {
                         vlock.Lock()
-
-                        // holding temp var
                         t:=(*ident)[sid]
-
-                        // deal with var name [n]struct_type
-                        if len(structvalues)>0 {
-                            var sfields []reflect.StructField
-                            offset:=uintptr(0)
-                            for svpos:=0; svpos<len(structvalues); svpos+=4 {
-                                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-                                nv :=structvalues[svpos].(string)
-                                nt :=structvalues[svpos+1].(string)
-                                if nt=="any" || nt=="mixed" { nt="[]" }
-                                sfields=append(sfields,
-                                    reflect.StructField{
-                                        Name:nv,PkgPath:"main",
-                                        Type:typemap[nt],
-                                        Offset:offset,
-                                        Anonymous:false,
-                                    },
-                                )
-                                offset+=typemap[nt].Size()
-                            }
-                            new_struct:=reflect.StructOf(sfields)
-                            v:=(reflect.New(new_struct).Elem()).Interface()
-
-                            t.IName=vname
-                            t.ITyped=false
-                            t.declared=true
-
-                            if !hasAry {
-                                // default values setting:
-
-                                val:=reflect.ValueOf(v)
-                                tmp:=reflect.New(val.Type()).Elem()
-                                tmp.Set(val)
-
-                                allSet:=true
-
-                                for svpos:=0; svpos<len(structvalues); svpos+=4 {
-                                    // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-                                    nv :=structvalues[svpos].(string)
-                                    nhd:=structvalues[svpos+2].(bool)
-                                    ndv:=structvalues[svpos+3]
-
-                                    tf:=tmp.FieldByName(nv)
-
-                                    // Bodge: special case assignment of bigi/bigf to coerce type:
-                                    switch tf.Type().String() {
-                                    case "*big.Int":
-                                        ndv=GetAsBigInt(ndv)
-                                        nhd=true
-                                    case "*big.Float":
-                                        ndv=GetAsBigFloat(ndv)
-                                        nhd=true
-                                    }
-                                    // end-bodge
-
-                                    if nhd {
-
-                                        var intyp reflect.Type
-                                        if ndv!=nil { intyp=reflect.ValueOf(ndv).Type() }
-
-                                        if intyp.AssignableTo(tf.Type()) {
-                                            tf=reflect.NewAt(tf.Type(),unsafe.Pointer(tf.UnsafeAddr())).Elem()
-                                            tf.Set(reflect.ValueOf(ndv))
-                                        } else {
-                                            parser.report(inbound.SourceLine,sf("cannot set field default (%T) for %v (%v)",ndv,nv,tf.Type()))
-                                            finish(false,ERR_EVAL)
-                                            allSet=false
-                                            break
-                                        }
-                                    }
-                                }
-
-                                if allSet {
-                                    t.IValue=tmp.Interface()
-                                }
-
-                            } else {
-                                t.IValue=[]any{}
-                            }
-
-                        } // end-len>0
-
-                        // write temp to ident
-                        (*ident)[sid]=t
-
+                        err=fillStruct(&t,structvalues,typemap,hasAry)
                         vlock.Unlock()
+                        if err!=nil {
+                            parser.report(inbound.SourceLine,err.Error())
+                            finish(false,ERR_EVAL)
+                            break
+                        }
+                        t.IName=vname
+                        t.ITyped=false
+                        t.declared=true
+                        (*ident)[sid]=t
 
                     } else {
                         parser.report(inbound.SourceLine,sf("unknown data type requested '%v'",type_token_string))
