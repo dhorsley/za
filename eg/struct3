@@ -7,7 +7,7 @@
 
 seed(epoch_nano_time())
 
-struct s_person
+struct person
     name    string
     age     int
     dob     string
@@ -21,14 +21,13 @@ surnames = ["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cop
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
 
-var person s_person
-
 for e=1 to 1000
     for p=1 to 100
-        person.name=forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1]
-        person.age=rand(49)
-        person.dob=date(rand(1546300800)) # 1970 to 2019
-        people[p]=person
+        people[p]=person(
+            forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1],
+            rand(49),
+            date(rand(1546300800)) # 1970 to 2019
+        )
         println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
     endfor
     print
