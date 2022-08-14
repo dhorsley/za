@@ -14,7 +14,6 @@ doc `
     match on full base names.
 
 `
-
 struct process
     pid         int
     name        string
@@ -63,7 +62,6 @@ define ps(filter)
     var args        map
     var proc_list   map
     var proc        process
-    var parts       statm_line
     var mem         []
 
     mychildpid="@shell_pid".sysvar
@@ -100,14 +98,15 @@ define ps(filter)
         # read data from .../statm
         pm = $in "{dn}/statm"
         pm.fields
-        parts.size    = F[mem_parts.size].as_int     # tot prog size
-        parts.rss     = F[mem_parts.rss].as_int      # page count
-        parts.shared  = F[mem_parts.shared].as_int   # page count
-        parts.text    = F[mem_parts.text].as_int     # code 
-        parts.lib     = F[mem_parts.lib].as_int      # 0
-        parts.data    = F[mem_parts.data].as_int     # data+stack
-        parts.dt      = F[mem_parts.dt].as_int       # dirty page count (0)
-        mem[proc.pid] = parts
+        mem[proc.pid] = statm_line(
+            F[mem_parts.size].as_int,     # tot prog size
+            F[mem_parts.rss].as_int,      # page count
+            F[mem_parts.shared].as_int,   # page count
+            F[mem_parts.text].as_int,     # code 
+            F[mem_parts.lib].as_int,      # 0
+            F[mem_parts.data].as_int,     # data+stack
+            F[mem_parts.dt].as_int        # dirty page count (0)
+        )
 
         # add process to list
         proc_list[proc.pid] = proc
@@ -115,10 +114,8 @@ define ps(filter)
     endfor
 
     var keys []pid_lookup
-    var l pid_lookup
     foreach v in proc_list
-        l.pid=v.pid
-        l.index=v.name
+        l=pid_lookup(v.pid,v.name)
         append_to(ref keys,l)
     endfor
     return proc_list,keys,args,mem
@@ -159,18 +156,20 @@ end
 # MAIN
 #
 
+module "modules/getopt" as go
+
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 
 # args
-input s_filter    optarg 1
-input s_children  optarg 2
-on s_filter=="" do exit 1,"Error: no name specified."
+var reqs map
+reqs["n"]   =["s",optNature.m]
+reqs["a"]   =["b",optNature.n]
+opts,args=go.getopt(reqs)
 
-children=false
-on s_children=="all" do children=true
-on s_children!="" and not children do exit 2,"Error: argument 2 must be 'all' or nothing."
+name    =opts["n"]
+children=opts["a"]
 
 # fetch process list and sort by pid
-println pidof(s_filter,children).list_string.join(" ")
+println pidof(name,children).list_string.join(" ")
 
 
