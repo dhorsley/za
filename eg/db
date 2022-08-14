@@ -44,9 +44,11 @@ var user s_u
 
 foreach l in res
     fields(l,"|")
-    user.host=F[1]
-    user.user=F[2]
-    user.pass=F[3]
+    user=s_u(
+        F[1],
+        F[2],
+        F[3]
+    )
     println format("%+v",user) 
 endfor
 print
