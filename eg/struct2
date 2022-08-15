@@ -18,7 +18,7 @@ surnames =["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cope
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
 
-var people [100]mixed
+var people [100]any
 var person s_person
 
 for e=1 to 1000

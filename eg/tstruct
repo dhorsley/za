@@ -1,4 +1,7 @@
-struct q; a int; b string; c mixed; d any; endstruct
+a=0
+struct q; a int; b string; d [] = [0]; endstruct
 showstruct
 var z q
+println z
+println q(42,"test string",[42n])
 
