@@ -973,6 +973,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         var ti int
         var tf64 float64
         var ts string
+        var tmixed interface{}
         var tbi *big.Int
         var tbf *big.Float
 
@@ -1003,6 +1004,8 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         typemap["bigi"]     = reflect.TypeOf(tbi)
         typemap["bigf"]     = reflect.TypeOf(tbf)
         typemap["string"]   = reflect.TypeOf(ts)
+        typemap["mixed"]    = reflect.TypeOf(tmixed)
+        typemap["any"]      = reflect.TypeOf(tmixed)
         typemap["[]bool"]   = reflect.TypeOf(stb)
         typemap["[]uint"]   = reflect.TypeOf(stu)
         typemap["[]uint8"]  = reflect.TypeOf(stu8)
@@ -1014,7 +1017,8 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         typemap["[]string"] = reflect.TypeOf(sts)
         typemap["[]bigi"]   = reflect.TypeOf(stbi)
         typemap["[]bigf"]   = reflect.TypeOf(stbf)
-        typemap["[]interface {}"] = reflect.TypeOf(stmixed)
+        typemap["[]mixed"]  = reflect.TypeOf(stmixed)
+        typemap["[]any"]    = reflect.TypeOf(stmixed)
         typemap["[]"]       = reflect.TypeOf(stmixed)
         typemap["map"]    = nil
 

@@ -37,7 +37,13 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             nv :=structvalues[svpos].(string)
             nt :=structvalues[svpos+1].(string)
-            if nt=="any" || nt=="mixed" { nt="[]" }
+            if nt=="any" || nt=="mixed" { 
+                // nt="[]"
+                // @note: reflection returns a nil type for interface{}
+                // not allowing interface{} as a field type until
+                // we have a better way of doing this.
+                return fmt.Errorf("field type must be specific (not any/mixed) at field #%d",(svpos/4)+1)
+            }
             sfields=append(sfields,
                 reflect.StructField{
                     Name:nv,PkgPath:"main",
@@ -46,7 +52,15 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
                     Anonymous:false,
                 },
             )
-            offset+=typemap[nt].Size()
+            /*
+            pf("fillstruct::pre-offset::nt->%s\n",nt)
+            pf("fillstruct::pre-offset::tme->%s\n",typemap[nt])
+            */
+            if nt=="mixed" || nt=="any" {
+                offset+=0
+            } else {
+                offset+=typemap[nt].Size()
+            }
         }
         new_struct:=reflect.StructOf(sfields)
         v:=(reflect.New(new_struct).Elem()).Interface()
@@ -1036,6 +1050,7 @@ tco_reentry:
             var ts string
             var tbi *big.Int
             var tbf *big.Float
+            var tmixed any
 
             var stb     []bool
             var stu     []uint
@@ -1078,6 +1093,8 @@ tco_reentry:
             typemap["bigi"]     = reflect.TypeOf(tbi)
             typemap["bigf"]     = reflect.TypeOf(tbf)
             typemap["string"]   = reflect.TypeOf(ts)
+            typemap["mixed"]    = reflect.TypeOf(tmixed)
+            typemap["any"]      = reflect.TypeOf(tmixed)
             typemap["[]bool"]   = reflect.TypeOf(stb)
             typemap["[]uint"]   = reflect.TypeOf(stu)
             typemap["[]uint8"]  = reflect.TypeOf(stu8)
@@ -1089,7 +1106,8 @@ tco_reentry:
             typemap["[]string"] = reflect.TypeOf(sts)
             typemap["[]bigi"]   = reflect.TypeOf(stbi)
             typemap["[]bigf"]   = reflect.TypeOf(stbf)
-            typemap["[]interface {}"] = reflect.TypeOf(stmixed)
+            typemap["[]mixed"]  = reflect.TypeOf(stmixed)
+            typemap["[]any"]    = reflect.TypeOf(stmixed)
             typemap["[]"]       = reflect.TypeOf(stmixed)
             typemap["map"]    = nil
             // --
@@ -1116,12 +1134,12 @@ tco_reentry:
                 var new_type_token_string string
                 type_token_string := inbound.Tokens[eqPos-1].tokText
 
-                // @note: this only allows for []any not just any
-                //   will revise all this when i get my head around generics in Go 1.18
-
+                // @note: this needs killing with fire:
+                /*
                 if type_token_string=="]" || type_token_string=="mixed" || type_token_string=="any" {
                     type_token_string="[]"
                 }
+                */
                 if type_token_string!="[]" {
                     new_type_token_string = type_token_string
                 }
@@ -1163,6 +1181,10 @@ tco_reentry:
                         t.IKind=kbyte
                     case "uint64","uxlong":
                         t.IKind=kuint64
+                    case "mixed":
+                        t.IKind=kany
+                    case "any":
+                        t.IKind=kany
                     case "[]bool":
                         t.IKind=ksbool
                         t.IValue=make([]bool,size,size)
@@ -1241,7 +1263,6 @@ tco_reentry:
                     }
 
                     // write temp to ident
-                    // @note: have to write all to retain the ITyped flag!
                     vlock.Lock()
                     (*ident)[sid]=t
                     // pf("wrote var: %#v\n... with sid of #%d\n",t,sid)

@@ -153,6 +153,7 @@ const (
     kbigi
     kbigf
     kstring
+    kany
     ksbool
     ksint
     ksint64
