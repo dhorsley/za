@@ -28,11 +28,12 @@ func showIdent(ident *[]Variable) {
 }
 
 // populate a struct.
-func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,hasAry bool) (error) {
+func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,hasAry bool,fieldNames []string) (error) {
 
     if len(structvalues)>0 {
         var sfields []reflect.StructField
         offset:=uintptr(0)
+        nextNamePos:=0
         for svpos:=0; svpos<len(structvalues); svpos+=4 {
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             nv :=structvalues[svpos].(string)
@@ -44,10 +45,21 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
                 // we have a better way of doing this.
                 return fmt.Errorf("field type must be specific (not any/mixed) at field #%d",(svpos/4)+1)
             }
+
+            newtype:=typemap[nt]
+
+            // override name if provided in fieldNames:
+            if len(fieldNames)>0 {
+                // pf("Replacing field named '%s' with '%s'\n",nv,fieldNames[nextNamePos])
+                nv=fieldNames[nextNamePos]
+                newtype=reflect.TypeOf(structvalues[svpos+3])
+                nextNamePos++
+            }
+            // populate struct fields:
             sfields=append(sfields,
                 reflect.StructField{
                     Name:nv,PkgPath:"main",
-                    Type:typemap[nt],
+                    Type:newtype,
                     Offset:offset,
                     Anonymous:false,
                 },
@@ -56,11 +68,7 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             pf("fillstruct::pre-offset::nt->%s\n",nt)
             pf("fillstruct::pre-offset::tme->%s\n",typemap[nt])
             */
-            if nt=="mixed" || nt=="any" {
-                offset+=0
-            } else {
-                offset+=typemap[nt].Size()
-            }
+            offset+=typemap[nt].Size()
         }
         new_struct:=reflect.StructOf(sfields)
         v:=(reflect.New(new_struct).Elem()).Interface()
@@ -72,11 +80,17 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             tmp:=reflect.New(val.Type()).Elem()
             tmp.Set(val)
 
+            nextNamePos:=0
             for svpos:=0; svpos<len(structvalues); svpos+=4 {
                 // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
                 nv :=structvalues[svpos].(string)
                 nhd:=structvalues[svpos+2].(bool)
                 ndv:=structvalues[svpos+3]
+
+                if len(fieldNames)>0 {
+                    nv=fieldNames[nextNamePos]
+                    nextNamePos++
+                }
 
                 tf:=tmp.FieldByName(nv)
 
@@ -1286,7 +1300,7 @@ tco_reentry:
                     if isStruct {
                         vlock.Lock()
                         t:=(*ident)[sid]
-                        err=fillStruct(&t,structvalues,typemap,hasAry)
+                        err=fillStruct(&t,structvalues,typemap,hasAry,[]string{})
                         vlock.Unlock()
                         if err!=nil {
                             parser.report(inbound.SourceLine,err.Error())

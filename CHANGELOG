@@ -36,6 +36,22 @@ CHANGE LOG
 
         - another example in eg/struct3
 
+        - (experimental) added named fields in struct initialisation.
+            - e.g.
+            struct person; name string; age int; endstruct
+            new_person = person(.age 99,.name "bob")
+            - N.B. if any value is named then all values must be named.
+
+        - at some point after this is robust we will extend it to cover function call arguments
+            - at first glance, the changes required would be:
+                - add []string parameter to eval_ops.go/callFunction()
+                - check that arg_names tally with functionArgs[] expected names
+                - shove the arg_names list into it in eval.go/callFunction()
+                - in actor.go/Call() add a similar param
+                - in Call(), during population of param vars (inside farglock.RLock() stanza, just after tco_reentry label):
+                    - if argnames present then override fa value per arg with next argnames value
+            - would also need to check if this interferes with tail call elimination functionality.
+
     * updated za.vim
 
     * added user aliasing for MODULE command:
