@@ -169,29 +169,6 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         }
 
 
-        /*
-        // short-circuiting operators here, so that
-        // 'right' avoids evaluation.
-        // NOTE: THESE CURRENTLY COMMENTED AS INCOMPLETE
-        // PROBLEM 1 : how to skip the rhs expr to the correct continuation point
-        // PROBLEM 2 : may be undesirable behaviour anyway
-
-        switch token.tokType {
-        case SYM_LOR,C_Or:
-            switch left.(type) {
-            case bool:
-                if left.(bool) == true { continue }
-            }
-        case SYM_LAND:
-            switch left.(type) {
-            case bool:
-                if left.(bool) == false { continue }
-            }
-        }
-        */
-
-        // ... then proceed as normal:
-
         right,err := p.dparse(p.prectable[token.tokType] + 1)
         if err!=nil { panic(err) }
 
@@ -912,10 +889,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
     name:=left.(string)
     isStruct:=false
 
-    // filter for struct type names here:
-    //   if found, then return a constructed struct literal
-    //   using the evaluated terms inside the paren pair
-
+    // filter for enabling struct type names here:
     structvalues:=[]any{}
     found:=false
     if structvalues,found=structmaps[name];found {
@@ -938,9 +912,20 @@ func (p *leparser) callFunction(left any,right Token) (any) {
     }
 
     iargs:=[]any{}
+    arg_names:=[]string{}
+    argpos:=1
 
     if p.peek().tokType!=RParen {
         for {
+            switch p.peek().tokType {
+            case SYM_DOT:
+                p.next() // move-to-dot
+                p.next() // skip-to-name-from-dot
+                arg_names=append(arg_names,p.tokens[p.pos].tokText) // add name field
+            case RParen,O_Comma:
+                // missing/blank arg in list
+                panic(fmt.Errorf("missing argument #%d",argpos))
+            }
             dp,err:=p.dparse(0)
             if err!=nil {
                 return nil
@@ -950,6 +935,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
                 break
             }
             p.next()
+            argpos+=1
         }
     }
 
@@ -957,8 +943,8 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         p.next() // consume rparen
     }
 
-    // fmt.Printf("callfunction using (len:%d) ident of %v\n",len(*(p.ident)),*(p.ident))
 
+    // build struct literals
     if isStruct {
 
         // @note: this typemap set up is also in actor.go 
@@ -1011,8 +997,8 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         typemap["[]uint8"]  = reflect.TypeOf(stu8)
         typemap["[]byte"]   = reflect.TypeOf(stu8)
         typemap["[]int"]    = reflect.TypeOf(sti)
-        typemap["[]uint32"]  = reflect.TypeOf(stu32)
-        typemap["[]uint64"]  = reflect.TypeOf(stu64)
+        typemap["[]uint32"] = reflect.TypeOf(stu32)
+        typemap["[]uint64"] = reflect.TypeOf(stu64)
         typemap["[]float"]  = reflect.TypeOf(stf64)
         typemap["[]string"] = reflect.TypeOf(sts)
         typemap["[]bigi"]   = reflect.TypeOf(stbi)
@@ -1020,11 +1006,29 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         typemap["[]mixed"]  = reflect.TypeOf(stmixed)
         typemap["[]any"]    = reflect.TypeOf(stmixed)
         typemap["[]"]       = reflect.TypeOf(stmixed)
-        typemap["map"]    = nil
+        typemap["map"]      = nil
 
         // end-of-typemap-dogshit
 
         var t Variable
+
+        if len(arg_names)>0 {
+            // named field handling:
+            //  struct_name(.name value,...,.name value)
+            if len(arg_names)==len(iargs) {
+                // all dotted, named fields?
+                /*
+                for n:=0; n<len(arg_names); n+=1 {
+                    pf("s-field, loop name  #%d : %+v\n",n,arg_names[n])
+                    pf("s-field, loop value #%d : %+v\n",n,iargs[n])
+                }
+                */
+            } else {
+                panic(fmt.Errorf("length mismatch of argument names [%d] to struct fields [%d]",len(arg_names),len(iargs)))
+                finish(false,ERR_EVAL)
+                return nil
+            }
+        }
 
         switch len(iargs) {
         case 0:
@@ -1032,6 +1036,27 @@ func (p *leparser) callFunction(left any,right Token) (any) {
         case len(structvalues)/4:
             // work through iargs, populating struct fields here
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+
+            // confirm types match named arguments:
+            if len(arg_names)>0 {
+                for i:=range iargs {
+                    nameMatched:=false
+                    for j:=0; j<len(structvalues); j+=4 {
+                        if structvalues[j].(string)==arg_names[i] {
+                            if typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
+                                panic(fmt.Errorf("type mismatch in named field '%s', should be %v",arg_names[i],structvalues[j+1]))
+                            }
+                            nameMatched=true
+                            break // found a positive match, move on to next argument
+                        }
+                    }
+                    if !nameMatched {
+                        panic(fmt.Errorf("provided argument name '%s' not found in struct '%s'",arg_names[i],name))
+                    }
+                }
+                // if we reach here, then all types matched the provided values, hopefully!
+            }
+            
             n:=0
             for i:=3; i<len(structvalues); i+=4 {
                 structvalues[i-1]=true
@@ -1045,7 +1070,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
             return nil
         }
 
-        err:=fillStruct(&t,structvalues,typemap,false)
+        err:=fillStruct(&t,structvalues,typemap,false,arg_names)
         if err!=nil {
             panic(err.Error())
             finish(false,ERR_EVAL)
@@ -1056,6 +1081,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
 
     }
 
+    // if not a struct() then treat as a normal func() instead: 
     return callFunction(p.fs,p.ident,name,iargs)
 
 }
