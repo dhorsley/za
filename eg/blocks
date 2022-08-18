@@ -28,6 +28,8 @@
 #       this doesn't occur when using -S / coproc(false).
 #       ... just another reason to keep your processing inside Za where possible.
 
+working_home=home()
+on working_home == "$HOME" do working_home="/home/daniel"
 
 println "[#1]Async Test[#-]"
 
@@ -41,8 +43,8 @@ m[h.name]=h.handle
 done = ${
     echo -e "\n[#1]Za/Shell call test.[#-]"
     echo
-    if [[ "$HOME" != "" ]]; then
-        echo "Home Directory : [#fyellow]$HOME[#-]"
+    if [[ "{working_home}" != "" ]]; then
+        echo "Home Directory : [#fyellow]{working_home}[#-]"
     fi
 }
 
@@ -52,7 +54,7 @@ r={ls -l | wc -l}
 on r.okay do on r.out.as_int > 30 do println "Many files!"
 
 | echo
-| ls {=home()}
+| ls {working_home}
 
 println "\n[#1]Async result:[#-]\n"
 r=await(ref m,true)
