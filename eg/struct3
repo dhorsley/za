@@ -24,9 +24,9 @@ surnames = ["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cop
 for e=1 to 1000
     for p=1 to 100
         people[p]=person(
-            forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1],
-            rand(49),
-            date(rand(1546300800)) # 1970 to 2019
+            .name forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1],
+            .age  rand(49),
+            .dob  date(rand(1546300800)) # 1970 to 2019
         )
         println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
     endfor
