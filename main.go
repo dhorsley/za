@@ -853,7 +853,7 @@ func main() {
 
                 var trident = make([]Variable,identInitialSize)
 
-                Call(MODE_NEW, &trident, loc, ciTrap, iargs...)
+                Call(MODE_NEW, &trident, loc, ciTrap, []string{}, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]any)
                     if len(sigintreturn)>0 {
@@ -1102,7 +1102,7 @@ func main() {
             if !started && hasScript {
                 phraseParse("main", startScript, 0)
                 currentModule="main"
-                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
                 pf("\n\n")
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1204,7 +1204,7 @@ func main() {
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
-                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl)
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1314,7 +1314,7 @@ func main() {
         if *a_program!="" {
             vset(nil,1,&mident,"_stdin", string(data))
         }
-        Call(MODE_NEW, &mident, mainloc, ciMain)
+        Call(MODE_NEW, &mident, mainloc, ciMain, []string{})
         // calltable[mainloc].gcShyness=20
         // calltable[mainloc].gc=true
         calltable[mainloc].gcShyness=0

@@ -17,6 +17,14 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * add some kind of try-like operator
+        - would just be to cut down some of the necessary error handling, in a limited number 
+          of circumstances. no driving requirement for this, would just be nice to have.
+        - would either have to be a prefix, like ?, ??, try or something else,
+          or... a suffix which i don't have a lot of spare.
+        - or... a builtin lib func?
+        - will consider this more if it becomes an issue.
+
     * add a test mode that *does not* test imported modules.
         - i.e. only test the main file and assume the modules are already tested.
         - currently, everything gets tested all the time.

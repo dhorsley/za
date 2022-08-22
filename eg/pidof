@@ -62,7 +62,7 @@ define ps(filter)
     var args        map
     var proc_list   map
     var proc        process
-    var mem         []
+    var mem         map
 
     mychildpid="@shell_pid".sysvar
     thispid=pid()

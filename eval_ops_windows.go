@@ -132,9 +132,37 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             iargs=[]any{obj}
         }
 
+        /*
+        arg_names:=[]string{}
+        argpos:=1
+        */
+
         if p.peek().tokType==LParen {
             p.next()
             if p.peek().tokType!=RParen {
+                /*
+                for {
+                    switch p.peek().tokType {
+                    case SYM_DOT:
+                        p.next() // move-to-dot
+                        p.next() // skip-to-name-from-dot
+                        arg_names=append(arg_names,p.tokens[p.pos].tokText) // add name field
+                    case RParen,O_Comma:
+                        // missing/blank arg in list
+                        panic(fmt.Errorf("missing argument #%d",argpos))
+                    }
+                    dp,err:=p.dparse(0)
+                    if err!=nil {
+                        return nil
+                    }
+                    iargs=append(iargs,dp)
+                    if p.peek().tokType!=O_Comma {
+                        break
+                    }
+                    p.next()
+                    argpos+=1
+                }
+                */
                 for {
                     dp,err:=p.dparse(0)
                     if err!=nil {
@@ -152,7 +180,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             }
         }
 
-        return callFunction(p.fs,p.ident,name,iargs)
+        return callFunction(p.fs,p.ident,name,arg_names,iargs)
 
     }
 

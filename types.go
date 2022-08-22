@@ -154,9 +154,11 @@ type s_loop struct {
 	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
     iterOverMap      *reflect.MapIter // stored iterator
 	iterOverArray    any              // stored value to iterate over from start expression
-	repeatCond       []Token          // tested with wrappedEval() // used by while
+	repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
 	repeatActionStep int              // size of repeatAction
 	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
+    repeatAmendment  []Token          // used by custom FOR conditions
+    repeatCustom     bool             // FOR loop with custom conditions
 }
 
 // struct to support pseudo-windows in console

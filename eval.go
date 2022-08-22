@@ -163,7 +163,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
         case LParen:
             switch left.(type) {
             case string:
-                left = p.callFunction(left,token)
+                left = p.buildStructOrFunction(left,token)
                 continue
             }
         }
@@ -884,7 +884,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
 }
 
-func (p *leparser) callFunction(left any,right Token) (any) {
+func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
 
     name:=left.(string)
     isStruct:=false
@@ -892,7 +892,7 @@ func (p *leparser) callFunction(left any,right Token) (any) {
     // filter for enabling struct type names here:
     structvalues:=[]any{}
     found:=false
-    if structvalues,found=structmaps[name];found {
+    if structvalues,found=structmaps[name];found || name=="anon" {
         isStruct=true
     }
     // end-struct-filter
@@ -1030,44 +1030,66 @@ func (p *leparser) callFunction(left any,right Token) (any) {
             }
         }
 
-        switch len(iargs) {
-        case 0:
-            // leave 0 args as unhandle, for a default constructor here
-        case len(structvalues)/4:
-            // work through iargs, populating struct fields here
-            // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-
-            // confirm types match named arguments:
-            if len(arg_names)>0 {
-                for i:=range iargs {
-                    nameMatched:=false
-                    for j:=0; j<len(structvalues); j+=4 {
-                        if structvalues[j].(string)==arg_names[i] {
-                            if typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
-                                panic(fmt.Errorf("type mismatch in named field '%s', should be %v",arg_names[i],structvalues[j+1]))
-                            }
-                            nameMatched=true
-                            break // found a positive match, move on to next argument
-                        }
-                    }
-                    if !nameMatched {
-                        panic(fmt.Errorf("provided argument name '%s' not found in struct '%s'",arg_names[i],name))
+        if name=="anon" {
+            for n:=0; n<len(arg_names); n+=1 {
+                structvalues=append(structvalues,arg_names[n])
+                t:=reflect.TypeOf(iargs[n])
+                typeFound:=false
+                for vk,vt:=range typemap {
+                    if vt==t {
+                        structvalues=append(structvalues,vk)
+                        typeFound=true
+                        break
                     }
                 }
-                // if we reach here, then all types matched the provided values, hopefully!
+                if !typeFound {
+                    panic(fmt.Errorf("unknown type in struct(anon) field %s [%v]",arg_names[n],t))
+                    finish(false,ERR_EVAL)
+                    return nil
+                }
+                structvalues=append(structvalues,true)
+                structvalues=append(structvalues,iargs[n])
             }
-            
-            n:=0
-            for i:=3; i<len(structvalues); i+=4 {
-                structvalues[i-1]=true
-                structvalues[i]=iargs[n]
-                n+=1
+        } else {
+            switch len(iargs) {
+            case 0:
+                // leave 0 args as unhandle, for a default constructor here
+            case len(structvalues)/4:
+                // work through iargs, populating struct fields here
+                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+
+                // confirm types match named arguments:
+                if len(arg_names)>0 {
+                    for i:=range iargs {
+                        nameMatched:=false
+                        for j:=0; j<len(structvalues); j+=4 {
+                            if structvalues[j].(string)==arg_names[i] {
+                                if typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
+                                    panic(fmt.Errorf("type mismatch in named field '%s', should be %v",arg_names[i],structvalues[j+1]))
+                                }
+                                nameMatched=true
+                                break // found a positive match, move on to next argument
+                            }
+                        }
+                        if !nameMatched {
+                            panic(fmt.Errorf("provided argument name '%s' not found in struct '%s'",arg_names[i],name))
+                        }
+                    }
+                    // if we reach here, then all types matched the provided values, hopefully!
+                }
+                
+                n:=0
+                for i:=3; i<len(structvalues); i+=4 {
+                    structvalues[i-1]=true
+                    structvalues[i]=iargs[n]
+                    n+=1
+                }
+            default:
+                // error
+                panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
+                finish(false,ERR_EVAL)
+                return nil
             }
-        default:
-            // error
-            panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
-            finish(false,ERR_EVAL)
-            return nil
         }
 
         err:=fillStruct(&t,structvalues,typemap,false,arg_names)
@@ -1082,7 +1104,41 @@ func (p *leparser) callFunction(left any,right Token) (any) {
     }
 
     // if not a struct() then treat as a normal func() instead: 
-    return callFunction(p.fs,p.ident,name,iargs)
+
+    if len(arg_names)>0 { // check that arg_names tally with functionArgs list
+        var ifn uint32
+        var present bool
+        if ifn, present = fnlookup.lmget(name); !present {
+            panic(fmt.Errorf("could not find function named '%s'",name))
+            finish(false,ERR_EVAL)
+            return nil
+        }
+        farglock.RLock()
+        falist:=functionArgs[ifn].args
+        farglock.RUnlock()
+        if len(arg_names)==len(falist) {
+            for an:=range arg_names {
+                found:=false
+                for fa:=range falist {
+                    if an==fa {
+                        found=true 
+                        break
+                    }
+                }
+                if !found {
+                    panic(fmt.Errorf("argument '%s' not found in definition for '%s'",an,name))
+                    finish(false,ERR_EVAL)
+                    return nil
+                }
+            }
+        } else {
+            panic(fmt.Errorf("bad argument name count [%d] for '%s' [needs %d]",len(arg_names),name,len(falist)))
+            finish(false,ERR_EVAL)
+            return nil
+        }
+    }
+
+    return callFunction(p.fs,p.ident,name,arg_names,iargs)
 
 }
 
@@ -1566,7 +1622,7 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // permit struct names
-    if _,found:=structmaps[token.tokText];found {
+    if _,found:=structmaps[token.tokText];found || token.tokText=="anon" {
         // pf("<struct id : %s> ",token.tokText)
         return token.tokText
     }

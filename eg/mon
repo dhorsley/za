@@ -195,7 +195,7 @@ define showMem()
     at 3,2,"[#4]Free   : "; bar(3,10,16,(mem_free.as_int/mem_total.as_float)*100,4)
     print " [#6]{=hobbitsize(1024*mem_free.as_float)}B[#-]   "
 
-    at 4,2,"[#4]Avail  : "; bar(4,10,16,(mem_avail.as_int/mem_total.as_float)*100,4)
+    at 4,2,"[#4]Avail  : "; bar(4,10,16,(as_int(mem_avail)/as_float(mem_total))*100,4)
     print " [#6]{=hobbitsize(1024*mem_avail.as_float)}B[#-]   "
 
     at 5,2,"[#4]Cached : "; bar(5,10,16,(mem_cached.as_int/mem_total.as_float)*100,3)

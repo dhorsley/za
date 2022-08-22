@@ -56,7 +56,7 @@ define ps(filter)
     var proc_list   map
     var proc        process
     var parts       statm_line
-    var mem         []
+    var mem         map
 
     foreach p in procs
 
