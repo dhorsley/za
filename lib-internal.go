@@ -629,9 +629,9 @@ func buildInternalLib() {
         atomic.AddInt32(&concurrent_funcs,1)
         var rcount uint8
         if len(args)>1 {
-            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, args[1:]...)
+            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, []string{}, args[1:]...)
         } else {
-            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval)
+            rcount,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, []string{})
         }
 
         execMode=false

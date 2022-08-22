@@ -144,7 +144,7 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, iargs...)
+        rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, []string{}, iargs...)
 
         switch rcount {
         case 0:
@@ -548,7 +548,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, va ...any) (retval_count uint8,endFunc bool) {
+func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -716,23 +716,14 @@ tco_reentry:
     if len(va) > 0 {
         for q, v := range va {
             if q>=len(functionArgs[source_base].args) { break }
-
-            fa:=functionArgs[source_base].args[q]
-            vset(nil,ifs,ident,fa,v)
-
-            /*
-            pf("\n-- setting va-to-var (fargs-sb) : %+v\n",functionArgs[source_base])
-            pf("-- setting va-to-var in ifs#%d source_base: %d\n",csloc,source_base)
-            pf("-- setting va-to-var in ifs#%d ifs        : %d\n",csloc,ifs)
-            pf("-- setting va-to-var in ifs#%d variable   : %s\n",csloc,fa)
-            pf("-- bound to number                        : %d\n",bin)
-            pf("-- new ident entry                        : %#v\n",ident[bin])
-            pf("\n")
-            */
-
+            if len(arg_names)>0 {
+                vset(nil,ifs,ident,arg_names[q],v)
+            } else {
+                fa:=functionArgs[source_base].args[q]
+                vset(nil,ifs,ident,fa,v)
+            }
         }
     }
-    // pf("Entry binding table is:\n%#v\n",bindings[ifs])
     farglock.RUnlock()
 
     if len(functionspaces[source_base])>32767 {
@@ -854,7 +845,6 @@ tco_reentry:
             var default_value ExpressionCarton
             if hasValue {
                 default_value = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[eqPos+1:])
-                // pf(" : set default_value in hasValue ( %#v )\n",default_value)
                 if default_value.evalError {
                     parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",inbound.Tokens[0].tokText))
                     finish(false,ERR_SYNTAX)
@@ -1838,140 +1828,195 @@ tco_reentry:
 
         case C_For: // loop over an int64 range
 
-            if inbound.TokenCount < 5 || inbound.Tokens[2].tokText != "=" {
-                parser.report(inbound.SourceLine,"Malformed FOR statement.")
-                finish(false, ERR_SYNTAX)
-                break
-            }
+            var iterAssignment []Token
+            var iterCondition  []Token
+            var iterAmendment  []Token
+            customCond:=false
 
-            toAt := findDelim(inbound.Tokens, C_To, 2)
-            if toAt == -1 {
-                parser.report(inbound.SourceLine,"TO not found in FOR")
-                finish(false, ERR_SYNTAX)
-                break
-            }
+            // check for custom FOR setup
+            // e.g. for x=0,x<10,x+=1
 
-            stepAt := findDelim(inbound.Tokens, C_Step, toAt)
-            stepped := true
-            if stepAt == -1 {
-                stepped = false
-            }
+            commaList:=parser.splitCommaArray(inbound.Tokens[1:])
+            if len(commaList)==3 {
+                iterAssignment= commaList[0]
+                iterCondition = commaList[1]
+                iterAmendment = commaList[2]
+                foundAssign:=false
+                if len(iterAssignment)>0 {
+                    // has an equals? then do assignment
+                    for eqPos:=0; eqPos<len(iterAssignment); eqPos+=1 {
+                        if inbound.Tokens[eqPos].tokType == O_Assign {
+                            foundAssign=true
+                            default_value := parser.wrappedEval(ifs,ident,ifs,ident,iterAssignment)
+                            if default_value.evalError {
+                                foundAssign=false
+                            }
+                            break
+                        }
+                    }
+                    if !foundAssign {
+                        parser.report(inbound.SourceLine,sf("Invalid assignment in FOR (%+v)",iterAssignment))
+                        finish(false,ERR_SYNTAX)
+                        break
+                    }
+                }
+                customCond=true
 
-            var fstart, fend, fstep int
-
-            var err error
-
-            if toAt>3 {
-                expr, err = parser.Eval(ifs, inbound.Tokens[3:toAt])
-                if err==nil && isNumber(expr) {
-                    fstart, _ = GetAsInt(expr)
-                } else {
-                    parser.report(inbound.SourceLine,"Could not evaluate start expression in FOR")
-                    finish(false, ERR_EVAL)
+                // figure end position
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                if !endfound {
+                    parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
+                    finish(false, ERR_SYNTAX)
                     break
                 }
-            } else {
-                parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
-                finish(false,ERR_SYNTAX)
-                break
+
+                depth+=1
+                loops[depth] = s_loop{
+                    loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
+                    repeatCond: iterCondition, repeatAmendment: iterAmendment, repeatCustom: true,
+                }
+                lastConstruct = append(lastConstruct, C_For)
+
             }
 
-            if inbound.TokenCount>toAt+1 {
-                if stepAt>0 {
-                    expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:stepAt])
-                } else {
-                    expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:])
-                }
-                if err==nil && isNumber(expr) {
-                    fend, _ = GetAsInt(expr)
-                } else {
-                    parser.report(inbound.SourceLine,"Could not evaluate end expression in FOR")
-                    finish(false, ERR_EVAL)
+            if !customCond {
+
+                if inbound.TokenCount < 5 || inbound.Tokens[2].tokText != "=" {
+                    // not a normal or custom for loop
+                    parser.report(inbound.SourceLine,"Malformed FOR statement.")
+                    finish(false, ERR_SYNTAX)
                     break
                 }
-            } else {
-                parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
-                finish(false,ERR_SYNTAX)
-                break
-            }
 
-            if stepped {
-                if inbound.TokenCount>stepAt+1 {
-                    expr, err = parser.Eval(ifs, inbound.Tokens[stepAt+1:])
+                toAt := findDelim(inbound.Tokens, C_To, 2)
+                if toAt == -1 {
+                    parser.report(inbound.SourceLine,"TO not found in FOR")
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                stepAt := findDelim(inbound.Tokens, C_Step, toAt)
+                stepped := true
+                if stepAt == -1 {
+                    stepped = false
+                }
+
+                var fstart, fend, fstep int
+
+                var err error
+
+                if toAt>3 {
+                    expr, err = parser.Eval(ifs, inbound.Tokens[3:toAt])
                     if err==nil && isNumber(expr) {
-                        fstep, _ = GetAsInt(expr)
+                        fstart, _ = GetAsInt(expr)
                     } else {
-                        parser.report(inbound.SourceLine,"Could not evaluate STEP expression")
+                        parser.report(inbound.SourceLine,"Could not evaluate start expression in FOR")
                         finish(false, ERR_EVAL)
                         break
                     }
                 } else {
-                    parser.report(inbound.SourceLine, "Missing expression in FOR statement?")
+                    parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
                     finish(false,ERR_SYNTAX)
                     break
                 }
-            }
 
-            step := 1
-            if stepped {
-                step = fstep
-            }
-            if step == 0 {
-                parser.report(inbound.SourceLine,"This is a road to nowhere. (STEP==0)")
-                finish(true, ERR_EVAL)
-                break
-            }
-
-            direction := ACT_INC
-            if step < 0 {
-                direction = ACT_DEC
-            }
-
-            // figure end position
-            endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
-            if !endfound {
-                parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
-                finish(false, ERR_SYNTAX)
-                break
-            }
-
-            // @note: if loop counter is never used between here and C_Endfor, then don't vset the local var
-
-            // store loop data
-            fid:=inbound.Tokens[1].tokText
-
-            // prepare loop counter binding
-            bin:=inbound.Tokens[1].bindpos
-
-            depth+=1
-            loops[depth] = s_loop{
-                loopVar:  fid,
-                loopVarBinding: bin,
-                optNoUse: Opt_LoopStart,
-                loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
-                counter: fstart, condEnd: fend,
-                repeatAction: direction, repeatActionStep: step,
-            }
-
-            // store loop start condition
-            vset(&inbound.Tokens[1],ifs, ident, fid, fstart)
-
-            lastConstruct = append(lastConstruct, C_For)
-
-            // make sure start is not more than end, if it is, send it to the endfor
-            switch direction {
-            case ACT_INC:
-                if fstart>fend {
-                    parser.pc=parser.pc+enddistance-1
+                if inbound.TokenCount>toAt+1 {
+                    if stepAt>0 {
+                        expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:stepAt])
+                    } else {
+                        expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:])
+                    }
+                    if err==nil && isNumber(expr) {
+                        fend, _ = GetAsInt(expr)
+                    } else {
+                        parser.report(inbound.SourceLine,"Could not evaluate end expression in FOR")
+                        finish(false, ERR_EVAL)
+                        break
+                    }
+                } else {
+                    parser.report(inbound.SourceLine,"Missing expression in FOR statement?")
+                    finish(false,ERR_SYNTAX)
                     break
                 }
-            case ACT_DEC:
-                if fstart<fend {
-                    parser.pc=parser.pc+enddistance-1
+
+                if stepped {
+                    if inbound.TokenCount>stepAt+1 {
+                        expr, err = parser.Eval(ifs, inbound.Tokens[stepAt+1:])
+                        if err==nil && isNumber(expr) {
+                            fstep, _ = GetAsInt(expr)
+                        } else {
+                            parser.report(inbound.SourceLine,"Could not evaluate STEP expression")
+                            finish(false, ERR_EVAL)
+                            break
+                        }
+                    } else {
+                        parser.report(inbound.SourceLine, "Missing expression in FOR statement?")
+                        finish(false,ERR_SYNTAX)
+                        break
+                    }
+                }
+
+                step := 1
+                if stepped {
+                    step = fstep
+                }
+                if step == 0 {
+                    parser.report(inbound.SourceLine,"This is a road to nowhere. (STEP==0)")
+                    finish(true, ERR_EVAL)
                     break
                 }
-            }
 
+                direction := ACT_INC
+                if step < 0 {
+                    direction = ACT_DEC
+                }
+
+                // figure end position
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                if !endfound {
+                    parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                // @note: if loop counter is never used between here and C_Endfor, then don't vset the local var
+
+                // store loop data
+                fid:=inbound.Tokens[1].tokText
+
+                // prepare loop counter binding
+                bin:=inbound.Tokens[1].bindpos
+
+                depth+=1
+                loops[depth] = s_loop{
+                    loopVar:  fid,
+                    loopVarBinding: bin,
+                    optNoUse: Opt_LoopStart,
+                    loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
+                    counter: fstart, condEnd: fend,
+                    repeatAction: direction, repeatActionStep: step,
+                }
+
+                // store loop start condition
+                vset(&inbound.Tokens[1],ifs, ident, fid, fstart)
+
+                lastConstruct = append(lastConstruct, C_For)
+
+                // make sure start is not more than end, if it is, send it to the endfor
+                switch direction {
+                case ACT_INC:
+                    if fstart>fend {
+                        parser.pc=parser.pc+enddistance-1
+                        break
+                    }
+                case ACT_DEC:
+                    if fstart<fend {
+                        parser.pc=parser.pc+enddistance-1
+                        break
+                    }
+                }
+
+            } // end-not-custom-cond
 
         case C_Endfor: // terminate a FOR or FOREACH block
 
@@ -2067,40 +2112,76 @@ tco_reentry:
 
                 case C_For: // move through range
 
-                    (*thisLoop).counter += (*thisLoop).repeatActionStep
+                    if (*thisLoop).repeatCustom {
 
-                    switch (*thisLoop).repeatAction {
-                    case ACT_INC:
-                        if (*thisLoop).counter > (*thisLoop).condEnd {
-                            (*thisLoop).counter -= (*thisLoop).repeatActionStep
-                            if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                        // amend iterator
+                        if len((*thisLoop).repeatAmendment)>0 {
+                            evAmendment := parser.wrappedEval(ifs,ident,ifs,ident,(*thisLoop).repeatAmendment)
+                            if evAmendment.evalError {
+                                parser.report(inbound.SourceLine,"Invalid expression for amendment in FOR")
+                                finish(false, ERR_EVAL)
+                                break
                             }
-                            loopEnd = true
                         }
-                    case ACT_DEC:
-                        if (*thisLoop).counter < (*thisLoop).condEnd {
-                            (*thisLoop).counter -= (*thisLoop).repeatActionStep
-                            if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+
+                        // check iterator
+                        if len((*thisLoop).repeatCond)>0 {
+                            evCond := parser.wrappedEval(ifs,ident,ifs,ident,(*thisLoop).repeatCond)
+                            if evCond.evalError {
+                                parser.report(inbound.SourceLine,"Invalid condition for amendment in FOR")
+                                finish(false, ERR_EVAL)
+                                break
                             }
-                            loopEnd = true
+                            loopEnd=true
+                            switch evCond.result.(type) {
+                            case bool:
+                                if evCond.result.(bool) {
+                                    loopEnd=false
+                                }
+                            default:
+                                parser.report(inbound.SourceLine,"Condition does not evaluate to a bool in FOR")
+                                finish(false, ERR_EVAL)
+                                break
+                            }
                         }
-                    }
 
-                    if (*thisLoop).optNoUse == Opt_LoopStart {
-                        (*thisLoop).optNoUse = Opt_LoopIgnore
-                        // check tokens once for loop var references, then set Opt_LoopSet if found.
-                        if searchToken(source_base, (*thisLoop).repeatFrom, parser.pc, (*thisLoop).loopVar) {
-                            (*thisLoop).optNoUse = Opt_LoopSet
+                    } else {
+
+                        (*thisLoop).counter += (*thisLoop).repeatActionStep
+
+                        switch (*thisLoop).repeatAction {
+                        case ACT_INC:
+                            if (*thisLoop).counter > (*thisLoop).condEnd {
+                                (*thisLoop).counter -= (*thisLoop).repeatActionStep
+                                if (*thisLoop).optNoUse == Opt_LoopIgnore {
+                                    vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                }
+                                loopEnd = true
+                            }
+                        case ACT_DEC:
+                            if (*thisLoop).counter < (*thisLoop).condEnd {
+                                (*thisLoop).counter -= (*thisLoop).repeatActionStep
+                                if (*thisLoop).optNoUse == Opt_LoopIgnore {
+                                    vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                }
+                                loopEnd = true
+                            }
                         }
-                    }
 
-                    // assign loop counter value back to local variable
-                    if (*thisLoop).optNoUse == Opt_LoopSet {
-                        // assign directly as already declared and removes the fn call
-                        // vset(ifs,ident,(*thisLoop).loopVar,(*thisLoop).counter)
-                        (*ident)[(*thisLoop).loopVarBinding].IValue=(*thisLoop).counter
+                        if (*thisLoop).optNoUse == Opt_LoopStart {
+                            (*thisLoop).optNoUse = Opt_LoopIgnore
+                            // check tokens once for loop var references, then set Opt_LoopSet if found.
+                            if searchToken(source_base, (*thisLoop).repeatFrom, parser.pc, (*thisLoop).loopVar) {
+                                (*thisLoop).optNoUse = Opt_LoopSet
+                            }
+                        }
+
+                        // assign loop counter value back to local variable
+                        if (*thisLoop).optNoUse == Opt_LoopSet {
+                            // assign directly as already declared and removes the fn call
+                            (*ident)[(*thisLoop).loopVarBinding].IValue=(*thisLoop).counter
+                        }
+
                     }
 
                 }
@@ -2904,7 +2985,6 @@ tco_reentry:
             if rightParenLoc!=inbound.TokenCount-1 {
                 var err error
                 nival,err = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
-                //nival=sf("%v",nival)
                 if err!=nil {
                     parser.report(inbound.SourceLine,sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
                     finish(false,ERR_EVAL)
@@ -2938,7 +3018,6 @@ tco_reentry:
                     _,_=task(ifs,lmv,true,call,resu...)
                 } else {
                     h,id:=task(ifs,lmv,false,call,resu...)
-                    // time.Sleep(1 * time.Millisecond)
                     // assign channel h to handles map
                     if nival==nil {
                         vsetElement(nil,ifs,ident,handles,sf("async_%v",id),h)
@@ -3524,11 +3603,11 @@ tco_reentry:
                 // pf("[mod] loc -> %d\n",loc)
                 if debug_level>10 {
                     start := time.Now()
-                    Call(MODE_NEW, &modident, loc, ciMod)
+                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    Call(MODE_NEW, &modident, loc, ciMod)
+                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
                 }
 
                 calllock.Lock()
@@ -4522,16 +4601,16 @@ func (parser *leparser) splitCommaArray(tokens []Token) (resu [][]Token) {
         if nt.tokType==LParen { evnest+=1 }
         if nt.tokType==RParen { evnest-=1 }
         if evnest==0 {
+            if nt.tokType == O_Comma {
+                v := tokens[newstart:term]
+                resu=append(resu,v)
+                newstart=term+1
+            }
             if term==lt-1 {
                 v := tokens[newstart:term+1]
                 resu=append(resu,v)
                 newstart=term+1
                 continue
-            }
-            if nt.tokType == O_Comma {
-                v := tokens[newstart:term]
-                resu=append(resu,v)
-                newstart=term+1
             }
         }
     }

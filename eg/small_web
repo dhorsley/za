@@ -5,12 +5,23 @@
 # change these to suit:
 # HOME_PATH in web_serve_start() currently needs to be absolute path
 
-permit("shell",false)
-permit("eval",false)
+define interface_ip(in)
+    addrline =< ip addr show dev {in}
+    fil=addrline.reg_filter("inet.*/")
+    return addrline[fil[0][0]:fil[0][1]].reg_replace("inet ","").gsub("/","")
+end
 
-HOST="10.0.2.15"
+define routing_interface()
+    i =< ip -o -4 route show to default
+    return field(i,5)
+end
+
+HOST=routing_interface().interface_ip
 PORT=61440
 HOME_PATH="/home/daniel/www"
+
+permit("shell",false)
+permit("eval",false)
 
 trapInt="cleanup(sid)"
 

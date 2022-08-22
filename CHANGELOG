@@ -21,7 +21,21 @@ CHANGE LOG
     other
     -----
 
-    * Added syntax for struct initialisation with user values.
+    * added c-like FOR loop iteration
+        - syntax:
+            FOR [assignment] , [condition] , [expression]
+                # action
+            ENDFOR
+        - any of the terms may be empty
+        - this can be used for infinite loops ( FOR ,, ; ENDFOR )
+        - FOR ,cond, ; ENDFOR is similar to a do {block} while <cond> loop, where the condition is checked at the block end
+            - this is in contrast to the WHILE..ENDWHILE statements, where the condition is checked at the start of the iteration.
+        - the iterator may be specified outside of the loop
+        - Please note! This form can easily be half as fast, or worse, than a 'FOR .. TO [ .. STEP ]' loop
+            - this is due to the condition and expression being evaluated inside Za instead of the host language.
+            - it should still be fast enough for any ordinary requirements of this language.
+
+    * (experimental) Added syntax for struct initialisation with user values.
         - struct_name() returns a struct literal with default values (as specified in struct statement for the struct type)
         - struct_name(args) returns a struct literal populated in struct field order with the args from left-to-right.
 
@@ -34,23 +48,33 @@ CHANGE LOG
             instance.age
             42
 
-        - another example in eg/struct3
+        - anon(named args) allows for an anonymous struct literal with named fields
 
-        - (experimental) added named fields in struct initialisation.
+            - e.g.
+            x=anon(.age 42,.found true,.name "blah")
+            y=anon(.age 35,.found true,.name "blah")
+            z=anon(.age 42,.found true,.name "blah")
+            z==x
+            true
+            x==y
+            false
+
+        - added named args in struct initialisation.
             - e.g.
             struct person; name string; age int; endstruct
             new_person = person(.age 99,.name "bob")
             - N.B. if any value is named then all values must be named.
 
-        - at some point after this is robust we will extend it to cover function call arguments
-            - at first glance, the changes required would be:
-                - add []string parameter to eval_ops.go/callFunction()
-                - check that arg_names tally with functionArgs[] expected names
-                - shove the arg_names list into it in eval.go/callFunction()
-                - in actor.go/Call() add a similar param
-                - in Call(), during population of param vars (inside farglock.RLock() stanza, just after tco_reentry label):
-                    - if argnames present then override fa value per arg with next argnames value
-            - would also need to check if this interferes with tail call elimination functionality.
+        - also added named function call arguments:
+            - this only works with user-defined functions
+            - it DOES NOT work when calling using UFCS-like syntax, currently.
+            - e.g.
+            define swap(first,second)
+                return second,first
+            end
+            swap(.first 10,.second 20)
+            [20 10]
+            - as with structs, either all args must be named, or none of them.
 
     * updated za.vim
 

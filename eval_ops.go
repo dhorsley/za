@@ -1490,7 +1490,7 @@ func slice(v any, from, to any) any {
 }
 
 
-func callFunction(evalfs uint32, ident *[]Variable, name string, args []any) (res any) {
+func callFunction(evalfs uint32, ident *[]Variable, name string, arg_names []string, args []any) (res any) {
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1523,7 +1523,7 @@ func callFunction(evalfs uint32, ident *[]Variable, name string, args []any) (re
 
             var ident = make([]Variable,identInitialSize)
 
-            rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, args...)
+            rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, arg_names, args...)
 
             // handle the returned result, if present.
 

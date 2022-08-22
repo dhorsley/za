@@ -1,0 +1,29 @@
+
+doc `
+    dummy struct module for testing showstruct.
+`
+
+struct person
+    forename    string
+    surname     string
+    age         int
+endstruct
+
+struct car
+    model           string
+    manufacturer    string
+    issue_date      int
+    doors           int     = 5
+    wheels          int     = 4
+    rrp             int
+endstruct
+
+struct animal
+    name        string
+    type        string      = "fish"
+    family      string
+    marine      bool        = true
+    fly         bool
+endstruct
+
+

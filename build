@@ -51,7 +51,7 @@ if ! os() ~ "^freebsd"
     when tgt
     is "default"
         on buildDefault(bvers,bdate)!=0 do exit e.build,"Failed to build default version."
-    has tgt ~i "^(alpine|aws)$"
+    has tgt ~i "^(alpine)$"
         on buildMusl(bvers,bdate)!=0 do exit e.build,"Failed to build musl version."
     is "libc"
         on buildLibc(bvers,bdate)!=0 do exit e.build,"Failed to build libc version."
@@ -70,7 +70,7 @@ if is_file("za")
     if not os() ~ "^freebsd"
         if upxfound
             if tgt!="win"
-                on strip_enable and not tgt ~i "^(alpine|aws)$" do | strip -s -w za
+                on strip_enable and not tgt ~i "^(alpine)$" do | strip -s -w za
                 on upx_enable                                   do | upx za
             endif
         else
