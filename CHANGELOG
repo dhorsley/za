@@ -86,6 +86,9 @@ CHANGE LOG
         - the alias name must follow the usual rules for identifier syntax (^[a-zA-Z_][a-zA-Z0-9_]*$)
         - when no alias is provided the existing rules are used for checking namespace membership.
 
+    * extended SHOWDEF to permit a module name or alias argument, for listing all 
+        definitions from an imported module.
+
     * added test output file filename specifier to LOGGING command, i.e.:
         LOGGING TESTFILE filename_string
         - this will rename the current/default test file and append further logs to the new named file.

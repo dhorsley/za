@@ -397,7 +397,12 @@ func InSlice(a uint8, list []uint8) bool {
 //
 
 // searchToken is used by FOR to check for occurrences of the loop variable.
+// the presence of indirection always causes a return of true
 func searchToken(source_base uint32, start int16, end int16, sval string) bool {
+
+    if sval=="" {
+        return false
+    }
 
     range_fs:=functionspaces[source_base][start:end]
 
@@ -1872,6 +1877,7 @@ tco_reentry:
 
                 depth+=1
                 loops[depth] = s_loop{
+                    optNoUse: Opt_LoopStart,
                     loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                     repeatCond: iterCondition, repeatAmendment: iterAmendment, repeatCustom: true,
                 }
@@ -3185,14 +3191,28 @@ tco_reentry:
         case C_Showdef:
 
             if inbound.TokenCount == 2 {
-                fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
-                fn =  interpolate(ifs,ident,fn)
-                if _, exists := fnlookup.lmget(fn); exists {
-                    ShowDef(fn)
+
+                searchTerm:=inbound.Tokens[1].tokText
+                if val,found:=modlist[searchTerm]; found {
+                    if val==true {
+                        pf("[#5]Module %s : Functions[#-]\n",searchTerm)
+                        for _,fun:=range funcmap {
+                            if fun.module==searchTerm {
+                                ShowDef(fun.name)
+                            }
+                        }
+                    }
                 } else {
-                    parser.report(inbound.SourceLine,"Function not found.")
-                    finish(false, ERR_EVAL)
+                    fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
+                    fn =  interpolate(ifs,ident,fn)
+                    if _, exists := fnlookup.lmget(fn); exists {
+                        ShowDef(fn)
+                    } else {
+                        parser.report(inbound.SourceLine,"Module/function not found.")
+                        finish(false, ERR_EVAL)
+                    }
                 }
+
             } else {
                 for oq := range fnlookup.smap {
                     if fnlookup.smap[oq] < 2 {
