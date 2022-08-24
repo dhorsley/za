@@ -3,20 +3,29 @@
 module "modules/getopt" as go
 
 var reqs map
-reqs["a"]   =["s",optNature.m]
-reqs["b"]   =["n",optNature.o]
-reqs["c"]   =["b",optNature.n]
-reqs["long"]=["s",optNature.m]
+reqs["a"]   =["s",optNature.m,"test string"]
+reqs["b"]   =["n",optNature.o,"test number"]
+reqs["c"]   =["b",optNature.n,"test bool"]
+reqs["long"]=["s",optNature.m,"test long name"]
+reqs["h"]   =["b",optNature.n,"help"]
 
 opts,args=go.getopt(reqs)
 
 println "request map:"
 println reqs
+
+if opts["h"]
+    go.opthelp(reqs)
+    exit
+endif
+
 println "\nresults map:"
 println "[#4]arg".pad(-1,20),"value".pad(-1,20),"type[#-]"
+
 foreach v in opts
     println key_v.pad(-1,20),v.as_string.pad(-1,20),v.kind
 endfor
+
 println "\nremnant args :"
 println args
 println

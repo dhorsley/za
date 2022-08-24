@@ -12,7 +12,7 @@ doc `
         in: 
             options requirements map
             reqs_entry format:
-            key:name, value []any ( [0]type: (s)string, (b)bool, (n)numeric , [1]nature: novalue/optional/mandatory )
+            key:name, value []any ( [0]type: (s)string, (b)bool, (n)numeric , [1]nature: novalue/optional/mandatory, [2] description )
 
         out:
             map name->value pairs (option_name,value) [ret#1] and []string [ret#2] (contains remnant args, in acceptance order)
@@ -32,11 +32,13 @@ define opthelp(reqs)
         is "b"; print "[#3]BOOLEAN".pad(-1,10)
         endwhen
         when o[1]
-        is optNature.n; println "[#7]No value".pad(-1,20)
-        is optNature.m; println "[#2]Mandatory".pad(-1,20)
-        is optNature.o; println "[#6]Optional".pad(-1,20)
+        is optNature.n; print "[#7]No value".pad(-1,12)
+        is optNature.m; print "[#2]Mandatory".pad(-1,12)
+        is optNature.o; print "[#6]Optional".pad(-1,12)
         endwhen
         print "[#-]"
+        on o[2]!="" do print "[#i1]",o[2],"[#i0]"
+        println
     endfor
     exit optErr.NoError
 end
