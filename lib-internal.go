@@ -248,10 +248,32 @@ func buildInternalLib() {
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
-        "enum_names","enum_all","dump","sysvar",
+        "enum_names","enum_all","dump","sysvar","expect",
         "ast","varbind","sizeof","dup",
         // "conread","conwrite","conset","conclear", : for future use.
     }
+
+    slhelp["expect"] = LibHelp{in: "[]arguments,variant_count,[]variants", out: "bool", action: "returns true if the arguments satisfy the type list.\na variant is an argument count followed by a list of type_strings."}
+    stdlib["expect"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("expect",args,1,"3","[]interface {}","int","[]string"); !ok { return nil,err }
+        // find caller's name and remove trailing func space instance id:
+        myName,_     := numlookup.lmget(evalfs)
+        replAny   ,_ := stdlib["replace"](evalfs,ident,myName,"@.*$","")
+        myName        = replAny.(string)
+        // some type name conversion for "float"==float64 and "interface {}"==any
+        variants:=args[2].([]string)
+        for k,v:=range variants {
+            switch v {
+            case "float": variants[k]="float64"
+            case "any":   variants[k]="interface {}"
+            }
+        }
+        // make check:
+        ok,err:=expect_args(myName, args[0].([]any), args[1].(int), variants...)
+        if err!=nil { return false,nil }
+        return ok,nil
+    }
+
 
     slhelp["gdump"] = LibHelp{in: "function_name", out: "", action: "Displays system variable list."}
     stdlib["gdump"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -385,6 +407,7 @@ func buildInternalLib() {
             return nil,errors.New(sf("dup requires a map, not a %T",args[0]))
         }
     }
+
     slhelp["sizeof"] = LibHelp{in: "string", out: "uint", action: "returns the size of an object."}
     stdlib["sizeof"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sizeof",args,1,"1","any"); !ok { return nil,err }

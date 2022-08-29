@@ -1,0 +1,19 @@
+#!/usr/bin/za
+
+define etest(args)
+    return expect(args,4,
+        [
+            "3","int","string","int",
+            "3","int","string","bool",
+            "2","int","string",
+            "1","int"
+        ].list_string
+    )
+end
+
+assert etest([42,"blah",100])
+assert etest([42,"blah",true])
+assert etest([42,"blah"])
+assert etest([42,"blah","true"])        # should fail
+
+
