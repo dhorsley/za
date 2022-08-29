@@ -16,7 +16,8 @@ CHANGE LOG
     ---------------
 
     * removed fileabs and filebase. replaced by $pa and $pb operators.
-
+    * (experimental) added expect() call for checking a list against a set of type variants
+        - see eg/expect for example. 
 
     other
     -----
