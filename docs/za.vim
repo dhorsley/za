@@ -208,6 +208,7 @@ syntax match internal_functions "\(^|.\|\s*\)permit\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)enum_names\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)enum_all\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)dup\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)expect\s*("he=e-1
 
 syntax match image_functions "\(^|.\|\s*\)svg_start\s*("he=e-1
 syntax match image_functions "\(^|.\|\s*\)svg_end\s*("he=e-1
