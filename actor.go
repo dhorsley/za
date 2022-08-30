@@ -144,7 +144,7 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, []string{}, iargs...)
+        rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, self_s{}, []string{}, iargs...)
 
         switch rcount {
         case 0:
@@ -553,7 +553,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
+func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self self_s, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -710,6 +710,9 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
     // counters per loop type
     var loops = make([]s_loop, MAX_LOOPS)
 
+    if self.aware {
+        vset(nil,ifs,ident,"self",*self.ptr)
+    }
 
 tco_reentry:
 
@@ -3623,11 +3626,11 @@ tco_reentry:
                 // pf("[mod] loc -> %d\n",loc)
                 if debug_level>10 {
                     start := time.Now()
-                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, self, []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, self, []string{})
                 }
 
                 calllock.Lock()

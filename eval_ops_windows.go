@@ -128,7 +128,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
         // user-defined or stdlib call 
 
         var iargs []any
-        if !nonlocal {
+        if !nonlocal && !isStruct {
             iargs=[]any{obj}
         }
 
@@ -180,7 +180,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             }
         }
 
-        return callFunction(p.fs,p.ident,name,arg_names,iargs)
+        self:=self_s{} 
+        if isStruct {
+            self.aware=true
+            self.ptr=&obj
+        }
+
+        return callFunction(p.fs,p.ident,name,self_s{},arg_names,iargs)
 
     }
 

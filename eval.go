@@ -907,7 +907,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
         }
 
         if !isFunc {
-            panic(fmt.Errorf("'%v' is not a function",name))
+            panic(fmt.Errorf("'%v' (l:%#v,r:%#v) is not a function",name,left,right))
         }
     }
 
@@ -1138,7 +1138,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
         }
     }
 
-    return callFunction(p.fs,p.ident,name,arg_names,iargs)
+    return callFunction(p.fs,p.ident,name,self_s{},arg_names,iargs)
 
 }
 
@@ -1557,6 +1557,8 @@ func (p *leparser) command() (string) {
 
 func (p *leparser) identifier(token *Token) (any) {
 
+    // pf("(id, got token -> %#v)\n",token)
+
     if token.subtype!=subtypeNone {
         switch token.subtype {
         case subtypeConst:
@@ -1591,6 +1593,7 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     if (*p.ident)[bin].declared {
+        // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
         return (*p.ident)[bin].IValue
     }
 
@@ -1600,7 +1603,7 @@ func (p *leparser) identifier(token *Token) (any) {
         sglock.RLock(); unlock=true
     }
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
-        // fmt.Printf("(ig) fetched %s->%v from fs %d\n",token.tokText,val,p.mident)
+        // fmt.Printf("(ig) fetched %s->%v from global ident\n",token.tokText,val)
         if unlock { sglock.RUnlock() }
         return val
     }
