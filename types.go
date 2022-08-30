@@ -36,6 +36,13 @@ type fa_s struct { // function args struct
 }
 
 
+// "self" argument struct
+type self_s struct {
+    aware   bool
+    ptr     *interface{}
+}
+
+
 // ExpressionFunction can be called from within expressions.
 type ExpressionFunction = func(evalfs uint32,ident *[]Variable,args ...any) (any, error)
 

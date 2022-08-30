@@ -746,7 +746,6 @@ func main() {
             gvset("@shell_pid",bgproc.Process.Pid)
         }
 
-        // PIG
         // prepare for getInput() keyboard input (from main process)
         tt, _ = term.Open("/dev/tty")
 
@@ -758,7 +757,7 @@ func main() {
     signal.Notify(breaksig,syscall.SIGINT)
 
     // - name of Za function that handles ctrl-c.
-    vset(nil,2,&mident,"trapInt", "")
+    gvset("trapInt", "")
 
     go func() {
         for {
@@ -790,7 +789,7 @@ func main() {
             }
 
             // user-trap handling
-            userSigIntHandler,usihfound:=vget(nil,2,&mident,"trapInt")
+            userSigIntHandler,usihfound:=gvget("trapInt")
             usih:=""
             if usihfound {
                 switch userSigIntHandler.(type) {
@@ -853,7 +852,7 @@ func main() {
 
                 var trident = make([]Variable,identInitialSize)
 
-                Call(MODE_NEW, &trident, loc, ciTrap, []string{}, iargs...)
+                Call(MODE_NEW, &trident, loc, ciTrap, self_s{}, []string{}, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]any)
                     if len(sigintreturn)>0 {
@@ -1102,7 +1101,7 @@ func main() {
             if !started && hasScript {
                 phraseParse("main", startScript, 0)
                 currentModule="main"
-                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, self_s{}, []string{})
                 pf("\n\n")
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1204,7 +1203,7 @@ func main() {
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
-                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
+                _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, self_s{}, []string{})
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1314,7 +1313,7 @@ func main() {
         if *a_program!="" {
             vset(nil,1,&mident,"_stdin", string(data))
         }
-        Call(MODE_NEW, &mident, mainloc, ciMain, []string{})
+        Call(MODE_NEW, &mident, mainloc, ciMain, self_s{}, []string{})
         // calltable[mainloc].gcShyness=20
         // calltable[mainloc].gc=true
         calltable[mainloc].gcShyness=0
