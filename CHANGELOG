@@ -77,6 +77,24 @@ CHANGE LOG
             [20 10]
             - as with structs, either all args must be named, or none of them.
 
+
+    * (experimental) playing with 'self' (and faked methods)
+        - nothing to see here, move along.
+            - syntax: struct_instance '.' function_name [ '(' args ')' ]
+            - when first word is a struct_instance name (rather than enum, func, module, etc)
+            - *and* second word is a func name rather than a field name:
+                - a pointer to an amendable copy of the struct is passed to the func as 'self'
+                - the struct_instance is *NOT* passed as the first func arg
+                - instead only the parenthesis surrounded args are passed.
+                - you can modify 'self' inside the func call
+                - however you must return self to be allocated by the caller if you need to modify the source struct.
+            - this is not ever intended to be the start of OO! not going down that path. 
+                - just tinkering at the moment to see if this form has any use.
+        - this is extremely likely to be removed - don't rely on it!
+        - if you previously relied on the UFCS-like passing of structs, this may be broken until this is reverted.
+            - apologies for this, but the previous behaviour was undocumented (which is of course my fault!)
+            - the workaround for this is to change the references to the first parameter in func defs to 'self'
+
     * updated za.vim
 
     * added user aliasing for MODULE command:

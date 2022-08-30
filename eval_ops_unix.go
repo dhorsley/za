@@ -32,10 +32,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
     default:
 
         r := reflect.ValueOf(obj)
+        isStruct:=false
 
         switch r.Kind() {
 
         case reflect.Struct:
+
+            isStruct=true
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -85,8 +88,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                     f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                     return f.Interface()
                 }    
-            }    
-
+            }
         }    
 
         name:=field
@@ -126,7 +128,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
         // user-defined or stdlib call 
 
         var iargs []any
-        if !nonlocal {
+        if !nonlocal && !isStruct {
             iargs=[]any{obj}
         }
 
@@ -178,8 +180,14 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 p.next() // consume rparen 
             }
         }
+       
+        self:=self_s{} 
+        if isStruct {
+            self.aware=true
+            self.ptr=&obj
+        }
 
-        return callFunction(p.fs,p.ident,name,[]string{},iargs)
+        return callFunction(p.fs,p.ident,name,self,[]string{},iargs)
 
     }
 
