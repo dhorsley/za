@@ -1483,6 +1483,8 @@ tco_reentry:
             // cause evaluation of all terms following IN
             case SYM_BOR, O_InFile, ResultBlock, Block, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
+
+
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
@@ -1492,6 +1494,9 @@ tco_reentry:
 
                 // ensure result block has content:
                 switch we.result.(type) {
+                case struct {out string; err string; code int; okay bool}:
+                    // cast cmd results as their stdout string in loops
+                    we.result=we.result.(struct {out string; err string; code int; okay bool}).out
                 case string:
                 default:
                     if inbound.Tokens[3].tokType==ResultBlock {
