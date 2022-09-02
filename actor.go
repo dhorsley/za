@@ -38,7 +38,7 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             nv :=structvalues[svpos].(string)
             nt :=structvalues[svpos+1].(string)
-            if nt=="any" || nt=="mixed" { 
+            if nt=="any" || nt=="mixed" {
                 // nt="[]"
                 // @note: reflection returns a nil type for interface{}
                 // not allowing interface{} as a field type until
@@ -1438,7 +1438,7 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
                 break
             }
-          
+
             // fmt.Printf("(sg) in fs %d (mident->%d) eval -> %+v\n",ifs,parser.mident,inbound.Tokens[1:])
             sglock.Lock()
             atomic.StoreUint32(&has_global_lock,ifs)
@@ -1482,8 +1482,6 @@ tco_reentry:
 
             // cause evaluation of all terms following IN
             case SYM_BOR, O_InFile, ResultBlock, Block, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
-
-
 
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
                 if we.evalError {
@@ -1562,17 +1560,17 @@ tco_reentry:
                     pf("Unknown loop type [%T]\n",lv)
                 }
 
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                if !endfound {
+                    parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                // skip empty expressions
                 if l==0 {
-                    // skip empty expressions
-                    endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
-                    if !endfound {
-                        parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
-                        finish(false, ERR_SYNTAX)
-                        break
-                    } else { //skip
-                        parser.pc += enddistance
-                        break
-                    }
+                    parser.pc += enddistance
+                    break
                 }
 
                 var iter *reflect.MapIter
@@ -1597,8 +1595,8 @@ tco_reentry:
                     }
 
                     if len(we.result.([]string))>0 {
-                        vset(nil,ifs, ident,"key_"+fid, 0)
-                        vset(&inbound.Tokens[1],ifs, ident,fid, we.result.([]string)[0])
+                        vset(nil, ifs, ident,"key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident,fid, we.result.([]string)[0])
                         condEndPos = len(we.result.([]string)) - 1
                     }
 
@@ -1811,14 +1809,6 @@ tco_reentry:
                     break
                 }
 
-
-                // figure end position
-                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
-                if !endfound {
-                    parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
-                    finish(false, ERR_SYNTAX)
-                    break
-                }
 
                 depth+=1
                 lastConstruct = append(lastConstruct, C_Foreach)

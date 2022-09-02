@@ -544,7 +544,7 @@ func buildStringLib() {
 
 
 
-    slhelp["field"] = LibHelp{in: "input_string,position[,optional_separator]", out: "string", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0]. String is empty on failure."}
+    slhelp["field"] = LibHelp{in: "input_string,position[,optional_separator]", out: "string", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0].\n[#i1]optional_separator[#i0] defaults to a space character. [#i1]string[#i0] is empty on failure."}
     stdlib["field"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("field",args,2,
             "2","string","int",
@@ -565,14 +565,14 @@ func buildStringLib() {
         // find column <position>
 
         f := func(c rune) bool {
-            return str.ContainsRune(sep, c)
+            return str.ContainsRune(sep,c)
         }
 
         var ta []string
         if sep==" " {
-            ta = str.FieldsFunc(fstr, f)
+            ta = str.FieldsFunc(fstr,f)
         } else {
-            ta = str.Split(fstr, sep)
+            ta = str.Split(fstr,sep)
         }
 
         if pos > 0 && pos <= len(ta) {
@@ -615,11 +615,7 @@ func buildStringLib() {
 
         c:=len(ta)-1
         vlock.Lock()
-        // bin:=bind_int(evalfs,"F")
-        // (*ident)[bin]=Variable{IName:"F",IValue:ta,IKind:0,ITyped:false,declared:true}
         vset(nil,evalfs,ident,"F",ta)
-        // bin=bind_int(evalfs,"NF")
-        // (*ident)[bin]=Variable{IName:"NF",IValue:c,IKind:0,ITyped:false,declared:true}
         vset(nil,evalfs,ident,"NF",c)
         vlock.Unlock()
 
