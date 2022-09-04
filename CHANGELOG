@@ -11,6 +11,8 @@ CHANGE LOG
 
     * fixed bug in cd: internal dir tracking var synchronisation.
     * now auto-casting command struct to command output string (.out) when used for a foreach loop range.
+    * updated getInput() for auto-completing only if no paren present.
+    * updated getInput() for continuing func help past paren into args.
 
     library changes
     ---------------

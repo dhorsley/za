@@ -2669,7 +2669,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                                 ////////////////////////////////////////////////////////////////
 
                             } else {
-                                expr.errVal=fmt.Errorf("cannot assign result (%T) to %v[%v] (%v)",results[assno],aryName,lhs_dotField,tf.Type())
+                                expr.errVal=fmt.Errorf("cannot assign result (%T) to %v[%v].%v (%v)",results[assno],aryName,eleName,lhs_dotField,tf.Type())
                                 expr.evalError=true
                                 return
                             }
@@ -2789,7 +2789,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                                         vset(nil,lfs,lident,lhs_v,tmp.Interface())
                                     }
                                 } else {
-                                    pf("cannot assign result (%T) to %v (%v)",results[assno],assignee[0].tokText,tf.Type())
+                                    pf("cannot assign result (%T) to %v.%v (%v)",results[assno],lhs_v,lhs_f,tf.Type())
                                     expr.evalError=true
                                     expr.errVal=err
                                 }
