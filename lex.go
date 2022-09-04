@@ -382,6 +382,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
                 carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
                 carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
+                carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
                 carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
                 carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
 
