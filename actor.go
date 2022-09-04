@@ -804,7 +804,7 @@ tco_reentry:
                 pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
             }
 
-            pf("(%20s) (line:%5d) [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+            pf("%20s: line:%5d : [#"+clr+"]%5d : %+v[#-]\n",fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
         }
 
         /////////////////////////////////////////////////////////////////////////
@@ -1457,12 +1457,13 @@ tco_reentry:
             // iterates over the result of expression expr as a list
 
             if inbound.TokenCount<4 {
-                parser.report(inbound.SourceLine,"bad argument length in FOREACH.")
+                parser.report(inbound.SourceLine,"bad argument count in FOREACH.")
                 finish(false,ERR_SYNTAX)
                 break
             }
 
-            if ! str.EqualFold(inbound.Tokens[2].tokText,"in") {
+            // if ! str.EqualFold(inbound.Tokens[2].tokText,"in") {
+            if inbound.Tokens[2].tokType!=C_In {
                 parser.report(inbound.SourceLine,"malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
@@ -1824,7 +1825,6 @@ tco_reentry:
                     parser.report(inbound.SourceLine,"Unexpected expression type in FOREACH.")
                     finish(false, ERR_SYNTAX)
                     break
-
 
             }
 

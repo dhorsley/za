@@ -316,7 +316,10 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
                 if startedContextHelp {
                     contextHelpSelected = false
                     startedContextHelp = false
-                    if len(helpList) == 1 {
+                    wordUnderCursor,_ = getWord(s, cpos)
+                    cmpStr:=str.ToLower(wordUnderCursor)
+                    parenPos:=str.IndexByte(cmpStr,'(')
+                    if parenPos==-1 && len(helpList) == 1 {
                         var newstart int
                         s,newstart = deleteWord(s, cpos)
                         add:=""
@@ -539,7 +542,13 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
             helpType = []int{}
 
             for _, v := range funcnames {
-                if str.HasPrefix(str.ToLower(v), str.ReplaceAll(str.ToLower(wordUnderCursor),"(","")) {
+                cmpStr:=str.ToLower(wordUnderCursor)
+                parenPos:=str.IndexByte(cmpStr,'(')
+                if parenPos!=-1 {
+                    cmpStr=cmpStr[:parenPos]
+                }
+                // if str.HasPrefix(str.ToLower(v), str.ReplaceAll(str.ToLower(wordUnderCursor),"(","")) {
+                if str.HasPrefix(str.ToLower(v), cmpStr) {
                     helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
                     helpList = append(helpList, v+"(")
                     helpType = append(helpType, HELP_FUNC)
@@ -787,23 +796,23 @@ func pf(s string, va ...any) {
     fmt.Print(s)
 
     // row update:
-        atlock.Lock()
-        chpos:=0
-        c:=col
-        for ; chpos<len(s); c++ {
-            if c%MW==0          { row++; c=0 }
-            if s[chpos]=='\n'   { row++; c=0 }
-            chpos++
-        }
-        atlock.Unlock()
-    // end test
+    atlock.Lock()
+    chpos:=0
+    c:=col
+    for ; chpos<len(s); c++ {
+        if c%MW==0          { row++; c=0 }
+        if s[chpos]=='\n'   { row++; c=0 }
+        chpos++
+    }
+    atlock.Unlock()
+
 }
 
 // apply ansi code translation to inbound strings
 func sparkle(a any) string {
-    switch a:=a.(type) {
+    switch a.(type) {
     case string:
-        return fairyReplacer.Replace(a)
+        return fairyReplacer.Replace(a.(string))
     }
     return sf(`%v`,a)
 }
