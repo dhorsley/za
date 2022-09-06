@@ -3397,7 +3397,8 @@ tco_reentry:
                         vset(nil,ifs, ident, id, cmdargs[d-1])
                     }
                 } else {
-                    parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
+                    // parser.report(inbound.SourceLine,sf("Expected CLI parameter [%s] not provided at startup.", hint))
+                    pf("Expected CLI parameter %s [%s] not provided at startup.\n",id,hint)
                     finish(true, ERR_SYNTAX)
                 }
 

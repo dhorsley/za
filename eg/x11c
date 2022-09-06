@@ -1,0 +1,9 @@
+
+module "modules/x11colours" as x11
+
+input filter param 1 is "colour filter"
+
+foreach n in enum_names(ref colourname)
+  on n ~ filter do println x11.fg(n),n,"[#-]"
+endfor
+
