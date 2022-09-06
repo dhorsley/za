@@ -17,6 +17,29 @@ TODO
 LATER / UNDECIDED
 -----------------
 
+    * add module.enum_name(.item_name) support to enums for imported modules.
+        - currently, there is potential for clashing on module import for these things:
+            - enum names
+            - struct names
+            - function names
+            - variable names (that have been setglob'ed)
+        - local variables are discarded anyway post-import.
+        - function names can be preceeded by the module_name or module_alias to avoid conflict.
+        - however, enums do not have this facility, as it would mean supporting a double dot when
+            referencing the item_names.
+
+        - supporting this would mean either a) solving that issue either holistically for
+            all such references, b) special-casing enum lookups or c) introducing new operators.
+
+        - i'm not particularly in favour of b) or c) if avoidable, and we may as well fix this for
+            struct names at the same time. 
+
+        - we put ourselves in this situation by design as structs/enum were intended to be a simple
+            mechanism and were bolted on post-creation. however, this would be a good thing to fix.
+
+        - not doing anything with this until i have a workable idea.
+
+
     * add some kind of try-like operator
         - would just be to cut down some of the necessary error handling, in a limited number 
           of circumstances. no driving requirement for this, would just be nice to have.
