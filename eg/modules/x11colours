@@ -12,7 +12,7 @@ doc `
     # show all colours, beginning with 's'
     module "./x11colours" as x11
     foreach n in enum_names(ref colourname)
-      on n ~ "^s" do print x11.fg(n),n,"[#-]"
+      on n ~ "^s" do println x11.fg(n),n,"[#-]"
     endfor
 
 `
