@@ -21,7 +21,7 @@ end
 
 # MAIN
 
-trapInt="cleanup()"
+trap("int","cleanup()")
 permit("shell",false)
 permit("eval",false)
 
@@ -32,9 +32,12 @@ is "ubuntu"
 endwhen
 
 HOST        =get_env("PROXY_HOST") or "127.0.0.1"
-PORT        =int(get_env("PROXY_PORT") or "8080")
+PORT        =as_int(get_env("PROXY_PORT") or "8080")
 HOME_PATH   =get_env("PROXY_PATH") or "/home/daniel/www"
 
+println "HOST : ",HOST
+println "PORT : ",PORT
+println "PATH : ",HOME_PATH
 
 # Set up an access log file
 logging web enable

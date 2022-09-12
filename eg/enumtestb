@@ -1,0 +1,10 @@
+
+enum tenum1 ( check=50 , demo = 200 )
+
+struct tstruct
+    e int = 99
+    f bool
+endstruct
+
+println tenum1.demo
+

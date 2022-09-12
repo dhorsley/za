@@ -14,7 +14,7 @@ const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 const numeric = "0123456789.fn"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_"
-const doubleterms = "<>=|&-+*."
+const doubleterms = "<>=|&-+*.:"
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
@@ -25,7 +25,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_BSLASH", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
-    "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
+    "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "SYM_DCOLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
     "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_OUTFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
     "O_PB","O_PA","O_PN","O_PE","O_PP",
     "START_STATEMENTS", "VAR", "SETGLOB",
@@ -597,6 +597,8 @@ get_nt_eval_point:
         tokType = SYM_LSHIFT
     case ">>":
         tokType = SYM_RSHIFT
+    case "::":
+        tokType = SYM_DoubleColon
     case ":":
         tokType = SYM_COLON
     case "=|":

@@ -91,6 +91,9 @@ func enum_names(e string) []string {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]string{}
+    if ! str.Contains(e,"::") {
+        e=currentModule+"::"+e
+    }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
         return l
@@ -105,6 +108,9 @@ func enum_all(e string) []any {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]any{}
+    if ! str.Contains(e,"::") {
+        e=currentModule+"::"+e
+    }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
         return l
@@ -124,9 +130,11 @@ func GetAst(fn string) (ast string) {
 
     if ifn < uint32(len(functionspaces)) {
 
+        /*
         if str.HasPrefix(fn,"@mod_") {
             return
         }
+        */
 
         var falist []string
         for _,fav:=range functionArgs[ifn].args {
@@ -245,7 +253,7 @@ func buildInternalLib() {
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "glob_key", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
-        "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","coproc",
+        "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","trap","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all","dump","sysvar","expect",
@@ -843,6 +851,16 @@ func buildInternalLib() {
     stdlib["coproc"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("bool",args,1,"1","bool"); !ok { return nil,err }
         gvset("@runInParent",!args[0].(bool))
+        return nil, nil
+    }
+
+    slhelp["trap"] = LibHelp{in: "trap_type_string,function_call_string", out: "", action: "set a responding function for a given trap type.\nCurrently supported trap types: int"}
+    stdlib["trap"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("trap",args,1,"2","string","string"); !ok { return nil,err }
+        switch str.ToLower(args[0].(string)) {
+        case "int":
+            gvset("@trapInt",args[1].(string))
+        }
         return nil, nil
     }
 

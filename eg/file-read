@@ -19,6 +19,7 @@ on fhand==nil do exit errors.file_open,"Could not open dictionary file."
 while not feof(fhand)
     println fread(fhand,"\n")
 endwhile
+#fclose(fhand)
 fhand.fclose
 
 exit errors.okay

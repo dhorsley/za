@@ -102,6 +102,9 @@ var modlist = make(map[string]bool)
 // defined function list
 var funcmap = make(map[string]Funcdef)
 
+// base-to-modulename mapping list
+var basemodmap = make(map[uint32]string)
+
 // global variable storage
 var gident []Variable
 var mident []Variable
@@ -353,6 +356,7 @@ func main() {
 
     // sub-access
     default_prectable[LeftSBrace]   =45         // L02
+    default_prectable[SYM_DoubleColon] =59 //field // L02
     default_prectable[SYM_DOT]      =61 //field // L02
     default_prectable[LParen]       =100        // L01
 
@@ -374,6 +378,8 @@ func main() {
     fnlookup.lmset("main",1)
     numlookup.lmset(0,"global")
     numlookup.lmset(1,"main")
+
+    basemodmap[1]="main"
 
     // reset call stacks for global and main
     calllock.Lock()
@@ -757,7 +763,7 @@ func main() {
     signal.Notify(breaksig,syscall.SIGINT)
 
     // - name of Za function that handles ctrl-c.
-    gvset("trapInt", "")
+    gvset("@trapInt", "")
 
     go func() {
         for {
@@ -789,7 +795,7 @@ func main() {
             }
 
             // user-trap handling
-            userSigIntHandler,usihfound:=gvget("trapInt")
+            userSigIntHandler,usihfound:=gvget("@trapInt")
             usih:=""
             if usihfound {
                 switch userSigIntHandler.(type) {

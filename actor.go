@@ -565,6 +565,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     )
     */
 
+
     calllock.Lock()
     // register call
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
@@ -637,6 +638,9 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
         fmt.Printf("  - csloc: %d\n",csloc)
     }
     */
+
+    currentModule=basemodmap[source_base]
+    // pf("in call to %s currentModule set to : %s\n",fs,currentModule)
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
@@ -983,13 +987,23 @@ tco_reentry:
             // eqPos remains as last token index on natural loop exit
 
 
-            // look for ary setup
+            // look for ary setup or namespaced struct name
 
             var hasAry bool
             var size int
+            found_namespace:=currentModule
 
             if !varSyntaxError {
                 // continue from last 'c' value
+
+                // namespace check
+                for dcpos:=c;dcpos<eqPos;dcpos+=1 {
+                    if inbound.Tokens[dcpos].tokType==SYM_DoubleColon {
+                        found_namespace=inbound.Tokens[dcpos-1].tokText
+                        break
+                    }
+                }
+
                 if inbound.Tokens[c].tokType==LeftSBrace {
 
                     // find RightSBrace
@@ -1286,9 +1300,28 @@ tco_reentry:
                     isStruct:=false
                     structvalues:=[]any{}
 
+                    // handle namespace presence
+                    checkstr:=type_token_string
+                    sname:=found_namespace+"::"+checkstr
+                    cpos:=str.IndexByte(checkstr,':')
+                    if cpos!=-1 {
+                        if len(checkstr)>cpos+1 {
+                            if checkstr[cpos+1]==':' {
+                                sname=checkstr
+                            }
+                        }
+                    }
+
+                    /*
+                    pf("(struct check) found_namespace is %s\n",found_namespace)
+                    pf("(struct check) type_token_string is %s\n",type_token_string)
+                    pf("(struct check) sname is %s\n",sname)
+                    pf("(struct check) structmaps:\n%#v\n",structmaps)
+                    */
+
                     // structmap has list of field_name,field_type,... for each struct
                     for sn, snv := range structmaps {
-                        if sn==type_token_string {
+                        if sn==sname {
                             isStruct=true
                             structvalues=snv
                             break
@@ -1311,7 +1344,7 @@ tco_reentry:
                         (*ident)[sid]=t
 
                     } else {
-                        parser.report(inbound.SourceLine,sf("unknown data type requested '%v'",type_token_string))
+                        parser.report(inbound.SourceLine,sf("unknown data type requested '%v'",sname))
                         finish(false, ERR_SYNTAX)
                         break
                     }
@@ -2394,9 +2427,10 @@ tco_reentry:
             resu:=parser.splitCommaArray(inbound.Tokens[3:inbound.TokenCount-1])
 
             globlock.Lock()
-            enum_name:=inbound.Tokens[1].tokText
+            enum_name:=currentModule+"::"+inbound.Tokens[1].tokText
             enum[enum_name]=&enum_s{}
             enum[enum_name].members=make(map[string]any)
+            enum[enum_name].namespace=currentModule
             globlock.Unlock()
 
             var nextVal any
@@ -3171,6 +3205,8 @@ tco_reentry:
                     fs:loc,
                 }
 
+                basemodmap[loc]=currentModule
+
                 sourceMap[loc]=source_base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
                 // pf("[sm] loc %d -> %v\n",loc,source_base)
                 fspacelock.Lock()
@@ -3558,7 +3594,7 @@ tco_reentry:
             }
 
             // override module name with alias at this point, if provided
-           
+
             modRealAlias:=modGivenPath
             if aliased {
                 modRealAlias=modGivenAlias
@@ -3567,15 +3603,18 @@ tco_reentry:
             // tokenise and parse into a new function space.
 
             //.. error if it has already been defined
-            if fnlookup.lmexists("@mod_"+modRealAlias) && !permit_dupmod {
+            // if fnlookup.lmexists("@mod_"+modRealAlias) && !permit_dupmod {
+            if fnlookup.lmexists(modRealAlias) && !permit_dupmod {
                 parser.report(inbound.SourceLine,"Module file "+modRealAlias+" already processed once.")
                 finish(false, ERR_SYNTAX)
                 break
             }
 
-            if !fnlookup.lmexists("@mod_"+modRealAlias) {
+            // if !fnlookup.lmexists("@mod_"+modRealAlias) {
+            if !fnlookup.lmexists(modRealAlias) {
 
-                loc, _ := GetNextFnSpace(true,"@mod_"+modRealAlias,call_s{prepared:false})
+                // loc, _ := GetNextFnSpace(true,"@mod_"+modRealAlias,call_s{prepared:false})
+                loc, _ := GetNextFnSpace(true,modRealAlias,call_s{prepared:false})
 
                 calllock.Lock()
 
@@ -3603,19 +3642,24 @@ tco_reentry:
 
                 if debug_level>10 {
                     start := time.Now()
-                    phraseParse("@mod_"+modRealAlias, string(mod), 0)
+                    // phraseParse("@mod_"+modRealAlias, string(mod), 0)
+                    phraseParse(modRealAlias, string(mod), 0)
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod translation for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    phraseParse("@mod_"+modRealAlias, string(mod), 0)
+                    // phraseParse("@mod_"+modRealAlias, string(mod), 0)
+                    phraseParse(modRealAlias, string(mod), 0)
                 }
                 modcs := call_s{}
                 modcs.base = loc
                 modcs.caller = ifs
-                modcs.fs = "@mod_" + modRealAlias
+                // modcs.fs = "@mod_" + modRealAlias
+                modcs.fs = modRealAlias
                 calltable[loc] = modcs
 
                 calllock.Unlock()
+
+                basemodmap[loc]=modRealAlias
 
                 var modident = make([]Variable,identInitialSize)
 
@@ -3887,7 +3931,8 @@ tco_reentry:
                 break
             }
 
-            structName=inbound.Tokens[1].tokText
+            // structName=inbound.Tokens[1].tokText
+            structName=currentModule+"::"+inbound.Tokens[1].tokText
             structMode=true
 
         case C_Endstruct:
@@ -4435,7 +4480,7 @@ tco_reentry:
         // pf("[#2]about to delete %v[#-]\n",fs)
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
 
-        if !str.HasPrefix(fs,"@mod_") {
+        // if !str.HasPrefix(fs,"@mod_") {
 
             // drop allocated names
             if varmode != MODE_STATIC {
@@ -4449,7 +4494,7 @@ tco_reentry:
             lastfunc[ifs]=fs
             lastlock.Unlock()
 
-        }
+        // }
 
     }
 
@@ -4557,10 +4602,12 @@ func coprocCall(s string) {
 /// print user-defined function definition(s) to stdout
 func ShowDef(fn string) bool {
 
+    /*
     if str.HasPrefix(fn,"@mod_") {
         // pf("(sd) MOD CHECK FAILED!\n")
         return false
     }
+    */
 
     var ifn uint32
     var present bool

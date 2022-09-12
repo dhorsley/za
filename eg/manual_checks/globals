@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 define f()
-    a++
+    setglob a+=1
 end
 
 a=10

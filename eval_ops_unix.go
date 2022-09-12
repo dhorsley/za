@@ -5,6 +5,7 @@ package main
 import (
     "net/http"
     "reflect"
+    str "strings"
     "syscall"
     "fmt"
     "unsafe"
@@ -79,7 +80,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                         return slc.Interface()
                     default:
                         return []any{}
-                    }    
+                    }
 
                 case reflect.Interface:
                     return f.Interface()
@@ -87,15 +88,37 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 default:
                     f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                     return f.Interface()
-                }    
+                }
             }
-        }    
+        }
 
         name:=field
 
         // check for enum membership:
         globlock.RLock()
-        en:=enum[p.preprev.tokText]
+        // pf("checking obj %#v | enum %s\n",obj,p.preprev.tokText)
+        ename:=p.namespace+"::"+p.preprev.tokText
+        isFileHandle:=false
+        switch obj.(type) {
+        case string:
+            ename=p.namespace+"::"+obj.(string)
+            checkstr:=obj.(string)
+            if str.Contains(checkstr,"::") {
+                // pf("enum list -> %#v\n",enum)
+                cpos:=str.IndexByte(checkstr,':')
+                if cpos!=-1 {
+                    if len(checkstr)>cpos+1 {
+                        if checkstr[cpos+1]==':' {
+                            ename=checkstr
+                        }
+                    }
+                }
+            }
+        case pfile:
+            isFileHandle=true
+        }
+
+        en:=enum[ename]
         globlock.RUnlock()
         if en!=nil {
             return en.members[name]
@@ -125,11 +148,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             panic(fmt.Errorf("no function, enum or record field found for %v", field))
         }
 
-        // user-defined or stdlib call 
-
+        // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        if !nonlocal && !isStruct {
-            iargs=[]any{obj}
+        if !nonlocal {
+            if isFileHandle || !isStruct {
+                iargs=[]any{obj}
+                // if isFileHandle { pf("fh-iargs->%#v\n",iargs) }
+            }
         }
 
         /*
@@ -180,7 +205,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 p.next() // consume rparen 
             }
         }
-       
+
         self:=self_s{} 
         if isStruct {
             self.aware=true

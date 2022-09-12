@@ -1,3 +1,4 @@
+//+build windows
 //+build !test
 
 package main
@@ -9,7 +10,7 @@ import (
     "os"
     sc "strconv"
     str "strings"
-    "syscall"
+//    "syscall"
 )
 
 
@@ -57,6 +58,7 @@ func buildFileLib() {
         return nil,nil
     }
 
+/* not in windows
     slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool", 
         action: "(experimental,linux only) Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\nReturns true if the file could not be locked."}
     stdlib["flock"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -84,6 +86,7 @@ func buildFileLib() {
         }
         return false,nil
     }
+*/
 
     slhelp["fflush"] = LibHelp{in: "filehandle", out: "position", action: "Flushes [#i1]filehandle[#i0] write buffer to disk."}
     stdlib["fflush"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {

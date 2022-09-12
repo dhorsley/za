@@ -39,7 +39,7 @@ doc " uncomment line below when testing with GCC-GO compiler:
     GCCGOFLAGS = `-compiler=gccgo -gccgoflags='-O3 -march=native -ffast-math -lpthread'`
 "
 
-bvers = "1.1.5"
+bvers = "1.1.6"
 bdate =< date "+%d-%m-%Y %H:%M"
 
 strStrip    = strip_enable ? "-stripped" : ""

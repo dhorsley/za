@@ -2,9 +2,59 @@
 CHANGE LOG
 =============================================================================================
 
-1.1.5
+1.1.6
 =====
 
+    fixes
+    -----
+
+    * re-enabled SIGINT user handler
+        - removed trapInt main var processing
+        - added trap() lib call for setting @trapInt global instead.
+            - will add other signals to trap() later (SIGHUP/SIGWINCH mainly)
+
+    library changes
+    ---------------
+
+    * split lib_file.go source to lib_file_unix.go and lib_file_windows.go
+        - removed flock() call from lib_file_windows.go to get win build compiling again.
+        - will see if there is an easy alternative for flock() in windows later.
+            - most likely to need: LockFile or LockFileEx and an exclusive lock over bytes 0 to size-1
+            - https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex
+            - ignoring for now - just wanted the thing compiling again so that i could test namespace changes.
+
+    other
+    -----
+
+    * (experimental) added optional name qualification for enums
+        - module_alias::enum_name
+        - if provided as unqualified enum_name then it will be internally
+            represented as current_namespace::enum_name
+        - the global level namespace is 'main'
+
+    * (experimental) added optional name qualification for structs
+        - module_alias::struct_name
+        - if provided as unqualified struct_name then it will be internally
+            represented as current_namespace::struct_name
+        - the global level namespace is 'main'
+       
+    PLEASE NOTE: BOTH OF THE ABOVE FEATURES ARE EXTREMELY UNRELIABLE CURRENTLY.
+    THEY ARE IN TEST. FURTHER CHANGES WILL BE REQUIRED TO MAKE THEM THREAD SAFE
+    AND THEY MAY NOT WORK AS EXPECTED ANYWAY.
+
+    ONCE STABILISED, THEY WILL BE MARKED AS COMPLETED IN A FUTURE RELEASE.
+
+    In addition to the above, when we are happy, or at least happier, with their state, then
+    we may look into further changes to support user defined temporary namespace changes in
+    a more programmatic fashion.
+
+    Existing code should be unaffected by the above experimental changes, however, we are not
+    100% sure of that fact :) It will be part of the testing, and v1.1.6 will not be a binary
+    and promoted release until we are assured of this.
+
+
+1.1.5
+=====
 
     fixes
     -----
