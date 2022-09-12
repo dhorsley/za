@@ -411,6 +411,8 @@ func help_ops() {
 [#4]a ~f b[#-]      array of matches from string a using regex b[#-]
 [#4]s.f[#-]         field access                [#4]s .. e[#-]      builds an array of values in the range s to e
 [#4]s $out f[#-]    write string 's' to file 'f'
+[#4]ns::struct[#-]  apply namespace to struct name
+[#4]ns::enum[#-]    apply namespace to enum name
 
 [#4]array|map ?> "bool_expr"[#-]
 [#4]array|map -> "expression"[#-]

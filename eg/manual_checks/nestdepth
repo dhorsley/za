@@ -11,7 +11,7 @@ define maxParenDepth(s)
     # max returns highest number in array
 
     return (
-     ( s ~f "[()]" -> `#=="(" ? "1","-1"` )
+     ( s ~f "[()]" -> `#=="(" ? "1":"-1"` )
      .list_int
      .scan_left("+",0)
      .max

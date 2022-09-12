@@ -5,6 +5,7 @@ package main
 import (
     "net/http"
     "reflect"
+    str "strings"
     "syscall"
     "fmt"
     "unsafe"
@@ -32,10 +33,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
     default:
 
         r := reflect.ValueOf(obj)
+        isStruct:=false
 
         switch r.Kind() {
 
         case reflect.Struct:
+
+            isStruct=true
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -76,7 +80,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                         return slc.Interface()
                     default:
                         return []any{}
-                    }    
+                    }
 
                 case reflect.Interface:
                     return f.Interface()
@@ -84,16 +88,37 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 default:
                     f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                     return f.Interface()
-                }    
-            }    
-
-        }    
+                }
+            }
+        }
 
         name:=field
 
         // check for enum membership:
         globlock.RLock()
-        en:=enum[p.preprev.tokText]
+        // pf("checking obj %#v | enum %s\n",obj,p.preprev.tokText)
+        ename:=p.namespace+"::"+p.preprev.tokText
+        isFileHandle:=false
+        switch obj.(type) {
+        case string:
+            ename=p.namespace+"::"+obj.(string)
+            checkstr:=obj.(string)
+            if str.Contains(checkstr,"::") {
+                // pf("enum list -> %#v\n",enum)
+                cpos:=str.IndexByte(checkstr,':')
+                if cpos!=-1 {
+                    if len(checkstr)>cpos+1 {
+                        if checkstr[cpos+1]==':' {
+                            ename=checkstr
+                        }
+                    }
+                }
+            }
+        case pfile:
+            isFileHandle=true
+        }
+
+        en:=enum[ename]
         globlock.RUnlock()
         if en!=nil {
             return en.members[name]
@@ -106,9 +131,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
         // parse the function call as module '.' funcname
         nonlocal:=false
-        var there bool
-
-        if _,there=funcmap[p.preprev.tokText+"."+name] ; there {
+        if _,there:=funcmap[p.preprev.tokText+"."+name] ; there {
             nonlocal=true
             name=p.preprev.tokText+"."+name
             isFunc=true
@@ -125,11 +148,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             panic(fmt.Errorf("no function, enum or record field found for %v", field))
         }
 
-        // user-defined or stdlib call 
-
+        // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        if !nonlocal && !isStruct {
-            iargs=[]any{obj}
+        if !nonlocal {
+            if isFileHandle || !isStruct {
+                iargs=[]any{obj}
+                // if isFileHandle { pf("fh-iargs->%#v\n",iargs) }
+            }
         }
 
         /*
@@ -141,6 +166,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             p.next()
             if p.peek().tokType!=RParen {
                 /*
+                // do not currently allow named args with UFCS-like calls.
                 for {
                     switch p.peek().tokType {
                     case SYM_DOT:
@@ -186,7 +212,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             self.ptr=&obj
         }
 
-        return callFunction(p.fs,p.ident,name,self_s{},arg_names,iargs)
+        return callFunction(p.fs,p.ident,name,self,[]string{},iargs)
 
     }
 
