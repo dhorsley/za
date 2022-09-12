@@ -213,6 +213,7 @@ const (
     SYM_LSHIFT
     SYM_RSHIFT
     SYM_COLON
+    SYM_DoubleColon
     O_Comma
 	SYM_Tilde
 	SYM_ITilde

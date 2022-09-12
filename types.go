@@ -145,6 +145,7 @@ type ExpressionCarton struct {
 type enum_s struct {
     members   map[string]any
     ordered   []string
+    namespace string
 }
 
 

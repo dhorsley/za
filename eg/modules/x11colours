@@ -1,6 +1,6 @@
 
 doc `
-    The colournames defined here are those from the W3C CSS X11 colour chart at:
+    The colour names defined here are those from the W3C CSS X11 colour chart at:
 
         https://www.w3.org/TR/css-color-3/#ref-X11COLORS
 
@@ -11,7 +11,7 @@ doc `
     Example use:
     # show all colours, beginning with 's'
     module "./x11colours" as x11
-    foreach n in enum_names(ref colourname)
+    foreach n in enum_names(ref colour)
       on n ~ "^s" do println x11.fg(n),n,"[#-]"
     endfor
 
@@ -19,16 +19,16 @@ doc `
 
 
 define bg(c)
-    on c in enum_names(ref colourname) do return eval("bg{=colourname.{c}}")
+    on c in enum_names(ref colour) do return eval("bg{=colour.{c}}")
     return ""
 end
 
 define fg(c)
-    on c in enum_names(ref colourname) do return eval("fg{=colourname.{c}}")
+    on c in enum_names(ref colour) do return eval("fg{=colour.{c}}")
     return ""
 end
 
-enum colourname (
+enum colour (
     aliceblue="rgb(240, 248, 255)",
     antiquewhite="rgb(250, 235, 215)",
     aqua="rgb( 0, 255, 255)",

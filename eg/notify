@@ -14,7 +14,7 @@ define shutdown()
     exit
 end
 
-trapInt="shutdown()"
+trap("int","shutdown()")
 
 var w []any
 

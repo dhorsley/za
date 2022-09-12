@@ -1,6 +1,6 @@
 
-define q(); setglob a++; end
-define w(); setglob a--; end
+define q(); setglob a+=1; end
+define w(); setglob a-=1; end
 
 a=20
 println "START  : ",a

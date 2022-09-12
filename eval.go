@@ -39,6 +39,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
     p.tokens = toks
     p.len    = int16(len(toks))
     p.pos    = -1
+    p.namespace = currentModule
 
     return p.dparse(0)
 }
@@ -57,6 +58,9 @@ type leparser struct {
     pos         int16       // distance through parse
     prectable   [END_STATEMENTS]int8 // tried this with a reference+locks instead of a copy
                                     //  it wasn't much faster and raised complexity.
+    namespace   string
+    namespacing bool
+    namespace_pos int16
 }
 
 
@@ -88,6 +92,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     // unaries
     switch (*ct).tokType {
     case O_Comma,SYM_COLON,EOF:
+        // pf("(eval) ending on token : %s\n",(*ct).tokText)
         left=nil
     case RParen, RightSBrace:
         p.next()
@@ -141,9 +146,20 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     binloop1:
     for {
 
-        if prec >= p.prectable[p.peek().tokType] { break }
+        if !p.namespacing && prec >= p.prectable[p.peek().tokType] { break }
 
         token := p.next()
+        // pf("binloop nt -> %v at pos %d\n",token.tokText,p.pos)
+
+        if p.namespacing {
+            // pf("  (eval) namespacing, next token %v at %d\n",token.tokText,p.pos)
+            if p.pos==p.namespace_pos+1 {
+                p.namespacing=false
+                left=p.preprev.tokText+"::"+token.tokText
+                // pf("  (eval) completed namespace -> %#v at pos %d\n",left,p.pos)
+                continue
+            }
+        }
 
         switch token.tokType {
         case EOF:
@@ -153,6 +169,19 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             continue
         case LeftSBrace:
             left = p.accessArray(left,token)
+            continue
+        case SYM_DoubleColon:
+            // pf("  (eval) dcolon ns check\n")
+            if ! p.namespacing {
+                // pf("(eval) starting namespace at pos %d\n",p.pos)
+                p.namespacing=true
+                p.namespace_pos=p.pos
+            } else {
+                // pf(":: namespacing fault on token '%s' npos %d cpos %d?\nall toks -> %#v\n",token.tokText,p.namespace_pos,p.pos,p.tokens)
+                p.namespacing=false
+                p.namespace_pos=-1
+                break binloop1
+            }
             continue
         case SYM_DOT:
             left = p.accessFieldOrFunc(left,p.next().tokText)
@@ -1609,25 +1638,45 @@ func (p *leparser) identifier(token *Token) (any) {
     }
     if unlock { sglock.RUnlock() }
 
+    // permit module names
+    if modlist[token.tokText]==true {
+        // pf("(eval) permitting mod name %s\n",token.tokText)
+        return nil
+    }
+
+    // permit namespace:: names
+    ename:=p.namespace+"::"+token.tokText
+    // pf("(id) checking for enum named '%s'\n",ename)
+    /*
+    if pos:=str.IndexByte(token.tokText,':'); pos!=-1 {
+        if len(token.tokText)>pos+2 && token.tokText[pos+1] == ':' {
+            return nil
+            // ename=ename[pos+2:]
+            // pf("(eval) formed ename : %s\n",ename)
+        }
+    }
+    */
+
+    if enum[ename]!=nil {
+        // pf("(eval) permitting enum name %s\n",ename)
+        return nil
+    }
+
     // permit references to uninitialised variables
     if permit_uninit {
         return nil
     }
 
-    // permit module names
-    if modlist[token.tokText]==true {
-        return nil
-    }
-
-    // permit enum names
-    if enum[token.tokText]!=nil {
-        return nil
-    }
-
     // permit struct names
-    if _,found:=structmaps[token.tokText];found || token.tokText=="anon" {
+    sname:="anon"
+    if token.tokText!="anon" {
+        sname=p.namespace+"::"+token.tokText
+    }
+    // if _,found:=structmaps[token.tokText];found || token.tokText=="anon" {
+    if _,found:=structmaps[sname];found || sname=="anon" {
         // pf("<struct id : %s> ",token.tokText)
-        return token.tokText
+        // return token.tokText
+        return sname
     }
 
     /*

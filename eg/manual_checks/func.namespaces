@@ -1,6 +1,6 @@
 
-module "modules/moda"
-module "modules/modb"
+module "modules/moda" as moda
+module "modules/modb" as modb
 
 println "td->",testdef(1)
 

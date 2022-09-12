@@ -9,6 +9,8 @@ lots, i'm sure.
 TODO
 ----
 
+    * fix windows flock() call appropriately.
+
     * see github.com/dhorsley/za/issues for TODO work which is under real consideration.
 
     * anything else below is more, um, aspirational or undecided.
@@ -17,27 +19,49 @@ TODO
 LATER / UNDECIDED
 -----------------
 
-    * add module.enum_name(.item_name) support to enums for imported modules.
+    ( in progress. kinda done - experimental )
+    * add module::enum_name(.item_name) support to enums for imported modules.
         - currently, there is potential for clashing on module import for these things:
             - enum names
             - struct names
             - function names
             - variable names (that have been setglob'ed)
         - local variables are discarded anyway post-import.
-        - function names can be preceeded by the module_name or module_alias to avoid conflict.
-        - however, enums do not have this facility, as it would mean supporting a double dot when
+        - function names can be preceeded by the module_name. or module_alias. to avoid conflict.
+        - however, enums do not have this facility, as it would mean supporting multiple dots when
             referencing the item_names.
 
-        - supporting this would mean either a) solving that issue either holistically for
-            all such references, b) special-casing enum lookups or c) introducing new operators.
+        - current thinking is:
 
-        - i'm not particularly in favour of b) or c) if avoidable, and we may as well fix this for
-            struct names at the same time. 
+            - DONE: add a :: token type (in lex.go+constants.go)
+            - DONE: add a SYM_DoubleColon rule in eval.go/dparse() that temporarily changes
+                the operational namespace over the next couple of tokens.
+            - DONE: in actor.go change C_Enum and C_Struct handling to prepend the current module
+                name and a double colon to the under-construction enum/struct.
+            - DONE: make the default operational namespace string 'main' at startup
+            - DONE: added basemodmap array for tracking current mod name from source_base in Call()
+                - this is for setting the current namespace when a func is called.
+            - DONE: globally defined enum/struct are internally named as main::enumname or main::structname
 
-        - we put ourselves in this situation by design as structs/enum were intended to be a simple
-            mechanism and were bolted on post-creation. however, this would be a good thing to fix.
+            - FOR ENUM: during evaluation ( eval.go/dparse() ) if SYM_DoubleColon not encountered, then
+                 use whatever the current operational namespace is as the prepend
+                - unqualified enum names (missing double colon) will default to current_namespace::enum_name
+                - the global level namespace is named 'main'
+                - this is flakey at the moment, as we are re-using the 'currentModule' global.
+                  - we need an alternative to this.
+                    - it should probably be passed into Eval() as an arg
+                  - obviously, this is not suitable because of async stuff.
+            - FOR STRUCT: similar procedure carried out as above for enums.
 
-        - not doing anything with this until i have a workable idea.
+        - the above is entirely theoretical at this point, i'm sure it would need more
+            than this to fully support namespacing.
+
+        - had a quick look at this and made some experimental changes for enums
+            - it does need a lot more doing, around funcmap identification. won't be going near this for functions.
+            - testing changes currently for handling enums
+            - will take a look at structs also if enum changes pan out
+
+            normal usage of Za shouldn't need this level of complexity, would just round things out a bit. 
 
 
     * add some kind of try-like operator

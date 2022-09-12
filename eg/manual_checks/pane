@@ -2,6 +2,7 @@
 
 #doc `
 #check that word wrap at line end in non-global panes is working.
+# (currently not, feature under change)
 #`
 
 

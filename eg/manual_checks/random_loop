@@ -2,7 +2,7 @@
 
 # test - random addition loop
 
-module "./modules/timing.mod"
+module "./modules/timing.mod" as timing
 
 max_count=2000000
 input max_count optarg 1
