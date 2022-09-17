@@ -153,9 +153,9 @@ odd=false
 foreach r in keys
 
     if odd
-        print bgrgb(0,50,29)
+        print bgrgb(0,30,29)
     else
-        print bgrgb(10,20,47)
+        print bgrgb(0,20,27)
     endif
     odd=not odd
 

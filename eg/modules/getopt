@@ -12,14 +12,14 @@ doc `
         in: 
             options requirements map
             reqs_entry format:
-            key:name, value []any ( [0]type: (s)string, (b)bool, (n)numeric , [1]nature: novalue/optional/mandatory, [2] description )
+            key:name, value []any ( [0]type: (s)string, (b)bool, (n)numeric , [1]nature: novalue/optional/mandatory/quitafter, [2] description )
 
         out:
             map name->value pairs (option_name,value) [ret#1] and []string [ret#2] (contains remnant args, in acceptance order)
 
 `
 
-enum optNature ( n=0, m, o )
+enum optNature ( n=1, m=2, o=4, h=8 )
 enum optErr ( NoError, General=126, Mandatory=125, Casting=124 )
 
 define opthelp(reqs)
@@ -31,10 +31,10 @@ define opthelp(reqs)
         is "n"; print "[#3]NUMERIC".pad(-1,10)
         is "b"; print "[#3]BOOLEAN".pad(-1,10)
         endwhen
-        when o[1]
-        is optNature.n; print "[#7]No value".pad(-1,12)
-        is optNature.m; print "[#2]Mandatory".pad(-1,12)
-        is optNature.o; print "[#6]Optional".pad(-1,12)
+        when 
+        has (o[1] & optNature.n) == optNature.n ; print "[#7]No value".pad(-1,12)
+        has (o[1] & optNature.m) == optNature.m ; print "[#2]Mandatory".pad(-1,12)
+        has (o[1] & optNature.o) == optNature.o ; print "[#6]Optional".pad(-1,12)
         endwhen
         print "[#-]"
         on o[2]!="" do print "[#i1]",o[2],"[#i0]"
@@ -46,10 +46,9 @@ end
 define getopt(reqs)
 
     var opts map
-    expecting_value=false
-    argn=0
     var undashed_args []string
-    undashed_count=0
+    var argn,undashed_count int
+    var expecting_value,helpSelected bool
 
     av=argv()
     while !empty(av)
@@ -68,8 +67,10 @@ define getopt(reqs)
 
         # handle oddities
         on arg=="--" do break # stop processing args
-        on strpos(arg,"?")!=-1 do opthelp(reqs)
-
+        if strpos(arg,"?")!=-1
+            opthelp(reqs)
+            helpSelected=true
+        endif
         for p=0 to arg.len-1
             on arg[p]!="-" do break
         endfor
@@ -90,12 +91,13 @@ define getopt(reqs)
         on undashed do continue
 
         r=reqs[name]
-        if r[1]!=optNature.n
+        if (r[1] & optNature.n) !=optNature.n
             expecting_value=true 
         else
             when r[0]
             is "b"
                 opts[name]="true"
+        on (r[1] & optNature.h) == optNature.h do helpSelected=true
             is "s"
                 opts[name]=""
             is "n"
@@ -106,16 +108,15 @@ define getopt(reqs)
     endwhile
 
     # loop through checking for arguments
+    var missList map
     foreach r in reqs
         typ     = r[0]
         nature  = r[1]
-        on nature==optNature.m and !key(ref opts,key_r) do exit optErr.Mandatory,"Missing mandatory parameter : {=key_r} ({typ})"
+        on (nature & optNature.m) == optNature.m and !key(ref opts,key_r) do missList[key_r]=typ
         if key(ref opts,key_r)
             when typ
             is "n"
-                if not is_number(opts[key_r])
-                    exit optErr.Casting,"Parameter {=key_r} must be a number"
-                endif
+                on not is_number(opts[key_r]) do exit optErr.Casting,"Parameter {=key_r} must be a number"
                 opts[key_r]=opts[key_r].as_int
             is "b"
                 when opts[key_r]
@@ -126,7 +127,7 @@ define getopt(reqs)
                 endwhen
             endwhen
         else
-            if nature!=optNature.m
+            if (nature & optNature.m) != optNature.m
                 when typ
                 is "n"
                     opts[key_r]=0
@@ -138,6 +139,13 @@ define getopt(reqs)
             endif
         endif
     endfor
+
+    if not helpSelected and missList.len>0
+        foreach r in missList
+            println "[#2]Missing mandatory parameter : {=key_r} ({r})[#-]"
+        endfor
+        exit optErr.Mandatory
+    endif
 
     return opts,undashed_args
 

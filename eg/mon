@@ -185,6 +185,8 @@ define showMem()
         endfor
     endif
 
+    on winterm() do mem_avail=F[2]
+
     # display mem
 
     clear(2,9,1)
@@ -676,7 +678,8 @@ sample_start_in=4
 net_sample_start_in=1
 
 if winterm()
-    interface="eth0"
+    i =< ip -o -4 route show to default
+    interface=field(i,6)
 else
     i =< ip -o -4 route show to default
     interface=field(i,5)
@@ -702,7 +705,7 @@ if !(user=="root" || sudo!="")
     println "Needs sudo for some information."
 endif
 
-# @todo: figure max cpu count automatically
+# get cpu core count
 cpu_count=get_cores()
 
 # set up panes

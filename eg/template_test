@@ -1,0 +1,19 @@
+#!/usr/bin/za
+
+
+define testfunc1()
+    return "Daniel"
+end
+
+struct ts
+    f1  string
+    f2  int
+    f3  string
+endstruct
+
+x=42
+y="abc"
+z=ts("f1string",2,"three")
+
+interpolate($in "files/tmpl1.txt").ccformat $out "/dev/stdout"
+
