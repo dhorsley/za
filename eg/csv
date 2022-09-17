@@ -97,6 +97,6 @@ println "Total rows : ",rn
 print
 
 # @todo: output mechanism
-# print "ROWS:\n",rows[:rn],"\n"
+print "ROWS:\n",format("%#v\n",rows[:rn])
 
 
