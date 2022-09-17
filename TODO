@@ -10,7 +10,10 @@ TODO
 ----
 
     * fix windows flock() call appropriately.
-
+    * fix windows keyboard timeouts
+    * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME
+        and possibly other env vars, depending on user requirements.
+    * add install note for windows confirming that keypress() in wsl will not respect timeout setting above 0 (i.e. always pause)
     * see github.com/dhorsley/za/issues for TODO work which is under real consideration.
 
     * anything else below is more, um, aspirational or undecided.

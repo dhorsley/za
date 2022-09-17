@@ -21,12 +21,13 @@ style=`
     .ttab > div {display:table-cell}
     .ttableft   {width:90%;padding-left:16px;}
     .ttabright  {width:9%;}
-    .hdbg       {width:100%;background-color:#07b;line-height:0px;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
     .ilink      {width:100%;font-size:2.0rem; }
-    a:link      {color:blue;background-color:transparent;text-decoration:none;}
-    a:visited   {color:blue;background-color:transparent;text-decoration:none;}
-    a:hover     {color:blue;background-color:transparent;text-decoration:none;}
-    a:active    {color:blue;background-color:transparent;text-decoration:none;}
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
     .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
 `
 interpol(true)
@@ -141,7 +142,8 @@ foreach c in func_categories()
             header+"\n"+
             wa("",`id="top"`)+"\n"+
             wul(pageindex)+"\n"+
-            body+"\n"
+            body+"\n",
+            `class="bodystyle"`
         )+
         footer,
       `lang="en"`
@@ -181,7 +183,8 @@ indexpage=wpage(
         wbody(
             wdiv( wh1("Za Function Reference") )+
             wdiv( wh3("Please select a function category from below:") )+
-            wdiv( wul(indices) , `class="ttab"` )
+            wdiv( wul(indices) , `class="ttab"` ),
+            `class="bodystyle"`
         )
 )
 

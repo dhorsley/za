@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
-module "./enumtesta" as ea
-module "./enumtestb" as eb
+module "modules/enumtesta" as ea
+module "modules/enumtestb" as eb
 
 println ea::tenum1.check
 println eb::tenum1.check

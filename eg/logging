@@ -16,13 +16,14 @@ println "still not logged"
 log "definitely logged\n"
 logging off
 
-count =| grep -c "not logged" {lf}
+gcount = ${grep -c "not logged" {lf}}
 
-print "count [{=count.out}] should be zero... "
+test logtest1 group logging
+    readback=$in lf
+    assert count (readback) == 2
+    assert col(readback,3).join(" ") == "logged definitely"
+    assert gcount.as_int == 0
+endtest
 
-if int(count.out)==0
-    exit 0, "[#4]okay[#-]"
-endif
-
-exit 1, "[#2]not okay[#-]"
+| rm -f {lf}
 

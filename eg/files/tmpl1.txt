@@ -1,0 +1,12 @@
+
+Function output : [#1]{=testfunc1()}[#-]
+
+Variable x      : [#2]{x}[#-]
+Variable y      : [#3]{y}[#-]
+
+Struct z        
+        f1      : [#4]{=z.f1}[#-]
+        f2      : [#4]{=z.f2}[#-]
+        f3      : [#4]{=z.f3}[#-]
+
+

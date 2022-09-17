@@ -570,6 +570,12 @@ func buildInternalLib() {
         return panes[currentpane].col, nil
     }
 
+    slhelp["interpolate"] = LibHelp{in: "string", out: "int", action: "Returns [#i1]string[#i0] with interpolated content."}
+    stdlib["interpolate"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("interpolate",args,1,"1","string"); !ok { return nil,err }
+        return interpolate(evalfs,ident,args[0].(string)), nil
+    }
+
     slhelp["system"] = LibHelp{in: "string[,bool]", out: "string", action: "Executes command [#i1]string[#i0] and returns a command structure (bool==false) or displays (bool==true) the output."}
     stdlib["system"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("system",args,2,

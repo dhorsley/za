@@ -23,6 +23,8 @@ CHANGE LOG
             - https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex
             - ignoring for now - just wanted the thing compiling again so that i could test namespace changes.
 
+    * added interpolate(string) function.
+
     other
     -----
 
