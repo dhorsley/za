@@ -107,6 +107,7 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
 
     c := make(chan []byte)
     closed:=false
+    dur := time.Duration(timeo) * time.Millisecond
 
     go func() {
         for ; ! closed ; {
@@ -131,7 +132,6 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
     }()
 
     if timeo>0 {
-        dur := time.Duration(timeo) * time.Millisecond
         select {
         case b = <-c:
             procFlushConsoleInputBuffer.Call(uintptr(syscall.Stdin))

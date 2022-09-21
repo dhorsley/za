@@ -153,7 +153,7 @@ func setupAnsiPalette() {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(prompt string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(prompt string, defaultString string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
     if !interactive { BMARGIN=0 }
@@ -161,13 +161,17 @@ func getInput(prompt string, pane string, row int, col int, pcol string, histEna
     old_wrap := lineWrap
     lineWrap = false
 
+    showCursor()
+
+    s=defaultString
+
     sprompt := sparkle(prompt)
 
     // calculate real prompt length after ansi codes applied.
 
     // init
-    cpos := 0                    // cursor pos as extent of printable chars from start
-    orig_s := ""                 // original string before history navigation begins
+    cpos := len(s)               // cursor pos as extent of printable chars from start
+    orig_s := s                  // original string before history navigation begins
     navHist := false             // currently navigating history entries?
     startedContextHelp := false  // currently displaying auto-completion options
     contextHelpSelected := false // final selection made during auto-completion?
