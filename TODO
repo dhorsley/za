@@ -11,19 +11,9 @@ TODO
 
     * fix windows flock() call appropriately.
 
-    * fix windows w/wsl keyboard timeouts
-        - probably related to this: https://github.com/microsoft/WSL/issues/3507
-        - maybe wsl2 works better? to test.
-            - wsl2 now tested. the blocking-only calls to setattr in termio seem fixed now. 
-            - i guess this rules out using Za on wsl-1 if a program requires keypress() timeouts for non-blocking behaviour.
-        - add install note for windows confirming that keypress() in wsl-1 will not respect timeout setting above 0 (i.e. always pause)
-
     * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME
         and possibly other env vars, depending on user requirements.
 
-    * see github.com/dhorsley/za/issues for TODO work which is under real consideration.
-    * anything else below is more, um, aspirational or undecided.
-    
 
 LATER / UNDECIDED
 -----------------

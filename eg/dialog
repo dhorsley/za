@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "modules/dialog"
+module "modules/dialog" as dialog
 module "modules/menu"
 
 
@@ -14,7 +14,7 @@ done=false
 
 while not done
 
-    choice=menu(
+    choice=menu.menu(
         "Examples", 
         [
             "Box View",
