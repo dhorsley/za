@@ -1128,7 +1128,7 @@ func main() {
                     tempPrompt=promptContinuation
                 }
 
-                input, eof, broken = getInput(tempPrompt, "global", row, col, pcol, true, true, echoMask)
+                input, eof, broken = getInput(tempPrompt, "", "global", row, col, pcol, true, true, echoMask)
 
                 if eof || broken { break }
 

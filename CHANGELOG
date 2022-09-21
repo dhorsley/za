@@ -28,6 +28,8 @@ CHANGE LOG
     other
     -----
 
+    * added default string clause to PROMPT statement. ("IS str_expr" as final clause)
+
     * (experimental) added optional name qualification for enums
         - module_alias::enum_name
         - if provided as unqualified enum_name then it will be internally

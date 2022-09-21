@@ -10,62 +10,23 @@ TODO
 ----
 
     * fix windows flock() call appropriately.
-    * fix windows keyboard timeouts
+
+    * fix windows w/wsl keyboard timeouts
+        - probably related to this: https://github.com/microsoft/WSL/issues/3507
+        - maybe wsl2 works better? to test.
+            - wsl2 now tested. the blocking-only calls to setattr in termio seem fixed now. 
+            - i guess this rules out using Za on wsl-1 if a program requires keypress() timeouts for non-blocking behaviour.
+        - add install note for windows confirming that keypress() in wsl-1 will not respect timeout setting above 0 (i.e. always pause)
+
     * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME
         and possibly other env vars, depending on user requirements.
-    * add install note for windows confirming that keypress() in wsl will not respect timeout setting above 0 (i.e. always pause)
-    * see github.com/dhorsley/za/issues for TODO work which is under real consideration.
 
+    * see github.com/dhorsley/za/issues for TODO work which is under real consideration.
     * anything else below is more, um, aspirational or undecided.
     
 
 LATER / UNDECIDED
 -----------------
-
-    ( in progress. kinda done - experimental )
-    * add module::enum_name(.item_name) support to enums for imported modules.
-        - currently, there is potential for clashing on module import for these things:
-            - enum names
-            - struct names
-            - function names
-            - variable names (that have been setglob'ed)
-        - local variables are discarded anyway post-import.
-        - function names can be preceeded by the module_name. or module_alias. to avoid conflict.
-        - however, enums do not have this facility, as it would mean supporting multiple dots when
-            referencing the item_names.
-
-        - current thinking is:
-
-            - DONE: add a :: token type (in lex.go+constants.go)
-            - DONE: add a SYM_DoubleColon rule in eval.go/dparse() that temporarily changes
-                the operational namespace over the next couple of tokens.
-            - DONE: in actor.go change C_Enum and C_Struct handling to prepend the current module
-                name and a double colon to the under-construction enum/struct.
-            - DONE: make the default operational namespace string 'main' at startup
-            - DONE: added basemodmap array for tracking current mod name from source_base in Call()
-                - this is for setting the current namespace when a func is called.
-            - DONE: globally defined enum/struct are internally named as main::enumname or main::structname
-
-            - FOR ENUM: during evaluation ( eval.go/dparse() ) if SYM_DoubleColon not encountered, then
-                 use whatever the current operational namespace is as the prepend
-                - unqualified enum names (missing double colon) will default to current_namespace::enum_name
-                - the global level namespace is named 'main'
-                - this is flakey at the moment, as we are re-using the 'currentModule' global.
-                  - we need an alternative to this.
-                    - it should probably be passed into Eval() as an arg
-                  - obviously, this is not suitable because of async stuff.
-            - FOR STRUCT: similar procedure carried out as above for enums.
-
-        - the above is entirely theoretical at this point, i'm sure it would need more
-            than this to fully support namespacing.
-
-        - had a quick look at this and made some experimental changes for enums
-            - it does need a lot more doing, around funcmap identification. won't be going near this for functions.
-            - testing changes currently for handling enums
-            - will take a look at structs also if enum changes pan out
-
-            normal usage of Za shouldn't need this level of complexity, would just round things out a bit. 
-
 
     * add some kind of try-like operator
         - would just be to cut down some of the necessary error handling, in a limited number 
@@ -75,12 +36,16 @@ LATER / UNDECIDED
         - or... a builtin lib func?
         - will consider this more if it becomes an issue.
 
+
     * add a test mode that *does not* test imported modules.
         - i.e. only test the main file and assume the modules are already tested.
         - currently, everything gets tested all the time.
+        - may also be worth establishing a cache of tested modules/checksums to save re-testing
+
 
     * change parser.prev and parser.preprev to pointers?
         - maybe won't make much difference, but should check.
+
 
     * user and group builtins for linux?
         - i don't think this is necessary, especially as it would be so different between OS.
@@ -99,15 +64,6 @@ LATER / UNDECIDED
             more state will need passing around.
 
       Status: t.b.d.
-
-
-    * better namespacing?
-        - ... and explicit embedding of structs as struct fields without using the 'any' type.
-        - could also properly handle sane prefixing of stdlib funcs too.
-      
-      Status: unlikely to proceed. this is quite out of scope for the requirements. however, it may
-                not be difficult to add. would probably need to add another identifier sub-type for
-                namespace tokens. (as was done for constants).
 
 
     * handle multi-dimensional arrays better (as lvalues)

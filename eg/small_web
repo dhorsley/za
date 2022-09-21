@@ -23,7 +23,7 @@ HOME_PATH="/home/daniel/www"
 permit("shell",false)
 permit("eval",false)
 
-trap("Int","cleanup(sid)")
+trap("int","cleanup(sid)")
 
 define cleanup(s)
     web_serve_stop(s)
