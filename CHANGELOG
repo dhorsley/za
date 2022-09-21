@@ -17,7 +17,7 @@ CHANGE LOG
     ---------------
 
     * split lib_file.go source to lib_file_unix.go and lib_file_windows.go
-        - removed flock() call from lib_file_windows.go to get win build compiling again.
+        - removed flock() call from lib_file_windows.go to get win build compiling again. (didn't work anyway)
         - will see if there is an easy alternative for flock() in windows later.
             - most likely to need: LockFile or LockFileEx and an exclusive lock over bytes 0 to size-1
             - https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex

@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "mod_build/defines"
+module "mod_build/defines" 
 
 var strip_enable,upx_enable bool
 
