@@ -187,6 +187,7 @@ syntax match internal_functions "\(^|.\|\s*\)locks\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)echo\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)ansi\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)interpol\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)interpolate\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)echo\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)get_row\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)get_col\s*("he=e-1
@@ -209,6 +210,7 @@ syntax match internal_functions "\(^|.\|\s*\)enum_names\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)enum_all\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)dup\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)expect\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)trap\s*("he=e-1
 
 syntax match image_functions "\(^|.\|\s*\)svg_start\s*("he=e-1
 syntax match image_functions "\(^|.\|\s*\)svg_end\s*("he=e-1

@@ -4108,7 +4108,7 @@ tco_reentry:
             // else continue
 
             if inbound.TokenCount < 2 {
-                usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ]"
+                usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ] [ IS [#i1]def_string[#i0] ]"
                 parser.report(inbound.SourceLine,  "Not enough arguments for PROMPT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
@@ -4146,6 +4146,22 @@ tco_reentry:
                             break
                         } else {
                             validator := ""
+
+                            // capture default string
+                            defString := ""
+                            defAt := findDelim(inbound.Tokens, C_Is, 1)
+                            if defAt != -1 {
+                                pdefault:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[defAt+1:])
+                                if pdefault.evalError {
+                                    parser.report(inbound.SourceLine, "Bad default string in PROMPT command.")
+                                    finish(false, ERR_SYNTAX)
+                                    break
+                                } else {
+                                    defString=sf("%v",pdefault.result)
+                                }
+                            }
+
+                            // get prompt
                             broken := false
                             expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
                             if expr==nil {
@@ -4153,21 +4169,32 @@ tco_reentry:
                                 finish(false,ERR_EVAL)
                                 break
                             }
+
                             if prompt_ev_err == nil {
                                 processedPrompt := expr.(string)
                                 echoMask,_:=gvget("@echomask")
+
+                                // get validator
+                                vposEnd:=inbound.TokenCount
+                                if defAt!=-1 {
+                                    vposEnd=defAt
+                                }
+
                                 if inbound.TokenCount > 3 {
-                                    val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:])
+                                    val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:vposEnd])
                                     if val_ex_error != nil {
                                         parser.report(inbound.SourceLine,"Validator invalid in PROMPT!")
                                         finish(false,ERR_EVAL)
                                         break
                                     }
-                                    validator = val_ex.(string)
+                                    switch val_ex.(type) {
+                                    case string:
+                                        validator = val_ex.(string)
+                                    }
                                     intext := ""
                                     validated := false
                                     for !validated || broken {
-                                        intext, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                        intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                         intext=sanitise(intext)
                                         validated, _ = regexp.MatchString(validator, intext)
                                     }
@@ -4176,7 +4203,7 @@ tco_reentry:
                                     }
                                 } else {
                                     var inp string
-                                    inp, _, broken = getInput(processedPrompt, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, promptColour, false, false, echoMask.(string))
                                     inp=sanitise(inp)
                                     vset(&inbound.Tokens[1],ifs, ident,inbound.Tokens[1].tokText, inp)
                                 }
