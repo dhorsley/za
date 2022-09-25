@@ -749,7 +749,7 @@ func printWithNLRespect(s string,p Pane) {
             col=1 ; row++
         default:
             newStr.WriteByte(s[i])
-            col++
+            col+=1
         }
     }
     fmt.Print(newStr.String())

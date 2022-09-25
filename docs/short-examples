@@ -42,7 +42,7 @@ Returns: [2 4 6 8 10 12 14]
 Sorting numbers:
 
 Note: Please remember that list literals are untyped by default, so, should
-you require a numeric sort, you should cast to []int first:
+you require a numeric sort, you should convert to []int first:
 
 # i.e. wrong:
 [2,1,10,20,3,7,40].kind
@@ -69,5 +69,15 @@ Note: may be useful as an alternative to if..else..endif when processing
 shell commands.
 
 ------------------------------------------------------------------------------
+Show section sizes, in decimal, from a compiled binary. (shell command)
+
+objdump -h za | za -e 'foreach l in $in "/dev/stdin"; l=l.tr("t","\t"," ").tr("s"," ").trim(-1); fields(l); on NF==7 do println format("%40s : %12s : %d",F[2], F[6], eval("0x"+F[3])); endfor'
+
+#expanded:
+foreach l in $in "/dev/stdin"
+  l=l.tr("t","\t"," ").tr("s"," ").trim(-1)
+  fields(l)
+  on NF==7 do println format("%40s : %12s : %d",F[2], F[6], eval("0x"+F[3]))
+endfor
 
 

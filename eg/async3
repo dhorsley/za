@@ -5,7 +5,7 @@ max=100
 define f()
 
     datepath="/usr/bin"
-    on release_id()=="ubuntu" do datepath="/bin"
+    on release_id() in ["ubuntu","debian"] do datepath="/bin"
 
     datecmd="{datepath}/date --rfc-3339=ns"
 

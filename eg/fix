@@ -1,0 +1,39 @@
+#!/usr/bin/za
+
+doc `
+    fix test:
+        FIX should only be used for serious fault recovery.
+        it is mainly intended for returning a known error or 
+        for cleaning up resource use.
+`
+
+define chained(p)
+    return p
+end
+
+define in_fn_test(p)
+    q = ?? p.chained
+    w = ?? nil
+    return q
+  fix
+    println "(fn) err  : ",_try_err
+    println "(fn) info : ",_try_info
+    println "(fn) line : ",_try_line
+    return -1
+end
+
+println in_fn_test(0)
+println in_fn_test(nil)
+println in_fn_test(42)
+
+if ?? nil
+    println "should not see this."
+endif
+
+println "or this."
+
+fix
+    println "(main) err  : ",_try_err
+    println "(main) info : ",_try_info
+    println "(main) line : ",_try_line
+

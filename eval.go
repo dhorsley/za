@@ -23,14 +23,14 @@ func (p *leparser) reserved(token Token) (any) {
 }
 
 
-func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
+func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
 
     // short circuit pure numeric literals and const names
     if len(toks)==1 {
-        if toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil }
+        if toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil,false }
         switch toks[0].subtype {
         case subtypeConst:
-            return toks[0].tokVal,nil
+            return toks[0].tokVal,nil,false
         }
     }
 
@@ -61,6 +61,13 @@ type leparser struct {
     namespace   string
     namespacing bool
     namespace_pos int16
+
+    try_fault   bool        // if a try operator was encountered and it's expression returned nil
+    try_err     error
+    try_pos     int
+    try_line    int
+    try_info    string
+    // try_depth   int
 }
 
 
@@ -78,7 +85,7 @@ func (p *leparser) peek() Token {
 }
 
 
-func (p *leparser) dparse(prec int8) (left any,err error) {
+func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
 
     // pf("\ndparse query     : %#v\n",p.tokens)
 
@@ -106,11 +113,11 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(ct)
     case SYM_Not:
-	    right,err := p.dparse(24) // don't bind negate as tightly
+	    right,err,_ := p.dparse(24) // don't bind negate as tightly
         if err!=nil { panic(err) }
 		left=unaryNegate(right)
     case O_Pb,O_Pa,O_Pn,O_Pe,O_Pp:
-        right,err := p.dparse(10) // allow strings to accumulate to the right
+        right,err,_ := p.dparse(10) // allow strings to accumulate to the right
         if err!=nil { panic(err) }
         left=p.unaryPathOp(right,(*ct).tokType)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
@@ -123,6 +130,16 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     case SYM_Caret:         // unary pointery stuff
         left=p.unary(ct)
     */
+    case O_Try:
+        right,err,_:=p.dparse(3)
+        if right==nil { // && ! p.try_fault {
+            p.try_fault=true
+            p.try_err=err
+            p.try_pos=int(p.pc)
+            p.try_info=sf("%v",err)
+            // p.try_depth+=1
+        }
+        left=right
     case LParen:
         left=p.grouping(ct)
     case SYM_PP, SYM_MM:
@@ -197,8 +214,8 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
             }
         }
 
-
-        right,err := p.dparse(p.prectable[token.tokType] + 1)
+        var right any
+        right,err,try_fault = p.dparse(p.prectable[token.tokType] + 1)
         if err!=nil { panic(err) }
 
         switch token.tokType {
@@ -237,9 +254,9 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
                 switch right.(type) {
                 case string:
                     if left.(string)=="" {
-                        return right.(string),nil
+                        return right.(string),nil,false
                     }
-                    return left.(string),nil
+                    return left.(string),nil,false
                 }
             }
             left = asBool(left) || asBool(right)
@@ -293,7 +310,7 @@ func (p *leparser) dparse(prec int8) (left any,err error) {
     }
     */
 
-	return left,err
+	return left,err,p.try_fault
 }
 
 
@@ -825,7 +842,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
             mkey=t.tokText
         } else {
             if p.peek().tokType!=RightSBrace {
-                dp,err:=p.dparse(0)
+                dp,err,_:=p.dparse(0)
                 if err!=nil {
                     // panic(fmt.Errorf("map key could not be evaluated"))
                     return nil
@@ -859,7 +876,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
         // check for start of range
         if p.peek().tokType!=SYM_COLON {
-            dp,err:=p.dparse(0)
+            dp,err,_:=p.dparse(0)
             if err!=nil {
                 panic(fmt.Errorf("array range start could not be evaluated"))
             }
@@ -875,7 +892,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
             p.next() // swallow colon
             hasRange=true
             if p.peek().tokType!=RightSBrace {
-                dp,err:=p.dparse(0)
+                dp,err,_:=p.dparse(0)
                 if err!=nil {
                     panic(fmt.Errorf("array range end could not be evaluated"))
                 }
@@ -955,7 +972,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
                 // missing/blank arg in list
                 panic(fmt.Errorf("missing argument #%d",argpos))
             }
-            dp,err:=p.dparse(0)
+            dp,err,_:=p.dparse(0)
             if err!=nil {
                 return nil
             }
@@ -1256,12 +1273,12 @@ func (p *leparser) unary(token *Token) (any) {
 
     switch token.tokType {
     case O_InFile:
-	    right,err := p.dparse(70) // higher than dot op
+	    right,err,_ := p.dparse(70) // higher than dot op
         if err!=nil { panic(err) }
         return unaryFileInput(right)
     }
 
-	right,err := p.dparse(38) // between grouping and other ops
+	right,err,_ := p.dparse(38) // between grouping and other ops
     if err!=nil { panic(err) }
 
 	switch token.tokType {
@@ -1334,7 +1351,7 @@ func (p *leparser) tern_if(left any,tv any) (any) {
     } else {
         panic(fmt.Errorf("missing colon in ternary"))
     }
-    fv,err:=p.dparse(0)
+    fv,err,_:=p.dparse(0)
     if err!=nil {
         panic(fmt.Errorf("malformed false expression in ternary"))
     }
@@ -1353,7 +1370,7 @@ func (p *leparser) array_concat(tok *Token) (any) {
 
     if p.peek().tokType!=RightSBrace {
         for {
-            dp,err:=p.dparse(0)
+            dp,err,_:=p.dparse(0)
             if err!=nil {
                 panic(err)
             }
@@ -1497,7 +1514,7 @@ func (p *leparser) postIncDec(token Token) any {
 func (p *leparser) grouping(tok *Token) (any) {
 
 	// right-associative
-    val,err:=p.dparse(0)
+    val,err,_:=p.dparse(0)
     if err!=nil { panic(err) }
     p.next() // consume RParen
     return val
@@ -1561,7 +1578,7 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
 
 func (p *leparser) command() (string) {
 
-    dp,err:=p.dparse(65)
+    dp,err,_:=p.dparse(65)
     if err!=nil {
         panic(fmt.Errorf("error parsing string in command operator"))
     }
@@ -2279,7 +2296,7 @@ func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 
     // evaluate token list
     if len(toks)!=0 {
-        result, err = parser.Eval(fs,toks)
+        result, err, _ = parser.Eval(fs,toks)
     }
 
     if result==nil { // could not eval
@@ -2330,6 +2347,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     eqPos:=-1
     var newEval []Token
     var err error
+    var try_fault bool
 
     if len(tks)==2 {
         switch tks[1].tokType {
@@ -2358,10 +2376,10 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
         // use whichever is encountered first
         case O_Assign:
             eqPos=k
-            expr.result, err = p.Eval(fs,tks[k+1:])
+            expr.result, err, try_fault = p.Eval(fs,tks[k+1:])
             break floop1
         case SYM_PLE:
-            expr.result,err=p.Eval(fs,tks[k+1:])
+            expr.result,err, try_fault =p.Eval(fs,tks[k+1:])
             if err==nil {
                 eqPos=k
                 newEval=make([]Token,len(tks[:k])+2)
@@ -2371,7 +2389,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             standardAssign=false
             break floop1
         case SYM_MIE:
-            expr.result,err=p.Eval(fs,tks[k+1:])
+            expr.result,err, try_fault =p.Eval(fs,tks[k+1:])
             if err==nil {
                 eqPos=k
                 newEval=make([]Token,len(tks[:k])+2)
@@ -2381,7 +2399,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             standardAssign=false
             break floop1
         case SYM_MUE:
-            expr.result,err=p.Eval(fs,tks[k+1:])
+            expr.result,err, try_fault =p.Eval(fs,tks[k+1:])
             if err==nil {
                 eqPos=k
                 newEval=make([]Token,len(tks[:k])+2)
@@ -2391,7 +2409,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             standardAssign=false
             break floop1
         case SYM_DIE:
-            expr.result,err=p.Eval(fs,tks[k+1:])
+            expr.result,err, try_fault =p.Eval(fs,tks[k+1:])
             if err==nil {
                 eqPos=k
                 newEval=make([]Token,len(tks[:k])+2)
@@ -2401,7 +2419,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             standardAssign=false
             break floop1
         case SYM_MOE:
-            expr.result,err=p.Eval(fs,tks[k+1:])
+            expr.result,err, try_fault =p.Eval(fs,tks[k+1:])
             if err==nil {
                 eqPos=k
                 newEval=make([]Token,len(tks[:k])+2)
@@ -2415,7 +2433,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 
     if eqPos==-1 {
         // pf("[#5]-- w.e. (in fs %d) calling eval on : %#v[#-]\n",fs,tks)
-        expr.result, err = p.Eval(fs,tks)
+        expr.result, err , try_fault = p.Eval(fs,tks)
         expr.assignPos=-1
     } else {
         expr.assign=true
@@ -2441,7 +2459,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             }
 
             oid:=p.ident; p.ident=lident
-            expr.result, err = p.Eval(lfs,newEval)
+            expr.result, err , _ = p.Eval(lfs,newEval)
             p.ident=oid
 
         }
@@ -2450,6 +2468,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     if err!=nil {
         expr.evalError=true
         expr.errVal=err
+        p.try_fault=try_fault
         return expr
     }
 
@@ -2459,6 +2478,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
     }
 
+    p.try_fault=try_fault
     return expr
 
 }
@@ -2606,7 +2626,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             }
 
             // get the element name expr, eval it. element.(type) is used in switch below.
-            element, err := p.Eval(rfs,assignee[2:rbAt])
+            element, err , _ := p.Eval(rfs,assignee[2:rbAt])
             if err!=nil {
                 pf("could not evaluate index or key in assignment")
                 expr.evalError=true

@@ -67,7 +67,7 @@ func buildStringLib() {
 
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
-        "substr", "gsub", "replace", "trim", "lines", "count","inset",
+        "substr", "gsub", "replace", "trim", "lines", "count","inset","wrap",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc","clean",
@@ -327,6 +327,18 @@ func buildStringLib() {
     stdlib["clean"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("clean",args,1,"1","string"); !ok { return nil,err }
         return sanitise(args[0].(string)), nil
+    }
+
+    slhelp["wrap"] = LibHelp{in: "[bool]", out: "bool", action: "Enable (true) or disable (false) line wrap in non-global display panes.\nThe previous wrap value is returned.\nN.B. ensure that only plain text is wrapped. ANSI codes may be split!"}
+    stdlib["wrap"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("wrap",args,2,
+            "1","bool",
+            "0"); !ok { return nil,err }
+        owrap:=lineWrap
+        if len(args)==1 {
+            lineWrap=args[0].(bool)
+        }
+        return owrap,nil
     }
 
     slhelp["stripquotes"] = LibHelp{in: "string", out: "string", action: "Remove outer quotes (double, single or backtick)"}
