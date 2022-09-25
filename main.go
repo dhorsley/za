@@ -244,6 +244,8 @@ var default_prectable [END_STATEMENTS]int8
 
 func main() {
 
+    // lineWrap=true // currently disabled - it breaks up ansi sequences. will re-enable when dealt with.
+
     // time zone handling
     if tz := os.Getenv("TZ"); tz != "" {
         var err error

@@ -215,6 +215,7 @@ const (
     SYM_COLON
     SYM_DoubleColon
     O_Comma
+    O_Try
 	SYM_Tilde
 	SYM_ITilde
 	SYM_FTilde
@@ -301,6 +302,7 @@ const (
     C_As
     C_Do
     C_Enum
+    C_EvalFault
     Block
     AsyncBlock
     ResultBlock

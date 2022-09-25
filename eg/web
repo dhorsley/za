@@ -12,28 +12,40 @@ end
 define negreg(inp,matcher)
     out=""
     foreach l in inp
-        if match(l,matcher); continue; endif
+        on match(l,matcher) do continue
         out=out+l+"\n"
     endfor
     return out
 end
 
+define interface_ip(in)
+    addrline =< ip addr show dev {in}
+    fil=addrline.reg_filter("inet.*/")
+    return addrline[fil[0][0]:fil[0][1]].reg_replace("inet ","").gsub("/","")
+end
+
+define routing_interface()
+    i =< ip -o -4 route show to default
+    return field(i,5)
+end
+
 
 # MAIN
+
+when release_id()
+is "ubuntu"
+    inter=collapse(negreg(net_interfaces(),"^(dum|tunl|sit|bond|docker|lo).*$"))
+    HOST=routing_interface().interface_ip
+    println "Found interface : {inter}"
+endwhen
+
+HOST        =get_env("PROXY_HOST") or HOST
+PORT        =as_int(get_env("PROXY_PORT") or "8080")
+HOME_PATH   =get_env("PROXY_PATH") or "/home/daniel/www"
 
 trap("int","cleanup()")
 permit("shell",false)
 permit("eval",false)
-
-when release_id()
-is "ubuntu"
-    inter=collapse(negreg(net_interfaces(),"^(docker|lo).*$"))
-    println "Found interface : {inter}"
-endwhen
-
-HOST        =get_env("PROXY_HOST") or "127.0.0.1"
-PORT        =as_int(get_env("PROXY_PORT") or "8080")
-HOME_PATH   =get_env("PROXY_PATH") or "/home/daniel/www"
 
 println "HOST : ",HOST
 println "PORT : ",PORT

@@ -190,7 +190,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 }
                 */
                 for {
-                    dp,err:=p.dparse(0)
+                    dp,err,_:=p.dparse(0)
                     if err!=nil {
                         return nil
                     }
@@ -206,7 +206,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             }
         }
 
-        self:=self_s{} 
+        self:=self_s{}
         if isStruct {
             self.aware=true
             self.ptr=&obj

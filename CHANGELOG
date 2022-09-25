@@ -24,9 +24,27 @@ CHANGE LOG
             - ignoring for now - just wanted the thing compiling again so that i could test namespace changes.
 
     * added interpolate(string) function.
+    * added wrap(bool) function: enables/disables line wrap in non-global display panes. not currently concurrency-safe.
 
     other
     -----
+
+    * (experimental) added FIX statement and ?? (try) operator
+        - ?? unary operator may be prepended to expressions in, for example, IF/ON statements and on a nil result will cause
+            execution to stop in the current function (or main).
+        - the FIX statement introduces a code block which is executed in the current function (or main) on receipt of such
+            a nil expression result prepended by the ?? operator.
+            when code subsequent to the FIX statement is executed then these additional local variables are available:
+                _try_fault(bool)
+                _try_line (int)                     : line encountered on
+                _try_err  (struct)                  : whole error struct
+                _try_info (string)                  : error string
+        - _try_info and _try_err will usually contain nil.
+        - the fix stanza may be used for cleanup/info operations on this type of failure.
+        - see eg/fix for simple example.
+        - as usual, if this becomes useful, we may expand on the available _try_* information.
+        - there are no designs to convert this to any type of exception handling propagating back through the call chain.
+            - it is intended for simple error recovery in situ.
 
     * added default string clause to PROMPT statement. ("IS str_expr" as final clause)
 
@@ -160,6 +178,8 @@ CHANGE LOG
         - this places the responsibility on the script writer to use aliases to avoid namespace collisions.
         - the alias name must follow the usual rules for identifier syntax (^[a-zA-Z_][a-zA-Z0-9_]*$)
         - when no alias is provided the existing rules are used for checking namespace membership.
+        - if a function exists within a module with the same name as the module or its alias, then you must
+            always refer to the function fully qualified.
 
     * extended SHOWDEF to permit a module name or alias argument, for listing all 
         definitions from an imported module.

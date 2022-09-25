@@ -1,18 +1,18 @@
 
 # get current aws account id
-define aws_account()
+define account()
     account_id=|aws sts get-caller-identity
     return account_id.out.json_query(".Account").collapse
 end
 
 # returns list of account keypairs
-define aws_keypairs()
+define keypairs()
     keys=|aws ec2 describe-key-pairs
     return keys.out.json_query(".KeyPairs[].KeyName",true)
 end
 
 # full instance list, selected fields
-define aws_instances()
+define instances()
     instances=|aws ec2 describe-instances
     return instances.out.json_query(
         ".Reservations[].Instances[] | {iid:.InstanceId, itype:.InstanceType, ami:.ImageId, iip:.PrivateIpAddress, eip:.PublicIpAddress}",
