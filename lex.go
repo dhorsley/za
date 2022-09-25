@@ -14,7 +14,7 @@ const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 const numeric = "0123456789.fn"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_"
-const doubleterms = "<>=|&-+*.:"
+const doubleterms = "<>=|&-+*.:?"
 const expExpect="0123456789-+"
 
 var tokNames = [...]string{"ERROR", "EOL", "EOF",
@@ -25,7 +25,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "PLUSEQ", "MINUSEQ", "MULEQ", "DIVEQ", "MODEQ", "LPAREN", "RPAREN",
     "SYM_EQ", "SYM_LT", "SYM_LE", "SYM_GT", "SYM_GE", "SYM_NE",
     "SYM_LAND", "SYM_LOR", "SYM_BAND", "SYM_BOR", "SYM_BSLASH", "SYM_DOT", "SYM_PP", "SYM_MM", "SYM_POW", "SYM_RANGE",
-    "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "SYM_DCOLON", "COMMA", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
+    "SYM_LSHIFT", "SYM_RSHIFT","SYM_COLON", "SYM_DCOLON", "COMMA", "TRY", "TILDE", "ITILDE", "FTILDE", "SQR", "SQRT",
     "O_QUERY", "O_FILTER", "O_MAP","O_INFILE","O_OUTFILE","O_REF","O_MUT","O_LC","O_UC","O_ST","O_LT","O_RT",
     "O_PB","O_PA","O_PN","O_PE","O_PP",
     "START_STATEMENTS", "VAR", "SETGLOB",
@@ -35,7 +35,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","BLOCK","ABLOCK","RBLOCK",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","EVALFAULT","BLOCK","ABLOCK","RBLOCK",
     "T_NUMBER", "T_NIL", "T_BOOL", "T_INT", "T_UINT", "T_FLOAT", "T_BIGI",
     "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY",
 }
@@ -155,6 +155,9 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 goto get_nt_eval_point
             case ">=":
                 word=">="
+                startNextTokenAt=thisWordStart+2
+                goto get_nt_eval_point
+            case "??":
                 startNextTokenAt=thisWordStart+2
                 goto get_nt_eval_point
             case "-=","+=","*=","/=","%=","=<","=@","=|","->","~i","~f","?>":
@@ -546,6 +549,8 @@ get_nt_eval_point:
         tokType = RParen
     case ",":
         tokType = O_Comma
+    case "??":
+        tokType = O_Try
     case "=":
         tokType = O_Assign
     case "~":
@@ -647,6 +652,8 @@ get_nt_eval_point:
             tokType = O_Pp
         case "enum":
             tokType = C_Enum
+        case "fix":
+            tokType = C_EvalFault
         case "init":
             tokType = C_Init
         case "setglob":

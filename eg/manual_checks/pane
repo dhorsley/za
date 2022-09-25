@@ -1,9 +1,9 @@
 #!/usr/bin/za
 
-#doc `
-#check that word wrap at line end in non-global panes is working.
-# (currently not, feature under change)
-#`
+doc `
+    check that word wrap at line end in non-global panes is working.
+     (currently not, feature under change)
+`
 
 
 bigs="37548956745865724058247yu5642853108572+3495752485674568465745yuhjn4t84tdrkfgjrgm,hgtm,nht648565"
