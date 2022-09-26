@@ -595,7 +595,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     defer func() {
         if r := recover(); r != nil {
             if parser.try_fault {
-                pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
+                // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
             } else {
                 if _,ok:=r.(runtime.Error); ok {
                     parser.report(inbound.SourceLine,sf("\n%v\n",r))
