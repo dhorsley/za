@@ -107,6 +107,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     on_found:=false
     do_found:=false
+    fix_found:=false
     borpos:=-1
 
     for ; pos < len(input); {
@@ -128,6 +129,11 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if tempToken.carton.tokText==var_refs_name {
                 vref_found=true
             }
+        }
+
+        // FIX present?
+        if !fix_found && tokenType==C_Fix {
+            fix_found=true
         }
 
         // ON present?
@@ -201,6 +207,11 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
         if tokenType == EOL || tokenType == SYM_Semicolon {
+
+            // -- store fix presence
+            if fix_found {
+                base.HasFix=true
+            }
 
             // -- add original version
             if pos>0 {

@@ -46,28 +46,34 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
 
 
 type leparser struct {
-    tokens      []Token     // the thing getting evaluated
-    ident       *[]Variable // where are the local variables at?
-    prev        Token       // bodge for post-fix operations
-    preprev     Token       //   and the same for assignment
-    fs          uint32      // working function space
-    mident      uint32      // fs of main() (1 or 2 depending on interactive mode)
-    len         int16       // assigned length to save calling len() during parsing
-    line        int16       // shadows lexer source line
-    pc          int16       // shadows program counter (pc)
-    pos         int16       // distance through parse
-    prectable   [END_STATEMENTS]int8 // tried this with a reference+locks instead of a copy
-                                    //  it wasn't much faster and raised complexity.
-    namespace   string
-    namespacing bool
-    namespace_pos int16
+    tokens      []Token                 // the thing getting evaluated
+    ident       *[]Variable             // where are the local variables at?
+    prev        Token                   // bodge for post-fix operations
+    preprev     Token                   //   and the same for assignment
+    fs          uint32                  // working function space
+    mident      uint32                  // fs of main() (1 or 2 depending on interactive mode)
+    len         int16                   // assigned length to save calling len() during parsing
+    line        int16                   // shadows lexer source line
+    pc          int16                   // shadows program counter (pc)
+    pos         int16                   // distance through parse
+    prectable   [END_STATEMENTS]int8    // precedence lookup table
+    namespace   string                  // optional namespace attached to next 2 tokens
+    namespacing bool                    // pending namespace completion?
+    namespace_pos int16                 // token position of namespace start
 
-    try_fault   bool        // if a try operator was encountered and it's expression returned nil
-    try_err     error
-    try_pos     int
-    try_line    int
-    try_info    string
-    // try_depth   int
+    try_fault   bool                    // if a try operator was encountered and it's expression returned nil
+    try_err     error                   // recorded error
+    try_pos     int                     // program statement counter position of error
+    try_line    int                     // source line in base function of error
+    try_info    string                  // error string
+    try_type    string                  // fix type to apply
+    try_type_override bool              // allows dparse to process rhs of tern_if operator during a try
+    std_call    bool                    // if a call to stdlib has been made
+    std_faulted bool                    // and if it faulted.
+
+    in_fix      bool                    // currently in a fix block
+    resume_pos  int16                   // statement position the fix was triggered from
+
 }
 
 
@@ -85,7 +91,7 @@ func (p *leparser) peek() Token {
 }
 
 
-func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
+func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
 
     // pf("\ndparse query     : %#v\n",p.tokens)
 
@@ -130,16 +136,17 @@ func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
     case SYM_Caret:         // unary pointery stuff
         left=p.unary(ct)
     */
+    /* O_Try defunct. use post-fix ? instead.
     case O_Try:
         right,err,_:=p.dparse(3)
-        if right==nil { // && ! p.try_fault {
+        if right==nil {
             p.try_fault=true
             p.try_err=err
             p.try_pos=int(p.pc)
             p.try_info=sf("%v",err)
-            // p.try_depth+=1
         }
         left=right
+    */
     case LParen:
         left=p.grouping(ct)
     case SYM_PP, SYM_MM:
@@ -201,7 +208,8 @@ func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
             }
             continue
         case SYM_DOT:
-            left = p.accessFieldOrFunc(left,p.next().tokText)
+            p.std_faulted=false
+            left,_ = p.accessFieldOrFunc(left,p.next().tokText)
             continue
         case C_Is:
             left = p.kind_compare(left)
@@ -209,14 +217,13 @@ func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
         case LParen:
             switch left.(type) {
             case string:
-                left = p.buildStructOrFunction(left,token)
+                left,_ = p.buildStructOrFunction(left,token)
                 continue
             }
         }
 
         var right any
-        right,err,try_fault = p.dparse(p.prectable[token.tokType] + 1)
-        if err!=nil { panic(err) }
+        right,err,_ = p.dparse(p.prectable[token.tokType] + 1)
 
         switch token.tokType {
 
@@ -231,7 +238,9 @@ func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
         case O_Percent:
             left = ev_mod(left,right)
 
-        case O_Query:                       // ternary
+        case O_Query:                       // ternary and try op
+            // pf("(o_query) right is %v\n",right)
+            // pf("(o_query) tokens -> %+v\n",p.tokens)
             left=p.tern_if(left,right)
 
         case SYM_EQ:
@@ -302,6 +311,13 @@ func (p *leparser) dparse(prec int8) (left any,err error, try_fault bool) {
         }
 
     }
+
+    /*
+    if !p.try_fault && p.std_call && p.std_faulted {
+        pf("(dp) try fault leaving with nil value.\n")
+        return nil,p.try_err,false
+    }
+    */
 
     /*
     if err!=nil || left==nil {
@@ -930,7 +946,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
 }
 
-func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
+func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
 
     name:=left.(string)
     isStruct:=false
@@ -974,7 +990,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
             }
             dp,err,_:=p.dparse(0)
             if err!=nil {
-                return nil
+                return nil,true
             }
             iargs=append(iargs,dp)
             if p.peek().tokType!=O_Comma {
@@ -1072,7 +1088,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
             } else {
                 panic(fmt.Errorf("length mismatch of argument names [%d] to struct fields [%d]",len(arg_names),len(iargs)))
                 finish(false,ERR_EVAL)
-                return nil
+                return nil,true
             }
         }
 
@@ -1091,7 +1107,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
                 if !typeFound {
                     panic(fmt.Errorf("unknown type in struct(anon) field %s [%v]",arg_names[n],t))
                     finish(false,ERR_EVAL)
-                    return nil
+                    return nil,true
                 }
                 structvalues=append(structvalues,true)
                 structvalues=append(structvalues,iargs[n])
@@ -1123,7 +1139,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
                     }
                     // if we reach here, then all types matched the provided values, hopefully!
                 }
-                
+
                 n:=0
                 for i:=3; i<len(structvalues); i+=4 {
                     structvalues[i-1]=true
@@ -1134,7 +1150,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
                 // error
                 panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
                 finish(false,ERR_EVAL)
-                return nil
+                return nil,true
             }
         }
 
@@ -1142,10 +1158,10 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
         if err!=nil {
             panic(err.Error())
             finish(false,ERR_EVAL)
-            return nil
+            return nil,true
         }
 
-        return t.IValue
+        return t.IValue,false
 
     }
 
@@ -1157,7 +1173,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
         if ifn, present = fnlookup.lmget(name); !present {
             panic(fmt.Errorf("could not find function named '%s'",name))
             finish(false,ERR_EVAL)
-            return nil
+            return nil,true
         }
         farglock.RLock()
         falist:=functionArgs[ifn].args
@@ -1167,24 +1183,24 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any) {
                 found:=false
                 for fa:=range falist {
                     if an==fa {
-                        found=true 
+                        found=true
                         break
                     }
                 }
                 if !found {
                     panic(fmt.Errorf("argument '%s' not found in definition for '%s'",an,name))
                     finish(false,ERR_EVAL)
-                    return nil
+                    return nil,true
                 }
             }
         } else {
             panic(fmt.Errorf("bad argument name count [%d] for '%s' [needs %d]",len(arg_names),name,len(falist)))
             finish(false,ERR_EVAL)
-            return nil
+            return nil,true
         }
     }
 
-    return callFunction(p.fs,p.ident,name,self_s{},arg_names,iargs)
+    return p.callFunctionExt(p.fs,p.ident,name,self_s{},arg_names,iargs)
 
 }
 
@@ -1340,6 +1356,27 @@ func unOpSqrt(n any) any {
 }
 
 func (p *leparser) tern_if(left any,tv any) (any) {
+    // pf("(tern_if) tv : %+v\n",tv)
+    // expr '?' string
+    if p.peek().tokType != SYM_COLON {
+        switch left.(type) {
+        case nil:
+            // set try fail state
+            p.try_fault=true
+            p.try_pos=int(p.pc)
+            p.try_info=sf("%v",p.try_err)
+        }
+        switch tv.(type) {
+        case string:
+            // set fix type string
+            p.try_type=tv.(string)
+            p.try_type_override=false
+            // pf("tern string type : %s\n",p.try_type)
+        default:
+            p.try_type=""
+        }
+        return left
+    }
     // expr '?' tv ':' fv
     switch left.(type) {
     case bool:
@@ -2459,16 +2496,21 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             }
 
             oid:=p.ident; p.ident=lident
-            expr.result, err , _ = p.Eval(lfs,newEval)
+            expr.result, err , try_fault = p.Eval(lfs,newEval)
             p.ident=oid
 
         }
     }
 
-    if err!=nil {
+    if try_fault {
+        // pf("User to handle error for:\n  %v\n",err)
+        p.try_pos=int(p.pc)
+        p.try_fault=true
+    }
+
+    if err!=nil && !try_fault {
         expr.evalError=true
         expr.errVal=err
-        p.try_fault=try_fault
         return expr
     }
 
@@ -2478,7 +2520,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
     }
 
-    p.try_fault=try_fault
     return expr
 
 }
