@@ -12,28 +12,37 @@ define chained(p)
 end
 
 define in_fn_test(p)
-    q = ?? p.chained
-    w = ?? nil
+    q = p.chained?
+    w = nil?
     return q
   fix
-    println "(fn) err  : ",_try_err
     println "(fn) info : ",_try_info
     println "(fn) line : ",_try_line
     return -1
 end
 
-println in_fn_test(0)
-println in_fn_test(nil)
-println in_fn_test(42)
+#------------------------------------------------------------------------------------
 
-if ?? nil
-    println "should not see this."
+z=fopen("/tmp/dhop-missing","r") ? "file1" 
+# resume in "fix file1" starts again from here
+on not z is nil do z.fclose
+
+println in_fn_test(42)
+println in_fn_test(nil)
+
+if nil?
+    println "should not see this as there is no resume in unlabelled FIX below."
 endif
 
-println "or this."
 
+#------------------------------------------------------------------------------------
+fix file1
+    println "(main-file-err) info : ",_try_info
+    println "(main-file-err) line : ",_try_line
+    resume
 fix
-    println "(main) err  : ",_try_err
+    println "(main)"
     println "(main) info : ",_try_info
     println "(main) line : ",_try_line
+#------------------------------------------------------------------------------------
 

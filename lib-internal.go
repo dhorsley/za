@@ -130,12 +130,6 @@ func GetAst(fn string) (ast string) {
 
     if ifn < uint32(len(functionspaces)) {
 
-        /*
-        if str.HasPrefix(fn,"@mod_") {
-            return
-        }
-        */
-
         var falist []string
         for _,fav:=range functionArgs[ifn].args {
             falist=append(falist,fav)
@@ -147,10 +141,8 @@ func GetAst(fn string) (ast string) {
         istring:=""
 
         for q := range functionspaces[ifn] {
-            // strOut := "\t\t "
             if first == true {
                 first = false
-                // strOut = sf("\n[#4][#bold]%s(%v)[#boff][#-]\n\t\t ", fn, str.Join(falist, ","))
             }
 
             switch functionspaces[ifn][q].Tokens[0].tokType {
@@ -160,7 +152,6 @@ func GetAst(fn string) (ast string) {
 
             istring=str.Repeat("....",indent)
 
-                // ast+=sf("%sLine (bytes:%d)  : "+sparkle("[#1]" + basecode[ifn][q].Original + "[#-]")+"\n",istring,Of(functionspaces[ifn][q]))
                 ast+=sf("%sLine (bytes:%d)  :\n",istring,Of(functionspaces[ifn][q]))
 
             for tk,tv:=range functionspaces[ifn][q].Tokens {

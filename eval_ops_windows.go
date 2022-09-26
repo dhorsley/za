@@ -16,19 +16,19 @@ import (
 //  build a local struct with only common fields between windows and unix/bsd
 //  and then this func can be returned to eval_ops.go.
 
-func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
+func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
     switch obj:=obj.(type) {
 
     case http.Header:
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field)
-        return f
+        return f,false
 
     case *syscall.Win32FileAttributeData:
         r := reflect.ValueOf(obj)
         f := reflect.Indirect(r).FieldByName(field).Interface()
-        return f
+        return f,false
 
     default:
 
@@ -54,21 +54,21 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
                 switch f.Type().Kind() {
                 case reflect.String:
-                    return f.String()
+                    return f.String(),false
                 case reflect.Bool:
-                    return f.Bool()
+                    return f.Bool(),false
                 case reflect.Int:
-                    return int(f.Int())
+                    return int(f.Int()),false
                 case reflect.Int64:
-                    return int(f.Int())
+                    return int(f.Int()),false
                 case reflect.Float64:
-                    return f.Float()
+                    return f.Float(),false
                 case reflect.Uint:
-                    return uint(f.Uint())
+                    return uint(f.Uint()),false
                 case reflect.Uint8:
-                    return uint8(f.Uint())
+                    return uint8(f.Uint()),false
                 case reflect.Uint64:
-                    return uint64(f.Uint())
+                    return uint64(f.Uint()),false
 
                 case reflect.Slice:
 
@@ -77,17 +77,17 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
 
                     switch f.Type().Elem().Kind() {
                     case reflect.Interface,reflect.String:
-                        return slc.Interface()
+                        return slc.Interface(),false
                     default:
-                        return []any{}
+                        return []any{},false
                     }
 
                 case reflect.Interface:
-                    return f.Interface()
+                    return f.Interface(),false
 
                 default:
                     f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
-                    return f.Interface()
+                    return f.Interface(),false
                 }
             }
         }
@@ -121,7 +121,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
         en:=enum[ename]
         globlock.RUnlock()
         if en!=nil {
-            return en.members[name]
+            return en.members[name],false
         }
 
         // try a function call..
@@ -179,7 +179,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                     }
                     dp,err:=p.dparse(0)
                     if err!=nil {
-                        return nil
+                        return nil,true
                     }
                     iargs=append(iargs,dp)
                     if p.peek().tokType!=O_Comma {
@@ -192,7 +192,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
                 for {
                     dp,err:=p.dparse(0)
                     if err!=nil {
-                        return nil
+                        return nil,true
                     }
                     iargs=append(iargs,dp)
                     if p.peek().tokType!=O_Comma {
@@ -206,16 +206,16 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any) {
             }
         }
 
-        self:=self_s{} 
+        self:=self_s{}
         if isStruct {
             self.aware=true
             self.ptr=&obj
         }
 
-        return callFunction(p.fs,p.ident,name,self,[]string{},iargs)
+        return callFunctionExt(p.fs,p.ident,name,self,[]string{},iargs)
 
     }
 
-    return nil
+    return nil,false
 }
 

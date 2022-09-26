@@ -40,7 +40,7 @@ define bytesize(i)
 end
 
 # @todo: add split on space:
-define wrap(s)
+define linewrap(s)
     ns=""
     c=0
     pw=pane_w()
@@ -121,7 +121,7 @@ define popup(path,file)
     fullname=join([path,file.name],"/")
     fullname=fullname.tr("s","/")
     ftype=|file "{fullname}"
-    ws,lc=wrap(ftype.out)
+    ws,lc=linewrap(ftype.out)
     px=sh/2-1
     print "[#b0][#5]"
     pane define "popup",px,1,8+lc,sw," Info ","none"

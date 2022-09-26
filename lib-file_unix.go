@@ -55,7 +55,7 @@ func buildFileLib() {
         if f!=nil {
             return fw,nil
         }
-        return nil,nil
+        return nil,err
     }
 
     slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool", 

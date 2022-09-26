@@ -29,22 +29,40 @@ CHANGE LOG
     other
     -----
 
-    * (experimental) added FIX statement and ?? (try) operator
-        - ?? unary operator may be prepended to expressions in, for example, IF/ON statements and on a nil result will cause
-            execution to stop in the current function (or main).
+    * (experimental) added FIX+RESUME statements and ? (try) operator
+
+        - ? binary operator may be added postfix to expressions in, for example, IF/ON statements (and elsewhere).
+            - on a nil result this will cause execution to stop in the current function (or main).
+
         - the FIX statement introduces a code block which is executed in the current function (or main) on receipt of such
-            a nil expression result prepended by the ?? operator.
+            a nil expression result followed by the ? operator.
             when code subsequent to the FIX statement is executed then these additional local variables are available:
-                _try_fault(bool)
                 _try_line (int)                     : line encountered on
-                _try_err  (struct)                  : whole error struct
                 _try_info (string)                  : error string
-        - _try_info and _try_err will usually contain nil.
-        - the fix stanza may be used for cleanup/info operations on this type of failure.
-        - see eg/fix for simple example.
-        - as usual, if this becomes useful, we may expand on the available _try_* information.
+        - _try_info will usually contain nil. stdlib calls may generate content within it.
+
+        - the FIX stanza may be used for cleanup/info operations on this type of failure.
+            - see eg/fix for simple example.
+
+        - a RESUME command, inside a FIX stanza, will return program execution to the statement following the location of the fault.
+
+        - if the try operator is followed by a string literal, e.g.:
+            nil?"faultX"
+          ... then a corresponding FIX stanza is searched for that matches the supplied fault code:
+            fix faultX
+                (statements)
+
+        - FIX stanzas are skipped when there is no current try fault raised within the function (or main).
+
+        - a FIX stanza that does not contain a code label is always executed. execution will follow through into subsequent code, 
+            including other FIX stanzas, if there is no resume or exit (or other form of branch away) at the end of the stanza.
+            - this behaviour may change later.
+
+        - as usual, if this becomes useful, we may expand on the available _try_* information or functionality.
+
         - there are no designs to convert this to any type of exception handling propagating back through the call chain.
             - it is intended for simple error recovery in situ.
+
 
     * added default string clause to PROMPT statement. ("IS str_expr" as final clause)
 
