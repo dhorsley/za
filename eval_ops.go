@@ -1490,7 +1490,7 @@ func slice(v any, from, to any) any {
 }
 
 
-func callFunction(evalfs uint32, ident *[]Variable, name string, self self_s, arg_names []string, args []any) (res any) {
+func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, self self_s, arg_names []string, args []any) (res any,hasError bool) {
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1526,7 +1526,6 @@ func callFunction(evalfs uint32, ident *[]Variable, name string, self self_s, ar
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, self, arg_names, args...)
 
             // handle the returned result, if present.
-
             calllock.Lock()
             res = calltable[loc].retvals
             calltable[loc].gcShyness=10
@@ -1535,25 +1534,26 @@ func callFunction(evalfs uint32, ident *[]Variable, name string, self self_s, ar
 
             switch rcount {
             case 0:
-                return nil
+                return nil,false
             case 1:
-                return res.([]any)[0]
+                return res.([]any)[0],false
             default:
-                return res
+                return res,false
             }
-            return res
+            return res,false
+
         } else {
             panic(fmt.Errorf("syntax error: no such function %q", name))
         }
     } else {
         // call standard library function
         res, err := f(evalfs,ident,args...)
+        p.std_call=true
         if err != nil {
-            msg:=sf("function error: in %+v %s",name,err)
-            if err.Error()!="" { msg=err.Error() }
-            panic(fmt.Errorf(msg))
+            p.std_faulted=true
+            p.try_err=err
         }
-        return res
+        return res,err!=nil
     }
 }
 

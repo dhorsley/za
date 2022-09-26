@@ -17,7 +17,8 @@ type Phrase struct {
 
 type BaseCode struct {
 	Original    string  // entire string, unmodified for spaces
-    borcmd      string // issued command if SYM_BOR present
+    borcmd      string  // issued command if SYM_BOR present
+    HasFix      bool    // used by error recovery to see if handled by user FIX or system
 }
 
 type bc_block struct {

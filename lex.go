@@ -35,7 +35,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
     "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","EVALFAULT","BLOCK","ABLOCK","RBLOCK",
+    "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","FIX","RESUME","BLOCK","ABLOCK","RBLOCK",
     "T_NUMBER", "T_NIL", "T_BOOL", "T_INT", "T_UINT", "T_FLOAT", "T_BIGI",
     "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY",
 }
@@ -653,7 +653,9 @@ get_nt_eval_point:
         case "enum":
             tokType = C_Enum
         case "fix":
-            tokType = C_EvalFault
+            tokType = C_Fix
+        case "resume":
+            tokType = C_Resume
         case "init":
             tokType = C_Init
         case "setglob":

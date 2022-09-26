@@ -594,16 +594,20 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     // error handler
     defer func() {
         if r := recover(); r != nil {
-            if _,ok:=r.(runtime.Error); ok {
-                parser.report(inbound.SourceLine,sf("\n%v\n",r))
-                if debug_level>0 { err:=r.(error); panic(err) }
+            if parser.try_fault {
+                pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
+            } else {
+                if _,ok:=r.(runtime.Error); ok {
+                    parser.report(inbound.SourceLine,sf("\n%v\n",r))
+                    if debug_level>0 { err:=r.(error); panic(err) }
+                    finish(false,ERR_EVAL)
+                }
+                err:=r.(error)
+                parser.report(inbound.SourceLine,sf("\n%v\n",err))
+                if debug_level>0 { panic(r) }
+                setEcho(true)
                 finish(false,ERR_EVAL)
             }
-            err:=r.(error)
-            parser.report(inbound.SourceLine,sf("\n%v\n",err))
-            if debug_level>0 { panic(r) }
-            setEcho(true)
-            finish(false,ERR_EVAL)
         }
     }()
 
@@ -718,8 +722,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
         vset(nil,ifs,ident,"self",*self.ptr)
     }
 
-    // var try_fault bool
-
 tco_reentry:
 
     // assign value to local vars named in functionArgs (the call parameters)
@@ -805,11 +807,13 @@ pcloop:
             }
 
             pf("fault %v : %20s: line:%5d : [#"+clr+"]%5d : %+v[#-]\n",parser.try_fault,fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+
         }
 
         /////////////////////////////////////////////////////////////////////////
 
-        if parser.try_fault && inbound.Tokens[0].tokType != C_EvalFault {
+        if parser.try_fault && inbound.Tokens[0].tokType != C_Fix {
+            // pf("(line %d) skipping to fix.\n",inbound.SourceLine+1)
             continue
         }
 
@@ -2414,45 +2418,70 @@ pcloop:
             }
 
 
-        case C_EvalFault:
+        case C_Resume:
 
-            if parser.try_fault {
-                // reset everything
-                defining=false
-                breakIn=Error
-                break_count=0
-                forceEnd=false
-                depth=0
-                lastConstruct = []uint8{}
-                wc=make([]whenCarton, WHEN_CAP)
-                wccount=0
-                loops = make([]s_loop, MAX_LOOPS)
-                inside_test=false
-                inside_with=false
-                structMode=false
-                structName=""
-                structNode=[]any{}
-                definitionName=""
-                si=false
-                typeInvalid=false
+            if parser.in_fix {
+                parser.in_fix=false
+                parser.pc=parser.resume_pos
+                continue
+            }
 
-                // create some info
-                vset(nil,ifs,ident,"_try_fault",parser.try_fault)
-                vset(nil,ifs,ident,"_try_err",parser.try_err)
-                vset(nil,ifs,ident,"_try_info",parser.try_info)
-                // vset(nil,ifs,ident,"_try_depth",parser.try_depth)
-                inbound = &functionspaces[source_base][parser.try_pos]
-                vset(nil,ifs,ident,"_try_line",inbound.SourceLine+1)
+        case C_Fix:
 
-                // then restart execution
-                parser.try_fault=false
-            } else {
-                vset(nil,ifs,ident,"_try_fault",false)
-                vset(nil,ifs,ident,"_try_err",nil)
-                vset(nil,ifs,ident,"_try_line",-1)
-                vset(nil,ifs,ident,"_try_info","")
-                // vset(nil,ifs,ident,"_try_depth",0)
-                break pcloop
+            var fix_type string
+            if inbound.TokenCount>1 {
+                fix_type=inbound.Tokens[1].tokText
+            }
+
+            // pf("Checking fix %s\n",fix_type)
+
+            if fix_type=="" || fix_type==parser.try_type {
+
+                if parser.try_fault {
+                    // reset everything
+                    defining=false
+                    breakIn=Error
+                    break_count=0
+                    forceEnd=false
+                    depth=0
+                    lastConstruct = []uint8{}
+                    wc=make([]whenCarton, WHEN_CAP)
+                    wccount=0
+                    loops = make([]s_loop, MAX_LOOPS)
+                    inside_test=false
+                    inside_with=false
+                    structMode=false
+                    structName=""
+                    structNode=[]any{}
+                    definitionName=""
+                    si=false
+                    typeInvalid=false
+
+                    // create some info
+                    // pf("in evalfault : current try_err : %+v\n",parser.try_err)
+                    vset(nil,ifs,ident,"_try_fault",parser.try_fault)
+                    vset(nil,ifs,ident,"_try_err",parser.try_err)
+                    vset(nil,ifs,ident,"_try_info",parser.try_info)
+                    inbound = &functionspaces[source_base][parser.try_pos]
+                    vset(nil,ifs,ident,"_try_line",inbound.SourceLine+1)
+
+                    // then restart execution
+                    parser.try_fault=false
+                    parser.try_err=nil
+                    parser.resume_pos=int16(parser.try_pos)
+                    parser.try_pos=0
+                    parser.try_line=-1
+                    parser.try_info=""
+                    parser.std_call=false
+                    parser.std_faulted=false
+                    parser.in_fix=true
+                } else {
+                    vset(nil,ifs,ident,"_try_fault",false)
+                    vset(nil,ifs,ident,"_try_err",nil)
+                    vset(nil,ifs,ident,"_try_line",-1)
+                    vset(nil,ifs,ident,"_try_info","")
+                    break pcloop
+                }
             }
 
         case C_Enum:
@@ -4794,7 +4823,7 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variab
             if evnest==0 && (term==len(tokens)-1 || nt.tokType == O_Comma) {
                 v, e, _ := parser.Eval(ifs,tokens[newstart:term+1])
                 if e!=nil {
-                    parser.report(sourceLine,sf("Error in PRINT term evaluation\n%s",e))
+                    parser.report(sourceLine,sf("Error in PRINT term evaluation: %s",e))
                     finish(false,ERR_EVAL)
                     break
                 }
