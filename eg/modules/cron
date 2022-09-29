@@ -1,0 +1,64 @@
+
+enum days ("Sunday"=0,"Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+enum months ("January"=1,"February","March","April","May","June","July","August","September","October","November","December")
+
+define parse(time_val,crontab)
+
+    when
+    has time_val is string
+        t=epoch_nano_time(time_val)
+    has time_val is int
+        t=time_val
+    endwhen
+
+    time=[]
+    time=time.append(t.time_minutes.as_string)
+    time=time.append(t.time_hours.as_string)
+    time=time.append(t.time_dom.as_string)
+    time=time.append(eval("months."+t.time_month.as_string))
+    time=time.append(eval("days."+t.time_dow.as_string))
+       
+    crontab=crontab.split(" ")
+
+    rDig="[0-9]+"
+    foreach v in crontab
+        v=v.split(",")
+        foreach v1 in v
+            v1=v1.replace(`^\*$`                  , `true`                                        )
+            v1=v1.replace(`^{rDig}$`              , `"{=time[key_v]}"=="$0"`                      )
+            v1=v1.replace(`^({rDig})\-({rDig})$`  , "($1<={=time[key_v]} and {=time[key_v]}<=$2)" )
+            v1=v1.replace(`^\*\/({rDig})$`        , "({=time[key_v]}%$1)==0"                      )
+            v[key_v1]=v1
+        endfor 
+        v="(" + join(v," or ") + ")"
+        crontab[key_v]=v
+    endfor 
+    crontab=join(crontab," and ")
+
+    return eval(crontab)
+
+end 
+
+test cron_next_parse group cron
+    println parse("2011-05-04T02:08:03+00:00","*/2,3-5,9 2 3-5 */2 *")
+    println parse("2011-05-04T02:08:03+00:00","*/8 */2 */4 */5 *")
+    println parse(date(),"*/2 * * * *")
+endtest
+
+
+# returns the epoch timestamp (not nano) of the next due time for a schedule,
+#  given a previous starting point of e
+#  execution will end with a -1 return value if a due time cannot be found
+#  within 1 year of the starting point.
+
+define next_run(e,schedule)
+    yr=86400*366*1000_000_000
+    z=e
+    for ,z<z+yr, z+=60*1000_000_000
+        on parse(z,schedule) do break
+    endfor
+    on z>=e+yr do return -1
+    return z/1000_000_000
+end
+
+
