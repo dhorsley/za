@@ -28,6 +28,8 @@ func buildRegexLib() {
 
         var re pcre.Regexp
         re = pcre.MustCompileParseJIT(regex,pcre.STUDY_JIT_COMPILE)
+        // pf("(rr) about to use src : %s\n",src)
+        // pf("(rr) about to use repl: %s\n",repl)
         s := re.ReplaceAllString(src,repl,flags)
         return string(s), nil
     }

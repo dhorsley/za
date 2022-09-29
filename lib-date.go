@@ -46,10 +46,30 @@ func buildDateLib() {
         return time.Now().Format(time.RFC822Z),nil
     }
 
-	slhelp["epoch_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
+	slhelp["epoch_time"] = LibHelp{in: "[string]", out: "integer", action: "Returns the current epoch (Unix) time in seconds. If the optional [#i1]string[#i0] is present, then this is converted to epoch int format from RFC3339 format."}
 	stdlib["epoch_time"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("epoch_time",args,0); !ok { return nil,err }
+        if ok,err:=expect_args("epoch_time",args,2,
+            "1","string",
+            "0"); !ok { return nil,err }
+        if len(args)==1 {
+            dt,e:=time.Parse(time.RFC3339,args[0].(string))
+            if e==nil { return int(dt.Unix()),nil }
+            return nil,e
+        }
 		return int(time.Now().Unix()), err
+	}
+
+	slhelp["epoch_nano_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
+	stdlib["epoch_nano_time"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("epoch_nano_time",args,2,
+            "1","string",
+            "0"); !ok { return nil,err }
+        if len(args)==1 {
+            dt,e:=time.Parse(time.RFC3339,args[0].(string))
+            if e==nil { return int(dt.UnixNano()),nil }
+            return nil,e
+        }
+		return int(time.Now().UnixNano()), err
 	}
 
 	slhelp["time_hours"] = LibHelp{in: "[epochnano]", out: "integer", action: "Returns the current hour of the day (no arguments) or the hour of the day specified by the epoch nano time in [#i1]epochnano[#i0]."}
@@ -190,12 +210,6 @@ func buildDateLib() {
 			t = time.Now()
 		}
 		return t.Year(), nil
-	}
-
-	slhelp["epoch_nano_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
-	stdlib["epoch_nano_time"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("epoch_nano_time",args,0); !ok { return nil,err }
-		return int(time.Now().UnixNano()), err
 	}
 
 	slhelp["time_diff"] = LibHelp{in: "te,ts", out: "integer", action: "Returns difference in micro-seconds between two nano-epoch dates."}
