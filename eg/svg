@@ -2,7 +2,7 @@
 
 print "execpath : ",execpath(),"\n"
 
-loc=execpath()+"/out.svg"
+loc=execpath()+"/files/out.svg"
 
 default_linestyle   = `stroke='blue' stroke-width='1px' fill='none'`
 redline             = `stroke='red' stroke-width='1px' fill='none'`

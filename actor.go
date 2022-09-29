@@ -564,7 +564,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
         &ident,
     )
     */
-
+    display_fs,_:=numlookup.lmget(calltable[csloc].base)
 
     calllock.Lock()
     // register call
@@ -802,11 +802,14 @@ pcloop:
                 clr="4"
             }
 
+            /*
             if inbound.Tokens[0].tokType==C_Define {
                 pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
             }
+            */
 
-            pf("fault %v : %20s: line:%5d : [#"+clr+"]%5d : %+v[#-]\n",parser.try_fault,fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+            // pf("fault %v : %20s: line:%5d : [#"+clr+"]%5d : %+v[#-]\n",parser.try_fault,fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
+            pf("[#dim][#7]%20s: %5d : [#"+clr+"]%+v[#-]\n",display_fs,inbound.SourceLine+1,basecode[source_base][parser.pc])
 
         }
 
