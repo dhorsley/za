@@ -4836,7 +4836,7 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variab
                     break
                 }
                 newstart=term+1
-                switch v.(type) { case string: v=interpolate(currentModule,ifs,ident,v.(string)) }
+                switch v.(type) { case string: v=interpolate(parser.namespace,ifs,ident,v.(string)) }
                 if logging {
                     plog_out += sf(`%v`,sparkle(v))
                 } else {

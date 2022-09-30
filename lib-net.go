@@ -134,16 +134,20 @@ func webLookup(host string) string {
 
 func webClose(h string) {
     pf("* Closing server (%s).\n",h)
+    weblock.Lock()
     web_handles[h].srv.Shutdown(context.Background())
     delete(web_handles,h)
+    weblock.Unlock()
 }
 
 func webCloseAll() {
+    weblock.Lock()
     for h,s:=range(web_handles) {
         pf("* Closing server (%s) : %+v\n",h,s)
         s.srv.Shutdown(context.Background())
         delete(web_handles,h)
     }
+    weblock.Unlock()
 }
 
 func webRoutesAll() {
@@ -735,7 +739,9 @@ func buildNetLib() {
         uid:=args[0].(string)
         // @note: we should maybe change this into a test instead of an assumption
         //          or ensure that this value is updated periodically.
+        weblock.RLock()
         _,exists:=web_handles[uid]
+        weblock.RUnlock()
         return exists,nil
 
     }

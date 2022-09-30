@@ -87,12 +87,12 @@ func getMemUsage() (uint64,uint64) {
         return m.Alloc, m.Sys
 }
 
-func enum_names(e string) []string {
+func enum_names(ns string, e string) []string {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]string{}
     if ! str.Contains(e,"::") {
-        e=currentModule+"::"+e
+        e=ns+"::"+e
     }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
@@ -104,12 +104,12 @@ func enum_names(e string) []string {
     return l
 }
 
-func enum_all(e string) []any {
+func enum_all(ns string,e string) []any {
     globlock.RLock()
     defer globlock.RUnlock()
     l:=[]any{}
     if ! str.Contains(e,"::") {
-        e=currentModule+"::"+e
+        e=ns+"::"+e
     }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
@@ -422,13 +422,13 @@ func buildInternalLib() {
     slhelp["enum_names"] = LibHelp{in: "enum", out: "[]string", action: "returns the name labels associated with enumeration [#i1]enum[#i0]"}
     stdlib["enum_names"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("enum_names",args,1,"1","string"); !ok { return nil,err }
-        return enum_names(args[0].(string)),nil
+        return enum_names(ns,args[0].(string)),nil
     }
 
     slhelp["enum_all"] = LibHelp{in: "enum", out: "[]mixed", action: "returns the values associated with enumeration [#i1]enum[#i0]"}
     stdlib["enum_all"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("enum_all",args,1,"1","string"); !ok { return nil,err }
-        return enum_all(args[0].(string)),nil
+        return enum_all(ns,args[0].(string)),nil
     }
 
     /*
