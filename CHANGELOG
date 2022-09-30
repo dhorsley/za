@@ -58,7 +58,6 @@ CHANGE LOG
             when code subsequent to the FIX statement is executed then these additional local variables are available:
                 _try_line (int)                     : line encountered on
                 _try_info (string)                  : error string
-        - _try_info will usually contain nil. stdlib calls may generate content within it.
 
         - the FIX stanza may be used for cleanup/info operations on this type of failure.
             - see eg/fix for simple example.
@@ -97,19 +96,9 @@ CHANGE LOG
             represented as current_namespace::struct_name
         - the global level namespace is 'main'
        
-    PLEASE NOTE: BOTH OF THE ABOVE FEATURES ARE EXTREMELY UNRELIABLE CURRENTLY.
-    THEY ARE IN TEST. FURTHER CHANGES WILL BE REQUIRED TO MAKE THEM THREAD SAFE
-    AND THEY MAY NOT WORK AS EXPECTED ANYWAY.
-
-    ONCE STABILISED, THEY WILL BE MARKED AS COMPLETED IN A FUTURE RELEASE.
-
     In addition to the above, when we are happy, or at least happier, with their state, then
     we may look into further changes to support user defined temporary namespace changes in
     a more programmatic fashion.
-
-    Existing code should be unaffected by the above experimental changes, however, we are not
-    100% sure of that fact :) It will be part of the testing, and v1.1.6 will not be a binary
-    and promoted release until we are assured of this.
 
 
 1.1.5
