@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "../modules/timing.mod"
+module "../modules/timing.mod" as t
 
 #
 # START
@@ -26,5 +26,5 @@ assert(x==0)
 
 # instructions, 2*nop+while+incr+endwhile
 
-report(ts,te,max_count,5)
+t::report(ts,te,max_count,5)
 

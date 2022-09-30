@@ -37,7 +37,7 @@ define opthelp(reqs)
         has (o[1] & optNature.o) == optNature.o ; print "[#6]Optional".pad(-1,12)
         endwhen
         print "[#-]"
-        on o[2]!="" do print "[#i1]",o[2],"[#i0]"
+        on o.len>2 do on o[2]!="" do print "[#i1]",o[2],"[#i0]"
         println
     endfor
     exit optErr.NoError

@@ -29,6 +29,25 @@ CHANGE LOG
     other
     -----
 
+
+    * (breaking change) added name qualification for functions
+        - functions defined in modules are now called using the syntax:
+            module_alias::func_name
+        - this is instead of module_alias.func_name
+        - stdlib funcs remain unqualified
+        - if a user-defined function is called unqualified it must exist in the calling module.
+        - the top level namespace is named 'main' and is added by default at that level if a call is unqualified.
+        - this will break existing code, which is, obviously, undesirable to say the least.
+        - however, this should be the final change regarding namespaces.
+            - now, all enums, structs and functions follow the same conventions.
+            - the only remaining possible change, which is unlikely but you never know... would be to add
+                multiple depths of namespacing, but, should that ever happen (again, unlikely), it would
+                follow the same convention using multiple :: separators and therefore shouldn't break anything.
+        - lib call "exec" has been amended to create calls in the global namespace. this may be adjusted to local later.
+        - lib call "eval" adjusted to use local namespace
+        - string interpolation adjusted to use local namespace
+
+
     * (experimental) added FIX+RESUME statements and ? (try) operator
 
         - ? binary operator may be added postfix to expressions in, for example, IF/ON statements (and elsewhere).

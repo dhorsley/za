@@ -39,7 +39,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
     p.tokens = toks
     p.len    = int16(len(toks))
     p.pos    = -1
-    p.namespace = currentModule
+    // p.namespace = currentModule
 
     return p.dparse(0)
 }
@@ -113,7 +113,7 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
     case NumericLiteral:
         left=(*ct).tokVal
     case StringLiteral:
-        left=interpolate(p.fs,p.ident,(*ct).tokText)
+        left=interpolate(p.namespace,p.fs,p.ident,(*ct).tokText)
     case Identifier:
         left=p.identifier(ct)
     case O_Sqr, O_Sqrt,O_InFile:
@@ -946,6 +946,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
 }
 
+
 func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
 
     name:=left.(string)
@@ -965,6 +966,13 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
 
         // check if exists in user defined function space
         if _, isFunc = stdlib[name]; !isFunc {
+            if !str.Contains(name,"::") {
+                useName:=p.namespace
+                if p.namespace=="" {
+                    useName="main"
+                }
+                name=useName+"::"+name
+            }
             isFunc = fnlookup.lmexists(name)
         }
 
@@ -1580,7 +1588,7 @@ type bg_result  struct{name string;handle chan any}
 
 func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, bgresult bg_result) {
 
-    cmd=sparkle(interpolate(p.fs,p.ident,cmd))
+    cmd=sparkle(interpolate(p.namespace,p.fs,p.ident,cmd))
 
     if async {
 
@@ -1588,16 +1596,22 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
         csumName:=sf("_bg_block_%x",md5.Sum([]byte(cmd)))
 
         // define fn
-        stdlib["exec"](p.fs,p.ident,"define "+csumName+"()\nr={"+cmd+"\n}\nreturn r;end\n")
+        stdlib["exec"](p.namespace,p.fs,p.ident,"define "+csumName+"()\nr={"+cmd+"\n}\nreturn r;end\n")
 
         // exec it async
-        lmv, isfunc := fnlookup.lmget(csumName)
+        useName:=p.namespace
+        if p.namespace=="" {
+            useName="main"
+        }
+        name:=useName+"::"+csumName
+
+        lmv, isfunc := fnlookup.lmget(name)
 
         if isfunc {
             // call
             h,id:=task(p.fs,lmv,false,csumName+"@",nil)
             // destroy fn def before leaving
-            fnlookup.lmdelete(csumName)
+            fnlookup.lmdelete(p.namespace+"::"+csumName)
             numlookup.lmdelete(lmv)
             // return
             return true,"",cmd_result{},bg_result{name:id,handle:h}
@@ -1627,7 +1641,7 @@ func (p *leparser) command() (string) {
     }
 
     // pf("command : |%s|\n",dp.(string))
-    cmd:=system(interpolate(p.fs,p.ident,dp.(string)),false)
+    cmd:=system(interpolate(p.namespace,p.fs,p.ident,dp.(string)),false)
 
     if cmd.okay {
         return cmd.out
@@ -1656,7 +1670,12 @@ func (p *leparser) identifier(token *Token) (any) {
     // filter for functions here. this also sets the subtype for funcs defined late.
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
-            if fnlookup.lmexists(token.tokText) {
+            useName:=p.namespace
+            if p.namespace=="" {
+                useName="main"
+            }
+            // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
+            if fnlookup.lmexists(useName+"::"+token.tokText) {
                 p.tokens[p.pos].subtype=subtypeUser
                 return token.tokText
             }
@@ -1700,16 +1719,6 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // permit namespace:: names
     ename:=p.namespace+"::"+token.tokText
-    // pf("(id) checking for enum named '%s'\n",ename)
-    /*
-    if pos:=str.IndexByte(token.tokText,':'); pos!=-1 {
-        if len(token.tokText)>pos+2 && token.tokText[pos+1] == ':' {
-            return nil
-            // ename=ename[pos+2:]
-            // pf("(eval) formed ename : %s\n",ename)
-        }
-    }
-    */
 
     if enum[ename]!=nil {
         // pf("(eval) permitting enum name %s\n",ename)
@@ -1726,24 +1735,9 @@ func (p *leparser) identifier(token *Token) (any) {
     if token.tokText!="anon" {
         sname=p.namespace+"::"+token.tokText
     }
-    // if _,found:=structmaps[token.tokText];found || token.tokText=="anon" {
     if _,found:=structmaps[sname];found || sname=="anon" {
-        // pf("<struct id : %s> ",token.tokText)
-        // return token.tokText
         return sname
     }
-
-    /*
-    pf("This ident table with length %d:\n",len(*p.ident))
-    for k,v:=range *p.ident {
-        // if v.declared {
-        //    if v.IName!="" {
-                pf("-- %3d : (bind %3d) %v -> %+v\n",k,bind_int(p.fs,v.IName),v.IName,v)
-        //    }
-        // }
-    }
-     panic(fmt.Errorf("variable '%s' is uninitialised. (in fs %d, expected bind: %d)",token.tokText,p.fs,bin))
-    */
 
     panic(fmt.Errorf("'%s' is uninitialised.",token.tokText))
 
@@ -2208,7 +2202,7 @@ func isNumber(expr any) bool {
 
 
 /// convert variable placeholders in strings to their values
-func interpolate(fs uint32, ident *[]Variable, s string) (string) {
+func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
 
     if !interpolation || len(s)==0 {
         return s
@@ -2229,6 +2223,7 @@ func interpolate(fs uint32, ident *[]Variable, s string) (string) {
     interparse=&leparser{}
     interparse.fs=fs
     interparse.ident=ident
+    interparse.namespace=ns
     if interactive {
         interparse.mident=1
     } else {
@@ -2643,7 +2638,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             ///////////// CHECK FOR a       /////////////////////////////////////////////
             // normal assignment
             // pf("-- normal assignment to (ifs:%d) %s of %+v [%T]\n", lfs, assignee[0].tokText, results[assno],results[assno])
-            // inter:=interpolate(rfs,rident,assignee[0].tokText)
+            // inter:=interpolate(p.namespace,rfs,rident,assignee[0].tokText)
             // @note: this is slow, mainly due to allowing interpolation.
             //  if we didn't, then we could re-use the binding value from the assignee[0] token *CHANGED*
             if lfs==rfs {
@@ -2709,7 +2704,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                 case int64:
                     eleName = strconv.FormatInt(element.(int64), 10)
                 case string:
-                    eleName = interpolate(rfs,rident,element.(string))
+                    eleName = interpolate(p.namespace,rfs,rident,element.(string))
                 default:
                     eleName = sf("%v",element)
                 }
@@ -2805,7 +2800,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 
             switch element.(type) {
             case string:
-                element = interpolate(rfs,rident,element.(string))
+                element = interpolate(p.namespace,rfs,rident,element.(string))
                 if lfs==rfs {
                     vsetElement(&assignee[0], lfs, lident, assignee[0].tokText, element.(string), results[assno])
                 } else {

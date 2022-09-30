@@ -844,13 +844,13 @@ func plog(s string, va ...any) {
 }
 
 // special case printing for global var interpolation
-func gpf(s string) {
-    pf("%s\n", spf(0, &gident, s))
+func gpf(ns string,s string) {
+    pf("%s\n", spf(ns, 0, &gident, s))
 }
 
-// sprint with namespace
-func spf(ns uint32, ident *[]Variable, s string) string {
-    s = interpolate(ns,ident,s)
+// sprint with function space
+func spf(ns string,fs uint32, ident *[]Variable, s string) string {
+    s = interpolate(ns,fs,ident,s)
     return sf("%v", sparkle(s))
 }
 

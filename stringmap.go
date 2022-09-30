@@ -13,6 +13,10 @@ func lmcreate(sz int) *Lmap {
     return &Lmap{smap:make(map[string]uint32,sz)}
 }
 
+func (u *Lmap) lmshow() string {
+    return sf("%#v",u.smap)
+}
+
 func (u *Lmap) lmexists(k string) bool {
     u.RLock()
     if _,ok:=u.smap[k]; ok {

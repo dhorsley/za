@@ -9,10 +9,10 @@ reqs["c"]   =["b",go::optNature.n,                      "test bool"       ]
 reqs["long"]=["s",go::optNature.m,                      "test long name"  ]
 reqs["h"]   =["b",go::optNature.n | go::optNature.h,    "help"            ]
 
-opts,args=go.getopt(reqs)
+opts,args=go::getopt(reqs)
 
 if opts["h"]
-    go.opthelp(reqs)
+    go::opthelp(reqs)
     exit
 endif
 

@@ -5,6 +5,6 @@ module "syntax_checks/math.mod" as math
 var x int = 1
 input x param 1
 
-println math.factorial(x)
+println math::factorial(x)
 
 

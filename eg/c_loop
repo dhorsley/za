@@ -23,5 +23,5 @@ interpol(true)
 
 println "total {a} , loop-count {f}"
 
-tim.report(ts,te,max_count)
+tim::report(ts,te,max_count)
 

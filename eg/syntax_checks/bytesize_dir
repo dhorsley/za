@@ -1,4 +1,4 @@
 module "../modules/bytesize" as bs
 foreach e in dir("/usr/bin")
-    on e.name.has_start("z") do println "%10s %s".format(bs.bytesize(e.size),e.name)
+    on e.name.has_start("z") do println "%10s %s".format(bs::bytesize(e.size),e.name)
 endfor

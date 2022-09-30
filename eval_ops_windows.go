@@ -129,11 +129,21 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         var isFunc bool
 
-        // parse the function call as module '.' funcname
-        nonlocal:=false
-        if _,there:=funcmap[p.preprev.tokText+"."+name] ; there {
-            nonlocal=true
-            name=p.preprev.tokText+"."+name
+        // parse the function call as module '::' funcname
+        modname:="main"
+        if p.peek().tokType==SYM_DoubleColon {
+            p.next()
+            switch p.peek().tokType {
+            case Identifier:
+                modname=name
+                name=p.peek().tokText
+            default:
+                panic(fmt.Errorf("invalid name in function call '%s'",p.peek().tokText))
+            }
+            p.next()
+        }
+        if _,there:=funcmap[modname+"::"+name] ; there {
+            name=modname+"::"+name
             isFunc=true
         }
 
@@ -150,11 +160,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        if !nonlocal {
-            if isFileHandle || !isStruct {
-                iargs=[]any{obj}
-                // if isFileHandle { pf("fh-iargs->%#v\n",iargs) }
-            }
+        if isFileHandle || !isStruct {
+            iargs=[]any{obj}
         }
 
         /*

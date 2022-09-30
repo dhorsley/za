@@ -125,7 +125,7 @@ func buildSumLib() {
                 "When blocksize is 0 then auto-select blocksize and upload checksum type.\n"+
                 "When blocksize is -1 then treat as a single-part upload.\n"+
                 "Error codes: 0 okay, 1 single-part warning, 2 file error, 3 checksum error"}
-    stdlib["s3sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["s3sum"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("s3sum",args,2,
             "2","string","number",
             "1","string"); !ok { return s3sum_reply{"",S3_ERR_NONE},err }
@@ -139,25 +139,25 @@ func buildSumLib() {
     }
 
     slhelp["md5sum"] = LibHelp{in: "string", out: "string", action: "Returns the MD5 checksum of the input string."}
-    stdlib["md5sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["md5sum"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("md5sum",args,1,"1","string"); !ok { return nil,err }
         return sf("%x",md5.Sum([]byte(args[0].(string)))),nil
     }
 
     slhelp["sha1sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA1 checksum of the input string."}
-    stdlib["sha1sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["sha1sum"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sha1sum",args,1,"1","string"); !ok { return nil,err }
         return sf("%x",sha1.Sum([]byte(args[0].(string)))),nil
     }
 
     slhelp["sha224sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA224 checksum of the input string."}
-    stdlib["sha224sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["sha224sum"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sha224sum",args,1,"1","string"); !ok { return nil,err }
         return sf("%x",sha256.Sum224([]byte(args[0].(string)))),nil
     }
 
     slhelp["sha256sum"] = LibHelp{in: "string", out: "string", action: "Returns the SHA256 checksum of the input string."}
-    stdlib["sha256sum"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["sha256sum"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sha256sum",args,1,"1","string"); !ok { return nil,err }
         return sf("%x",sha256.Sum256([]byte(args[0].(string)))),nil
     }

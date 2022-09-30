@@ -32,7 +32,7 @@ func buildFileLib() {
     }
 
     slhelp["fopen"] = LibHelp{in: "filename,mode", out: "filehandle", action: "Opens a file and returns a file handle. [#i1]mode[#i0] can be either w (write), wa (write-append) or r (read)."}
-    stdlib["fopen"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fopen"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fopen",args,1,"2","string","string"); !ok { return nil,err }
 
         fn:=args[0].(string)
@@ -60,7 +60,7 @@ func buildFileLib() {
 
     slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool", 
         action: "(experimental,linux only) Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\nReturns true if the file could not be locked."}
-    stdlib["flock"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["flock"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("flock",args,2,
             "2","main.pfile","string",
             "1","main.pfile"); !ok { return nil,err }
@@ -87,14 +87,14 @@ func buildFileLib() {
     }
 
     slhelp["fflush"] = LibHelp{in: "filehandle", out: "position", action: "Flushes [#i1]filehandle[#i0] write buffer to disk."}
-    stdlib["fflush"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fflush"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fflush",args,1,"1","main.pfile"); !ok { return nil,err }
         fw :=args[0].(pfile)
         return fw.hnd.Sync(),nil
     }
 
     slhelp["ftell"] = LibHelp{in: "filehandle", out: "position", action: "The current read pointer position is returned."}
-    stdlib["ftell"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["ftell"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ftell",args,1,"1","main.pfile"); !ok { return nil,err }
         fw :=args[0].(pfile)
         return fw.hnd.Seek(0,os.SEEK_CUR)
@@ -104,7 +104,7 @@ func buildFileLib() {
         action: "Move the current position of reads or writes to an open file.\n"+
         "[#i1]relativity[#i0] indicates where the offset is relative to.\n"+
         "(0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
-    stdlib["fseek"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fseek"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fseek",args,1,"3","main.pfile","int","int"); !ok { return nil,err }
         fw :=args[0].(pfile)
         off:=int64(args[1].(int))
@@ -113,7 +113,7 @@ func buildFileLib() {
     }
 
     slhelp["fread"] = LibHelp{in: "filehandle,delim", out: "string", action: "Reads a string from an open file until [#i1]delim[#i0] is encountered (or end-of-file)."}
-    stdlib["fread"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fread"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fread",args,1,"2","main.pfile","string"); !ok { return nil,err }
 
         fw:=args[0].(pfile)
@@ -153,7 +153,7 @@ func buildFileLib() {
 
     // issues with race cond when file open in write-append mode?
     slhelp["feof"] = LibHelp{in: "filehandle", out: "bool", action: "Check if open file cursor is at end-of-file"}
-    stdlib["feof"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["feof"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("feof",args,1,"1","main.pfile"); !ok { return nil,err }
         fw:=args[0].(pfile)
         cp,_:=fw.hnd.Seek(0,io.SeekCurrent)
@@ -163,7 +163,7 @@ func buildFileLib() {
     }
 
     slhelp["fwrite"] = LibHelp{in: "filehandle,string", out: "", action: "Writes a string to an open file."}
-    stdlib["fwrite"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fwrite"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fwrite",args,1,"2","main.pfile","string"); !ok { return nil,err }
         fw:=args[0].(pfile)
         fw.hnd.WriteString(args[1].(string))
@@ -171,7 +171,7 @@ func buildFileLib() {
     }
 
     slhelp["fclose"] = LibHelp{in: "filehandle", out: "", action: "Closes an open file."}
-    stdlib["fclose"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fclose"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fclose",args,1,"1","main.pfile"); !ok { return nil,err }
         fw:=args[0].(pfile)
         fw.hnd.Sync()
@@ -181,7 +181,7 @@ func buildFileLib() {
     }
 
     slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
-    stdlib["file_mode"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["file_mode"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("file_mode",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil { return int(f.Mode()), err }
@@ -189,7 +189,7 @@ func buildFileLib() {
     }
 
     slhelp["file_size"] = LibHelp{in: "string", out: "integer", action: "Returns the file size, in bytes, of a given file [#i1]string[#i0], or -1 if the file cannot be checked."}
-    stdlib["file_size"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["file_size"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("file_size",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil { return f.Size(), err }
@@ -197,14 +197,14 @@ func buildFileLib() {
     }
 
     slhelp["read_file"] = LibHelp{in: "string", out: "string", action: "Returns the contents of the named file [#i1]string[#i0], or errors."}
-    stdlib["read_file"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["read_file"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("read_file",args,1,"1","string"); !ok { return nil,err }
         s, err := ioutil.ReadFile(args[0].(string))
         return string(s), err
     }
 
     slhelp["write_file"] = LibHelp{in: "filename,wstring[,mode_number_or_string]", out: "bool", action: "Writes the contents of [#i1]wstring[#i0] to file [#i1]filename[#i0]. Optionally sets the umasked file mode on new files. Returns true on success."}
-    stdlib["write_file"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["write_file"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("write_file",args,2,
             "3","string","string","string",
             "2","string","string"); !ok { return nil,err }
@@ -243,12 +243,12 @@ func buildFileLib() {
 
     // @note: syscall will be deprecated eventually. should find a better way of doing this. also, linux only.
     slhelp["stat"] = LibHelp{in: "file_name", out: "stat_struct", action: "Returns a unix file stat structure containing underlying file information."}
-    stdlib["stat"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["stat"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("stat",args,1,"1","string"); !ok { return nil,err }
         return fileStatSys(args[0].(string)),nil
     }
     slhelp["is_file"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a regular file."}
-    stdlib["is_file"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_file"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_file",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil {
@@ -259,7 +259,7 @@ func buildFileLib() {
     }
 
     slhelp["is_dir"] = LibHelp{in: "file_name", out: "bool", action: "Returns true if [#i1]file_name[#i0] is a directory."}
-    stdlib["is_dir"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_dir"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_dir",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil {
@@ -270,7 +270,7 @@ func buildFileLib() {
     }
 
     slhelp["perms"] = LibHelp{in: "file_name", out: "int", action: "Returns the file access permissions as an integer."}
-    stdlib["perms"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["perms"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("perms",args,1,"1","string"); !ok { return nil,err }
         f, err := os.Stat(args[0].(string))
         if err == nil {

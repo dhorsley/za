@@ -307,11 +307,11 @@ func version() {
     pf("[#1]Last build:[#-] %s%s\n",add,cd)
 }
 
-func help_commands() {
-    commands()
+func help_commands(ns string) {
+    commands(ns)
 }
 
-func help_colour() {
+func help_colour(ns string) {
 
     colourpage:=`
 Some of the codes are demonstrated below. They can be activated by placing the
@@ -368,10 +368,10 @@ hidden          Enable hidden text. (where supported.)
 [#framed]framed[#-]          Enable framed text. (where supported.)
 `
 
-    gpf(colourpage)
+    gpf(ns,colourpage)
 }
 
-func help_ops() {
+func help_ops(ns string) {
 
     opspage :=`
 [#1][#bold]Supported Operators[#boff][#-]
@@ -431,12 +431,12 @@ func help_ops() {
 [#4]n--[#-]         post-decrement (local scope only, command not expression)
 [#4]n++[#-]         post-increment (local scope only, command not expression)
 `
-    gpf(opspage)
+    gpf(ns,opspage)
 }
 
 
 // cli help
-func help(hargs string) {
+func help(ns string,hargs string) {
 
     helppage := `
 [#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W]  \
@@ -471,13 +471,13 @@ func help(hargs string) {
     [#4]-Q[#-] : Show shell command options
 
 `
-    gpf(helppage)
+    gpf(ns,helppage)
 
 }
 
 
 // interactive mode help
-func ihelp(hargs string) {
+func ihelp(ns string,hargs string) {
 
     switch len(hargs) {
     case 0:
@@ -489,7 +489,7 @@ func ihelp(hargs string) {
 [#4]help <string>   [#-]: show specific statement/function info
 [#4]funcs()         [#-]: all functions
 [#4]funcs(<string>) [#-]: finds matching categories or functions`
-    gpf(helppage)
+    gpf(ns,helppage)
 
 
     default:
@@ -506,17 +506,17 @@ func ihelp(hargs string) {
         case "command":
             fallthrough
         case "commands":
-            commands()
+            commands(ns)
 
         case "op":
             fallthrough
         case "ops":
-            help_ops()
+            help_ops(ns)
 
         case "colour":
             fallthrough
         case "colours":
-            help_colour()
+            help_colour(ns)
 
         default:
 
@@ -626,7 +626,7 @@ Available commands:
 # comment                                       - comment to end of line.
 `
 
-func commands() {
-    gpf(cmdpage)
+func commands(ns string) {
+    gpf(ns,cmdpage)
 }
 
