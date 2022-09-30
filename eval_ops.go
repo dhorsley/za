@@ -552,13 +552,13 @@ func ev_mul(val1 any, val2 any) (any) {
     case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val2.(type) {
         case int:
-            ary1,er:=stdlib["list_int"](0,nil,val1)
+            ary1,er:=stdlib["list_int"]("",0,nil,val1)
             if er==nil && val2.(int)>=0 {
                 length,_:=ulen(ary1)
                 var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]int)[e]*val2.(int)) }; return ary
             }
         case float64:
-            ary1,er:=stdlib["list_float"](0,nil,val1)
+            ary1,er:=stdlib["list_float"]("",0,nil,val1)
             if er==nil && val2.(float64)>=0 {
                 length,_:=ulen(ary1)
                 var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]float64)[e]*val2.(float64)) }; return ary
@@ -569,13 +569,13 @@ func ev_mul(val1 any, val2 any) (any) {
     case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val1.(type) {
         case int:
-            ary2,er:=stdlib["list_int"](0,nil,val2)
+            ary2,er:=stdlib["list_int"]("",0,nil,val2)
             if er==nil && val1.(int)>=0 {
                 length,_:=ulen(ary2)
                 var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary2.([]int)[e]*val1.(int)) }; return ary
             }
         case float64:
-            ary2,er:=stdlib["list_float"](0,nil,val2)
+            ary2,er:=stdlib["list_float"]("",0,nil,val2)
             if er==nil && val1.(float64)>=0 {
                 length,_:=ulen(ary2)
                 var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary2.([]float64)[e]*val1.(float64)) }; return ary
@@ -677,14 +677,14 @@ func ev_div(val1 any, val2 any) (any) {
         switch val2.(type) {
         case int:
             if val2.(int)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
-            ary1,er:=stdlib["list_int"](0,nil,val1)
+            ary1,er:=stdlib["list_int"]("",0,nil,val1)
             if er==nil && val2.(int)!=0 {
                 length,_:=ulen(ary1)
                 var ary []int; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]int)[e]/val2.(int)) }; return ary
             } 
         case float64:
             if val2.(float64)==0 { panic(fmt.Errorf("eval error: divide by zero")) }
-            ary1,er:=stdlib["list_float"](0,nil,val1)
+            ary1,er:=stdlib["list_float"]("",0,nil,val1)
             if er==nil && val2.(float64)!=0 {
                 length,_:=ulen(ary1)
                 var ary []float64; for e:=0; e<length; e+=1 { ary=append(ary,ary1.([]float64)[e]/val2.(float64)) }; return ary
@@ -695,7 +695,7 @@ func ev_div(val1 any, val2 any) (any) {
     case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val1.(type) {
         case int:
-            ary2,er:=stdlib["list_int"](0,nil,val2)
+            ary2,er:=stdlib["list_int"]("",0,nil,val2)
             if er==nil {
                 length,_:=ulen(ary2)
                 var ary []int
@@ -709,7 +709,7 @@ func ev_div(val1 any, val2 any) (any) {
                 return ary
             }
         case float64:
-            ary2,er:=stdlib["list_float"](0,nil,val2)
+            ary2,er:=stdlib["list_float"]("",0,nil,val2)
             if er==nil {
                 length,_:=ulen(ary2)
                 var ary []float64
@@ -1547,7 +1547,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         }
     } else {
         // call standard library function
-        res, err := f(evalfs,ident,args...)
+        res, err := f(p.namespace,evalfs,ident,args...)
         p.std_call=true
         if err != nil {
             p.std_faulted=true

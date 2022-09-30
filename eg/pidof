@@ -162,9 +162,9 @@ enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 
 # args
 var reqs map
-reqs["n"]   =["s",optNature.m]
-reqs["a"]   =["b",optNature.n]
-opts,args=go.getopt(reqs)
+reqs["n"]   =["s",go::optNature.m]
+reqs["a"]   =["b",go::optNature.n]
+opts,args=go::getopt(reqs)
 
 name    =opts["n"]
 children=opts["a"]

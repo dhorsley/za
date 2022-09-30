@@ -22,5 +22,5 @@ interpol(true)
 #
 
 # ops = 1*endfor  ( FOR statement executes once only )
-tim.report(ts,te,max_count,1)
+tim::report(ts,te,max_count,1)
 

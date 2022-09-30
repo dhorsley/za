@@ -2,9 +2,7 @@
 module "modules/moda" as moda
 module "modules/modb" as modb
 
-println "td->",testdef(1)
-
-println "ma->", moda.testdef(2)
-println "mb->", modb.testdef(3)
+println "ma->", moda::testdef(2)
+println "mb->", modb::testdef(3)
 
 
