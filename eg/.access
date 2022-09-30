@@ -1,9 +1,0 @@
-2022/09/30 12:46:51.501600 Started web service 52fdfc07-2182-654f-163f-5f0f9a621d72
-2022/09/30 12:46:51.602086 Started web service 9566c74d-1003-7c4d-7bbb-0407d1e2c649
-2022/09/30 12:47:07.988054 Could not serve from /home/daniel/www/index.html to 172.29.192.1.
-2022/09/30 12:47:47.215240 Started web service 52fdfc07-2182-654f-163f-5f0f9a621d72
-2022/09/30 12:47:47.315685 Started web service 9566c74d-1003-7c4d-7bbb-0407d1e2c649
-2022/09/30 12:47:49.987445 172.29.207.213:8080 served /img/square-pattern.png to 172.29.192.1.
-2022/09/30 12:47:50.083982 Could not serve from /home/daniel/www/img/whirlpool.png to 172.29.192.1.
-2022/09/30 12:51:17.640143 Started web service 52fdfc07-2182-654f-163f-5f0f9a621d72
-2022/09/30 12:51:17.740617 Started web service 9566c74d-1003-7c4d-7bbb-0407d1e2c649

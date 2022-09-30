@@ -1,8 +1,0 @@
-
-println humansize(30*30)
-
-define humansize(s)
-    return s
-end
-
-
