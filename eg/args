@@ -11,7 +11,7 @@ for processing. Those remnants will be presented as argc() and argv() to Za scri
 `
 
 # method 1: ARGV
-println "\n[#7][#b1]1. argv/argc[#b0]"
+println "\n[#7]1. argv/argc"
 println "Argc   : {=argc()}"
 println "Argv   : {=argv()}"
 
@@ -22,7 +22,7 @@ if argc() > 0
 endif
 
 # method 2: mandatory arguments
-println "\n[#b1]2. mandatory parameters[#b0]"
+println "\n2. mandatory parameters"
 println "( not processed in example! )"
 # INPUT colour PARAM 1
 # INPUT number PARAM 2
@@ -30,7 +30,7 @@ println "Colour : {colour}"
 println "Number : {number}"
 
 # method 3: optional arguments
-println "\n[#b1]3. optional parameters[#b0]"
+println "\n3. optional parameters"
 INPUT colour OPTARG 1
 INPUT number OPTARG 2
 println "Colour : {colour}"
@@ -53,7 +53,7 @@ var svar string
 var bvar bool
 var nvar int
 
-println "\n[#b1]4. arg loop parsing[#b0]"
+println "\n4. arg loop parsing"
 println "working with these args: [#4][#i1]{av}[#i0][#7]"
 
 while !empty(av)
