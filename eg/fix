@@ -45,4 +45,6 @@ fix
     println "(main) info : ",_try_info
     println "(main) line : ",_try_line
 #------------------------------------------------------------------------------------
+fix
+    println "(main) this one shouldn't be reached."
 
