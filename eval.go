@@ -39,7 +39,6 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
     p.tokens = toks
     p.len    = int16(len(toks))
     p.pos    = -1
-    // p.namespace = currentModule
 
     return p.dparse(0)
 }

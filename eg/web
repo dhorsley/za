@@ -44,6 +44,7 @@ PORT        =as_int(get_env("PROXY_PORT") or "8080")
 HOME_PATH   =get_env("PROXY_PATH") or "/home/daniel/www"
 
 trap("int","cleanup()")
+
 permit("shell",false)
 permit("eval",false)
 

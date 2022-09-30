@@ -857,7 +857,7 @@ func main() {
                 loc, _ := GetNextFnSpace(true,usih+"@",call_s{prepared:true,base:lmv,caller:0})
 
                 calllock.Lock()
-                currentModule="main"
+                basemodmap[lmv]="main"
                 calllock.Unlock()
 
                 // execute call
@@ -1112,7 +1112,7 @@ func main() {
             // startup script processing:
             if !started && hasScript {
                 phraseParse("main", startScript, 0)
-                currentModule="main"
+                basemodmap[1]="main"
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, self_s{}, []string{})
                 pf("\n\n")
                 if row>=MH-BMARGIN {
@@ -1312,7 +1312,6 @@ func main() {
         // initialise the main program
 
         mainloc,_ := GetNextFnSpace(true,"main",call_s{prepared:false})
-        // pf("[#4]main location set to %d[#-]\n",mainloc)
         calllock.Lock()
         cs := call_s{}
         cs.caller = 0
@@ -1321,13 +1320,10 @@ func main() {
         calltable[mainloc] = cs
         calllock.Unlock()
         currentModule="main"
-        // pf("[main] loc -> %d\n",mainloc)
         if *a_program!="" {
             vset(nil,1,&mident,"_stdin", string(data))
         }
         Call(MODE_NEW, &mident, mainloc, ciMain, self_s{}, []string{})
-        // calltable[mainloc].gcShyness=20
-        // calltable[mainloc].gc=true
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
     }
