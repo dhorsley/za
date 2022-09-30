@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "web_modules/aws_handler"
+module "web_modules/aws_handler" as wm
 
 # FUNCTIONS
 
@@ -96,7 +96,7 @@ println "Started server process [{uid}]"
 #            .host (host:port), .method, .path, .remote_ip (remote_ip:port) and .data (POST data).
 #       additional fields may be added later.
 
-web_serve_path(uid,"f"      , `/fun/awsip`            , "fwhandle" )
+web_serve_path(uid,"f"      , `/fun/awsip`            , "wm::fwhandle" )
  
 
 # redirect

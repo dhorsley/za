@@ -20,7 +20,7 @@ func buildDbLib() {
         action: "Returns a database connection [#i1]handle[#i0], with a default schema of [#i1]string[#i0] based on\n"+
             "inbound environmental variables. (ZA_DB_HOST, ZA_DB_ENGINE, ZA_DB_PORT, ZA_DB_USER, ZA_DB_PASS.)\n"+
             "Only 'mysql' is currently supported as an engine type."}
-    stdlib["db_init"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["db_init"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("db_init",args,1,"1","string"); !ok { return nil,err }
 
         schema := args[0].(string)
@@ -47,7 +47,7 @@ func buildDbLib() {
 
     // close a db connection
     slhelp["db_close"] = LibHelp{in: "handle", out: "", action: "Closes the database connection."}
-    stdlib["db_close"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["db_close"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("db_close",args,1,"1","*sql.DB"); !ok { return nil,err }
         args[0].(*sql.DB).Close()
         return nil, nil
@@ -55,7 +55,7 @@ func buildDbLib() {
 
 
     slhelp["db_query"] = LibHelp{in: "handle,query,field_sep", out: "string", action: `Simple database query. Optional: field separator, default: '|'`}
-    stdlib["db_query"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["db_query"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("db_query",args,2,
             "3","*sql.DB","string","string",
             "2","*sql.DB","string"); !ok { return nil,err }

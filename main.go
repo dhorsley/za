@@ -571,7 +571,7 @@ func main() {
 
     // help flag
     if *a_help {
-        help("")
+        help("main","")
         os.Exit(0)
     }
 
@@ -807,6 +807,10 @@ func main() {
             }
 
             if usih!="" {
+
+                if !str.Contains(usih,"::") {
+                    usih=currentModule+"::"+usih
+                }
 
                 argString:=""
                 if brackPos:=str.IndexByte(usih,'('); brackPos!=-1 {
@@ -1125,7 +1129,7 @@ func main() {
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
-                    tempPrompt=sparkle(interpolate(0,&gident,PromptTemplate))
+                    tempPrompt=sparkle(interpolate("main",0,&gident,PromptTemplate))
                 } else {
                     tempPrompt=promptContinuation
                 }

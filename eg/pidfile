@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "modules/pidfile"
+module "modules/pidfile" as pf
 
 this_uid =< id -u
 
@@ -16,23 +16,23 @@ input op optarg 1 is "operation type"
 
 when op
 is "start"
-    on has_pidfile() do exit 1,"Error: already started."
-    on !pid().make_pidfile do exit 2,"Error: could not create pidfile."
+    on pf::has_pidfile() do exit 1,"Error: already started."
+    on !pid().pf::make_pidfile do exit 2,"Error: could not create pidfile."
     quit=false
-    async nil monitor_pidfile()
-    println "Starting ",app_name()
+    async nil pf::monitor_pidfile()
+    println "Starting ",pf::app_name()
     begin()
 is "stop"
-    if has_pidfile()
-        println "stopping ",app_name(), " : ",pid_name()
-        remove_pidfile()
+    if pf::has_pidfile()
+        println "stopping ",pf::app_name(), " : ",pf::pid_name()
+        pf::remove_pidfile()
     else
         exit 3,"Error: already stopped."
     endif
 is "status"
-    println "appname : ",app_name()
-    println "pidfile : ",pid_name()
-    println "has pid : ",has_pidfile()
+    println "appname : ",pf::app_name()
+    println "pidfile : ",pf::pid_name()
+    println "has pid : ",pf::has_pidfile()
 endwhen
 
 

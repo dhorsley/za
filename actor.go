@@ -564,6 +564,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
         &ident,
     )
     */
+
     display_fs,_:=numlookup.lmget(calltable[csloc].base)
 
     calllock.Lock()
@@ -644,6 +645,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     */
 
     currentModule=basemodmap[source_base]
+    parser.namespace    = currentModule
+    interparse.namespace= currentModule
     // pf("in call to %s currentModule set to : %s\n",fs,currentModule)
 
     // the uint32 id attached to fs name
@@ -747,6 +750,8 @@ tco_reentry:
         finish(true,ERR_SYNTAX)
         return
     }
+
+    // pf("Call Args: %#v\n",va)
 
     finalline = int16(len(functionspaces[source_base]))
 
@@ -962,7 +967,7 @@ pcloop:
                     if expectingComma { // syntax error
                         break var_comma_loop
                     }
-                    inter:=interpolate(ifs,ident,inbound.Tokens[c].tokText)
+                    inter:=interpolate(currentModule,ifs,ident,inbound.Tokens[c].tokText)
                     name_list=append(name_list,inter)
                     name_pos =append(name_pos,uint64(c))
                     // pf("nl : %s , np : %d\n",inter,c)
@@ -998,7 +1003,7 @@ pcloop:
 
             var hasAry bool
             var size int
-            found_namespace:=currentModule
+            found_namespace:=parser.namespace
 
             if !varSyntaxError {
                 // continue from last 'c' value
@@ -2500,10 +2505,10 @@ pcloop:
             resu:=parser.splitCommaArray(inbound.Tokens[3:inbound.TokenCount-1])
 
             globlock.Lock()
-            enum_name:=currentModule+"::"+inbound.Tokens[1].tokText
+            enum_name:=parser.namespace+"::"+inbound.Tokens[1].tokText
             enum[enum_name]=&enum_s{}
             enum[enum_name].members=make(map[string]any)
-            enum[enum_name].namespace=currentModule
+            enum[enum_name].namespace=parser.namespace
             globlock.Unlock()
 
             var nextVal any
@@ -2752,7 +2757,7 @@ pcloop:
 
         case SYM_BOR: // Local Command
 
-            bc:=interpolate(ifs,ident,basecode[source_base][parser.pc].borcmd)
+            bc:=interpolate(currentModule,ifs,ident,basecode[source_base][parser.pc].borcmd)
 
             /*
             pf("\n")
@@ -2764,7 +2769,7 @@ pcloop:
             */
 
             if inbound.TokenCount==2 && hasOuter(inbound.Tokens[1].tokText,'`') {
-                s:=interpolate(ifs,ident,stripOuter(inbound.Tokens[1].tokText,'`'))
+                s:=interpolate(currentModule,ifs,ident,stripOuter(inbound.Tokens[1].tokText,'`'))
                 coprocCall(s)
             } else {
                 coprocCall(bc)
@@ -2822,7 +2827,7 @@ pcloop:
                         if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
                             v,_,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                             newstart=term+1
-                            switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
+                            switch v.(type) { case string: v=interpolate(currentModule,ifs,ident,v.(string)) }
                             docout += sparkle(sf(`%v`, v))
                             continue
                         }
@@ -2878,8 +2883,8 @@ pcloop:
                     }
                 }
 
-                test_name = interpolate(ifs,ident,stripOuterQuotes(inbound.Tokens[1].tokText, 2))
-                test_group = interpolate(ifs,ident,stripOuterQuotes(inbound.Tokens[3].tokText, 2))
+                test_name = interpolate(currentModule,ifs,ident,stripOuterQuotes(inbound.Tokens[1].tokText, 2))
+                test_group = interpolate(currentModule,ifs,ident,stripOuterQuotes(inbound.Tokens[3].tokText, 2))
 
                 under_test = false
                 // if filter matches group
@@ -3052,7 +3057,7 @@ pcloop:
             if inbound.TokenCount == 2 {
                 hargs = inbound.Tokens[1].tokText
             }
-            ihelp(hargs)
+            ihelp(currentModule,hargs)
 
         case C_Nop:
             // time.Sleep(1 * time.Microsecond)
@@ -3071,7 +3076,7 @@ pcloop:
             }
 
             handles := inbound.Tokens[1].tokText
-            call    := inbound.Tokens[2].tokText
+            call    := parser.namespace+"::"+inbound.Tokens[2].tokText
 
             if inbound.Tokens[3].tokType!=LParen {
                 parser.report(inbound.SourceLine,"could not find '(' in ASYNC function call.")
@@ -3240,7 +3245,7 @@ pcloop:
                 }
 
                 defining = true
-                definitionName = inbound.Tokens[1].tokText
+                definitionName = parser.namespace+"::"+inbound.Tokens[1].tokText
 
                 // pf("[#4]Now defining %s[#-]\n",definitionName)
 
@@ -3276,13 +3281,13 @@ pcloop:
                 if exMatchStdlib { break }
 
                 // register new func in funcmap
-                funcmap[currentModule+"."+definitionName]=Funcdef{
+                funcmap[definitionName]=Funcdef{
                     name:definitionName,
-                    module:currentModule,
+                    module:parser.namespace,
                     fs:loc,
                 }
 
-                basemodmap[loc]=currentModule
+                basemodmap[loc]=parser.namespace
 
                 sourceMap[loc]=source_base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
                 // pf("[sm] loc %d -> %v\n",loc,source_base)
@@ -3315,7 +3320,7 @@ pcloop:
                     }
                 } else {
                     fn := stripOuterQuotes(inbound.Tokens[1].tokText, 2)
-                    fn =  interpolate(ifs,ident,fn)
+                    fn =  interpolate(currentModule,ifs,ident,fn)
                     if _, exists := fnlookup.lmget(fn); exists {
                         ShowDef(fn)
                     } else {
@@ -3660,7 +3665,7 @@ pcloop:
             }
 
             // override module name with alias at this point, if provided
-            oldModule:=currentModule
+            oldModule:=parser.namespace
             modRealAlias:=modGivenPath
             if aliased {
                 modRealAlias=modGivenAlias
@@ -3995,7 +4000,7 @@ pcloop:
             }
 
             // structName=inbound.Tokens[1].tokText
-            structName=currentModule+"::"+inbound.Tokens[1].tokText
+            structName=parser.namespace+"::"+inbound.Tokens[1].tokText
             structMode=true
 
         case C_Endstruct:
@@ -4026,7 +4031,7 @@ pcloop:
 
             if inbound.TokenCount>1 {
                 cet := crushEvalTokens(inbound.Tokens[1:])
-                filter = interpolate(ifs,ident,cet.text)
+                filter = interpolate(currentModule,ifs,ident,cet.text)
             }
 
             for k,s:=range structmaps {
@@ -4511,9 +4516,9 @@ pcloop:
 
                         var cmd string
                         if bc=="" {
-                            cmd = interpolate(ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
+                            cmd = interpolate(currentModule,ifs,ident,basecode[source_base][parser.pc].Original[startPos:])
                         } else {
-                            cmd = interpolate(ifs,ident,bc[2:])
+                            cmd = interpolate(currentModule,ifs,ident,bc[2:])
                         }
 
                         cop:=system(cmd,false)
@@ -4831,7 +4836,7 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variab
                     break
                 }
                 newstart=term+1
-                switch v.(type) { case string: v=interpolate(ifs,ident,v.(string)) }
+                switch v.(type) { case string: v=interpolate(currentModule,ifs,ident,v.(string)) }
                 if logging {
                     plog_out += sf(`%v`,sparkle(v))
                 } else {

@@ -9,6 +9,6 @@ println eb::tenum1.check
 var x ea::tstruct
 var y eb::tstruct
 
-println "from ea.tstruct : x->",format("%#v",x)
-println "from eb.tstruct : y->",format("%#v",y)
+println "from ea::tstruct : x->",format("%#v",x)
+println "from eb::tstruct : y->",format("%#v",y)
 

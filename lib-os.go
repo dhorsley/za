@@ -50,7 +50,7 @@ func buildOsLib() {
         "[#i1]filter[#i0] can be specified, as a regex, to narrow results.\n"+
         "Each array element contains name,mode,size,mtime and is_dir fields.\n"+
         "These specify filename, file mode, file size, modification time and directory status respectively."}
-    stdlib["dir"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["dir"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("dir",args,3,
             "2","string","string",
             "1","string",
@@ -84,7 +84,7 @@ func buildOsLib() {
     }
 
     slhelp["is_symlink"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a symbolic link."}
-    stdlib["is_symlink"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_symlink"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_symlink",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -98,7 +98,7 @@ func buildOsLib() {
     }
 
     slhelp["is_device"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a device."}
-    stdlib["is_device"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_device"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_device",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -112,7 +112,7 @@ func buildOsLib() {
     }
 
     slhelp["is_pipe"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a named pipe."}
-    stdlib["is_pipe"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_pipe"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_pipe",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -126,7 +126,7 @@ func buildOsLib() {
     }
 
     slhelp["is_socket"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a socket."}
-    stdlib["is_socket"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_socket"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_socket",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -140,7 +140,7 @@ func buildOsLib() {
     }
 
     slhelp["is_sticky"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a sticky file."}
-    stdlib["is_sticky"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_sticky"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_sticky",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -154,7 +154,7 @@ func buildOsLib() {
     }
 
     slhelp["is_setuid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setuid file."}
-    stdlib["is_setuid"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_setuid"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_setuid",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -168,7 +168,7 @@ func buildOsLib() {
     }
 
     slhelp["is_setgid"] = LibHelp{in: "mode_number", out: "bool", action: "Checks if a file mode indicates a setgid file."}
-    stdlib["is_setgid"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["is_setgid"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("is_setgid",args,2,
         "1","int",
         "1","fs.FileMode"); !ok { return nil,err }
@@ -182,7 +182,7 @@ func buildOsLib() {
     }
 
     slhelp["username"] = LibHelp{in: "int", out: "string", action: "Lookup a username by user id."}
-    stdlib["username"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["username"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("username",args,1,"1","number"); !ok { return nil,err }
         uid,_:=GetAsInt(args[0])
         str_uid:=sf("%d",uid)
@@ -193,7 +193,7 @@ func buildOsLib() {
     }
 
     slhelp["groupname"] = LibHelp{in: "int", out: "string", action: "Lookup a group name by group id."}
-    stdlib["groupname"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["groupname"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("groupname",args,1,"1","number"); !ok { return nil,err }
         gid,_:=GetAsInt(args[0])
         str_gid:=sf("%d",gid)
@@ -204,21 +204,21 @@ func buildOsLib() {
     }
 
     slhelp["parent"] = LibHelp{in: "string", out: "string", action: "Returns the parent directory."}
-    stdlib["parent"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["parent"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("parent",args,1,"1","string"); !ok { return nil,err }
         return filepath.Dir(args[0].(string)),nil
     }
 
     /* replaced by operators:
     slhelp["filebase"] = LibHelp{in: "string", out: "string", action: "Returns the base name of filename string."}
-    stdlib["filebase"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["filebase"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("filebase",args,1,"1","string"); !ok { return nil,err }
         fp:=filepath.Base(args[0].(string))
         return fp,nil
     }
 
     slhelp["fileabs"] = LibHelp{in: "string", out: "string", action: "Returns the absolute pathname of input string."}
-    stdlib["fileabs"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["fileabs"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("fileabs",args,1,"1","string"); !ok { return nil,err }
         fp,err:=filepath.Abs(args[0].(string))
         return fp,nil
@@ -226,13 +226,13 @@ func buildOsLib() {
     */
 
     slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
-    stdlib["cwd"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["cwd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cwd",args,0); !ok { return nil,err }
         return syscall.Getwd()
     }
 
     slhelp["umask"] = LibHelp{in: "int", out: "int", action: "Sets the umask value. Returns the previous value. umask() with args just returns the current value."}
-    stdlib["umask"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["umask"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("umask",args,2,
             "1","int",
             "0"); !ok { return nil,err }
@@ -247,7 +247,7 @@ func buildOsLib() {
     }
 
     slhelp["chroot"] = LibHelp{in: "string", out: "", action: "Performs a chroot to a given path."}
-    stdlib["chroot"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["chroot"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("chroot",args,1,"1","string"); !ok { return nil,err }
         if runtime.GOOS=="windows"    { return nil,errors.New("chroot not supported on this OS") }
         if interactive                { return nil,errors.New("chroot not permitted in interactive mode.") }
@@ -256,7 +256,7 @@ func buildOsLib() {
     }
 
     slhelp["cd"] = LibHelp{in: "string", out: "bool", action: "Changes directory to a given path."}
-    stdlib["cd"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["cd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
         cwd:=args[0].(string)
         err=syscall.Chdir(cwd)
@@ -269,54 +269,54 @@ func buildOsLib() {
     }
 
     slhelp["can_read"] = LibHelp{in: "string", out: "bool", action: "Check if path is readable."}
-    stdlib["can_read"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["can_read"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("can_read",args,1,"1","string"); !ok { return nil,err }
         return unix.Access(args[0].(string),unix.R_OK) == nil, nil
     }
 
     slhelp["can_write"] = LibHelp{in: "string", out: "bool", action: "Check if path is writeable."}
-    stdlib["can_write"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["can_write"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("can_write",args,1,"1","string"); !ok { return nil,err }
         return unix.Access(args[0].(string),unix.W_OK) == nil, nil
     }
 
     slhelp["delete"] = LibHelp{in: "string", out: "bool", action: "Delete a file."}
-    stdlib["delete"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["delete"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("delete",args,1,"1","string"); !ok { return nil,err }
         err=os.Remove(args[0].(string))
         return err==nil, err
     }
 
     slhelp["rename"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Rename a file."}
-    stdlib["rename"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["rename"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("rename",args,1,"2","string","string"); !ok { return nil,err }
         err=os.Rename(args[0].(string),args[1].(string))
         return err==nil, err
     }
 
     slhelp["copy"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Copy a single file."}
-    stdlib["copy"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["copy"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("copy",args,1,"2","string","string"); !ok { return nil,err }
         _,err=fcopy(args[0].(string),args[1].(string))
         return err==nil, err
     }
 
     slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
-    stdlib["env"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("env",args,0); !ok { return nil,err }
         return os.Environ(), err
     }
 
     // get environmental variable.
     slhelp["get_env"] = LibHelp{in: "key_name", out: "string", action: "Return the value of the environmental variable [#i1]key_name[#i0]."}
-    stdlib["get_env"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["get_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("get_env",args,1,"1","string"); !ok { return nil,err }
         return os.Getenv(args[0].(string)), err
     }
 
     // set environmental variable.
     slhelp["set_env"] = LibHelp{in: "key_name,value_string", out: "", action: "Set the value of the environmental variable [#i1]key_name[#i0]."}
-    stdlib["set_env"] = func(evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    stdlib["set_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("set_env",args,1,"2","string","string"); !ok { return nil,err }
         key := args[0].(string)
         val := args[1].(string)
