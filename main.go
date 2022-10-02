@@ -214,6 +214,7 @@ var testsTotal int
 // - not currently used too much. may eventually be removed
 var debug_level int             // 0:off, >0 max displayed debug level
 var lineDebug   bool            // 
+var enableAsserts bool          // turn assert interpretation on/off
 
 // list of keywords for lookups
 // - used in interactive mode TAB completion
@@ -484,33 +485,34 @@ func main() {
     interparse=&leparser{}
 
     // arg parsing
-    var a_help         =   flag.Bool("h",false,"help page")
-    var a_version      =   flag.Bool("v",false,"display the Za version")
-    var a_interactive  =   flag.Bool("i",false,"run interactively")
-    var a_scriptBypass =   flag.Bool("b",false,"bypass startup script")
-    var a_debug        =    flag.Int("d",0,"set debug level (0:off)")
-    var a_lineDebug    =   flag.Bool("D",false,"enable line debug")
-    var a_profile      =   flag.Bool("p",false,"enable profiler")
-    var a_trace        =   flag.Bool("P",false,"enable trace capture")
-    var a_test         =   flag.Bool("t",false,"enable tests")
-    var a_test_file    = flag.String("o","za_test.out","set the test output filename")
-    var a_filename     = flag.String("f","","input filename, when present. default is stdin")
-    var a_program      = flag.String("e","","program string")
-    var a_program_loop =   flag.Bool("r",false,"wraps a program string in a stdin loop - awk-like")
-    var a_program_fs   = flag.String("F","","provides a field separator for -r")
-    var a_test_override= flag.String("O","continue","test override value")
-    var a_test_name    = flag.String("N","","test name filter")
-    var a_test_group   = flag.String("G","","test group filter")
-    var a_time_out     =    flag.Int("T",0,"Co-process command time-out (ms)")
-    var a_mark_time    =   flag.Bool("m",false,"Mark co-process command progress")
-    var a_ansi         =   flag.Bool("c",false,"disable colour output")
-    var a_ansiForce    =   flag.Bool("C",false,"enable colour output")
-    var a_shell        = flag.String("s","","path to coprocess shell")
-    var a_shellrep     =   flag.Bool("Q",false,"enables the shell info reporting")
-    var a_noshell      =   flag.Bool("S",false,"disables the coprocess shell")
-    var a_cmdsep       =    flag.Int("U",0x1e,"Command output separator byte")
-    var a_var_refs     = flag.String("V","","find all references to a variable")
-    var a_var_warn     =   flag.Bool("W",false,"emit errors when addition contains string mixed types")
+    var a_help           =   flag.Bool("h",false,"help page")
+    var a_version        =   flag.Bool("v",false,"display the Za version")
+    var a_interactive    =   flag.Bool("i",false,"run interactively")
+    var a_scriptBypass   =   flag.Bool("b",false,"bypass startup script")
+    var a_debug          =    flag.Int("d",0,"set debug level (0:off)")
+    var a_lineDebug      =   flag.Bool("D",false,"enable line debug")
+    var a_profile        =   flag.Bool("p",false,"enable profiler")
+    var a_trace          =   flag.Bool("P",false,"enable trace capture")
+    var a_test           =   flag.Bool("t",false,"enable tests")
+    var a_test_file      = flag.String("o","za_test.out","set the test output filename")
+    var a_filename       = flag.String("f","","input filename, when present. default is stdin")
+    var a_program        = flag.String("e","","program string")
+    var a_program_loop   =   flag.Bool("r",false,"wraps a program string in a stdin loop - awk-like")
+    var a_program_fs     = flag.String("F","","provides a field separator for -r")
+    var a_test_override  = flag.String("O","continue","test override value")
+    var a_test_name      = flag.String("N","","test name filter")
+    var a_test_group     = flag.String("G","","test group filter")
+    var a_time_out       =    flag.Int("T",0,"Co-process command time-out (ms)")
+    var a_mark_time      =   flag.Bool("m",false,"Mark co-process command progress")
+    var a_ansi           =   flag.Bool("c",false,"disable colour output")
+    var a_ansiForce      =   flag.Bool("C",false,"enable colour output")
+    var a_shell          = flag.String("s","","path to coprocess shell")
+    var a_shellrep       =   flag.Bool("Q",false,"enables the shell info reporting")
+    var a_noshell        =   flag.Bool("S",false,"disables the coprocess shell")
+    var a_cmdsep         =    flag.Int("U",0x1e,"Command output separator byte")
+    var a_var_refs       = flag.String("V","","find all references to a variable")
+    var a_var_warn       =   flag.Bool("W",false,"emit errors when addition contains string mixed types")
+    var a_enable_asserts =   flag.Bool("a",false,"enable assertions. default is false, unless -t specified.")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -628,8 +630,12 @@ func main() {
 
 
     // test mode
+
+    enableAsserts = false
+
     if *a_test {
         testMode = true
+        enableAsserts = true
     }
 
     if *a_test_override != "" {
@@ -641,6 +647,11 @@ func main() {
 
     test_group_filter = *a_test_group
     test_name_filter  = *a_test_name
+
+    if *a_enable_asserts {
+        enableAsserts=*a_enable_asserts
+    }
+
 
     // disable the coprocess command
     if *a_noshell {
