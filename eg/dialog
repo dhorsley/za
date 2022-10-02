@@ -49,7 +49,11 @@ while not done
     is 5
         sel,quit=dialog::select(["0617"],["Zero","One","Two","Three","Last"],true,"h")
     is 6
-        sel,quit=dialog::select(["1627"],["Zero","One","Two","Three","Last"],true,"v")
+        # sel,quit=dialog::select(["1627"],["Zero","One","Two","Three","Last"],true,"v")
+        sel,quit=dialog::select(
+            dialog::style(.bb 2, .bf 7, .tb 3, .tf 6, .ct "✓", .cf " "),
+            ["Zero","One","Two","Three","Last"],true,"v"
+        )
     is 7
         sel,e=dialog::box_input(["1610","test title"],"Selection:","")
     is 8
