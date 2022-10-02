@@ -14,5 +14,5 @@ end
 assert etest([42,"blah",100])
 assert etest([42,"blah",true])
 assert etest([42,"blah"])
-assert ! etest([42,"blah","true"])
+assert !etest([42,"blah","true"])
 

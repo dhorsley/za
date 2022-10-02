@@ -94,6 +94,15 @@ endtest
 
 ############################################################################
 
+struct style
+    bb  int
+    bf  int
+    tb  int
+    tf  int
+    ct  string
+    cf  string
+endstruct
+
 define options(o)
     var s,t,h,f string
     c=0
@@ -105,7 +114,7 @@ define options(o)
         on c==3 do f=n
         on c++==4 do break
     endwhile
-    return s,t,h,f
+    return s,t,h,f,"x"," "
 end
 
 test "opt1" group "options"
@@ -357,10 +366,18 @@ endtest
 
 define select(opts,list_buttons,multiple,orientation)
 
+    sym_true="x"; sym_false=" "
+
     # style is used, but title, header and footer ignored
-    s=options(opts)[0]
-    bb,bf,pb,pf,err=style(s)
-    on err!=0 do return 1
+    if opts is array
+        s=options(opts)[0]
+        bb,bf,pb,pf,err=style(s)
+        on err!=0 do return 1
+    else
+        bb,bf,pb,pf,err=style("{=opts.bb}{=opts.bf}{=opts.tb}{=opts.tf}")
+        sym_true=opts.ct; sym_false=opts.cf
+    endif
+
     r=get_row(); c=get_col()
     sel=0
 
@@ -372,6 +389,7 @@ define select(opts,list_buttons,multiple,orientation)
     endwhen
 
     on list_buttons==nil do return sel,true
+
 
     ml=longest(list_buttons) 
     when orientation
@@ -407,7 +425,7 @@ define select(opts,list_buttons,multiple,orientation)
                 print pb,pf
                 # multiples checkbox:
                 if multiple
-                    print checked[key_b] ? "[x] " : "[ ] "
+                    print checked[key_b] ? "[{sym_true}] " : "[{sym_false}] "
                 endif
                 # caption:
                 show=b

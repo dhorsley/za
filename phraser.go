@@ -3,7 +3,6 @@ package main
 import (
     str "strings"
     "sync"
-//    "sync/atomic"
     "fmt"
 )
 
@@ -59,7 +58,6 @@ func bind_int(fs uint32,name string) (i uint64) {
 
 
 func getFileFromIFS(ifs uint32) (string) {
-    // if ifs==1 { return "main" }
     return fileMap[ifs]
 }
 
@@ -105,10 +103,12 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     addToPhrase:=false
     vref_found:=false
 
+    assert_found:=false
     on_found:=false
     do_found:=false
     fix_found:=false
     borpos:=-1
+    discard_phrase:=false
 
     for ; pos < len(input); {
 
@@ -129,6 +129,12 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             if tempToken.carton.tokText==var_refs_name {
                 vref_found=true
             }
+        }
+
+        // remove asserts?
+        if !assert_found && tokenType==C_Assert && !enableAsserts {
+            discard_phrase=true
+            assert_found=true
         }
 
         // FIX present?
@@ -225,7 +231,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                     }
 
                 } else {
-                        base.Original=""
+                    base.Original=""
                 }
                 // pf(".Original -> ·%s·\n",base.Original)
             }
@@ -244,21 +250,26 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
             // -- discard empty lines, add phrase to func store
             if phrase.TokenCount!=0 {
-                // -- add phrase to function
-                // pf("\n[#4]for phrase text : %v\n",phrase.Tokens)
-                // pf("\n[#6]adding phrase (in #%d): %#v[#-]\n",lmv,phrase)
-                fspacelock.Lock()
-                functionspaces[lmv] = append(functionspaces[lmv], phrase)
-                basecode[lmv]       = append(basecode[lmv], base)
-                fspacelock.Unlock()
+                if !discard_phrase {
+                    // -- add phrase to function
+                    // pf("\n[#4]for phrase text : %v\n",phrase.Tokens)
+                    // pf("\n[#6]adding phrase (in #%d): %#v[#-]\n",lmv,phrase)
+                    fspacelock.Lock()
+                    functionspaces[lmv] = append(functionspaces[lmv], phrase)
+                    basecode[lmv]       = append(basecode[lmv], base)
+                    fspacelock.Unlock()
+                }
             }
 
             // reset phrase
-            phrase = Phrase{}
-            base   = BaseCode{}
-            borpos = -1
-            do_found = false
-            on_found = false
+            phrase        = Phrase{}
+            base          = BaseCode{}
+            borpos        = -1
+            do_found      = false
+            on_found      = false
+            fix_found     = false
+            assert_found  = false
+            discard_phrase= false
 
         }
 
