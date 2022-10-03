@@ -61,14 +61,14 @@ type Variable struct {
 type Token struct {
     tokVal              any         // raw value storage
 	tokText             string      // the content of the token
+    bindpos             uint64
 	tokType             uint8       // token type from list in constants.go
     subtype             uint8       // sub type of identifiers
+    la_done             bool
     bound               bool
-    bindpos             uint64
     la_else_distance    int16       // look ahead markers
     la_end_distance     int16
     la_has_else         bool
-    la_done             bool
 }
 
 func (t Token) String() string {
@@ -136,10 +136,10 @@ type ExpressionCarton struct {
 	assignVar string      // name of var to assign to
 	text      string      // total expression
 	result    any         // result of evaluation
-    errVal    error
     assignPos int
 	assign    bool        // is this an assignment expression
 	evalError bool        // did the evaluation succeed
+    errVal    error
 }
 
 // struct for enum members
@@ -161,13 +161,13 @@ type s_loop struct {
 	loopType         uint8            // C_For, C_Foreach, C_While
 	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
 	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
-    iterOverMap      *reflect.MapIter // stored iterator
-	iterOverArray    any              // stored value to iterate over from start expression
 	repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
 	repeatActionStep int              // size of repeatAction
 	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
-    repeatAmendment  []Token          // used by custom FOR conditions
     repeatCustom     bool             // FOR loop with custom conditions
+    repeatAmendment  []Token          // used by custom FOR conditions
+    iterOverMap      *reflect.MapIter // stored iterator
+	iterOverArray    any              // stored value to iterate over from start expression
 }
 
 // struct to support pseudo-windows in console

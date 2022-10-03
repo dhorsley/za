@@ -317,7 +317,7 @@ func help_colour(ns string) {
 Some of the codes are demonstrated below. They can be activated by placing the
 code inside [# and ] in output strings.
 
-bdefault        Return background to default colour.
+bdefault    / bd   Return background to default colour.
 [#fgray][#b0]bblack[#-]   / b0   Set background colour to black.
 [#fgray][#b1]bblue[#-]    / b1   Set background colour to blue.
 [#fgray][#b2]bred[#-]     / b2   Set background colour to red.
@@ -335,7 +335,7 @@ bbblue          Set background colour to bright blue.
 bbmagenta       Set background colour to bright magenta.
 bbcyan          Set background colour to bright cyan.
 
-fdefault        Return the foreground colour to the default.
+fdefault   / fd   Return the foreground colour to the default.
 fblack[#-]    / 0   Set foreground colour to black.
 fblue           Set foreground colour to blue.
 [#1]fbblue[#-]    / 1   Set foreground colour to bright blue.

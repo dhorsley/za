@@ -10,7 +10,7 @@ bigs="37548956745865724058247yu5642853108572+3495752485674568465745yuhjn4t84tdrk
 
 cls
 
-## wrap(true)
+wrap(true)
 pane define "p1",20,40,8,40,"box p1"
 pane select "p1"
 at 1,1
