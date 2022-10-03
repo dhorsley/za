@@ -350,7 +350,6 @@ func main() {
     default_prectable[O_Multiply]   =35         // L05
     default_prectable[SYM_POW]      =37
 
-    // @note: should these be 
     default_prectable[SYM_PP]       =45         // L02
     default_prectable[SYM_MM]       =45         // L02
 

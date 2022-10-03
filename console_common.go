@@ -68,6 +68,7 @@ func setupAnsiPalette() {
         fairydust["boff"] = "\033[22m"
         fairydust["-"] = "\033[0m"
         fairydust["#"] = "\033[49m"
+        fairydust["bd"] = "\033[49m"
         fairydust["bdefault"] = "\033[49m"
         fairydust["bblack"] = "\033[40m"
         fairydust["bred"] = "\033[41m"
@@ -85,6 +86,7 @@ func setupAnsiPalette() {
         fairydust["bbmagenta"] = "\033[105m"
         fairydust["bbcyan"] = "\033[106m"
         fairydust["bwhite"] = "\033[107m"
+        fairydust["fd"] = "\033[39m"
         fairydust["fdefault"] = "\033[39m"
         fairydust["fblack"] = "\033[30m"
         fairydust["fred"] = "\033[31m"
@@ -123,9 +125,9 @@ func setupAnsiPalette() {
 
     } else {
         var ansiCodeList=[]string{"b0","b1","b2","b3","b4","b5","b6","b7","0","1","2","3","4","5","6","7","i1","i0",
-                "default","underline","ul","invert","bold","boff","-","#","bdefault","bblack","bred",
+                "default","underline","ul","invert","bold","boff","-","#","bd","bdefault","bblack","bred",
                 "bgreen","byellow","bblue","bmagenta","bcyan","bbgray","bgray","bbred","bbgreen",
-                "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fdefault","fblack","fred","fgreen",
+                "bbyellow","bbblue","bbmagenta","bbcyan","bwhite","fd","fdefault","fblack","fred","fgreen",
                 "fyellow","fblue","fmagenta","fcyan","fbgray","fgray","fbred","fbgreen","fbyellow",
                 "fbblue","fbmagenta","fbcyan","fwhite","dim","blink","hidden","crossed","framed","CSI","CTE","ASB","RSB",".",
         }
