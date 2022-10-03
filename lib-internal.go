@@ -247,7 +247,7 @@ func buildInternalLib() {
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","trap","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
-        "enum_names","enum_all","dump","sysvar","expect",
+        "enum_names","enum_all","dump","mdump","sysvar","expect",
         "ast","varbind","sizeof","dup",
         // "conread","conwrite","conset","conclear", : for future use.
     }
@@ -280,6 +280,16 @@ func buildInternalLib() {
         for e:=0;e<len(gident);e++ {
             if gident[e].declared {
                 pf("%s = %v\n", gident[e].IName, gident[e].IValue)
+            }
+        }
+        return nil, nil
+    }
+    slhelp["mdump"] = LibHelp{in: "function_name", out: "", action: "Displays global variable list."}
+    stdlib["mdump"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("mdump",args,1,"0"); !ok { return nil,err }
+        for e:=0;e<len(mident);e++ {
+            if mident[e].declared {
+                pf("%s = %v\n", mident[e].IName, mident[e].IValue)
             }
         }
         return nil, nil

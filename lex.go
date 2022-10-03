@@ -379,7 +379,13 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 carton.tokText= input[thisWordStart:currentChar+1]
 
                 // unescape escapes
-                carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
+                // carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
+                switch firstChar {
+                case '"':
+                    carton.tokText=stripDoubleQuotes(carton.tokText)
+                case '`':
+                    carton.tokText=stripBacktickQuotes(carton.tokText)
+                }
 
                 carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
                 carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
