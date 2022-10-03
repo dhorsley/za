@@ -111,7 +111,7 @@ func (parser *leparser) report(line int16,s string) {
         baseId,_ = fnlookup.lmget(funcName)         //      -> id of base func  
     }
     if execMode {
-        pf("\nswitched fs from %d to %d\n",baseId,execFs)
+        pf("\nexecMode : switched fs from %d to %d\n",baseId,execFs)
         baseId=execFs
     }
     baseName,_  := numlookup.lmget(baseId)          //      -> name of base func
