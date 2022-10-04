@@ -613,16 +613,16 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     }()
 
     // some tracking variables for this function call
-    var break_count int             // usually 0. when >0 stops breakIn from resetting
-                                    //  used for multi-level breaks.
-    var breakIn uint8               // true during transition from break to outer.
-    var forceEnd bool               // used by BREAK for skipping context checks when
-                                    //  bailing from nested constructs.
-    var retvalues []any             // return values to be passed back
-    var finalline int16             // tracks end of tokens in the function
-    var fs string                   // current function space name
-    var source_base uint32          // location of the translated source tokens
-    var thisLoop *s_loop            // pointer to loop information. used in FOR
+    var break_count,old_break_count int // usually 0. when >0 stops breakIn from resetting
+                                        //  used for multi-level breaks.
+    var breakIn uint8                   // true during transition from break to outer.
+    var forceEnd bool                   // used by BREAK for skipping context checks when
+                                        //  bailing from nested constructs.
+    var retvalues []any                 // return values to be passed back
+    var finalline int16                 // tracks end of tokens in the function
+    var fs string                       // current function space name
+    var source_base uint32              // location of the translated source tokens
+    var thisLoop *s_loop                // pointer to loop information. used in FOR
 
     // set up the function space
 
@@ -703,23 +703,26 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
 
     // generic nesting indentation counter
     // this being local prevents re-entrance i guess
-    var depth int
+    var depth,old_depth int
 
     // stores the active construct/loop types outer->inner
     //  for the break and continue statements
-    var lastConstruct = []uint8{}
+    var lastConstruct     = []uint8{}
+    var old_lastConstruct = []uint8{}
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
 
     // active WHEN..ENDWHEN statement meta info
-    var wc = make([]whenCarton, WHEN_CAP)
+    var wc     = make([]whenCarton, WHEN_CAP)
+    var old_wc = make([]whenCarton, WHEN_CAP)
 
     // count of active WHEN..ENDWHEN statements
-    var wccount int
+    var wccount,old_wccount int
 
     // counters per loop type
-    var loops = make([]s_loop, MAX_LOOPS)
+    var loops     = make([]s_loop, MAX_LOOPS)
+    var old_loops = make([]s_loop, MAX_LOOPS)
 
     if self.aware {
         vset(nil,ifs,ident,"self",*self.ptr)
@@ -2431,6 +2434,12 @@ pcloop:
             if parser.in_fix {
                 parser.in_fix=false
                 parser.pc=parser.resume_pos
+                break_count=old_break_count
+                depth=old_depth
+                lastConstruct=old_lastConstruct
+                wc=old_wc[:]
+                wccount=old_wccount
+                loops=old_loops[:]
                 continue
             }
 
@@ -2446,6 +2455,15 @@ pcloop:
             if fix_type=="" || fix_type==parser.try_type {
 
                 if parser.try_fault {
+
+                    // in case of resume...
+                    old_break_count=break_count
+                    old_depth=depth
+                    old_lastConstruct=lastConstruct
+                    old_wc=wc[:]
+                    old_wccount=wccount
+                    old_loops=loops[:]
+
                     // reset everything
                     defining=false
                     breakIn=Error
