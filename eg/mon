@@ -217,20 +217,21 @@ define showMem()
 
     # display slab info
 
-    cs=8
-    on count(slabs)<8 do cs=count(slabs)
-
-    comwidth=10
-    at 10,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
-    # would normally do with fields(). showing alternative below:
-    if count(slabs)>0
-        for p = 0 to cs-1
-            l=lines(slabs,"{p}:{p}")
-            sa=strpos(l," ",0)
-            c1=substr(l,0,sa)
-            c2=substr(l,sa+1,len(l)-sa-1)
-            at 11+p,1, format("%20s  [#6]%-"+comwidth.as_string+"d[#-]",c1,as_int(c2))
-        endfor
+    if slabs!=""
+        cs=8
+        on count(slabs)<8 do cs=count(slabs)
+        comwidth=10
+        at 10,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+        # would normally do with fields(). showing alternative below:
+        if count(slabs)>0
+            for p = 0 to cs-1
+                l=lines(slabs,"{p}:{p}")
+                sa=strpos(l," ",0)
+                c1=substr(l,0,sa)
+                c2=substr(l,sa+1,len(l)-sa-1)
+                at 11+p,1, format("%20s  [#6]%-"+comwidth.as_string+"d[#-]",c1,as_int(c2))
+            endfor
+        endif
     endif
 end
 
