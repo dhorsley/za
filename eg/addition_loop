@@ -7,7 +7,7 @@ doc `
      scan_left(0..40_000_000,"+",0).peek
 `
 
-module "./modules/timing.mod" as timing
+module "./modules/timing.mod"
 
 max_count=40_000_000
 input max_count optarg 1

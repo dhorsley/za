@@ -7,7 +7,7 @@ var ans float
 foreach t in tests
     test "test_{=1+key_t}" group "math2" assert fail
         ary=split(t,"=")
-        println "q->[#1]",ary[0],"[#-]"
+        println "q->[#1]",ary[0].tr("s"," "),"[#-]"
         println "a->",ary[1]
         ans=eval($st ary[0]).as_float
         println "answer->",ans
