@@ -121,6 +121,10 @@ func enum_all(ns string,e string) []any {
     return l
 }
 
+
+// GetAst(): returns a representation of the tokenised
+// phrases in a function. this is not an ast, but serves
+// the same purpose for us.
 func GetAst(fn string) (ast string) {
     var ifn uint32
     var present bool
@@ -1432,7 +1436,7 @@ func buildInternalLib() {
         return funclist,nil
     }
 
-    slhelp["ast"] = LibHelp{in: "fn_name", out: "string", action: "Return AST representation."}
+    slhelp["ast"] = LibHelp{in: "fn_name", out: "string", action: "Return tokenised phrase representation."}
     stdlib["ast"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("ast",args,1,"1","string"); !ok { return nil,err }
         fname:=args[0].(string)

@@ -51,6 +51,7 @@ type leparser struct {
     preprev     Token                   //   and the same for assignment
     fs          uint32                  // working function space
     mident      uint32                  // fs of main() (1 or 2 depending on interactive mode)
+                                        // @note: mident is necessary to say whether globals are stored under fs #1 or #2
     len         int16                   // assigned length to save calling len() during parsing
     line        int16                   // shadows lexer source line
     pc          int16                   // shadows program counter (pc)
@@ -129,23 +130,6 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
         left=p.unary(ct)
     case O_Assign, O_Plus, O_Minus:      // prec variable
         left=p.unary(ct)
-    /*
-    case O_Multiply:
-        left=p.unary(ct)
-    case SYM_Caret:         // unary pointery stuff
-        left=p.unary(ct)
-    */
-    /* O_Try defunct. use post-fix ? instead.
-    case O_Try:
-        right,err,_:=p.dparse(3)
-        if right==nil {
-            p.try_fault=true
-            p.try_err=err
-            p.try_pos=int(p.pc)
-            p.try_info=sf("%v",err)
-        }
-        left=right
-    */
     case LParen:
         left=p.grouping(ct)
     case SYM_PP, SYM_MM:
@@ -194,9 +178,7 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
             left = p.accessArray(left,token)
             continue
         case SYM_DoubleColon:
-            // pf("  (eval) dcolon ns check\n")
             if ! p.namespacing {
-                // pf("(eval) starting namespace at pos %d\n",p.pos)
                 p.namespacing=true
                 p.namespace_pos=p.pos
             } else {
@@ -247,13 +229,13 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
         case SYM_NE:
             left = !deepEqual(left,right)
         case SYM_LT:
-            left = compare(left,right,"<")
+            left = compare(left,right,SYM_LT)
         case SYM_GT:
-            left = compare(left,right,">")
+            left = compare(left,right,SYM_GT)
         case SYM_LE:
-            left = compare(left,right,"<=")
+            left = compare(left,right,SYM_LE)
         case SYM_GE:
-            left = compare(left,right,">=")
+            left = compare(left,right,SYM_GE)
 
         case SYM_LOR,C_Or: // OR and AND here for non-bool types
 
@@ -310,13 +292,6 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
         }
 
     }
-
-    /*
-    if !p.try_fault && p.std_call && p.std_faulted {
-        pf("(dp) try fault leaving with nil value.\n")
-        return nil,p.try_err,false
-    }
-    */
 
     /*
     if err!=nil || left==nil {
@@ -813,9 +788,9 @@ func (p *leparser) rcompare (left any,right any,insensitive bool, multi bool) an
     if insensitive { insenStr="(?i)" }
 
     var re regexp.Regexp
-    if pre,found:=ifCompileCache[right.(string)];!found {
+    if pre,found:=ifCompileCache[insenStr+right.(string)];!found {
         re = *regexp.MustCompile(insenStr+right.(string))
-        ifCompileCache[right.(string)]=re
+        ifCompileCache[insenStr+right.(string)]=re
     } else {
         re = pre
     }
@@ -1289,7 +1264,6 @@ func (p *leparser) unaryStringOp(right any,op uint8) string {
     default:
         panic(fmt.Errorf("invalid type in unary string operator"))
     }
-    // unreachable: // return ""
 }
 
 func (p *leparser) unary(token *Token) (any) {
@@ -1313,12 +1287,6 @@ func (p *leparser) unary(token *Token) (any) {
         return unOpSqr(right)
 	case O_Sqrt:
         return unOpSqrt(right)
-    /*
-    case SYM_Caret: // address of
-        return p.unaryPointerOp(right,token.tokType)
-    case O_Multiply: // peek
-        return p.unaryPointerOp(right,token.tokType)
-    */
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         return p.unaryStringOp(right,token.tokType)
     case O_Assign:
@@ -1339,7 +1307,6 @@ func unOpSqr(n any) any {
     default:
         panic(fmt.Errorf("sqr does not support type '%T'",n))
     }
-    // unreachable: // return nil
 }
 
 func unOpSqrt(n any) any {
@@ -1828,82 +1795,79 @@ func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
         *ident=newident
     }
 
-    t:=(*ident)[bin]
-    t.IName=name
-    t.declared=true
+    (*ident)[bin].IName=name
+    (*ident)[bin].declared=true
 
     if (*ident)[bin].ITyped {
         var ok bool
         switch (*ident)[bin].IKind {
         case kbool:
             _,ok=value.(bool)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case kint:
             _,ok=value.(int)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case kuint:
             _,ok=value.(uint)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case kfloat:
             _,ok=value.(float64)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
 
         case kbigi:
             switch value.(type) {
             case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-                t.IValue.(*big.Int).Set(GetAsBigInt(value))
+                (*ident)[bin].IValue.(*big.Int).Set(GetAsBigInt(value))
                 ok=true
             }
         case kbigf:
             switch value.(type) {
             case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-                t.IValue.(*big.Float).Set(GetAsBigFloat(value))
+                (*ident)[bin].IValue.(*big.Float).Set(GetAsBigFloat(value))
                 ok=true
             }
 
         case kstring:
             _,ok=value.(string)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case kbyte:
             _,ok=value.(uint8)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksbool:
             _,ok=value.([]bool)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksint:
             _,ok=value.([]int)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksuint:
             _,ok=value.([]uint)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksfloat:
             _,ok=value.([]float64)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksstring:
             _,ok=value.([]string)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksbyte:
             _,ok=value.([]uint8)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksbigi:
             _,ok=value.([]*big.Int)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksbigf:
             _,ok=value.([]*big.Float)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         case ksany:
             _,ok=value.([]any)
-            if ok { t.IValue = value }
+            if ok { (*ident)[bin].IValue=value }
         }
 
         if !ok { panic(fmt.Errorf("invalid assignation : to type [%T] of [%T]", (*ident)[bin].IValue,value)) }
 
     } else {
         // undeclared or untyped and needs replacing
-        t.IValue=value
+        (*ident)[bin].IValue=value
     }
-
-    (*ident)[bin]=t
 
     return
 }
@@ -1958,18 +1922,6 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
     return nil, false
 }
 
-
-/*
-func vsetElement(fs uint32, ident *[]Variable, name string, el any, value any) {
-    if ! (*ident)[bind_int(fs,name)].declared {
-        list := make(map[string]any, LIST_SIZE_CAP)
-        vset(nil,fs,ident,name,list)
-    }
-
-    vsetElementi(nil,fs,ident,name,el,value)
-
-}
-*/
 
 func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, value any) {
 

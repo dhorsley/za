@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-llen = 1000000
+llen = 100000
 sz=9999
 
 define then()
@@ -30,7 +30,7 @@ t=then(); print "[#4]Avg         : [#-]",avg(list),"\n"; now(t)
 
 
 println "[#4]Op (x/2)    : [#-]"
-println `: generated with nl=list -> "#/2"`
+println `: generated with nl = list -> "#/2"`
 t=then()
  nl=list -> "#/2"
 now(t)
