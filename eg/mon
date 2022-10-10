@@ -396,7 +396,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             # set initial value for the global store
             if !glob_key("prev","{name}_total")
                 foreach i in indexlist
-                    setglob prev["{name}_{i}"] = vals[i]
+                    @ prev["{name}_{i}"] = vals[i]
                 endfor
             endif
 
@@ -440,7 +440,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
             # record for next iter
             foreach i in indexlist
-                setglob prev["{name}_{i}"] = vals[i]
+                @ prev["{name}_{i}"] = vals[i]
             endfor
 
             # ensure positive and bounded
@@ -552,7 +552,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     cursoroff()
 
     if !is_file("/proc/net/dev")
-        setglob net_sample_start_in-=1
+        @ net_sample_start_in-=1
         return 
     endif
 
@@ -590,8 +590,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             on dtb <= 0 do dtb = 0f
 
             # shift left and append new to end
-            setglob rblist=rblist.tail.append(drb)
-            setglob tblist=tblist.tail.append(dtb)
+            @ rblist=rblist.tail.append(drb)
+            @ tblist=tblist.tail.append(dtb)
 
             # display using log scale up to log64(5).
             # using key_timeout as a rough scaler for the sampling period.
@@ -608,8 +608,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
                 ( (tblist[1:] -> "[20*logn(#,64),100f].min") -> "[#,0f].max" ) . list_int ,"fgrgb(2.5*?,0,0)",false,true)
 
             # write history
-            setglob prev_rbytes = rbytes
-            setglob prev_tbytes = tbytes
+            @ prev_rbytes = rbytes
+            @ prev_tbytes = tbytes
 
             # avg over a second:
             drb=humansize((1000/as_float(timeout))*drb)
@@ -625,7 +625,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     endfor
 
-    on net_sample_start_in>0 do setglob net_sample_start_in -= 1
+    on net_sample_start_in>0 do @ net_sample_start_in -= 1
 
 end
 
@@ -641,14 +641,14 @@ define redef_layout(cpu_count,pfilter)
     pane define "files",  cpu_count+23, 112,            8,       34,   "",                                    "none"
     pane define "status", cpu_count+33, 1,              1,       150,  "",                                    "none"
 
-    setglob net_sample_count = 40
+    @ net_sample_count = 40
 
-    setglob rblist = push_front(0.0)
-    setglob tblist = push_front(0.0)
+    @ rblist = push_front(0.0)
+    @ tblist = push_front(0.0)
 
     for f=1 to net_sample_count
-        setglob rblist = append(rblist,0.0)
-        setglob tblist = append(tblist,0.0)
+        @ rblist = append(rblist,0.0)
+        @ tblist = append(tblist,0.0)
     endfor
 
     showEnv()

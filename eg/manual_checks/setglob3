@@ -8,7 +8,7 @@ println "pre def"
 println z
 
 define q()
-    setglob z = append(tail(z),randf(50))
+    @ z = append(tail(z),randf(50))
 end
 
 q()

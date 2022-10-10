@@ -536,8 +536,8 @@ define progress(opts)
     r=get_row(); c=get_col()
     print bb,bf
     pane define "prog",r,1,2,term_w(),t,"double"
-    setglob _progress_colour_pb=pb
-    setglob _progress_colour_pf=pf
+    @ _progress_colour_pb=pb
+    @ _progress_colour_pf=pf
 end
 
 define progress_update(pcval)

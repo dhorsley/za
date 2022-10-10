@@ -17,7 +17,7 @@ define check_quotes(s,row,col)
     on expect_quotes and (s[0]!=quote_char or s[s.len-1]!=quote_char) do bq=true
     if bq
         on break_on_badquote do exit err.notquoted,"[#2]badly quoted at column #{col}, row #{row}[#-]"
-        setglob err_list+="badly quoted at column #{col}, row #{row}\n"
+        @ err_list+="badly quoted at column #{col}, row #{row}\n"
     endif
 end
 

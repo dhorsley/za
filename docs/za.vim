@@ -132,6 +132,8 @@ syntax match conversion_functions "\(^|.\|\s*\)btoi\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)itob\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)dtoo\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)otod\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)s2m\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)m2s\s*("he=e-1
 
 syntax match internal_functions "\(^|.\|\s*\)execpath\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)last\s*("he=e-1

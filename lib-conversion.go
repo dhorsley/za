@@ -47,7 +47,7 @@ func m2s(m map[string]any, rcvr any) any {
     rs  := reflect.ValueOf(rcvr)
     rt  := rs.Type()
 
-    rs2 := reflect.New(rs.Type()).Elem()
+    rs2 := reflect.New(rt).Elem()
     rs2.Set(rs)
 
     // populate rcvr through reflection
@@ -77,7 +77,23 @@ func buildConversionLib() {
         "byte","as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "kind", "char", "asc","as_uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
-        "btoi","itob","dtoo","otod",
+        "btoi","itob","dtoo","otod","s2m","m2s",
+    }
+
+
+    slhelp["s2m"] = LibHelp{in: "struct", out: "map", action: "Convert a struct to map."}
+    stdlib["s2m"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("s2m",args,1,"1","any"); !ok { return nil,err }
+        // @todo: reflect test for struct type before conversion
+        return s2m(args[0]),nil
+    }
+
+    slhelp["m2s"] = LibHelp{in: "map,struct_example", out: "struct", action: "Convert a map to struct following field form of [#i1]struct_example[#i0]."}
+    stdlib["m2s"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("m2s",args,1,"2","map[string]interface {}","any"); !ok { return nil,err }
+        // @todo: reflect test for struct input type before conversion
+        m:=m2s(args[0].(map[string]any),args[1])
+        return m,nil
     }
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}

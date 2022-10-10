@@ -29,6 +29,7 @@ CHANGE LOG
     other
     -----
 
+    * added '@' as alias for SETGLOB statement token
 
     * (breaking change) added name qualification for functions
         - functions defined in modules are now called using the syntax:
