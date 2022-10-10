@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 def per(n)
-    setglob steps=1
+    @ steps=1
     per_tr(n,n)
     return steps-1
 end
@@ -20,7 +20,7 @@ def per_tr(start,n)
 
     println "start %d | step #%2d | persist-total [digits] = %d".format(start,steps,total)
 
-    setglob steps+=1
+    @ steps+=1
     per_tr(start,total)
 
 end

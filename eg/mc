@@ -228,35 +228,35 @@ end
 
 def redef_layout()
 
-    setglob sw=term_w()
-    setglob sh=term_h()
+    @sw=term_w()
+    @sh=term_h()
 
     sm=as_int(sw/2)
     odd=sm!=(sw/2.0)
     right_offset=odd ? 1:0
 
-    setglob lx=2
-    setglob ly=1
-    setglob rx=2
-    setglob ry=sm+1+right_offset
-    setglob lh=sh-3
-    setglob lw=sm
-    setglob rh=sh-3
-    setglob rw=sm
+    @ lx=2
+    @ ly=1
+    @ rx=2
+    @ ry=sm+1+right_offset
+    @ lh=sh-3
+    @ lw=sm
+    @ rh=sh-3
+    @ rw=sm
 
     cls
     pane define "banner",1,1,1,sw,"","none"
 
-    setglob lwinheight=lh-2
-    setglob rwinheight=rh-2
+    @ lwinheight=lh-2
+    @ rwinheight=rh-2
 
     ltitle=" [#b1][#0]Path : [#5]%s[#-] ".format(lpath)
     rtitle=" [#b1][#0]Path : [#6]%s[#-] ".format(rpath)
     pane define "left" ,lx,ly,lh,lw,ltitle,"square"
     pane define "right",rx,ry,rh,rw,rtitle,"square"
 
-    setglob maxsl=lw-25
-    setglob maxsr=rw-25
+    @ maxsl=lw-25
+    @ maxsr=rw-25
 
 end
 

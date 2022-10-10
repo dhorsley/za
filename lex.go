@@ -9,7 +9,7 @@ import (
 
 
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_@$"
+const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const numeric = "0123456789.fn"
 const numSeps = "_"
@@ -208,7 +208,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
             // solo symbols
             switch firstChar {
-            case '+','-','/','*','.','^','!','%','?',';','<','>','~','=','|',',','(',')',':','[',']','&':
+            case '+','-','/','*','@','.','^','!','%','?',';','<','>','~','=','|',',','(',')',':','[',']','&':
                 word = string(firstChar)
                 startNextTokenAt=thisWordStart+1
                 goto get_nt_eval_point
@@ -618,6 +618,8 @@ get_nt_eval_point:
     case "=<":
         tokType = O_AssOutCommand
         borpos  = thisWordStart
+    case "@":
+        tokType = C_SetGlob
     }
 
     if tokType==0 {

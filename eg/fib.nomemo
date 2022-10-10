@@ -1,7 +1,6 @@
 #!/usr/bin/za
 
 define fib(n)
-#    setglob calls+=1
     on n<=1 do return n
     return fib(n-1)+fib(n-2)
 end
@@ -9,6 +8,4 @@ end
 calls=0
 input x param 1
 println fib(x)
-# println "calls -> {calls}"
 
-# println get_mem()

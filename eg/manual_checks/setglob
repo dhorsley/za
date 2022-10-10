@@ -10,14 +10,14 @@ struct t
 endstruct
 
 define q()
-    setglob a=true
-    setglob b["test"]=42
+    @ a=true
+    @ b["test"]=42
     println "SET LM1->"
-    setglob m["one"].d="teststring"
+    @ m["one"].d="teststring"
 end
 
 define w()
-    setglob a=!a
+    @ a=!a
 end
 
 var z t

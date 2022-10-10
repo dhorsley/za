@@ -1,12 +1,12 @@
 #!/usr/bin/za
 
 define fib(n)
-    setglob memo["calls"] = memo["calls"]+1
+    @ memo["calls"] = memo["calls"]+1
     if glob_key("memo",as_string(n))
         m=memo[n]
     else
         m=fib(n-2)+fib(n-1)
-        setglob memo[n] = m
+        @ memo[n] = m
     endif
     return m
 end
