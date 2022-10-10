@@ -9,9 +9,8 @@ if is_installed("figlet")
 
         variants = (
             dir(fontdir)
-            ?> `($pe #.name) ~i "^(flf|tlf)"` 
-            -> "$pn #.name"
-        )
+            ?> `($pe #.name) ~i "^(flf|tlf)"`
+        ) -> "$pn #.name"
 
         seed(-1)
         fv=variants[variants.len.rand-1]

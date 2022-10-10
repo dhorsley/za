@@ -5,14 +5,14 @@ def quit()
     while
         if repoll--<=0
             if w!=term_w() or h!=term_h()
-                setglob w=term_w()
-                setglob h=term_h()
+                @ w=term_w()
+                @ h=term_h()
                 cls
             endif
             repoll=poll_dur
         endif
         k=keypress(100)
-        on k!=0 do setglob quit=true
+        on k!=0 do @ quit=true
     endwhile
 end
 

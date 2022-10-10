@@ -818,7 +818,7 @@ func buildNetLib() {
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[string]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
     stdlib["web_custom"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("web_custom",args,2,
-            "3","string","string","map[string]any",
+            "3","string","string","map[string]interface{ }",
             "2","string","string"); !ok { return nil,err }
 
         method_string   := args[0].(string)

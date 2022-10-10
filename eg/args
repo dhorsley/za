@@ -43,7 +43,7 @@ define next()
     local_av=av
     arg=head(local_av)
     local_av=tail(local_av)
-    setglob av = local_av
+    @ av = local_av
     return arg
 end    
 

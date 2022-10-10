@@ -20,7 +20,7 @@ end
 define fill(x,y,b,c)
     on x<1 or x>=sl do return
     on y<1 or y>sw do return
-    on screen[x][y]  ==b do setglob screen[x]=screen[x][:y]+c+screen[x][y+1:]
+    on screen[x][y]  ==b do @ screen[x]=screen[x][:y]+c+screen[x][y+1:]
     on screen[x][y-1]==b do fill(x,y-1,b,c)
     on screen[x][y+1]==b do fill(x,y+1,b,c)
     on screen[x-1][y] ==b do fill(x-1,y,b,c)

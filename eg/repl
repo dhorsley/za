@@ -41,7 +41,7 @@ define process(i)
     is "help"
         show_help()
     is "quit"
-        setglob term = true
+        @ term = true
     is "echo"
         foreach f in F
             print eval(f)

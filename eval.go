@@ -9,7 +9,7 @@ import (
     "math/big"
     "net/http"
     "sync"
-    "sync/atomic"
+//    "sync/atomic"
     "path/filepath"
     str "strings"
     "unsafe"
@@ -93,7 +93,7 @@ func (p *leparser) peek() Token {
 
 func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
 
-    // pf("\ndparse query     : %#v\n",p.tokens)
+    // pf("\ndparse query with fs #%d : spos %v : %+v\n",p.fs,p.pos,p.tokens)
 
     // inlined next() manually:
     if p.pos>0 { p.preprev=p.prev }
@@ -190,7 +190,10 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
             continue
         case SYM_DOT:
             p.std_faulted=false
+            // pf("toks->%+v\n",p.tokens)
+            // pf("sd prepos  -> %d\n",p.pos)
             left,_ = p.accessFieldOrFunc(left,p.next().tokText)
+            // pf("sd postpos -> %d\n",p.pos)
             continue
         case C_Is:
             left = p.kind_compare(left)
@@ -866,7 +869,10 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
         // check for start of range
         if p.peek().tokType!=SYM_COLON {
+            // pf("(aa)     ntok -> %+v\n",tokNames[p.peek().tokType])
             dp,err,_:=p.dparse(0)
+            // pf("(aa) start dp -> %+v\n",dp)
+            // pf("(aa)   err dp -> %+v\n",err)
             if err!=nil {
                 panic(fmt.Errorf("array range start could not be evaluated"))
             }
@@ -1666,16 +1672,10 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // global lookup:
-    unlock:=false
-    if atomic.LoadUint32(&has_global_lock)!=p.fs {
-        sglock.RLock(); unlock=true
-    }
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
         // fmt.Printf("(ig) fetched %s->%v from global ident\n",token.tokText,val)
-        if unlock { sglock.RUnlock() }
         return val
     }
-    if unlock { sglock.RUnlock() }
 
     // permit module names
     if modlist[token.tokText]==true {
@@ -2441,15 +2441,12 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
                 newEval[eqPos+1]=Token{tokType:NumericLiteral,tokText:"", tokVal:expr.result}
             }
 
-            oid:=p.ident; p.ident=lident
             expr.result, err , try_fault = p.Eval(lfs,newEval)
-            p.ident=oid
 
         }
     }
 
     if try_fault {
-        // pf("User to handle error for:\n  %v\n",err)
         p.try_pos=int(p.pc)
         p.try_fault=true
     }
@@ -2461,8 +2458,8 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     }
 
     if expr.assign {
-	// pf("[#4]Assigning : lfs %d rfs %d toks->%#v[#-]\n",lfs,fs,tks)
-	// pf("[#5]This expression box result address -> %v\n",&expr.result)
+	 // pf("[#4]Assigning : lfs %d rfs %d toks->%+v[#-]\n",lfs,fs,tks)
+	 // pf("[#5]This expression box result address -> %v\n",&expr.result)
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
     }
 
@@ -2613,7 +2610,9 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             }
 
             // get the element name expr, eval it. element.(type) is used in switch below.
+            // pf("(da) about to eval element name. lfs %d rfs %d toks -> %+v\n",lfs,rfs,assignee[2:rbAt])
             element, err , _ := p.Eval(rfs,assignee[2:rbAt])
+            // pf("element eval. element set to %+v for expression tokens : %+v\n",element,assignee[2:rbAt])
             if err!=nil {
                 pf("could not evaluate index or key in assignment")
                 expr.evalError=true
@@ -2626,6 +2625,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 
             ///////////// CHECK FOR a[e].f= /////////////////////////////////////////////
 
+            // pf("(da) lhs : element and field. element->%v\n",element)
+
             if dotMode {
                 lhs_dotField:=""
                 if dotAt!=len(assignee)-2 {
@@ -2634,7 +2635,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                     return
                 }
                 lhs_dotField=assignee[dotAt+1].tokText
-
+                // pf("(da) lhs : element and field. field->%v\n",lhs_dotField)
                 // do everything here and leave other cases alone, or it will get real messy
 
                 // have to vget from a[e] into tmp
@@ -2660,7 +2661,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                     eleName = sf("%v",element)
                 }
 
-                tempStore ,found = vgetElementi(lfs,lident,aryName, eleName)
+                // pf("(da) about to vget-element : %v[%v]\n",aryName,eleName)
+                tempStore ,found = vgetElementi(lfs,lident,aryName,eleName)
 
                 if found {
 

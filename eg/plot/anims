@@ -75,7 +75,7 @@ define moveall()
                 else
                     collider.dy=-collider.dy
                 endif
-                setglob objects[colpos]=collider
+                @ objects[colpos]=collider
             endif 
             on o.bg>0 do o.bg-=1
         endif
@@ -106,7 +106,7 @@ define moveall()
         on o.dy>0 do o.dy=o.dy[0.1f:4f]
         on o.dy<0 do o.dy=o.dy[-4f:-0.1f]
 
-        setglob objects[e]=o
+        @ objects[e]=o
     endfor
 end 
 
@@ -149,13 +149,13 @@ define object_add_box(n,label,x,y,h,bg,fg)
     obj.x=x.as_float    ; obj.y=y.as_float
     obj.px=x.as_float   ; obj.py=y.as_float
     obj.weight=h.as_float*label.len
-    setglob objects[n]=obj
+    @ objects[n]=obj
 end
 
 define waitkey()
-    setglob quit=false
+    @ quit=false
     keypress()
-    setglob quit=true
+    @ quit=true
     at term_h(),1
     cursoron()
 end

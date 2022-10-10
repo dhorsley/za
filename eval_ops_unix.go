@@ -18,6 +18,8 @@ import (
 
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
+    // pf(" (afof) -> assessing obj %+v field %s\n",obj,field)
+
     switch obj:=obj.(type) {
 
     case http.Header:
@@ -40,6 +42,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         case reflect.Struct:
 
             isStruct=true
+            // pf("     -> is struct\n")
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.

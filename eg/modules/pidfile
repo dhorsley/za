@@ -33,7 +33,7 @@ def monitor_pidfile()
     on er!=0 do exit 3,"Error: could not create a pidfile watcher."
     while
         e=w.ev_event
-        on e.ev_mask("remove")!=nil do on e.Name==pid_name() do setglob quit=true
+        on e.ev_mask("remove")!=nil do on e.Name==pid_name() do @ quit=true
         pause 500
     endwhile
 end

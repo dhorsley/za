@@ -3,7 +3,7 @@
 
 define waitkey()
     keypress()
-    setglob quit=true
+    @ quit=true
 end
 
 define draw()
@@ -13,10 +13,10 @@ define draw()
     if px>0 and py>0 and px<width and py<height and not (x==0 and y==0)
         at py,px; print "[#"+as_int(c)+"]o"
     endif
-    setglob theta = theta + rotation
-    on x > width/2.0 do setglob theta = 0.0
-    setglob c=c+crate
-    on c>7 do setglob c=rand(7).as_float
+    @ theta = theta + rotation
+    on x > width/2.0 do @ theta = 0.0
+    @ c=c+crate
+    on c>7 do @ c=rand(7).as_float
 end
 
 var rotation  float

@@ -809,16 +809,7 @@ pcloop:
             if defining {
                 clr="4"
             }
-
-            /*
-            if inbound.Tokens[0].tokType==C_Define {
-                pf("@DEFINE IFS:%d BASE:%d ",ifs,source_base)
-            }
-            */
-
-            // pf("fault %v : %20s: line:%5d : [#"+clr+"]%5d : %+v[#-]\n",parser.try_fault,fs,inbound.SourceLine+1,parser.pc,basecode[source_base][parser.pc])
             pf("[#dim][#7]%20s: %5d : [#"+clr+"]%+v[#-]\n",display_fs,inbound.SourceLine+1,basecode[source_base][parser.pc])
-
         }
 
         /////////////////////////////////////////////////////////////////////////
@@ -2840,6 +2831,7 @@ pcloop:
                     docout := ""
                     for term := range inbound.Tokens[1:] {
                         nt:=inbound.Tokens[1+term]
+                        // pf("(doc) term %+v nt %+v\n",term,nt)
                         if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
                         if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                         if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
@@ -2939,11 +2931,6 @@ pcloop:
             // ON expr DO action
             // was false? - discard command tokens and continue
             // was true? - reform command without the 'ON condition' tokens and re-enter command switch
-
-            // > print tokens("on int(diff_{i})<0 do print")
-            //  on int        (      diff_42    )      <      0         do         print
-            //  ON IDENTIFIER LPAREN IDENTIFIER RPAREN SYM_LT N_LITERAL IDENTIFIER PRINT
-            //  0  1          2      3          4      5      6         7          8...
 
             if inbound.TokenCount > 2 {
 
@@ -3171,7 +3158,7 @@ pcloop:
             }
 
 
-        case C_Require:
+            case C_Require: // @note: this keyword may be remove
 
             // require feat support in stdlib first. requires version-as-feat support and markup.
 
