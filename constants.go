@@ -164,7 +164,7 @@ const (
 //  a few of these are unused now and some should probably be renamed.
 //  they should be checked and tidied next time there is any change to be done here.
 const (
-	Error uint8 = iota
+	Error int64 = iota
 	EOL
 	EOF
 	StringLiteral
