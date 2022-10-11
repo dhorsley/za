@@ -2,6 +2,36 @@
 CHANGE LOG
 =============================================================================================
 
+1.1.7
+=====
+
+    fixes
+    -----
+
+
+    library changes
+    ---------------
+
+    * added term() call to return terminal type string.
+
+
+    other
+    -----
+
+    * no longer considered experimental:
+        - added name qualification for functions
+        - added optional name qualification for enums
+        - added optional name qualification for structs
+        - added expect() call for checking a list against a set of type variants
+        - added syntax for struct initialisation with user values.
+        - code to remove gc bottleneck during recursion
+ 
+    * still experimental:
+        - fix/resume
+        - self syntax
+        - flock() call
+
+
 1.1.6
 =====
 

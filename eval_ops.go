@@ -1121,7 +1121,7 @@ func deepEqual(val1 any, val2 any) (bool) {
     return val1 == val2
 }
 
-func compare(val1 any, val2 any, operation uint8) (bool) {
+func compare(val1 any, val2 any, operation int64) (bool) {
 
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)
@@ -1197,7 +1197,7 @@ func compare(val1 any, val2 any, operation uint8) (bool) {
     panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
-func compareString(val1 string, val2 string, operation uint8) (bool) {
+func compareString(val1 string, val2 string, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1 < val2
@@ -1211,7 +1211,7 @@ func compareString(val1 string, val2 string, operation uint8) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareInt(val1 int, val2 int, operation uint8) (bool) {
+func compareInt(val1 int, val2 int, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1 < val2
@@ -1225,7 +1225,7 @@ func compareInt(val1 int, val2 int, operation uint8) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareFloat(val1 float64, val2 float64, operation uint8) (bool) {
+func compareFloat(val1 float64, val2 float64, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1 < val2
@@ -1239,7 +1239,7 @@ func compareFloat(val1 float64, val2 float64, operation uint8) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareBigFloat(val1 *big.Float, val2 *big.Float, operation uint8) (bool) {
+func compareBigFloat(val1 *big.Float, val2 *big.Float, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1.Cmp(val2)==-1
@@ -1253,7 +1253,7 @@ func compareBigFloat(val1 *big.Float, val2 *big.Float, operation uint8) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareBigInt(val1 *big.Int, val2 *big.Int, operation uint8) (bool) {
+func compareBigInt(val1 *big.Int, val2 *big.Int, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1.Cmp(val2)==-1
@@ -1267,7 +1267,7 @@ func compareBigInt(val1 *big.Int, val2 *big.Int, operation uint8) (bool) {
     panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
 }
 
-func compareI64(val1 int64, val2 int64, operation uint8) (bool) {
+func compareI64(val1 int64, val2 int64, operation int64) (bool) {
     switch operation {
     case SYM_LT:
         return val1<val2

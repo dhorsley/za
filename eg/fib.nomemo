@@ -5,7 +5,6 @@ define fib(n)
     return fib(n-1)+fib(n-2)
 end
 
-calls=0
 input x param 1
 println fib(x)
 
