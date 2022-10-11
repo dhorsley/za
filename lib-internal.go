@@ -249,7 +249,7 @@ func buildInternalLib() {
         "func_inputs","func_outputs","func_descriptions","func_categories",
         "local", "clktck", "glob_key", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","trap","coproc",
-        "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","has_colour",
+        "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all","dump","mdump","sysvar","expect",
         "ast","varbind","sizeof","dup",
@@ -1453,6 +1453,13 @@ func buildInternalLib() {
     stdlib["has_term"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("has_term",args,0); !ok { return false,err }
         return isatty(), nil
+    }
+
+    slhelp["term"] = LibHelp{in: "", out: "string", action: "Returns the OS reported terminal type."}
+    stdlib["term"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("term",args,0); !ok { return false,err }
+        term:=os.Getenv("TERM")
+        return term,nil
     }
 
     slhelp["has_colour"] = LibHelp{in: "", out: "bool", action: "Check if tty supports at least 16 colours."}

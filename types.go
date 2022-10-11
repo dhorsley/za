@@ -62,7 +62,7 @@ type Token struct {
     tokVal              any         // raw value storage
 	tokText             string      // the content of the token
     bindpos             uint64
-	tokType             uint8       // token type from list in constants.go
+	tokType             int64       // token type from list in constants.go
     subtype             uint8       // sub type of identifiers
     la_done             bool
     bound               bool
@@ -158,7 +158,7 @@ type s_loop struct {
 	condEnd          int              // terminating position value
 	forEndPos        int16            // ENDFOR location (statement number in functionspace)
 	repeatFrom       int16            // line number to restart block from
-	loopType         uint8            // C_For, C_Foreach, C_While
+	loopType         int64            // C_For, C_Foreach, C_While
 	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
 	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
 	repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions

@@ -1203,7 +1203,7 @@ func (p *leparser) reference(mut bool) string {
     return vartok.tokText
 }
 
-func (p *leparser) unaryPathOp(right any,op uint8) string {
+func (p *leparser) unaryPathOp(right any,op int64) string {
     switch right.(type) {
     case string:
         switch op {
@@ -1234,7 +1234,7 @@ func (p *leparser) unaryPathOp(right any,op uint8) string {
 
 
 // none of this pointer stuff is live. just tinkering here. move along!
-func (p *leparser) unaryPointerOp(right any,op uint8) any {
+func (p *leparser) unaryPointerOp(right any,op int64) any {
     bin:=bind_int(p.fs,right.(string))
     switch op {
     case SYM_Caret:
@@ -1250,7 +1250,7 @@ func (p *leparser) unaryPointerOp(right any,op uint8) any {
     return nil
 }
 
-func (p *leparser) unaryStringOp(right any,op uint8) string {
+func (p *leparser) unaryStringOp(right any,op int64) string {
     switch right.(type) {
     case string:
         switch op {

@@ -382,7 +382,7 @@ func GetAsUint(expr any) (uint, bool) {
 
 
 // check for value in slice - used by lookahead()
-func InSlice(a uint8, list []uint8) bool {
+func InSlice(a int64, list []int64) bool {
     for _, b := range list {
         if b == a {
             return true
@@ -431,7 +431,7 @@ func searchToken(source_base uint32, start int16, end int16, sval string) bool {
 
 // lookahead used by if..else..endif and similar constructs for nesting
 //  @note: lookahead only returns _,_,true when over dedented.
-func lookahead(fs uint32, startLine int16, indent int, endlevel int, term uint8, indenters []uint8, dedenters []uint8) (bool, int16, bool) {
+func lookahead(fs uint32, startLine int16, indent int, endlevel int, term int64, indenters []int64, dedenters []int64) (bool, int16, bool) {
 
     range_fs:=functionspaces[fs][startLine:]
 
@@ -615,7 +615,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     // some tracking variables for this function call
     var break_count,old_break_count int // usually 0. when >0 stops breakIn from resetting
                                         //  used for multi-level breaks.
-    var breakIn uint8                   // true during transition from break to outer.
+    var breakIn int64                   // true during transition from break to outer.
     var forceEnd bool                   // used by BREAK for skipping context checks when
                                         //  bailing from nested constructs.
     var retvalues []any                 // return values to be passed back
@@ -707,8 +707,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
 
     // stores the active construct/loop types outer->inner
     //  for the break and continue statements
-    var lastConstruct     = []uint8{}
-    var old_lastConstruct = []uint8{}
+    var lastConstruct     = []int64{}
+    var old_lastConstruct = []int64{}
 
     // initialise condition states: WHEN stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
@@ -1365,7 +1365,7 @@ pcloop:
             var endfound bool
             var enddistance int16
 
-            endfound, enddistance, _ = lookahead(source_base, parser.pc, 0, 0, C_Endwhile, []uint8{C_While}, []uint8{C_Endwhile})
+            endfound, enddistance, _ = lookahead(source_base, parser.pc, 0, 0, C_Endwhile, []int64{C_While}, []int64{C_Endwhile})
             // pf("(while debug) -> on line %v : end_found %+v : distance %+v\n",inbound.SourceLine,endfound,enddistance)
             if !endfound {
                 parser.report(inbound.SourceLine,"could not find an ENDWHILE")
@@ -1600,7 +1600,7 @@ pcloop:
                     pf("Unknown loop type [%T]\n",lv)
                 }
 
-                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []int64{C_For,C_Foreach}, []int64{C_Endfor})
                 if !endfound {
                     parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                     finish(false, ERR_SYNTAX)
@@ -1905,7 +1905,7 @@ pcloop:
                 customCond=true
 
                 // figure end position
-                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []int64{C_For,C_Foreach}, []int64{C_Endfor})
                 if !endfound {
                     parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                     finish(false, ERR_SYNTAX)
@@ -2015,7 +2015,7 @@ pcloop:
                 }
 
                 // figure end position
-                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []uint8{C_For,C_Foreach}, []uint8{C_Endfor})
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 0, 0, C_Endfor, []int64{C_For,C_Foreach}, []int64{C_Endfor})
                 if !endfound {
                     parser.report(inbound.SourceLine,"Cannot determine the location of a matching ENDFOR.")
                     finish(false, ERR_SYNTAX)
@@ -2322,22 +2322,22 @@ pcloop:
                     forceEnd=false
                     switch inbound.Tokens[1].tokType {
                     case C_When:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhen, []uint8{C_When},    []uint8{C_Endwhen})
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhen, []int64{C_When},    []int64{C_Endwhen})
                         breakIn=C_Endwhen
                         forceEnd=true
                         parser.pc = wc[wccount].endLine - 1
                     case C_For:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]uint8{C_For,C_Foreach},[]uint8{C_Endfor})
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]int64{C_For,C_Foreach},[]int64{C_Endfor})
                         breakIn=C_Endfor
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_Foreach:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,  []uint8{C_Foreach}, []uint8{C_Endfor})
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,  []int64{C_Foreach}, []int64{C_Endfor})
                         breakIn=C_Endfor
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_While:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]uint8{C_While},   []uint8{C_Endwhile})
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]int64{C_While},   []int64{C_Endwhile})
                         breakIn=C_Endwhile
                         forceEnd=true
                         parser.pc = (*thisLoop).whileContinueAt-1
@@ -2461,7 +2461,7 @@ pcloop:
                     break_count=0
                     forceEnd=false
                     depth=0
-                    lastConstruct = []uint8{}
+                    lastConstruct = []int64{}
                     wc=make([]whenCarton, WHEN_CAP)
                     wccount=0
                     loops = make([]s_loop, MAX_LOOPS)
@@ -3774,7 +3774,7 @@ pcloop:
             */
 
             // lookahead
-            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endwhen, []uint8{C_When}, []uint8{C_Endwhen})
+            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endwhen, []int64{C_When}, []int64{C_Endwhen})
 
             if er {
                 parser.report(inbound.SourceLine,"Lookahead dedent error!")
@@ -3902,10 +3902,10 @@ pcloop:
             if ramble_on { // move on to next parser.pc statement
             } else {
                 // skip to next WHEN clause:
-                hasfound, hasdistance, _ := lookahead(source_base, parser.pc+1, 0, 0, C_Has, []uint8{C_When}, []uint8{C_Endwhen})
-                isfound, isdistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Is, []uint8{C_When}, []uint8{C_Endwhen})
-                orfound, ordistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Or, []uint8{C_When}, []uint8{C_Endwhen})
-                cofound, codistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Contains, []uint8{C_When}, []uint8{C_Endwhen})
+                hasfound, hasdistance, _ := lookahead(source_base, parser.pc+1, 0, 0, C_Has, []int64{C_When}, []int64{C_Endwhen})
+                isfound, isdistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Is, []int64{C_When}, []int64{C_Endwhen})
+                orfound, ordistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Or, []int64{C_When}, []int64{C_Endwhen})
+                cofound, codistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Contains, []int64{C_When}, []int64{C_Endwhen})
 
                 // add jump distances to list
                 distList := []int16{}
@@ -4434,8 +4434,8 @@ pcloop:
             var elsedistance, enddistance int16
 
             if ! inbound.Tokens[0].la_done {
-                elsefound, elsedistance, er = lookahead(source_base, parser.pc, 0, 1, C_Else, []uint8{C_If}, []uint8{C_Endif})
-                endfound, enddistance, er = lookahead(source_base, parser.pc, 0, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+                elsefound, elsedistance, er = lookahead(source_base, parser.pc, 0, 1, C_Else, []int64{C_If}, []int64{C_Endif})
+                endfound, enddistance, er = lookahead(source_base, parser.pc, 0, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
                 inbound.Tokens[0].la_else_distance=elsedistance
                 inbound.Tokens[0].la_end_distance=enddistance
                 inbound.Tokens[0].la_has_else=elsefound
@@ -4482,7 +4482,7 @@ pcloop:
             // we already jumped to else+1 to deal with a failed IF test
             // so jump straight to the endif here
 
-            endfound, enddistance, _ := lookahead(source_base, parser.pc, 1, 0, C_Endif, []uint8{C_If}, []uint8{C_Endif})
+            endfound, enddistance, _ := lookahead(source_base, parser.pc, 1, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
 
             if endfound {
                 parser.pc += enddistance
@@ -4745,7 +4745,7 @@ func ShowDef(fn string) bool {
 
 
 /// search token list for a given delimiter string
-func findDelim(tokens []Token, delim uint8, start int16) (pos int16) {
+func findDelim(tokens []Token, delim int64, start int16) (pos int16) {
     n:=0
     for p := start; p < int16(len(tokens)); p+=1 {
         if tokens[p].tokType==LParen { n+=1 }

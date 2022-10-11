@@ -53,7 +53,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var carton Token
     var startNextTokenAt int
     var eol,eof bool
-    var tokType uint8
+    var tokType int64
     var word string
     var matchBlock bool
     var matchQuote bool
