@@ -8,12 +8,15 @@ CHANGE LOG
     fixes
     -----
 
+    * [ubuntu,debian,popos] updated apt/dpkg behaviour:
+        - now accounts for previously installed and subsequently deinstalled
+          packages, which leave the package cached. 
 
     library changes
     ---------------
 
     * added term() call to return terminal type string.
-
+    * added quiet mode to install(string[,bool]) for silent installs
 
     other
     -----

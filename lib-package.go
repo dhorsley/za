@@ -98,10 +98,16 @@ func buildPackageLib() {
     features["package"] = Feature{version: 1, category: "os"}
     categories["package"] = []string{"install", "uninstall", "service", "vcmp","is_installed"}
 
-    slhelp["install"] = LibHelp{in: "packages_string", out: "int", action: "Installs the packages in [#i1]packages_string[#i0]. Returns 0 on success or non-zero error code. (-1 is an unknown OS)"}
+    slhelp["install"] = LibHelp{in: "packages_string[,quiet_mode_bool]", out: "int", action: "Installs the packages in [#i1]packages_string[#i0]. Returns 0 on success or non-zero error code. (-1 is an unknown OS)"}
     stdlib["install"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("install",args,1,"1","string"); !ok { return nil,err }
-        done := install(args[0].(string))
+        if ok,err:=expect_args("install",args,2,
+            "2","string","bool",
+            "1","string"); !ok { return nil,err }
+        quiet:=false
+        if len(args)==2 {
+            quiet=args[1].(bool)
+        }
+        done := install(args[0].(string),quiet)
         return done, err
     }
 
@@ -185,6 +191,12 @@ func isinstalled(pkg string) (bool) {
     switch v.(string) {
     case "ubuntu", "debian","pop":
         err = Copper("dpkg -V "+pkg+" 2>/dev/null", true).code
+        if err==0 {
+            ret:=Copper("dpkg -s "+pkg+` 2>/dev/null | grep "^Status:.* deinstall"`,true).out
+            if len(ret)>0 {
+                err=-1
+            }
+        }
     case "opensuse":
         err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
     case "alpine":
@@ -271,7 +283,7 @@ func uninstall(pkgs string) (state int) {
 
 // install software with the default package manager.
 //   if a path is provided, then treat as a local package instead.
-func install(pkgs string) (state int) {
+func install(pkgs string,quiet bool) (state int) {
 
     // return state
     // 0  : all successfully installed
@@ -285,7 +297,7 @@ func install(pkgs string) (state int) {
         localname,errcode:=FileDownload(pkgs)
         defer os.Remove(localname)
         if errcode!=0 {
-            pf("[#2]Error when downloading %s[#-]\n",pkgs)
+            if !quiet { pf("[#2]Error when downloading %s[#-]\n",pkgs) }
             return errcode
         }
         pkgs=localname
@@ -306,45 +318,45 @@ func install(pkgs string) (state int) {
             cmd := "dpkg -s "+pbname
             cop := Copper(cmd, true)
             if cop.code>0 || !str.Contains(cop.out,"Status: install ok installed") { // not installed
-                pf("[#3]%s not currently installed.[#-]\n",pbname)
+                if !quiet { pf("[#3]%s not currently installed.[#-]\n",pbname) }
             } else {
-                pf("[#3]%s already installed. Overwriting.[#-]\n",pbname)
+                if !quiet { pf("[#3]%s already installed. Overwriting.[#-]\n",pbname) }
             }
             cmd = "dpkg -i "+pkgs
             cop = Copper(cmd, true)
             if cop.code>0 {
-                pf("[#2]Error during package install! Do you have privileges?[#-]\n")
+                if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
-            pf("[#4]%s installed.[#-]\n",pkgs)
+            if !quiet { pf("[#4]%s installed.[#-]\n",pkgs) }
             return 0
         case ".rpm": // rpm
             cmd := "rpm -qi "+pbname
             cop := Copper(cmd, true)
             if cop.code==0 { // installed
-                pf("[#3]%s already installed. Overwriting.[#-]\n",pbname)
+                if !quiet { pf("[#3]%s already installed. Overwriting.[#-]\n",pbname) }
             } else {
-                pf("[#3]%s install not detected.[#-]\n",pbname)
+                if !quiet { pf("[#3]%s install not detected.[#-]\n",pbname) }
             }
             cmd = "rpm -U "+pkgs
             cop = Copper(cmd, true)
             if cop.code>0 {
-                pf("[#2]Error during package install! Do you have privileges?[#-]\n")
+                if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
-            pf("[#4]%s installed.[#-]\n",pkgs)
+            if !quiet { pf("[#4]%s installed.[#-]\n",pkgs) }
             return 0
         case ".apk": // apk
             cmd:="apk add --allow-untrusted "+pbname
             cop:=Copper(cmd,true)
             if cop.code>0 {
-                pf("[#2]Error during package install! Do you have privileges?[#-]\n")
+                if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
-            pf("[#4]%s installed.[#-]\n",pkgs)
+            if !quiet { pf("[#4]%s installed.[#-]\n",pkgs) }
             return 0
         case ".sh" : // execute script
-            pf("[#2]Script execution not supported![#-]")
+            if !quiet { pf("[#2]Script execution not supported![#-]") }
             return -1
             // not adding this yet, as there's a good chance an install script could require
             // interactivity, which may or may not work correctly. not checked yet.
@@ -353,7 +365,7 @@ func install(pkgs string) (state int) {
         default:
         }
     } else {
-        pf("[#3]local file %s not found. trying repositories instead.[#-]\n",pkgs)
+        if !quiet { pf("[#3]local file %s not found. trying repositories instead.[#-]\n",pkgs) }
     }
 
 
@@ -370,8 +382,8 @@ func install(pkgs string) (state int) {
         pm = "apt"
         upopts = "-y update"
         inopts = "-y install"
-        checkcmd1 = "dpkg 2>/dev/null -V "
-        checkcmd2 = ``
+        checkcmd1 = "dpkg 2>/dev/null -s "
+        checkcmd2 = ` | grep "^Status:.* install"`
     case "opensuse":
         pm = "zypper"
         upopts = "update -y"
@@ -394,14 +406,14 @@ func install(pkgs string) (state int) {
         return -1
     }
 
-    updateCommand := sf("%s %s", pm, upopts)
+    updateCommand := sf("sudo %s %s", pm, upopts)
 
     if firstInstallRun {
         // do update
-        pf("Updating repository.\n")
+        if !quiet { pf("Updating repository.\n") }
         err := Copper(updateCommand, true).code
         if err != 0 {
-            pf("Problem performing system update!\n")
+            if !quiet { pf("Problem performing system update!\n[cmd->%s]\n",updateCommand) }
             finish(true, ERR_PACKAGE)
             return err
         }
@@ -418,12 +430,12 @@ func install(pkgs string) (state int) {
         err := Copper(checkcmd1+p+checkcmd2, true).code
         if err == 1 { // not installed
             // install
-            installCommand := sf("%s %s %s", pm, inopts, p)
-            pf("Installing: %v\n", p)
+            installCommand := sf("sudo %s %s %s", pm, inopts, p)
+            if !quiet { pf("Installing: %v\n", p) }
             cop := Copper(installCommand, true)
             if !cop.okay {
-                // pf("\nPotential problem installing packages [%s]\n",p)
-                pf(cop.out)
+                pf("\nPotential problem installing packages [%s]\n",p)
+                if !quiet { pf(cop.out) }
                 finish(false,ERR_PACKAGE)
                 return cop.code
             }

@@ -5,18 +5,18 @@ package main
 //
 
 import (
-	"reflect"
+    "reflect"
 )
 
 // this type is for holding a complete line from statement to EOL/Semicolon
 type Phrase struct {
-	Tokens      []Token // each token found
+    Tokens      []Token // each token found
     SourceLine  int16
-	TokenCount  int16   // number of tokens generated for this phrase
+    TokenCount  int16   // number of tokens generated for this phrase
 }
 
 type BaseCode struct {
-	Original    string  // entire string, unmodified for spaces
+    Original    string  // entire string, unmodified for spaces
     borcmd      string  // issued command if SYM_BOR present
     HasFix      bool    // used by error recovery to see if handled by user FIX or system
 }
@@ -27,7 +27,7 @@ type bc_block struct {
 }
 
 func (p BaseCode) String() string {
-	return p.Original
+    return p.Original
 }
 
 
@@ -59,37 +59,37 @@ type Variable struct {
 
 // holds a Token which forms part of a Phrase.
 type Token struct {
+    tokType             int64       // token type from list in constants.go
+    tokText             string      // the content of the token
     tokVal              any         // raw value storage
-	tokText             string      // the content of the token
     bindpos             uint64
-	tokType             int64       // token type from list in constants.go
     subtype             uint8       // sub type of identifiers
-    la_done             bool
     bound               bool
+    la_done             bool
+    la_has_else         bool
     la_else_distance    int16       // look ahead markers
     la_end_distance     int16
-    la_has_else         bool
 }
 
 func (t Token) String() string {
-	return t.tokText
+    return t.tokText
 }
 
 
 // holds the details of a function call.
 type call_s struct {
-	caller      uint32      // the thing which made the call
-	base        uint32      // the original functionspace location of the source
+    caller      uint32      // the thing which made the call
+    base        uint32      // the original functionspace location of the source
     gcShyness   uint32      // how many turns of the allocator before final disposal
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
     disposable  bool
-	retvals     any         // returned values from the call
-	fs          string      // the text name of the calling party
+    retvals     any         // returned values from the call
+    fs          string      // the text name of the calling party
 }
 
 func (cs call_s) String() string {
-	return sf("~{ fs %v - caller %v }~", cs.fs, cs.caller)
+    return sf("~{ fs %v - caller %v }~", cs.fs, cs.caller)
 }
 
 type Funcdef struct {
@@ -110,8 +110,8 @@ type chainInfo struct {
 
 // holds mappings for feature->category in the standard library.
 type Feature struct {
-	version  int    // for standard library and REQUIRE statement support.
-	category string // for stdlib funcs() output splitting
+    version  int    // for standard library and REQUIRE statement support.
+    category string // for stdlib funcs() output splitting
 }
 
 /*
@@ -124,21 +124,21 @@ type WhileMarker struct {
 
 // holds internal state for the WHEN command
 type whenCarton struct {
-	endLine   int16       // where is the endWhen, so that we can break or skip to it
-	performed bool        // set to true by the matching clause
-	dodefault bool        // set false when another clause has been active
-	value     any         // the value should only ever be a string, int or float. IN only works with numbers.
+    endLine   int16       // where is the endWhen, so that we can break or skip to it
+    performed bool        // set to true by the matching clause
+    dodefault bool        // set false when another clause has been active
+    value     any         // the value should only ever be a string, int or float. IN only works with numbers.
 }
 
 
 // holds an expression to be evaluated and its result
 type ExpressionCarton struct {
-	assignVar string      // name of var to assign to
-	text      string      // total expression
-	result    any         // result of evaluation
+    assignVar string      // name of var to assign to
+    text      string      // total expression
+    result    any         // result of evaluation
     assignPos int
-	assign    bool        // is this an assignment expression
-	evalError bool        // did the evaluation succeed
+    assign    bool        // is this an assignment expression
+    evalError bool        // did the evaluation succeed
     errVal    error
 }
 
@@ -152,32 +152,32 @@ type enum_s struct {
 
 // struct for loop internals
 type s_loop struct {
-	loopVar          string           // name of counter
-	loopVarBinding   uint64           // name binding lookup from loop name token
-	counter          int              // current position in loop
-	condEnd          int              // terminating position value
-	forEndPos        int16            // ENDFOR location (statement number in functionspace)
-	repeatFrom       int16            // line number to restart block from
-	loopType         int64            // C_For, C_Foreach, C_While
-	optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
-	whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
-	repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
-	repeatActionStep int              // size of repeatAction
-	repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
+    loopVar          string           // name of counter
+    loopVarBinding   uint64           // name binding lookup from loop name token
+    counter          int              // current position in loop
+    condEnd          int              // terminating position value
+    forEndPos        int16            // ENDFOR location (statement number in functionspace)
+    repeatFrom       int16            // line number to restart block from
+    loopType         int64            // C_For, C_Foreach, C_While
+    optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
+    whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
+    repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
+    repeatActionStep int              // size of repeatAction
+    repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
     repeatCustom     bool             // FOR loop with custom conditions
     repeatAmendment  []Token          // used by custom FOR conditions
     iterOverMap      *reflect.MapIter // stored iterator
-	iterOverArray    any              // stored value to iterate over from start expression
+    iterOverArray    any              // stored value to iterate over from start expression
 }
 
 // struct to support pseudo-windows in console
 type Pane struct {
-//	bg       string // currently unused, background colour
-//	fg       string // currently unused, foreground colour
-	col, row int    // top-left location in console
-	w, h     int    // width and height
-	boxed    string // border type
-	title    string // window title
+//  bg       string // currently unused, background colour
+//  fg       string // currently unused, foreground colour
+    col, row int    // top-left location in console
+    w, h     int    // width and height
+    boxed    string // border type
+    title    string // window title
 }
 
 // stdlib types...
