@@ -25,8 +25,10 @@ func (p *leparser) reserved(token Token) (any) {
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
 
+    l:=len(toks)
+
     // short circuit pure numeric literals and const names
-    if len(toks)==1 {
+    if l==1 {
         if toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil,false }
         switch toks[0].subtype {
         case subtypeConst:
@@ -37,7 +39,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
     p.prectable=default_prectable
     p.fs     = fs
     p.tokens = toks
-    p.len    = int16(len(toks))
+    p.len    = int16(l)
     p.pos    = -1
 
     return p.dparse(0)
@@ -1659,12 +1661,12 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // local variable lookup:
     bin:=token.bindpos
-
     if bin>=uint64(len(*p.ident)) {
         newg:=make([]Variable,bin+identGrowthSize)
         copy(newg,*p.ident)
         *p.ident=newg
     }
+
 
     if (*p.ident)[bin].declared {
         // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
