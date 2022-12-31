@@ -2501,6 +2501,7 @@ pcloop:
                 }
             }
 
+
         case C_Enum:
 
             if inbound.TokenCount<4 || (
@@ -3056,6 +3057,7 @@ pcloop:
                 testlock.Unlock()
 
             }
+
 
         case C_Help:
             hargs := ""
