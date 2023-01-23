@@ -423,18 +423,20 @@ syntax match notify_functions "\(^|.\|\s*\)ev_mask\s*("he=e-1
 " Za Keywords: {{{1
 " ==============
 
-syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
+syntax match tstatements "\(^\|\s\+\)\(doc\|test\|et\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| as \| in \| is \)"
-syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\|ef\|et\|ei\|ew\|es\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(end\|fix\|and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\|ef\|et\|ec\|ei\|ew\|es\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(end\|def\|fix\|has\|and\|not\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|case\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(resume\|module\|prompt\|return\|define\|endfor\|enddef\|enable\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(foreach\|version\|require\|println\|showdef\|endwith\|endwhen\|logging\|subject\|disable\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(resume\|module\|prompt\|return\|define\|enddef\|enable\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(version\|require\|println\|showdef\|endwith\|endcase\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(endstruct\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(accessfile\|showstruct\)\($\|\s\+\)"
+
+syntax match forstatements "\(^\|\s\+\)\(foreach\|for\|ef\|endfor\)\($\|\s\+\)"
 
 syntax match types "\sany\(\s\|$\)"
 syntax match types "\sint\(\s\|$\)"
@@ -525,7 +527,7 @@ hi def link Quote   Operator
 hi def link Colon   Comment
 hi def link DoubleQuote String
 hi def link BacktkQuote String
-hi def link Loop    statements
+hi def link Loop    fstatements
 hi def link NoQuote DoubleQuote
 hi def link Pattern String
 hi def link Paren   Arithmetic
@@ -573,6 +575,7 @@ hi Normal       ctermfg=blue ctermbg=NONE
 hi comment      ctermfg=red
 hi Constant     ctermfg=darkGreen cterm=bold
 hi statements   ctermfg=darkBlue
+hi fstatements  ctermfg=lightBlue
 hi tstatements  ctermfg=magenta
 hi Identifiers  ctermfg=darkYellow
 hi ErrorMsg     ctermfg=black ctermbg=red

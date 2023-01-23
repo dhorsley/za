@@ -7,10 +7,10 @@ while #b4
 
     while #b3
         for e=1 to 50 # b2
-            when # b1
+            case # b1
             has e > 0
                 break bc
-            endwhen
+            ec
             println e
         endfor
         println "FOR COMPLETE!"

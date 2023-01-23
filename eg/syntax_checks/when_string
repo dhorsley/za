@@ -7,7 +7,7 @@ on in_mode!="" do mode=in_mode
 
 println "pre"
 
-when mode
+case mode
 is "csv"
     println "csv"
 is "import"
@@ -16,7 +16,7 @@ is "display"
     println "display"
 or
     println "not found"
-endwhen
+ec
 
 println "post"
 

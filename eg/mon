@@ -19,14 +19,14 @@ logging on "/tmp/dh"
 define clear(lstart,lend,column)
     for f=lstart to lend
         clear_line(f,column)
-    endfor
+    ef
 end
 
 define header(t)
     at 0,1
     for e=0 to pane_w()-2
         print fgrgb(0,e*64f/pane_w(),e*255f/pane_w()),"_"
-    endfor
+    ef
     print "[#-]"
     at 0,0,t
 end
@@ -46,9 +46,9 @@ define bar(row,col,hsize,pc,colour)
             on r>=0.25*us do c=part_1q
             on r>=0.50*us do c=part_2q
             on r>=0.75*us do c=part_3q
-        endif
+        ei
         print "[#{colour}]{c}[#-]"
-    endfor
+    ef
 end
 
 define interface_ip(ip_in)
@@ -63,7 +63,7 @@ define negreg(inp,matcher)
     foreach l in inp
         on match(l,matcher) do continue
         out=out+l+"\n"
-    endfor
+    ef
     return out
 end
 
@@ -71,7 +71,7 @@ logging testfile "mon.test.out"
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
     assert has_start(iip,"127.0.0.")
-endtest
+et
 
 define shorten(s,l)
     on len(s)>=l do s=s[:l-2]+(utf8supported() ? "…" : "~")
@@ -123,13 +123,13 @@ define showFiles()
             print "No Limit[#-]"
         else
             print format("%.7g",mfd),"[#-]"
-        endif
+        ei
         fin=open_inode.field(2,"\t")
         tin=open_inode.field(1,"\t").as_float
         at 4,2, "Free Inodes : [#6]{fin}[#-]"
         at 5,2, "Total       : [#6]",format("%.7g",tin),"[#-]"
 
-    endif
+    ei
 
 end
 
@@ -145,7 +145,7 @@ define showMem()
     if !access
         at 2,1,"[#1]Slab information requires root access.[#-]"
         return
-    endif
+    ei
 
     # gather
    
@@ -160,19 +160,19 @@ define showMem()
             s_cn=l.field(4," ")
             on s_sz==0 or s_cn==0 do continue
             slabs+="%s %3v\n".format(name,(s_sz.as_float*s_cn.as_float)/1024/1024)
-        endfor
+        ef
         slabs=slabs.fieldsort(2,"n",true) 
-    endif
+    ei
 
     foreach f in ["total","free","avail","cached","active","swap_free","swap_total"]
         mem[f]=0
-    endfor
+    ef
 
     if is_file("/proc/meminfo")
         foreach line in $in "/proc/meminfo"
             fields(line)
             if F[2]!=""
-                when F[1]
+                case F[1]
                     is "MemTotal:";     mem_total=F[2]
                     is "MemFree:";      mem_free=F[2]
                     is "MemAvailable:"; mem_avail=F[2]
@@ -180,10 +180,10 @@ define showMem()
                     is "Active:";       mem_active=F[2]
                     is "SwapFree:";     mem_swap_free=F[2]
                     is "SwapTotal:";    mem_swap_total=F[2]
-                endwhen
-            endif
-        endfor
-    endif
+                ec
+            ei
+        ef
+    ei
 
     on winterm() do mem_avail=F[2]
 
@@ -208,7 +208,7 @@ define showMem()
     if mem_swap_total.as_int!=0
         at 7,2,"[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.as_int/mem_swap_total.as_float)*100,5)
         print " [#6]{=hobbitsize(1024*mem_swap_free.as_float)}B[#-]   "
-    endif
+    ei
 
     al=get_mem().alloc.as_int
     ts=get_mem().system.as_int
@@ -230,9 +230,9 @@ define showMem()
                 c1=substr(l,0,sa)
                 c2=substr(l,sa+1,len(l)-sa-1)
                 at 11+p,1, format("%20s  [#6]%-"+comwidth.as_string+"d[#-]",c1,as_int(c2))
-            endfor
-        endif
-    endif
+            ef
+        ei
+    ei
 end
 
 
@@ -280,8 +280,8 @@ define showProcs(ct,uptime)
                             threads, procstarttime, gsub(comm," ","_") 
             ]
 
-        endif
-    endfor
+        ei
+    ef
 
     if len(proc_list)>0
 
@@ -290,7 +290,7 @@ define showProcs(ct,uptime)
         foreach p in proc_list
             nextline = format ("%v %v %v %v %v %v %v %v %v %v\n", p[0], p[1], key_p, p[2], p[3], p[4], p[5], p[6], p[7], p[8] )
             shellout = shellout + nextline
-        endfor
+        ef
 
         sorted = fieldsort(shellout,4,"n",true).lines(":17").uniq
 
@@ -314,16 +314,16 @@ define showProcs(ct,uptime)
                 F[1],as_int(F[2]),as_int(F[3]),as_float(F[4]),as_float(F[5]),as_float(F[8]),collapse(F[10])
             )
             on lcount--==0 do break
-        endfor
+        ef
 
-    endif
+    ei
 end
 
 define humansize(i)
     unit="B"
-    if i>=1e9; unit="GB"; i=as_float(i/1e9); endif
-    if i>=1e6; unit="MB"; i=as_float(i/1e6); endif
-    if i>=1e3; unit="KB"; i=as_float(i/1e3); endif
+    if i>=1e9; unit="GB"; i=as_float(i/1e9); ei
+    if i>=1e6; unit="MB"; i=as_float(i/1e6); ei
+    if i>=1e3; unit="KB"; i=as_float(i/1e3); ei
     return format("%.1f %s/s",i,unit)
 end
 
@@ -344,7 +344,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         proc_file=$in "/proc/stat"
     else
         return sample_start_in
-    endif
+    ei
 
     on len(proc_file)==0 do return sample_start_in
 
@@ -389,16 +389,16 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     vals[i]    = f.head
                 else
                     vals[i]    = 0f
-                endif
+                ei
                 on f.len>0 do f = f.tail
-            endfor
+            ef
             
             # set initial value for the global store
             if !glob_key("prev","{name}_total")
                 foreach i in indexlist
                     @ prev["{name}_{i}"] = vals[i]
-                endfor
-            endif
+                ef
+            ei
 
             # now populate local prev from global prev
             foreach i in indexlist
@@ -408,11 +408,11 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                         one_prev[i]=g
                     else
                         one_prev[i]=0
-                    endif
+                    ei
                 else
                     one_prev[i]=0
-                endif
-            endfor
+                ei
+            ef
 
             # calc difference from last sample. -- units are USER_HZ, 1/100 sec
             if one_prev["total"]!=nil
@@ -423,33 +423,33 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     else
                         if is_number(one_prev[i])
                             diff[i] = ((vals[i]-as_int(one_prev[i])) / diff_total ) * mult
-                        endif
-                    endif
-                endfor
+                        ei
+                    ei
+                ef
 
                 # figure display total
                 subindexlist = ["user","nice","sys","iowait","irq","softirq","steal","guest"]
                 disp_total=0.0
                 foreach i in subindexlist
                     disp_total+=diff[i]
-                endfor
+                ef
             else
                 at 2,2, "[#invert]Checking previous CPU values.[#-]"
                 break foreach
-            endif
+            ei
 
             # record for next iter
             foreach i in indexlist
                 @ prev["{name}_{i}"] = vals[i]
-            endfor
+            ef
 
             # ensure positive and bounded
             if one_prev["total"]!=nil
                 foreach i in partindexlist
                     on as_int(diff[i])<0   do diff[i]=0
                     on as_int(diff[i])>100 do diff[i]=100
-                endfor
-            endif
+                ef
+            ei
             
             # display
             if sample_start_in-->0
@@ -467,7 +467,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                                         as_float(diff["irq"]),as_float(diff["guest"]),as_float(diff["steal"]),as_float(diff["iowait"])
                                     )
                     pos=pos+59
-                endif
+                ei
 
                 col_sys     = "[#5]";       w_sys     = diff["sys"]/2
                 col_user    = "[#4]";       w_user    = diff["user"]/2
@@ -494,19 +494,19 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                     print col_iowait;   print pad(activity_indicator,1,w_iowait.as_int,    activity_indicator)
                     print "[#-][##]"
                     pos=pos+49
-                endif
+                ei
 
                 if showCpuTotals
                     cursorx(pos)
                     print format("❙ %4.2f",disp_total)
-                endif
+                ei
 
                 row++
 
-            endif
+            ei
 
-        endif
-    endfor
+        ei
+    ef
 
     return sample_start_in
 
@@ -523,12 +523,12 @@ define showHdd()
     # dirty hack for getting disk usage.
     # should at the very least do the filtering and sorting in Za instead.
     # may be best to eventually add a lib call for reading the info more directly to an array.
-    when release_id()
+    case release_id()
     is "alpine"
         disks=< df -h | tail -n+2 | egrep '^overlay' | sort -grk5
     or
         disks=< df -h -x 9p | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | egrep -v '^(tmpfs|run)' | sort -hrk5
-    endwhen
+    ec
 
     at 1,1, format("[#b2][#7][#bold]%16s %5s %5s %5s %-3s %-22s[#-][##]","path","size","used","avail","use%","mpath")
     row=2
@@ -541,9 +541,9 @@ define showHdd()
                 devices[F[1]]=F[6]
                 at row,1, format(`%16s %5s %5s %5s %-3s %-22s`,shorten(F[1],16),F[2],F[3],F[4],F[5],shorten(F[6],22))
                 row++
-            endif
-        endif
-    endfor
+            ei
+        ei
+    ef
 
 end
 
@@ -554,7 +554,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     if !is_file("/proc/net/dev")
         @ net_sample_start_in-=1
         return 
-    endif
+    ei
 
     pane select "net"
     print linecolour; # pane redraw
@@ -581,7 +581,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             if net_sample_start_in>0
                 prev_rbytes=rbytes
                 prev_tbytes=tbytes
-            endif
+            ei
 
             # diff from previous
             drb=rbytes-prev_rbytes
@@ -621,9 +621,9 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             at pane_h()-1,26, "[#2]tx[#-] {dtb}"
             at pane_h()-1,43,ch
 
-        endif
+        ei
 
-    endfor
+    ef
 
     on net_sample_start_in>0 do @ net_sample_start_in -= 1
 
@@ -649,7 +649,7 @@ define redef_layout(cpu_count,pfilter)
     for f=1 to net_sample_count
         @ rblist = append(rblist,0.0)
         @ tblist = append(tblist,0.0)
-    endfor
+    ef
 
     showEnv()
             
@@ -661,7 +661,7 @@ define redef_layout(cpu_count,pfilter)
     at midline,2, "[#6]"
     for f=1 to net_sample_count
         print graph_line
-    endfor
+    ef
     print "[#-]"
 
 end
@@ -689,7 +689,7 @@ if winterm()
 else
     i =< ip -o -4 route show to default
     interface=field(i,5)
-endif
+ei
 
 linecolour="[#1]"
 tink="[#5]"
@@ -697,7 +697,7 @@ tink="[#5]"
 ct=clktck()
 if ct==0
     exit 1, "Could not find clock ticks."
-endif
+ei
 
 print "[#ASB]"
 
@@ -709,7 +709,7 @@ access=true
 if !(user=="root" || sudo!="")
     access=false
     println "Needs sudo for some information."
-endif
+ei
 
 # get cpu core count
 cpu_count=get_cores()
@@ -751,7 +751,7 @@ while !quit
         cls
         w=term_w()
         redef_layout(cpu_count,pfilter)
-    endif
+    ei
 
     # capture system uptime
     on is_file("/proc/uptime") do uptime=as_float(field($in "/proc/uptime",1))
@@ -789,7 +789,7 @@ while !quit
 
     k=keypress(key_timeout)
 
-    when char(k)
+    case char(k)
     is "i"
         clear(1,1,1); at 1,1
         prompt interface "Network Interface Name : " "^[a-zA-Z0-9]+$"
@@ -821,12 +821,12 @@ while !quit
         print "(D) cpu details  (B) cpu bars  (T) cpu totals  (f) filter"
         k=keypress(1500)
         clear(1,1,1)
-    endwhen
+    ec
 
     cursoroff()
     print "[#-][##]"
 
-endwhile
+ew
 
 print "[#RSB]"
 println

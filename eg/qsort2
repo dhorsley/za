@@ -22,10 +22,10 @@ var arr [1000] any
 for f=1 to reps
     for e=0 to arr.len - 1
         arr[e]=rand(100000)
-    endfor
+    ef
     r=arr.qs
     println "{f} low {=r[0]} high {=r[r.len-1]}"
     assert r[0]<=r[arr.len-1]
-endfor
+ef
 
 

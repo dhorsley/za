@@ -11,7 +11,7 @@ define menu(p,opts)
     ol=opts.len
 
     # determine shortcut keys per option
-    when
+    case
     has ol<10
         key_range = "1".asc .. "1".asc+ol-1
         break
@@ -20,7 +20,7 @@ define menu(p,opts)
         break
     has ol>=30
         key_range = nil
-    endwhen
+    ec
 
     # display menu
     foreach p in opts
@@ -50,7 +50,7 @@ define menu(p,opts)
 
         on char(k)=="q" do break
 
-        when k
+        case k
         is 11
             sel=sel-btoi(sel>0)
         is 10
@@ -58,7 +58,7 @@ define menu(p,opts)
         is 13
             n=sel+1
             finished=true
-        endwhen
+        ec
 
     endwhile
 

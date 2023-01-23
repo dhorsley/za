@@ -710,14 +710,14 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self
     var lastConstruct     = []int64{}
     var old_lastConstruct = []int64{}
 
-    // initialise condition states: WHEN stack depth
+    // initialise condition states: CASE stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
 
-    // active WHEN..ENDWHEN statement meta info
-    var wc     = make([]whenCarton, WHEN_CAP)
-    var old_wc = make([]whenCarton, WHEN_CAP)
+    // active CASE..ENDCASE statement meta info
+    var wc     = make([]caseCarton, CASE_CAP)
+    var old_wc = make([]caseCarton, CASE_CAP)
 
-    // count of active WHEN..ENDWHEN statements
+    // count of active CASE..ENDCASE statements
     var wccount,old_wccount int
 
     // counters per loop type
@@ -1443,8 +1443,8 @@ pcloop:
                         breakIn=C_Endfor
                     case C_While:
                         breakIn=C_Endwhile
-                    case C_When:
-                        breakIn=C_Endwhen
+                    case C_Case:
+                        breakIn=C_Endcase
                     }
                 }
                 // pf("ENDWHILE-BREAK: bc %d\n",break_count)
@@ -2252,8 +2252,8 @@ pcloop:
                             breakIn=C_Endfor
                         case C_While:
                             breakIn=C_Endwhile
-                        case C_When:
-                            breakIn=C_Endwhen
+                        case C_Case:
+                            breakIn=C_Endcase
                         }
                     }
                 }
@@ -2286,11 +2286,11 @@ pcloop:
                     thisLoop = &loops[depth]
                     parser.pc = (*thisLoop).whileContinueAt - 1
 
-                case C_When:
+                case C_Case:
                     // mark this as an error for now, as we don't currently
                     //  backtrack through lastConstruct to check the actual
                     //  loop type so that it can be properly unwound.
-                    parser.report(inbound.SourceLine,"Attempting to CONTINUE inside a WHEN is not permitted.")
+                    parser.report(inbound.SourceLine,"Attempting to CONTINUE inside a CASE is not permitted.")
                     finish(false,ERR_SYNTAX)
 
                 }
@@ -2300,7 +2300,7 @@ pcloop:
 
         case C_Break:
 
-            // Break should work with either FOR, FOREACH, WHILE or WHEN.
+            // Break should work with either FOR, FOREACH, WHILE or CASE.
 
             // We use lastConstruct to establish which is the innermost
             //  of these from which we need to break out.
@@ -2320,9 +2320,9 @@ pcloop:
                     var efound,er bool
                     forceEnd=false
                     switch inbound.Tokens[1].tokType {
-                    case C_When:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhen, []int64{C_When},    []int64{C_Endwhen})
-                        breakIn=C_Endwhen
+                    case C_Case:
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endcase, []int64{C_Case},    []int64{C_Endcase})
+                        breakIn=C_Endcase
                         forceEnd=true
                         parser.pc = wc[wccount].endLine - 1
                     case C_For:
@@ -2373,7 +2373,7 @@ pcloop:
                         // pf("(cbreak) increasing break_count to %v\n",break_count)
                         lce:=lastConstruct[depth-break_count]
                         // pf("(cbreak) now processing lc type of %v\n",tokNames[lce])
-                        if lce==C_When {
+                        if lce==C_Case {
                             wccount-=1
                         }
                         if lce==C_While {
@@ -2406,9 +2406,9 @@ pcloop:
                 parser.pc = (*thisLoop).whileContinueAt - 1
                 breakIn = C_Endwhile
 
-            case C_When:
+            case C_Case:
                 parser.pc = wc[wccount].endLine - 1
-                breakIn = C_Endwhen
+                breakIn = C_Endcase
 
             default:
                 parser.report(inbound.SourceLine,"A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
@@ -2461,7 +2461,7 @@ pcloop:
                     forceEnd=false
                     depth=0
                     lastConstruct = []int64{}
-                    wc=make([]whenCarton, WHEN_CAP)
+                    wc=make([]caseCarton, CASE_CAP)
                     wccount=0
                     loops = make([]s_loop, MAX_LOOPS)
                     inside_test=false
@@ -3756,13 +3756,13 @@ pcloop:
 
             }
 
-        case C_When:
+        case C_Case:
 
             // need to store the condition and result for the is/contains/has/or clauses
-            // endwhen location should be calculated in advance for a direct jump to exit
+            // endcase location should be calculated in advance for a direct jump to exit
 
-            if wccount==WHEN_CAP {
-                parser.report(inbound.SourceLine,sf("maximum WHEN nesting reached (%d)",WHEN_CAP))
+            if wccount==CASE_CAP {
+                parser.report(inbound.SourceLine,sf("maximum CASE nesting reached (%d)",CASE_CAP))
                 finish(true,ERR_SYNTAX)
                 break
             }
@@ -3775,7 +3775,7 @@ pcloop:
             */
 
             // lookahead
-            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endwhen, []int64{C_When}, []int64{C_Endwhen})
+            endfound, enddistance, er := lookahead(source_base, parser.pc, 0, 0, C_Endcase, []int64{C_Case}, []int64{C_Endcase})
 
             if er {
                 parser.report(inbound.SourceLine,"Lookahead dedent error!")
@@ -3784,7 +3784,7 @@ pcloop:
             }
 
             if !endfound {
-                parser.report(inbound.SourceLine,"Missing ENDWHEN for this WHEN. Maybe check for open quotes or braces in block?")
+                parser.report(inbound.SourceLine,"Missing ENDCASE for this CASE. Maybe check for open quotes or braces in block?")
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -3792,28 +3792,28 @@ pcloop:
             if inbound.TokenCount>1 {
                 we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
                 if we.evalError {
-                    parser.report(inbound.SourceLine,sf("could not evaluate the WHEN condition\n%+v",we.errVal))
+                    parser.report(inbound.SourceLine,sf("could not evaluate the CASE condition\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                     break
                 }
             }
 
-            // create storage for WHEN details and increase the nesting level
+            // create storage for CASE details and increase the nesting level
 
             if inbound.TokenCount==1 {
                 we.result=true
             }
 
             wccount+=1
-            wc[wccount] = whenCarton{endLine: parser.pc + enddistance, value: we.result, performed:false, dodefault: true}
+            wc[wccount] = caseCarton{endLine: parser.pc + enddistance, value: we.result, performed:false, dodefault: true}
             depth+=1
-            lastConstruct = append(lastConstruct, C_When)
+            lastConstruct = append(lastConstruct, C_Case)
 
 
         case C_Is, C_Has, C_Contains, C_Or:
 
-            if lastConstruct[len(lastConstruct)-1] != C_When {
-                parser.report(inbound.SourceLine,"Not currently in a WHEN block.")
+            if lastConstruct[len(lastConstruct)-1] != C_Case {
+                parser.report(inbound.SourceLine,"Not currently in a CASE block.")
                 finish(false,ERR_SYNTAX)
                 break
             }
@@ -3821,7 +3821,7 @@ pcloop:
             carton := wc[wccount]
 
             if carton.performed {
-                // already matched and executed a WHEN case so jump to ENDWHEN
+                // already matched and executed a CASE case so jump to ENDCASE
                 parser.pc = carton.endLine - 1
                 break
             }
@@ -3829,15 +3829,15 @@ pcloop:
             if inbound.TokenCount > 1 { // inbound.TokenCount==1 for C_Or
                 we = parser.wrappedEval(ifs,ident,ifs,ident, inbound.Tokens[1:])
                 if we.evalError {
-                    parser.report(inbound.SourceLine,sf("could not evaluate expression in WHEN condition\n%+v",we.errVal))
+                    parser.report(inbound.SourceLine,sf("could not evaluate expression in CASE condition\n%+v",we.errVal))
                     finish(false, ERR_EVAL)
                     break
                 }
             }
 
-            ramble_on := false // assume we'll need to skip to next when clause
+            ramble_on := false // assume we'll need to skip to next case clause
 
-            // pf("when-eval: checking type : %s\n%#v\n",tokNames[statement.tokType],carton)
+            // pf("case-eval: checking type : %s\n%#v\n",tokNames[statement.tokType],carton)
 
             switch inbound.Tokens[0].tokType {
 
@@ -3849,7 +3849,7 @@ pcloop:
                     if we.result.(bool) {  // HAS truth
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-has (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
+                        // pf("case-has (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 default:
@@ -3861,26 +3861,26 @@ pcloop:
                 if we.result == carton.value { // matched IS value
                     wc[wccount].performed = true
                     wc[wccount].dodefault = false
-                    // pf("when-is (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
+                    // pf("case-is (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                     ramble_on = true
                 }
 
             case C_Contains:
-                // pf("when-reached-contains\ncarton: %#v\n",carton)
+                // pf("case-reached-contains\ncarton: %#v\n",carton)
                 reg := sparkle(we.result.(string))
                 switch carton.value.(type) {
                 case string:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
+                        // pf("case-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("when-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
+                        // pf("case-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 }
@@ -3902,11 +3902,11 @@ pcloop:
 
             if ramble_on { // move on to next parser.pc statement
             } else {
-                // skip to next WHEN clause:
-                hasfound, hasdistance, _ := lookahead(source_base, parser.pc+1, 0, 0, C_Has, []int64{C_When}, []int64{C_Endwhen})
-                isfound, isdistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Is, []int64{C_When}, []int64{C_Endwhen})
-                orfound, ordistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Or, []int64{C_When}, []int64{C_Endwhen})
-                cofound, codistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Contains, []int64{C_When}, []int64{C_Endwhen})
+                // skip to next CASE clause:
+                hasfound, hasdistance, _ := lookahead(source_base, parser.pc+1, 0, 0, C_Has, []int64{C_Case}, []int64{C_Endcase})
+                isfound, isdistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Is, []int64{C_Case}, []int64{C_Endcase})
+                orfound, ordistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Or, []int64{C_Case}, []int64{C_Endcase})
+                cofound, codistance, _   := lookahead(source_base, parser.pc+1, 0, 0, C_Contains, []int64{C_Case}, []int64{C_Endcase})
 
                 // add jump distances to list
                 distList := []int16{}
@@ -3924,17 +3924,17 @@ pcloop:
                 }
 
                 /* // debug
-                pf("when-distlist: %#v\n",distList)
-                pf("when-hasfound,hasdistance: %v,%v\n",hasfound,hasdistance)
-                pf("when-isfound,isdistance: %v,%v\n",isfound,isdistance)
-                pf("when-cofound,codistance: %v,%v\n",cofound,codistance)
-                pf("when-orfound,ordistance: %v,%v\n",orfound,ordistance)
+                pf("case-distlist: %#v\n",distList)
+                pf("case-hasfound,hasdistance: %v,%v\n",hasfound,hasdistance)
+                pf("case-isfound,isdistance: %v,%v\n",isfound,isdistance)
+                pf("case-cofound,codistance: %v,%v\n",cofound,codistance)
+                pf("case-orfound,ordistance: %v,%v\n",orfound,ordistance)
                 */
 
                 if !(isfound || hasfound || orfound || cofound) {
-                    // must be an endwhen
+                    // must be an endcase
                     loc = carton.endLine
-                    // pf("@%d : direct jump to endwhen at %d\n",parser.pc,loc+1)
+                    // pf("@%d : direct jump to endcase at %d\n",parser.pc,loc+1)
                 } else {
                     loc = parser.pc + min_int16(distList) + 1
                     // pf("@%d : direct jump from distList to %d\n",parser.pc,loc+1)
@@ -3945,11 +3945,11 @@ pcloop:
             }
 
 
-        case C_Endwhen:
+        case C_Endcase:
 
-            // if forceEnd { pf("ENDWHEN force flag\n") }
-            if !forceEnd && lastConstruct[len(lastConstruct)-1] != C_When {
-                parser.report(inbound.SourceLine, "Not currently in a WHEN block.")
+            // if forceEnd { pf("ENDCASE force flag\n") }
+            if !forceEnd && lastConstruct[len(lastConstruct)-1] != C_Case {
+                parser.report(inbound.SourceLine, "Not currently in a CASE block.")
                 break
             }
 
@@ -3957,27 +3957,26 @@ pcloop:
             forceEnd=false
             lastConstruct = lastConstruct[:depth-1]
             depth-=1
-            wc[wccount] = whenCarton{}
+            wc[wccount] = caseCarton{}
             wccount-=1
 
             if break_count>0 {
                 break_count-=1
                 if break_count>0 {
-                    // pf("ewhen: bc %v type %v\n",break_count,tokNames[lastConstruct[depth-1]])
                     switch lastConstruct[depth-1] {
                     case C_For,C_Foreach:
                         breakIn=C_Endfor
                     case C_While:
                         breakIn=C_Endwhile
-                    case C_When:
-                        breakIn=C_Endwhen
+                    case C_Case:
+                        breakIn=C_Endcase
                     }
                 }
-                // pf("ENDWHEN-BREAK: bc %d\n",break_count)
+                // pf("ENDCASE-BREAK: bc %d\n",break_count)
             }
 
             if wccount < 0 {
-                parser.report(inbound.SourceLine,"Cannot reduce WHEN stack below zero.")
+                parser.report(inbound.SourceLine,"Cannot reduce CASE stack below zero.")
                 finish(false, ERR_SYNTAX)
             }
 

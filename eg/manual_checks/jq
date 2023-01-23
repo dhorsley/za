@@ -18,12 +18,12 @@ result=sn.out.json_query(`
 if iterable
     foreach i in result
         println "iter {key_i}"
-        when kind(i)
+        case kind(i)
         is "[]interface {}"
             foreach j in i
                 println "    - ({=kind(j)}) : ",j
             endfor
-        endwhen
+        ec
     endfor
 else
     println "Simple result:\n",result

@@ -8,24 +8,24 @@ var n int
 
 testfile="/usr/share/dict/american-english"
 
-when release_id()
+case release_id()
 is "fedora"
     testfile="/usr/share/dict/words"
 contains "ubuntu|debian"
     pkg="wamerican"
     # example quiet install for missing package:
     on !is_installed(pkg) do install(pkg,true)
-endwhen
+ec
 
 if is_file(testfile)
     q=fopen(testfile,"r")
     while !feof(q)
         words[n++]=fread(q,"\n")
-    endwhile
+    ew
     fclose(q)
 else
     exit 1,"File not found. ({testfile})"
-endif
+ei
 
 println words.len
 

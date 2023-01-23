@@ -13,13 +13,13 @@ foreach l in $in "/dev/stdin"
     if kind(dups[l])=="int"
         dups[l]=dups[l]+1
         on m<dups[l] do m=dups[l]
-    endif
-endfor
+    ei
+ef
 
 interpol(false)
 foreach d in dups
     println d," : ",key_d
-endfor
+ef
 interpol(true)
 println len(dups)," unique : ",m," max duplicates"
 

@@ -122,9 +122,9 @@ type WhileMarker struct {
 }
 */
 
-// holds internal state for the WHEN command
-type whenCarton struct {
-    endLine   int16       // where is the endWhen, so that we can break or skip to it
+// holds internal state for the CASE command
+type caseCarton struct {
+    endLine   int16       // where is the endcase, so that we can break or skip to it
     performed bool        // set to true by the matching clause
     dodefault bool        // set false when another clause has been active
     value     any         // the value should only ever be a string, int or float. IN only works with numbers.

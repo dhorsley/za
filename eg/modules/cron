@@ -4,12 +4,12 @@ enum months ("January"=1,"February","March","April","May","June","July","August"
 
 define parse(time_val,crontab)
 
-    when
+    case
     has time_val is string
         t=epoch_nano_time(time_val)
     has time_val is int
         t=time_val
-    endwhen
+    ec
 
     time=[]
     time=time.append(t.time_minutes.as_string)

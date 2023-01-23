@@ -8,13 +8,13 @@ def begin()
     print "Started.\n"
     while not quit
         pause 500
-    endwhile
+    ew
 end
 
 op="status"
 input op optarg 1 is "operation type"
 
-when op
+case op
 is "start"
     on pf::has_pidfile() do exit 1,"Error: already started."
     on !pid().pf::make_pidfile do exit 2,"Error: could not create pidfile."
@@ -28,11 +28,11 @@ is "stop"
         pf::remove_pidfile()
     else
         exit 3,"Error: already stopped."
-    endif
+    ei
 is "status"
     println "appname : ",pf::app_name()
     println "pidfile : ",pf::pid_name()
     println "has pid : ",pf::has_pidfile()
-endwhen
+ec
 
 

@@ -13,7 +13,7 @@ if has_start(os(),"freebsd")
     pathRoot="/usr/local/share/vim"
 else
     pathRoot="/usr/share/vim"
-endif
+ei
 
 # where's vim at?
 
@@ -21,8 +21,8 @@ allPaths=[]
 foreach p in dir(pathRoot)
     if has_start(p.name,"vim8")
         allPaths=append(allPaths,p.name)
-    endif
-endfor
+    ei
+ef
 
 if allPaths.len>0
 
@@ -41,12 +41,12 @@ if allPaths.len>0
         println "stanza found"
     else
         println "In '{infilename}' insert this stanza manually:\n{zahandler}\n"
-    endif
+    ei
 
     | sudo cp -f za.vim {newPath}/ftplugin/
     | sudo cp -f za.vim {newPath}/syntax/
     | sudo chmod 755 {newPath}/{syntax,ftplugin}/za.vim
 
-endif
+ei
 
 
