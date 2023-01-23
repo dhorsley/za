@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 # 
-# when...endwhen test
+# case..endcase test
 # 
 
 input colour param 1
@@ -9,7 +9,7 @@ input colour param 1
 print "\nInput colour : <{colour}>\n\t"
 
 
-when colour
+case colour
 is "yellow"
     print "yellow\n"
 is "blue"
@@ -18,23 +18,23 @@ is "black"
     print "black\n"
 contains "red|green"
     println "<in contains clause>"
-    when colour
+    case colour
     is "red"
         print "red\n "
         break
     is "green"
         print "green\n "
-    endwhen
+    ew
 or
     print "unknown colour.\n"
-endwhen
+ew
 
 
 os=release_id()
 
 print "\nOS VALUE : {os}\n\t"
 
-when
+case
     has os ~i "ubuntu|debian"
         println "Debian-variant"
     has os ~i "centos|redhat|ami|fedora"
@@ -45,6 +45,6 @@ when
         println "Pop!_OS"
     or
         println "Unknown OS-variant."
-endwhen
+ec
 
 

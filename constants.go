@@ -17,7 +17,7 @@ const CALL_CAP = 1000           // calltable (open calls) start capacity. scales
 const FUNC_CAP = 300            // stdlib functions storage space, starting point.
 const FAIRY_CAP = 64            // max ansi mappings
 const LIST_SIZE_CAP = 16        // initial list size on construction
-const WHEN_CAP = 8              // how many placeholders to create for WHEN...ENDWHEN meta info per func
+const CASE_CAP = 8              // how many placeholders to create for CASE...ENDCASE meta info per func
                                 // ... this is currently only bounds checked in actor.go
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
@@ -280,12 +280,12 @@ const (
 	C_If
 	C_Else
 	C_Endif
-	C_When
+	C_Case
 	C_Is
 	C_Contains
     C_Has
 	C_Or
-	C_Endwhen
+	C_Endcase
     C_With
     C_Endwith
     C_Struct

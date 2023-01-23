@@ -6,10 +6,10 @@ enum errors (okay,not_found,file_open)
 
 fn="/usr/share/dict/american-english"
 
-when release_id()
+case release_id()
 is "fedora"
     fn="/usr/share/dict/words"
-endwhen
+ec
 
 on not is_file(fn) do exit errors.not_found,"File not found."
 
@@ -18,7 +18,7 @@ on fhand==nil do exit errors.file_open,"Could not open dictionary file."
 
 while not feof(fhand)
     println fread(fhand,"\n")
-endwhile
+ew
 #fclose(fhand)
 fhand.fclose
 

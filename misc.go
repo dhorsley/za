@@ -596,11 +596,11 @@ Available commands:
 [#4]FOR [#i1]var[#i0] = [#i1]start[#i0] TO [#i1]end[#i0] [ STEP [#i1]step[#i0] ][#-]            - start FOR loop block. (integer iteration only)
 [#4]FOREACH [#i1]var[#i0] IN [#i1]var[#i0] | [#i1]fn(expr)[#i0] | [#i1]"literal"[#i0][#-]       - iterate over variable content lines.
 [#4]ENDFOR[#-]                                          - terminate FOR execution block.
-[#4]WHEN [#i1]expr[#i0][#-]                                       - switch-like structure.
+[#4]CASE [#i1]expr[#i0][#-]                                       - switch-like structure.
 [#4]IS | HAS | CONTAINS [#i1]expr[#-][#i0]                        - when [#i1]expr[#i0] matches value, expression or regex.
-[#4]OR[#-]                                              - default WHEN case.
-[#4]ENDWHEN[#-]                                         - terminates the WHEN block.
-[#4]BREAK[#-]                                           - exit a loop or WHEN clause immediately.
+[#4]OR[#-]                                              - default case.
+[#4]ENDCASE[#-]                                         - terminates the CASE block.
+[#4]BREAK[#-]                                           - exit a loop or CASE clause immediately.
 [#4]CONTINUE[#-]                                        - proceed to next loop iteration immediately.
 [#4]EXIT [#i1]code[#i0] [,[#i1]error_string[#i0] ][#-]                      - exit script with status code.
 [#2]PRINT[LN] [#i1]expression [ , expression ][#i0][#-]           - local echo. (PRINTLN adds a trailing newline character.)

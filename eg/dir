@@ -8,9 +8,9 @@ d=dir(path)
 maxs=0
 foreach f in d
     on f.name.len > maxs do maxs=f.name.len
-endfor
+ef
 
 foreach f in d
     print ("%s %-{maxs}s %10d[#-]\n").format(f.is_dir ? "D[#1]":"F[#4]",f.name,f.size)
-endfor
+ef
 

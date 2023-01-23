@@ -33,8 +33,8 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
     "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
-    "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "WHEN",
-    "IS", "CONTAINS", "HAS", "OR", "ENDWHEN", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
+    "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "CASE",
+    "IS", "CONTAINS", "HAS", "OR", "ENDCASE", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","FIX","RESUME","BLOCK","ABLOCK","RBLOCK",
     "T_NUMBER", "T_NIL", "T_BOOL", "T_INT", "T_UINT", "T_FLOAT", "T_BIGI",
     "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY",
@@ -748,8 +748,8 @@ get_nt_eval_point:
             tokType = C_Endif
         case "ei":
             tokType = C_Endif
-        case "when":
-            tokType = C_When
+        case "case":
+            tokType = C_Case
         case "is":
             tokType = C_Is
         case "contains":
@@ -764,8 +764,10 @@ get_nt_eval_point:
             tokType = SYM_LAND
         case "not":
             tokType = SYM_Not
-        case "endwhen":
-            tokType = C_Endwhen
+        case "endcase":
+            tokType = C_Endcase
+        case "ec":
+            tokType = C_Endcase
         case "with":
             tokType = C_With
         case "endwith":

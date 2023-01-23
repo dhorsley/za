@@ -41,7 +41,7 @@ input dry_run               env dry_run
 # error if missing:
 if service_name=="" or service_short_name=="" or load_balancers=="" or region==""
     exit e.syntax,"startup parameter missing!"
-endif
+ei
 
 dry=true
 on dry_run ~i "^(false|0|off)$" do dry=false
@@ -49,7 +49,7 @@ on dry_run ~i "^(false|0|off)$" do dry=false
 def arypos(ary,val)
     foreach i in ary 
         on i==val do return key_i
-    endfor
+    ef
     return -1
 end
 
@@ -59,17 +59,13 @@ if access_key!=""
     | export AWS_ACCESS_KEY_ID="{access_key}"
     | export AWS_SECRET_ACCESS_KEY="{secret_key}"
     | export AWS_DEFAULT_REGION="{region}"
-endif
+ei
 
 # retrieve all albs from aws api
-
-#println "env: load_balancers -> |{load_balancers}|"
-
 lb_param_list=""
 foreach lb in load_balancers.split(",")
     lb_param_list+=` \"{lb}\" `
-endfor
-#println "using lb param list <<{lb_param_list}>>"
+ef
 
 albs =| aws elbv2 describe-load-balancers --names {lb_param_list} --output json
 on not albs.okay do exit e.remote_query, "could not fetch load balancer list"
@@ -141,18 +137,16 @@ foreach lb in load_balancers.split(",")
             on not tg_create_result.okay do exit e.remote_create,"could not create target group! talk to a sysadmin."
             tg_arn=json_query(tg_create_result.out,`.TargetGroups[].TargetGroupArn`)
             println "[#4]target group setup completed with ARN {tg_arn}[#-]"
-        endif
+        ei
 
-    endif
+    ei
 
     # forwarding rule setup
     listener_query=`.Listeners[]|select(.Port==`+listener_port.as_string+`)`
     listener_result=json_query(lsnr_det.out,listener_query,true)[0]
     listener_arn=listener_result["ListenerArn"]
 
-    if not listener_arn ~i valid_listener_regex
-        exit e.remote_query,"no listener ARN found" 
-    endif
+    on not listener_arn ~i valid_listener_regex do exit e.remote_query,"no listener ARN found" 
 
     # @note: we don't create listeners, only adjust them
 
@@ -167,14 +161,14 @@ foreach lb in load_balancers.split(",")
     foreach r in rules.out.json_query(`.[]`,true)[0]
         cond=r["Conditions"][0]
         acts=r["Actions"][0]
-        when cond
+        case cond
         is nil
             print format("%40s : ","DEFAULT")
         or
             print format("%40s : P%03d ",cond["Values"][0],as_int(r["Priority"]))
-        endwhen
+        ec
         println field(acts["ForwardConfig"]["TargetGroups"][0]["TargetGroupArn"],6,":")
-    endfor
+    ef
     print
 
     # adjust/create forwarding rule
@@ -204,15 +198,15 @@ foreach lb in load_balancers.split(",")
                 println "listener forwarding rule created okay : {rule_arn}"
             else
                 exit e.remote_create,"could not create listener forwarding rule!"
-            endif
-        endif
-    endif
+            ei
+        ei
+    ei
 
     | export ALB_{=$uc lbscheme}_ARN="{alb_arn}"
     | export ALB_{=$uc lbscheme}_Name="{lbname}"
     | export TG_{=$uc lbscheme}_ARN="{tg_arn}"
 
-endfor
+ef
 
 exit e.ok
 

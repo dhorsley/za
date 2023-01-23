@@ -5,5 +5,5 @@ chroot("/tmp")
 
 foreach f in dir("/")
     println f.name
-endfor
+ef
 

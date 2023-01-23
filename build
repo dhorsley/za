@@ -10,7 +10,7 @@ gobin="go"
 
 for a = 1 to argc()
     input do_what optarg a
-    when $lc do_what
+    case $lc do_what
         is "help"
             exit 0,`\n./build [libc|win|alpine] [upx] [strip] [-path "install_path"]\n`
         is "upx"    ; upx_enable=true
@@ -23,8 +23,8 @@ for a = 1 to argc()
             ipath=argv()[a]
             a++
             println "install path changed to {ipath}"
-    endwhen
-endfor
+    ec
+ef
 
 
 #
@@ -48,7 +48,7 @@ stripFlags  = strip_enable ? "-s -w"     : ""
 upxfound= ${which upx | wc -l} . trim(0) . as_bool
 
 if ! os() ~ "^freebsd"
-    when tgt
+    case tgt
     is "default"
         on defs::buildDefault(bvers,bdate)!=0 do exit defs::e.build,"Failed to build default version."
     has tgt ~i "^(alpine)$"
@@ -60,10 +60,10 @@ if ! os() ~ "^freebsd"
         on defs::buildWin(bvers,bdate) != 0 do exit defs::e.build,"Failed to build windows version."
     or
         exit defs::e.notfound,"Target type unknown."
-    endwhen
+    ec
 else
     on defs::buildFreeBSD(bvers,bdate) != 0 do exit defs::e.build,"Failed to build bsd version."
-endif
+ei
 
 
 if is_file("za")
@@ -71,22 +71,22 @@ if is_file("za")
         if upxfound
             if tgt!="win"
                 on strip_enable and not tgt ~i "^(alpine)$" do | strip -s -w za
-                on upx_enable                                   do | upx za
-            endif
+                on upx_enable do | upx za
+            ei
         else
             "Note: Please consider installing the upx package for compressing the binary.".defs::warning
-        endif
+        ei
     else
         # don't strip/upx freebsd version
-    endif
-endif
+    ei
+ei
 
 
-when tgt
+case tgt
 contains "^(default|alpine|libc)$"
     "Installing {tgt} build to {ipath}".defs::progress
     | sudo cp -f za {ipath}
     | sudo chmod 755 {ipath}/za
-endwhen
+ec
 
 

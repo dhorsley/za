@@ -4,7 +4,7 @@
 x=3
 y=1
 
-when x
+case x
 
 is 1
 
@@ -14,12 +14,12 @@ is 3
 
     print "found!\n"
 
-    when y
+    case y
     is 1
         print "y==1\n"
-    endwhen
+    ec
 
-    print "after y when\n"
+    print "after y case\n"
 
 contains "[2]+"
 
@@ -28,5 +28,5 @@ contains "[2]+"
 or
     print "not 1,2,3\n"
 
-endwhen
+ec
 

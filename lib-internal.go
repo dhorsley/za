@@ -150,7 +150,7 @@ func GetAst(fn string) (ast string) {
             }
 
             switch functionspaces[ifn][q].Tokens[0].tokType {
-            case C_Endfor, C_Endwhile, C_Endif, C_Endwhen:
+            case C_Endfor, C_Endwhile, C_Endif, C_Endcase:
                 indent--
             }
 
@@ -180,7 +180,7 @@ func GetAst(fn string) (ast string) {
             ast+="\n"
 
             switch functionspaces[ifn][q].Tokens[0].tokType {
-            case C_For, C_Foreach, C_While, C_If, C_When:
+            case C_For, C_Foreach, C_While, C_If, C_Case:
                 indent++
             }
 

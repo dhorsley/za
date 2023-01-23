@@ -5,13 +5,13 @@
 f=fopen("za-file-test.out","w")
 for e=0 to 999
     fwrite(f,"test {e}\n")
-endfor
+ef
 fclose(f)
 
 f=fopen("za-file-test.out","r")
 for e=0 to 999
     println fread(f,"\n")
-endfor
+ef
 fclose(f)
 
 

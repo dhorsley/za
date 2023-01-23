@@ -75,7 +75,7 @@ async nil fill(13,13,ob,b)
 
 while !quit
 
-    when keypress(100)
+    case keypress(100)
     is 32 # space
         quit=true
     is 13 # return
@@ -85,7 +85,7 @@ while !quit
             on b!="#" do break
         endwhile
         async nil fill(13,13,ob,b)
-    endwhen
+    ec
     show()
 
 endwhile

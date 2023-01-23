@@ -2,10 +2,10 @@
         
 
 define s3_command(params)
-    when $lc params[0]
+    case $lc params[0]
     is "list"
         | aws s3 --region=eu-west-1 ls {=params[1:].join}
-    endwhen
+    ec
 end
 
 
@@ -19,7 +19,7 @@ while not quit
     t=tokens(cmd)
     on t.types.len==0 do continue
 
-    when $lc t.types[0]
+    case $lc t.types[0]
     is "help"
         println "[#1]"
         println "help"
@@ -29,11 +29,11 @@ while not quit
     is "exit"
         quit=true
     is "identifier"
-        when $lc t.tokens[0]
+        case $lc t.tokens[0]
         is "s3"
             on t.tokens.len>1 do s3_command(t.tokens[1:])
-        endwhen
-    endwhen
+        ec
+    ec
 
 endwhile
 
