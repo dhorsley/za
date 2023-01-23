@@ -21,6 +21,14 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added some more statement aliases:
+
+        EI  : ENDIF
+        EW  : ENDWHILE
+        EF  : ENDFOR
+        ET  : ENDTEST
+        ES  : ENDSTRUCT
+
     * no longer considered experimental:
         - added name qualification for functions
         - added optional name qualification for enums

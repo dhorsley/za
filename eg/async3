@@ -20,7 +20,7 @@ end
 println "Launching tasks."
 for x=0 to max
     async hndmap f() x
-endfor
+ef
 
 # collect results
 
@@ -30,5 +30,5 @@ res=await(ref hndmap,true)
 # display results
 for e=0 to max
     println e," -> ",res[e]
-endfor
+ef
 

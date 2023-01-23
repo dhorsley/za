@@ -1438,7 +1438,6 @@ pcloop:
                 forceEnd=false
                 break_count-=1
                 if break_count>0 {
-                    // pf("ewhile: bc %v type %v\n",break_count,tokNames[lastConstruct[depth-1]])
                     switch lastConstruct[depth-1] {
                     case C_For,C_Foreach:
                         breakIn=C_Endfor

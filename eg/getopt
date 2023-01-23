@@ -14,7 +14,7 @@ opts,args=go::getopt(reqs)
 if opts["h"]
     go::opthelp(reqs)
     exit
-endif
+ei
 
 println "request map:"
 println reqs
@@ -24,7 +24,7 @@ println "[#4]arg".pad(-1,20),"value".pad(-1,20),"type[#-]"
 
 foreach v in opts
     println key_v.pad(-1,20),v.as_string.pad(-1,20),v.kind
-endfor
+ef
 
 println "\nremnant args :"
 println args
