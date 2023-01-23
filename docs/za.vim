@@ -426,7 +426,7 @@ syntax match notify_functions "\(^|.\|\s*\)ev_mask\s*("he=e-1
 syntax match tstatements "\(^\|\s\+\)\(doc\|test\|endtest\|assert\)\($\|\s\+\)"
 syntax match statements '\(^\|\s\+\)|\($\|\s\+\)'
 syntax match statements "\( do \| to \| as \| in \| is \)"
-syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\|ef\|et\|ei\|ew\|es\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(end\|fix\|and\|not\|for\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|when\|hist\|exit\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
