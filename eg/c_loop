@@ -13,15 +13,13 @@ ts=epoch_nano_time()
 a=0
 for f=0,f<=max_count,f=f+1
     a=a+f
-endfor
+ef
 te=epoch_nano_time()
 interpol(true)
 
 #
 # END
 #
-
 println "total {a} , loop-count {f}"
-
 tim::report(ts,te,max_count)
 

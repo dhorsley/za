@@ -16,7 +16,7 @@ end
 define clear(r1,r2,c)
     for e=r1 to r2
         clear_line(e,1)
-    endfor
+    ef
     at r1,1
 end
 
@@ -37,7 +37,7 @@ define process(i)
     # remove entire list + statement from fields:
     F=tail(F); F=tail(F)
  
-    when lower(statement)
+    case lower(statement)
     is "help"
         show_help()
     is "quit"
@@ -45,11 +45,11 @@ define process(i)
     is "echo"
         foreach f in F
             print eval(f)
-        endfor
+        ef
     or
         | {i}
         on last()!=0 do println last_out()
-    endwhen
+    ec
 
 end
 
@@ -76,7 +76,7 @@ while !term
     prompt inp "> "
     process(inp)
 
-endwhile
+ew
 
 pane select "global"
 at 27,1

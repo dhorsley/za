@@ -4,7 +4,7 @@ struct car
     model           string
     year            int
     isSafe          bool
-endstruct
+es
 
 brum=car("Datsun","Cherry",1985,false)
 

@@ -7,6 +7,6 @@ foreach d in | "find {path} -maxdepth 1"
     if d.is_dir
         println "[#2]{d}[#-]"
         | ls {d}
-    endif
-endfor
+    ei
+ef
 

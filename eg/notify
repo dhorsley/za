@@ -9,8 +9,8 @@ define shutdown()
     for e=0 to w.len-1
         if ev_exists(w[e])  ; ev_watch_close(w[e])
         else                ; break
-        endif
-    endfor
+        ei
+    ef
     exit
 end
 
@@ -30,7 +30,7 @@ while
     on ev_mask(e,"chmod") !=nil do println "File chmod    : ",e.Name
     on ev_mask(e,"write") !=nil do println "File write    : ",e.Name
     pause 250
-endwhile
+ew
 
 
 shutdown()

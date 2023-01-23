@@ -1,7 +1,7 @@
 
 print "id : "+release_id()+"\n"
 
-when release_id()
+case release_id()
 is "ubuntu"
     print "noooooo.\n"
 is "debian" 
@@ -12,5 +12,5 @@ contains "redhat"
     break
 # or
 #     print "something else!"
-endwhen
+ec
 

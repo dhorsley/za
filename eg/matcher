@@ -1,14 +1,14 @@
 #!/usr/bin/za
 
 foreach line in $in "/dev/stdin"
-    when line
+    case line
     contains "^[aA]"
         println line
     has line ~i "^G"
         println "* {line}"
     has match(line,"^[dD]")
         println "M {line}"
-    endwhen
-endfor
+    ec
+ef
 
 println "\n\n",80*"-","\n",line_filter($in "/dev/stdin","^[abc]")

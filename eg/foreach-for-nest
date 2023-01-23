@@ -16,17 +16,17 @@ define f()
                         print "sub {w} "
                         if w==2
                             continue
-                        endif
+                        ei
                         on w==5 do break
-                    endfor
+                    ef
                     break
-                endif
-            endfor
+                ei
+            ef
             println
-        endif
+        ei
 
-    endfor
-  endfor
+    ef
+  ef
 
 end
 

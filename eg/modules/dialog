@@ -52,7 +52,7 @@ enum swatch_bg ( 0="b0", 1="b1", 2="b2", 3="b3", 4="b4", 5="b5", 6="b6", 7="b7",
 enum swatch_fg ( 0="0", 1="1", 2="2", 3="3", 4="4", 5="5", 6="6", 7="7", 8="fbgray",9="fbblue",10="fbred",11="fbmagenta",12="fbgreen",13="fbcyan",14="fbyellow",15="" )
 
 define style(s)
-    when s.len
+    case s.len
     is 4 
         bb="[#"+enum_all(ref swatch_bg)[s[0].as_int]+"]" 
         bf="[#"+enum_all(ref swatch_fg)[s[1].as_int]+"]" 
@@ -73,7 +73,7 @@ define style(s)
         return bb,bf,pb,pf,0
     or
         return "","","","",1
-    endwhen
+    ec
 end
 
 test "style" group "dialog"
@@ -200,7 +200,7 @@ define box_view(opts,val,selector)
         endif
         k=keypress()
         changed=false
-        when $lc char(k)
+        case $lc char(k)
         is "q"
             break while
         has selector and k==13
@@ -240,7 +240,7 @@ define box_view(opts,val,selector)
             cursor-=panelheight
             changed=true
             on cursor<0 do cursor=0
-        endwhen
+        ec
     endwhile
 
     pane off
@@ -313,7 +313,7 @@ define box_message(opts,msg,list_buttons)
         changed=false
 
         k=keypress()
-        when k
+        case k
         is 27
             sel=0
             quit=true
@@ -336,7 +336,7 @@ define box_message(opts,msg,list_buttons)
             else
                 changed=true
             endif
-        endwhen
+        ec
     endwhile
 
     pane off
@@ -384,15 +384,15 @@ define select(opts,list_buttons,multiple,orientation)
     on multiple==nil do multiple=false
 
     on orientation==nil do orientation="h"
-    when orientation; is "h" ; is "v" ; or
+    case orientation; is "h" ; is "v" ; or
         return sel,true
-    endwhen
+    ec
 
     on list_buttons==nil do return sel,true
 
 
     ml=longest(list_buttons) 
-    when orientation
+    case orientation
     is "v"
         list_buttons=list_buttons->`" "+pad(#,-1,ml," ")+" "`
     is "h"
@@ -401,7 +401,7 @@ define select(opts,list_buttons,multiple,orientation)
         else
             list_buttons=list_buttons->`" "+#+" "`
         endif
-    endwhen
+    ec
 
     # buttons...
 
@@ -416,12 +416,12 @@ define select(opts,list_buttons,multiple,orientation)
         if changed
             acc_len=0
             foreach b in list_buttons
-                when orientation
+                case orientation
                 is "h"
                     at r,c+acc_len
                 is "v"
                     at r+key_b,c
-                endwhen
+                ec
                 print pb,pf
                 # multiples checkbox:
                 if multiple
@@ -437,7 +437,7 @@ define select(opts,list_buttons,multiple,orientation)
         changed=false
 
         k=keypress()
-        when k
+        case k
         is 27
             sel=0
             quit=true
@@ -461,17 +461,17 @@ define select(opts,list_buttons,multiple,orientation)
             else
                 changed=true
             endif
-        endwhen
+        ec
     endwhile
 
     print "[#-]"
     foreach b in list_buttons
-        when orientation
+        case orientation
         is "h"
             at r,c+key_b
         is "v"
             at r+key_b,c
-        endwhen
+        ec
         print " "*(acc_len+4*list_buttons.len*btoi(multiple))
     endfor
     cursoron()

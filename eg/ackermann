@@ -2,27 +2,19 @@
 
 
 define ackermann(m,n)
-
-    if glob_key("memoA",`{m},{n}`)
-        return memoA[`{m},{n}`]
-    endif
-
+    on glob_key("memoA",`{m},{n}`) do return memoA[`{m},{n}`]
     on m==0 do return n+1
     on n==0 do return ackermann(m-1,1)
-
     o=ackermann(m-1,ackermann(m,n-1))
     @ memoA[`{m},{n}`] = o
     return o
-
 end
-
 
 memoA[`0,0`] = 1
 memoA[`0,1`] = 2
 memoA[`0,2`] = 3
 memoA[`1,0`] = 2
 memoA[`1,1`] = 3
-
 
 input a param 1
 input b param 2

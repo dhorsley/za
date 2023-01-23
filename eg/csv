@@ -18,7 +18,7 @@ define check_quotes(s,row,col)
     if bq
         on break_on_badquote do exit err.notquoted,"[#2]badly quoted at column #{col}, row #{row}[#-]"
         @ err_list+="badly quoted at column #{col}, row #{row}\n"
-    endif
+    ei
 end
 
 
@@ -53,7 +53,7 @@ foreach r in f
             continue
         else
             escaping=false
-        endif
+        ei
 
         if escaping
             col+="\\"+r[e]
@@ -61,7 +61,7 @@ foreach r in f
         else
             on r[e]==quote_char do in_quote=not in_quote
             col+=r[e]
-        endif
+        ei
 
         if not in_quote
             if r[e]==separator
@@ -72,8 +72,8 @@ foreach r in f
                 check_quotes(col,key_r+1,colnum)
                 col=""
                 colnum++
-            endif
-        endif
+            ei
+        ei
 
     endfor
 
@@ -89,7 +89,7 @@ foreach r in f
     escaping=false
     col=""
 
-endfor
+ef
 
 println "\nIngest completed."
 on err_list.len>0 do println "\n[#2]Errors:\n{err_list}[#-]"

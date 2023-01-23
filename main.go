@@ -1199,9 +1199,9 @@ func main() {
 
                     if !helpRequest && !paneDefine {
                         switch t.carton.tokType {
-                        case C_Define, C_For, C_Foreach, C_While, C_If, C_When, C_Struct, LParen, LeftSBrace:
+                        case C_Define, C_For, C_Foreach, C_While, C_If, C_Case, C_Struct, LParen, LeftSBrace:
                             nestAccept++
-                        case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endwhen, C_Endstruct, RParen, RightSBrace:
+                        case C_Enddef, C_Endfor, C_Endwhile, C_Endif, C_Endcase, C_Endstruct, RParen, RightSBrace:
                             nestAccept--
                         }
                     }

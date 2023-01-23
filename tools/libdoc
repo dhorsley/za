@@ -83,7 +83,7 @@ foreach c in func_categories()
     sfuncs=[]
     foreach i in c
         sfuncs=sfuncs.append(i)
-    endfor
+    ef
     sfuncs=sfuncs.sort
 
     foreach i in sfuncs

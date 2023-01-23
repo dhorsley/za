@@ -28,7 +28,7 @@ define menu(title_prompt,opts)
     foreach c in opts
         at 4+key_c,10
         print "[#b1][{=1+key_c}][##] {c}"
-    endfor
+    ef
 
     maxchoice=49+len(opts)
 
@@ -40,9 +40,9 @@ define menu(title_prompt,opts)
         k=keypress()
         if k>=49 && k<maxchoice
             n=k-48
-        endif
+        ei
         on char(k)=="q" do break
-    endwhile
+    ew
 
     cursoron()
     return n
@@ -70,26 +70,26 @@ while choice!=-1
     sub_choice=0
     choice=menu( "Main Menu", [ "First", "Second", "Third" ] )
 
-    when choice
+    case choice
     is 1
         while sub_choice!=-1
             sub_choice=menu("First Menu",["Read","Write","Delete"])
-            when sub_choice
+            case sub_choice
             is 1
                 opt_read()
             is 2
                 opt_write()
             is 3
                 opt_delete()
-            endwhen
-        endwhile
+            ec
+        ew
     is 2
         while sub_choice!=-1
             sub_choice=menu("Second Menu",[])
-        endwhile
-    endwhen
+        ew
+    ec
 
-endwhile
+ew
 
 println "\n\n\n"
 

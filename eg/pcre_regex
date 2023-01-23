@@ -10,7 +10,7 @@ define runSubs(subs,seq)
     foreach v in subs
         println `Sub for {=v[0]},{=v[1]}`
         seq=reg_replace(seq,v[0],v[1])
-    endfor
+    ef
     return seq.len
 end
 
@@ -43,7 +43,7 @@ define perf_regex_dna()
 
     foreach v in variants
         async ahandles runFilter(seq,v) "filter_{key_v}"
-    endfor
+    ef
 
     async ahandles runSubs(subs,seq) "subtot"
 
@@ -53,7 +53,7 @@ define perf_regex_dna()
     # push to screen in same order they were sent for processing
     for e=0 to res.len-1
         on key("res","filter_{e}") do println format("%s",res["filter_{e}"])
-    endfor
+    ef
 
     println
     println l1

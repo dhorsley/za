@@ -21,6 +21,8 @@ CHANGE LOG
     other
     -----
 
+    * (breaking) Renamed WHEN..ENDWHEN statements to CASE..ENDCASE
+
     * (experimental) added some more statement aliases:
 
         EI  : ENDIF
@@ -28,6 +30,7 @@ CHANGE LOG
         EF  : ENDFOR
         ET  : ENDTEST
         ES  : ENDSTRUCT
+        EC  : ENDCASE
 
     * no longer considered experimental:
         - added name qualification for functions
