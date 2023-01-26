@@ -17,6 +17,9 @@ CHANGE LOG
 
     * added term() call to return terminal type string.
     * added quiet mode to install(string[,bool]) for silent installs
+    * added f2n(arg) call for converting bool to nil (from false) or true
+        - this was added for converting bool results for use with fix/resume.
+        - e.g. with is_open() : see eg/file-read for example.
 
     other
     -----
