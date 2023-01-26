@@ -17,5 +17,5 @@ on not (x is int and y is int) do exit 1,"parameters must be integers."
 
 for i=x to y
     println i," ",fib(i)
-endfor
+ef
 
