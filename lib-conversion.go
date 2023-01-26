@@ -77,9 +77,18 @@ func buildConversionLib() {
         "byte","as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "kind", "char", "asc","as_uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
-        "btoi","itob","dtoo","otod","s2m","m2s",
+        "btoi","itob","dtoo","otod","s2m","m2s","f2n",
     }
 
+
+    slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
+    stdlib["f2n"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("f2n",args,1,"1","bool"); !ok { return nil,err }
+        if args[0].(bool)==false {
+            return nil,nil
+        }
+        return args[0],nil
+    }
 
     slhelp["s2m"] = LibHelp{in: "struct", out: "map", action: "Convert a struct to map."}
     stdlib["s2m"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {

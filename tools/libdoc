@@ -2,6 +2,10 @@
 
 # library html ref gen
 
+# header
+println "\n[#bold][#fbblue]Library web page autogen[#-]\n"
+
+
 interpol(false)
 
 style=`

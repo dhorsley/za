@@ -11,16 +11,21 @@ is "fedora"
     fn="/usr/share/dict/words"
 ec
 
-on not is_file(fn) do exit errors.not_found,"File not found."
+fn.is_file.f2n?"notfound"
 
-fhand=fn.fopen("r")
-on fhand==nil do exit errors.file_open,"Could not open dictionary file."
+fhand=fn.fopen("r")?"open"
 
 while not feof(fhand)
     println fread(fhand,"\n")
 ew
-#fclose(fhand)
+
 fhand.fclose
 
 exit errors.okay
+
+fix notfound
+    exit errors.not_found,"File not found."
+fix open
+    exit errors.file_open,"Could not open dictionary file."
+
 
