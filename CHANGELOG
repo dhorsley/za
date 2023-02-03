@@ -12,6 +12,9 @@ CHANGE LOG
         - now accounts for previously installed and subsequently deinstalled
           packages, which leave the package cached. 
 
+    * updated ternary if handling to skip false expressions without barfing unicorn chunks.
+
+
     library changes
     ---------------
 

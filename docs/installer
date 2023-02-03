@@ -18,9 +18,12 @@ ei
 # where's vim at?
 
 allPaths=[]
+vim9=false
 foreach p in dir(pathRoot)
-    if has_start(p.name,"vim8")
+    on has_start(p.name,"vim8") do allPaths=append(allPaths,p.name)
+    if has_start(p.name,"vim9")
         allPaths=append(allPaths,p.name)
+        vim9=true
     ei
 ef
 
@@ -33,8 +36,12 @@ if allPaths.len>0
     println "working path: [{newPath}]"
 
     # check for scripts.vim stanza
+    # vim9: /usr/share/vim/vim9*/autoload/dist/script.vim
+    vfname="scripts.vim"
+    on vim9 do vfname="script.vim"
 
-    infilename=join([newPath,"scripts.vim"],"/")
+    # construct script config file path
+    infilename=join([newPath,vim9?"/autoload/dist":"",vfname],"/")
     infile=infilename.read_file()
 
     if line_match(infile,"ft=za")

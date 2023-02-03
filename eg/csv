@@ -21,6 +21,13 @@ define check_quotes(s,row,col)
     ei
 end
 
+def usage()
+    println `
+Usage:
+    {=$pb get_env("_")} [ file_name ]
+`
+end
+
 
 #
 # MAIN
@@ -28,8 +35,13 @@ end
 
 err_list=""
 
-file="/dev/stdin"
+stdin="/dev/stdin"
+file=stdin
 input file optarg 1
+if file==stdin and argc()==0
+    usage()
+    exit 1
+ei
 
 f=$in file
 
