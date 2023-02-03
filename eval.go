@@ -9,6 +9,7 @@ import (
     "math/big"
     "net/http"
     "sync"
+//    "github.com/davecgh/go-spew/spew"
 //    "sync/atomic"
     "path/filepath"
     str "strings"
@@ -21,7 +22,6 @@ import (
 func (p *leparser) reserved(token Token) (any) {
     panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
 }
-
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
 
@@ -42,7 +42,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
     p.len    = int16(l)
     p.pos    = -1
 
-    return p.dparse(0)
+    return p.dparse(0,false)
 }
 
 
@@ -93,9 +93,37 @@ func (p *leparser) peek() Token {
 }
 
 
-func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
+func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault bool) {
+
+    // @note: skip allows expression to be parsed without error in order to skip 
+    // past redundant phrases. not ideal, but okay for now.
 
     // pf("\ndparse query with fs #%d : spos %v : %+v\n",p.fs,p.pos,p.tokens)
+
+    if skip {
+        brace_level:=0
+        skiploop1:
+        for {
+            token := p.peek()
+            switch token.tokType {
+            case LParen:
+                brace_level+=1
+            case RParen:
+                if brace_level==0 {
+                    // pf("[skip breaking on token %v] ",tokNames[token.tokType])
+                    break skiploop1
+                }
+                brace_level-=1
+            case O_Comma,SYM_COLON,EOF:
+                // pf("[skip breaking on token %v] ",tokNames[token.tokType])
+                break skiploop1
+            }
+            // pf("[skip token %+v] ",token)
+            p.next()
+        }
+        return left,err,try_fault
+    }
+
 
     // inlined next() manually:
     if p.pos>0 { p.preprev=p.prev }
@@ -107,7 +135,6 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
     // unaries
     switch (*ct).tokType {
     case O_Comma,SYM_COLON,EOF:
-        // pf("(eval) ending on token : %s\n",(*ct).tokText)
         left=nil
     case RParen, RightSBrace:
         p.next()
@@ -121,11 +148,11 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
     case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(ct)
     case SYM_Not:
-	    right,err,_ := p.dparse(24) // don't bind negate as tightly
+	    right,err,_ := p.dparse(24,false) // don't bind negate as tightly
         if err!=nil { panic(err) }
 		left=unaryNegate(right)
     case O_Pb,O_Pa,O_Pn,O_Pe,O_Pp:
-        right,err,_ := p.dparse(10) // allow strings to accumulate to the right
+        right,err,_ := p.dparse(10,false) // allow strings to accumulate to the right
         if err!=nil { panic(err) }
         left=p.unaryPathOp(right,(*ct).tokType)
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
@@ -209,7 +236,7 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
         }
 
         var right any
-        right,err,_ = p.dparse(p.prectable[token.tokType] + 1)
+        right,err,_ = p.dparse(p.prectable[token.tokType] + 1,false)
 
         switch token.tokType {
 
@@ -225,8 +252,10 @@ func (p *leparser) dparse(prec int8) (left any,err error,try_fault bool) {
             left = ev_mod(left,right)
 
         case O_Query:                       // ternary and try op
-            // pf("(o_query) right is %v\n",right)
-            // pf("(o_query) tokens -> %+v\n",p.tokens)
+            /*
+            pf("(o_query) right is %v\n",right)
+            pf("(o_query) tokens -> %+v\n",p.tokens)
+            */
             left=p.tern_if(left,right)
 
         case SYM_EQ:
@@ -837,7 +866,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
             mkey=t.tokText
         } else {
             if p.peek().tokType!=RightSBrace {
-                dp,err,_:=p.dparse(0)
+                dp,err,_:=p.dparse(0,false)
                 if err!=nil {
                     // panic(fmt.Errorf("map key could not be evaluated"))
                     return nil
@@ -872,7 +901,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
         // check for start of range
         if p.peek().tokType!=SYM_COLON {
             // pf("(aa)     ntok -> %+v\n",tokNames[p.peek().tokType])
-            dp,err,_:=p.dparse(0)
+            dp,err,_:=p.dparse(0,false)
             // pf("(aa) start dp -> %+v\n",dp)
             // pf("(aa)   err dp -> %+v\n",err)
             if err!=nil {
@@ -890,7 +919,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
             p.next() // swallow colon
             hasRange=true
             if p.peek().tokType!=RightSBrace {
-                dp,err,_:=p.dparse(0)
+                dp,err,_:=p.dparse(0,false)
                 if err!=nil {
                     panic(fmt.Errorf("array range end could not be evaluated"))
                 }
@@ -902,6 +931,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
             }
         }
 
+        // pf("[range] next token %v\n",tokNames[p.peek().tokType])
         if p.peek().tokType!=RightSBrace {
             panic(fmt.Errorf("end of range brace missing"))
         }
@@ -978,7 +1008,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 // missing/blank arg in list
                 panic(fmt.Errorf("missing argument #%d",argpos))
             }
-            dp,err,_:=p.dparse(0)
+            dp,err,_:=p.dparse(0,false)
             if err!=nil {
                 return nil,true
             }
@@ -1278,12 +1308,12 @@ func (p *leparser) unary(token *Token) (any) {
 
     switch token.tokType {
     case O_InFile:
-	    right,err,_ := p.dparse(70) // higher than dot op
+	    right,err,_ := p.dparse(70,false) // higher than dot op
         if err!=nil { panic(err) }
         return unaryFileInput(right)
     }
 
-	right,err,_ := p.dparse(38) // between grouping and other ops
+	right,err,_ := p.dparse(38,false) // between grouping and other ops
     if err!=nil { panic(err) }
 
 	switch token.tokType {
@@ -1370,13 +1400,25 @@ func (p *leparser) tern_if(left any,tv any) (any) {
     } else {
         panic(fmt.Errorf("missing colon in ternary"))
     }
-    fv,err,_:=p.dparse(0)
-    if err!=nil {
-        panic(fmt.Errorf("malformed false expression in ternary"))
-    }
+
+
     switch left.(type) {
     case bool:
-        if left.(bool) { return tv }
+        if left.(bool) {
+            p.dparse(0,true)
+            return tv
+        }
+    }
+    /*
+    pf("(tern_if) reached false expression. parser state->\n")
+    spew.Dump(p.tokens)
+    pf("parse position : ")
+    spew.Dump(p.pos)
+    pf("\n\n")
+    */
+    fv,err,_:=p.dparse(0,false)
+    if err!=nil {
+        panic(fmt.Errorf("malformed false expression in ternary"))
     }
     return fv
 }
@@ -1389,7 +1431,7 @@ func (p *leparser) array_concat(tok *Token) (any) {
 
     if p.peek().tokType!=RightSBrace {
         for {
-            dp,err,_:=p.dparse(0)
+            dp,err,_:=p.dparse(0,false)
             if err!=nil {
                 panic(err)
             }
@@ -1533,7 +1575,7 @@ func (p *leparser) postIncDec(token Token) any {
 func (p *leparser) grouping(tok *Token) (any) {
 
 	// right-associative
-    val,err,_:=p.dparse(0)
+    val,err,_:=p.dparse(0,false)
     if err!=nil { panic(err) }
     p.next() // consume RParen
     return val
@@ -1603,7 +1645,7 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
 
 func (p *leparser) command() (string) {
 
-    dp,err,_:=p.dparse(65)
+    dp,err,_:=p.dparse(65,false)
     if err!=nil {
         panic(fmt.Errorf("error parsing string in command operator"))
     }

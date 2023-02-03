@@ -181,7 +181,7 @@ foreach r in keys
 
     if !termless
         l=args.len
-        args=args[0:(l<tempwidth ? l:tempwidth)]
+        args=args[0:(l<tempwidth?l:tempwidth)]
         on args.len!=l do args+="[#2]…[#-]"
 
         if defName

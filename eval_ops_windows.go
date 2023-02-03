@@ -184,7 +184,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                         // missing/blank arg in list
                         panic(fmt.Errorf("missing argument #%d",argpos))
                     }
-                    dp,err:=p.dparse(0)
+                    dp,err:=p.dparse(0,false)
                     if err!=nil {
                         return nil,true
                     }
@@ -197,7 +197,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
                 */
                 for {
-                    dp,err:=p.dparse(0)
+                    dp,err:=p.dparse(0,false)
                     if err!=nil {
                         return nil,true
                     }
