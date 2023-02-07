@@ -4,6 +4,7 @@ package main
 
 import (
     "errors"
+    "fmt"
     "regexp"
     "runtime"
     "strconv"
@@ -60,6 +61,14 @@ func tr(s string, action int, cases string, xlates string) string {
 
 }
 
+func regexWillCompile(s string) bool {
+    _,err := regexp.Compile(s)
+    if err!=nil {
+        return false
+    }
+    return true
+}
+
 
 func buildStringLib() {
 
@@ -71,6 +80,7 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after","line_match","line_filter","grep","line_head","line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat","pos","bg256","fg256","bgrgb","fgrgb",
         "split", "join", "collapse","strpos","stripansi","addansi","stripquotes","stripcc","clean",
+        "rvalid",
     }
 
     replaceCompileCache:=make(map[string]regexp.Regexp)
@@ -82,6 +92,10 @@ func buildStringLib() {
         src := args[0].(string)
         regex := args[1].(string)
         repl := args[2].(string)
+
+        if !regexWillCompile(regex) {
+            return "", fmt.Errorf("invalid regex in replace() : %s",regex)
+        }
 
         var re regexp.Regexp
         if pre,found:=replaceCompileCache[regex];!found {
@@ -351,6 +365,12 @@ func buildStringLib() {
         return s,nil
     }
 
+    slhelp["rvalid"] = LibHelp{in: "string", out: "bool", action: "Checks if a regex has valid syntax."}
+    stdlib["rvalid"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("rvalid",args,1,"1","string"); !ok { return nil,err }
+        return regexWillCompile(args[0].(string)), nil
+    }
+
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
     stdlib["lower"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("lower",args,1,"1","string"); !ok { return nil,err }
@@ -386,6 +406,10 @@ func buildStringLib() {
         regex := args[1].(string)
         app := args[2].(string)
         elf := false
+
+        if !regexWillCompile(regex) {
+            return "", fmt.Errorf("invalid regex in line_add_before() : %s",regex)
+        }
 
         if src[len(src)-1] == '\n' {
             elf = true
@@ -424,6 +448,10 @@ func buildStringLib() {
         app := args[2].(string)
         elf := false
 
+        if !regexWillCompile(regex) {
+            return "", fmt.Errorf("invalid regex in line_add_after() : %s",regex)
+        }
+
         if src[len(src)-1] == '\n' {
             elf = true
         }
@@ -459,6 +487,10 @@ func buildStringLib() {
         src := args[0].(string)
         regex := args[1].(string)
         elf := false
+
+        if !regexWillCompile(regex) {
+            return "", fmt.Errorf("invalid regex in line_delete() : %s",regex)
+        }
 
         if src[len(src)-1] == '\n' {
             elf = true
@@ -501,6 +533,10 @@ func buildStringLib() {
         src := args[0].(string)
         regex := args[1].(string)
         repl := args[2].(string)
+
+        if !regexWillCompile(regex) {
+            return "", fmt.Errorf("invalid regex in line_replace() : %s",regex)
+        }
 
         // check if last char of original is a newline and remove it
         elf := false
@@ -916,6 +952,10 @@ func buildStringLib() {
         val:=args[0].(string)
         reg:=args[1].(string)
 
+        if !regexWillCompile(reg) {
+            return false, fmt.Errorf("invalid regex in line_match() : %s",reg)
+        }
+
         var r []string
         if runtime.GOOS!="windows" {
             r = str.Split(val, "\n")
@@ -939,6 +979,10 @@ func buildStringLib() {
         val:=args[0].(string)
         reg:=args[1].(string)
         startcount:=args[2].(int)
+
+        if !regexWillCompile(reg) {
+            return false, fmt.Errorf("invalid regex in next_match() : %s",reg)
+        }
 
         var r []string
         if runtime.GOOS!="windows" {
@@ -967,6 +1011,10 @@ func buildStringLib() {
 
         val:=args[0].(string)
         reg:=args[1].(string)
+
+        if !regexWillCompile(reg) {
+            return false, fmt.Errorf("invalid regex in line_filter() : %s",reg)
+        }
 
         var list []string
         lsep:="\n"
@@ -998,7 +1046,14 @@ func buildStringLib() {
     slhelp["match"] = LibHelp{in: "string,regex", out: "bool", action: "Does [#i1]string[#i0] contain a match for regular expression [#i1]regex[#i0]?"}
     stdlib["match"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("match",args,1,"2","string","string"); !ok { return "",err }
-        return regexp.MatchString(args[1].(string), args[0].(string))
+
+        reg:=args[1].(string)
+
+        if !regexWillCompile(reg) {
+            return false, fmt.Errorf("invalid regex in match() : %s",reg)
+        }
+
+        return regexp.MatchString(reg, args[0].(string))
     }
 
     slhelp["filter"] = LibHelp{in: "string,regex[,count]", out: "string", action: "Returns a string matching the regular expression [#i1]regex[#i0] in [#i1]string[#i0]. count should be -1 for all matches."}
@@ -1012,7 +1067,13 @@ func buildStringLib() {
             count=args[2].(int)
         }
 
-        re, err := regexp.Compile(args[1].(string))
+        reg:=args[1].(string)
+
+        if !regexWillCompile(reg) {
+            return false, fmt.Errorf("invalid regex in match() : %s",reg)
+        }
+
+        re, err := regexp.Compile(reg)
         if err == nil {
             if count==0 {
                 m := re.FindString(args[0].(string))

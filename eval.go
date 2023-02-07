@@ -822,9 +822,16 @@ func (p *leparser) rcompare (left any,right any,insensitive bool, multi bool) an
     if insensitive { insenStr="(?i)" }
 
     var re regexp.Regexp
+
     if pre,found:=ifCompileCache[insenStr+right.(string)];!found {
-        re = *regexp.MustCompile(insenStr+right.(string))
-        ifCompileCache[insenStr+right.(string)]=re
+        var ptr_re *regexp.Regexp
+        var err error
+        ptr_re,err = regexp.Compile(insenStr+right.(string))
+        if err!=nil {
+            panic(fmt.Errorf("supplied regex is invalid: %s",right.(string)))
+        }
+        re=*ptr_re
+        ifCompileCache[insenStr+right.(string)]=*ptr_re
     } else {
         re = pre
     }

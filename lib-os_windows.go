@@ -76,6 +76,11 @@ func buildOsLib() {
         if len(args)>1 {
             filter=args[1].(string)
         }
+
+        if !regexWillCompile(filter) {
+            return nil,fmt.Errorf("invalid regex in dir() : %s",filter)
+        }
+
         // get file list
         f, err := os.Open(dir)
         if err != nil { return nil,errors.New("Path not found in dir()") }
