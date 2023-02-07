@@ -7,7 +7,7 @@ import (
     "context"
     "crypto/tls"
     "errors"
-    // "fmt"
+    "fmt"
     "time"
     "net"
     "regexp"
@@ -767,6 +767,10 @@ func buildNetLib() {
         rule.code=args[1].(string)
         rule.in=args[2].(string)
         rule.mutation=args[3].(string) // name of za function to call
+
+        if !regexWillCompile(rule.in) {
+            return false,fmt.Errorf("invalid regex in web_serve_path() : %s",rule.in)
+        }
 
         webrulelock.Lock()
         web_rules[uid]=append(web_rules[uid],rule)

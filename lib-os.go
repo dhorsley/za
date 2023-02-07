@@ -5,6 +5,7 @@ package main
 
 import (
     "errors"
+    "fmt"
     "os"
     "os/user"
     "path/filepath"
@@ -59,6 +60,10 @@ func buildOsLib() {
         dir:="."; filter:="^.*$"
         if len(args)>0 { dir=args[0].(string) }
         if len(args)>1 { filter=args[1].(string) }
+
+        if !regexWillCompile(filter) {
+            return nil,fmt.Errorf("invalid regex in dir() : %s",filter)
+        }
 
         // get file list
         f, err := os.Open(dir)

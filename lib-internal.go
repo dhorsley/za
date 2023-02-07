@@ -1393,6 +1393,10 @@ func buildInternalLib() {
         funclist := ""
         if args[0].(string) != "" { regex = args[0].(string) }
 
+        if !regexWillCompile(regex) {
+            return nil,fmt.Errorf("invalid match rule in funcs() : %s",regex)
+        }
+
         // sort the keys
         var keys []string
         for k :=range categories { keys=append(keys,k) }
