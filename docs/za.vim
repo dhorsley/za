@@ -341,6 +341,7 @@ syntax match string_functions "\(^|.\|\s*\)match\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)filter\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)line_match\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)line_filter\s*("he=e-1
+syntax match string_functions "\(^|.\|\s*\)rvalid\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)grep\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)split\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)join\s*("he=e-1

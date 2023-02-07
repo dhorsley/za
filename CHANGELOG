@@ -14,6 +14,18 @@ CHANGE LOG
 
     * updated ternary if handling to skip false expressions without barfing unicorn chunks.
 
+    * added validity check for various regex caching points. (i.e. ~ and similar operators)
+        - an invalid regex (e.g. * would previously have compilation attempted, leading to fatal errors.)
+            - these are now non-fatal in the host language, but fatal in Za still.
+    
+    * same change for regex validity checking in numerous standard library calls, such as grep(), dir(), replace() etc etc
+        - did not change the reg_* functions as the PCRE engine already returns sensible errors.
+            - this may change for consistency later.
+
+    * added library call for checking syntax validity to lib-string.go
+        - new function: bool=rvalid(string)
+        - this is a wrapper around regexWillCompile() in lib-string.go
+
 
     library changes
     ---------------
