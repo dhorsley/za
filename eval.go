@@ -1114,8 +1114,8 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 */
             } else {
                 panic(fmt.Errorf("length mismatch of argument names [%d] to struct fields [%d]",len(arg_names),len(iargs)))
-                finish(false,ERR_EVAL)
-                return nil,true
+                // finish(false,ERR_EVAL)
+                // return nil,true
             }
         }
 
@@ -1133,8 +1133,8 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 }
                 if !typeFound {
                     panic(fmt.Errorf("unknown type in struct(anon) field %s [%v]",arg_names[n],t))
-                    finish(false,ERR_EVAL)
-                    return nil,true
+                    // finish(false,ERR_EVAL)
+                    // return nil,true
                 }
                 structvalues=append(structvalues,true)
                 structvalues=append(structvalues,iargs[n])
@@ -1176,16 +1176,16 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
             default:
                 // error
                 panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
-                finish(false,ERR_EVAL)
-                return nil,true
+                // finish(false,ERR_EVAL)
+                // return nil,true
             }
         }
 
         err:=fillStruct(&t,structvalues,typemap,false,arg_names)
         if err!=nil {
             panic(err.Error())
-            finish(false,ERR_EVAL)
-            return nil,true
+            // finish(false,ERR_EVAL)
+            // return nil,true
         }
 
         return t.IValue,false
@@ -1199,16 +1199,16 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         var present bool
         if ifn, present = fnlookup.lmget(name); !present {
             panic(fmt.Errorf("could not find function named '%s'",name))
-            finish(false,ERR_EVAL)
-            return nil,true
+            // finish(false,ERR_EVAL)
+            // return nil,true
         }
         farglock.RLock()
         falist:=functionArgs[ifn].args
         farglock.RUnlock()
         if len(arg_names)==len(falist) {
-            for an:=range arg_names {
+            for _,an:=range arg_names {
                 found:=false
-                for fa:=range falist {
+                for _,fa:=range falist {
                     if an==fa {
                         found=true
                         break
@@ -1216,14 +1216,14 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 }
                 if !found {
                     panic(fmt.Errorf("argument '%s' not found in definition for '%s'",an,name))
-                    finish(false,ERR_EVAL)
-                    return nil,true
+                    // finish(false,ERR_EVAL)
+                    // return nil,true
                 }
             }
         } else {
             panic(fmt.Errorf("bad argument name count [%d] for '%s' [needs %d]",len(arg_names),name,len(falist)))
-            finish(false,ERR_EVAL)
-            return nil,true
+            // finish(false,ERR_EVAL)
+            // return nil,true
         }
     }
 

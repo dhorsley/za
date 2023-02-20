@@ -6,7 +6,13 @@
 println "\n[#bold][#fbblue]Library web page autogen[#-]\n"
 
 
-interpol(false)
+# interpol(false)
+
+c_link="azure"
+cf_body="seagreen"
+cb_head="#027"
+cb_foot="#259"
+cf_foot="#8cc"
 
 style=`
     .f0 {color:#000;}
@@ -25,14 +31,14 @@ style=`
     .ttab > div {display:table-cell}
     .ttableft   {width:90%;padding-left:16px;}
     .ttabright  {width:9%;}
-    .hdbg       {width:100%;background-color:#027;line-height:0px;}
-    .bodystyle  {background-color:#012;color:seagreen;}
+    .hdbg       {width:100%;background-color:{=cb_head};line-height:0px;}
+    .bodystyle  {background-color:#012;color:{=cf_body};}
     .ilink      {width:100%;font-size:2.0rem; }
-    a:link      {color:azure;background-color:transparent;text-decoration:none;}
-    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
-    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
-    a:active    {color:azure;background-color:transparent;text-decoration:none;}
-    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+    a:link      {color:{=c_link};background-color:transparent;text-decoration:none;}
+    a:visited   {color:{=c_link};background-color:transparent;text-decoration:none;}
+    a:hover     {color:{=c_link};background-color:transparent;text-decoration:none;}
+    a:active    {color:{=c_link};background-color:transparent;text-decoration:none;}
+    .footer     {background-color:{=cb_foot};color:{=cf_foot};width:99%;padding:4px;text-align:right;font-size:0.85rem;}
 `
 interpol(true)
 

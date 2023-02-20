@@ -183,7 +183,7 @@ func buildFileLib() {
     slhelp["file_mode"] = LibHelp{in: "file_name", out: "file_mode", action: "Returns the file mode attributes of a given file, or -1 on error."}
     stdlib["file_mode"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("file_mode",args,1,"1","string"); !ok { return nil,err }
-        f, err := os.Stat(args[0].(string))
+        f, err := os.Lstat(args[0].(string))
         if err == nil { return int(f.Mode()), err }
         return -1, nil
     }

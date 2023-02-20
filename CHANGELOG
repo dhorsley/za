@@ -16,7 +16,9 @@ CHANGE LOG
 
     * added validity check for various regex caching points. (i.e. ~ and similar operators)
         - an invalid regex (e.g. * would previously have compilation attempted, leading to fatal errors.)
-            - these are now non-fatal in the host language, but fatal in Za still.
+            - these are now non-fatal in the host language.
+            - however, in most cases they will also be non-fatal in Za also.
+                - this was a deliberate choice, and rvalid() should be used to confirm regex validity where it matters.
     
     * same change for regex validity checking in numerous standard library calls, such as grep(), dir(), replace() etc etc
         - did not change the reg_* functions as the PCRE engine already returns sensible errors.
@@ -25,6 +27,8 @@ CHANGE LOG
     * added library call for checking syntax validity to lib-string.go
         - new function: bool=rvalid(string)
         - this is a wrapper around regexWillCompile() in lib-string.go
+
+    * fixed bug in field name validation for named struct initialisation.
 
 
     library changes
@@ -35,6 +39,7 @@ CHANGE LOG
     * added f2n(arg) call for converting bool to nil (from false) or true
         - this was added for converting bool results for use with fix/resume.
         - e.g. with is_open() : see eg/file-read for example.
+    * updated file_mode and stat calls to use lstat instead of stat.
 
     other
     -----
