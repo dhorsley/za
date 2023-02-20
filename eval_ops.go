@@ -1539,7 +1539,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             default:
                 return res,false
             }
-            return res,false
+            // return res,false
 
         } else {
             panic(fmt.Errorf("syntax error: no such function %q", name))
