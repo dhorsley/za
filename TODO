@@ -31,19 +31,6 @@ LATER / UNDECIDED
         - not doing this one yet, but still a possibility.
 
 
-    * short-circuit evaluation of booleans
-        - there is a case to be made, and it has been done previously by many others, that you should
-            not permit short-circuiting when there is a possibility of side-effects in the elided 
-            expressions. 
-        - because of this, our current stance is that we do not perform short-circuiting.
-        - however, it is also true that the evaluation strategy we use does not allow for it anyway :)
-        - this may change in the future, it's open to debate. it would mean changing some
-            fundamentals in the behaviour of our evaluator, which may cause slower evaluation as
-            more state will need passing around.
-
-      Status: t.b.d.
-
-
     * handle multi-dimensional arrays better (as lvalues)
 
       Status: need to rework doAssign function to reduce its bulk first and handle lvalues better, 

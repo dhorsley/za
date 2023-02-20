@@ -706,7 +706,8 @@ func buildInternalLib() {
         default:
             return res,nil
         }
-        return res,nil
+        // @unreachable:
+        // return res,nil
 
     }
 
