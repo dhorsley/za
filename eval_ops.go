@@ -1194,6 +1194,10 @@ func compare(val1 any, val2 any, operation int64) (bool) {
         return compareString(str1, str2, operation)
     }
 
+    if val1==nil && val2==nil {
+        return true
+    }
+
     panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
 }
 

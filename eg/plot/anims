@@ -180,7 +180,7 @@ for e=1 to boxcount
     sidelen=rand(5)
     while
         object_add_box(e,"·"*sidelen,rand(term_w()-sidelen),rand(term_h()-sidelen),sidelen,rand(7),rand(7))
-        on collides(e)==-1 do break while
+        on collides(e)==-1 do break
     endwhile
     objects[e].dx=-3+randf()*6
     objects[e].dy=-3+randf()*6

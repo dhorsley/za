@@ -9,7 +9,7 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/itchyny/gojq v0.12.1
 	github.com/pkg/term v0.0.0-20200520122047-c3ffed290a03
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 )
 
 require (

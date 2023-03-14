@@ -580,14 +580,17 @@ func buildStringLib() {
             "3","string","int","int",
             "4","string","int","int","string"); !ok { return nil,err }
 
+        s := args[0].(string)
         j := args[1].(int)
         w := args[2].(int)
 
+        if len(s)==0 { s=" " }
+
         if len(args) == 4 {
-            return pad(args[0].(string), j, w, args[3].(string)), err
+            return pad(s, j, w, args[3].(string)), err
         }
 
-        return pad(args[0].(string), j, w, " "), err
+        return pad(s, j, w, " "), err
     }
 
 

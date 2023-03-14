@@ -156,18 +156,18 @@ type s_loop struct {
     loopVarBinding   uint64           // name binding lookup from loop name token
     counter          int              // current position in loop
     condEnd          int              // terminating position value
+    repeatActionStep int              // size of repeatAction
+    loopType         int64            // C_For, C_Foreach, C_While
     forEndPos        int16            // ENDFOR location (statement number in functionspace)
     repeatFrom       int16            // line number to restart block from
-    loopType         int64            // C_For, C_Foreach, C_While
     optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
-    whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
-    repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
-    repeatActionStep int              // size of repeatAction
     repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
-    repeatCustom     bool             // FOR loop with custom conditions
-    repeatAmendment  []Token          // used by custom FOR conditions
+    whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
     iterOverMap      *reflect.MapIter // stored iterator
+    repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
+    repeatAmendment  []Token          // used by custom FOR conditions
     iterOverArray    any              // stored value to iterate over from start expression
+    repeatCustom     bool             // FOR loop with custom conditions
 }
 
 // struct to support pseudo-windows in console

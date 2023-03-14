@@ -31,7 +31,7 @@ ef
 # main
 #
 
-GCLIMIT = "madvdontneed=0 GOGC=800 GOMAXPROCS=4"
+GCLIMIT = "madvdontneed=0 GOGC=1600 GOMAXPROCS=4"
 GCFLAGS = "-gcflags='-B -l=4'"
 
 GCCGOFLAGS=""
