@@ -2,7 +2,7 @@
 
 f="$@"
 if [[ "$f" == "" ]]; then
-    f="eg/addition_loop 100000"
+    f="eg/addition_loop 1000000"
 fi
 
 valgrind --branch-sim=yes --tool=cachegrind za $f

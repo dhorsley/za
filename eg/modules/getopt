@@ -97,7 +97,7 @@ define getopt(reqs)
             case r[0]
             is "b"
                 opts[name]="true"
-        on (r[1] & optNature.h) == optNature.h do helpSelected=true
+                on (r[1] & optNature.h) == optNature.h do helpSelected=true
             is "s"
                 opts[name]=""
             is "n"

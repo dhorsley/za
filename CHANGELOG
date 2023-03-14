@@ -30,6 +30,8 @@ CHANGE LOG
 
     * fixed bug in field name validation for named struct initialisation.
 
+    * forced empty source strings passed to pad() to be " " instead. this fixes padding widths not expanding as expected.
+
 
     library changes
     ---------------
@@ -44,6 +46,10 @@ CHANGE LOG
     other
     -----
 
+    * removed experimental BREAK on keyword support
+        - has issues with nested FOR/FOREACH combinations.
+        - just stripped it out as of limited use anyway.
+
     * (breaking) Renamed WHEN..ENDWHEN statements to CASE..ENDCASE
 
     * (experimental) added some more statement aliases:
@@ -54,6 +60,8 @@ CHANGE LOG
         ET  : ENDTEST
         ES  : ENDSTRUCT
         EC  : ENDCASE
+
+        - you probably shouldn't use these.. just testing how they look currently.
 
     * no longer considered experimental:
         - added name qualification for functions

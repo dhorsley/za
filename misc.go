@@ -600,7 +600,7 @@ Available commands:
 [#4]IS | HAS | CONTAINS [#i1]expr[#-][#i0]                        - when [#i1]expr[#i0] matches value, expression or regex.
 [#4]OR[#-]                                              - default case.
 [#4]ENDCASE[#-]                                         - terminates the CASE block.
-[#4]BREAK[#-]                                           - exit a loop or CASE clause immediately.
+[#4]BREAK [ expr ][#-]                                  - exit a loop or CASE clause immediately.
 [#4]CONTINUE[#-]                                        - proceed to next loop iteration immediately.
 [#4]EXIT [#i1]code[#i0] [,[#i1]error_string[#i0] ][#-]                      - exit script with status code.
 [#2]PRINT[LN] [#i1]expression [ , expression ][#i0][#-]           - local echo. (PRINTLN adds a trailing newline character.)

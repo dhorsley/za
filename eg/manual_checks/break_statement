@@ -1,0 +1,9 @@
+
+foreach e in 0..9
+    for f=0 to 9
+        println e," ",f
+        on f==5 do break 2
+    ef
+    println ": post for"
+ef
+
