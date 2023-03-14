@@ -435,7 +435,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
                 ef
             else
                 at 2,2, "[#invert]Checking previous CPU values.[#-]"
-                break foreach
+                break
             ei
 
             # record for next iter

@@ -202,10 +202,10 @@ define box_view(opts,val,selector)
         changed=false
         case $lc char(k)
         is "q"
-            break while
+            break 2
         has selector and k==13
             cls
-            break while
+            break 2
         has selector and k==211 # shift-up
             sp--
             on sp<0 do sp=0
@@ -317,11 +317,11 @@ define box_message(opts,msg,list_buttons)
         is 27
             sel=0
             quit=true
-            break while
+            break 2
         is 13
-            break while
+            break 2
         is 32
-            break while
+            break 2
         has k==9 or k==7
             sel++
             if sel>list_buttons.len-1
@@ -330,7 +330,7 @@ define box_message(opts,msg,list_buttons)
                 changed=true
             endif
         has k==8 or k==6
-            sel--
+            sel-=1
             if sel<0
                 sel=0
             else
@@ -441,9 +441,9 @@ define select(opts,list_buttons,multiple,orientation)
         is 27
             sel=0
             quit=true
-            break while
+            break 2
         is 13
-            break while
+            break 2
         is 32
             checked[sel]=not checked[sel]
             changed=true

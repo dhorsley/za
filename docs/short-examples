@@ -1,4 +1,31 @@
 
+------------------------------------------------------------------------------
+Accept path as argument, find all files in path, discard non-file types such
+ as directories, calculate total sloc on those files
+
+za -e '
+    s=0
+    foreach l in |"find {=argv()[0]}"
+        on l.is_file do s+=count($in l)
+    ef
+    println "Sum : {s}"
+' eg
+
+That example just uses 'find' for recursive search, until we add our own.
+
+This would be an equivalent using wc and awk:
+
+for f in `find eg`; do
+    [[ -f $f ]] && wc -l $f
+done | 
+    awk '
+    BEGIN{s=0}
+    { s+=$1 }
+    END{print "Sum : " s}
+    '
+
+
+------------------------------------------------------------------------------
 Interacting with shell, process results, format output
 
 foreach f in | "ls -1" . grep(".*\.go")

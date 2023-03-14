@@ -229,7 +229,9 @@ func buildConversionLib() {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to kind()")
         }
-        return str.Replace(sf("%T", args[0]),"float64","float",-1), nil
+        repl:= str.Replace(sf("%T", args[0]),"float64","float",-1)
+        repl = str.Replace(repl,"interface {}","any",-1)
+        return repl,nil
     }
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}

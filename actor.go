@@ -2196,7 +2196,7 @@ pcloop:
                             if (*thisLoop).counter > (*thisLoop).condEnd {
                                 (*thisLoop).counter -= (*thisLoop).repeatActionStep
                                 if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                    vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                    (*ident)[(*thisLoop).loopVarBinding].IValue=(*thisLoop).counter
                                 }
                                 loopEnd = true
                             }
@@ -2204,15 +2204,15 @@ pcloop:
                             if (*thisLoop).counter < (*thisLoop).condEnd {
                                 (*thisLoop).counter -= (*thisLoop).repeatActionStep
                                 if (*thisLoop).optNoUse == Opt_LoopIgnore {
-                                    vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).counter)
+                                    (*ident)[(*thisLoop).loopVarBinding].IValue=(*thisLoop).counter
                                 }
                                 loopEnd = true
                             }
                         }
 
+                        // check tokens once for loop var references, then set Opt_LoopSet if found.
                         if (*thisLoop).optNoUse == Opt_LoopStart {
                             (*thisLoop).optNoUse = Opt_LoopIgnore
-                            // check tokens once for loop var references, then set Opt_LoopSet if found.
                             if searchToken(source_base, (*thisLoop).repeatFrom, parser.pc, (*thisLoop).loopVar) {
                                 (*thisLoop).optNoUse = Opt_LoopSet
                             }
@@ -2220,7 +2220,6 @@ pcloop:
 
                         // assign loop counter value back to local variable
                         if (*thisLoop).optNoUse == Opt_LoopSet {
-                            // assign directly as already declared and removes the fn call
                             (*ident)[(*thisLoop).loopVarBinding].IValue=(*thisLoop).counter
                         }
 
@@ -2317,8 +2316,11 @@ pcloop:
                 // break by construct type
                 if inbound.TokenCount==2 {
                     thisLoop = &loops[depth]
-                    var efound,er bool
                     forceEnd=false
+
+                    /* @note: removed as buggy when breaking from nested for/foreach combination:
+
+                    var efound,er bool
                     switch inbound.Tokens[1].tokType {
                     case C_Case:
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endcase, []int64{C_Case},    []int64{C_Endcase})
@@ -2331,7 +2333,7 @@ pcloop:
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_Foreach:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,  []int64{C_Foreach}, []int64{C_Endfor})
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]int64{C_For,C_Foreach},[]int64{C_Endfor})
                         breakIn=C_Endfor
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
@@ -2351,6 +2353,7 @@ pcloop:
                         // break jump point is set, so continue pc loop 
                         continue
                     }
+                    */
                 }
 
                 if !forceEnd {

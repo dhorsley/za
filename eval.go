@@ -551,6 +551,8 @@ func (p *leparser) list_filter(left any,right any) any {
                 new_right=str.Replace(right.(string),"#",strconv.FormatFloat(v,'g',-1,64),-1)
             case bool:
                 new_right=str.Replace(right.(string),"#",strconv.FormatBool(v),-1)
+            case nil:
+                new_right=str.Replace(right.(string),"#","nil",-1)
             default:
                 new_right=str.Replace(right.(string),"#",sf("%#v",v),-1)
             }
@@ -1679,15 +1681,13 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // pf("(id, got token -> %#v)\n",token)
 
-    if token.subtype!=subtypeNone {
-        switch token.subtype {
-        case subtypeConst:
-            return token.tokVal
-        case subtypeStandard:
-            return token.tokText
-        case subtypeUser:
-            return token.tokText
-        }
+    switch token.subtype {
+    case subtypeConst:
+        return token.tokVal
+    case subtypeStandard:
+        return token.tokText
+    case subtypeUser:
+        return token.tokText
     }
 
     // filter for functions here. this also sets the subtype for funcs defined late.
@@ -2386,12 +2386,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     if len(tks)==2 {
         switch tks[1].tokType {
         case SYM_PP,SYM_MM:
-
-            // @note: naive, just takes the previous token, so cannot
-            //  address field or array operations on l.h.s.
-            //  okay for now, but could improve. e.g. if p.preprev 
-            //  == SYM_DOT || RBrace then work backwards to capture components.
-            //  would also depend on length of tks.
 
             // override p.prev value as postIncDec uses it and we will be throwing 
             //  away the p.* values shortly after this use.

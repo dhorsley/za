@@ -15,5 +15,5 @@ x=42
 y="abc"
 z=ts("f1string",2,"three")
 
-interpolate($in "files/tmpl1.txt").ccformat $out "/dev/stdout"
+$in "files/tmpl1.txt".interpolate.ccformat $out "/dev/stdout"
 
