@@ -530,7 +530,7 @@ define showHdd()
         disks=< df -h -x 9p | tail -n+2 | egrep -v '^\/dev\/(loop.*|sr[0-9]+)' | egrep -v '^(tmpfs|run)' | sort -hrk5
     ec
 
-    at 1,1, format("[#b2][#7][#bold]%16s %5s %5s %5s %-3s %-22s[#-][##]","path","size","used","avail","use%","mpath")
+    at 1,1, format("[#b2][#7][#bold]%16s %5s %5s %5s %-3s %-21s[#-][##]","path","size","used","avail","use%","mpath")
     row=2
 
     foreach d in disks
@@ -539,7 +539,7 @@ define showHdd()
             on not F[1] is string do continue 
             if !key("devices",F[1])
                 devices[F[1]]=F[6]
-                at row,1, format(`%16s %5s %5s %5s %-3s %-22s`,shorten(F[1],16),F[2],F[3],F[4],F[5],shorten(F[6],22))
+                at row,1, format(`%16s %5s %5s %5s %-3s %-21s`,shorten(F[1],16),F[2],F[3],F[4],F[5],shorten(F[6],21))
                 row++
             ei
         ei

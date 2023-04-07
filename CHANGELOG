@@ -42,6 +42,8 @@ CHANGE LOG
         - this was added for converting bool results for use with fix/resume.
         - e.g. with is_open() : see eg/file-read for example.
     * updated file_mode and stat calls to use lstat instead of stat.
+    * added permit("permit",false) for disabling further permit calls.
+
 
     other
     -----

@@ -763,6 +763,10 @@ func buildInternalLib() {
         "2","string","float64",
         "2","string","string"); !ok { return nil,err }
 
+        if !permit_permit {
+            panic(fmt.Errorf("permit() not permitted!"))
+        }
+
         lastlock.Lock()
         defer lastlock.Unlock()
 
@@ -823,6 +827,14 @@ func buildInternalLib() {
                 return nil,nil
             default:
                 return nil,errors.New("permit(interpol) accepts a boolean value only.")
+            }
+        case "permit":
+            switch args[1].(type) {
+            case bool:
+                permit_permit=args[1].(bool)
+                return nil,nil
+            default:
+                return nil,errors.New("permit(permit) accepts a boolean value only.")
             }
         }
 
