@@ -1295,10 +1295,10 @@ pcloop:
                     }
 
                     // write temp to ident
-                    vlock.Lock()
+                    // vlock.Lock()
                     (*ident)[sid]=t
                     // pf("wrote var: %#v\n... with sid of #%d\n",t,sid)
-                    vlock.Unlock()
+                    // vlock.Unlock()
 
                 } else {
                     // unknown type: check if it is a struct name
@@ -1335,10 +1335,10 @@ pcloop:
                     }
 
                     if isStruct {
-                        vlock.Lock()
+                        // vlock.Lock()
                         t:=(*ident)[sid]
                         err=fillStruct(&t,structvalues,typemap,hasAry,[]string{})
-                        vlock.Unlock()
+                        // vlock.Unlock()
                         if err!=nil {
                             parser.report(inbound.SourceLine,err.Error())
                             finish(false,ERR_EVAL)

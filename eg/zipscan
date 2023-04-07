@@ -1,0 +1,16 @@
+
+doc `
+    quick example of zip() and scan_left()
+`
+
+a=0..20
+b=a.zip(scan_left(a,"+",0))
+
+for ,b.len>0,
+    println "a:",b[0]," b:",b[1]
+    b=b.tail.tail
+    # alternatively: b=b.remove(0).remove(0)
+    # or just: b=b[2:]
+ef
+
+

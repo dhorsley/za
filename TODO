@@ -23,6 +23,7 @@ TODO
             - compound assignments don't really add anything good
                 to this language, they were added for completeness.
 
+    * catch stack overflows and output better error (when recursing). for example, in eg/ackermann 4 2
 
 
 LATER / UNDECIDED
