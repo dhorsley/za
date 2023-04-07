@@ -195,6 +195,8 @@ var permit_dupmod       bool    // default:false, ignore (true) or error (false)
 var permit_exitquiet    bool    // default:false, squash (true) or display (false) err msg on exit
 var permit_shell        bool    // default: true, when false, exit script if shell command encountered
 var permit_eval         bool    // default: true, when false, exit script if eval call encountered
+var permit_permit       bool    // default: true, when false, permit function is disabled
+
 
 // Global: test related
 // test related setup, completely non thread safe
@@ -272,6 +274,7 @@ func main() {
 
     permit_shell=true
     permit_eval=true
+    permit_permit=true
 
     go func() {
         for {
