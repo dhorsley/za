@@ -6,5 +6,5 @@ define fib(n)
 end
 
 input x param 1
-println fib(x)
+print fib(x)
 
