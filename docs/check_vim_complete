@@ -1,22 +1,16 @@
 #!/usr/bin/za
 
-#synmatches="$(grep "^syntax" za.vim | egrep -o '\(.*\)' | grep -o '\\(.*)' | tr '\\$+(|)' ' ' | tr -s ' \n' | tr ' ' '\n' | grep -v "^[s]*$")"
-#kc=$(echo "$synmatches" | wc -l)
-
-#echo -n "Keywords: " ; echo $synmatches
-#echo "Keyword matches : ${kc}"
-
 funclist=[]
 foreach f in func_inputs()
     append_to(ref funclist,key_f)
 endfor
-funclist=funclist.sort.join("\n")
+funclist = funclist.sort.join("\n")
 
-doclist= $in "za.vim" . grep(`^syntax .*_functions.*\)`) . col(2,")")
+doclist = $in "za.vim" . grep(`^syntax .*_functions.*\)`) . col(2,")")
 foreach e in doclist
     doclist[key_e]=e.field(1,"\\")
 endfor
-doclist=doclist.sort.join("\n")
+doclist = doclist.sort.join("\n")
 
 a=${mktemp}
 b=${mktemp}
@@ -34,7 +28,7 @@ else
     println "No differences."
 endif
 
-delete(a)
 delete(b)
+delete(a)
 
 

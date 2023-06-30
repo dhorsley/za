@@ -1260,7 +1260,11 @@ func (p *leparser) unaryPathOp(right any,op int64) string {
             if fe=="" { return fp }
             return fp[:len(fp)-len(fe)]
         case O_Pe: // base - only ext
-            return filepath.Ext(right.(string))[1:]
+            fpe:=filepath.Ext(right.(string))
+            if len(fpe)>1 {
+                return fpe[1:]
+            }
+            return ""
         case O_Pp: // parent path
             fp,e:=filepath.Abs(right.(string))
             if e!=nil { return "" }
