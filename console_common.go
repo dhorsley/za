@@ -359,6 +359,12 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 cpos = len(s)
                 wordUnderCursor,_ = getWord(s, cpos)
 
+            case bytes.Equal(c, []byte{11}): // ctrl-k
+                s = s[:cpos]
+                // cpos = len(s)
+                wordUnderCursor,_ = getWord(s, cpos)
+                clearChars(irow, icol, inputL)
+
             case bytes.Equal(c, []byte{21}): // ctrl-u
                 s = removeAllBefore(s, cpos)
                 cpos = 0

@@ -72,6 +72,8 @@ CHANGE LOG
         - added expect() call for checking a list against a set of type variants
         - added syntax for struct initialisation with user values.
         - code to remove gc bottleneck during recursion
+
+    * added ctrl-k to line editor (del to end of line)
  
     * still experimental:
         - fix/resume
