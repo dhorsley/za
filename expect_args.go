@@ -52,9 +52,18 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
                 if types[p]=="number" { n+=1; continue }
             case *big.Int,*big.Float:
                 if types[p]=="bignumber" { n+=1; continue }
+            case []interface{}:
+                if types[p]=="[]any" { n+=1; continue }
+            case []int:
+                if types[p]=="[]int" { n+=1; continue }
+            case []uint:
+                if types[p]=="[]uint" { n+=1; continue }
+            case []float64:
+                if types[p]=="[]float" { n+=1; continue }
+            case []string:
+                if types[p]=="[]string" { n+=1; continue }
             }
             if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
-                // type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]).String())
                 type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]))
                 tryNext=true
                 break

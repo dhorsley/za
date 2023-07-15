@@ -68,6 +68,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var badFloat,scientific,expectant,hasPoint bool
     var maybeBaseChange, thisHex, thisOct, thisBin bool
     var blockBraceLevel int
+    var skip_backslash bool
 
     beforeE := "."
     thisWordStart := -1
@@ -81,6 +82,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
 // rescan: // used by /*...*/ comments
 
+    // pf("(nt starting at '%c')\n",input[currentChar])
 
     for ; currentChar<lenInput ; currentChar+=1 {
         if input[currentChar] == ' ' || input[currentChar]=='\r' || input[currentChar] == '\t' {
@@ -233,7 +235,23 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
     // start looking for word endings, (terms+nonterms)
 
+
+    skip_backslash=false
     for currentChar = thisWordStart + 1; currentChar < lenInput; currentChar+=1 {
+
+        // allow \\[:space:]* in identifier names, which will be removed later in lex:
+        //  this may also allow keywords to be used as identifier names.
+        if tokType==0 {
+            if skip_backslash && str.IndexByte(" \t\r",input[currentChar])!=-1 {
+                continue
+            }
+            skip_backslash=false
+
+            if !(matchBlock||matchQuote) && input[currentChar]=='\\' {
+                skip_backslash=true
+                continue
+            }
+        }
 
         // check numbers for illegal repeated chars
         if tokType==NumericLiteral {
@@ -345,12 +363,12 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             continue
         }
 
-
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
             // didn't find a non-terminator, so get word and finish, but don't
             // increase word end position as we need to continue the next
             // search from immediately after the word.
             word = input[thisWordStart:currentChar]
+            // pf("@word:[%s]@\n",word)
             startNextTokenAt=currentChar
             break
         }
@@ -832,6 +850,25 @@ get_nt_eval_point:
     if tokType == 0 { // assume it was an identifier
         tokType = Identifier
         startNextTokenAt=currentChar
+
+        // old_word:=word
+        // did_bs_rem:=false
+        // remove backslashed spaces in word
+        for {
+            bspos := str.IndexByte(word,'\\')
+            if bspos == -1 {
+                break
+            }
+            // did_bs_rem=true
+            i:=bspos+1
+            for ;i<len(word);i+=1 {
+                if str.IndexByte(" \t\r",word[i])==-1 {
+                    break
+                }
+            }
+            word=word[:bspos]+word[i:]
+        }
+        // if did_bs_rem { pf("removed slashes from '%s' -> became '%s'\n",old_word,word) }
 
         // add token's bind_int value
         if len(word)>0 {

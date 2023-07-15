@@ -1326,6 +1326,7 @@ pcloop:
                     */
 
                     // structmap has list of field_name,field_type,... for each struct
+                    // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
                     for sn, snv := range structmaps {
                         if sn==sname {
                             isStruct=true

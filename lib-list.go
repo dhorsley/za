@@ -12,6 +12,7 @@ package main
 
 import (
     "errors"
+	"fmt"
     "math"
     "math/big"
     "reflect"
@@ -19,7 +20,9 @@ import (
     "sort"
     str "strings"
     "strconv"
+	"sync"
 )
+
 
 type sortStructInt struct {
     k string
@@ -45,6 +48,104 @@ type sortStructFloat struct {
     k string
     v float64
 }
+
+
+///////////////////////////////////////////////////////////////////////
+
+type ms_interface any
+type ms_slice []ms_interface
+
+func (ms ms_slice) Less(i, j int) bool {
+	return getLessValue(reflect.ValueOf(ms[i]).FieldByName(getKey()), reflect.ValueOf(ms[j]).FieldByName(getKey()))
+}
+
+func (ms ms_slice) Len() int {
+	return len(ms)
+}
+
+func (ms ms_slice) Swap(i, j int) {
+	ms[i], ms[j] = ms[j], ms[i]
+}
+
+// @note: this is broken: it sorts by one column, then a different one and so on until done
+//        when it should instead have the Less function comparing subsequent inputSortKeys[] entries
+//        only when Less(i,j) are equal.
+
+func MultiSorted(unsortedSlice any, inputSortKeys []string, ascendingSortOrder []bool) ([]ms_interface, error) {
+
+	if reflect.TypeOf(unsortedSlice).Kind() != reflect.Slice {
+		return nil, fmt.Errorf("input is not a slice")
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go copyKeys(&wg, inputSortKeys)
+	var ms ms_slice
+	ms = copyUnsortedSliceToMultiSorted(unsortedSlice)
+	wg.Wait()
+
+	for i := range sortKeys {
+		currentKeyIndex = i
+		reflectValue := reflect.ValueOf(ms[0]).FieldByName(getKey())
+		if !reflectValue.IsValid() {
+			return ms, fmt.Errorf("%v, not present (as key) on the input slice", getKey())
+		}
+		if i < len(ascendingSortOrder) {
+            if ascendingSortOrder[i] {
+			    sort.Sort(ms)
+            } else {
+                sort.Sort(sort.Reverse(ms))
+            }
+        }
+	}
+    currentKeyIndex=0
+	return ms, nil
+}
+
+var currentKeyIndex int
+var sortKeys []string
+
+func copyKeys(wg *sync.WaitGroup, inputSortKeys []string) {
+	defer wg.Done()
+    sortKeys=[]string{}
+	for _, key := range inputSortKeys {
+		sortKeys = append(sortKeys, key)
+	}
+}
+
+func copyUnsortedSliceToMultiSorted(unsortedSlice any) ms_slice {
+	var sortSlice ms_slice
+	reflectCopy := reflect.Indirect(reflect.ValueOf(unsortedSlice))
+	for i := 0; i < reflectCopy.Len(); i++ {
+		sortSlice = append(sortSlice, reflectCopy.Index(i).Interface())
+	}
+	return sortSlice
+}
+
+func getLessValue(i, j reflect.Value) bool {
+	switch i.Kind() {
+	case reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint8:
+		return i.Int() < j.Int()
+	case reflect.Float64:
+		return i.Float() < j.Float()
+    // @todo: add bigi, bigf
+	default:
+		return i.String() < j.String()
+	}
+}
+
+func getKey() string {
+	return sortKeys[currentKeyIndex]
+}
+
+func Help() string {
+	return `outputSlice, err := MultiSorted(inputSlice, inputKeys, inputOrder)
+	for i := range outputSlice {
+		outputSlice[i] = outputSlice[i].(desiredType)
+	}`
+}
+
+///////////////////////////////////////////////////////////////////////
 
 func anyDissimilar(list []any) bool {
     knd := sf("%T", list[0])
@@ -121,7 +222,7 @@ func human_numcompare_reverse(astr,bstr string) (bool) {
 func buildListLib() {
 
     features["list"] = Feature{version: 1, category: "data"}
-    categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "sort", "uniq",
+    categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "ssort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "esplit", "min", "max", "avg","eqlen",
         "empty", "list_string", "list_float", "list_int","list_bool","list_bigi","list_bigf",
@@ -1067,6 +1168,72 @@ func buildListLib() {
         return newstring.String(),nil
 
     }
+
+    slhelp["ssort"] = LibHelp{in: "list,field_name[,bool_reverse]", out: "[]any", action: "Sorts a [#i1]list[#i0] of structs, on a given field name, in ascending (true) or descending (false) order."}
+    stdlib["ssort"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("ssort",args,4,
+            "3","[]any","[]string","[]bool",
+            "3","[]any","string","bool",
+            "2","[]any","[]string",
+            "2","[]any","string"); !ok { return nil,err }
+
+        list := args[0]
+
+        var field_list []string
+        var direction_list []bool
+
+        switch args[1].(type) {
+        case []string:
+            field_list = args[1].([]string)
+            if len(args)==3 {
+                direction_list = args[2].([]bool)
+            }
+        case string:
+            field_list = []string{args[1].(string)}
+            if len(args) == 3 {
+                direction_list = []bool{args[2].(bool)}
+            }
+        }
+
+        outputSlice,err:=MultiSorted(list,field_list,direction_list)
+        if err==nil {
+            ret_ar:=make([]any,len(outputSlice))
+            for i:=range outputSlice {
+                ret_ar[i]=outputSlice[i].(any)
+            }
+            return ret_ar,nil
+        }
+        return nil,err
+
+    }
+
+
+/*
+    slhelp["ssort"] = LibHelp{in: "list,field_name[,bool_reverse]", out: "[]any", action: "Sorts a [#i1]list[#i0] of structs, on a given field name, in ascending (true) or descending (false) order."}
+    stdlib["ssort"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("ssort",args,2,
+            "3","[]any","[]string","[]bool",
+            "2","[]any","[]string"); !ok { return nil,err }
+
+        list := args[0]
+        field_list:= args[1].([]string)
+        direction_list:=[]bool{}
+        if len(args) == 3 {
+            direction_list = args[2].([]bool)
+        }
+
+        outputSlice,err:=MultiSorted(list,field_list,direction_list)
+        if err==nil {
+            ret_ar:=make([]any,len(outputSlice))
+            for i:=range outputSlice {
+                ret_ar[i]=outputSlice[i].(any)
+            }
+            return ret_ar,nil
+        }
+        return nil,err
+
+    }
+*/
 
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)

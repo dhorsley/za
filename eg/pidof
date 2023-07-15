@@ -36,7 +36,7 @@ define fsort(m)
     s=""
     foreach q in m
         s+="{=q.pid} {=q.index}\n"
-    ef
+    endfor
     return fieldsort(s,1,"n")
 end
 
@@ -111,13 +111,13 @@ define ps(filter)
         # add process to list
         proc_list[proc.pid] = proc
 
-    ef
+    endfor
 
     var keys []pid_lookup
     foreach v in proc_list
         l=pid_lookup(v.pid,v.name)
         append_to(ref keys,l)
-    ef
+    endfor
     return proc_list,keys,args,mem
 end
 
@@ -132,11 +132,11 @@ define pidof(name,children)
         if p.name == name
             pids=pids.append(key_p)
             continue
-        ei
+        endif
         if args[key_p][0] == name
             pids=pids.append(key_p)
-        ei 
-    ef
+        endif 
+    endfor
 
     pids=pids.list_int
     if not children
@@ -144,10 +144,10 @@ define pidof(name,children)
         foreach pc in pids
             if (pids ?> "#==pl[pc].ppid").len==0 # ppid not found in pid list
                 ppids=ppids.append(pc)
-            ei
-        ef
+            endif
+        endfor
         return ppids
-    ei
+    endif
     return pids
 end
 

@@ -15,7 +15,7 @@ while !av.empty
     arg=next()
     if arg.len>1 && start(arg,"-")
         opt=substr(arg,0,2)
-        when opt
+        case opt
         is "-h"
             println "Help requested."
         is "-s"
@@ -24,7 +24,7 @@ while !av.empty
             bvar=next().bool
         is "-n"
             nvar=next().int
-        endwhen
+        endcase
     else
         println "unprocessed argument found: {arg}"
     endif

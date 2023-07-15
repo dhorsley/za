@@ -10,9 +10,9 @@ doc `
 
     Example use:
     # show all colours, beginning with 's'
-    module "./x11colours" as x11
-    foreach n in enum_names(ref colour)
-      on n ~ "^s" do println x11.fg(n),n,"[#-]"
+    module "modules/x11colours" as x11
+    foreach n in enum_names(ref x11::colour)
+      on n ~ "^s" do println x11::fg(n),n,"[#-]"
     endfor
 
 `
