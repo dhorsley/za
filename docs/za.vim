@@ -569,7 +569,7 @@ hi def link image_functions functionlist
 
 if !exists("g:sh_no_error")
  hi def link CondError      Error
- hi def link WhenError      Error
+ hi def link CaseError      Error
  hi def link IfError        Error
  hi def link InError        Error
 endif

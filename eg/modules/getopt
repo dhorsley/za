@@ -30,12 +30,12 @@ define opthelp(reqs)
         is "s"; print "[#3]STRING".pad(-1,10)
         is "n"; print "[#3]NUMERIC".pad(-1,10)
         is "b"; print "[#3]BOOLEAN".pad(-1,10)
-        ec
+        endcase
         case 
         has (o[1] & optNature.n) == optNature.n ; print "[#7]No value".pad(-1,12)
         has (o[1] & optNature.m) == optNature.m ; print "[#2]Mandatory".pad(-1,12)
         has (o[1] & optNature.o) == optNature.o ; print "[#6]Optional".pad(-1,12)
-        ec
+        endcase
         print "[#-]"
         on o.len>2 do on o[2]!="" do print "[#i1]",o[2],"[#i0]"
         println
@@ -86,7 +86,7 @@ define getopt(reqs)
         or
             undashed_args[undashed_count++]=arg
             undashed=true
-        ec 
+        endcase 
 
         on undashed do continue
 
@@ -102,7 +102,7 @@ define getopt(reqs)
                 opts[name]=""
             is "n"
                 opts[name]=0
-            ec
+            endcase
         endif
 
     endwhile
@@ -124,8 +124,8 @@ define getopt(reqs)
                     opts[key_r]=opts[key_r].as_bool
                 or
                     exit optErr.Casting,"Parameter {=key_r} must be a boolean equivalent"
-                ec
-            ec
+                endcase
+            endcase
         else
             if (nature & optNature.m) != optNature.m
                 case typ
@@ -135,7 +135,7 @@ define getopt(reqs)
                     opts[key_r]=false
                 is "s"
                     opts[key_r]=""
-                ec
+                endcase
             endif
         endif
     endfor

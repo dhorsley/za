@@ -111,7 +111,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     discard_phrase:=false
 
     for ; pos < len(input); {
-
         tempToken = nextToken(input, lmv, &curLine, pos)
         eof=tempToken.eof
 

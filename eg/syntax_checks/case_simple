@@ -1,5 +1,5 @@
 
-# simple WHEN test
+# simple CASE test
 
 x=3
 y=1
@@ -17,7 +17,7 @@ is 3
     case y
     is 1
         print "y==1\n"
-    ec
+    endcase
 
     print "after y case\n"
 
@@ -28,5 +28,5 @@ contains "[2]+"
 or
     print "not 1,2,3\n"
 
-ec
+endcase
 

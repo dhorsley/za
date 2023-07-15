@@ -12,5 +12,5 @@ contains "redhat"
     break
 # or
 #     print "something else!"
-ec
+endcase
 

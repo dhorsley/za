@@ -16,7 +16,7 @@ is "display"
     println "display"
 or
     println "not found"
-ec
+endcase
 
 println "post"
 
