@@ -2,6 +2,7 @@
 
 define fib(n)
     @ memo["calls"] = memo["calls"]+1
+    var m bigi
     if glob_key("memo",as_string(n))
         m=memo[n]
     else
@@ -25,8 +26,9 @@ memo[1]=1
 memo[2]=1
 
 input x param 1
-#println fib(x)
-#println "Calls : ",memo["calls"]
+println fib(x)
+println "Calls : ",memo["calls"]
+exit
 
 for x=1 to x
     on signum(fib(x))==-1 do break

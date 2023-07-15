@@ -9,6 +9,20 @@ lots, i'm sure.
 TODO
 ----
 
+    * IN PROGRESS: extra sort functions:
+        array of struct : forward and reverse, by named struct field. type based.
+        - added ssort to lib-list
+            - ary=ssort(ary,"field_name",ascending_bool)
+            - returns array of []any, sorted on named field in given direction.
+            - TODO: expand to multi key sort
+            - NOTE: modified version of this code:
+                - https://raw.githubusercontent.com/raunakjodhawat/multisort/master/multisort.go
+                - experimental!
+                - probably many issues with it currently.
+            - TODO: when out of experimental phase, add credits in docs/CREDITS file. (MIT License):
+                - https://github.com/raunakjodhawat/multisort/blob/master/LICENSE
+
+
     * fix windows flock() call appropriately.
 
     * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME

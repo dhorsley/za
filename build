@@ -23,8 +23,8 @@ for a = 1 to argc()
             ipath=argv()[a]
             a++
             println "install path changed to {ipath}"
-    ec
-ef
+    endcase
+endfor
 
 
 #
@@ -60,10 +60,10 @@ if ! os() ~ "^freebsd"
         on defs::buildWin(bvers,bdate) != 0 do exit defs::e.build,"Failed to build windows version."
     or
         exit defs::e.notfound,"Target type unknown."
-    ec
+    endcase
 else
     on defs::buildFreeBSD(bvers,bdate) != 0 do exit defs::e.build,"Failed to build bsd version."
-ei
+endif
 
 
 if is_file("za")
@@ -72,14 +72,14 @@ if is_file("za")
             if tgt!="win"
                 on strip_enable and not tgt ~i "^(alpine)$" do | strip -s -w za
                 on upx_enable do | upx za
-            ei
+            endif
         else
             "Note: Please consider installing the upx package for compressing the binary.".defs::warning
-        ei
+        endif
     else
         # don't strip/upx freebsd version
-    ei
-ei
+    endif
+endif
 
 
 case tgt
@@ -87,6 +87,6 @@ contains "^(default|alpine|libc)$"
     "Installing {tgt} build to {ipath}".defs::progress
     | sudo cp -f za {ipath}
     | sudo chmod 755 {ipath}/za
-ec
+endcase
 
 

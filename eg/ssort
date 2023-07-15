@@ -1,0 +1,59 @@
+#!/usr/bin/za
+
+doc - struct sort
+
+struct sq
+    s string
+    b bool
+    i int
+    f float
+    bs string
+endstruct
+
+var s sq
+
+var a []any
+
+for e=0 to 39
+    s.s = char(64+rand(26)) * 4
+    s.b = itob(rand(2)-1)
+    s.i = rand(20)
+    s.f = randf()*20
+      _ = append_to(ref a,s)
+endfor
+
+r=ssort(a,["s","b"].list_string,[true,true].list_bool)
+
+println "length : ",r.len
+for e=0 to len(r)-1
+    println "string : %10s - bool : %v".format(r[e].s,r[e].b)
+endfor
+
+exit
+
+
+# multisort
+# simple sort using extra field as compounded column
+# very limited in use
+# this will eventually be replaced with a proper multisort within the ssort() call.
+
+#-- compound keys
+foreach r in a
+    r.bs=r.b.as_string+r.s 
+    a[key_r]=r
+endfor
+
+#-- unsorted:
+foreach r in a
+    println "ent->",r
+endfor
+
+#-- sort
+na=ssort(a,"bs",true)
+
+#-- display
+for e=0 to na.len-1
+    r=na[e]
+    println "bool : %5v - string : %10s - int : %d - float : %f".format(r.b,r.s,r.i,r.f)
+endfor
+
