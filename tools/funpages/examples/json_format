@@ -1,5 +1,5 @@
 
-dl=web_get("https://zalang.org/files/eg/example.json")
+dl=web_get("https://zalang.org/user/data/za/files/eg/example.json")
 println dl.result.json_format
 
 `
