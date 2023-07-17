@@ -17,7 +17,7 @@ a=0
 ts=epoch_nano_time()
 for f=0 to max_count
     a=a+f
-ef
+endfor
 te=epoch_nano_time()
 
 println "total {a} , loop-count {f}"

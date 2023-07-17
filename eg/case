@@ -24,10 +24,10 @@ contains "red|green"
         break
     is "green"
         print "green\n "
-    ew
+    endcase 
 or
     print "unknown colour.\n"
-ew
+endcase
 
 
 os=release_id()
@@ -45,6 +45,6 @@ case
         println "Pop!_OS"
     or
         println "Unknown OS-variant."
-ec
+endcase
 
 

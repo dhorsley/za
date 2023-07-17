@@ -8,7 +8,7 @@ test "example1" group "basic_tests" assert fail
     doc "test 1\n"
     assert "two"=="two"
     assert 2==3
-et
+endtest
 
 print "normal again\n"
 

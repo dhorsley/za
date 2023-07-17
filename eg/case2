@@ -9,5 +9,5 @@ is 43
     println "43 found"
 has a in 40..41
     println "in range 40 to 41"
-ec
+endcase
 

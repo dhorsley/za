@@ -20,9 +20,9 @@ foreach tf in files
     if last()!=0
         er=true
         break
-    ei
+    endif
 
-ef
+endfor
 
 on er do println "[#2]Something bad occurred.[#-]"
 

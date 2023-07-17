@@ -7,5 +7,5 @@ for e=0 to 19
     z=c::next_run(z,"0,30 */3 */4 * *")
     println z," : ",date_human(z)
     z=(60+z)*1000_000_000
-ef
+endfor
  

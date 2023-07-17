@@ -7,7 +7,7 @@
 lf="./logfile1"
 if is_file(lf)
     | rm -f {lf}
-ei
+endif
 
 logging on lf
 println "not logged"
@@ -23,7 +23,7 @@ test logtest1 group logging
     assert count (readback) == 2
     assert col(readback,3).join(" ") == "logged definitely"
     assert gcount.as_int == 0
-et
+endtest
 
 | rm -f {lf}
 

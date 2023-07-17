@@ -11,7 +11,7 @@ on not max_count is number do exit 1,"Invalid argument."
 interpol(false)
 ts=epoch_nano_time()
 for x=1 to max_count
-ef
+endfor
 println "x: ",kind(x)," ",x
 te=epoch_nano_time()
 assert x==max_count

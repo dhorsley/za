@@ -826,7 +826,7 @@ while !quit
     cursoroff()
     print "[#-][##]"
 
-ew
+endwhile
 
 print "[#RSB]"
 println
