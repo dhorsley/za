@@ -14,10 +14,10 @@ define bs(a)
                 a[e]=a[e+1]
                 a[e+1]=tmp
                 changed=true
-            ei
-        ef
+            endif
+        endfor
         on not changed or c++==a.len-2 do break
-    ew
+    endwhile
     return a
 end
 
@@ -29,7 +29,7 @@ var arr [1000] int
 
 for e=0 to arr.len - 1
     arr[e]=rand(100000)
-ef
+endfor
 
 println "before : \n",arr
 println "after  : \n",arr.bs

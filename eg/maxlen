@@ -18,7 +18,7 @@ ln=env().longest(1,"=")
 foreach e in env()
     key=e.field(1,"=")
     println "[#6]%{ln}s[#-] -> %s".format(key,key.get_env)
-ef
+endfor
 
 
 

@@ -9,7 +9,7 @@ fn="/usr/share/dict/american-english"
 case release_id()
 is "fedora"
     fn="/usr/share/dict/words"
-ec
+endcase
 
 fn.is_file.f2n?"notfound"
 
@@ -17,7 +17,7 @@ fhand=fn.fopen("r")?"open"
 
 while not feof(fhand)
     println fread(fhand,"\n")
-ew
+endwhile
 
 fhand.fclose
 

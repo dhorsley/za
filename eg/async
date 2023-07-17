@@ -15,7 +15,7 @@ println "Spinning async tasks"
 
 for e = 0 to 399
     async handles q(e)
-ef
+endfor
 
 while true
 
@@ -27,9 +27,9 @@ while true
 
     foreach a in res
         println format("{key_a} -> [%v] %v",kind(a),a)
-    ef
+    endfor
 
     println
     pause 50
 
-ew
+endwhile

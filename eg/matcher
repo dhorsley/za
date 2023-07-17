@@ -8,7 +8,7 @@ foreach line in $in "/dev/stdin"
         println "* {line}"
     has match(line,"^[dD]")
         println "M {line}"
-    ec
-ef
+    endcase
+endfor
 
 println "\n\n",80*"-","\n",line_filter($in "/dev/stdin","^[abc]")
