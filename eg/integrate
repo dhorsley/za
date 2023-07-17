@@ -24,7 +24,7 @@ def myexp(val)
         fact = fact*i
         x = x*val
         sum = sum+x/fact
-    ef
+    endfor
     return sum + 1f
 end
 
@@ -33,7 +33,7 @@ def integrate(min, max)
     while min<max
         sum = sum+myexp(min)*nstep
         min = min+nstep
-    ew
+    endwhile
     return sum
 end
 

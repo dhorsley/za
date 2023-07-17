@@ -61,7 +61,7 @@ while not done
         l=19+rand(50)
         for e= 0 to l-1
             append_to(ref series,rand(101)-1)
-        ef
+        endfor
         maxheight=2+rand(3)
         dialog::chart(21,10,maxheight,series,"fgrgb(rand(255),rand(255),rand(255))",true,false)
         at 22,10,"[#6]","-"*series.len,"[#-]"
@@ -70,10 +70,10 @@ while not done
         ds=[]
         foreach f in dir()
             ds=ds.append(f.name)
-        ef
+        endfor
         at 1,1
         e,sel,text=dialog::box_view(["0506"],ds.join("\n"),true)
-    ec
+    endcase
 
     on choice in 2..7 or choice==9 do at 26,10,"Selection : ",sel
 
@@ -82,9 +82,9 @@ while not done
     if choice in 2..9
         at 29,1,"Press a key to return to menu."
         keypress()
-    ei
+    endif
 
-ew
+endwhile
 
 
 # FINISH

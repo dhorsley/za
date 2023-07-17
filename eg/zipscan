@@ -11,6 +11,6 @@ for ,b.len>0,
     b=b.tail.tail
     # alternatively: b=b.remove(0).remove(0)
     # or just: b=b[2:]
-ef
+endfor
 
 

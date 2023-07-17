@@ -28,7 +28,7 @@ define fsort(m)
     s=""
     foreach q in m
         s+="{=q.pid} {=q.index}\n"
-    ef
+    endfor
     return fieldsort(s,1,"n")
 end
 
@@ -44,7 +44,7 @@ struct statm_line
     lib     int # 0
     data    int # data+stack
     dt      int # dirty page count (0)
-es
+endstruct
 
 define ps(filter)
 
@@ -99,7 +99,7 @@ define ps(filter)
         # add process to list
         proc_list[proc.pid] = proc
 
-    ef
+    endfor
 
     var keys []pid_lookup
     var l pid_lookup
@@ -107,15 +107,15 @@ define ps(filter)
         l.pid=v.pid
         l.index=v.name
         append_to(ref keys,l)
-    ef
+    endfor
     return proc_list,keys,args,mem
 end
 
 define short_size(d)
     unit=""
-    if d>=1024; d=d/1024f; unit="K"; ei
-    if d>=1024; d=d/1024f; unit="M"; ei
-    if d>=1024; d=d/1024f; unit="G"; ei
+    if d>=1024; d=d/1024f; unit="K"; endif
+    if d>=1024; d=d/1024f; unit="M"; endif
+    if d>=1024; d=d/1024f; unit="G"; endif
     on d!=0 do return format("%.2f%s",d,unit)
     return ""
 end
@@ -156,7 +156,7 @@ foreach r in keys
         print bgrgb(0,30,29)
     else
         print bgrgb(0,20,27)
-    ei
+    endif
     odd=not odd
 
     p=res[field(r,1)]
@@ -166,7 +166,7 @@ foreach r in keys
         p.gid=s.Gid.as_string
         on username(p.uid.as_int)!="" do p.uid=username(p.uid.as_int)
         on groupname(p.gid.as_int)!="" do p.gid=groupname(p.gid.as_int)
-    ei
+    endif
 
     tempwidth=TW-72
     args=format("%v",arglists[p.pid])
@@ -177,7 +177,7 @@ foreach r in keys
     if args=="" # no args list entry, resort to provided name
         args="["+p.name+"]"
         defName=true
-    ei
+    endif
 
     if !termless
         l=args.len
@@ -187,8 +187,8 @@ foreach r in keys
         if defName
             args="[#1]"+args
             tempwidth+=4
-        ei
-    ei
+        endif
+    endif
 
     vsize = mem[p.pid].size * PAGESIZE
     rsize = mem[p.pid].rss * PAGESIZE
@@ -209,10 +209,10 @@ foreach r in keys
         if ++lines>=TH-2
             println title
             lines=0
-        ei
-    ei
+        endif
+    endif
 
-ef
+endfor
 
 
 

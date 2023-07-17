@@ -5,7 +5,7 @@ define clear_pane(p)
     pane redraw
     for e=1 to pane_h()-1
         clear_line(e,1)
-    ef
+    endfor
 end
 
 define full_cls()
@@ -25,16 +25,16 @@ define bytesize(i)
     unit="B"
     if i>=1099511627776
         unit="TB"; i=as_float(i)/1099511627776
-    ei
+    endif
     if i>=1073741824
         unit="GB"; i=as_float(i)/1073741824
-    ei
+    endif
     if i>=1048576
         unit="MB"; i=as_float(i)/1048576
-    ei
+    endif
     if i>=1024
         unit="KB"; i=as_float(i)/1024
-    ei
+    endif
     on unit=="B" do return "%d B".format(i)
     return format("%.3f %s",as_float(i),unit)
 end
@@ -50,9 +50,9 @@ define linewrap(s)
             ns+=rem[:pw-2]+"\n "
             c++
             rem=rem[pw-2:]
-        ew
+        endwhile
         ns+=rem+"\n"
-    ef
+    endfor
     on s[s.len-1]!="\n" do ns=ns[:ns.len-1]
     return ns,c
 end
@@ -63,25 +63,25 @@ define sort_dir(d)
     if dl.len>0
         foreach f in dir(d)
             na[f.name]=f
-        ef
+        endfor
         nd=[]
         foreach f in na
             nd=append(nd,f)
-        ef
+        endfor
         sort(nd)
         # move dirs to top, dotted files to bottom
         foreach f in nd
             on f.is_dir do append_to(ref fd,f)
-        ef
+        endfor
         foreach f in nd
             on f.is_dir do continue
             on f.name[0]!="." do append_to(ref fd,f)
-        ef
+        endfor
         foreach f in nd
             on f.is_dir do continue
             on f.name[0]=="." do append_to(ref fd,f)
-        ef
-    ei
+        endfor
+    endif
     return fd
 end
 
@@ -167,13 +167,13 @@ def show_left(ld,lrow,lwinheight,cursorl)
             else
                 mt="[#4]f"
                 sz="%15s".format(f.size.bytesize)
-            ei
+            endif
         else
             mt="[#5]"+mt
-        ei
+        endif
         om=dtoo(f.mode.as_int%512)
         at lrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsl}s %s[#-]".format(mt,om,f.name[:colmax],sz)
-    ef
+    endfor
     return lrow_count
 end
 
@@ -196,13 +196,13 @@ def show_right(rd,rrow,rwinheight,cursorr)
             else
                 mt="[#4]f"
                 sz="%15s".format(f.size.bytesize)
-            ei
+            endif
         else
             mt="[#5]"+mt
-        ei
+        endif
         om=dtoo(f.mode.as_int%512)
         at rrow_count++,1; print " {doinvert}%s [#3]%03s[#4] {ital}%-{=maxsr}s %s[#-]".format(mt,om,f.name[:colmax],sz)
-    ef
+    endfor
     return rrow_count
 end
 
@@ -213,7 +213,7 @@ def get_name()
     else
         npath=rpath
         file=rd[rrow+cursorr-2]
-    ei
+    endif
     return $pa (join([npath,file.name],"/").tr("s","/"))
 end
 
@@ -262,7 +262,7 @@ define empty_break()
         on ld.len==0 do return true
     else
         on rd.len==0 do return true
-    ei
+    endif
     return false
 end
 
@@ -291,7 +291,7 @@ while !quit
     # handle window resizes
     if sw!=term_w()
         redef_layout()
-    ei
+    endif
 
     print "[##][#4]"
 
@@ -303,7 +303,7 @@ while !quit
         pane select "left"; at cursorl,1; print "[#b1][#7][#blink]*[#-]"
     else
         pane select "right"; at cursorr,1; print "[#b1][#6][#blink]*[#-]"
-    ei
+    endif
 
     # banner
     pane select "banner"
@@ -340,7 +340,7 @@ while !quit
             pane define "right",rx,ry,rh,rw,rtitle,"double"
             rrow=1; cursorr=1
             rrow_count=show_right(rd,rrow,rwinheight,cursorr)
-        ei
+        endif
 
     is "c"
         # copy
@@ -351,7 +351,7 @@ while !quit
         else
             on rd.len==0 do break
             dst=lpath
-        ei
+        endif
 
         n=get_name()
 
@@ -359,13 +359,13 @@ while !quit
             | cp -pR {n} {dst}/
         else
             | cp {n} {dst}/
-        ei
+        endif
 
         if leftside
             rd=sort_dir(rpath)
         else
             ld=sort_dir(lpath)
-        ei
+        endif
 
         refresh()
 
@@ -385,7 +385,7 @@ while !quit
         else
             | mv {n} {rpath}/{m}
             rd=sort_dir(rpath)
-        ei
+        endif
         refresh()
 
     is "d"
@@ -404,8 +404,8 @@ while !quit
                 | rm -fr {n}
             else
                 delete(n)
-            ei
-        ec
+            endif
+        endcase
 
         if leftside
             ld=sort_dir(lpath)
@@ -413,7 +413,7 @@ while !quit
         else
             rd=sort_dir(rpath)
             cursorr=1; rrow=1
-        ei
+        endif
 
         refresh()
 
@@ -432,7 +432,7 @@ while !quit
         else
             | mkdir -p {rpath}/{nd}
             rd=sort_dir(rpath)
-        ei
+        endif
         refresh()
 
 
@@ -455,7 +455,7 @@ while !quit
         else
             npath=rpath
             file=rd[rrow+cursorr-2]
-        ei
+        endif
         fullname=$pa (join([npath,file.name],"/").tr("s","/"))
         edit(fullname)
         refresh()
@@ -469,7 +469,7 @@ while !quit
         else
             npath=rpath
             file=rd[rrow+cursorr-2]
-        ei
+        endif
         fullname=$pa (join([npath,file.name],"/").tr("s","/"))
         paginate(fullname)
         refresh()
@@ -483,7 +483,7 @@ while !quit
         else
             npath=rpath
             file=rd[rrow+cursorr-2]
-        ei
+        endif
         fullname=$pa (join([npath,file.name],"/").tr("s","/"))
         a=get_input("Arguments ([#i1]return[#i0] for none) : ")
         execute(fullname,a)
@@ -502,7 +502,7 @@ while !quit
         else
             cursorr+=1
             on cursorr>rwinheight+1 do on rrow<rd.len-rwinheight do rrow++
-        ei
+        endif
 
     has k==11
         if leftside
@@ -511,7 +511,7 @@ while !quit
         else
             cursorr-=1
             on cursorr<1 do on rrow>1 do rrow-- 
-        ei
+        endif
 
     has k==15
         # pgup
@@ -523,8 +523,8 @@ while !quit
                     lrow-=10
                 else
                     on lrow>1 do lrow--
-                ei
-            ei
+                endif
+            endif
         else
             cursorr-=10
             on cursorr<0 do cursorr=0
@@ -533,9 +533,9 @@ while !quit
                     rrow-=10
                 else
                     on rrow>1 do rrow--
-                ei
-            ei
-        ei
+                endif
+            endif
+        endif
 
     has k==14
         # pgdown
@@ -547,8 +547,8 @@ while !quit
                     lrow+=10
                 else
                     on lrow<ld.len-lwinheight do lrow++
-                ei
-            ei
+                endif
+            endif
         else
             cursorr+=10
             if cursorr>rwinheight
@@ -557,9 +557,9 @@ while !quit
                     rrow+=10
                 else
                     on rrow<rd.len-rwinheight do rrow++
-                ei
-            ei
-        ei
+                endif
+            endif
+        endif
 
     is "i"
 
@@ -567,7 +567,7 @@ while !quit
             on ld.len==0 do break
         else
             on rd.len==0 do break
-        ei
+        endif
 
         if leftside
             old_path=lpath
@@ -577,7 +577,7 @@ while !quit
             old_path=rpath
             file=rd[rrow+cursorr-2]
             path=rpath
-        ei
+        endif
 
         popup(path,file)
 
@@ -601,7 +601,7 @@ while !quit
             old_path=rpath
             file=rd[rrow+cursorr-2]
             path=rpath
-        ei
+        endif
 
         if file.is_dir
             if leftside
@@ -616,7 +616,7 @@ while !quit
                     lrow_count=show_left(ld,lrow,lwinheight,cursorl)
                 else
                     lpath=old_path
-                ei
+                endif
             else
                 rpath=$pa (join([path,file.name],"/").tr("s","/"))
                 if can_read(rpath)
@@ -629,11 +629,11 @@ while !quit
                     rrow_count=show_right(rd,rrow,rwinheight,cursorr)
                 else
                     rpath=old_path
-                ei
-            ei
-        ei
+                endif
+            endif
+        endif
 
-    ec
+    endcase
 
     # clamp top/bottom cursor pos
     if leftside
@@ -642,9 +642,9 @@ while !quit
     else
         on cursorr==0 do cursorr=1
         on !(cursorr<rrow_count) do cursorr=rrow_count-1
-    ei
+    endif
 
-ew
+endwhile
 
 pane off
 at sh,1

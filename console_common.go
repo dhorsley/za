@@ -281,7 +281,8 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             }
 
             // strip ansi codes from pbuf then shove it in the input string
-            s = insertWord(s, cpos, Strip(pbuf))
+            pbuf=Strip(pbuf)
+            s=insertWord(s, cpos, pbuf)
             cpos+=len(pbuf)
             wordUnderCursor,_ = getWord(s, cpos)
             selectedStar = -1

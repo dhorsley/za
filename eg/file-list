@@ -15,17 +15,17 @@ contains "ubuntu|debian"
     pkg="wamerican"
     # example quiet install for missing package:
     on !is_installed(pkg) do install(pkg,true)
-ec
+endcase
 
 if is_file(testfile)
     q=fopen(testfile,"r")
     while !feof(q)
         words[n++]=fread(q,"\n")
-    ew
+    endwhile
     fclose(q)
 else
     exit 1,"File not found. ({testfile})"
-ei
+endif
 
 println words.len
 

@@ -16,7 +16,7 @@ end
 define clear(r1,r2,c)
     for e=r1 to r2
         clear_line(e,1)
-    ef
+    endfor
     at r1,1
 end
 
@@ -45,11 +45,11 @@ define process(i)
     is "echo"
         foreach f in F
             print eval(f)
-        ef
+        endfor
     or
         | {i}
         on last()!=0 do println last_out()
-    ec
+    endcase
 
 end
 
@@ -76,7 +76,7 @@ while !term
     prompt inp "> "
     process(inp)
 
-ew
+endwhile
 
 pane select "global"
 at 27,1

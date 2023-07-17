@@ -28,7 +28,7 @@ while
     prompt u "User to search for: " ; print
     ok,u=clean_name(u)
     on ok do break
-ew
+endwhile
 
 println "\n[#1]user list[#-]"
 
@@ -38,7 +38,7 @@ struct s_u
     host    string
     user    string
     pass    string
-es
+endstruct
 
 var user s_u
 
@@ -50,7 +50,7 @@ foreach l in res
         F[3]
     )
     println format("%+v",user) 
-ef
+endfor
 print
 
 h.db_close

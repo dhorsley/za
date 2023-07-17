@@ -18,8 +18,8 @@ println "Argv   : {=argv()}"
 if argc() > 0
     foreach a in argv()
         println "  ",1+key_a," -> ",a
-    ef
-ei
+    endfor
+endif
 
 # method 2: mandatory arguments
 println "\n2. mandatory parameters"
@@ -72,11 +72,11 @@ while !empty(av)
         is "-n"
             println "number"
             nvar=as_int(next())
-        ec
+        endcase
     else
         println "unprocessed argument found: {arg}"
-    ei
-ew
+    endif
+endwhile
 
 println format("string option provided : {svar} [%T]",svar)
 println format("bool option provided   : {bvar} [%T]",bvar)
