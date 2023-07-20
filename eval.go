@@ -1229,7 +1229,8 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         }
     }
 
-    return p.callFunctionExt(p.fs,p.ident,name,self_s{},arg_names,iargs)
+    // return p.callFunctionExt(p.fs,p.ident,name,self_s{},arg_names,iargs)
+    return p.callFunctionExt(p.fs,p.ident,name,arg_names,iargs)
 
 }
 
