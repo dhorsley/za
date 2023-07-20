@@ -48,6 +48,8 @@ CHANGE LOG
     other
     -----
 
+    * removed experimental "self" syntax
+
     * removed experimental BREAK on keyword support
         - has issues with nested FOR/FOREACH combinations.
         - just stripped it out as of limited use anyway.
