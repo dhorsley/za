@@ -33,13 +33,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
     default:
 
         r := reflect.ValueOf(obj)
-        isStruct:=false
+        // isStruct:=false
 
         switch r.Kind() {
 
         case reflect.Struct:
 
-            isStruct=true
+            // isStruct=true
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -98,7 +98,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         globlock.RLock()
         // pf("checking obj %#v | enum %s\n",obj,p.preprev.tokText)
         ename:=p.namespace+"::"+p.preprev.tokText
-        isFileHandle:=false
+        // isFileHandle:=false
         switch obj.(type) {
         case string:
             ename=p.namespace+"::"+obj.(string)
@@ -115,7 +115,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
             }
         case pfile:
-            isFileHandle=true
+            // isFileHandle=true
         }
 
         en:=enum[ename]
@@ -160,9 +160,9 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        if isFileHandle || !isStruct {
+        // if isFileHandle || !isStruct {
             iargs=[]any{obj}
-        }
+        // }
 
         /*
         arg_names:=[]string{}
