@@ -20,7 +20,7 @@ import (
     "sort"
     str "strings"
     "strconv"
-	"sync"
+	// "sync"
 )
 
 
@@ -56,7 +56,25 @@ type ms_interface any
 type ms_slice []ms_interface
 
 func (ms ms_slice) Less(i, j int) bool {
-	return getLessValue(reflect.ValueOf(ms[i]).FieldByName(getKey()), reflect.ValueOf(ms[j]).FieldByName(getKey()))
+
+    if len(sortKeys)==0 {
+        pf("(ssort) no sort keys\n")
+        return true
+    }
+
+    if len(sortKeys)>1 {
+        for currentKey:=0 ; currentKey<len(sortKeys) ; currentKey+=1 {
+            if reflect.ValueOf(ms[i]).FieldByName(sortKeys[currentKey]) == reflect.ValueOf(ms[j]).FieldByName(sortKeys[currentKey]) {
+                pf("(ssort) fields at sort key %d are same. continuing.\n",currentKey)
+                continue
+            }
+            return getLessValue(reflect.ValueOf(ms[i]).FieldByName(sortKeys[currentKey]), reflect.ValueOf(ms[j]).FieldByName(sortKeys[currentKey]))
+        }
+    }
+
+    pf("(ssort) sort key 0 values not the same. returning lesser value.\n")
+	return getLessValue(reflect.ValueOf(ms[i]).FieldByName(sortKeys[0]), reflect.ValueOf(ms[j]).FieldByName(sortKeys[0]))
+
 }
 
 func (ms ms_slice) Len() int {
@@ -71,47 +89,56 @@ func (ms ms_slice) Swap(i, j int) {
 //        when it should instead have the Less function comparing subsequent inputSortKeys[] entries
 //        only when Less(i,j) are equal.
 
+// sortKeys : global, race cond.
+
 func MultiSorted(unsortedSlice any, inputSortKeys []string, ascendingSortOrder []bool) ([]ms_interface, error) {
 
 	if reflect.TypeOf(unsortedSlice).Kind() != reflect.Slice {
 		return nil, fmt.Errorf("input is not a slice")
 	}
 
+    /*
+    // setup wait group
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go copyKeys(&wg, inputSortKeys)
 	var ms ms_slice
 	ms = copyUnsortedSliceToMultiSorted(unsortedSlice)
 	wg.Wait()
+    */
 
-	for i := range sortKeys {
-		currentKeyIndex = i
-		reflectValue := reflect.ValueOf(ms[0]).FieldByName(getKey())
-		if !reflectValue.IsValid() {
-			return ms, fmt.Errorf("%v, not present (as key) on the input slice", getKey())
-		}
-		if i < len(ascendingSortOrder) {
-            if ascendingSortOrder[i] {
-			    sort.Sort(ms)
-            } else {
-                sort.Sort(sort.Reverse(ms))
-            }
+	copyKeys(inputSortKeys)
+	var ms ms_slice
+	ms = copyUnsortedSliceToMultiSorted(unsortedSlice)
+
+    reflectValue := reflect.ValueOf(ms[0]).FieldByName(sortKeys[0])
+    if !reflectValue.IsValid() {
+        return ms, fmt.Errorf("%v, not present (as key) on the input slice", sortKeys[0])
+    }
+    if len(ascendingSortOrder) > 0 {
+        if ascendingSortOrder[0] {
+            sort.Sort(ms)
+        } else {
+            sort.Sort(sort.Reverse(ms))
         }
-	}
-    currentKeyIndex=0
+    } else {
+        sort.Sort(ms)
+    }
+
 	return ms, nil
 }
 
-var currentKeyIndex int
 var sortKeys []string
 
-func copyKeys(wg *sync.WaitGroup, inputSortKeys []string) {
-	defer wg.Done()
+// func copyKeys(wg *sync.WaitGroup, sortKeys []string) {
+func copyKeys(inputSortKeys []string) {
+//	defer wg.Done()
     sortKeys=[]string{}
 	for _, key := range inputSortKeys {
 		sortKeys = append(sortKeys, key)
 	}
 }
+
 
 func copyUnsortedSliceToMultiSorted(unsortedSlice any) ms_slice {
 	var sortSlice ms_slice
@@ -134,16 +161,15 @@ func getLessValue(i, j reflect.Value) bool {
 	}
 }
 
-func getKey() string {
-	return sortKeys[currentKeyIndex]
-}
 
-func Help() string {
+/*
+func MultiSortHelp() string {
 	return `outputSlice, err := MultiSorted(inputSlice, inputKeys, inputOrder)
 	for i := range outputSlice {
 		outputSlice[i] = outputSlice[i].(desiredType)
 	}`
 }
+*/
 
 ///////////////////////////////////////////////////////////////////////
 

@@ -48,6 +48,10 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added support for breaking expression lines on dot char at end of line.
+        - this seems to be okay running scripts so far but needs more testing.
+        - it is not yet supported in interactive mode.
+
     * removed experimental "self" syntax
 
     * removed experimental BREAK on keyword support

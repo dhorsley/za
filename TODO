@@ -9,6 +9,9 @@ lots, i'm sure.
 TODO
 ----
 
+    * added support for breaking expression lines on dot char at end of line.
+        - support still needs adding for this usage in interactive mode?
+
     * IN PROGRESS: extra sort functions:
         array of struct : forward and reverse, by named struct field. type based.
         - added ssort to lib-list
