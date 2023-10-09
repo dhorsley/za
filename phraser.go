@@ -43,7 +43,7 @@ func bind_int(fs uint32,name string) (i uint64) {
         loop=false
         for _,vp:=range bindings[fs] {
             if vp==i {
-                i++
+                i+=1
                 loop=true
                 break
             }
@@ -110,7 +110,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     borpos:=-1
     discard_phrase:=false
 
+    lastTokenType:=Error
+
     for ; pos < len(input); {
+
+        if tempToken!=nil {
+            lastTokenType = tempToken.carton.tokType
+        }
+
         tempToken = nextToken(input, lmv, &curLine, pos)
         eof=tempToken.eof
 
@@ -188,6 +195,14 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
                 continue
             }
         }
+
+        // handle end-of-line dot character continuation:
+        if tempToken.eol && lastTokenType==SYM_DOT {
+            // pf("eol-dot @ line %d\n",curLine+1)
+            curLine+=1
+            continue
+        }
+
 
         if tokenType == Error {
             fmt.Printf("Error found on line %d in %s\n", curLine+1, tempToken.carton.tokText)

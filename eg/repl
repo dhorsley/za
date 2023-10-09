@@ -30,25 +30,31 @@ define process(i)
     pane select "output"
     pane redraw
 
-    clear(1,term_h())
+    clear(0,pane_h())
+    at 0,0
 
-    statement=F[1]
+    statement=F[1].trim(0)
 
     # remove entire list + statement from fields:
-    F=tail(F); F=tail(F)
+    F=F.tail.tail
  
-    case lower(statement)
+    case $lc statement
     is "help"
         show_help()
-    is "quit"
+    contains "^(exit|quit)$"
         @ term = true
     is "echo"
         foreach f in F
             print eval(f)
         endfor
     or
-        | {i}
-        on last()!=0 do println last_out()
+        result={{i}}
+        if result.okay
+            println result.out
+        else
+            println "Error in command: {i}"
+        endif
+
     endcase
 
 end
@@ -62,8 +68,8 @@ cls
 # wrap(true) # unsupported
 
 #           name        row col h   w           title   border
-pane define "input",    1,  1,  3,  term_w(),   "",     "topline"
-pane define "output",   5,  1,  20, term_w(),   "",     "topline"
+pane define "input",    1,  1,  2,  term_w(),   "",     "square"
+pane define "output",   5,  1,  20, term_w(),   "",     "none"
 
 term=false
 
@@ -72,7 +78,7 @@ while !term
     pane select "input"
     pane redraw
 
-    at 2,1
+    at 1,1
     prompt inp "> "
     process(inp)
 
