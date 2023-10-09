@@ -10,12 +10,10 @@ define maxParenDepth(s)
     # scan_left() accumulates from a seed value
     # max returns highest number in array
 
-    return (
-     ( s ~f "[()]" -> `#=="(" ? "1":"-1"` )
-     .list_int
-     .scan_left("+",0)
-     .max
-    )
+    return ( s ~f "[()]" -> `#=="(" ? "1":"-1"` ) . 
+     list_int.
+     scan_left("+",0).
+     max
 
 end
 

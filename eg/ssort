@@ -22,11 +22,14 @@ for e=0 to 39
       _ = append_to(ref a,s)
 endfor
 
-r=ssort(a,["s","b"].list_string,[true,true].list_bool)
+r=a.ssort(
+    ["s","i"].list_string,
+    [true,true].list_bool
+)
 
 println "length : ",r.len
 for e=0 to len(r)-1
-    println "string : %10s - bool : %v".format(r[e].s,r[e].b)
+    println "string : %10s - int : %v".format(r[e].s,r[e].i)
 endfor
 
 exit
