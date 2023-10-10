@@ -42,6 +42,10 @@ TODO
 
     * catch stack overflows and output better error (when recursing). for example, in eg/ackermann 4 2
 
+    * deal with . symbol at end of line inside shell calls.
+        - problem introduced when we started allowing . as a line continuation in expressions (as an operator)
+        - just needs treating as a char literal instead in lexer when following a | symbol
+
 
 LATER / UNDECIDED
 -----------------
