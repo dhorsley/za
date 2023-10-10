@@ -3388,12 +3388,13 @@ pcloop:
 
                 var bname string
                 bname, _ = numlookup.lmget(source_base)
-
+                //pf("[bname:%s,toktext:%s,current:%s]",bname,inbound.Tokens[1].tokText,currentModule)
                 tco_check:=false // deny tco until we check all is well
 
                 if inbound.Tokens[1].tokType==Identifier && inbound.Tokens[2].tokType==LParen {
-                    if strcmp(inbound.Tokens[1].tokText,bname) {
+                    if strcmp(currentModule+"::"+inbound.Tokens[1].tokText,bname) {
                         rbraceAt := findDelim(inbound.Tokens,RParen, 2)
+                        // pf("[rb@%d,tokcount:%d]",rbraceAt,inbound.TokenCount)
                         if rbraceAt==inbound.TokenCount-1 {
                             tco_check=true
                         }
@@ -3415,6 +3416,10 @@ pcloop:
 
                     // set tco flag if required, and perform.
                     if !skip_reentry {
+                        wccount=0
+                        old_wccount=0
+                        depth=0
+                        old_depth=0
                         parser.pc=-1
                         goto tco_reentry
                     }
