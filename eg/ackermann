@@ -1,5 +1,8 @@
 #!/usr/bin/za
 
+# this will break on ackermann(4,2) or higher due to stack limits
+#  in go when recursing.
+
 
 define ackermann(m,n)
     on glob_key("memoA",`{m},{n}`) do return memoA[`{m},{n}`]
