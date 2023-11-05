@@ -40,6 +40,7 @@ CHANGE LOG
     library changes
     ---------------
 
+    * added additional error output from stdlib funcs
     * added term() call to return terminal type string.
     * added quiet mode to install(string[,bool]) for silent installs
     * added f2n(arg) call for converting bool to nil (from false) or true

@@ -36,7 +36,6 @@ func typeOf(val any) string {
     }
 
     if kind.String()=="slice" {
-        // pf("esgt->%#v\n",ev_slice_get_type(val))
         return sf("%T",val)
     }
 
@@ -1527,7 +1526,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
             var ident = make([]Variable,identInitialSize)
 
-            // rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, self, arg_names, args...)
             rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, arg_names, args...)
 
             // handle the returned result, if present.
@@ -1545,7 +1543,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             default:
                 return res,false
             }
-            // return res,false
 
         } else {
             panic(fmt.Errorf("syntax error: no such function %q", name))
@@ -1557,6 +1554,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         if err != nil {
             p.std_faulted=true
             p.try_err=err
+            // @todo: improve error output here:
+            pf("%s\n",err)
         }
         return res,err!=nil
     }
