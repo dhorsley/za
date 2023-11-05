@@ -739,8 +739,8 @@ tco_reentry:
     //  from each va value.
     // - functionArgs[] created at definition time from the call signature
 
-    farglock.RLock()
     if len(va) > 0 {
+        farglock.RLock()
         for q, v := range va {
             if q>=len(functionArgs[source_base].args) { break }
             if len(arg_names)>0 {
@@ -750,8 +750,8 @@ tco_reentry:
                 vset(nil,ifs,ident,fa,v)
             }
         }
+        farglock.RUnlock()
     }
-    farglock.RUnlock()
 
     if len(functionspaces[source_base])>32767 {
         parser.report(-1,"function too long!")
@@ -1301,10 +1301,8 @@ pcloop:
                     }
 
                     // write temp to ident
-                    // vlock.Lock()
                     (*ident)[sid]=t
                     // pf("wrote var: %#v\n... with sid of #%d\n",t,sid)
-                    // vlock.Unlock()
 
                 } else {
                     // unknown type: check if it is a struct name
@@ -1342,10 +1340,8 @@ pcloop:
                     }
 
                     if isStruct {
-                        // vlock.Lock()
                         t:=(*ident)[sid]
                         err=fillStruct(&t,structvalues,typemap,hasAry,[]string{})
-                        // vlock.Unlock()
                         if err!=nil {
                             parser.report(inbound.SourceLine,err.Error())
                             finish(false,ERR_EVAL)
@@ -1489,6 +1485,8 @@ pcloop:
             atomic.StoreUint32(&has_global_lock,ifs)
             if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
+                atomic.StoreUint32(&has_global_lock,0)
+                sglock.Unlock()
                 finish(false,ERR_EVAL)
                 break
             }
@@ -2887,6 +2885,7 @@ pcloop:
                     if ! str.EqualFold(inbound.Tokens[4].tokText,"assert") {
                         parser.report(inbound.SourceLine,"Missing ASSERT in TEST command.")
                         finish(false, ERR_SYNTAX)
+                        testlock.Unlock()
                         break
                     } else {
                         switch str.ToLower(inbound.Tokens[5].tokText) {
@@ -3036,6 +3035,7 @@ pcloop:
                         if !under_test {
                             parser.report(inbound.SourceLine,sf("Could not assert! ( %s )", cet.text))
                             finish(false, ERR_ASSERT)
+                            testlock.Unlock()
                             break
                         }
                         // under test
