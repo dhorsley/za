@@ -1,0 +1,15 @@
+
+def isArmstrong(n,k)
+    on len([n,k] ?> `is_number(#)`)!=2 do exit 1,"invalid input"
+    return n==sum(
+        list_int( n.as_string->`as_string(#.as_int**k)` )
+    )
+end
+
+foreach i in 1..5
+    last=10**i-1
+    println "power %d, max %5d : %v".
+        format(i,last,
+            list_string( 1..last ?> `isArmstrong(#,i)` ).join(",")
+        )
+endfor

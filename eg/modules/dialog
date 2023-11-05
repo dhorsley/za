@@ -519,11 +519,14 @@ define hbar(row,col,hsize,pc,colour)
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.as_int do c="█"
-        if e>=d.as_int and e<as_int(d+1)
-            on r>=0.25*us do c=part_1q
-            on r>=0.50*us do c=part_2q
-            on r>=0.75*us do c=part_3q
+        if e<d.as_int
+            c="█"
+        else
+            if e<as_int(d+1)
+                on r>=0.25*us do c=part_1q
+                on r>=0.50*us do c=part_2q
+                on r>=0.75*us do c=part_3q
+            endif
         endif
         print "{colour}{c}[#-]"
     endfor

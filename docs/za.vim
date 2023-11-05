@@ -89,7 +89,6 @@ syntax match list_functions "\(^|.\|\s*\)sort\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)peek\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)any\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)all\s*("he=e-1
-# syntax match list_functions "\(^|.\|\s*\)concat\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)esplit\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)sum\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)min\s*("he=e-1

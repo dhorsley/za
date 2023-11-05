@@ -20,15 +20,12 @@ while i*i <= num
 
     if primes[i] != 0
         for j=2 to num-1
-            if primes[i]*j > num
-                break
-            else
-                primes[primes[i]*j]=0
-            endif
+            on primes[i]*j > num do break
+            primes[primes[i]*j]=0
         endfor 
     endif
 
-    i++
+    i+=1
 
 endwhile
 

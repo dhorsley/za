@@ -2,7 +2,7 @@
 
 input cluster param 1
 input iterable optarg 2
-iterable=bool(iterable)
+iterable=as_bool(iterable)
 
 # example 1: returning filtered instance details
 
