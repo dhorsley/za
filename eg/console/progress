@@ -14,22 +14,22 @@ define bar(row,col,hsize,pc,colour)
     for e=0 to hsize-1
         at row,col+e
         c=" "
-        on e<d.as_int do c="█"
-        if e>=d.as_int and e<as_int(d+1)
-            on r>=0.25*us do c=part_1q
-            on r>=0.50*us do c=part_2q
-            on r>=0.75*us do c=part_3q
+        if e<d.as_int
+            c="█"
+        else
+            if e<as_int(d+1)
+                on r>=0.25*us do c=part_1q
+                on r>=0.50*us do c=part_2q
+                on r>=0.75*us do c=part_3q
+            endif
         endif
         print colour,c,"[#-]"
     endfor
 end
 
 define spin(sp)
-    var spin [4]string
-    spin[0]="◐"
-    spin[1]="◓"
-    spin[2]="◑"
-    spin[3]="◒"
+    var spin [4] any = ["⌜", "⌝", "⌟", "⌞"]
+    sp=sp[0:spin.len-1]
 return "[#{=1+sp}]"+spin[sp]+"[#-]"
 end
 
@@ -40,16 +40,16 @@ for i=0 to rep.as_int-1
     row=get_row()
     c=fgrgb(rand(255),rand(255),rand(255))
     sp=0
+    at row,1,"Progress %02d: ".format(i+1)
     for e = 0 to 100
-        at row,1,"Progress : "
-        bar(row,12,hs,e,c)
+        bar(row,13,hs,e,c)
         msg=" {e} % "
         spinmsg=" "+spin(sp)
         on e==100 do spinmsg=" "
         cursorx(38)
         print spinmsg,msg
         on e%5==0 do sp=++sp%4
-        pause 2
+        pause 20
     endfor
     println
     hs=8+rand(16)

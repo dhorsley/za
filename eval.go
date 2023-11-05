@@ -25,6 +25,22 @@ func (p *leparser) reserved(token Token) (any) {
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
 
+    /*
+    defer func() {
+        if r := recover(); r != nil {
+            if parser.try_fault {
+                // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
+            } else {
+                err:=r.(error)
+                pf("-- %v\n",err)
+                panic(r)
+                setEcho(true)
+                finish(false,ERR_EVAL)
+            }
+        }
+    }()
+    */
+
     l:=len(toks)
 
     // short circuit pure numeric literals and const names
@@ -81,8 +97,9 @@ type leparser struct {
 
 
 func (p *leparser) next() Token {
-    if p.pos>0 { p.preprev=p.prev }
-    if p.pos>-1 { p.prev=p.tokens[p.pos] }
+    // if p.pos>0 { p.preprev=p.prev }
+    p.preprev=p.prev
+    if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
     return p.tokens[p.pos]
 }
@@ -126,19 +143,22 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
 
 
     // inlined next() manually:
-    if p.pos>0 { p.preprev=p.prev }
-    if p.pos>-1 { p.prev=p.tokens[p.pos] }
+    // if p.pos>0 { p.preprev=p.prev }
+    p.preprev=p.prev
+    if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
 
     ct:=&p.tokens[p.pos]
+    // pf("nt->%s\n",(*ct).tokText)
 
     // unaries
     switch (*ct).tokType {
+
     case O_Comma,SYM_COLON,EOF:
         left=nil
     case RParen, RightSBrace:
-        p.next()
-        left=nil
+        panic(fmt.Errorf("Unqualified '%s' found",(*ct).tokText))
+
     case NumericLiteral:
         left=(*ct).tokVal
     case StringLiteral:
@@ -182,7 +202,9 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
     binloop1:
     for {
 
-        if !p.namespacing && prec >= p.prectable[p.peek().tokType] { break }
+        // pf("[cprec->%d tokprec->%d]\n",prec,p.prectable[p.peek().tokType])
+        // if !p.namespacing && prec >= p.prectable[p.peek().tokType] { break }
+        if prec >= p.prectable[p.peek().tokType] && !p.namespacing { break }
 
         token := p.next()
         // pf("binloop nt -> %v at pos %d\n",token.tokText,p.pos)
@@ -200,6 +222,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         switch token.tokType {
         case EOF:
             break binloop1
+
         case SYM_PP,SYM_MM:
             left = p.postIncDec(token)
             continue
@@ -233,6 +256,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
                 left,_ = p.buildStructOrFunction(left,token)
                 continue
             }
+
         }
 
         var right any
@@ -323,10 +347,14 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         case O_Assign:
             panic(fmt.Errorf("assignment is not a valid operation in expressions"))
 
+        default:
+            panic(fmt.Errorf(" [ broken on %s? ] ",tokNames[token.tokType]))
+
         }
 
     }
 
+    // pf("end-of-bin-loop\n")
     /*
     if err!=nil || left==nil {
       pf("[#2]dparse result: %+v[#-]\n",left)
@@ -963,6 +991,8 @@ func (p *leparser) accessArray(left any,right Token) (any) {
         return slice(left,start,end)
     }
 
+    // @unreachable:
+    panic(fmt.Errorf("array access error on token '%s'",tokNames[p.peek().tokType]))
     return nil
 
 }
@@ -1460,6 +1490,7 @@ func (p *leparser) array_concat(tok *Token) (any) {
     if p.peek().tokType==RightSBrace {
         p.next() // consume rparen
     }
+
     return ary
 
 }

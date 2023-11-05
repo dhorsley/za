@@ -1,6 +1,6 @@
 #!/usr/bin/za
 
-module "syntax_checks/math.mod" as math
+module "syntax_checks/modules/math.mod" as math
 
 var x int = 1
 input x param 1

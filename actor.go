@@ -1243,7 +1243,7 @@ pcloop:
                     case "[]byte","[]uint8":
                         t.IKind=ksbyte
                         t.IValue=make([]uint8,size,size)
-                    case "[]","[]mixed","[]any":
+                    case "[]","[]mixed","[]any","[]interface {}":
                         t.IKind=ksany
                         t.IValue=make([]any,size,size)
                     case "map":
@@ -1289,6 +1289,7 @@ pcloop:
                         } else {
                             // ... then other types:
                             new_type_token_string=str.Replace(new_type_token_string,"float","float64",-1)
+                            new_type_token_string=str.Replace(new_type_token_string,"any","interface {}",-1)
                             if sf("%T",we.result)!=new_type_token_string {
                                 parser.report(inbound.SourceLine,sf("type mismatch in VAR assignment (need %s, got %T)",new_type_token_string,we.result))
                                 finish(false,ERR_EVAL)

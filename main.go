@@ -1214,7 +1214,6 @@ func main() {
                 }
 
                 if nestAccept<0 { pf("Nesting error.\n") ; break }
-
                 if nestAccept==0 || breakOnCommand { break }
 
             }

@@ -2,7 +2,7 @@
 
 println "\n[#fcyan]Za function defining[#default]"
 
-module "./math.mod" as math
+module "modules/math.mod" as math
 
 println "\n[#4]factorial test[#-]"
 
