@@ -282,7 +282,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 os.Exit(ERR_LEX)
             }
 
-            if str.IndexByte(norepeat,input[currentChar])>=0 {
+            if !thisHex && str.IndexByte(norepeat,input[currentChar])>=0 {
                 var tu byte
                 tu=input[currentChar]
                 // special cases:

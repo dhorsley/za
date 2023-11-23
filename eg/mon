@@ -191,29 +191,29 @@ define showMem()
 
     # clear(2,9,1)
     at 2,2,"[#4]Total  : "; bar(2,10,16,mem_total.as_float*100,1)
-    print " [#6]{=hobbitsize(1024*mem_total.as_float)}B[#-]   "
+    smallprint(1024*mem_total.as_float)
 
     at 3,2,"[#4]Free   : "; bar(3,10,16,(mem_free.as_int/mem_total.as_float)*100,4)
-    print " [#6]{=hobbitsize(1024*mem_free.as_float)}B[#-]   "
+    smallprint(1024*mem_free.as_float)
 
     at 4,2,"[#4]Avail  : "; bar(4,10,16,(as_int(mem_avail)/as_float(mem_total))*100,4)
-    print " [#6]{=hobbitsize(1024*mem_avail.as_float)}B[#-]   "
+    smallprint(1024*mem_avail.as_float)
 
     at 5,2,"[#4]Cached : "; bar(5,10,16,(mem_cached.as_int/mem_total.as_float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_cached.as_float)}B[#-]   "
+    smallprint(1024*mem_cached.as_float)
 
     at 6,2,"[#4]Active : "; bar(6,10,16,(mem_active.as_int/mem_total.as_float)*100,3)
-    print " [#6]{=hobbitsize(1024*mem_active.as_float)}B[#-]   "
+    smallprint(1024*mem_active.as_float)
 
     if mem_swap_total.as_int!=0
         at 7,2,"[#4]Fr Swap: "; bar(7,10,16,(mem_swap_free.as_int/mem_swap_total.as_float)*100,5)
-        print " [#6]{=hobbitsize(1024*mem_swap_free.as_float)}B[#-]   "
+        smallprint(1024*mem_swap_free.as_float)
     endif
 
     al=get_mem().alloc.as_int
     ts=get_mem().system.as_int
     at 8,2,"[#4]Mon Use:"; bar(8,10,16,(al.as_float/mem_avail.as_int)*100,2)
-    print " [#6]{=hobbitsize(al*1024*1024)}B [#-]   "
+    smallprint(al*1024*1024)
 
     # display slab info
 
@@ -332,6 +332,10 @@ define hobbitsize(i)
     on i>=1e6 do return "%.1f M".format(as_float(i/1e6))
     on i>=1e3 do return "%.1f K".format(as_float(i/1e3))
     return "%.1f ".format(i.as_float)
+end
+
+define smallprint(sz)
+    print " [#6]{=hobbitsize(sz)}B[#-]   "
 end
 
 
