@@ -1,23 +1,28 @@
 
 prompt=sysvar("@bashprompt")
 
+ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
+ignore_fonts+=["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
+ignore_fonts+=["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
+
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
 
 if is_installed("figlet")
+    fontdir="/usr/share/figlet"
 
-        fontdir="/usr/share/figlet"
+    variants = (
+        dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"` 
+    ) -> "$pn #.name"
 
-        variants = (
-            dir(fontdir)
-            ?> `($pe #.name) ~i "^(flf|tlf)"`
-        ) -> "$pn #.name"
+    # filter undesired out
+    variants = variants ?> `not # in ignore_fonts`
 
-        seed(-1)
-        fv=variants[variants.len.rand-1]
-        tlf=false
-        on is_file("{fontdir}/{fv}.tlf") do tlf=true
-        on is_file("{fontdir}/{fv}." + (tlf?"tlf":"flf")) do p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
-        unset variants, fontdir, fv, tlf
+    seed(-1)
+    fv=variants[variants.len.rand-1]
+    tlf=false
+    on is_file("{fontdir}/{fv}.tlf") do tlf=true
+    on is_file("{fontdir}/{fv}." + (tlf?"tlf":"flf")) do p=${toilet -f {fv} -k -w {=term_w()} "{=banner}"}
+    unset variants, fontdir, tlf
 else
     p=banner
 endif
@@ -25,8 +30,7 @@ endif
 println "\n\n[#5]{p}[#-]\n"
 help
 
-# some cleanup - not strictly necessary
-unset banner,p
+unset banner,p,ignore_fonts
 
 # enum helpers
 enum s3sum ( okay=0, warn, file, sum )

@@ -252,7 +252,7 @@ func buildListLib() {
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "esplit", "min", "max", "avg","eqlen",
         "empty", "list_string", "list_float", "list_int","list_bool","list_bigi","list_bigf",
-        "scan_left","zip",
+        "scan_left","zip","list_fill",
     }
 
     slhelp["scan_left"] = LibHelp{in: "numeric_list,op_string,start_seed", out: "list", action: "Creates a list from the intermediary values of processing [#i1]op_string[#i0] while iterating over [#i1]list[#i0]."}
@@ -1955,6 +1955,88 @@ func buildListLib() {
             return true,nil
         }
         return false,errors.New(sf("Not a valid list of lists or strings [%T] in eqlen()",args[0]))
+    }
+
+    slhelp["list_fill"] = LibHelp{in: "list,value[,start,end]", out: "list", action: "sets all elements of a [#i1]list[#i0] to [#i1]value[#i0]. Big number types not yet supported."}
+    stdlib["list_fill"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+
+        if ok,err:=expect_args("list_fill",args,12,
+            "2","[]any","any",
+            "2","[]int","int",
+            "2","[]uint","uint",
+            "2","[]float64","float64",
+            "2","[]string","string",
+            "2","[]bool","bool",
+            "4","[]any","any","int","int",
+            "4","[]int","int","int","int",
+            "4","[]uint","uint","int","int",
+            "4","[]float64","float64","int","int",
+            "4","[]string","string","int","int",
+            "4","[]bool","bool","int","int"); !ok { return nil,err }
+
+        pos_start:=0; pos_end:=-1
+        if len(args)==4 {
+            pos_start=args[2].(int)
+            pos_end=args[3].(int)
+        }
+
+        switch args[0].(type) {
+        case []any:
+            ll:=len(args[0].([]any))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]any,ll)
+            copy(l,args[0].([]any))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1]
+            }
+            return l,nil
+        case []int:
+            ll:=len(args[0].([]int))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]int,ll)
+            copy(l,args[0].([]int))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1].(int)
+            }
+            return l,nil
+        case []uint:
+            ll:=len(args[0].([]uint))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]uint,ll)
+            copy(l,args[0].([]uint))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1].(uint)
+            }
+            return l,nil
+        case []bool:
+            ll:=len(args[0].([]bool))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]bool,ll)
+            copy(l,args[0].([]bool))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1].(bool)
+            }
+            return l,nil
+        case []string:
+            ll:=len(args[0].([]string))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]string,ll)
+            copy(l,args[0].([]string))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1].(string)
+            }
+            return l,nil
+        case []float64:
+            ll:=len(args[0].([]float64))
+            if pos_end==-1 { pos_end=ll-1 }
+            l:=make([]float64,ll)
+            copy(l,args[0].([]float64))
+            for i:=pos_start;i<=pos_end;i+=1 {
+                l[i]=args[1].(float64)
+            }
+            return l,nil
+        }
+        return nil,errors.New(sf("Invalid return from fill()"))
     }
 
     slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}

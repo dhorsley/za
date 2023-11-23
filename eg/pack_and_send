@@ -21,17 +21,23 @@ doc `
 
 ## inputs and globals ############################################
 
+enum e ( OKAY=0, LOCAL_FILE=127, SEND=126, UNPACK=125, INPUT=124 )
+
 input srcfile  param 1 is "Source filename"
 input sshconn  param 2 is "SSH connection string"
-input destpath param 3 is "Remote directory name"
+input destpath optarg 3 is "Remote directory name"
 
-on destpath in ["","/","~"] do exit e.INPUT,"Invalid destination path provided: [{destpath}]"
+if $lc sshconn!="local"
+    if destpath==""
+        exit e.INPUT,"Remote path not provided."
+    else
+        on destpath in ["","/","~"] do exit e.INPUT,"Invalid destination path provided: [{destpath}]"
+    endif
+endif
 
 cmdargs=[]
 on argc()>3 do cmdargs=argv()[3:]
 # println "Command args : {cmdargs}"
-
-enum e ( LOCAL_FILE=127, SEND=126, UNPACK=125, INPUT=124 )
 
 
 ## functions #####################################################
@@ -124,6 +130,16 @@ println "[#4]Local package created.[#-]"
 println "[#6]"
 | tar -tvzf {tf}
 println "[#-]"
+
+# check for local build
+if $lc sshconn=="local"
+    # just pack, retain artifact [ i.e. no cleanup() ] then exit
+    if destpath!=""
+        ${mv {tf} {destpath}}
+        tf=destpath
+    endif
+    exit e.OKAY,"Local artifact is here: {tf}"
+endif
 
 # check connection
 ret=ssh(.cmd "true",.conn sshconn,.silent true)

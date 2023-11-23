@@ -86,6 +86,7 @@ syntax match list_functions "\(^|.\|\s*\)remove\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)push_front\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)pop\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)sort\s*("he=e-1
+syntax match list_functions "\(^|.\|\s*\)ssort\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)peek\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)any\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)all\s*("he=e-1
@@ -97,6 +98,7 @@ syntax match list_functions "\(^|.\|\s*\)avg\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)zip\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)scan_left\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)eqlen\s*("he=e-1
+syntax match list_functions "\(^|.\|\s*\)list_fill\s*("he=e-1
 
 syntax match conversion_functions "\(^|.\|\s*\)f2n\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)byte\s*("he=e-1

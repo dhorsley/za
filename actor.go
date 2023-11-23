@@ -885,6 +885,7 @@ pcloop:
             // check for valid types:
             switch str.ToLower(cet.text) {
             case "int","float","string","bool","uint","uint8","bigi","bigf","byte","mixed","any","[]":
+            case "[]int","[]float","[]string","[]bool","[]uint","[]uint8","[]bigi","[]bigf","[]byte":
             default:
                 parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
                 finish(false,ERR_SYNTAX)
