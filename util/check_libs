@@ -6,7 +6,7 @@ println ea.out
 
 tot=0
 foreach l in ea.out
-    tot+=field(l,2,":").int
+    tot+=field(l,2,":").as_int
 endfor
 
 println tot

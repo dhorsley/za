@@ -38,6 +38,7 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             nv :=structvalues[svpos].(string)
             nt :=structvalues[svpos+1].(string)
+            /*
             if nt=="any" || nt=="mixed" {
                 // nt="[]"
                 // @note: reflection returns a nil type for interface{}
@@ -45,16 +46,26 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
                 // we have a better way of doing this.
                 return fmt.Errorf("field type must be specific (not any/mixed) at field #%d",(svpos/4)+1)
             }
+            */
+
 
             newtype:=typemap[nt]
+
+           //  pf("nt : %s | >> %#v <<\n",nt,structvalues[svpos+3])
 
             // override name if provided in fieldNames:
             if len(fieldNames)>0 {
                 // pf("Replacing field named '%s' with '%s'\n",nv,fieldNames[nextNamePos])
                 nv=fieldNames[nextNamePos]
-                newtype=reflect.TypeOf(structvalues[svpos+3])
+                if nt=="any" {
+                    newtype=reflect.TypeOf((*any)(nil)).Elem()
+                } else {
+                    newtype=reflect.TypeOf(structvalues[svpos+3])
+                }
                 nextNamePos++
             }
+            // pf("nt-> >> %#v <<\n",newtype)
+
             // populate struct fields:
             sfields=append(sfields,
                 reflect.StructField{
@@ -68,7 +79,11 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             pf("fillstruct::pre-offset::nt->%s\n",nt)
             pf("fillstruct::pre-offset::tme->%s\n",typemap[nt])
             */
-            offset+=typemap[nt].Size()
+            if nt!="any" {
+                offset+=typemap[nt].Size()
+            } else {
+                offset+=32
+            }
         }
         new_struct:=reflect.StructOf(sfields)
         v:=(reflect.New(new_struct).Elem()).Interface()

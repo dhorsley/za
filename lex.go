@@ -247,8 +247,11 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             }
             skip_backslash=false
 
-            if !(matchBlock||matchQuote) && input[currentChar]=='\\' {
+            // if !(matchBlock||matchQuote) && input[currentChar]=='\\' {
+            // should not ever be matchBlock||matchQuote as they get tokType set pre-entry:
+            if input[currentChar]=='\\' {
                 skip_backslash=true
+                pf("(skipping) ")
                 continue
             }
         }
@@ -376,7 +379,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
         if len(term)!=0 && str.IndexByte(term, input[currentChar]) != -1 {
             // found a terminator character
 
-            if matchBlock {
+            if matchBlock && input[currentChar-1]!='\\' {
                 carton.tokType = tokType
                 carton.tokText  = input[thisWordStart+1:currentChar]
                 startNextTokenAt= currentChar+1
@@ -390,35 +393,37 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 goto get_nt_exit_point
             }
 
-            if matchQuote {
-                // get word and end, include terminal quote
-                startNextTokenAt=currentChar+1
-                carton.tokType= StringLiteral
-                carton.tokText= input[thisWordStart:currentChar+1]
+            if input[currentChar-1]!='\\' {
+                if matchQuote {
+                    // get word and end, include terminal quote
+                    startNextTokenAt=currentChar+1
+                    carton.tokType= StringLiteral
+                    carton.tokText= input[thisWordStart:currentChar+1]
 
-                // unescape escapes
-                // carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
-                switch firstChar {
-                case '"':
-                    carton.tokText=stripDoubleQuotes(carton.tokText)
-                case '`':
-                    carton.tokText=stripBacktickQuotes(carton.tokText)
+                    // unescape escapes
+                    // carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
+                    switch firstChar {
+                    case '"':
+                        carton.tokText=stripDoubleQuotes(carton.tokText)
+                    case '`':
+                        carton.tokText=stripBacktickQuotes(carton.tokText)
+                    }
+
+                    carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
+                    carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
+
+                    goto get_nt_exit_point
                 }
-
-                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
-                carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
-                carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
-                carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
-                carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
-                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
-                carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
-
-                goto get_nt_exit_point
             } else {
                 // found a terminator, so get word and end.
                 // we need to start next search on this terminator as
                 // it wasn't part of the previous word.
-                if input[currentChar-1]!='\\' {
+                if !matchQuote {
                     word = input[thisWordStart:currentChar]
                     startNextTokenAt=currentChar
                     break
