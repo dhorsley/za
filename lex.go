@@ -247,11 +247,8 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             }
             skip_backslash=false
 
-            // if !(matchBlock||matchQuote) && input[currentChar]=='\\' {
-            // should not ever be matchBlock||matchQuote as they get tokType set pre-entry:
             if input[currentChar]=='\\' {
                 skip_backslash=true
-                pf("(skipping) ")
                 continue
             }
         }
@@ -401,7 +398,6 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                     carton.tokText= input[thisWordStart:currentChar+1]
 
                     // unescape escapes
-                    // carton.tokText=stripBacktickQuotes(stripDoubleQuotes(carton.tokText))
                     switch firstChar {
                     case '"':
                         carton.tokText=stripDoubleQuotes(carton.tokText)
