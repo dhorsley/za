@@ -265,7 +265,18 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         switch token.tokType {
 
         case O_Plus:
-            left = ev_add(left,right)
+            switch left.(type) {
+            case int:
+                switch right.(type) {
+                case int:
+                    left=left.(int)+right.(int)
+                default:
+                    left = ev_add(left,right)
+                }
+            default:
+                left = ev_add(left,right)
+            }
+            // left = ev_add(left,right)
         case O_Minus:
             left = ev_sub(left,right)
         case O_Multiply:

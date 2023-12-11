@@ -6,19 +6,6 @@ define waitkey()
     @ quit=true
 end
 
-define draw()
-    x = 2*theta * cos(theta/pi)/8
-    y = theta * sin(theta/pi)/8
-    px=cx+x; py=cy+y
-    if px>0 and py>0 and px<width and py<height and not (x==0 and y==0)
-        at py,px; print "[#"+as_int(c)+"]o"
-    endif
-    @ theta = theta + rotation
-    on x > width/2.0 do @ theta = 0.0
-    @ c=c+crate
-    on c>7 do @ c=rand(7).as_float
-end
-
 var rotation  float
 var theta     float
 var c         float
@@ -34,7 +21,7 @@ cx=width/2
 cy=height/2
 pi=pi()
 c=rand(7).as_float
-crate=0.00025
+crate=0.025
 bounce=0.012
 maxrot=13.0
 
@@ -43,22 +30,21 @@ async nil waitkey()
 
 while !quit
     cls
-    print "[#bold]"
+    print "[#"+as_int(c)+"][#bold]"
     theta=0.0
     cursoroff()
     for e=0 to max_draw
-        # draw()
         x = 2*theta * cos(theta/pi)/8
         y = theta * sin(theta/pi)/8
         px=cx+x; py=cy+y
         if px>0 and py>0 and px<width and py<height and not (x==0 and y==0)
-            at py,px; print "[#"+as_int(c)+"]o"
+            at py,px,"o"
         endif
         theta = theta + rotation
         on x > width/2.0 do theta = 0.0
-        c=c+crate
-        on c>7 do c=rand(7).as_float
     endfor
+    c=c+crate
+    on c>8 do c=rand(7).as_float
     rotation+=bounce
     on rotation>maxrot or rotation<0.03 do bounce=-bounce
 endwhile

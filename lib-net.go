@@ -327,7 +327,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     }
 
                     // .. and feed it into the backend request
-                    tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+                    tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: false}}
                     client := &http.Client{Transport: tr}
                     resp, err := client.PostForm(new_path,fvals)
                     defer resp.Body.Close()
@@ -566,7 +566,7 @@ var    webrulelock = &sync.RWMutex{}
 func buildNetLib() {
 
     // persistent http client
-    web_tr = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+    web_tr = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: false}}
     web_client = &http.Client{Transport: web_tr}
 
 
@@ -944,8 +944,8 @@ func head(loc string) ([]byte, int) {
     if err!=nil {
         return []byte{},404
     }
-    defer resp.Body.Close()
     if err == nil {
+        defer resp.Body.Close()
         if resp.StatusCode>299 {
             return []byte{}, resp.StatusCode
         }
