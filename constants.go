@@ -9,7 +9,7 @@ const MAX_LOOPS = 8
 const identInitialSize = 8      // initial ident size on creation
 const identGrowthSize = 8       // how many extra spaces to add when ident needs to grow
 const gnfsModulus = 48000       // used by calltable to set max size, mainly impacts recursion
-
+const globseq_disposal_freq = 32 // sets the number of call allocations per calltable cleanup operation
 const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
 
 const SPACE_CAP = gnfsModulus   // initial instance and source functions cap
