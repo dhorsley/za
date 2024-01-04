@@ -1539,7 +1539,11 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             case 0:
                 return nil,false
             case 1:
-                return res.([]any)[0],false
+                switch res.(type) {
+                case []any:
+                    return res.([]any)[0],false
+                }
+                return nil,false
             default:
                 return res,false
             }

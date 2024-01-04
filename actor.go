@@ -490,7 +490,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 
     // : sets up a re-use value
     var reuse,e uint32
-    if (globseq % 8)==0 {
+    if (globseq % globseq_disposal_freq )==0 {
         for e=0; e<globseq; e+=1 {
             if calltable[e].gc && calltable[e].disposable {
                 if calltable[e].gcShyness>0 { calltable[e].gcShyness-=1 }
