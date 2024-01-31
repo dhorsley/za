@@ -23,9 +23,10 @@ jobs:
         
     - name: Install-Upx
       run: sudo apt install -y upx
-     
+
     - name: Find-Version
-      run: za_version=$(< VERSION)
+      id: find-version
+      run: echo "za_version=$(< VERSION)" >> "$GITHUB_OUTPUT"
 
     - name: Pre-Build
       run: go build za
@@ -35,9 +36,16 @@ jobs:
 
     - name: Build-Linux
       run: ./za build
-      
-# copy binary artifact to final location:
 
+    # copy binary artifact to final location:
+    
+    - uses: ncipollo/release-action@v1.13.0
+      with:
+        artifacts: "za,za.alpine"
+        tag: ${{ steps.find-version.outputs.za_version }}
+        draft: true
+        
+        
 
 
 
