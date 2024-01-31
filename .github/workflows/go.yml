@@ -8,6 +8,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
 
@@ -15,24 +16,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.20'
-
-# some kind of step here to ensure upx is available
+        
+    - name: Install-Upx
+      run: apt install -y upx
+     
+    - name: Find-Version
+      run: za_version=$(< VERSION)
 
     - name: Pre-Build
       run: go build za
 
-# pick one of these builds somehow:
+    - name: Build-Alpine
+      run: ./za build alpine
 
     - name: Build-Linux
       run: ./za build
       
-    - name: Build-Alpine
-      run: ./za build alpine
-
 # copy binary artifact to final location:
+
+
+
+
+
 
