@@ -32,10 +32,10 @@ jobs:
       run: go build za
 
     - name: Build-Alpine
-      run: ./za build alpine
+      run: ./za build alpine upx strip
 
     - name: Build-Linux
-      run: ./za build
+      run: ./za build strip
 
     # copy binary artifact to final location:
     
