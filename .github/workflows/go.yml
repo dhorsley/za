@@ -1,0 +1,38 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20'
+
+# some kind of step here to ensure upx is available
+
+    - name: Pre-Build
+      run: go build za
+
+# pick one of these builds somehow:
+
+    - name: Build-Linux
+      run: ./za build
+      
+    - name: Build-Alpine
+      run: ./za build alpine
+
+# copy binary artifact to final location:
+
