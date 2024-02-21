@@ -4,8 +4,11 @@ input msg param 1
 
 | rm -f tools/funpages/*.html
 | git add -A .
-| git commit -m "{msg}"
 
-on last()==0 do | git push
-
+res=| git commit -m "{msg}"
+if res.okay 
+    | git push
+else
+    println "No change."
+endif
 
