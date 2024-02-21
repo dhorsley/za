@@ -5,6 +5,7 @@ input msg param 1
 | rm -f tools/funpages/*.html
 | git add -A .
 | git commit -m "{msg}"
-| git push
+
+on last()==0 do | git push
 
 
