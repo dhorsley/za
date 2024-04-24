@@ -8,6 +8,8 @@ CHANGE LOG
     fixes
     -----
 
+    * Added error state for some previously undetected early expression terminations.
+
     library changes
     ---------------
 
@@ -25,6 +27,10 @@ CHANGE LOG
             42
             a[^-^]
             999
+
+    * tested $ as identifier.
+        - it seemed to be supported, even if just by accident.
+        - may reuse it for something else in future, so.. don't use it!
 
 
 1.1.7

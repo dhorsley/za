@@ -204,13 +204,12 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
     }
 
     // binaries
-
     binloop1:
     for {
 
         // pf("[cprec->%d tokprec->%d]\n",prec,p.prectable[p.peek().tokType])
         // if !p.namespacing && prec >= p.prectable[p.peek().tokType] { break }
-        if prec >= p.prectable[p.peek().tokType] && !p.namespacing { break }
+        if p.pos<p.len && prec >= p.prectable[p.peek().tokType] && !p.namespacing { break }
 
         token := p.next()
         // pf("binloop nt -> %v at pos %d\n",token.tokText,p.pos)
@@ -263,6 +262,10 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
                 continue
             }
 
+        }
+
+        if p.pos>=p.len {
+            panic(fmt.Errorf("Incomplete expression, terminates early"))
         }
 
         var right any
