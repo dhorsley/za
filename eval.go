@@ -90,6 +90,8 @@ type leparser struct {
     std_faulted bool                    // and if it faulted.
 
     in_fix      bool                    // currently in a fix block
+    in_range    bool                    // currently in an eval calculating array ranges
+    rangelen    int                     // length of array referenced in accessArray
     resume_pos  int16                   // statement position the fix was triggered from
 
 }
@@ -167,6 +169,10 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         left=p.identifier(ct)
     case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(ct)
+    case SYM_Caret: // range len
+        if p.in_range {
+            left=p.rangelen
+        }
     case SYM_Not:
 	    right,err,_ := p.dparse(24,false) // don't bind negate as tightly
         if err!=nil { panic(err) }
@@ -889,21 +895,37 @@ func (p *leparser) accessArray(left any,right Token) (any) {
     var hasStart,hasEnd,hasRange bool
     var sendNil bool
 
+    if !p.in_range {
+        p.in_range=true
+        defer func() { p.in_range=false }()
+    }
+
     switch left:=left.(type) {
 
-    // size is checked in slice()
     case []bool:
+        p.rangelen=len(left)
     case []string:
+        p.rangelen=len(left)
     case []int:
+        p.rangelen=len(left)
     case []uint:
+        p.rangelen=len(left)
     case []float64:
+        p.rangelen=len(left)
     case []dirent:
+        p.rangelen=len(left)
     case []alloc_info:
+        p.rangelen=len(left)
     case string:
+        p.rangelen=len(left)
     case []*big.Int:
+        p.rangelen=len(left)
     case []*big.Float:
+        p.rangelen=len(left)
     case [][]int:
+        p.rangelen=len(left)
     case []any:
+        p.rangelen=len(left)
 
     case map[string]any,map[string]alloc_info,map[string]string,map[string]int:
 

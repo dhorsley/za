@@ -14,6 +14,18 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added caret unary operator inside array range expressions.
+        - this returns the length of the parent array, to allow, for example:
+            var a [10]int
+            a[0]=999
+            a[9]=42
+            a
+            [999,0,0,0,0,0,0,0,0,42]
+            a[^-1]
+            42
+            a[^-^]
+            999
+
 
 1.1.7
 =====
