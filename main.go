@@ -626,7 +626,7 @@ func main() {
     // pprof - not advertised.
     if *a_profile {
         go func() {
-            log.Fatalln(http.ListenAndServe("localhost:6060", http.DefaultServeMux))
+            log.Fatalln(http.ListenAndServe("localhost:8008", http.DefaultServeMux))
         }()
     }
 

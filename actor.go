@@ -795,6 +795,8 @@ tco_reentry:
     var err error
 
     typeInvalid:=false        // used during struct building for indicating type validity.
+    statement:=Error
+
 
 pcloop:
     for {
@@ -812,7 +814,7 @@ pcloop:
 
         // get the next Phrase
         inbound = &functionspaces[source_base][parser.pc]
-
+        statement=inbound.Tokens[0].tokType
 
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
                     //  we want to leave the program counter unaffected.
@@ -834,13 +836,13 @@ pcloop:
 
         /////////////////////////////////////////////////////////////////////////
 
-        if parser.try_fault && inbound.Tokens[0].tokType != C_Fix {
+        if parser.try_fault && statement != C_Fix {
             // pf("(line %d) skipping to fix.\n",inbound.SourceLine+1)
             continue
         }
 
         // append statements to a function if currently inside a DEFINE block.
-        if defining && inbound.Tokens[0].tokType != C_Enddef {
+        if defining && statement != C_Enddef {
             lmv,_:=fnlookup.lmget(definitionName)
             fspacelock.Lock()
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
@@ -860,7 +862,7 @@ pcloop:
         }
 
         // struct building
-        if structMode && inbound.Tokens[0].tokType!=C_Endstruct {
+        if structMode && statement!=C_Endstruct {
             // consume the statement as an identifier
             // as we are only accepting simple types currently, restrict validity
             //  to single type token.
@@ -920,7 +922,7 @@ pcloop:
 
         // show var references for -V arg
         if var_refs {
-            switch inbound.Tokens[0].tokType {
+            switch statement {
             case C_Module,C_Define,C_Enddef:
             default:
                 continue
@@ -933,7 +935,7 @@ pcloop:
          * just removing the stanza below can add ~ 9M ops/sec
         */
         if inside_test {
-            if inbound.Tokens[0].tokType != C_Endtest && !under_test {
+            if statement != C_Endtest && !under_test {
                 continue
             }
         }
@@ -952,7 +954,7 @@ pcloop:
 
         if breakIn != Error {
             // breakIn holds either Error or a token_type for ending the current construct
-            if inbound.Tokens[0].tokType != breakIn {
+            if statement != breakIn {
                 continue
             }
         }
@@ -961,7 +963,7 @@ pcloop:
 
         // main parsing for statements starts here:
 
-        switch inbound.Tokens[0].tokType {
+        switch statement {
 
         case C_Var: // permit declaration with a default value
 
@@ -3872,7 +3874,7 @@ pcloop:
 
             // pf("case-eval: checking type : %s\n%#v\n",tokNames[statement.tokType],carton)
 
-            switch inbound.Tokens[0].tokType {
+            switch statement {
 
             case C_Has: // <-- @note: this may change yet
 
@@ -4536,7 +4538,7 @@ pcloop:
 
             if inbound.TokenCount > 1 {
                 // ident "=|" or "=<" check
-                if inbound.Tokens[0].tokType == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
+                if statement == Identifier && ( inbound.Tokens[1].tokType == O_AssCommand || inbound.Tokens[1].tokType == O_AssOutCommand ) {
                     if inbound.TokenCount > 2 {
 
                         // get text after =| or =<
