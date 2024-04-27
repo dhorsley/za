@@ -41,7 +41,7 @@ if allPaths.len>0
     on vim9 do vfname="script.vim"
 
     # construct script config file path
-    infilename=join([newPath,vim9?"/autoload/dist":"",vfname],"/")
+    infilename=join([newPath,vim9?"autoload/dist":"",vfname],"/")
     infile=infilename.read_file()
 
     if line_match(infile,"ft=za")
