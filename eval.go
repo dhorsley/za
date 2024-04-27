@@ -9,8 +9,6 @@ import (
     "math/big"
     "net/http"
     "sync"
-//    "github.com/davecgh/go-spew/spew"
-//    "sync/atomic"
     "path/filepath"
     str "strings"
     "unsafe"
@@ -24,22 +22,6 @@ func (p *leparser) reserved(token Token) (any) {
 }
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error,bool) {
-
-    /*
-    defer func() {
-        if r := recover(); r != nil {
-            if parser.try_fault {
-                // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
-            } else {
-                err:=r.(error)
-                pf("-- %v\n",err)
-                panic(r)
-                setEcho(true)
-                finish(false,ERR_EVAL)
-            }
-        }
-    }()
-    */
 
     l:=len(toks)
 
@@ -99,7 +81,6 @@ type leparser struct {
 
 
 func (p *leparser) next() Token {
-    // if p.pos>0 { p.preprev=p.prev }
     p.preprev=p.prev
     if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
@@ -145,7 +126,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
 
 
     // inlined next() manually:
-    // if p.pos>0 { p.preprev=p.prev }
     p.preprev=p.prev
     if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
@@ -208,7 +188,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
     for {
 
         // pf("[cprec->%d tokprec->%d]\n",prec,p.prectable[p.peek().tokType])
-        // if !p.namespacing && prec >= p.prectable[p.peek().tokType] { break }
         if p.pos<p.len && prec >= p.prectable[p.peek().tokType] && !p.namespacing { break }
 
         token := p.next()
@@ -248,9 +227,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         case SYM_DOT:
             p.std_faulted=false
             // pf("toks->%+v\n",p.tokens)
-            // pf("sd prepos  -> %d\n",p.pos)
             left,_ = p.accessFieldOrFunc(left,p.next().tokText)
-            // pf("sd postpos -> %d\n",p.pos)
             continue
         case C_Is:
             left = p.kind_compare(left)
@@ -285,7 +262,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
             default:
                 left = ev_add(left,right)
             }
-            // left = ev_add(left,right)
         case O_Minus:
             left = ev_sub(left,right)
         case O_Multiply:
@@ -462,7 +438,6 @@ func (p *leparser) list_filter(left any,right any) any {
         return new_list
 
     case []string:
-        // var new_list []string
         new_list:=make([]string,0,len(left.([]string)))
         for e:=0; e<len(left.([]string)); e+=1 {
             new_right:=str.Replace(right.(string),"#",`"`+left.([]string)[e]+`"`,-1)
@@ -478,7 +453,6 @@ func (p *leparser) list_filter(left any,right any) any {
         return new_list
 
     case []int:
-        // var new_list []int
         new_list:=make([]int,0,len(left.([]int)))
         for e:=0; e<len(left.([]int)); e+=1 {
             new_right:=str.Replace(right.(string),"#",strconv.FormatInt(int64(left.([]int)[e]),10),-1)
@@ -494,7 +468,6 @@ func (p *leparser) list_filter(left any,right any) any {
         return new_list
 
     case []uint:
-        // var new_list []uint
         new_list:=make([]uint,0,len(left.([]uint)))
         for e:=0; e<len(left.([]uint)); e+=1 {
             new_right:=str.Replace(right.(string),"#",strconv.FormatUint(uint64(left.([]uint)[e]),10),-1)
@@ -510,7 +483,6 @@ func (p *leparser) list_filter(left any,right any) any {
         return new_list
 
     case []float64:
-        // var new_list []float64
         new_list:=make([]float64,0,len(left.([]float64)))
         for e:=0; e<len(left.([]float64)); e+=1 {
             new_right:=str.Replace(right.(string),"#",strconv.FormatFloat(left.([]float64)[e],'g',-1,64),-1)
