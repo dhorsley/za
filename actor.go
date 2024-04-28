@@ -814,11 +814,11 @@ pcloop:
 
         // get the next Phrase
         inbound = &functionspaces[source_base][parser.pc]
-        statement=inbound.Tokens[0].tokType
 
      ondo_reenter:  // on..do re-enters here because it creates the new phrase in advance and
                     //  we want to leave the program counter unaffected.
 
+        statement=inbound.Tokens[0].tokType
 
         // finally... start processing the statement.
 
