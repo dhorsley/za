@@ -1000,7 +1000,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
     }
 
     // @unreachable:
-    panic(fmt.Errorf("array access error on token '%s'",tokNames[p.peek().tokType]))
+    // panic(fmt.Errorf("array access error on token '%s'",tokNames[p.peek().tokType]))
     return nil
 
 }
