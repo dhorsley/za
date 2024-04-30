@@ -3,7 +3,7 @@ prompt=sysvar("@bashprompt")
 
 ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
 ignore_fonts+=["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
-ignore_fonts+=["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
+ignore_fonts+=["ascii12","roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
 
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
 
