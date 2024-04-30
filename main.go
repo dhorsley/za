@@ -626,6 +626,7 @@ func main() {
     // pprof - not advertised.
     if *a_profile {
         go func() {
+            // runtime.SetCPUProfileRate(1000)
             log.Fatalln(http.ListenAndServe("localhost:8008", http.DefaultServeMux))
         }()
     }
