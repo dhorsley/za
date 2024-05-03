@@ -83,6 +83,9 @@ func as_integer(val any) int {
         return int(i64)
     case *big.Int:
         return int(v.Int64())
+    case bool:
+        if !v { return int(0) }
+        return int(1)
     case int:
         return int(v)
     case int64:
