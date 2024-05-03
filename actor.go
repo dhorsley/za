@@ -347,6 +347,9 @@ func GetAsInt(expr any) (int, bool) {
     switch i := expr.(type) {
     case float64:
         return int(i), false
+    case bool:
+        if !i { return int(0), false }
+        return int(1), false
     case uint:
         return int(i), false
     case int64:

@@ -32,6 +32,8 @@ CHANGE LOG
         - it seemed to be supported, even if just by accident.
         - may reuse it for something else in future, so.. don't use it!
 
+    * added bool to int conversion in as_int() : false 0, true 1
+
 
 1.1.7
 =====
