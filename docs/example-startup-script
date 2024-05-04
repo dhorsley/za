@@ -9,7 +9,11 @@ def form_git()
     @inside_git=false
     @last_cmd_status=last()
 
-    gs={git status}
+    if cwd() != last_git_path
+        @gs={git status}
+        @last_git_path=cwd()
+    endif
+
     if gs.okay
 
         gs_text=gs.out.split("\n")
@@ -62,7 +66,9 @@ end
 
 inside_git=false
 last_cmd_status=0
+last_git_path=""
 endcap="▙[#-]"
+gs={git status}
 
 prompt=(form_prompt())
 
