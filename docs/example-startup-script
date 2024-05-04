@@ -25,9 +25,6 @@ def form_git()
             status="[#2]✕"
             on str_status=="up-to-date" do status="[#4]✓"
             return "({branch} {status})"
-        else
-            println "[ERROR!]"
-            pause 0
         endif
 
     endif
