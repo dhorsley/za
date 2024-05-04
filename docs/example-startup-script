@@ -49,7 +49,6 @@ def form_git()
             status="[#2]✕"
             on str_status=="up-to-date" do status="[#4]✓"
             return bg256(0xe2) + fg256(0x11) + "({branch} {status})" + bg256(0) + fg256(0xe2)
-            return "({branch} {status}) "
         endif
 
     endif
