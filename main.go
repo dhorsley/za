@@ -232,6 +232,7 @@ var ifCompileCache map[string]regexp.Regexp
 
 // repl prompt
 var PromptTemplate string
+var PromptTokens []Token
 
 var concurrent_funcs int32
 var has_global_lock  uint32
@@ -1145,7 +1146,14 @@ func main() {
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
-                    tempPrompt=sparkle(interpolate("main",0,&gident,PromptTemplate))
+                    if len(PromptTokens)>0 {
+                        we := interparse.wrappedEval(0,&gident,0,&gident,PromptTokens)
+                        if ! we.evalError { 
+                            tempPrompt=sparkle(interpolate("main",0,&gident,we.result.(string)))
+                        }
+                    } else {
+                        tempPrompt=sparkle(interpolate("main",0,&gident,PromptTemplate))
+                    }
                 } else {
                     tempPrompt=promptContinuation
                 }
