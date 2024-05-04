@@ -23,13 +23,14 @@ def form_time()
 end
 
 def form_git()
-    @inside_git=false
     @last_cmd_status=last()
 
     if inside_git or cwd() != last_git_path
         @gs={git status}
         @last_git_path=cwd()
     endif
+
+    @inside_git=false
 
     if gs.okay
 
