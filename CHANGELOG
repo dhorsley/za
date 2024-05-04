@@ -34,6 +34,9 @@ CHANGE LOG
 
     * added bool to int conversion in as_int() : false 0, true 1
 
+    * added changes to support more dynamic prompts in interactive mode
+        - see docs/example-startup-script
+
 
 1.1.7
 =====
