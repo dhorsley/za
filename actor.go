@@ -4236,8 +4236,8 @@ pcloop:
                     }
                     switch we.result.(type) {
                     case string:
-                        // PromptTemplate=stripOuterQuotes(inbound.Tokens[2].tokText,1)
-                        PromptTemplate=we.result.(string)
+                        PromptTokens=make([]Token,len(inbound.Tokens)-2)
+                        copy(PromptTokens,inbound.Tokens[2:])
                     }
                 } else {
                     // prompt command:

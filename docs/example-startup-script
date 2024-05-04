@@ -1,9 +1,61 @@
 
-prompt=sysvar("@bashprompt")
+# set prompt
+
+def form_time()
+    return time_hours() + ":" + time_minutes()
+end
+
+def form_git()
+    last_cmd_status=last()
+    gs={git status}
+    if gs.okay
+
+        gs_text=gs.out.split("\n")
+
+        _=fields(gs_text[0])
+        if NF>0
+            branch=F[NF]
+        else
+            branch=""
+        endif
+
+        _=fields(gs_text[1])
+        if NF>3
+            str_status=F[4]
+            status="[#2]✕"
+            on str_status=="up-to-date" do status="[#4]✓"
+            return "({branch} {status})"
+        else
+            println "[ERROR!]"
+            pause 0
+        endif
+
+    endif
+    return "[#6]--"
+end
+
+def form_character()
+    if last_cmd_status == 0
+        return "[#bold][#4][ ➜] "
+    else
+        return "[#bred][ ✗] "
+    endif
+end
+
+last_cmd_status=0
+endcap="▙[#-]"
+
+prompt=( bg256(0x12) + fg256(0x25) + " {=form_time()} " + bg256(0x1b) + fg256(0x12) + endcap +
+         bg256(0x1b) + fg256(0xc3) + " {=cwd()} "       + bg256(0xe2) + fg256(0x1b) + endcap +
+         bg256(0xe2) + fg256(0x11) + " {=form_git()} "  + bg256(0) + fg256(0xe2) + endcap +
+         "[#-][##]" + " {=form_character()}" + "[#-][##]"
+)
+
+# end-set-prompt
 
 ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
 ignore_fonts+=["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
-ignore_fonts+=["ascii12","roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
+ignore_fonts+=["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
 
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
 
