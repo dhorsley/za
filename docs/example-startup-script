@@ -6,11 +6,14 @@ def form_time()
 end
 
 def form_git()
+    @inside_git=false
     @last_cmd_status=last()
+
     gs={git status}
     if gs.okay
 
         gs_text=gs.out.split("\n")
+        @inside_git=true
 
         _=fields(gs_text[0])
         if NF>0
@@ -34,20 +37,34 @@ end
 
 def form_end_prompt()
     if last_cmd_status == 0
-        return " [#bold][#4][ ➜] "
+        return " [#bold][#4] ➜ "
     else
-        return " [#bred][ ✗] "
+        return " [#bred] ✗ "
     endif
 end
 
+def form_dir()
+    if inside_git
+        path="…/"+$pb cwd()
+    else
+        path=cwd()
+    endif
+    return path
+end
+
+def form_prompt()
+    cached_fg=form_git()
+    return ( bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
+         bg256(0x1b) + fg256(0xc3) + form_dir()  + bg256(0xe2) + fg256(0x1b) + endcap +
+         cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
+    )
+end
+
+inside_git=false
 last_cmd_status=0
 endcap="▙[#-]"
 
-prompt=( bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
-         bg256(0x1b) + fg256(0xc3) + cwd()       + bg256(0xe2) + fg256(0x1b) + endcap +
-         form_git() + endcap +
-         "[#-][##]" + form_end_prompt() + "[#-][##]"
-)
+prompt=(form_prompt())
 
 # end-set-prompt
 

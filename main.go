@@ -1129,7 +1129,6 @@ func main() {
             if !started && hasScript {
                 phraseParse("main", startScript, 0)
                 basemodmap[1]="main"
-                // _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, self_s{}, []string{})
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
                 pf("\n\n")
                 if row>=MH-BMARGIN {
@@ -1238,7 +1237,6 @@ func main() {
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
-                // _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, self_s{}, []string{})
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
 
                 if row>=MH-BMARGIN {
