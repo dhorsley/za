@@ -26,7 +26,7 @@ def form_git()
     @inside_git=false
     @last_cmd_status=last()
 
-    if cwd() != last_git_path
+    if inside_git or cwd() != last_git_path
         @gs={git status}
         @last_git_path=cwd()
     endif
