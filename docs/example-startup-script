@@ -2,7 +2,7 @@
 # set prompt
 
 def unicode(a,b)
-    return as_int((a << 8) + b).format("%c")
+    return format("%c",as_int((a << 8) + b))
 end
 
 def form_logo()
