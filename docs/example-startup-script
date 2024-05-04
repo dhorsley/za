@@ -1,6 +1,23 @@
 
 # set prompt
 
+def unicode(a,b)
+    return as_int((a << 8) + b).format("%c")
+end
+
+def form_logo()
+    s=bg256(0x10)+unicode(0xf8,0xff)+" "+fg256(0x10)
+    case release_id()
+    is "ubuntu"
+        s=bg256(0xd6)+"[#0] U "+fg256(0xd6)
+    is "popos"
+        s=bg256(0x4a)+"[#6] P "+fg256(0x4a)
+    is "redhat"
+        s=bg256(0xa0)+"[#7] R "+fg256(0xa0)
+    endcase
+    return s+bg256(0x12)+endcap
+end
+
 def form_time()
     return time_hours() + ":" + time_minutes()
 end
@@ -41,9 +58,9 @@ end
 
 def form_end_prompt()
     if last_cmd_status == 0
-        return " [#bold][#4] ➜ "
+        return "[#bold][#4] ➜ "
     else
-        return " [#bred] ✗ "
+        return "[#bred] ✗ "
     endif
 end
 
@@ -58,8 +75,8 @@ end
 
 def form_prompt()
     cached_fg=form_git()
-    return ( bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
-         bg256(0x1b) + fg256(0xc3) + form_dir()  + bg256(0xe2) + fg256(0x1b) + endcap +
+    return ( form_logo() + bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
+         bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) + endcap +
          cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
     )
 end
