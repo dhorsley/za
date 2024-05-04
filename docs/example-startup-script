@@ -6,7 +6,7 @@ def form_time()
 end
 
 def form_git()
-    last_cmd_status=last()
+    @last_cmd_status=last()
     gs={git status}
     if gs.okay
 
@@ -24,28 +24,29 @@ def form_git()
             str_status=F[4]
             status="[#2]✕"
             on str_status=="up-to-date" do status="[#4]✓"
-            return "({branch} {status})"
+            return bg256(0xe2) + fg256(0x11) + "({branch} {status})" + bg256(0) + fg256(0xe2)
+            return "({branch} {status}) "
         endif
 
     endif
-    return "[#6]--"
+    return ""
 end
 
-def form_character()
+def form_end_prompt()
     if last_cmd_status == 0
-        return "[#bold][#4][ ➜] "
+        return " [#bold][#4][ ➜] "
     else
-        return "[#bred][ ✗] "
+        return " [#bred][ ✗] "
     endif
 end
 
 last_cmd_status=0
 endcap="▙[#-]"
 
-prompt=( bg256(0x12) + fg256(0x25) + " {=form_time()} " + bg256(0x1b) + fg256(0x12) + endcap +
-         bg256(0x1b) + fg256(0xc3) + " {=cwd()} "       + bg256(0xe2) + fg256(0x1b) + endcap +
-         bg256(0xe2) + fg256(0x11) + " {=form_git()} "  + bg256(0) + fg256(0xe2) + endcap +
-         "[#-][##]" + " {=form_character()}" + "[#-][##]"
+prompt=( bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
+         bg256(0x1b) + fg256(0xc3) + cwd()       + bg256(0xe2) + fg256(0x1b) + endcap +
+         form_git() + endcap +
+         "[#-][##]" + form_end_prompt() + "[#-][##]"
 )
 
 # end-set-prompt
