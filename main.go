@@ -187,15 +187,16 @@ var no_shell      bool          // disable sub-shell
 var shellrep      bool          // enable shell command reporting
 
 // Global: behaviours
-var permit_uninit       bool    // default:false, will evaluation cause a run-time failure if it
-                                //  encounters an uninitialised variable usage.
-                                //  this can be altered with the permit("uninit",bool) call
-var permit_dupmod       bool    // default:false, ignore (true) or error (false) when a duplicate
-                                //  module import occurs.
-var permit_exitquiet    bool    // default:false, squash (true) or display (false) err msg on exit
-var permit_shell        bool    // default: true, when false, exit script if shell command encountered
-var permit_eval         bool    // default: true, when false, exit script if eval call encountered
-var permit_permit       bool    // default: true, when false, permit function is disabled
+var permit_uninit               bool    // default:false, will evaluation cause a run-time failure if it
+                                        //  encounters an uninitialised variable usage.
+                                        //  this can be altered with the permit("uninit",bool) call
+var permit_dupmod               bool    // default:false, ignore (true) or error (false) when a duplicate
+                                        //  module import occurs.
+var permit_exitquiet            bool    // default:false, squash (true) or display (false) err msg on exit
+var permit_shell                bool    // default: true, when false, exit script if shell command encountered
+var permit_eval                 bool    // default: true, when false, exit script if eval call encountered
+var permit_command_before_eval  bool    // default: true, when false, exit script if eval call encountered
+var permit_permit               bool    // default: true, when false, permit function is disabled
 
 
 // Global: test related
