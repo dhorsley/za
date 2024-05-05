@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<HTML lang="en">
+<HEAD >
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - date functions">
+      <title>date functions</title>
+    <style>
+
+    .f0 {color:#000;}
+    .f1 {color:#00a;}
+    .f2 {color:#a00;}
+    .f3 {color:#a0a;}
+    .f4 {color:#0a0;}
+    .f5 {color:#0aa;}
+    .f6 {color:#cd0;}
+    .f7 {color:#bef;}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
+    .ttab > div {display:table-cell}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
+    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+
+</style>
+</HEAD>
+<BODY class="bodystyle">
+<div ><a href="./index.html">Return to index</a></div>
+
+<h1 ><nil></h1>
+
+<h2 >date functions</h2>
+<p >These functions all relate to date and time handling.<br></p>
+
+<a id="top"></a>
+<ul ><li ><a href="#date">date</a></li>
+
+<li ><a href="#date_human">date_human</a></li>
+
+<li ><a href="#epoch_nano_time">epoch_nano_time</a></li>
+
+<li ><a href="#epoch_time">epoch_time</a></li>
+
+<li ><a href="#time_diff">time_diff</a></li>
+
+<li ><a href="#time_dom">time_dom</a></li>
+
+<li ><a href="#time_dow">time_dow</a></li>
+
+<li ><a href="#time_hours">time_hours</a></li>
+
+<li ><a href="#time_minutes">time_minutes</a></li>
+
+<li ><a href="#time_month">time_month</a></li>
+
+<li ><a href="#time_nanos">time_nanos</a></li>
+
+<li ><a href="#time_seconds">time_seconds</a></li>
+
+<li ><a href="#time_year">time_year</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div class="ttableft"><a id="date"></a><h3 ><span class='f7'>string = date([integer])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a date/time string (RFC3339 format). Optional <span class='ion'>integer</span> defaults to the current date/time, otherwise must be an epoch timestamp.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="date_human"></a><h3 ><span class='f7'>string = date_human([integer])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current date and time in a readable format (RFC822Z).<br><br>If optional <span class='ion'>integer</span> present, uses that as the epoch timestamp to convert.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="epoch_nano_time"></a><h3 ><span class='f7'>integer = epoch_nano_time(none)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current epoch (Unix) time in nano-seconds.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="epoch_time"></a><h3 ><span class='f7'>integer = epoch_time([string])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current epoch (Unix) time in seconds. If the optional <span class='ion'>string</span> is present, then this is converted to epoch int format from RFC3339 format.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_diff"></a><h3 ><span class='f7'>integer = time_diff(te,ts)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns difference in micro-seconds between two nano-epoch dates.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_dom"></a><h3 ><span class='f7'>integer = time_dom([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current day of the month (no arguments) or the day of the epoch nano time specified in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_dow"></a><h3 ><span class='f7'>string = time_dow([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current day of the week (no arguments) or the day of the epoch nano time specified in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_hours"></a><h3 ><span class='f7'>integer = time_hours([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current hour of the day (no arguments) or the hour of the day specified by the epoch nano time in <span class='ion'>epochnano</span>.</p>
+<p ><i>Example:</i><br><pre>
+now=epoch_nano_time()
+println format( &#34;%02d:%02d.%02d off_ns %d&#34;, time_hours(now), time_minutes(now), time_seconds(now), time_nanos(now) )
+println format( &#34;%s %02d-%02d-%04d&#34;, time_dow(now), time_dom(now), time_month(now), time_year(now) )
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_minutes"></a><h3 ><span class='f7'>integer = time_minutes([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current minute of the day (no arguments) or the minute of the day specified by the epoch nano time in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_month"></a><h3 ><span class='f7'>integer = time_month([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current month of the year (no arguments) or the month of the epoch nano time specified in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_nanos"></a><h3 ><span class='f7'>integer = time_nanos([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the offset within the current second, in nanoseconds, (no arguments) or the<br><br>offset within the epoch nano time specified in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_seconds"></a><h3 ><span class='f7'>integer = time_seconds([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current second of the day (no arguments) or the second of the day specified by<br><br>the epoch nano time in <span class='ion'>epochnano</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="time_year"></a><h3 ><span class='f7'>integer = time_year([epochnano])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current year (no arguments) or the year of the epoch nano time specified in <span class='ion'>epochnano</span>.</p>
+<br>
+
+
+</BODY>
+<br><div class="footer"><br><i>page generated by libdoc on 05 May 24 11:07 +0100</i><br><br></div>
+</HTML>

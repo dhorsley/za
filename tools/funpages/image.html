@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<HTML lang="en">
+<HEAD >
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - image functions">
+      <title>image functions</title>
+    <style>
+
+    .f0 {color:#000;}
+    .f1 {color:#00a;}
+    .f2 {color:#a00;}
+    .f3 {color:#a0a;}
+    .f4 {color:#0a0;}
+    .f5 {color:#0aa;}
+    .f6 {color:#cd0;}
+    .f7 {color:#bef;}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
+    .ttab > div {display:table-cell}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
+    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+
+</style>
+</HEAD>
+<BODY class="bodystyle">
+<div ><a href="./index.html">Return to index</a></div>
+
+<h1 ><nil></h1>
+
+<h2 >image functions</h2>
+<p >Simple library wrapper of the SVGo library for creating SVG images.<br></p>
+
+<a id="top"></a>
+<ul ><li ><a href="#svg_circle">svg_circle</a></li>
+
+<li ><a href="#svg_def">svg_def</a></li>
+
+<li ><a href="#svg_def_end">svg_def_end</a></li>
+
+<li ><a href="#svg_desc">svg_desc</a></li>
+
+<li ><a href="#svg_ellipse">svg_ellipse</a></li>
+
+<li ><a href="#svg_end">svg_end</a></li>
+
+<li ><a href="#svg_grid">svg_grid</a></li>
+
+<li ><a href="#svg_group">svg_group</a></li>
+
+<li ><a href="#svg_group_end">svg_group_end</a></li>
+
+<li ><a href="#svg_image">svg_image</a></li>
+
+<li ><a href="#svg_line">svg_line</a></li>
+
+<li ><a href="#svg_link">svg_link</a></li>
+
+<li ><a href="#svg_link_end">svg_link_end</a></li>
+
+<li ><a href="#svg_plot">svg_plot</a></li>
+
+<li ><a href="#svg_polygon">svg_polygon</a></li>
+
+<li ><a href="#svg_polyline">svg_polyline</a></li>
+
+<li ><a href="#svg_rect">svg_rect</a></li>
+
+<li ><a href="#svg_roundrect">svg_roundrect</a></li>
+
+<li ><a href="#svg_square">svg_square</a></li>
+
+<li ><a href="#svg_start">svg_start</a></li>
+
+<li ><a href="#svg_text">svg_text</a></li>
+
+<li ><a href="#svg_title">svg_title</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_circle"></a><h3 ><span class='f6'>svg_circle(handle,x,y,radius[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a circle on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_def"></a><h3 ><span class='f6'>svg_def(handle)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Attach a definition to the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_def_end"></a><h3 ><span class='f6'>svg_def_end(handle)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Ends a definition in <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_desc"></a><h3 ><span class='f6'>svg_desc(handle,description)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Attach a description to the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_ellipse"></a><h3 ><span class='f6'>svg_ellipse(handle,x,y,w,h[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws an ellipse on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_end"></a><h3 ><span class='f6'>svg_end(handle)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Signals completion of the SVG canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_grid"></a><h3 ><span class='f6'>svg_grid(handle,x,y,w,h,n[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a grid on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_group"></a><h3 ><span class='f6'>svg_group(handle[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Attach a group definition to the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_group_end"></a><h3 ><span class='f6'>svg_group_end(handle)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Ends a group definition in <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_image"></a><h3 ><span class='f6'>svg_image(handle,x,y,w,h,image_link[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Links an image to the SVG canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_line"></a><h3 ><span class='f6'>svg_line(handle,x,y,w,h[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a line on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_link"></a><h3 ><span class='f6'>svg_link(handle,href,title)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Places a link on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_link_end"></a><h3 ><span class='f6'>svg_link_end(handle)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Ends a link definition in <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_plot"></a><h3 ><span class='f6'>svg_plot(handle,x,y[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Plots a point on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_polygon"></a><h3 ><span class='f6'>svg_polygon(handle,[]x,[]y[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a polygon on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_polyline"></a><h3 ><span class='f6'>svg_polyline(handle,[]x,[]y[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a polyline on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_rect"></a><h3 ><span class='f6'>svg_rect(handle,x,y,w,h[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a rectangle on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_roundrect"></a><h3 ><span class='f6'>svg_roundrect(handle,x,y,w,h,rx,ry[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a rounded rectangle on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_square"></a><h3 ><span class='f6'>svg_square(handle,x,y,size[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Draws a square on the canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_start"></a><h3 ><span class='f7'>svg_handle = svg_start(filename,w,h[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a handle to a new SVG canvas. You must use this call to initiate the image creation process.<br><br>Returns an empty string on failure or a handle name on success.</p>
+<p ><i>Example:</i><br><pre>
+gridstyle           = `stroke:yellow;`
+
+# create an image file
+h=svg_start(&#34;/tmp/example.svg&#34;,500,500)
+on h==nil do exit 1, &#34;Invalid handle.&#34;
+
+# content
+h.svg_title(&#34;svg demo&#34;)
+h.svg_desc(&#34;description goes here&#34;)
+h.svg_grid(100,100,400,400,10,gridstyle)
+
+# write file to disk
+h.svg_end
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_text"></a><h3 ><span class='f6'>svg_text(handle,x,y,text[,attributes])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Writes text to the SVG canvas <span class='ion'>handle</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="svg_title"></a><h3 ><span class='f6'>svg_title(handle,title)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Places a title on the canvas <span class='ion'>handle</span>.</p>
+<br>
+
+
+</BODY>
+<br><div class="footer"><br><i>page generated by libdoc on 05 May 24 11:07 +0100</i><br><br></div>
+</HTML>

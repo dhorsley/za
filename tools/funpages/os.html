@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<HTML lang="en">
+<HEAD >
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - os functions">
+      <title>os functions</title>
+    <style>
+
+    .f0 {color:#000;}
+    .f1 {color:#00a;}
+    .f2 {color:#a00;}
+    .f3 {color:#a0a;}
+    .f4 {color:#0a0;}
+    .f5 {color:#0aa;}
+    .f6 {color:#cd0;}
+    .f7 {color:#bef;}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
+    .ttab > div {display:table-cell}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
+    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+
+</style>
+</HEAD>
+<BODY class="bodystyle">
+<div ><a href="./index.html">Return to index</a></div>
+
+<h1 ><nil></h1>
+
+<h2 >os functions</h2>
+<p >Functions for working with OS provided resources, such as environmental variables and the filing system.<br></p>
+
+<a id="top"></a>
+<ul ><li ><a href="#can_read">can_read</a></li>
+
+<li ><a href="#can_write">can_write</a></li>
+
+<li ><a href="#cd">cd</a></li>
+
+<li ><a href="#chroot">chroot</a></li>
+
+<li ><a href="#copy">copy</a></li>
+
+<li ><a href="#cwd">cwd</a></li>
+
+<li ><a href="#delete">delete</a></li>
+
+<li ><a href="#dir">dir</a></li>
+
+<li ><a href="#env">env</a></li>
+
+<li ><a href="#get_env">get_env</a></li>
+
+<li ><a href="#groupname">groupname</a></li>
+
+<li ><a href="#is_device">is_device</a></li>
+
+<li ><a href="#is_pipe">is_pipe</a></li>
+
+<li ><a href="#is_setgid">is_setgid</a></li>
+
+<li ><a href="#is_setuid">is_setuid</a></li>
+
+<li ><a href="#is_socket">is_socket</a></li>
+
+<li ><a href="#is_sticky">is_sticky</a></li>
+
+<li ><a href="#is_symlink">is_symlink</a></li>
+
+<li ><a href="#parent">parent</a></li>
+
+<li ><a href="#rename">rename</a></li>
+
+<li ><a href="#set_env">set_env</a></li>
+
+<li ><a href="#umask">umask</a></li>
+
+<li ><a href="#username">username</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div class="ttableft"><a id="can_read"></a><h3 ><span class='f7'>bool = can_read(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Check if path is readable.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="can_write"></a><h3 ><span class='f7'>bool = can_write(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Check if path is writeable.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="cd"></a><h3 ><span class='f7'>bool = cd(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Changes directory to a given path.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="chroot"></a><h3 ><span class='f6'>chroot(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Performs a chroot to a given path.</p>
+<p ><i>Example:</i><br><pre>
+chroot(&#34;/tmp&#34;)
+
+foreach f in dir(&#34;/&#34;)
+    println f.name
+endfor
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="copy"></a><h3 ><span class='f7'>bool = copy(src_string,dest_string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Copy a single file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="cwd"></a><h3 ><span class='f7'>string = cwd()</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the current working directory.</p>
+<p ><i>Example:</i><br><pre>
+println cwd()
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="delete"></a><h3 ><span class='f7'>bool = delete(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Delete a file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="dir"></a><h3 ><span class='f7'>[]structs = dir([filepath[,filter]])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an array containing file information on path <span class='ion'>filepath</span>.<br><br><span class='ion'>filter</span> can be specified, as a regex, to narrow results.<br><br>Each array element contains name,mode,size,mtime and is_dir fields.<br><br>These specify filename, file mode, file size, modification time and directory status respectively.</p>
+<p ><i>Example:</i><br><pre>
+foreach f in dir(&#34;/&#34;,&#34;^[Vv]&#34;)
+    println f.name
+endfor
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="env"></a><h3 ><span class='f7'>string = env()</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return all available environmental variables.</p>
+<p ><i>Example:</i><br><pre>
+foreach e in env()
+    println e
+endfor
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="get_env"></a><h3 ><span class='f7'>string = get_env(key_name)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return the value of the environmental variable <span class='ion'>key_name</span>.</p>
+<p ><i>Example:</i><br><pre>
+on get_env(&#34;AWS_DEFAULT_REGION&#34;)!=&#34;&#34; do region=get_env(&#34;AWS_DEFAULT_REGION&#34;)
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="groupname"></a><h3 ><span class='f7'>string = groupname(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Lookup a group name by group id.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_device"></a><h3 ><span class='f7'>bool = is_device(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a device.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_pipe"></a><h3 ><span class='f7'>bool = is_pipe(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a named pipe.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_setgid"></a><h3 ><span class='f7'>bool = is_setgid(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a setgid file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_setuid"></a><h3 ><span class='f7'>bool = is_setuid(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a setuid file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_socket"></a><h3 ><span class='f7'>bool = is_socket(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a socket.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_sticky"></a><h3 ><span class='f7'>bool = is_sticky(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a sticky file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_symlink"></a><h3 ><span class='f7'>bool = is_symlink(mode_number)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a file mode indicates a symbolic link.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="parent"></a><h3 ><span class='f7'>string = parent(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the parent directory.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="rename"></a><h3 ><span class='f7'>bool = rename(src_string,dest_string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Rename a file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="set_env"></a><h3 ><span class='f6'>set_env(key_name,value_string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Set the value of the environmental variable <span class='ion'>key_name</span>.</p>
+<p ><i>Example:</i><br><pre>
+eng=get_env(&#34;ZA_DB_ENGINE&#34;)
+host=get_env(&#34;ZA_DB_HOST&#34;)
+user=get_env(&#34;ZA_DB_USER&#34;)
+pass=get_env(&#34;ZA_DB_PASS&#34;)
+port=get_env(&#34;ZA_DB_PORT&#34;)
+
+creds=&#34;tests/db.creds&#34;
+if is_file(creds)
+    z=read_file(creds)
+    on eng==&#34;&#34;  do set_env(&#34;ZA_DB_ENGINE&#34;, get_value(z,&#34;ZA_DB_ENGINE&#34;))
+    on host==&#34;&#34; do set_env(&#34;ZA_DB_HOST&#34;,   get_value(z,&#34;ZA_DB_HOST&#34;))
+    on user==&#34;&#34; do set_env(&#34;ZA_DB_USER&#34;,   get_value(z,&#34;ZA_DB_USER&#34;))
+    on pass==&#34;&#34; do set_env(&#34;ZA_DB_PASS&#34;,   get_value(z,&#34;ZA_DB_PASS&#34;))
+    on port==&#34;&#34; do set_env(&#34;ZA_DB_PORT&#34;,   get_value(z,&#34;ZA_DB_PORT&#34;))
+endif
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="umask"></a><h3 ><span class='f7'>int = umask(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Sets the umask value. Returns the previous value. umask() with args just returns the current value.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="username"></a><h3 ><span class='f7'>string = username(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Lookup a username by user id.</p>
+<br>
+
+
+</BODY>
+<br><div class="footer"><br><i>page generated by libdoc on 05 May 24 11:07 +0100</i><br><br></div>
+</HTML>

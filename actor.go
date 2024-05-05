@@ -159,7 +159,6 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        // rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, self_s{}, []string{}, iargs...)
         rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, []string{}, iargs...)
 
         switch rcount {
@@ -572,7 +571,6 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-// func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, self self_s, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
 func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
 
     /*
@@ -4578,6 +4576,32 @@ pcloop:
                 }
             }
 
+            // @experimental and disabled currently:
+            /*
+            if interactive && permit_command_before_eval {
+                cmd:=basecode[source_base][parser.pc].Original
+
+                // confirmation msg
+                at(row,col)
+                pf("[#invert] Execute [ENTER] or evaluate [SPACE]? [#-]")
+
+                // poll for action
+                k:=0
+                exec:=false
+                for ; k!=13 && k!=32 ; {
+                    k=wrappedGetCh(1000,false)
+                    if k==13 { exec=true }
+                }
+
+                // execute
+                if exec {
+                    system(cmd,true)
+                    continue
+                }
+
+            }
+            */
+
             // try to eval and assign
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {
                 errmsg:=""
@@ -4596,15 +4620,15 @@ pcloop:
 
     } // end-pc-loop
 
-    lastlock.RLock()
-    si=sig_int
-    lastlock.RUnlock()
-
     if structMode && !typeInvalid {
         // incomplete struct definition
         pf("Open STRUCT definition %v\n",structName)
         finish(true,ERR_SYNTAX)
     }
+
+    lastlock.RLock()
+    si=sig_int
+    lastlock.RUnlock()
 
     if !si {
 
@@ -4648,6 +4672,7 @@ pcloop:
     return retval_count,endFunc
 
 }
+
 
 func system(cmds string, display bool) (cop struct{out string; err string; code int; okay bool}) {
 

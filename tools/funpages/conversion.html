@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<HTML lang="en">
+<HEAD >
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - conversion functions">
+      <title>conversion functions</title>
+    <style>
+
+    .f0 {color:#000;}
+    .f1 {color:#00a;}
+    .f2 {color:#a00;}
+    .f3 {color:#a0a;}
+    .f4 {color:#0a0;}
+    .f5 {color:#0aa;}
+    .f6 {color:#cd0;}
+    .f7 {color:#bef;}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
+    .ttab > div {display:table-cell}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
+    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+
+</style>
+</HEAD>
+<BODY class="bodystyle">
+<div ><a href="./index.html">Return to index</a></div>
+
+<h1 ><nil></h1>
+
+<h2 >conversion functions</h2>
+<p >Functions for type conversion and related tasks.<br></p>
+
+<a id="top"></a>
+<ul ><li ><a href="#as_bigf">as_bigf</a></li>
+
+<li ><a href="#as_bigi">as_bigi</a></li>
+
+<li ><a href="#as_bool">as_bool</a></li>
+
+<li ><a href="#as_float">as_float</a></li>
+
+<li ><a href="#as_int">as_int</a></li>
+
+<li ><a href="#as_int64">as_int64</a></li>
+
+<li ><a href="#as_string">as_string</a></li>
+
+<li ><a href="#as_uint">as_uint</a></li>
+
+<li ><a href="#asc">asc</a></li>
+
+<li ><a href="#base64d">base64d</a></li>
+
+<li ><a href="#base64e">base64e</a></li>
+
+<li ><a href="#btoi">btoi</a></li>
+
+<li ><a href="#byte">byte</a></li>
+
+<li ><a href="#char">char</a></li>
+
+<li ><a href="#dtoo">dtoo</a></li>
+
+<li ><a href="#f2n">f2n</a></li>
+
+<li ><a href="#is_number">is_number</a></li>
+
+<li ><a href="#itob">itob</a></li>
+
+<li ><a href="#json_decode">json_decode</a></li>
+
+<li ><a href="#json_format">json_format</a></li>
+
+<li ><a href="#json_query">json_query</a></li>
+
+<li ><a href="#kind">kind</a></li>
+
+<li ><a href="#m2s">m2s</a></li>
+
+<li ><a href="#otod">otod</a></li>
+
+<li ><a href="#read_struct">read_struct</a></li>
+
+<li ><a href="#s2m">s2m</a></li>
+
+<li ><a href="#write_struct">write_struct</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div class="ttableft"><a id="as_bigf"></a><h3 ><span class='f7'>big_float = as_bigf(expr)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>expr</span> to a float. Also ensures this is a copy.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_bigi"></a><h3 ><span class='f7'>big_int = as_bigi(expr)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>expr</span> to a big integer. Also ensures this is a copy.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_bool"></a><h3 ><span class='f7'>bool = as_bool(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>string</span> to a boolean value, or errors</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_float"></a><h3 ><span class='f7'>float = as_float(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var</span> to a float. Returns NaN on error.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_int"></a><h3 ><span class='f7'>integer = as_int(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var</span> to an integer, or errors.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_int64"></a><h3 ><span class='f7'>integer = as_int64(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var</span> to an int64 type, or errors.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_string"></a><h3 ><span class='f7'>string = as_string(value[,precision])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Converts <span class='ion'>value</span> to a string.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="as_uint"></a><h3 ><span class='f7'>unsigned_integer = as_uint(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert <span class='ion'>var</span> to a uint type, or errors.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="asc"></a><h3 ><span class='f7'>int = asc(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a numeric representation of the first char in <span class='ion'>string</span>.</p>
+<p ><i>Example:</i><br><pre>print asc(&#34; &#34;)
+32
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="base64d"></a><h3 ><span class='f7'>string = base64d(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string of the base64 decoding of <span class='ion'>string</span></p>
+<p ><i>Example:</i><br><pre>println base64d(&#34;VGhlIEJhbnlhbiBUcmVl&#34;)
+`
+produces:
+The Banyan Tree
+`</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="base64e"></a><h3 ><span class='f7'>string = base64e(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string of the base64 encoding of <span class='ion'>string</span></p>
+<p ><i>Example:</i><br><pre>println base64e(&#34;The Banyan Tree&#34;)
+`
+produces:
+VGhlIEJhbnlhbiBUcmVl
+`</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="btoi"></a><h3 ><span class='f7'>int = btoi(bool)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return an int which is either 1 when <span class='ion'>bool</span> is true or else 0 when <span class='ion'>bool</span> is false.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="byte"></a><h3 ><span class='f7'>byte = byte(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert to a uint8 sized integer, or errors.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="char"></a><h3 ><span class='f7'>string = char(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string representation of ASCII char <span class='ion'>int</span>. Representations above 127 are empty.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="dtoo"></a><h3 ><span class='f7'>string = dtoo(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert decimal int to octal string.</p>
+<p ><i>Example:</i><br><pre>print dtoo(488)
+750</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="f2n"></a><h3 ><span class='f7'>nil_or_any = f2n(any)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Converts false to nil or returns true.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="is_number"></a><h3 ><span class='f7'>bool = is_number(expression)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns true if <span class='ion'>expression</span> can evaluate to a numeric value.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="itob"></a><h3 ><span class='f7'>bool = itob(int)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a boolean which is set to true when <span class='ion'>int</span> is non-zero.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="json_decode"></a><h3 ><span class='f7'>[]any = json_decode(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a mixed type array representing a JSON string.</p>
+<p ><i>Example:</i><br><pre>
+dl=web_get(&#34;https://zalang.org/user/data/za/files/eg/example.json&#34;)
+ary=dl.result.json_decode
+
+widget=ary[&#34;widget&#34;]
+
+foreach part in widget
+    case key_part
+    is &#34;debug&#34;
+        println &#34;Debug Mode : &#34;,part
+    is &#34;window&#34;
+        println &#34;Window Title : &#123;=part[`title`]&#125;&#34;
+    is &#34;image&#34;
+    is &#34;text&#34;
+        println &#34;Text Name : &#123;=part[`name`]&#125;&#34;
+    endcase 
+endfor
+
+`
+should generate this...
+Text Name : text1
+Debug Mode : on
+Window Title : Sample Konfabulator Widget
+`</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="json_format"></a><h3 ><span class='f7'>string = json_format(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a formatted JSON representation of <span class='ion'>string</span>, or an empty string on error.</p>
+<p ><i>Example:</i><br><pre>
+dl=web_get(&#34;https://zalang.org/user/data/za/files/eg/example.json&#34;)
+println dl.result.json_format
+
+`
+should generate this...
+&#123;
+	&#34;widget&#34;: &#123;
+		&#34;debug&#34;: &#34;on&#34;,
+		&#34;window&#34;: &#123;
+			&#34;title&#34;: &#34;Sample Konfabulator Widget&#34;,
+			&#34;name&#34;: &#34;main_window&#34;,
+			&#34;width&#34;: 500,
+			&#34;height&#34;: 500
+		&#125;,
+		&#34;image&#34;: &#123;
+			&#34;src&#34;: &#34;Images/Sun.png&#34;,
+			&#34;name&#34;: &#34;sun1&#34;,
+			&#34;hOffset&#34;: 250,
+			&#34;vOffset&#34;: 250,
+			&#34;alignment&#34;: &#34;center&#34;
+		&#125;,
+		&#34;text&#34;: &#123;
+			&#34;data&#34;: &#34;Click Here&#34;,
+			&#34;size&#34;: 36,
+			&#34;style&#34;: &#34;bold&#34;,
+			&#34;name&#34;: &#34;text1&#34;,
+			&#34;hOffset&#34;: 250,
+			&#34;vOffset&#34;: 100,
+			&#34;alignment&#34;: &#34;center&#34;,
+			&#34;onMouseUp&#34;: &#34;sun1.opacity = (sun1.opacity / 100) * 90;&#34;
+		&#125;
+	&#125;
+&#125; 
+`</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="json_query"></a><h3 ><span class='f7'>string = json_query(input_string,query_string[,map_bool])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the result of processing <span class='ion'>input_string</span> using the gojq library.<br><br><span class='ion'>query_string</span> is a jq-like query to operate with. If <span class='ion'>map_bool</span> is false (default)<br><br>then a string is returned, otherwise an iterable list is returned.</p>
+<p ><i>Example:</i><br><pre>lb=&#34;default_loadbalancer&#34;
+albs =&lt; aws elbv2 describe-load-balancers --names &#123;lb&#125; --output json
+lbquery=`.[]|.[]|select(.LoadBalancerName==&#34;&#123;lb&#125;&#34;)`
+alb_details=json_query(albs,lbquery,true)[0]
+</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="kind"></a><h3 ><span class='f7'>string = kind(var)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string indicating the type of the variable <span class='ion'>var</span>.</p>
+<p ><i>Example:</i><br><pre>a=42
+b=&#34;the answer&#34;
+c=pi()
+d=true
+var e [10]int
+f=append(f,&#34;test&#34;)
+println kind(a)
+println kind(b)
+println kind(c)
+println kind(d)
+println kind(e)
+println kind(f)
+
+`
+should generate this...
+int
+string
+float64
+bool
+[]int
+[]interface &#123;&#125;
+
+Please Note : The underlying data type will always be Go-specific.
+ You shouldn&#39;t need this function often, but it can be useful in
+ a few situations, such as trouble-shooting.
+`</pre></p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="m2s"></a><h3 ><span class='f7'>struct = m2s(map,struct_example)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert a map to struct following field form of <span class='ion'>struct_example</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="otod"></a><h3 ><span class='f7'>int = otod(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert octal string to decimal int.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="read_struct"></a><h3 ><span class='f7'>bool_success = read_struct(filename,name_of_destination_struct)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Read a struct from a file.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="s2m"></a><h3 ><span class='f7'>map = s2m(struct)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert a struct to map.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="write_struct"></a><h3 ><span class='f7'>size = write_struct(filename,name_of_struct)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Sends a struct to file. Returns byte size written.</p>
+<br>
+
+
+</BODY>
+<br><div class="footer"><br><i>page generated by libdoc on 05 May 24 11:07 +0100</i><br><br></div>
+</HTML>
