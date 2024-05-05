@@ -6,8 +6,6 @@
 println "\n[#bold][#fbblue]Library web page autogen[#-]\n"
 
 
-# interpol(false)
-
 c_link="azure"
 cf_body="seagreen"
 cb_head="#027"
@@ -57,7 +55,7 @@ hc[`\[##]`] = `</span>`
 define cc_clean(s)
     s=s.replace(`\[#i0]`,    `</span>`)
     s=s.replace(`\[#i1]`,    `<span class='ion'>`)
-    s=s.replace(`\[#bold]`,  `<span class='boff'>`)
+    s=s.replace(`\[#bold]`,  `<span class='bon'>`)
     s=s.replace(`\[#boff]`,  `</span>`)
     s=s.replace(`\n`,        `<br><br>`)
     foreach c in hc
