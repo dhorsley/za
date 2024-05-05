@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<HTML lang="en">
+<HEAD >
+
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+      <meta name="description" content="Za library reference - string functions">
+      <title>string functions</title>
+    <style>
+
+    .f0 {color:#000;}
+    .f1 {color:#00a;}
+    .f2 {color:#a00;}
+    .f3 {color:#a0a;}
+    .f4 {color:#0a0;}
+    .f5 {color:#0aa;}
+    .f6 {color:#cd0;}
+    .f7 {color:#bef;}
+    .ioff       {font-style:normal;}
+    .ion        {font-style:italic;}
+    .boff       {font-weight:normal;}
+    .bon        {font-weight:bold;}
+    .ttab       {display:table}
+    .ttab > div {display:table-cell}
+    .ttableft   {width:90%;padding-left:16px;}
+    .ttabright  {width:9%;}
+    .hdbg       {width:100%;background-color:#027;line-height:0px;}
+    .bodystyle  {background-color:#012;color:seagreen;}
+    .ilink      {width:100%;font-size:2.0rem; }
+    a:link      {color:azure;background-color:transparent;text-decoration:none;}
+    a:visited   {color:azure;background-color:transparent;text-decoration:none;}
+    a:hover     {color:azure;background-color:transparent;text-decoration:none;}
+    a:active    {color:azure;background-color:transparent;text-decoration:none;}
+    .footer     {background-color:#259;color:#8cc;width:99%;padding:4px;text-align:right;font-size:0.85rem;}
+
+</style>
+</HEAD>
+<BODY class="bodystyle">
+<div ><a href="./index.html">Return to index</a></div>
+
+<h1 ><nil></h1>
+
+<h2 >string functions</h2>
+<p >A number of functions for manipulating strings.<br></p>
+
+<a id="top"></a>
+<ul ><li ><a href="#addansi">addansi</a></li>
+
+<li ><a href="#bg256">bg256</a></li>
+
+<li ><a href="#bgrgb">bgrgb</a></li>
+
+<li ><a href="#ccformat">ccformat</a></li>
+
+<li ><a href="#clean">clean</a></li>
+
+<li ><a href="#collapse">collapse</a></li>
+
+<li ><a href="#count">count</a></li>
+
+<li ><a href="#fg256">fg256</a></li>
+
+<li ><a href="#fgrgb">fgrgb</a></li>
+
+<li ><a href="#field">field</a></li>
+
+<li ><a href="#fields">fields</a></li>
+
+<li ><a href="#filter">filter</a></li>
+
+<li ><a href="#format">format</a></li>
+
+<li ><a href="#get_value">get_value</a></li>
+
+<li ><a href="#grep">grep</a></li>
+
+<li ><a href="#gsub">gsub</a></li>
+
+<li ><a href="#has_end">has_end</a></li>
+
+<li ><a href="#has_start">has_start</a></li>
+
+<li ><a href="#inset">inset</a></li>
+
+<li ><a href="#join">join</a></li>
+
+<li ><a href="#line_add">line_add</a></li>
+
+<li ><a href="#line_add_after">line_add_after</a></li>
+
+<li ><a href="#line_add_before">line_add_before</a></li>
+
+<li ><a href="#line_delete">line_delete</a></li>
+
+<li ><a href="#line_filter">line_filter</a></li>
+
+<li ><a href="#line_head">line_head</a></li>
+
+<li ><a href="#line_match">line_match</a></li>
+
+<li ><a href="#line_replace">line_replace</a></li>
+
+<li ><a href="#line_tail">line_tail</a></li>
+
+<li ><a href="#lines">lines</a></li>
+
+<li ><a href="#lower">lower</a></li>
+
+<li ><a href="#match">match</a></li>
+
+<li ><a href="#next_match">next_match</a></li>
+
+<li ><a href="#pad">pad</a></li>
+
+<li ><a href="#pos">pos</a></li>
+
+<li ><a href="#replace">replace</a></li>
+
+<li ><a href="#reverse">reverse</a></li>
+
+<li ><a href="#rvalid">rvalid</a></li>
+
+<li ><a href="#split">split</a></li>
+
+<li ><a href="#stripansi">stripansi</a></li>
+
+<li ><a href="#stripcc">stripcc</a></li>
+
+<li ><a href="#stripquotes">stripquotes</a></li>
+
+<li ><a href="#strpos">strpos</a></li>
+
+<li ><a href="#substr">substr</a></li>
+
+<li ><a href="#tr">tr</a></li>
+
+<li ><a href="#trim">trim</a></li>
+
+<li ><a href="#upper">upper</a></li>
+
+<li ><a href="#wrap">wrap</a></li>
+
+</ul>
+
+<div class="ttab hdbg"><div class="ttableft"><a id="addansi"></a><h3 ><span class='f7'>ansi_string = addansi(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return a string with za colour codes replaced with ANSI values.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="bg256"></a><h3 ><span class='f7'>string = bg256(int_colour)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an ANSI code string for expressing an 8-bit background colour code.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="bgrgb"></a><h3 ><span class='f7'>string = bgrgb(int_r,int_g,int_b)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an ANSI code string for expressing an rgb background colour code.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="ccformat"></a><h3 ><span class='f7'>string = ccformat(string,var_args)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Format the input string in the manner of fprintf(). Also processes embedded colour codes to ANSI.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="clean"></a><h3 ><span class='f7'>string = clean(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Remove curly brace nests from a string. Use this to sanitise inputs.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="collapse"></a><h3 ><span class='f7'>string = collapse(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Turns a newline separated string into a space separated string.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="count"></a><h3 ><span class='f7'>integer = count(string_name)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the number of lines in <span class='ion'>string_name</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="fg256"></a><h3 ><span class='f7'>string = fg256(int_colour)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an ANSI code string for expressing an 8-bit foreground colour code.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="fgrgb"></a><h3 ><span class='f7'>string = fgrgb(int_r,int_g,int_b)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns an ANSI code string for expressing an rgb foreground colour code.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="field"></a><h3 ><span class='f7'>string = field(input_string,position[,optional_separator])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Retrieves columnar field <span class='ion'>position</span> from <span class='ion'>input_string</span>.<br><br><span class='ion'>optional_separator</span> defaults to a space character. <span class='ion'>string</span> is empty on failure.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="fields"></a><h3 ><span class='f7'>int = fields(input_string[,optional_separator])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Splits up <span class='ion'>input_string</span> in local array <span class='ion'>F</span>, with fields starting at index 1.<br><br>Field count is stored in <span class='ion'>NF</span>. Also squeezes repeat spaces when separator is a space char (default).<br><br>Returns -1 on error, or field count.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="filter"></a><h3 ><span class='f7'>string = filter(string,regex[,count])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a string matching the regular expression <span class='ion'>regex</span> in <span class='ion'>string</span>. count should be -1 for all matches.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="format"></a><h3 ><span class='f7'>string = format(string,var_args)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Format the input string in the manner of fprintf().</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="get_value"></a><h3 ><span class='f7'>string_value = get_value(string_array,key_name)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the value of the key <span class='ion'>key_name</span> in <span class='ion'>string_array</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="grep"></a><h3 ><span class='f7'>nl_string = grep(nl_string,regex)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Alias for line_filter.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="gsub"></a><h3 ><span class='f7'>string = gsub(string,string_m,string_s)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns <span class='ion'>string</span> with all matches of <span class='ion'>string_m</span> replaced with <span class='ion'>string_s</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="has_end"></a><h3 ><span class='f7'>bool = has_end(string1,string2)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Does <span class='ion'>string1</span> end with <span class='ion'>string2</span>?</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="has_start"></a><h3 ><span class='f7'>bool = has_start(string1,string2)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Does <span class='ion'>string1</span> begin with <span class='ion'>string2</span>?</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="inset"></a><h3 ><span class='f7'>nl_string = inset(nl_string,distance)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Left pads each line of <span class='ion'>nl_string</span> with <span class='ion'>distance</span> cursor right commands.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="join"></a><h3 ><span class='f7'>string = join([]string_list[,fs])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a string with all elements of <span class='ion'>string_list</span> concatenated, separated by <span class='ion'>fs</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_add"></a><h3 ><span class='f7'>string = line_add(var,string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Append a line to array string <span class='ion'>var</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_add_after"></a><h3 ><span class='f7'>string = line_add_after(var,regex,string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Inserts a new line to array string <span class='ion'>var</span> after the first matching <span class='ion'>regex</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_add_before"></a><h3 ><span class='f7'>string = line_add_before(string,regex_string,string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Inserts a new line in string ahead of the first matching <span class='ion'>regex_string</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_delete"></a><h3 ><span class='f7'>string = line_delete(var,regex)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Remove lines from array string <span class='ion'>var</span> which match <span class='ion'>regex</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_filter"></a><h3 ><span class='f7'>nl_string = line_filter(nl_string,regex)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns lines from <span class='ion'>nl_string</span> where regular expression <span class='ion'>regex</span> matches.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_head"></a><h3 ><span class='f7'>nl_string = line_head(nl_string,count)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the top <span class='ion'>count</span> lines of <span class='ion'>nl_string</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_match"></a><h3 ><span class='f7'>bool = line_match(nl_string,regex)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Does <span class='ion'>nl_string</span> contain a match for regular expression <span class='ion'>regex</span> on any line?</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_replace"></a><h3 ><span class='f7'>string = line_replace(var,regex,replacement)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Replaces lines in <span class='ion'>var</span> that match <span class='ion'>regex</span> with <span class='ion'>replacement</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="line_tail"></a><h3 ><span class='f7'>nl_string = line_tail(nl_string,count)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the last <span class='ion'>count</span> lines of <span class='ion'>nl_string</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="lines"></a><h3 ><span class='f7'>string = lines(string_name,string_range)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns lines from <span class='ion'>string_name</span>. <span class='ion'>string_range</span> is specified in the form <span class='ion'>start:end</span>.<br><br>Either optional term can be <span class='ion'>last</span> to indicate the last line of the file. Numbering starts from 0.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="lower"></a><h3 ><span class='f7'>string = lower(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert to lower-case.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="match"></a><h3 ><span class='f7'>bool = match(string,regex)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Does <span class='ion'>string</span> contain a match for regular expression <span class='ion'>regex</span>?</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="next_match"></a><h3 ><span class='f7'>int = next_match(nl_string,regex,start_line)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the next line number which contains the <span class='ion'>regex</span> in <span class='ion'>nl_string</span>. -1 is returned on no match.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="pad"></a><h3 ><span class='f7'>string = pad(string,justify,width[,padchar])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Return left (-1), centred (0) or right (1) justified, padded string.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="pos"></a><h3 ><span class='f7'>string = pos(int_row,int_col)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a cursor positioning ANSI code string for (row,col).</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="replace"></a><h3 ><span class='f7'>string = replace(var,regex,replacement)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Replaces matches found in <span class='ion'>var</span> with <span class='ion'>regex</span> to <span class='ion'>replacement</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="reverse"></a><h3 ><span class='f7'>as_input = reverse(list_or_string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Reverse the contents of a variable.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="rvalid"></a><h3 ><span class='f7'>bool = rvalid(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Checks if a regex has valid syntax.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="split"></a><h3 ><span class='f7'>[]list = split(string[,fs])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns <span class='ion'>string</span> as a list, breaking the string on <span class='ion'>fs</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="stripansi"></a><h3 ><span class='f7'>string = stripansi(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Remove escaped ansi codes.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="stripcc"></a><h3 ><span class='f7'>string = stripcc(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Remove Za colour codes from string.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="stripquotes"></a><h3 ><span class='f7'>string = stripquotes(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Remove outer quotes (double, single or backtick)</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="strpos"></a><h3 ><span class='f7'>int_position = strpos(string,substring[,start_pos])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns the position of the next match of <span class='ion'>substring</span> in <span class='ion'>string</span>. Returns -1 if no match found.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="substr"></a><h3 ><span class='f7'>string = substr(string,int_s,int_l)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Returns a sub-string of <span class='ion'>string</span>, from position <span class='ion'>int_s</span> with length <span class='ion'>int_l</span>.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="tr"></a><h3 ><span class='f7'>string = tr(string,action,case_string[,translation_string])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >delete (action &#34;d&#34;) or squeeze (action &#34;s&#34;) extra characters (in <span class='ion'>case_string</span>) from <span class='ion'>string</span>.<br><br>Translate (action &#34;t&#34;) can be used, along with the optional <span class='ion'>translation_string</span> to specify direct<br><br>replacements for existing characters. Please note: this is a very restricted subset of the tr tool.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="trim"></a><h3 ><span class='f7'>string = trim(string,int_type[,removal_list_string])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Removes whitespace from <span class='ion'>string</span>, depending on <span class='ion'>int_type</span>.<br><br>-1 ltrim, 0 both, 1 rtrim. By default, space (ASCII:32) and horizontal tabs (ASCII:9) are removed.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="upper"></a><h3 ><span class='f7'>string = upper(string)</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Convert to upper-case.</p>
+<br>
+<div class="ttab hdbg"><div class="ttableft"><a id="wrap"></a><h3 ><span class='f7'>bool = wrap([bool])</span></h3>
+</div>
+<div class="ttabright"><a href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()">top</a></div>
+</div>
+<p >Enable (true) or disable (false) line wrap in non-global display panes.<br><br>The previous wrap value is returned.<br><br>N.B. ensure that only plain text is wrapped. ANSI codes may be split!</p>
+<br>
+
+
+</BODY>
+<br><div class="footer"><br><i>page generated by libdoc on 05 May 24 11:07 +0100</i><br><br></div>
+</HTML>
