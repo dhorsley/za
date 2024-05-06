@@ -19,7 +19,7 @@ def form_logo()
 end
 
 def form_time()
-    return time_hours() + ":" + time_minutes()
+    return " %02d:%02d ".format(time_hours(),time_minutes())
 end
 
 def form_git()
@@ -49,7 +49,7 @@ def form_git()
             str_status=F[4]
             status="[#2]✕"
             on str_status=="up-to-date" do status="[#4]✓"
-            return bg256(0xe2) + fg256(0x11) + "({branch} {status})" + bg256(0) + fg256(0xe2)
+            return bg256(0xe2) + fg256(0x11) + " ({branch} {status}) " + bg256(0) + fg256(0xe2)
         endif
 
     endif
@@ -70,7 +70,7 @@ def form_dir()
     else
         path=cwd()
     endif
-    return path
+    return " "+path+" "
 end
 
 def form_prompt()
