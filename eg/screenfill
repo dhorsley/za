@@ -6,20 +6,20 @@ input maxc param 1 is "count"
 h=40
 w=term_w()
 
-var y [h]mixed
+var y [h]string
+h--
 
-# repeatedly fill second buffer with line by line copies of first buf
+# repeatedly fill buffer then print
 cursoroff()
 for c=0 to maxc
 
     # fill buffer with random char lines
-    for e=0 to h-1
+    for e=0 to h
         y[e]=(rand(95)+31).char * w
     endfor
 
-    for e=0 to h-1
-        at e,1
-        print y[e]
+    for e=0 to h
+        at e,1,y[e]
     endfor
 
 endfor
