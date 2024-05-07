@@ -585,9 +585,10 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 if len(paf.Parent)>2 { parent=paf.Parent[2:] }
                 pan:=parent+"/"+name
 
-                if matched, _ := regexp.MatchString("^"+wordUnderCursor, name); !matched {
-                    continue
+                if matched, _ := regexp.MatchString("^"+wordUnderCursor, pan); !matched {
+                     continue
                 }
+
                 f, err := os.Stat(name)
                 if err==nil {
                     appendEntry:=""
