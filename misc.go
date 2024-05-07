@@ -3,6 +3,7 @@ package main
 import (
     "log"
     "fmt"
+    "io/fs"
     "os"
     "reflect"
     "regexp"
@@ -27,6 +28,35 @@ func startupOptions() {
     }
 
 }
+
+type parent_and_file struct {
+    Parent      string
+    Depth       int
+    DirEntry    fs.DirEntry
+}
+
+func dirplus(path string, depth int) (flist []parent_and_file) {
+    if depth<0 { return }
+    sep:="/"
+    if runtime.GOOS=="windows" {
+        sep="\\"
+    }
+    files,err:=os.ReadDir(path)
+    if err!=nil { return }
+    for _,v:=range files {
+        // pf("  on path %v : cf -> %v\n",path,v.Name())
+        f,err:=os.Stat(path+sep+v.Name())
+        if err==nil {
+            flist=append(flist,parent_and_file{Parent:path,Depth:depth,DirEntry:v})
+            if f.IsDir() {
+                flist=append(flist,dirplus(path+sep+v.Name(),depth-1)...)
+            }
+        }
+    }
+    // pf("dp->returning list of %+v\n",flist)
+    return flist
+}
+
 
 func dir(filter string) ([]dirent) {
 
