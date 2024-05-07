@@ -433,9 +433,6 @@ func main() {
 
     // start processing startup flags
 
-    // fall back to command processing if unrecognised.
-    gvset("@command_fallback",false)
-
     // command output unit separator
     gvset("@cmdsep",byte(0x1e))
 
