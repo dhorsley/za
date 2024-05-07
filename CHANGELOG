@@ -9,6 +9,7 @@ CHANGE LOG
     -----
 
     * Added error state for some previously undetected early expression terminations.
+    * fixed bug in last() result in interactive mode
 
     library changes
     ---------------

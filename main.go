@@ -883,7 +883,6 @@ func main() {
 
                 var trident = make([]Variable,identInitialSize)
 
-                // Call(MODE_NEW, &trident, loc, ciTrap, self_s{}, []string{}, iargs...)
                 Call(MODE_NEW, &trident, loc, ciTrap, []string{}, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]any)
@@ -1161,6 +1160,7 @@ func main() {
                     tempPrompt=promptContinuation
                 }
 
+                gvset("@last",0)
                 input, eof, broken = getInput(tempPrompt, "", "global", row, col, pcol, true, true, echoMask)
 
                 if eof || broken { break }
@@ -1349,7 +1349,6 @@ func main() {
         if *a_program!="" {
             vset(nil,1,&mident,"_stdin", string(data))
         }
-        // Call(MODE_NEW, &mident, mainloc, ciMain, self_s{}, []string{})
         Call(MODE_NEW, &mident, mainloc, ciMain, []string{})
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
