@@ -1,5 +1,13 @@
 
-# set prompt
+doc `
+
+    EXAMPLE STARTUP RC FILE
+
+    copy this to $HOME/.zarc to use it.
+
+`
+
+# supporting functions
 
 def unicode(a,b)
     return format("%c",as_int((a << 8) + b))
@@ -23,7 +31,6 @@ def form_time()
 end
 
 def form_git()
-    @last_cmd_status=last()
 
     if inside_git or cwd() != last_git_path
         @gs={git status}
@@ -75,6 +82,7 @@ def form_dir()
 end
 
 def form_prompt()
+    @last_cmd_status=last()
     cached_fg=form_git()
     return ( form_logo() + bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
          bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) + endcap +
@@ -88,16 +96,18 @@ def has_root()
 end
 
 
+# set prompt
 inside_git=false
 last_cmd_status=0
 last_git_path=""
 endcap="▙[#-]"
 gs={git status}
-
+# right-hand side of prompt assignment is re-evaluated 
+# before each input prompt is presented.
 prompt=(form_prompt())
-
 # end-set-prompt
 
+# set banner
 ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
 ignore_fonts+=["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
 ignore_fonts+=["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
@@ -126,6 +136,7 @@ endif
 
 println "\n\n[#5]{p}[#-]\n"
 help
+# end-set-banner
 
 unset banner,p,ignore_fonts
 
