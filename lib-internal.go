@@ -253,6 +253,7 @@ func buildInternalLib() {
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
         "enum_names","enum_all","dump","mdump","sysvar","expect",
         "ast","varbind","sizeof","dup",
+        "set_depth",
         // "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -475,6 +476,14 @@ func buildInternalLib() {
     }
     */
 
+    slhelp["set_depth"] = LibHelp{in: "int_max_depth", out: "", action: "Sets the maximum directory recurse depth in interactive help mode."}
+    stdlib["set_depth"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("set_depth",args,1,"1","int"); !ok { return nil,err }
+        gvset("context_dir_depth",args[0].(int))
+        return nil,nil
+    }
+
+    slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
     slhelp["sysvar"] = LibHelp{in: "system_variable_name", out: "struct", action: "Returns the value of a system variable."}
     stdlib["sysvar"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("sysvar",args,1,"1","string"); !ok { return nil,err }

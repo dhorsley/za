@@ -13,10 +13,16 @@ CHANGE LOG
     library changes
     ---------------
 
+    * added set_depth(int) call for setting max recursion depth in interactive context help mode
+        - negative int disables file recursion
+        - 0/1 ignores child dirs
+        - higher ints set child depth
+
+
     other
     -----
 
-    * (experimental) added interactive/tab completion mode support for depth 1
+    * (experimental) added interactive/tab completion mode support for variable depth
         subdirectory paths. *this may well be broken!*
 
     * (experimental) added caret unary operator inside array range expressions.
