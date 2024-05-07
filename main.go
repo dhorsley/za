@@ -469,6 +469,9 @@ func main() {
     // - don't show co-proc command progress
     gvset("mark_time", false)
 
+    // - max depth of interactive mode dir context help
+    gvset("context_dir_depth",1)
+
     // - show user stdin input
     gvset("@echo", true)
 
