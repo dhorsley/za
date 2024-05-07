@@ -16,6 +16,9 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) added interactive/tab completion mode support for depth 1
+        subdirectory paths. *this may well be broken!*
+
     * (experimental) added caret unary operator inside array range expressions.
         - this returns the length of the parent array, to allow, for example:
             var a [10]int
