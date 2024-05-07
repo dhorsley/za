@@ -577,20 +577,27 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             }
 
             fileList=make(map[string]os.FileInfo)
+    
+            max_depth,_:=gvget("context_dir_depth")
 
-            for _,paf := range dirplus(".",1) {
+            for _,paf := range dirplus(".",max_depth.(int)) {
 
                 name:=paf.DirEntry.Name()
-                parent:=""
-                if len(paf.Parent)>2 { parent=paf.Parent[2:] }
-                pan:=parent+"/"+name
+                parent:="."
+                pan:=name
+
+                if len(paf.Parent)>2 {
+                    parent=paf.Parent[2:]
+                    pan=parent+"/"+name
+                }
 
                 if matched, _ := regexp.MatchString("^"+wordUnderCursor, pan); !matched {
                      continue
                 }
 
-                f, err := os.Stat(name)
-                if err==nil {
+                f, _ := os.Stat(pan)
+
+                if parent=="." {
                     appendEntry:=""
                     if f.IsDir() {
                         appendEntry+="[#3]"
@@ -603,7 +610,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     helpType = append(helpType, HELP_DIRENT)
                     fileList[name] = f
                 } else {
-                    f,_:=os.Stat(pan)
                     appendEntry:=sf("[#2]%s[#-]",pan)
                     helpColoured = append(helpColoured,appendEntry)
                     helpList = append(helpList, pan)
