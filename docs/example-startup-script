@@ -57,10 +57,11 @@ def form_git()
 end
 
 def form_end_prompt()
+    root=has_root()?"[#bold][#b2][#7] # [##]":""
     if last_cmd_status == 0
-        return "[#bold][#4] ➜ "
+        return root+"[#bold][#4] ➜ "
     else
-        return "[#bred] ✗ "
+        return root+"[#bred] ✗ "
     endif
 end
 
@@ -80,6 +81,12 @@ def form_prompt()
          cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
     )
 end
+
+def has_root()
+    sudo=get_env("SUDO_USER")
+    return sudo!="" or user()=="root"
+end
+
 
 inside_git=false
 last_cmd_status=0
