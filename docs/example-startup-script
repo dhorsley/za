@@ -75,9 +75,7 @@ end
 
 def form_dir()
     if inside_git
-        toppath=${git rev-parse --show-toplevel}
-        topparent=$pp toppath
-        path="…/"+cwd().replace(topparent+"/","")
+        path="…/"+cwd().replace(($pp ${git rev-parse --show-toplevel})+"/","")
     else
         path=cwd()
     endif
