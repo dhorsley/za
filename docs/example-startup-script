@@ -35,6 +35,7 @@ def form_git()
 
     if inside_git or cwd() != last_git_path
         @gs={git status}
+        @gtl=${git rev-parse --show-toplevel}
         @last_git_path=cwd()
     endif
 
@@ -75,7 +76,7 @@ end
 
 def form_dir()
     if inside_git
-        path="…/"+cwd().replace(($pp ${git rev-parse --show-toplevel})+"/","")
+        path="…/"+cwd().replace(($pp gtl)+"/","")
     else
         path=cwd()
     endif
