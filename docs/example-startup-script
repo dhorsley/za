@@ -1,3 +1,4 @@
+#!/usr/bin/za
 
 doc `
 
@@ -54,8 +55,8 @@ def form_git()
         _=fields(gs_text[1])
         if NF>3
             str_status=F[4]
-            status="[#2]✕"
-            on str_status=="up-to-date" do status="[#4]✓"
+            status="[#2]✕[#0]"
+            on str_status=="up-to-date" do status="[#4]✓[#0]"
             return bg256(0xe2) + fg256(0x11) + " ({branch} {status}) " + bg256(0) + fg256(0xe2)
         endif
 
@@ -74,7 +75,9 @@ end
 
 def form_dir()
     if inside_git
-        path="…/"+$pb cwd()
+        toppath=${git rev-parse --show-toplevel}
+        topparent=$pp toppath
+        path="…/"+cwd().replace(topparent+"/","")
     else
         path=cwd()
     endif
