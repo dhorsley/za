@@ -17,7 +17,7 @@ end
 def form_logo()
     s=bg256(0x10)+unicode(0xf8,0xff)+" "+fg256(0x10)
     case release_id()
-    is "ubuntu"
+    contains "^(ubuntu|debian)$"
         s=bg256(0xd6)+"[#0] U "+fg256(0xd6)
     is "popos"
         s=bg256(0x4a)+"[#6] P "+fg256(0x4a)
