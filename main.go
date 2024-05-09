@@ -1089,6 +1089,7 @@ func main() {
         numlookup.lmset(1,"main")
 
         started:=false
+        gvset("@lastcmd","")
 
         for {
 

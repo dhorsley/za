@@ -33,18 +33,17 @@ end
 
 def form_git()
 
-    if inside_git or cwd() != last_git_path
+    @inside_git=${git rev-parse --is-inside-work-tree 2>/dev/null}=="true" ? true:false
+
+    if inside_git and (sysvar("@lastcmd") ~ "git" or cwd()!=last_git_path)
         @gs={git status}
         @gtl=${git rev-parse --show-toplevel}
         @last_git_path=cwd()
     endif
 
-    @inside_git=false
-
-    if gs.okay
+    if inside_git
 
         gs_text=gs.out.split("\n")
-        @inside_git=true
 
         _=fields(gs_text[0])
         if NF>0
@@ -104,6 +103,7 @@ last_cmd_status=0
 last_git_path=""
 endcap="▙[#-]"
 gs={git status}
+gtl=${git rev-parse --show-toplevel}
 # right-hand side of prompt assignment is re-evaluated 
 # before each input prompt is presented.
 prompt=(form_prompt())
