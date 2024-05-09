@@ -1531,7 +1531,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
     riwp,_:=gvget("@runInWindowsParent")
     rip,_ :=gvget("@runInParent")
 
-
     // shell reporting option:
     sr,_:=gvget("@shell_report")
 
@@ -1551,6 +1550,8 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             pf("[#4]command : [%s][#-]\n",line)
         }
     }
+
+    gvset("@lastcmd",line)
 
     if riwp.(bool) || rip.(bool) {
 
