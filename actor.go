@@ -4577,8 +4577,9 @@ pcloop:
             }
 
             // @experimental and disabled currently:
+           
             /*
-            if interactive && permit_command_before_eval {
+            if interactive && !squelch_prompt && permit_command_before_eval {
                 cmd:=basecode[source_base][parser.pc].Original
 
                 // confirmation msg
@@ -4600,7 +4601,7 @@ pcloop:
                 }
 
             }
-            */
+            */ 
 
             // try to eval and assign
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {

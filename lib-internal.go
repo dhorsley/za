@@ -254,7 +254,7 @@ func buildInternalLib() {
         "enum_names","enum_all","dump","mdump","sysvar","expect",
         "ast","varbind","sizeof","dup",
         "set_depth",
-        // "conread","conwrite","conset","conclear", : for future use.
+        // "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
     }
 
     slhelp["expect"] = LibHelp{in: "[]arguments,variant_count,[]variants", out: "bool", action: "returns true if the arguments satisfy the type list.\na variant is an argument count followed by a list of type_strings."}
@@ -473,6 +473,16 @@ func buildInternalLib() {
     stdlib["conset"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("conset",args,1,"1","string"); !ok { return nil,err }
         return sttyFlag(args[0].(string),true),nil
+    }
+    */
+
+    /*
+    slhelp["suppress_prompt"] = LibHelp{in: "bool", out: "", action: "Disable/Enable command/eval prompt."}
+    stdlib["suppress_prompt"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("suppress_prompt",args,1,"1","bool"); !ok { return nil,err }
+        prev:=squelch_prompt
+        squelch_prompt=args[0].(bool)
+        return prev,nil
     }
     */
 
@@ -814,7 +824,7 @@ func buildInternalLib() {
             default:
                 return nil,errors.New("permit(shell) accepts a boolean value only.")
             }
-        /*
+        
         case "cmdconfirm":
             switch args[1].(type) {
             case bool:
@@ -823,7 +833,7 @@ func buildInternalLib() {
             default:
                 return nil,errors.New("permit(cmdconfirm) accepts a boolean value only.")
             }
-        */
+        
         case "eval":
             switch args[1].(type) {
             case bool:
