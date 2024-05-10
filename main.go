@@ -197,7 +197,7 @@ var permit_shell                bool    // default: true, when false, exit scrip
 var permit_eval                 bool    // default: true, when false, exit script if eval call encountered
 var permit_command_before_eval  bool    // default: true, when false, exit script if eval call encountered
 var permit_permit               bool    // default: true, when false, permit function is disabled
-
+// var squelch_prompt              bool    // suppress cmd/eval prompt while true
 
 // Global: test related
 // test related setup, completely non thread safe
