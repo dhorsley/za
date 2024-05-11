@@ -29,7 +29,6 @@
 #       ... just another reason to keep your processing inside Za where possible.
 
 working_home=home()
-on working_home == "$HOME" do working_home="/home/daniel"
 
 println "[#1]Async Test[#-]"
 
