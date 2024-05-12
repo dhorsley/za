@@ -628,15 +628,12 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
 
                 if interactive && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
-                    pf("<fallback executing : %v>\n",cmd)
+                    // pf("<fallback executing : %v>\n",cmd)
                     prevcap,_:=gvget("@commandCapture")
-                    prevrip,_:=gvget("@runInParent")
-                    gvset("@runInParent",true)
-                    gvset("@commandCapture",false)
-                    cop:=system(cmd,true)
+                    gvset("@commandCapture",true)
+                    cop:=system(cmd,false)
                     gvset("@commandCapture",prevcap.(bool))
-                    gvset("@runInParent",prevrip.(bool))
-                    pf("\n")
+                    pf("%s\n",cop.out)
                     if !cop.okay {
                         pf("<fallback exec error : %v\n%v>\n",cop.code,cop.err)
                     }
@@ -4758,8 +4755,6 @@ func coprocCall(s string) {
 
         // find index of first pipe, then remove everything upto and including it
         _,cet,_ := str.Cut(s,"|")
-        // pipepos := str.IndexByte(s, '|')
-        // cet     := s[pipepos+1:]
 
         // strip outer quotes
         cet      = str.Trim(cet," \t\n")
