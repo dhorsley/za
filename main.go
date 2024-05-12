@@ -386,6 +386,7 @@ func main() {
     numlookup.lmset(0,"global")
     numlookup.lmset(1,"main")
 
+    basemodmap[0]="global"
     basemodmap[1]="main"
 
     // reset call stacks for global and main
@@ -1143,16 +1144,20 @@ func main() {
             // multi-line input loop
             for {
 
+                parser.namespace="main"
+                currentModule="main"
+                interparse.namespace="main"
+
                 // set the prompt in the loop to ensure it updates regularly
                 var tempPrompt string
                 if nestAccept==0 {
                     if len(PromptTokens)>0 {
-                        we := interparse.wrappedEval(0,&gident,0,&gident,PromptTokens)
+                        we := interparse.wrappedEval(1,&mident,1,&mident,PromptTokens)
                         if ! we.evalError { 
-                            tempPrompt=sparkle(interpolate("main",0,&gident,we.result.(string)))
+                            tempPrompt=sparkle(interpolate("main",1,&mident,we.result.(string)))
                         }
                     } else {
-                        tempPrompt=sparkle(interpolate("main",0,&gident,PromptTemplate))
+                        tempPrompt=sparkle(interpolate("main",1,&mident,PromptTemplate))
                     }
                 } else {
                     tempPrompt=promptContinuation
@@ -1236,6 +1241,7 @@ func main() {
                 fileMap[0]=exec_file_name
                 phraseParse("main", totalInput, 0)
                 currentModule="main"
+                parser.namespace="main"
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)

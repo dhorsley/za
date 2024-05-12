@@ -1,0 +1,25 @@
+
+namespace ea
+
+enum tenum1 ( check=42 , demo = 100 )
+
+struct tstruct
+    a int = 42
+    b bool = true
+    c string = "test_string"
+endstruct
+    
+println tenum1.demo
+
+
+namespace eb
+
+enum tenum1 ( check=50 , demo = 200 )
+
+struct tstruct
+    e int = 99
+    f bool
+endstruct
+
+println tenum1.demo
+

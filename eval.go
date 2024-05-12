@@ -1022,6 +1022,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
     if !isStruct {
         // filter for functions here
         var isFunc bool
+        // pf("<<isStruct>> <ns:%v>\n",p.namespace)
 
         // check if exists in user defined function space
         if _, isFunc = stdlib[name]; !isFunc {
