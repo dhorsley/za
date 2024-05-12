@@ -617,16 +617,30 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
             if parser.try_fault {
                 // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
             } else {
+
                 // fall back to shell command?
-                //  @note: has some issues still. eg trailing dot on commands. w.i.p.
+                //  @note: has some issues still. eg:
+                //    trailing dot on commands.
+                //    input capture.
+                //    not interpolating za expressions yet.
+                //    many others.
+                // w.i.p.
+
                 if interactive && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
                     pf("<fallback executing : %v>\n",cmd)
+                    prevcap,_:=gvget("@commandCapture")
+                    prevrip,_:=gvget("@runInParent")
+                    gvset("@runInParent",true)
+                    gvset("@commandCapture",false)
                     cop:=system(cmd,true)
+                    gvset("@commandCapture",prevcap.(bool))
+                    gvset("@runInParent",prevrip.(bool))
                     pf("\n")
                     if !cop.okay {
                         pf("<fallback exec error : %v\n%v>\n",cop.code,cop.err)
                     }
+
                 } else {
                     if _,ok:=r.(runtime.Error); ok {
                         parser.report(inbound.SourceLine,sf("\n%v\n",r))
