@@ -269,6 +269,7 @@ const (
     C_Async
 	C_Lib
 	C_Module
+	C_Namespace
 	C_Uses
 	C_While
 	C_Endwhile

@@ -10,6 +10,7 @@ CHANGE LOG
 
     * Added error state for some previously undetected early expression terminations.
     * fixed bug in last() result in interactive mode
+    * fixed interactive mode bug : module/namespace remnants interfering with prompts
 
     library changes
     ---------------

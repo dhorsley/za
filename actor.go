@@ -3614,6 +3614,25 @@ pcloop:
                 */
             }
 
+        /*
+
+        // This is disabled until I do something about filemodmap and others mapping
+        //  their fs value 1:1 against the namespace value.
+
+        case C_Namespace:
+
+            var ns string
+            if inbound.TokenCount>1 {
+                ns=inbound.Tokens[1].tokText
+            }
+
+            parser.namespace=ns
+            currentModule=ns
+
+            // @note: we want to decouple namespace from module eventually
+            // needed? : interparse.namespace=ns
+
+        */
 
         case C_Module:
 
@@ -3706,14 +3725,15 @@ pcloop:
 
             // override module name with alias at this point, if provided
             oldModule:=parser.namespace
+            // oldModule:=currentModule
             modRealAlias:=modGivenPath
             if aliased {
                 modRealAlias=modGivenAlias
-                    currentModule=modRealAlias
+                currentModule=modRealAlias
             } else {
-                    currentModule=path.Base(modGivenPath)
-                    currentModule=str.TrimSuffix(currentModule,".mod")
-                    modRealAlias=currentModule
+                currentModule=path.Base(modGivenPath)
+                currentModule=str.TrimSuffix(currentModule,".mod")
+                modRealAlias=currentModule
             }
 
             // tokenise and parse into a new function space.
@@ -3747,7 +3767,8 @@ pcloop:
                 pf("(module) alias   -> %s\n",modRealAlias)
                 pf("(module) given   -> %s\n",modGivenPath)
                 pf("(module) cmod    -> %s\n",currentModule)
-                */
+                pf("(module) omod    -> %s\n",oldModule)
+                */ 
 
                 //.. parse and execute
                 fileMap[loc]=moduleloc
@@ -3771,15 +3792,12 @@ pcloop:
 
                 var modident = make([]Variable,identInitialSize)
 
-                // pf("[mod] loc -> %d\n",loc)
                 if debug_level>10 {
                     start := time.Now()
-                    // Call(MODE_NEW, &modident, loc, ciMod, self, []string{})
                     Call(MODE_NEW, &modident, loc, ciMod, []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    // Call(MODE_NEW, &modident, loc, ciMod, self, []string{})
                     Call(MODE_NEW, &modident, loc, ciMod, []string{})
                 }
 
@@ -3789,6 +3807,7 @@ pcloop:
                 calllock.Unlock()
 
                 currentModule=oldModule
+                parser.namespace=oldModule
 
             }
 
