@@ -825,13 +825,13 @@ func buildInternalLib() {
                 return nil,errors.New("permit(shell) accepts a boolean value only.")
             }
         
-        case "cmdconfirm":
+        case "cmdfallback":
             switch args[1].(type) {
             case bool:
-                permit_command_before_eval=args[1].(bool)
+                permit_cmd_fallback=args[1].(bool)
                 return nil,nil
             default:
-                return nil,errors.New("permit(cmdconfirm) accepts a boolean value only.")
+                return nil,errors.New("permit(cmdfallback) accepts a boolean value only.")
             }
         
         case "eval":
