@@ -195,9 +195,8 @@ var permit_dupmod               bool    // default:false, ignore (true) or error
 var permit_exitquiet            bool    // default:false, squash (true) or display (false) err msg on exit
 var permit_shell                bool    // default: true, when false, exit script if shell command encountered
 var permit_eval                 bool    // default: true, when false, exit script if eval call encountered
-var permit_command_before_eval  bool    // default: true, when false, exit script if eval call encountered
 var permit_permit               bool    // default: true, when false, permit function is disabled
-// var squelch_prompt              bool    // suppress cmd/eval prompt while true
+var permit_cmd_fallback         bool    // default: false, when true and in interactive mode, 
 
 // Global: test related
 // test related setup, completely non thread safe

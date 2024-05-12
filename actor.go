@@ -609,6 +609,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
     var inbound *Phrase
     var basecode_entry *BaseCode
     var current_with_handle *os.File
+    var source_base uint32              // location of the translated source tokens
 
     // error handler
     defer func() {
@@ -616,16 +617,28 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
             if parser.try_fault {
                 // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
             } else {
-                if _,ok:=r.(runtime.Error); ok {
-                    parser.report(inbound.SourceLine,sf("\n%v\n",r))
-                    if debug_level>0 { err:=r.(error); panic(err) }
+                // fall back to shell command?
+                //  @note: has some issues still. eg trailing dot on commands. w.i.p.
+                if interactive && permit_cmd_fallback {
+                    cmd:=basecode[source_base][parser.pc].Original
+                    pf("<fallback executing : %v>\n",cmd)
+                    cop:=system(cmd,true)
+                    pf("\n")
+                    if !cop.okay {
+                        pf("<fallback exec error : %v\n%v>\n",cop.code,cop.err)
+                    }
+                } else {
+                    if _,ok:=r.(runtime.Error); ok {
+                        parser.report(inbound.SourceLine,sf("\n%v\n",r))
+                        if debug_level>0 { err:=r.(error); panic(err) }
+                        finish(false,ERR_EVAL)
+                    }
+                    err:=r.(error)
+                    parser.report(inbound.SourceLine,sf("\n%v\n",err))
+                    if debug_level>0 { panic(r) }
+                    setEcho(true)
                     finish(false,ERR_EVAL)
                 }
-                err:=r.(error)
-                parser.report(inbound.SourceLine,sf("\n%v\n",err))
-                if debug_level>0 { panic(r) }
-                setEcho(true)
-                finish(false,ERR_EVAL)
             }
         }
     }()
@@ -639,7 +652,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
     var retvalues []any                 // return values to be passed back
     var finalline int16                 // tracks end of tokens in the function
     var fs string                       // current function space name
-    var source_base uint32              // location of the translated source tokens
     var thisLoop *s_loop                // pointer to loop information. used in FOR
 
     // set up the function space
@@ -4595,33 +4607,6 @@ pcloop:
                 }
             }
 
-            // @experimental and disabled currently:
-           
-            /*
-            if interactive && !squelch_prompt && permit_command_before_eval {
-                cmd:=basecode[source_base][parser.pc].Original
-
-                // confirmation msg
-                at(row,col)
-                pf("[#invert] Execute [ENTER] or evaluate [SPACE]? [#-]")
-
-                // poll for action
-                k:=0
-                exec:=false
-                for ; k!=13 && k!=32 ; {
-                    k=wrappedGetCh(1000,false)
-                    if k==13 { exec=true }
-                }
-
-                // execute
-                if exec {
-                    system(cmd,true)
-                    continue
-                }
-
-            }
-            */ 
-
             // try to eval and assign
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {
                 errmsg:=""
@@ -4630,7 +4615,6 @@ pcloop:
                 finish(false,ERR_EVAL)
                 break
             }
-
 
             if interactive && !we.assign && we.result!=nil {
                 pf("%+v\n",we.result)
