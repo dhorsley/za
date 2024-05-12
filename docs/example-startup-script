@@ -145,3 +145,8 @@ unset banner,p,ignore_fonts
 # enum helpers
 enum s3sum ( okay=0, warn, file, sum )
 
+# enable command fallback
+permit("cmdfallback",true)
+
+
+

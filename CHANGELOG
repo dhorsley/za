@@ -20,6 +20,12 @@ CHANGE LOG
         - 0/1 ignores child dirs
         - higher ints set child depth
 
+    * (experimental) added permit("cmdfallback",bool) for interactive mode.
+        - this allows for attempted execution of a failed evaluation as a cli command instead.
+        - it is far from perfect and has some wrinkles still.
+        - mainly included for anyone who wants to use this as a shell - god knows why they would though.
+
+
     other
     -----
 
