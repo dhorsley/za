@@ -24,7 +24,6 @@ TODO
             - TODO: when out of experimental phase, add credits in docs/CREDITS file. (MIT License):
                 - https://github.com/raunakjodhawat/multisort/blob/master/LICENSE
 
-
     * fix windows flock() call appropriately.
 
     * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME

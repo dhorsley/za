@@ -32,7 +32,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "INIT", "IN", "PAUSE", "HELP", "NOP", "HIST", "DEBUG", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
-    "LIB", "MODULE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
+    "LIB", "MODULE", "NAMESPACE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "IF", "ELSE", "ENDIF", "CASE",
     "IS", "CONTAINS", "HAS", "OR", "ENDCASE", "WITH", "ENDWITH", "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "ON", "TO", "STEP", "AS", "DO","ENUM","FIX","RESUME","BLOCK","ABLOCK","RBLOCK",
@@ -739,6 +739,8 @@ get_nt_eval_point:
             tokType = C_Lib
         case "module":
             tokType = C_Module
+        case "namespace":
+            tokType = C_Namespace
         case "uses":
             tokType = C_Uses
         case "while":

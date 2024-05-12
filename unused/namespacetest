@@ -1,0 +1,13 @@
+#!/usr/bin/za
+
+module "modules/enumtest2"
+
+println ea::tenum1.check
+println eb::tenum1.check
+
+var x ea::tstruct
+var y eb::tstruct
+
+println "from ea::tstruct : x->",format("%#v",x)
+println "from eb::tstruct : y->",format("%#v",y)
+
