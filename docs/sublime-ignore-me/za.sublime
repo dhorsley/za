@@ -1,0 +1,91 @@
+%YAML 1.2
+---
+name: Za
+first_line_match: \/za$
+scope: source.za
+contexts:
+  main:
+    - include: comment
+    - include: string_quoted_backtick
+    - include: string_quoted_double
+    - include: string_quoted_single
+    - include: string_regex
+    - include: inline_comment
+    - include: number_int
+    - include: number_hex
+    - include: number_octal
+    - include: number_bin
+    - include: keyword
+    - include: function_params
+    - include: function_definition
+    - include: function_call
+    - include: function
+    - include: variable
+    - include: expr
+  comment:
+    - match: #.*$\n?
+      scope: comment.line.quotes.za
+      captures:
+        1: punctuation.definition.comment.za
+  expr:
+    - match: (\|\||&&|==(\?|#)?|(!|>|<)=(#|\?)?|(=|!)~(#|\?)?|(>|<)(#|\?)is|not|and|or|\.|\*|\\|%)
+      scope: storage.function.za
+  function:
+    - match: \b(de(f|fine)?|en(d|ddef)?)\b
+      scope: storage.function.za
+  function_call:
+    - match: '(([sgbwtl]|)?:?[0-9a-zA-Z_#]+)(?=\()'
+      scope: support.function.any-method
+  function_definition:
+    - match: '^\s*(function)\s*!?\s+(?=(s:)?[0-9a-zA-Z_#]+\s*\()'
+      captures:
+        1: storage.function.za
+      push:
+        - meta_scope: meta.function.za
+        - match: (\()
+          captures:
+            1: punctuation.definition.parameters.begin.za
+          pop: true
+        - match: "(s:)?[0-9a-zA-Z_#]+"
+          scope: entity.name.function.za
+  function_params:
+    - match: '-\w+='
+      scope: support.type.za
+  inline_comment:
+    - match: '(?!\$)(#)(?!\{).*$\n?'
+      scope: comment.line.quotes.za
+      captures:
+        1: punctuation.definition.comment.za
+  keyword:
+    - match: \b(var|prompt|input|setglob|doc|on|do|as|in|assert|case|pause|async|break|continue|resume|module|require|logging|contains|prin(t|tln)?|fix|has|nop|log|cls|web|step|pane|enum|exit|struct|if|while|for|foreach|return|test|e(s|c|i|w|f|t)?|end(struct|case|if|for|while|test)?|else)\b
+      scope: keyword.control.za
+  number_hex:
+    - match: "0(x|X)[0-9a-f]+"
+      scope: constant.numeric.hex
+  number_octal:
+    - match: "0(o|O)[0-9a-f]+"
+      scope: constant.numeric.octal
+  number_bin:
+    - match: "0(b|B)[0-9a-f]+"
+      scope: constant.numeric.binary
+  type:
+    - match: \b(bool|any|int|uint|float|string|map|array|bigf|bigi)\b
+      scope: keyword.type.za
+  number_int:
+    - match: '-?\d+'
+      scope: constant.numeric.integer
+  string_quoted_backtick:
+    - match: '`(\\\\|\\`|\n[^\S\n]*\\|[^\n`])*"'
+      scope: string.quoted.backtick.za
+  string_quoted_double:
+    - match: '"(\\\\|\\"|\n[^\S\n]*\\|[^\n"])*"'
+      scope: string.quoted.double.za
+  string_quoted_single:
+    - match: '''(''''|\n[^\S\n]*\\|[^\n''])*'''
+      scope: string.quoted.single.za
+  string_regex:
+    - match: '/(\\\\|\\/|\n[^\S\n]*\\|[^\n/])*/'
+      scope: string.regexp.za
+  variable:
+    - match: '([sSgGbBwWlLaAvV]:|@|$|&(?!&))\w*'
+      scope: variable.other.za
