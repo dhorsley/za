@@ -900,7 +900,6 @@ func main() {
                 finish(false, 0)
                 if !quiet {
                     pf("[#2]System Interrupt![#-]\n")
-                    // if !interactive { pf("\n") }
                 } else {
                     startupOptions()
                 }
@@ -964,12 +963,10 @@ func main() {
 
         if runtime.GOOS=="linux" {
 
-            // cop = Copper("cat /etc/*-release",true)
             s:=lgrep(release_info.out,"^NAME=")
             s=lcut(s,2,"=")
             gvset("@release_name", stripOuterQuotes(s,1))
 
-            // cop = Copper("cat /etc/*-release",true)
             s=lgrep(release_info.out,"^VERSION_ID=")
             s=lcut(s,2,"=")
             gvset("@release_version", stripOuterQuotes(s,1))
@@ -1072,11 +1069,13 @@ func main() {
             pf("\n%s\n\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
         }
 
+        /*
         if row>=MH-BMARGIN {
             if row>MH { row=MH }
             for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
             row=MH-BMARGIN
         }
+        */
 
         // state control
         endFunc := false
@@ -1131,7 +1130,7 @@ func main() {
                 phraseParse("main", startScript, 0)
                 basemodmap[1]="main"
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
-                pf("\n\n")
+                // pf("\n\n")
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
