@@ -9,6 +9,24 @@ lots, i'm sure.
 TODO
 ----
 
+    * do something about interactive mode interfering with other tools such as vi, more, batcat...
+        - currently, if you wish to launch, for example, vi and have it behave correctly,
+          you have to turn off za shell command output capture, send commands to the parent process
+          and execute commands with an explicit pipe (|) statement, i.e.
+            capture_shell(false); coproc(false); | vi something
+        - we should:
+            1. ensure fallback behaves in the same way as the pipe statement
+            2. provide a function and startup arg for dis-/enabling the capture and child
+                process at the same time.
+        - that wouldn't be perfect, as a few env variables would then go astray and there would
+            no longer be any session state retained between shell calls.
+        - would rather have a better solution than above, but not thought of one yet.
+        - ideally, we would redirect stdin, stdout and stderr from the child shell whenever we
+            launch it (or relaunch it).
+        - this is probably not an easy fix, as it would mess with cursor tracking and some 
+            other things (such as cwd tracking and error code capture, which happen as a part
+            of the child shell ipc currently.)
+
     * respect ctrl-z in REPL/elsewhere
 
     * IN PROGRESS: extra sort functions:
@@ -23,6 +41,10 @@ TODO
                 - probably many issues with it currently.
             - TODO: when out of experimental phase, add credits in docs/CREDITS file. (MIT License):
                 - https://github.com/raunakjodhawat/multisort/blob/master/LICENSE
+            - NOTE: the above is probably going to be pulled out. algorithm seems wrong for 
+                dealing with multiple sort fields.
+                this may have to wait until i have a better way of passing something lambda like
+                as arguments to user/system libraries.
 
     * fix windows flock() call appropriately.
 
