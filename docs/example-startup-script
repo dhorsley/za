@@ -82,11 +82,36 @@ def form_dir()
     return " "+path+" "
 end
 
+struct environment
+    bg    int
+    fg    int
+    label string
+endstruct
+
+var envlist map
+envlist["test"]     = environment(as_int(0x46),7,"aws:Test")
+envlist["stage"]    = environment(as_int(0xa6),7,"aws:Stage")
+envlist["live"]     = environment(as_int(0xa0),7,"aws:Live")
+envlist["^$"]       = environment(as_int(0x11),7,"no-aws")
+
+def form_aws()
+    s=""
+    foreach e in envlist
+        if awsenv ~ key_e
+            s=bg256(e.bg)+endcap+"[#{=e.fg}]"+" {=e.label} "+fg256(e.bg)
+            break
+        endif
+    endfor
+    on s=="" do s=endcap
+    return s
+end
+
 def form_prompt()
     @last_cmd_status=last()
     cached_fg=form_git()
     return ( form_logo() + bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
-         bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) + endcap +
+         bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) +
+         form_aws() + bg256(0xe2) + endcap +
          cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
     )
 end
@@ -98,16 +123,20 @@ end
 
 
 # set prompt
+awsenv=get_env("AWS_DEFAULT_PROFILE")
 inside_git=false
 last_cmd_status=0
 last_git_path=""
-endcap="▙[#-]"
+endcap="▙"
 gs={git status}
 gtl=${git rev-parse --show-toplevel}
 # right-hand side of prompt assignment is re-evaluated 
 # before each input prompt is presented.
 prompt=(form_prompt())
 # end-set-prompt
+
+effects = [ "","-F gay","-F metal","-F border" ]	  
+
 
 # set banner
 ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
@@ -137,7 +166,6 @@ if is_installed("figlet")
 else
     p=banner
 endif
-
 
 println "\n\n[#5]{p}[#-]\n"
 help
