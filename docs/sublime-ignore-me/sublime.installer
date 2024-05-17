@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+
+p=$(batcat --config-dir)
+mkdir -p ${p}/syntaxes
+cp za.sublime-syntax ${p}/syntaxes/
+batcat cache --build

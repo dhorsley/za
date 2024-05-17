@@ -621,7 +621,7 @@ hi colour_b5    ctermbg=cyan ctermfg=black
 hi colour_b6    ctermbg=yellow ctermfg=black
 hi colour_b7    ctermbg=gray ctermfg=black
 
-hi colour_f0    ctermfg=black ctermbg=black
+hi colour_f0    ctermfg=darkGray ctermbg=black
 hi colour_f1    ctermfg=blue ctermbg=black
 hi colour_f2    ctermfg=red ctermbg=black
 hi colour_f3    ctermfg=magenta ctermbg=black
