@@ -449,10 +449,16 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         if tokType==NumericLiteral {
 
+            // @note: implicit conversion to int type below may lead
+            // to a loss in precision? we are only doing it so that
+            // int struct fields can be assigned literal 0[xbo]nnn values.
+            // yet another bodge... sure i will feel guilty about it one day.
+
             if thisHex {
                 hs:=str.Replace(word,"0x","",-1)
                 hs=str.Replace(hs,"0X","",-1)
                 carton.tokVal,_=strconv.ParseInt(hs,16,64)
+                carton.tokVal=int(carton.tokVal.(int64))
                 startNextTokenAt=currentChar
                 carton.tokType=NumericLiteral
                 carton.tokText=word
@@ -463,6 +469,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 hs:=str.Replace(word,"0o","",-1)
                 hs=str.Replace(hs,"0O","",-1)
                 carton.tokVal,_=strconv.ParseInt(hs,8,64)
+                carton.tokVal=int(carton.tokVal.(int64))
                 startNextTokenAt=currentChar
                 carton.tokType=NumericLiteral
                 carton.tokText=word
@@ -473,6 +480,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 hs:=str.Replace(word,"0b","",-1)
                 hs=str.Replace(hs,"0B","",-1)
                 carton.tokVal,_=strconv.ParseInt(hs,2,64)
+                carton.tokVal=int(carton.tokVal.(int64))
                 startNextTokenAt=currentChar
                 carton.tokType=NumericLiteral
                 carton.tokText=word

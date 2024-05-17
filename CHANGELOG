@@ -11,6 +11,7 @@ CHANGE LOG
     * Added error state for some previously undetected early expression terminations.
     * fixed bug in last() result in interactive mode
     * fixed interactive mode bug : module/namespace remnants interfering with prompts
+    * forced 0xnn, 0bnn, 0onn int literals to int type instead of int64
 
     library changes
     ---------------
@@ -28,6 +29,9 @@ CHANGE LOG
 
     other
     -----
+
+    * (experimental->supported) breaking expression lines on dot char at end of line.
+        - this is not supported in interactive mode when permit_cmd_fallback is true.
 
     * (experimental) added interactive/tab completion mode support for variable depth
         subdirectory paths. *this may well be broken!*

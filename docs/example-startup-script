@@ -82,18 +82,6 @@ def form_dir()
     return " "+path+" "
 end
 
-struct environment
-    bg    int
-    fg    int
-    label string
-endstruct
-
-var envlist map
-envlist["test"]     = environment(as_int(0x46),7,"aws:Test")
-envlist["stage"]    = environment(as_int(0xa6),7,"aws:Stage")
-envlist["live"]     = environment(as_int(0xa0),7,"aws:Live")
-envlist["^$"]       = environment(as_int(0x11),7,"no-aws")
-
 def form_aws()
     s=""
     foreach e in envlist
@@ -121,6 +109,19 @@ def has_root()
     return sudo!="" or user()=="root"
 end
 
+_=feed(false)
+
+struct environment
+    bg    int
+    fg    int
+    label string
+endstruct
+
+var envlist map
+envlist["test"]     = environment(0x46,7,"aws:Test")
+envlist["stage"]    = environment(0xa6,7,"aws:Stage")
+envlist["live"]     = environment(0xa0,7,"aws:Live")
+envlist["^$"]       = environment(0x11,7,"no-aws")
 
 # set prompt
 awsenv=get_env("AWS_DEFAULT_PROFILE")
@@ -135,13 +136,10 @@ gtl=${git rev-parse --show-toplevel}
 prompt=(form_prompt())
 # end-set-prompt
 
-effects = [ "","-F gay","-F metal","-F border" ]	  
-
-
 # set banner
-ignore_fonts=["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
-ignore_fonts+=["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
-ignore_fonts+=["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
+ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
+ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
+ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
 
 effects = [ "","-F gay","-F metal","-F border" ]
 
@@ -177,7 +175,8 @@ unset banner,p,ignore_fonts
 enum s3sum ( okay=0, warn, file, sum )
 
 # enable command fallback
-permit("cmdfallback",true)
+_=permit("cmdfallback",true)
 
+_=feed(true)
 
 
