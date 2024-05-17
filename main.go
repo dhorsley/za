@@ -196,7 +196,7 @@ var permit_exitquiet            bool    // default:false, squash (true) or displ
 var permit_shell                bool    // default: true, when false, exit script if shell command encountered
 var permit_eval                 bool    // default: true, when false, exit script if eval call encountered
 var permit_permit               bool    // default: true, when false, permit function is disabled
-var permit_cmd_fallback         bool    // default: false, when true and in interactive mode, 
+var permit_cmd_fallback         bool    // default: false, when true and in interactive mode, exec in shell as fallback
 
 // Global: test related
 // test related setup, completely non thread safe
