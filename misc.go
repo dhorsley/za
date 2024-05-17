@@ -521,7 +521,8 @@ func ihelp(ns string,hargs string) {
 [#4]help colour     [#-]: show colour codes
 [#4]help <string>   [#-]: show specific statement/function info
 [#4]funcs()         [#-]: all functions
-[#4]funcs(<string>) [#-]: finds matching categories or functions`
+[#4]funcs(<string>) [#-]: finds matching categories or functions
+`
     gpf(ns,helppage)
 
 
