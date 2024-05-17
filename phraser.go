@@ -199,7 +199,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         // handle end-of-line dot character continuation.
         // we check borpos to ensure we are not inside a | statement also.
         // this is just meant to catch using . operator in Za multi-line expressions:
-        if borpos==-1 && tempToken.eol && lastTokenType==SYM_DOT {
+        if borpos==-1 && !permit_cmd_fallback && tempToken.eol && lastTokenType==SYM_DOT {
             // pf("eol-dot @ line %d\n",curLine+1)
             curLine+=1
             continue

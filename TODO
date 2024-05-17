@@ -29,15 +29,6 @@ TODO
     * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME
         and possibly other env vars, depending on user requirements.
 
-    * DONE: fix array element math ops with compound assignments
-        - TODO: also, fix syntax error warnings for comma list assignments
-            in compound assignment l.h.s.
-        - alternatively, remove compound assignments entirely...
-            - they are very slow as they make() a new slice on each
-                assignment to copy the new expression to.
-            - compound assignments don't really add anything good
-                to this language, they were added for completeness.
-
     * catch stack overflows and output better error (when recursing). for example, in eg/ackermann 4 2
 
 
