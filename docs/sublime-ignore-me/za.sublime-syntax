@@ -11,6 +11,7 @@ contexts:
     - include: string_quoted_single
       #- include: string_regex
     - include: inline_comment
+    - include: variable
     - include: number_hex
     - include: number_octal
     - include: number_bin
@@ -21,7 +22,6 @@ contexts:
     - include: function_definition
     - include: function_call
     - include: function
-    - include: variable
     - include: expr
   comment:
     - match: \#.*$\n?
