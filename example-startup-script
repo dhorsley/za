@@ -1,0 +1,185 @@
+#!/usr/bin/za
+
+doc `
+
+    EXAMPLE STARTUP RC FILE
+
+    copy this to $HOME/.zarc to use it.
+
+`
+
+# supporting functions
+
+def unicode(a,b)
+    return format("%c",as_int((a << 8) + b))
+end
+
+def form_logo()
+    s=bg256(0x10)+unicode(0xf8,0xff)+" "+fg256(0x10)
+    case release_id()
+    contains "^(ubuntu|debian)$"
+        s=bg256(0xd6)+"[#0] U "+fg256(0xd6)
+    is "popos"
+        s=bg256(0x4a)+"[#6] P "+fg256(0x4a)
+    is "redhat"
+        s=bg256(0xa0)+"[#7] R "+fg256(0xa0)
+    endcase
+    return s+bg256(0x12)+endcap
+end
+
+def form_time()
+    return " %02d:%02d ".format(time_hours(),time_minutes())
+end
+
+def form_git()
+
+    @inside_git=${git rev-parse --is-inside-work-tree 2>/dev/null}=="true" ? true:false
+
+    if inside_git and (sysvar("@lastcmd") ~ "git" or cwd()!=last_git_path)
+        @gs={git status}
+        @gtl=${git rev-parse --show-toplevel}
+        @last_git_path=cwd()
+    endif
+
+    if inside_git
+
+        gs_text=gs.out.split("\n")
+
+        _=fields(gs_text[0])
+        if NF>0
+            branch=F[NF]
+        else
+            branch=""
+        endif
+
+        _=fields(gs_text[1])
+        if NF>3
+            str_status=F[4]
+            status="[#2]✕[#0]"
+            on str_status=="up-to-date" do status="[#4]✓[#0]"
+            return bg256(0xe2) + fg256(0x11) + " ({branch} {status}) " + bg256(0) + fg256(0xe2)
+        endif
+
+    endif
+    return ""
+end
+
+def form_end_prompt()
+    root=has_root()?"[#bold][#b2][#7] # [##]":""
+    if last_cmd_status == 0
+        return root+"[#bold][#4] ➜ "
+    else
+        return root+"[#bred] ✗ "
+    endif
+end
+
+def form_dir()
+    if inside_git
+        path="…/"+cwd().replace(($pp gtl)+"/","")
+    else
+        path=cwd()
+    endif
+    return " "+path+" "
+end
+
+def form_aws()
+    s=""
+    foreach e in envlist
+        if awsenv ~ key_e
+            s=bg256(e.bg)+endcap+"[#{=e.fg}]"+" {=e.label} "+fg256(e.bg)
+            break
+        endif
+    endfor
+    on s=="" do s=endcap
+    return s
+end
+
+def form_prompt()
+    @last_cmd_status=last()
+    cached_fg=form_git()
+    return ( form_logo() + bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
+         bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) +
+         form_aws() + bg256(0xe2) + endcap +
+         cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
+    )
+end
+
+def has_root()
+    sudo=get_env("SUDO_USER")
+    return sudo!="" or user()=="root"
+end
+
+_=feed(false)
+
+struct environment
+    bg    int
+    fg    int
+    label string
+endstruct
+
+var envlist map
+envlist["test"]     = environment(0x46,7,"aws:Test")
+envlist["stage"]    = environment(0xa6,7,"aws:Stage")
+envlist["live"]     = environment(0xa0,7,"aws:Live")
+envlist["^$"]       = environment(0x11,7,"no-aws")
+
+# set prompt
+awsenv=get_env("AWS_DEFAULT_PROFILE")
+inside_git=false
+last_cmd_status=0
+last_git_path=""
+endcap="▙"
+gs={git status}
+gtl=${git rev-parse --show-toplevel}
+# right-hand side of prompt assignment is re-evaluated 
+# before each input prompt is presented.
+prompt=(form_prompt())
+# end-set-prompt
+
+# set banner
+ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
+ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
+ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"]
+ignore_fonts+= ["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"]
+
+effects = [ "","-F gay","-F metal","-F border" ]
+
+banner=` {="@language".sysvar} - version {="@version".sysvar} `
+
+if is_installed("figlet")
+    fontdir="/usr/share/figlet"
+
+    variants = (
+        dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"` 
+    ) -> "#.name"
+
+    # filter undesired out
+    variants = variants ?> `not ($pn #) in ignore_fonts`
+
+    seed(-1)
+    fv=variants[variants.len.rand-1]
+    use_effect = effects[effects.len.rand-1]
+
+    p=${toilet -f {fv} {use_effect} -S -w {=term_w()} "{=banner}"}
+    unset variants, fontdir
+else
+    p=banner
+endif
+
+println "\n\n[#5]{p}[#-]\n"
+help
+# end-set-banner
+println "fv->",fv
+println "ue->",use_effect
+
+unset banner,p,ignore_fonts
+
+# enum helpers
+enum s3sum ( okay=0, warn, file, sum )
+
+# enable command fallback
+_=permit("cmdfallback",true)
+
+_=feed(true)
+
+
