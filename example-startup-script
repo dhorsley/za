@@ -169,8 +169,9 @@ endif
 println "\n\n[#5]{p}[#-]\n"
 help
 # end-set-banner
-println "fv->",fv
-println "ue->",use_effect
+
+#println "fv->",fv
+#println "ue->",use_effect
 
 unset banner,p,ignore_fonts
 
