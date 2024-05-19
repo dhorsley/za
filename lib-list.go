@@ -461,13 +461,15 @@ func buildListLib() {
 
     slhelp["empty"] = LibHelp{in: "list", out: "bool", action: "Is list empty?"}
     stdlib["empty"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("empty",args,8,
+        if ok,err:=expect_args("empty",args,10,
             "1","[]int",
             "1","[]string",
             "1","[]bool",
             "1","[]int64",
             "1","[]uint",
             "1","[]float64",
+            "1","[]*big.Int",
+            "1","[]*big.Float",
             "1","[]interface {}",
             "1","nil"); !ok { return nil,err }
 
@@ -494,6 +496,14 @@ func buildListLib() {
             }
         case []float64:
             if len(args[0].([]float64)) == 0 {
+                return true, nil
+            }
+        case []*big.Int:
+            if len(args[0].([]*big.Int)) == 0 {
+                return true, nil
+            }
+        case []*big.Float:
+            if len(args[0].([]*big.Float)) == 0 {
                 return true, nil
             }
         case []any:
@@ -546,16 +556,16 @@ func buildListLib() {
     stdlib["append_to"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
 
-        // check args[0] exists in &ident
-        if args[0]==nil {
-            return nil,errors.New("argument is not a list")
-        }
+        // check args[0] exists in &ident (this is completely wrong)
+        // if args[0]==nil {
+        //     return nil,errors.New("argument is not a list")
+        // }
 
         name:=args[0].(string)
         bin:=bind_int(evalfs,name)
 
         if ! (*ident)[bin].declared {
-            return nil, errors.New(sf("list %s does not exist",args[0]))
+            return nil, errors.New(sf("list %s does not exist",name))
         }
 
         // check type is compatible
@@ -589,6 +599,18 @@ func buildListLib() {
                 (*ident)[bin].IValue=append((*ident)[bin].IValue.([]bool),args[1].(bool))
                 set=true
             }
+        case []*big.Int:
+            switch args[1].(type) {
+            case *big.Int:
+                (*ident)[bin].IValue=append((*ident)[bin].IValue.([]*big.Int),args[1].(*big.Int))
+                set=true
+            }
+        case []*big.Float:
+            switch args[1].(type) {
+            case *big.Float:
+                (*ident)[bin].IValue=append((*ident)[bin].IValue.([]*big.Float),args[1].(*big.Float))
+                set=true
+            }
         case []any:
             (*ident)[bin].IValue=append((*ident)[bin].IValue.([]any),args[1])
             set=true
@@ -596,7 +618,7 @@ func buildListLib() {
         vlock.Unlock()
 
         if !set {
-            return false,errors.New(sf("unsupported list type in append_to()"))
+            return false,errors.New(sf("unsupported list type (%s:%T) in append_to()",args[0],(*ident)[bin].IValue))
         }
 
         return true,nil
@@ -628,6 +650,12 @@ func buildListLib() {
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
+            case *big.Int:
+                l := make([]*big.Int, 0, 31)
+                return append(l, args[0].(*big.Int)), nil
+            case *big.Float:
+                l := make([]*big.Float, 0, 31)
+                return append(l, args[0].(*big.Float)), nil
             case nil:
                 l := make([]any, 0, 31)
                 return l,nil
@@ -652,6 +680,10 @@ func buildListLib() {
                  args[0] = make([]bool, 0, 31)
             case string:
                  args[0] = make([]string, 0, 31)
+            case *big.Int:
+                 args[0] = make([]*big.Int, 0, 31)
+            case *big.Float:
+                 args[0] = make([]*big.Float, 0, 31)
             case any:
                  args[0] = make([]any, 0, 31)
             default:
@@ -680,6 +712,18 @@ func buildListLib() {
                 return nil, errors.New(sf("(l:int,a:%T) data types must match in append()", args[1]))
             }
             l := append(args[0].([]int), args[1].(int))
+            return l, nil
+        case []*big.Int:
+            if "*big.Int" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:bigi,a:%T) data types must match in append()", args[1]))
+            }
+            l := append(args[0].([]*big.Int), args[1].(*big.Int))
+            return l, nil
+        case []*big.Float:
+            if "*big.Float" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:bigf,a:%T) data types must match in append()", args[1]))
+            }
+            l := append(args[0].([]*big.Float), args[1].(*big.Float))
             return l, nil
         case []any:
             l := append(args[0].([]any), args[1].(any))
@@ -712,6 +756,12 @@ func buildListLib() {
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
+            case *big.Int:
+                l := make([]*big.Int, 0, 31)
+                return append(l, args[0].(*big.Int)), nil
+            case *big.Float:
+                l := make([]*big.Float, 0, 31)
+                return append(l, args[0].(*big.Float)), nil
             case any:
                 l := make([]any, 0, 31)
                 return append(l, sf("%v", args[0].(any))), nil
@@ -761,6 +811,22 @@ func buildListLib() {
             l = append(l, args[1].(string))
             l = append(l, args[0].([]string)...)
             return l, nil
+        case []*big.Int:
+            if "*big.Int" != sf("%T", args[1]) {
+                return nil, errors.New("data types must match in push_front()")
+            }
+            l := make([]*big.Int, 0, 31)
+            l = append(l, args[1].(*big.Int))
+            l = append(l, args[0].([]*big.Int)...)
+            return l, nil
+        case []*big.Float:
+            if "*big.Float" != sf("%T", args[1]) {
+                return nil, errors.New("data types must match in push_front()")
+            }
+            l := make([]*big.Float, 0, 31)
+            l = append(l, args[1].(*big.Float))
+            l = append(l, args[0].([]*big.Float)...)
+            return l, nil
         case []any:
             l := make([]any, 0, 31)
             l = append(l, sf("%v", args[1].(any)))
@@ -773,11 +839,13 @@ func buildListLib() {
 
     slhelp["peek"] = LibHelp{in: "list_name", out: "item", action: "Returns a copy of the last [#i1]item[#i0] in the list [#i1]list_name[#i0]. Returns an error if the list is empty."}
     stdlib["peek"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("peek",args,6,
+        if ok,err:=expect_args("peek",args,8,
             "1","[]string",
             "1","[]int",
             "1","[]uint",
             "1","[]float64",
+            "1","[]big.Int",
+            "1","[]big.Float",
             "1","[]bool",
             "1","[]interface {}"); !ok { return nil,err }
 
@@ -795,6 +863,12 @@ func buildListLib() {
             if len(a)==0 { break }
             return a[len(a)-1],nil
         case []bool:
+            if len(a)==0 { break }
+            return a[len(a)-1],nil
+        case []*big.Int:
+            if len(a)==0 { break }
+            return a[len(a)-1],nil
+        case []*big.Float:
             if len(a)==0 { break }
             return a[len(a)-1],nil
         case []any:
@@ -842,6 +916,20 @@ func buildListLib() {
                     r := v.([]float64)[ln-1]
                     bin:=bind_int(evalfs,n)
                     (*ident)[bin]=Variable{IName:n,IValue:v.([]float64)[:ln-1],IKind:0,ITyped:false,declared:true}
+                    return r, nil
+                }
+            case []*big.Int:
+                if ln := len(v.([]*big.Int)); ln > 0 {
+                    r := v.([]*big.Int)[ln-1]
+                    bin:=bind_int(evalfs,n)
+                    (*ident)[bin]=Variable{IName:n,IValue:v.([]*big.Int)[:ln-1],IKind:0,ITyped:false,declared:true}
+                    return r, nil
+                }
+            case []*big.Float:
+                if ln := len(v.([]*big.Float)); ln > 0 {
+                    r := v.([]*big.Float)[ln-1]
+                    bin:=bind_int(evalfs,n)
+                    (*ident)[bin]=Variable{IName:n,IValue:v.([]*big.Float)[:ln-1],IKind:0,ITyped:false,declared:true}
                     return r, nil
                 }
             case []string:
@@ -912,6 +1000,22 @@ func buildListLib() {
             l = append(l, item.(uint))
             l = append(l, args[0].([]uint)[pos-1:]...)
             return l, nil
+        case []*big.Int:
+            l := make([]*big.Int, 0, 31)
+            if pos > 0 {
+                l = append(l, args[0].([]*big.Int)[:pos-1]...)
+            }
+            l = append(l, item.(*big.Int))
+            l = append(l, args[0].([]*big.Int)[pos-1:]...)
+            return l, nil
+        case []*big.Float:
+            l := make([]*big.Float, 0, 31)
+            if pos > 0 {
+                l = append(l, args[0].([]*big.Float)[:pos-1]...)
+            }
+            l = append(l, item.(*big.Float))
+            l = append(l, args[0].([]*big.Float)[pos-1:]...)
+            return l, nil
         case []any:
             l := make([]any, 0, 31)
             if pos > 0 {
@@ -969,11 +1073,27 @@ func buildListLib() {
             return l, nil
         case []uint:
             if pos > len(args[0].([]uint)) {
-                return nil, errors.New(sf("position (%v) out of range (int/high) in remove()", pos))
+                return nil, errors.New(sf("position (%v) out of range (uint/high) in remove()", pos))
             }
             l := make([]uint, 0, 31)
             l = append(l, args[0].([]uint)[:pos-1]...)
             l = append(l, args[0].([]uint)[pos:]...)
+            return l, nil
+        case []*big.Int:
+            if pos > len(args[0].([]*big.Int)) {
+                return nil, errors.New(sf("position (%v) out of range (bigi/high) in remove()", pos))
+            }
+            l := make([]*big.Int, 0, 31)
+            l = append(l, args[0].([]*big.Int)[:pos-1]...)
+            l = append(l, args[0].([]*big.Int)[pos:]...)
+            return l, nil
+        case []*big.Float:
+            if pos > len(args[0].([]*big.Float)) {
+                return nil, errors.New(sf("position (%v) out of range (bigf/high) in remove()", pos))
+            }
+            l := make([]*big.Float, 0, 31)
+            l = append(l, args[0].([]*big.Float)[:pos-1]...)
+            l = append(l, args[0].([]*big.Float)[pos:]...)
             return l, nil
         case []any:
             if pos > len(args[0].([]any)) {
@@ -1018,6 +1138,16 @@ func buildListLib() {
                 return []string{}, nil
             }
             return args[0].([]string)[0], nil
+        case []*big.Int:
+            if len(args[0].([]*big.Int)) == 0 {
+                return []*big.Int{}, nil
+            }
+            return args[0].([]*big.Int)[0], nil
+        case []*big.Float:
+            if len(args[0].([]*big.Float)) == 0 {
+                return []*big.Float{}, nil
+            }
+            return args[0].([]*big.Float)[0], nil
         case []any:
             if len(args[0].([]any)) == 0 {
                 return []any{}, nil
@@ -1058,6 +1188,16 @@ func buildListLib() {
                 return []string{}, nil
             }
             return args[0].([]string)[1:], nil
+        case []*big.Int:
+            if len(args[0].([]*big.Int)) == 0 {
+                return []*big.Int{}, nil
+            }
+            return args[0].([]*big.Int)[1:], nil
+        case []*big.Float:
+            if len(args[0].([]*big.Float)) == 0 {
+                return []*big.Float{}, nil
+            }
+            return args[0].([]*big.Float)[1:], nil
         case []any:
             if len(args[0].([]any)) == 0 {
                 return []any{}, nil
