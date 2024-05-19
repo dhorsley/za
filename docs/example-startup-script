@@ -139,7 +139,8 @@ prompt=(form_prompt())
 # set banner
 ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
 ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
-ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12"]
+ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"]
+ignore_fonts+= ["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"]
 
 effects = [ "","-F gay","-F metal","-F border" ]
 
@@ -168,6 +169,9 @@ endif
 println "\n\n[#5]{p}[#-]\n"
 help
 # end-set-banner
+
+#println "fv->",fv
+#println "ue->",use_effect
 
 unset banner,p,ignore_fonts
 
