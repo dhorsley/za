@@ -8,6 +8,9 @@ CHANGE LOG
     fixes
     -----
 
+    * added bigi + bigf support to append() and append_to().
+        - also added some more sanity checking/error info.
+    * added bigi + bigf support in lib-list.go to empty, push_front, insert, peek, pop, remove, head and tail
     * Added error state for some previously undetected early expression terminations.
     * fixed bug in last() result in interactive mode
     * fixed interactive mode bug : module/namespace remnants interfering with prompts
