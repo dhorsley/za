@@ -622,8 +622,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                 if interactive && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
                     // pf("<fallback executing : %v>\n",cmd)
-                    prevcap,_:=gvget("@commandCapture")
-                    gvset("@commandCapture",false)
+                    // prevcap,_:=gvget("@commandCapture")
+                    // gvset("@commandCapture",false)
 
                     s:=interpolate(currentModule,1,&mident,cmd)
                     s=str.TrimRight(s,"\n")
@@ -641,7 +641,13 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                             }
                         }
                     }
-                    gvset("@commandCapture",prevcap.(bool))
+                    if row>=MH-BMARGIN {
+                        if row>MH { row=MH }
+                        for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print("\n") }
+                        row=MH-BMARGIN
+                    }
+                    // gvset("@commandCapture",prevcap.(bool))
+                    // pf("<fallback complete.>\n")
                 } else {
                     if _,ok:=r.(runtime.Error); ok {
                         parser.report(inbound.SourceLine,sf("\n%v\n",r))
