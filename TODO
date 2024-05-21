@@ -15,9 +15,11 @@ TODO
           and execute commands with an explicit pipe (|) statement, i.e.
             capture_shell(false); coproc(false); | vi something
         - we should:
-            1. ensure fallback behaves in the same way as the pipe statement
-            2. provide a function and startup arg for dis-/enabling the capture and child
+            1. DONE: ensure fallback behaves in the same way as the pipe statement
+            2. TODO: provide a function and startup arg for dis-/enabling the capture and child
                 process at the same time.
+            3. NOTE: disabling coproc also stops multi-instruction/piped commands from working
+                - due to calls going through the parent pid instead.
         - that wouldn't be perfect, as a few env variables would then go astray and there would
             no longer be any session state retained between shell calls.
         - would rather have a better solution than above, but not thought of one yet.
