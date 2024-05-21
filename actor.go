@@ -619,25 +619,29 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
             } else {
 
                 // fall back to shell command?
-                //  @note: has some issues still. eg:
-                //    trailing dot on commands.
-                //    input capture.
-                //    not interpolating za expressions yet.
-                //    many others.
-                // w.i.p.
-
                 if interactive && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
                     // pf("<fallback executing : %v>\n",cmd)
                     prevcap,_:=gvget("@commandCapture")
-                    gvset("@commandCapture",true)
-                    cop:=system(cmd,false)
-                    gvset("@commandCapture",prevcap.(bool))
-                    pf("%s\n",cop.out)
-                    if !cop.okay {
-                        pf("<fallback exec error : %v\n%v>\n",cop.code,cop.err)
-                    }
+                    gvset("@commandCapture",false)
 
+                    s:=interpolate(currentModule,1,&mident,cmd)
+                    s=str.TrimRight(s,"\n")
+                    if len(s) > 0 {
+                        cop := Copper(s, false)
+                        if ! cop.okay {
+                            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
+                            pf(cop.err)
+                        } else {
+                            if len(cop.out) > 0 {
+                                if cop.out[len(cop.out)-1] != '\n' {
+                                    cop.out += "\n"
+                                }
+                                pf("%s", cop.out)
+                            }
+                        }
+                    }
+                    gvset("@commandCapture",prevcap.(bool))
                 } else {
                     if _,ok:=r.(runtime.Error); ok {
                         parser.report(inbound.SourceLine,sf("\n%v\n",r))
