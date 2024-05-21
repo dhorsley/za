@@ -1130,12 +1130,13 @@ func main() {
                 phraseParse("main", startScript, 0)
                 basemodmap[1]="main"
                 _,endFunc = Call(MODE_STATIC, &mident, mainloc, ciRepl, []string{})
-                // pf("\n\n")
+                
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
                     row=MH-BMARGIN
                 }
+                
                 started=true
             }
 
@@ -1171,7 +1172,7 @@ func main() {
 
                 row++
 
-                if row>=MH-BMARGIN {
+                if started && row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
                     row=MH-BMARGIN
