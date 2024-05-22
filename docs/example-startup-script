@@ -109,6 +109,8 @@ def has_root()
     return sudo!="" or user()=="root"
 end
 
+_=feed(false)
+
 struct environment
     bg    int
     fg    int
@@ -164,7 +166,7 @@ else
     p=banner
 endif
 
-println "\n\n[#5]{p}[#-]\n"
+println "\n[#5]{p}[#-]\n"
 help
 # end-set-banner
 
@@ -178,4 +180,7 @@ enum s3sum ( okay=0, warn, file, sum )
 
 # enable command fallback
 _=permit("cmdfallback",true)
+
+_=feed(true)
+
 
