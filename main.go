@@ -1172,11 +1172,13 @@ func main() {
 
                 row++
 
+                /*
                 if started && row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
                     row=MH-BMARGIN
                 }
+                */
 
                 at(row,1)
                 col = 1
