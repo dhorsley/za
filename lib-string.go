@@ -150,7 +150,7 @@ func buildStringLib() {
     }
 
 
-    slhelp["reverse"] = LibHelp{in: "list_or_string", out: "as_input", action: "Reverse the contents of a variable."}
+    slhelp["reverse"] = LibHelp{in: "list_or_string", out: "list_or_string", action: "Reverse the contents of a variable."}
     stdlib["reverse"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("reverse",args,8,
             "1","string", "1","[]int", "1","[]int64",
