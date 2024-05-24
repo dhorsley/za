@@ -109,8 +109,6 @@ def has_root()
     return sudo!="" or user()=="root"
 end
 
-_=feed(false)
-
 struct environment
     bg    int
     fg    int
@@ -173,7 +171,7 @@ help
 #println "fv->",fv
 #println "ue->",use_effect
 
-unset banner,p,ignore_fonts
+unset banner,p,ignore_fonts,effects,use_effect
 
 # enum helpers
 enum s3sum ( okay=0, warn, file, sum )
@@ -181,6 +179,5 @@ enum s3sum ( okay=0, warn, file, sum )
 # enable command fallback
 _=permit("cmdfallback",true)
 
-_=feed(true)
-
+| alias b="batcat -f"
 
