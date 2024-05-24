@@ -124,18 +124,32 @@ end
 # MAIN
 #
 
+
+# args
+force_colour=false
+filter=""
+
+n=0
+while argc()>n
+    case argv()[n]
+    is "-f"
+        force_colour=true
+    or
+        filter=argv()[n]
+        break
+    endcase
+    n++
+endwhile
+
+# setup
 enum mem_parts ( size=1, rss, shared, text, lib, data, dt )
 PAGESIZE = ${getconf PAGESIZE}.as_int
 
 termless = term_w()==-1 and term_h()==-1
-ansi(!termless)
+on not force_colour do ansi(!termless)
 
 TW= termless ? 100 : term_w()
 TH= termless ? 25  : term_h()
-
-# args
-input filter optarg 1
-filter=filter.as_string
 
 # fetch process list and sort by pid
 res,keys,arglists,mem=ps(filter)
