@@ -806,7 +806,8 @@ func printWithWrap(s string) {
 //        between interactive/non-interactive source
 func pf(s string, va ...any) {
 
-    s = sf(sparkle(s), va...)
+    s   = sf(sparkle(s), va...)
+    sna:= Strip(s)
 
     if interactive {
         if lineWrap {
@@ -816,9 +817,9 @@ func pf(s string, va ...any) {
         }
         chpos:=0
         c:=col
-        for ; chpos<len(s); c++ {
+        for ; chpos<len(sna); c+=1 {
             if c%MW==0          { row++; c=0 }
-            if s[chpos]=='\n'   { row++; c=0 }
+            if sna[chpos]=='\n'   { row++; c=0 }
             chpos++
         }
 
@@ -836,9 +837,9 @@ func pf(s string, va ...any) {
     atlock.Lock()
     chpos:=0
     c:=col
-    for ; chpos<len(s); c++ {
+    for ; chpos<len(sna); c+=1 {
         if c%MW==0          { row++; c=0 }
-        if s[chpos]=='\n'   { row++; c=0 }
+        if sna[chpos]=='\n'   { row++; c=0 }
         chpos++
     }
     atlock.Unlock()
