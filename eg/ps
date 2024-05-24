@@ -127,6 +127,7 @@ end
 
 # args
 force_colour=false
+force_width=-1
 filter=""
 
 n=0
@@ -134,6 +135,9 @@ while argc()>n
     case argv()[n]
     is "-f"
         force_colour=true
+    is "-w"
+        force_width=argv()[++n].interpolate
+        on not force_width.is_number do exit 1,"-w needs an int"
     or
         filter=argv()[n]
         break
@@ -148,7 +152,10 @@ PAGESIZE = ${getconf PAGESIZE}.as_int
 termless = term_w()==-1 and term_h()==-1
 on not force_colour do ansi(!termless)
 
-TW= termless ? 100 : term_w()
+default_width=100
+on force_width!=-1 do default_width=force_width
+
+TW= termless ? default_width : term_w()
 TH= termless ? 25  : term_h()
 
 # fetch process list and sort by pid
