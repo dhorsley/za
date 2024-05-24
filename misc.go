@@ -183,12 +183,13 @@ func (parser *leparser) report(line int16,s string) {
 
     fmt.Print(msg)
 
+    msgna := Strip(msg)
     if interactive {
         chpos:=0
         c:=col
-        for ; chpos<len(msg); c++ {
+        for ; chpos<len(msgna); c++ {
             if c%MW==0          { row++; c=0 }
-            if msg[chpos]=='\n' { row++; c=0 }
+            if msgna[chpos]=='\n' { row++; c=0 }
             chpos++
         }
     }
