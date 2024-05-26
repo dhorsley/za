@@ -1,0 +1,68 @@
+#!/usr/bin/za
+
+
+def reframe()
+    cls
+    @mh=term_h()
+    @mw=term_w()
+    radx=as_int(mw/2)
+    rady=as_int(mh/2)
+    lenx=radx-2
+    leny=rady-2
+    for i=0 to 11
+        px,py=from_polar(12f,i%12)
+        at rady+leny*py,radx+lenx*px,i
+    endfor
+    at rady,radx,"o"
+end
+
+def from_polar(division,position)
+    pi=pi()
+    division=360f/division
+    return cos(deg2rad(position*division)-pi/2),sin(deg2rad(position*division)-pi/2)
+end
+
+def finish()
+    cursoron()
+    at mh,1
+    exit
+end
+
+reframe()
+trap("int","finish()")
+cursoroff()
+
+update_ms=1000
+
+while
+
+    on mh!=term_h() or mw!=term_w() do reframe()
+
+    radx=as_int(mw/2)
+    rady=as_int(mh/2)
+    lenx=radx-2
+    leny=rady-2
+
+    th=time_hours()
+    tm=time_minutes()
+    ts=time_seconds()
+
+    hpx,hpy=from_polar(12f,th%12)
+    mpx,mpy=from_polar(60f,tm)
+    spx,spy=from_polar(60f,ts)
+
+    at mh,1,format("[#2]%02d:[#4]%02d.[#6]%02d  ",th,tm,ts)
+
+    at rady+(leny-2)*hpy,radx+(lenx-2)*hpx,"[#2]H"
+    at rady+(leny-3)*mpy,radx+(lenx-3)*mpx,"[#4]M"
+    at rady+(leny-4)*spy,radx+(lenx-4)*spx,"[#6]S"
+
+    pause update_ms
+
+    at rady+(leny-2)*hpy,radx+(lenx-2)*hpx," "
+    at rady+(leny-3)*mpy,radx+(lenx-3)*mpx," "
+    at rady+(leny-4)*spy,radx+(lenx-4)*spx," "
+
+endwhile
+
+
