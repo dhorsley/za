@@ -619,7 +619,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
             } else {
 
                 // fall back to shell command?
-                pf("(fb) : stdcall? %v\n",parser.std_call)
                 if interactive && !parser.std_call && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
                     // pf("<fallback executing : %v>\n",cmd)
