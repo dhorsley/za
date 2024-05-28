@@ -217,15 +217,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
-        /*
-        self:=self_s{}
-        if isStruct {
-            self.aware=true
-            self.ptr=&obj
-        }
-        */
-
-        // return p.callFunctionExt(p.fs,p.ident,name,self,[]string{},iargs)
         return p.callFunctionExt(p.fs,p.ident,name,[]string{},iargs)
 
     }
