@@ -1153,7 +1153,10 @@ func main() {
                     if len(PromptTokens)>0 {
                         we := interparse.wrappedEval(1,&mident,1,&mident,PromptTokens)
                         if ! we.evalError { 
-                            tempPrompt=sparkle(interpolate("main",1,&mident,we.result.(string)))
+                            switch we.result.(type) {
+                            case string:
+                                tempPrompt=sparkle(interpolate("main",1,&mident,we.result.(string)))
+                            }
                         }
                     } else {
                         tempPrompt=sparkle(interpolate("main",1,&mident,PromptTemplate))

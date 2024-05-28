@@ -47,7 +47,7 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
         for p=next;p<(next+nc);p+=1 {
             switch args[n].(type) {
             case nil:
-                return false,nil
+                return false,errors.New(sf("nil evaluation in stdlib arg #%d parsing",n))
             case int,uint,float64,int64,uint64,uint8:
                 if types[p]=="number" { n+=1; continue }
             case *big.Int,*big.Float:
