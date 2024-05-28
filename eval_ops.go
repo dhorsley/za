@@ -1495,7 +1495,6 @@ func slice(v any, from, to any) any {
 }
 
 
-// func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, self self_s, arg_names []string, args []any) (res any,hasError bool) {
 func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, arg_names []string, args []any) (res any,hasError bool) {
 
     if f, ok := stdlib[name]; !ok {
@@ -1556,8 +1555,10 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         }
     } else {
         // call standard library function
-        res, err := f(p.namespace,evalfs,ident,args...)
         p.std_call=true
+        // pf("(fb) calling fn %s\n",name)
+        res, err := f(p.namespace,evalfs,ident,args...)
+        // pf("(fb) res %v err %v\n",res,err)
         if err != nil {
             p.std_faulted=true
             p.try_err=err

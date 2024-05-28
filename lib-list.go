@@ -556,10 +556,9 @@ func buildListLib() {
     stdlib["append_to"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("append_to",args,1,"2","string","any"); !ok { return nil, err }
 
-        // check args[0] exists in &ident (this is completely wrong)
-        // if args[0]==nil {
-        //     return nil,errors.New("argument is not a list")
-        // }
+        if args[0]==nil {
+            return nil,errors.New("first argument is not a list")
+        }
 
         name:=args[0].(string)
         bin:=bind_int(evalfs,name)

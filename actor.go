@@ -619,7 +619,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
             } else {
 
                 // fall back to shell command?
-                if interactive && permit_cmd_fallback {
+                pf("(fb) : stdcall? %v\n",parser.std_call)
+                if interactive && !parser.std_call && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
                     // pf("<fallback executing : %v>\n",cmd)
                     // prevcap,_:=gvget("@commandCapture")
@@ -631,7 +632,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                         cop := Copper(s, false)
                         if ! cop.okay {
                             pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
-                            pf(cop.err)
+                            pf(cop.err+"\n")
                         } else {
                             if len(cop.out) > 0 {
                                 if cop.out[len(cop.out)-1] != '\n' {
@@ -649,6 +650,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                     // gvset("@commandCapture",prevcap.(bool))
                     // pf("<fallback complete.>\n")
                 } else {
+                    // if parser.std_call && interactive && permit_cmd_fallback {
+                    // }
                     if _,ok:=r.(runtime.Error); ok {
                         parser.report(inbound.SourceLine,sf("\n%v\n",r))
                         if debug_level>0 { err:=r.(error); panic(err) }
