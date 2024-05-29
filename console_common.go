@@ -216,6 +216,14 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         inputL  := displayedLen(s)
         dispL   :=promptL+inputL
 
+        /*
+        // Count LF in prompt and add below:
+        nlc:=0
+        for c:=range sprompt {
+            if c==10 { nlc+=1 }
+        }
+        */
+        
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
         rowLen:=int(dispL-1)/MW
