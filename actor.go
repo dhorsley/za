@@ -629,6 +629,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                     s=str.TrimRight(s,"\n")
                     if len(s) > 0 {
                         cop := Copper(s, false)
+                        gvset("@last",cop.code)
+                        gvset("@last_err",cop.err)
                         if ! cop.okay {
                             pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
                             pf(cop.err+"\n")

@@ -50,7 +50,7 @@ def ssh(cmd,conn,silent)
     on not silent do capture_shell(false)
 
     { ssh -o StrictHostKeyChecking=no {conn} {cmd} }
-    on last_out() is string and last_out().len>0 do println last_out()
+    on last_err() is string and last_err().len>0 do println last_err()
    
     coproc(true); capture_shell(true)
     return last()
