@@ -243,7 +243,7 @@ func sttyFlag(flags string,state bool) (okay bool) {
 func buildInternalLib() {
 
     features["internal"] = Feature{version: 1, category: "debug"}
-    categories["internal"] = []string{"last", "last_out", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
+    categories["internal"] = []string{"last", "last_err", "zsh_version", "bash_version", "bash_versinfo", "user", "os", "home", "lang",
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
@@ -1178,16 +1178,16 @@ func buildInternalLib() {
         return string(v.(string)), err
     }
 
-    slhelp["last_out"] = LibHelp{in: "", out: "string", action: "Returns the last received error text from the co-process."}
-    stdlib["last_out"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("last_out",args,0); !ok { return nil,err }
-        v, found := gvget("@last_out")
+    slhelp["last_err"] = LibHelp{in: "", out: "string", action: "Returns the last received error text from the co-process."}
+    stdlib["last_err"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("last_err",args,0); !ok { return nil,err }
+        v, found := gvget("@last_err")
         if found {
             return v.(string), err
         }
         return "",errors.New("No co-process error has been detected yet.")
     }
-
+    
     slhelp["zsh_version"] = LibHelp{in: "", out: "string", action: "Returns the zsh version string if present."}
     stdlib["zsh_version"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("zsh_version",args,0); !ok { return nil,err }

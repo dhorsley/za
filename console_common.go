@@ -1574,29 +1574,19 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
             ns = []byte(ba)
         }
 
-        if err != nil {
+        gvset("@last",0)
+        gvset("@last_err",[]byte{0})
 
-            gvset("@last",0)
-            gvset("@lastout",[]byte{0})
-
-            if !squashErr {
-
-                if exitError, ok := err.(*exec.ExitError); ok {
-                    errint=exitError.ExitCode()
-                    errout=err.Error()
-                } else { // probably a command not found?
-                    errint=1
-                    errout="Command not found."
-                }
-                gvset("@last",errint)
-                gvset("@last_out",string(errout))
-
-            }
-
-        } else {
-            gvset("@last",0)
-            gvset("@last_out", "")
+        if exitError, ok := err.(*exec.ExitError); ok {
+            errint=exitError.ExitCode()
+            errout=err.Error()
+        } else { // probably a command not found?
+            errint=1
+            errout="Command not found."
         }
+        gvset("@last",errint)
+        gvset("@last_err",string(errout))
+
     } else {
 
         cmdlock.Lock()
@@ -1666,7 +1656,7 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         } else {
             errout=""
         }
-        gvset("@last_out", errout)
+        gvset("@last_err", errout)
 
     }
 
