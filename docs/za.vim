@@ -144,7 +144,7 @@ syntax match internal_functions "\(^|.\|\s*\)varbind\s*("he=e-1
 
 syntax match internal_functions "\(^|.\|\s*\)execpath\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)last\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)last_out\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)last_err\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)zsh_version\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)bash_version\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)bash_versinfo\s*("he=e-1

@@ -14,27 +14,29 @@ def reframe()
         at rady+leny*py,radx+lenx*px,i
     endfor
     at rady,radx,"o"
+    cursoroff()
 end
 
 def from_polar(division,position)
-    pi=pi()
+    halfpi=pi()/2
     division=360f/division
-    return cos(deg2rad(position*division)-pi/2),sin(deg2rad(position*division)-pi/2)
+    return cos(deg2rad(position*division)-halfpi),sin(deg2rad(position*division)-halfpi)
 end
 
 def finish()
+    cls
     cursoron()
     at mh,1
     exit
 end
 
-reframe()
 trap("int","finish()")
-cursoroff()
+reframe()
 
 update_ms=1000
+k=0
 
-while
+while k!=asc("q")
 
     on mh!=term_h() or mw!=term_w() do reframe()
 
@@ -57,12 +59,14 @@ while
     at rady+(leny-3)*mpy,radx+(lenx-3)*mpx,"[#4]M"
     at rady+(leny-4)*spy,radx+(lenx-4)*spx,"[#6]S"
 
-    pause update_ms
+    k=keypress(update_ms)
 
     at rady+(leny-2)*hpy,radx+(lenx-2)*hpx," "
     at rady+(leny-3)*mpy,radx+(lenx-3)*mpx," "
     at rady+(leny-4)*spy,radx+(lenx-4)*spx," "
 
 endwhile
+
+finish()
 
 
