@@ -7,7 +7,7 @@ import (
     "reflect"
     str "strings"
     "syscall"
-    "fmt"
+    // "fmt"
     "unsafe"
 )
 
@@ -142,7 +142,9 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 modname=name
                 name=p.peek().tokText
             default:
-                panic(fmt.Errorf("invalid name in function call '%s'",p.peek().tokText))
+                parser.hard_fault=true
+                pf("invalid name in function call '%s'\n",p.peek().tokText)
+                return nil,true
             }
             p.next()
         }
@@ -159,7 +161,12 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         }
 
         if !isFunc {
+            parser.hard_fault=true
+            pf("no function, enum or record field found for %v\n", field)
+            return nil,true
+            /*
             panic(fmt.Errorf("no function, enum or record field found for %v", field))
+            */
         }
 
         // user-defined or stdlib call, exception here for file handles
