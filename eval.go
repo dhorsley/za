@@ -76,6 +76,8 @@ type leparser struct {
     rangelen    int                     // length of array referenced in accessArray
     resume_pos  int16                   // statement position the fix was triggered from
 
+    hard_fault  bool                    // stop error bypass in fallback mode
+
 }
 
 
