@@ -484,7 +484,7 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term int64,
 
 // find the next available slot for a function or module
 //  definition in the functionspace[] list.
-// @note: do_lock currently unused.
+//  do_lock normally only false during recursive user-defined fn calls.
 func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string) {
 
     // fmt.Printf("Entered gnfs\n")
