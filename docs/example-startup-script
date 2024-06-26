@@ -90,7 +90,13 @@ def form_aws()
             break
         endif
     endfor
-    on s=="" do s=endcap
+    if s==""
+        if awsenv ~ "^.+$"
+            s=bg256(0x00)+endcap+"[#7]"+" aws:other:{awsenv} "+fg256(0x00)
+        else
+            s=endcap
+        endif
+    endif
     return s
 end
 
@@ -115,14 +121,17 @@ struct environment
     label string
 endstruct
 
-var envlist map
-envlist["test"]     = environment(0x46,7,"aws:Test")
-envlist["stage"]    = environment(0xa6,7,"aws:Stage")
-envlist["live"]     = environment(0xa0,7,"aws:Live")
-envlist["^$"]       = environment(0x11,7,"no-aws")
 
 # set prompt
+
 awsenv=get_env("AWS_DEFAULT_PROFILE")
+
+var envlist map
+envlist["(?:os)?test"]    = environment(0x46,7,"aws:Test")
+envlist["(?:os)?stage"]   = environment(0xa6,7,"aws:Stage")
+envlist["(?:os)?live"]    = environment(0xa0,7,"aws:Live")
+envlist["^$"]           = environment(0x11,7,"no-aws")
+
 inside_git=false
 last_cmd_status=0
 last_git_path=""
