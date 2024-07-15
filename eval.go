@@ -1486,22 +1486,33 @@ func (p *leparser) array_concat(tok *Token) (any) {
 
     if p.peek().tokType!=RightSBrace {
         for {
+            // bodge to allow trailing commas in array
+            if p.peek().tokType==RightSBrace {
+                break
+            }
+            // parse next expression in array
             dp,err,_:=p.dparse(0,false)
             if err!=nil {
                 panic(err)
             }
+            // add to array
             ary=append(ary,dp)
+            // exit loop if no comma next
             if p.peek().tokType!=O_Comma {
                 break
             }
+            // consume comma
             p.next()
         }
     }
 
+    // consume rparen
     if p.peek().tokType==RightSBrace {
-        p.next() // consume rparen
+        // pf("[[trailing right-square-brace consumption]]\n")
+        p.next()
     }
 
+    // pf("[[array loop, trailing peek is '%s']]\n",tokNames[p.peek().tokType])
     return ary
 
 }

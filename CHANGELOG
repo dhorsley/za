@@ -15,6 +15,7 @@ CHANGE LOG
     * fixed bug in last() result in interactive mode
     * fixed interactive mode bug : module/namespace remnants interfering with prompts
     * forced 0xnn, 0bnn, 0onn int literals to int type instead of int64
+    * added support for trailing comma in array literals
 
     library changes
     ---------------
@@ -29,6 +30,7 @@ CHANGE LOG
         - it is far from perfect and has some wrinkles still.
         - mainly included for anyone who wants to use this as a shell - god knows why they would though.
 
+    * updated help text on permit() call.
 
     other
     -----
