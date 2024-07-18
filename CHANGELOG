@@ -16,6 +16,7 @@ CHANGE LOG
     * fixed interactive mode bug : module/namespace remnants interfering with prompts
     * forced 0xnn, 0bnn, 0onn int literals to int type instead of int64
     * added support for trailing comma in array literals
+    * set limit in ibase() of 36 for base value to avoid FormatInt() internal limit.
 
     library changes
     ---------------
