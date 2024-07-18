@@ -473,6 +473,9 @@ func buildMathLib() {
         if i,e=GetAsInt64(args[1]); e==true {
             return "",errors.New("invalid number specified in ibase()")
         }
+        if n>36 {
+            return "",errors.New("specified base is beyond our limit of 36 in ibase()")
+        }
         return strconv.FormatInt(i, n),nil
     }
 
