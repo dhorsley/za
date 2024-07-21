@@ -1469,7 +1469,7 @@ pcloop:
             if isBool(res) && res {
                 // while cond is true, stack, then continue loop
                 depth+=1
-                loops[depth] = s_loop{repeatFrom: parser.pc, whileContinueAt: parser.pc + enddistance, repeatCond: etoks, loopType: C_While}
+                loops[depth] = s_loop{repeatFrom: parser.pc, whileContinueAt: parser.pc + enddistance, repeatCond: etoks, loopType: LT_WHILE}
                 lastConstruct = append(lastConstruct, C_While)
                 break
             } else {
@@ -1484,7 +1484,7 @@ pcloop:
 
             cond := loops[depth]
 
-            if !forceEnd && cond.loopType != C_While {
+            if !forceEnd && cond.loopType != LT_WHILE {
                 parser.report(inbound.SourceLine,"ENDWHILE outside of WHILE loop")
                 finish(false, ERR_SYNTAX)
                 break
@@ -1918,7 +1918,7 @@ pcloop:
                     optNoUse: Opt_LoopStart,
                     repeatFrom: parser.pc + 1, iterOverMap: iter, iterOverArray: we.result,
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
-                    loopType: C_Foreach,
+                    loopType: LT_FOREACH,
                 }
 
             default:
@@ -1976,9 +1976,10 @@ pcloop:
                 depth+=1
                 loops[depth] = s_loop{
                     optNoUse: Opt_LoopStart,
-                    loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
+                    loopType: LT_FOR, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                     repeatCond: iterCondition, repeatAmendment: iterAmendment, repeatCustom: true,
                 }
+
                 lastConstruct = append(lastConstruct, C_For)
 
             }
@@ -2096,7 +2097,7 @@ pcloop:
                     loopVar:  fid,
                     loopVarBinding: bin,
                     optNoUse: Opt_LoopStart,
-                    loopType: C_For, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
+                    loopType: LT_FOR, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                     counter: fstart, condEnd: fend,
                     repeatAction: direction, repeatActionStep: step,
                 }
@@ -2143,7 +2144,7 @@ pcloop:
 
                 switch (*thisLoop).loopType {
 
-                case C_Foreach: // move through range
+                case LT_FOREACH: // move through range
 
                     (*thisLoop).counter+=1
 
@@ -2214,7 +2215,7 @@ pcloop:
 
                     }
 
-                case C_For: // move through range
+                case LT_FOR: // move through range
 
                     if (*thisLoop).repeatCustom {
 

@@ -60,15 +60,15 @@ type Variable struct {
 // holds a Token which forms part of a Phrase.
 type Token struct {
     tokType             int64       // token type from list in constants.go
+    bindpos             uint64
     tokText             string      // the content of the token
     tokVal              any         // raw value storage
-    bindpos             uint64
+    la_else_distance    int16       // look ahead markers
+    la_end_distance     int16
     subtype             uint8       // sub type of identifiers
     bound               bool
     la_done             bool
     la_has_else         bool
-    la_else_distance    int16       // look ahead markers
-    la_end_distance     int16
 }
 
 func (t Token) String() string {
@@ -81,11 +81,11 @@ type call_s struct {
     caller      uint32      // the thing which made the call
     base        uint32      // the original functionspace location of the source
     gcShyness   uint32      // how many turns of the allocator before final disposal
+    retvals     any         // returned values from the call
+    fs          string      // the text name of the calling party
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
     disposable  bool
-    retvals     any         // returned values from the call
-    fs          string      // the text name of the calling party
 }
 
 func (cs call_s) String() string {
@@ -136,10 +136,10 @@ type ExpressionCarton struct {
     assignVar string      // name of var to assign to
     text      string      // total expression
     result    any         // result of evaluation
+    errVal    error
     assignPos int
     assign    bool        // is this an assignment expression
     evalError bool        // did the evaluation succeed
-    errVal    error
 }
 
 // struct for enum members
@@ -157,17 +157,17 @@ type s_loop struct {
     counter          int              // current position in loop
     condEnd          int              // terminating position value
     repeatActionStep int              // size of repeatAction
-    loopType         int64            // C_For, C_Foreach, C_While
     forEndPos        int16            // ENDFOR location (statement number in functionspace)
     repeatFrom       int16            // line number to restart block from
     optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
+    loopType         uint8            // C_For, C_Foreach, C_While
     repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
-    whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
+    repeatCustom     bool             // FOR loop with custom conditions
     iterOverMap      *reflect.MapIter // stored iterator
+    iterOverArray    any              // stored value to iterate over from start expression
     repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
     repeatAmendment  []Token          // used by custom FOR conditions
-    iterOverArray    any              // stored value to iterate over from start expression
-    repeatCustom     bool             // FOR loop with custom conditions
+    whileContinueAt  int16            // if loop is WHILE, where is it's ENDWHILE
 }
 
 // struct to support pseudo-windows in console
