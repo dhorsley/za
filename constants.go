@@ -50,6 +50,12 @@ const (
     S3_PT_MULTI
 )
 
+const (
+    LT_FOR uint8=iota
+    LT_FOREACH
+    LT_WHILE
+)
+
     //  chainInfoRegistrants:
     //               0: Trap Handler
     //               1: Call Function
