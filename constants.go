@@ -6,19 +6,19 @@ package main
 
 const MAX_LOOPS = 8
 
-const identInitialSize = 8      // initial ident size on creation
-const identGrowthSize = 8       // how many extra spaces to add when ident needs to grow
-const gnfsModulus = 48000       // used by calltable to set max size, mainly impacts recursion
-const globseq_disposal_freq = 32 // sets the number of call allocations per calltable cleanup operation
-const MAX_CLIENTS = 800         // maximum lib-net concurrent listener clients for http server
+const identInitialSize = 4       // initial ident size on creation
+const identGrowthSize = 4        // how many extra spaces to add when ident needs to grow
+const gnfsModulus = 48000        // used by calltable to set max size, mainly impacts recursion
+const globseq_disposal_freq = 64 // sets the number of call allocations per calltable cleanup operation
+const MAX_CLIENTS = 800          // maximum lib-net concurrent listener clients for http server
 
-const SPACE_CAP = gnfsModulus   // initial instance and source functions cap
-const CALL_CAP = 1000           // calltable (open calls) start capacity. scales up.
-const FUNC_CAP = 300            // stdlib functions storage space, starting point.
-const FAIRY_CAP = 64            // max ansi mappings
-const LIST_SIZE_CAP = 16        // initial list size on construction
-const CASE_CAP = 8              // how many placeholders to create for CASE...ENDCASE meta info per func
-                                // ... this is currently only bounds checked in actor.go
+const SPACE_CAP = gnfsModulus    // initial instance and source functions cap
+const CALL_CAP = 200             // calltable (open calls) start capacity. scales up.
+const FUNC_CAP = 300             // stdlib functions storage space, starting point.
+const FAIRY_CAP = 64             // max ansi mappings
+const LIST_SIZE_CAP = 16         // initial list size on construction
+const CASE_CAP = 8               // how many placeholders to create for CASE...ENDCASE meta info per func
+                                 // ... this is currently only bounds checked in actor.go
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "
