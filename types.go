@@ -80,9 +80,9 @@ func (t Token) String() string {
 type call_s struct {
     caller      uint32      // the thing which made the call
     base        uint32      // the original functionspace location of the source
-    gcShyness   uint32      // how many turns of the allocator before final disposal
     retvals     any         // returned values from the call
     fs          string      // the text name of the calling party
+    gcShyness   uint32      // how many turns of the allocator before final disposal
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
     disposable  bool
