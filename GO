@@ -9,6 +9,7 @@ fi
 pref="/home"
 if [[ $SUDO_USER == "root" ]]; then pref="" ; fi
 export GOPATH=${pref}/$user/go
+export GOROOT=/usr/lib/go
 
 echo "Path : $GOPATH"
 
