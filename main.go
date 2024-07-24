@@ -1221,6 +1221,9 @@ func main() {
                         break
                     } // don't check as may also contain a nesting keyword
 
+                    // @note: the stanza below causes issues with fallback mode, for example if you
+                    //        have an element of a path name that is if, case, while... etc.
+                    //        not sure of best way to deal with that yet.
                     if !helpRequest && !paneDefine {
                         switch t.carton.tokType {
                         case C_Define, C_For, C_Foreach, C_While, C_If, C_Case, C_Struct, LParen, LeftSBrace:

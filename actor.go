@@ -621,7 +621,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
                 // fall back to shell command?
                 if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
                     cmd:=basecode[source_base][parser.pc].Original
-                    // pf("<fallback executing : %v>\n",cmd)
+                    // PIG
+                    pf("<fallback executing : %v>\n",cmd)
                     // prevcap,_:=gvget("@commandCapture")
                     // gvset("@commandCapture",false)
 
