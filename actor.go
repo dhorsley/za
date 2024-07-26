@@ -401,8 +401,8 @@ func GetAsUint(expr any) (uint, bool) {
 
 // check for value in slice - used by lookahead()
 func InSlice(a int64, list []int64) bool {
-    for _, b := range list {
-        if b == a {
+    for k, _ := range list {
+        if list[k] == a {
             return true
         }
     }
@@ -795,13 +795,13 @@ tco_reentry:
 
     if len(va) > 0 {
         farglock.RLock()
-        for q, v := range va {
+        for q, _ := range va {
             if q>=len(functionArgs[source_base].args) { break }
             if len(arg_names)>0 {
-                vset(nil,ifs,ident,arg_names[q],v)
+                vset(nil,ifs,ident,arg_names[q],va[q])
             } else {
                 fa:=functionArgs[source_base].args[q]
-                vset(nil,ifs,ident,fa,v)
+                vset(nil,ifs,ident,fa,va[q])
             }
         }
         farglock.RUnlock()
@@ -1388,10 +1388,10 @@ pcloop:
 
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-                    for sn, snv := range structmaps {
+                    for sn, _ := range structmaps {
                         if sn==sname {
                             isStruct=true
-                            structvalues=snv
+                            structvalues=structmaps[sn]
                             break
                         }
                     }
