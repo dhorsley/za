@@ -1,7 +1,10 @@
 #!/usr/bin/za
 
 # notes:
-#   int MapArray[][DimensionOfMap], int Dimension, int SolvedMapArray[][DimensionOfMap])
+#  adopted from a C example
+#  amended to use single dimension arrays
+#  still has a few bugs in it, for example abnormally
+#   short final paths cause problems.
 
 enum ptype    ( empty=0, pc, block, target, path )
 enum waytypes ( NoPath=0, Path, InvalidInput )
