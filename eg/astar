@@ -16,9 +16,9 @@ def fill_path(grid,sx,sy,ex,ey)
     ng,status,steps=a::find_path(grid,mw,mh)
     case status
     is a::waytypes.InvalidInput
-        println "Invalid Input"
+        exit 1,"Invalid Input"
     is a::waytypes.NoPath
-        println "No Path Found"
+        exit 2,"No Path Found"
     is a::waytypes.Path
         println "*showing path*"
     endcase

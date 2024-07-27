@@ -32,7 +32,7 @@ def find_path(MapArray, DimensionX, DimensionY)
     var OpenList [ListLength] any
     var AdjacentSquares [4] any
 
-    var IsInClosedList, IsInOpenList int
+    var IsInClosedList, IsInOpenList bool
     var i, j, k, m, N, T, temp int
     var TempG int
 
@@ -142,14 +142,14 @@ def find_path(MapArray, DimensionX, DimensionY)
                 endif
 
                 # If we added the destination to the Closed-List, we've found a path
-                IsInClosedList = 0
+                IsInClosedList = false
                 for m = 0 to N-1
                     if (DestinationSquare.x == ClosedList[m].x) && (DestinationSquare.y == ClosedList[m].y)
-                        IsInClosedList = 1
+                        IsInClosedList = true
                         break
                     endif
                 endfor
-                if IsInClosedList == 1
+                if IsInClosedList
                     IsWay = waytypes.Path
                     break
                 endif
@@ -167,31 +167,29 @@ def find_path(MapArray, DimensionX, DimensionY)
 
             for k = 0 to 3
                 # If this adjacent square is already in the Closed-List or if it is not an open square, ignore it
-                IsInClosedList = 0
+                IsInClosedList = false
                 for m = 0 to N-1
                     if (AdjacentSquares[k].x == ClosedList[m].x) && (AdjacentSquares[k].y == ClosedList[m].y)
-                        IsInClosedList = 1
+                        IsInClosedList = true
                         break
                     endif
                 endfor
 
-                on (
-                    (AdjacentSquares[k].x < 0)           || (AdjacentSquares[k].y < 0)           ||
-                    (AdjacentSquares[k].x >= DimensionX) || (AdjacentSquares[k].y >= DimensionY) ||
-                    (MapArray[AdjacentSquares[k].x+AdjacentSquares[k].y*DimensionX] == ptype.block ) ||
-                    (IsInClosedList == 1) 
-                   ) do continue
+                on AdjacentSquares[k].x<0 or AdjacentSquares[k].y<0 do continue
+                on AdjacentSquares[k].x>=DimensionX or AdjacentSquares[k].y>=DimensionY do continue
+                on MapArray[AdjacentSquares[k].x+AdjacentSquares[k].y*DimensionX] == ptype.block do continue
+                on IsInClosedList do continue
                 
-                IsInOpenList = 0
+                IsInOpenList = false
                 for m = 0 to T-1
                     if (AdjacentSquares[k].x == OpenList[m].x) && (AdjacentSquares[k].y == OpenList[m].y)
-                        IsInOpenList = 1
+                        IsInOpenList = true
                         temp = m
                         break
                     endif
                 endfor
 
-                if IsInOpenList != 1
+                if not IsInOpenList
                     # Compute its score and add it to the Open-List
                     OpenList[T].H = abs(DestinationSquare.x - AdjacentSquares[k].x) + abs(DestinationSquare.y - AdjacentSquares[k].y)
                     OpenList[T].G = TempG + 1
@@ -237,22 +235,20 @@ def find_path(MapArray, DimensionX, DimensionY)
 
                 for k = 0 to 3
                     # If this adjacent square is not an open square, ignore it
-                    on (
-                        (AdjacentSquares[k].x < 0) || (AdjacentSquares[k].y < 0) ||
-                        (AdjacentSquares[k].x >= DimensionX) || (AdjacentSquares[k].y >= DimensionY) ||
-                        (MapArray[AdjacentSquares[k].x+AdjacentSquares[k].y*DimensionX] == ptype.block )
-                       ) do continue
+                    on AdjacentSquares[k].x<0 or AdjacentSquares[k].y<0 do continue
+                    on AdjacentSquares[k].x>=DimensionX or AdjacentSquares[k].y>=DimensionY do continue
+                    on MapArray[AdjacentSquares[k].x+AdjacentSquares[k].y*DimensionX] == ptype.block do continue
 
-                    IsInClosedList = 0
+                    IsInClosedList = false
                     for j = 0 to N-1
                         if (AdjacentSquares[k].x == ClosedList[j].x) && (AdjacentSquares[k].y == ClosedList[j].y)
-                            IsInClosedList = 1
+                            IsInClosedList = true
                             temp = j
                             break
                         endif
                     endfor
 
-                    if IsInClosedList == 1
+                    if IsInClosedList
                         # If this adjacent square is in the Closed-List
                         if ClosedList[temp].G == TempG - 1
                             m++
