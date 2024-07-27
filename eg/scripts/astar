@@ -1,0 +1,111 @@
+#!/usr/bin/za
+
+module "./astar.mod" as a
+
+max_block = 800
+
+def set(c,r,t)
+    @g[r*mw+c]=t
+end
+
+def get(c,r)
+    return g[r*mw+c]
+end
+
+def fill_path(grid,sx,sy,ex,ey)
+    ng,status,steps=a::find_path(grid,mw,mh)
+    case status
+    is a::waytypes.InvalidInput
+        println "Invalid Input"
+    is a::waytypes.NoPath
+        println "No Path Found"
+    is a::waytypes.Path
+        println "*showing path*"
+    endcase
+    return ng,steps
+end
+
+def show_grid(g)
+    for p=0 to mh*mw-1
+        r,c=[as_int(p/mw),p%mw]
+        case g[r*mw+c]
+        is a::ptype.block
+            at r+1,c+1,"#"
+        is a::ptype.pc
+            at r+1,c+1,"[#invert][#3]S[#-]"
+        is a::ptype.target
+            at r+1,c+1,"[#invert][#6]E[#-]"
+        is a::ptype.path
+            at r+1,c+1,"[#4].[#-]"
+        endcase
+    endfor
+end
+
+def randx()
+    return rand(mw)-1
+end
+
+def randy()
+    return rand(mh)-1
+end
+
+
+# setup grid
+mh=term_h()
+mw=term_w()
+
+var g [mh*mw] int
+for e=0 to mh*mw-1
+    g[e]=a::ptype.empty
+endfor
+
+
+# add pc
+px,py=[randx(),randy()]
+set(px,py,a::ptype.pc)
+
+
+# add target
+tx,ty=[px,py]
+while px==tx and py==ty
+    tx,ty=[randx(),randy()]
+endwhile
+set(tx,ty,a::ptype.target)
+
+
+# add blocks
+for e=0 to max_block-1
+    for ,,
+        rx,ry=[randx(),randy()]
+        if get(rx,ry)==a::ptype.empty
+            set(rx,ry,a::ptype.block)
+            break
+        endif
+    endfor
+endfor
+
+
+# show starting grid
+cls
+show_grid(g)
+at mh-1,1, "mh {mh} mw {mw} :: mh*mw {=mh*mw}"
+at mh,1, "continue?"
+keypress()
+
+# calc nav
+t1=epoch_nano_time()
+ng,steps=fill_path(g,px,py,tx,ty)
+t2=time_diff(epoch_nano_time(),t1)
+
+
+# show end grid
+cls
+show_grid(ng)
+
+# cleanup
+at mh,1, "continue? (calc time : {=t2/1000}ms) (steps : {steps})"
+keypress()
+cls
+#println g ?> `# != 0`
+
+
