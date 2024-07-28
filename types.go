@@ -96,6 +96,7 @@ type Funcdef struct {
     name    string
     module  string
     fs      uint32
+    parent  string      // "" or namespace::structname of owner
     // add extra fields here later. could maybe move fargs in
 }
 

@@ -902,61 +902,65 @@ pcloop:
 
         // struct building
         if structMode && statement!=C_Endstruct {
-            // consume the statement as an identifier
-            // as we are only accepting simple types currently, restrict validity
-            //  to single type token.
-            if inbound.TokenCount<2 {
-                parser.report(inbound.SourceLine,sf("Invalid STRUCT entry '%v'",inbound.Tokens[0].tokText))
-                finish(false,ERR_SYNTAX)
-                break
-            }
 
-            // check for default value assignment:
-            var eqPos int16
-            var hasValue bool
-            for eqPos=2;eqPos<inbound.TokenCount;eqPos+=1 {
-                if inbound.Tokens[eqPos].tokType==O_Assign {
-                    hasValue=true
-                    break
-                }
-            }
+            if statement!=C_Define && statement!=C_Enddef {
 
-            var default_value ExpressionCarton
-            if hasValue {
-                default_value = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[eqPos+1:])
-                if default_value.evalError {
-                    parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",inbound.Tokens[0].tokText))
+                // consume the statement as an identifier
+                // as we are only accepting simple types currently, restrict validity
+                //  to single type token.
+                if inbound.TokenCount<2 {
+                    parser.report(inbound.SourceLine,sf("Invalid STRUCT entry '%v'",inbound.Tokens[0].tokText))
                     finish(false,ERR_SYNTAX)
                     break
                 }
+
+                // check for default value assignment:
+                var eqPos int16
+                var hasValue bool
+                for eqPos=2;eqPos<inbound.TokenCount;eqPos+=1 {
+                    if inbound.Tokens[eqPos].tokType==O_Assign {
+                        hasValue=true
+                        break
+                    }
+                }
+
+                var default_value ExpressionCarton
+                if hasValue {
+                    default_value = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[eqPos+1:])
+                    if default_value.evalError {
+                        parser.report(inbound.SourceLine,sf("Invalid default value in STRUCT '%s'",inbound.Tokens[0].tokText))
+                        finish(false,ERR_SYNTAX)
+                        break
+                    }
+                }
+
+                var cet ExpressionCarton
+                if hasValue {
+                    cet = crushEvalTokens(inbound.Tokens[1:eqPos])
+                } else {
+                    cet = crushEvalTokens(inbound.Tokens[1:])
+                }
+
+                // check for valid types:
+                switch str.ToLower(cet.text) {
+                case "int","float","string","bool","uint","uint8","bigi","bigf","byte","mixed","any","[]":
+                case "[]int","[]float","[]string","[]bool","[]uint","[]uint8","[]bigi","[]bigf","[]byte":
+                default:
+                    parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
+                    finish(false,ERR_SYNTAX)
+                    typeInvalid=true
+                    break
+                }
+
+                if typeInvalid {
+                    break
+                }
+
+                structNode=append(structNode,inbound.Tokens[0].tokText,cet.text,hasValue,default_value.result)
+                // pf("current struct node build at :\n%#v\n",structNode)
+
+                continue
             }
-
-            var cet ExpressionCarton
-            if hasValue {
-                cet = crushEvalTokens(inbound.Tokens[1:eqPos])
-            } else {
-                cet = crushEvalTokens(inbound.Tokens[1:])
-            }
-
-            // check for valid types:
-            switch str.ToLower(cet.text) {
-            case "int","float","string","bool","uint","uint8","bigi","bigf","byte","mixed","any","[]":
-            case "[]int","[]float","[]string","[]bool","[]uint","[]uint8","[]bigi","[]bigf","[]byte":
-            default:
-                parser.report(inbound.SourceLine,sf("Invalid type in STRUCT '%s'",cet.text))
-                finish(false,ERR_SYNTAX)
-                typeInvalid=true
-                break
-            }
-
-            if typeInvalid {
-                break
-            }
-
-            structNode=append(structNode,inbound.Tokens[0].tokText,cet.text,hasValue,default_value.result)
-            // pf("current struct node build at :\n%#v\n",structNode)
-
-            continue
         }
 
         // show var references for -V arg
@@ -3321,6 +3325,11 @@ pcloop:
                 defining = true
                 definitionName = parser.namespace+"::"+inbound.Tokens[1].tokText
 
+                parent:=""
+                if structMode {
+                    parent=structName
+                }
+
                 // pf("[#4]Now defining %s[#-]\n",definitionName)
 
                 loc, _ := GetNextFnSpace(true,definitionName,call_s{prepared:false})
@@ -3359,6 +3368,7 @@ pcloop:
                     name:definitionName,
                     module:parser.namespace,
                     fs:loc,
+                    parent:parent,
                 }
 
                 basemodmap[loc]=parser.namespace
@@ -4098,7 +4108,6 @@ pcloop:
                 break
             }
 
-            // structName=inbound.Tokens[1].tokText
             structName=parser.namespace+"::"+inbound.Tokens[1].tokText
             structMode=true
 

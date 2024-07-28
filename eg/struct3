@@ -11,6 +11,9 @@ struct person
     name    string
     age     int
     dob     string
+    def get()
+        return self.name
+    end
 endstruct
 
 forenames= ["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iris","Janis","Keith","Larry","Moon","Naomi","Orpheus","Pamela",
