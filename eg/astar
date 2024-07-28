@@ -31,12 +31,12 @@ def show_grid(g)
         case g[r*mw+c]
         is a::ptype.block
             at r+1,c+1,"#"
-        is a::ptype.pc
+        is a::ptype.start
             at r+1,c+1,"[#invert][#3]S[#-]"
         is a::ptype.target
             at r+1,c+1,"[#invert][#6]E[#-]"
         is a::ptype.path
-            at r+1,c+1,"[#4].[#-]"
+            at r+1,c+1,"[#5].[#-]"
         endcase
     endfor
 end
@@ -60,9 +60,9 @@ for e=0 to mh*mw-1
 endfor
 
 
-# add pc
+# add start
 px,py=[randx(),randy()]
-set(px,py,a::ptype.pc)
+set(px,py,a::ptype.start)
 
 
 # add target
