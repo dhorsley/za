@@ -1242,8 +1242,6 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         var present bool
         if ifn, present = fnlookup.lmget(name); !present {
             panic(fmt.Errorf("could not find function named '%s'",name))
-            // finish(false,ERR_EVAL)
-            // return nil,true
         }
         farglock.RLock()
         falist:=functionArgs[ifn].args
@@ -1270,7 +1268,6 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         }
     }
 
-    // return p.callFunctionExt(p.fs,p.ident,name,self_s{},arg_names,iargs)
     return p.callFunctionExt(p.fs,p.ident,name,arg_names,iargs)
 
 }

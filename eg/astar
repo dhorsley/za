@@ -2,7 +2,7 @@
 
 module "./astar.mod" as a
 
-max_block = 400
+max_block = 550
 
 def set(c,r,t)
     @g[r*mw+c]=t

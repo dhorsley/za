@@ -227,7 +227,5 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         return p.callFunctionExt(p.fs,p.ident,name,[]string{},iargs)
 
     }
-    // @unreachable:
-    // return nil,false
 }
 
