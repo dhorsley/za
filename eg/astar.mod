@@ -3,10 +3,9 @@
 # notes:
 #  adopted from a C example
 #  amended to use single dimension arrays
-#  still has a few bugs in it, for example abnormally
-#   short final paths cause problems.
 
-enum ptype    ( empty=0, pc, block, target, path )
+
+enum ptype    ( empty=0, start, block, target, path )
 enum waytypes ( NoPath=0, Path, InvalidInput )
 
 struct XY
@@ -15,21 +14,21 @@ struct XY
 endstruct
 
 struct XYScores
-    G int
-    H int
-    F int
-    x int
-    y int
+    G int = -1
+    H int = -1
+    F int = -1
+    x int = -1
+    y int = -1
 endstruct
 
 def find_path(MapArray, DimensionX, DimensionY)
 
     ListLength=DimensionX*DimensionY
     var OriginalSquare, DestinationSquare, CurrentSquare XY
-    var SolvedMapArray [] any
-    var FinalPath [ListLength] any
-    var ClosedList [ListLength] any
-    var OpenList [ListLength] any
+    var SolvedMapArray  [] any
+    var FinalPath       [ListLength] any
+    var ClosedList      [ListLength] any
+    var OpenList        [ListLength] any
     var AdjacentSquares [4] any
 
     var IsInClosedList, IsInOpenList bool
@@ -50,17 +49,14 @@ def find_path(MapArray, DimensionX, DimensionY)
     endfor
 
     # initialise adjacents
-    AdjacentSquares[0]=XY()
-    AdjacentSquares[1]=XY()
-    AdjacentSquares[2]=XY()
-    AdjacentSquares[3]=XY()
+    AdjacentSquares[0], AdjacentSquares[1], AdjacentSquares[2], AdjacentSquares[3] =[XY(),XY(),XY(),XY()]
 
 
     # find start and end positions
     for i = 0 to DimensionY-1
         for j = 0 to DimensionX-1
             case MapArray[i*DimensionX+j]
-            is ptype.pc
+            is ptype.start
                 OriginalSquare.x = j
                 OriginalSquare.y = i
             is ptype.target
@@ -77,9 +73,9 @@ def find_path(MapArray, DimensionX, DimensionY)
         TempG = 0
         T = 0               # Counts items of Open-List
         N = 0               # Counts items of Closed-List
-        OpenList[0].F = -1  # A sign that shows Open-List is empty
+        # OpenList[0].F = -1  # A sign that shows Open-List is empty
 
-        while
+        for ,,
             if N == 0
                 # Get the square with the lowest F score
                 CurrentSquare.x = OriginalSquare.x
@@ -117,34 +113,21 @@ def find_path(MapArray, DimensionX, DimensionY)
                 # Remove current square from the Open-List
                 TempG = OpenList[PlaceOfLowestF].G
 
-                if PlaceOfLowestF == (T - 1)
-                    OpenList[T - 1].G = -1
-                    OpenList[T - 1].H = -1
-                    OpenList[T - 1].F = -1
-                    OpenList[T - 1].x = -1
-                    OpenList[T - 1].y = -1
+                if PlaceOfLowestF == T-1
+                    OpenList[T-1]=XYScores()
                     T--
                 else
                     for m = PlaceOfLowestF to T-2
-                        OpenList[m].G = OpenList[m + 1].G
-                        OpenList[m].H = OpenList[m + 1].H
-                        OpenList[m].F = OpenList[m + 1].F
-                        OpenList[m].x = OpenList[m + 1].x
-                        OpenList[m].y = OpenList[m + 1].y
+                        OpenList[m] = OpenList[m+1]
                     endfor
-
-                    OpenList[T - 1].G = -1
-                    OpenList[T - 1].H = -1
-                    OpenList[T - 1].F = -1
-                    OpenList[T - 1].x = -1
-                    OpenList[T - 1].y = -1
+                    OpenList[T-1]=XYScores()
                     T--
                 endif
 
                 # If we added the destination to the Closed-List, we've found a path
                 IsInClosedList = false
                 for m = 0 to N-1
-                    if (DestinationSquare.x == ClosedList[m].x) && (DestinationSquare.y == ClosedList[m].y)
+                    if (DestinationSquare.x == ClosedList[m].x) and (DestinationSquare.y == ClosedList[m].y)
                         IsInClosedList = true
                         break
                     endif
@@ -169,7 +152,7 @@ def find_path(MapArray, DimensionX, DimensionY)
                 # If this adjacent square is already in the Closed-List or if it is not an open square, ignore it
                 IsInClosedList = false
                 for m = 0 to N-1
-                    if (AdjacentSquares[k].x == ClosedList[m].x) && (AdjacentSquares[k].y == ClosedList[m].y)
+                    if (AdjacentSquares[k].x == ClosedList[m].x) and (AdjacentSquares[k].y == ClosedList[m].y)
                         IsInClosedList = true
                         break
                     endif
@@ -182,7 +165,7 @@ def find_path(MapArray, DimensionX, DimensionY)
                 
                 IsInOpenList = false
                 for m = 0 to T-1
-                    if (AdjacentSquares[k].x == OpenList[m].x) && (AdjacentSquares[k].y == OpenList[m].y)
+                    if (AdjacentSquares[k].x == OpenList[m].x) and (AdjacentSquares[k].y == OpenList[m].y)
                         IsInOpenList = true
                         temp = m
                         break
@@ -198,16 +181,18 @@ def find_path(MapArray, DimensionX, DimensionY)
                     OpenList[T].y = AdjacentSquares[k].y
                     T++
                 else
-                    # if its already in the Open-List
-                    if (ClosedList[PlaceOfCurrentSquare].G + 1) < OpenList[temp].G
-                        # Update score of adjacent square that is in Open-List
-                        OpenList[temp].G = ClosedList[PlaceOfCurrentSquare].G + 1
-                        OpenList[temp].F = OpenList[temp].G + OpenList[temp].H
-                    endif
+                    # if its already in the open list then
+                    # update score of adjacent square that is in Open-List
+                    on (
+                        (ClosedList[PlaceOfCurrentSquare].G + 1) < OpenList[temp].G
+                    ) do OpenList[temp].G,OpenList[temp].F = [
+                                                ClosedList[PlaceOfCurrentSquare].G + 1,
+                                                OpenList[temp].G + OpenList[temp].H
+                    ]
                 endif
             endfor
             on OpenList[0].F==-1 do break
-        endwhile
+        endfor
 
         if IsWay == waytypes.Path
             # If there is at least one way to the destination square
@@ -217,7 +202,7 @@ def find_path(MapArray, DimensionX, DimensionY)
             CurrentSquare.y = ClosedList[N - 1].y
             TempG = ClosedList[N - 1].G
 
-            while
+            for ,,
                 if m > 0
                     FinalPath[m - 1].x = CurrentSquare.x
                     FinalPath[m - 1].y = CurrentSquare.y
@@ -260,7 +245,7 @@ def find_path(MapArray, DimensionX, DimensionY)
                     endif
                 endfor
                 on TempG==0 do break
-            endwhile
+            endfor
 
             # Copy MapArray to SolvedMapArray
             for i = 0 to DimensionY-1
