@@ -16,11 +16,9 @@ def fill_path(grid,sx,sy,ex,ey)
     ng,status,steps=a::find_path(grid,mw,mh)
     case status
     is a::waytypes.InvalidInput
-        exit 1,"Invalid Input"
+        exit 1,"\nInvalid Input"
     is a::waytypes.NoPath
-        exit 2,"No Path Found"
-    is a::waytypes.Path
-        println "*showing path*"
+        exit 2,"\nNo Path Found"
     endcase
     return ng,steps
 end
@@ -30,13 +28,13 @@ def show_grid(g)
         r,c=[as_int(p/mw),p%mw]
         case g[r*mw+c]
         is a::ptype.block
-            at r+1,c+1,"#"
+            at r+1,c+1,"░"
         is a::ptype.start
             at r+1,c+1,"[#invert][#3]S[#-]"
         is a::ptype.target
             at r+1,c+1,"[#invert][#6]E[#-]"
         is a::ptype.path
-            at r+1,c+1,"[#5].[#-]"
+            at r+1,c+1,"[#5]•[#-]"
         endcase
     endfor
 end
@@ -88,8 +86,7 @@ endfor
 # show starting grid
 cls
 show_grid(g)
-at mh-1,1, "mh {mh} mw {mw} :: mh*mw {=mh*mw}"
-at mh,1, "continue?"
+at mh,1, "continue? mh {mh} mw {mw} :: mh*mw {=mh*mw}"
 keypress()
 
 # calc nav
@@ -103,7 +100,7 @@ cls
 show_grid(ng)
 
 # cleanup
-at mh,1, "continue? (calc time : {=t2/1000}ms) (steps : {steps})"
+at mh,1, "continue? (calc time : %.3fs) (steps : %d)".format(t2/1_000_000,steps)
 keypress()
 cls
 #println g ?> `# != 0`
