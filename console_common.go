@@ -1580,9 +1580,6 @@ func Copper(line string, squashErr bool) struct{out string; err string; code int
         if exitError, ok := err.(*exec.ExitError); ok {
             errint=exitError.ExitCode()
             errout=err.Error()
-        } else { // probably a command not found?
-            errint=1
-            errout="Command not found."
         }
         gvset("@last",errint)
         gvset("@last_err",string(errout))
