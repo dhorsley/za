@@ -267,8 +267,17 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
+        // set parent type name
+        struct_name:=""
+        if p.preprev.tokType==Identifier {
+            bin:=p.preprev.bindpos
+            if (*p.ident)[bin].declared {
+                struct_name=(*p.ident)[bin].Kind_override
+            }
+        }
+
         // make call
-        res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,[]string{},iargs)
+        res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
 
         // process results
         if calling_method && !err {

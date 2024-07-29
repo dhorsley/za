@@ -6,6 +6,7 @@ struct q
     b float
     def double()
         self.a*=2
+        println "(in double) self kind : ",kind(self)
     end
     c bool
 endstruct

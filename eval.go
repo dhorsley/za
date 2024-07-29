@@ -77,7 +77,7 @@ type leparser struct {
     resume_pos  int16                   // statement position the fix was triggered from
 
     hard_fault  bool                    // stop error bypass in fallback mode
-
+    kind_override string                // when self has been created, this bears the struct type.
 }
 
 
@@ -1219,16 +1219,12 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
             default:
                 // error
                 panic(fmt.Errorf("invalid parameter list count (%d) in struct(%s) init",len(iargs),name))
-                // finish(false,ERR_EVAL)
-                // return nil,true
             }
         }
 
         err:=fillStruct(&t,structvalues,typemap,false,arg_names)
         if err!=nil {
             panic(err.Error())
-            // finish(false,ERR_EVAL)
-            // return nil,true
         }
 
         return t.IValue,false
@@ -1264,7 +1260,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         }
     }
 
-    res,err,_:=p.callFunctionExt(p.fs,p.ident,name,false,nil,arg_names,iargs)
+    res,err,_:=p.callFunctionExt(p.fs,p.ident,name,false,nil,"",arg_names,iargs)
     return res,err
 
 }
