@@ -267,9 +267,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
-        // find caller_name if calling_method true
+        // make call
         res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,[]string{},iargs)
 
+        // process results
         if calling_method && !err {
             // check if previous is an identifer/expression result
             if p.preprev.tokType==Identifier {
@@ -281,7 +282,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                     pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
                     return nil,true
                 }
-            } // else { no action required as invoker was not a struct name }
+            } else {
+                // no action required as invoker was not a struct name
+                // pf("method call without identifier\nresult : %#v\nerror : %+v\n",res,err)
+            }
         }
 
         return res,err

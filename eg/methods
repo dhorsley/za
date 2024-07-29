@@ -1,0 +1,56 @@
+#!/usr/bin/za
+
+
+struct q
+    a int
+    b float
+    def double()
+        self.a*=2
+    end
+    c bool
+endstruct
+
+struct w
+    a int
+    b float
+    c bool
+endstruct
+
+var a q
+var b w
+
+a.a=42
+b.a=10
+
+println "a->",a
+println "b->",b
+println "calling double"
+
+a.double
+b.double
+
+println "setting pi+true in b"
+b.b=pi()
+b.c=true
+
+println "a->",a
+println "b->",b
+
+println "creating c from a, modifying and calling double"
+c=a
+c.b=100f
+c.c=true
+c.double
+
+println "c->",c
+
+println "calling double on (c) (should fail with nil, currently)"
+println (c).double
+
+println "calling double on struct literal of type w:"
+println w(1,1f,false)
+println "...should fail with nil, currently"
+println w(1,1f,false).double
+
+
+
