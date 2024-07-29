@@ -156,6 +156,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             isFunc=true
         }
 
+        calling_method:=false
         if isStruct {
             // compare types between (obj) and (parent)
 
@@ -183,27 +184,25 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
 
                 structs_equal:=true
-                if len(obj_struct_fields) != len(par_struct_fields) {
-                    structs_equal=false
-                } else {
-                    for k,v:=range par_struct_fields {
-                        if obj_v,exists:=obj_struct_fields[k] ; exists {
-                            if v!=obj_v {
-                                structs_equal=false
-                                break
-                            }
-                        } else {
+                for k,v:=range par_struct_fields {
+                    if obj_v,exists:=obj_struct_fields[k] ; exists {
+                        if v!=obj_v {
                             structs_equal=false
                             break
                         }
+                    } else {
+                        structs_equal=false
+                        break
                     }
                 }
+
                 // pf("parent : %v  object type : %v  :  equal? %v\n",fm.parent,rt,structs_equal)
                 if ! structs_equal {
                     parser.hard_fault=true
                     pf("cannot call function [%v] belonging to an unequal struct type [%s]\nYour object: [%T]", field,fm.parent,obj)
                     return nil,true
                 }
+                calling_method=true
             }
         }
 
@@ -218,16 +217,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             parser.hard_fault=true
             pf("no function, enum or record field found for %v\n", field)
             return nil,true
-            /*
-            panic(fmt.Errorf("no function, enum or record field found for %v", field))
-            */
         }
 
         // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        // if isFileHandle || !isStruct {
-            iargs=[]any{obj}
-        // }
+        iargs=[]any{obj}
 
         /*
         arg_names:=[]string{}
@@ -278,8 +272,25 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
-        return p.callFunctionExt(p.fs,p.ident,name,[]string{},iargs)
+        // find caller_name if calling_method true
+        res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,[]string{},iargs)
 
+        if calling_method && !err {
+            // check if previous is an identifer/expression result
+            if p.preprev.tokType==Identifier {
+                bin:=p.preprev.bindpos
+                if (*p.ident)[bin].declared {
+                    vset(nil, p.fs, p.ident, p.preprev.tokText, method_result)
+                } else {
+                    parser.hard_fault=true
+                    pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
+                    return nil,true
+
+                }
+            } // else { no action required as invoker was not a struct name }
+        }
+
+        return res,err
     }
 }
 

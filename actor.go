@@ -159,7 +159,7 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        rcount,_:=Call(MODE_NEW, &ident, loc, ciAsyn, []string{}, iargs...)
+        rcount,_,_:=Call(MODE_NEW, &ident, loc, ciAsyn, false, nil, []string{}, iargs...)
 
         switch rcount {
         case 0:
@@ -571,7 +571,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_names []string, va ...any) (retval_count uint8,endFunc bool) {
+func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -780,12 +780,10 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, arg_
     var loops     = make([]s_loop, MAX_LOOPS)
     var old_loops = make([]s_loop, MAX_LOOPS)
 
-    // @note: removing struct self test code
-    /*
-    if self.aware {
-        vset(nil,ifs,ident,"self",*self.ptr)
+    // assign self from calling object
+    if method {
+        vset(nil,ifs,ident,"self", method_value)
     }
-    */
 
 tco_reentry:
 
@@ -3843,11 +3841,11 @@ pcloop:
 
                 if debug_level>10 {
                     start := time.Now()
-                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    Call(MODE_NEW, &modident, loc, ciMod, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, []string{})
                 }
 
                 calllock.Lock()
@@ -4680,6 +4678,11 @@ pcloop:
         calltable[ifs].disposable=true
         calllock.Unlock()
 
+        // populate method_result
+        if method {
+            method_result,_=vget(nil,ifs,ident,"self")
+        }
+
         // clean up
 
         // pf("Leaving call with ifs of %d [fs:%s]\n\n",ifs,fs)
@@ -4709,7 +4712,7 @@ pcloop:
     callChain=callChain[:len(callChain)-1]
     calllock.Unlock()
 
-    return retval_count,endFunc
+    return retval_count,endFunc,method_result
 
 }
 
