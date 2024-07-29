@@ -7,7 +7,6 @@ import (
     "reflect"
     str "strings"
     "syscall"
-    // "fmt"
     "unsafe"
 )
 
@@ -34,14 +33,15 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
     default:
 
+        // rt:= reflect.TypeOf(obj)
         r := reflect.ValueOf(obj)
-        //isStruct:=false
-
+        isStruct:=false
+        
         switch r.Kind() {
 
         case reflect.Struct:
 
-            //isStruct=true
+            isStruct=true
             // pf("     -> is struct\n")
             // pf("      > field : [%v]\n",field)
 
@@ -148,9 +148,63 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
             p.next()
         }
-        if _,there:=funcmap[modname+"::"+name] ; there {
+
+        var fm Funcdef
+        var there bool
+        if fm,there=funcmap[modname+"::"+name] ; there {
             name=modname+"::"+name
             isFunc=true
+        }
+
+        if isStruct {
+            // compare types between (obj) and (parent)
+
+            if fm.parent != "" {
+                obj_struct_fields:=make(map[string]string,4)
+                //pln("Object Field Details:")
+                val := reflect.ValueOf(obj)
+                for i:=0; i<val.NumField();i++ {
+                    n:=val.Type().Field(i).Name
+                    t:=val.Type().Field(i).Type
+                    obj_struct_fields[n]=t.String()
+                }
+
+                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                par_struct_fields:=make(map[string]string,4)
+                if structvalues,exists:=structmaps[fm.parent] ; exists {
+                    for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                        pfieldtype:=structvalues[svpos+1].(string)
+                        if pfieldtype=="float" {
+                            pfieldtype="float64"
+                        }
+                        // pf("parent field %2d : %v : %v\n",svpos,structvalues[svpos],pfieldtype)
+                        par_struct_fields[structvalues[svpos].(string)]=pfieldtype
+                    }
+                }
+
+                structs_equal:=true
+                if len(obj_struct_fields) != len(par_struct_fields) {
+                    structs_equal=false
+                } else {
+                    for k,v:=range par_struct_fields {
+                        if obj_v,exists:=obj_struct_fields[k] ; exists {
+                            if v!=obj_v {
+                                structs_equal=false
+                                break
+                            }
+                        } else {
+                            structs_equal=false
+                            break
+                        }
+                    }
+                }
+                // pf("parent : %v  object type : %v  :  equal? %v\n",fm.parent,rt,structs_equal)
+                if ! structs_equal {
+                    parser.hard_fault=true
+                    pf("cannot call function [%v] belonging to an unequal struct type [%s]\nYour object: [%T]", field,fm.parent,obj)
+                    return nil,true
+                }
+            }
         }
 
         // check if stdlib or user-defined function

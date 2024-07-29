@@ -1503,6 +1503,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         var isFunc bool
         var fm Funcdef
 
+        // @note: is this still correct? why are we checking for dot here
         if str.Contains(name,".") {
             fm,isFunc = funcmap[name]
             name=fm.name
