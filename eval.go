@@ -1257,18 +1257,15 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 }
                 if !found {
                     panic(fmt.Errorf("argument '%s' not found in definition for '%s'",an,name))
-                    // finish(false,ERR_EVAL)
-                    // return nil,true
                 }
             }
         } else {
             panic(fmt.Errorf("bad argument name count [%d] for '%s' [needs %d]",len(arg_names),name,len(falist)))
-            // finish(false,ERR_EVAL)
-            // return nil,true
         }
     }
 
-    return p.callFunctionExt(p.fs,p.ident,name,arg_names,iargs)
+    res,err,_:=p.callFunctionExt(p.fs,p.ident,name,false,nil,arg_names,iargs)
+    return res,err
 
 }
 

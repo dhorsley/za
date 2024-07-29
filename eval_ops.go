@@ -1495,7 +1495,7 @@ func slice(v any, from, to any) any {
 }
 
 
-func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, arg_names []string, args []any) (res any,hasError bool) {
+func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, arg_names []string, args []any) (res any,hasError bool,method_result any) {
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1529,7 +1529,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
             var ident = make([]Variable,identInitialSize)
 
-            rcount,_:=Call(MODE_NEW, &ident, loc, ciEval, arg_names, args...)
+            rcount,_,method_result:=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, arg_names, args...)
 
             // handle the returned result, if present.
             calllock.Lock()
@@ -1540,15 +1540,15 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
             switch rcount {
             case 0:
-                return nil,false
+                return nil,false,method_result
             case 1:
                 switch res.(type) {
                 case []any:
-                    return res.([]any)[0],false
+                    return res.([]any)[0],false,method_result
                 }
-                return nil,false
+                return nil,false,method_result
             default:
-                return res,false
+                return res,false,method_result
             }
 
         } else {
@@ -1566,7 +1566,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             // @todo: improve error output here:
             pf("%s\n",err)
         }
-        return res,err!=nil
+        return res,err!=nil,method_result
     }
 }
 
