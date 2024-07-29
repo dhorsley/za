@@ -17,12 +17,11 @@ CHANGE LOG
     * started: adding support for functions inside structs.
         - done: permit definition, setting a parent field to the struct.
         - todo: change UFCS in eval_ops.* to:
-            - recognise parent when called as (obj).(method)
-            - ensure (obj) matches type of parent struct
-            - if (obj) is a variable rather than expression result, then
+            - done: recognise parent when called as (obj).(method)
+            - done: ensure (obj) matches type of parent struct
+            - todo: if (obj) is a variable rather than expression result, then
                set some kind of self/this variable local to the func on call
                which is written back to the (obj) variable on return
-            - maybe need to consider locking/ensuring sole access during fn exec.
         - todo: either re-use or strip out remaining 'self' code/structs.
         - todo: stop regretting not handling references better from the start.
         - todo: consider 'super' or similar fallback to parent funcs.
