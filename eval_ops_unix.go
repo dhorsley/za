@@ -223,11 +223,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         var iargs []any
         iargs=[]any{obj}
 
-        /*
-        arg_names:=[]string{}
-        argpos:=1
-        */
-
         if p.peek().tokType==LParen {
             p.next()
             if p.peek().tokType!=RParen {
@@ -285,7 +280,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                     parser.hard_fault=true
                     pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
                     return nil,true
-
                 }
             } // else { no action required as invoker was not a struct name }
         }
