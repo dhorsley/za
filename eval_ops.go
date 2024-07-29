@@ -1529,7 +1529,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
             var ident = make([]Variable,identInitialSize)
 
-            rcount,_,method_result:=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, arg_names, args...)
+            var rcount uint8
+            rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, arg_names, args...)
 
             // handle the returned result, if present.
             calllock.Lock()
