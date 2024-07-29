@@ -19,6 +19,22 @@ import (
     "github.com/itchyny/gojq"
 )
 
+func kind(kind_override string, args ...any) (ret any, err error) {
+
+    // pf("(inside kind call) with args... %#v\n",args)
+    if len(args) != 1 {
+        return -1, errors.New("invalid arguments provided to kind()")
+    }
+
+    if kind_override!="" {
+        return kind_override,nil
+    }
+
+    repl:= str.Replace(sf("%T", args[0]),"float64","float",-1)
+    repl = str.Replace(repl,"interface {}","any",-1)
+    return repl,nil
+}
+
 // struct to map
 func s2m(val any) map[string]any {
 
@@ -74,7 +90,7 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte","as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "kind", "char", "asc","as_uint",
+        "byte","as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "char", "asc","as_uint",
         "is_number","base64e","base64d","json_decode","json_format","json_query",
         "write_struct","read_struct",
         "btoi","itob","dtoo","otod","s2m","m2s","f2n",
@@ -171,7 +187,6 @@ func buildConversionLib() {
         }
 
         // write to Za variable.
-        // vset(nil,evalfs,ident,vn,m2s(*m,v))
         bin:=bind_int(evalfs,vn)
         (*ident)[bin]=Variable{IName:vn,IValue:m2s(*m,v),IKind:0,ITyped:false,declared:true}
 
@@ -224,15 +239,27 @@ func buildConversionLib() {
         return strconv.ParseInt(args[0].(string),8,64)
     }
 
+    // kind stub
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
     stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        return ret,err
+    }
+    /*
+    slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
+    stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,kind_override string,args ...any) (ret any, err error) {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to kind()")
         }
+
+        if kind_override!="" {
+            return kind_override,nil
+        }
+
         repl:= str.Replace(sf("%T", args[0]),"float64","float",-1)
         repl = str.Replace(repl,"interface {}","any",-1)
         return repl,nil
     }
+    */
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
     stdlib["base64e"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {

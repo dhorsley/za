@@ -42,11 +42,12 @@ type ExpressionFunction = func(ns string,evalfs uint32,ident *[]Variable,args ..
 
 // za variable
 type Variable struct {
-    IName       string
-    IValue      any
-    IKind       uint8
-    ITyped      bool
-    declared    bool
+    IName           string
+    IValue          any
+    Kind_override   string
+    IKind           uint8
+    ITyped          bool
+    declared        bool
 }
 
 // holds a Token which forms part of a Phrase.

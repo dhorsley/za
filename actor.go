@@ -159,7 +159,7 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        rcount,_,_:=Call(MODE_NEW, &ident, loc, ciAsyn, false, nil, []string{}, iargs...)
+        rcount,_,_:=Call(MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
 
         switch rcount {
         case 0:
@@ -571,7 +571,7 @@ var callChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
+func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -593,6 +593,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.ident=ident
+    // parser.kind_override=kind_override
     calllock.Unlock()
 
     lastlock.Lock()
@@ -782,7 +783,13 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
 
     // assign self from calling object
     if method {
+        bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
+        t:=(*ident)[bin]
+        t.ITyped=true
+        t.declared=true
+        t.Kind_override=kind_override
+        (*ident)[bin]=t
     }
 
 tco_reentry:
@@ -1230,12 +1237,6 @@ pcloop:
                 var new_type_token_string string
                 type_token_string := inbound.Tokens[eqPos-1].tokText
 
-                // @note: this needs killing with fire:
-                /*
-                if type_token_string=="]" || type_token_string=="mixed" || type_token_string=="any" {
-                    type_token_string="[]"
-                }
-                */
                 if type_token_string!="[]" {
                     new_type_token_string = type_token_string
                 }
@@ -1409,6 +1410,7 @@ pcloop:
                         t.IName=vname
                         t.ITyped=false
                         t.declared=true
+                        t.Kind_override=sname
                         (*ident)[sid]=t
 
                     } else {
@@ -3841,11 +3843,11 @@ pcloop:
 
                 if debug_level>10 {
                     start := time.Now()
-                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, []string{})
+                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
                 }
 
                 calllock.Lock()

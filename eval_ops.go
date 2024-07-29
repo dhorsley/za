@@ -1495,7 +1495,9 @@ func slice(v any, from, to any) any {
 }
 
 
-func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, arg_names []string, args []any) (res any,hasError bool,method_result any) {
+func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any,hasError bool,method_result any) {
+
+    // pf("(cfe) kind_override -> %s\n",kind_override)
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1530,7 +1532,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             var ident = make([]Variable,identInitialSize)
 
             var rcount uint8
-            rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, arg_names, args...)
+            rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
 
             // handle the returned result, if present.
             calllock.Lock()
@@ -1558,16 +1560,21 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
     } else {
         // call standard library function
         p.std_call=true
-        // pf("(fb) calling fn %s\n",name)
-        res, err := f(p.namespace,evalfs,ident,args...)
-        // pf("(fb) res %v err %v\n",res,err)
-        if err != nil {
-            p.std_faulted=true
-            p.try_err=err
-            // @todo: improve error output here:
-            pf("%s\n",err)
+
+        // hijack kind() calls here
+        if name == "kind" {
+            res,err := kind(kind_override,args...)
+            return res,err!=nil,method_result
+        } else {
+            // normal stdlib call
+            res, err := f(p.namespace,evalfs,ident,args...)
+            if err != nil {
+                p.std_faulted=true
+                p.try_err=err
+                pf("%s\n",err)
+            }
+            return res,err!=nil,method_result
         }
-        return res,err!=nil,method_result
     }
 }
 
