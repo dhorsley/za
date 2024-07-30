@@ -6,7 +6,7 @@ struct q
     b float
     def double()
         self.a*=2
-        println "(in double) self kind : ",kind(self)
+        println "(in double) self kind : ",self.kind
     end
     c bool
 endstruct
@@ -17,6 +17,8 @@ struct w
     c bool
 endstruct
 
+def title(a); println "[#4]{a}[#-]"; end
+
 var a q
 var b w
 
@@ -25,19 +27,19 @@ b.a=10
 
 println "a->",a
 println "b->",b
-println "calling double"
+title("calling double")
 
 a.double
 b.double
 
-println "setting pi+true in b"
+title("setting pi+true in b")
 b.b=pi()
 b.c=true
 
 println "a->",a
 println "b->",b
 
-println "creating c from a, modifying and calling double"
+title("creating c from a, modifying and calling double")
 c=a
 c.b=100f
 c.c=true
@@ -45,10 +47,10 @@ c.double
 
 println "c->",c
 
-println "calling double on (c) (should fail with nil, currently)"
+title("calling double on (c) (should fail with nil, currently)")
 println (c).double
 
-println "calling double on struct literal of type w:"
+title("calling double on struct literal of type w:")
 println w(1,1f,false)
 println "...should fail with nil, currently"
 println w(1,1f,false).double
