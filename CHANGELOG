@@ -27,11 +27,16 @@ CHANGE LOG
                done: on call error, leave (obj) variable in pre-call state
                done: on call, if (expr).(method) do not try to assign self back in caller.
         - done: either re-use or strip out remaining 'self' code/structs.
+        - done: add type information, somewhere, so that self.kind calls show the struct name.
+            - when struct var declared, Kind_override field populated in variable
+            - this is read during method calls, and passed through where required.
+            - (struct).kind overridden when Kind_override is not empty.
         - todo: stop regretting not handling references better from the start.
         - todo: consider 'super' or similar fallback to parent funcs.
         - todo: update windows build to incorporate changes above - it probably won't compile currently.
-        - todo: add type information, somewhere, so that self.kind calls show the struct name.
         - todo: add mechanism so that funcs can be attached to structs without unique names.
+            - currently, non-unique names in different structs override each other, which causes
+              undefined and very unexpected behaviour if not careful.
             - this would need some kind of override when defining funcs (in actor.go) that ignored the
                uniqueness check when fm.parent!="" and != current struct under definition.
             - on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
