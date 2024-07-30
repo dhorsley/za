@@ -786,7 +786,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
         bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
         t:=(*ident)[bin]
-        t.ITyped=true
+        t.ITyped=false
         t.declared=true
         t.Kind_override=kind_override
         (*ident)[bin]=t
