@@ -31,6 +31,7 @@ CHANGE LOG
             - when struct var declared, Kind_override field populated in variable
             - this is read during method calls, and passed through where required.
             - (struct).kind overridden when Kind_override is not empty.
+
         - todo: stop regretting not handling references better from the start.
         - todo: consider 'super' or similar fallback to parent funcs.
         - todo: update windows build to incorporate changes above - it probably won't compile currently.
@@ -41,6 +42,9 @@ CHANGE LOG
                uniqueness check when fm.parent!="" and != current struct under definition.
             - on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
+                - this is a little difficult as it requires knowing the type/kind of arg[0] and searching 
+                    through Funcmap definitions for the matching parent type, which would be, to say the
+                    least, quite slow. think vtables, but worse.
 
 1.1.8
 =====

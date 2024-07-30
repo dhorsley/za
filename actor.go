@@ -3328,6 +3328,7 @@ pcloop:
                 parent:=""
                 if structMode {
                     parent=structName
+                    // definitionName+="~"+parent
                 }
 
                 // pf("[#4]Now defining %s[#-]\n",definitionName)

@@ -1503,9 +1503,10 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
         var lmv uint32
         var isFunc bool
-        var fm Funcdef
 
+        // var fm Funcdef
         // @note: is this still correct? why are we checking for dot here
+        /*
         if str.Contains(name,".") {
             fm,isFunc = funcmap[name]
             name=fm.name
@@ -1513,6 +1514,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         } else {
             lmv, isFunc = fnlookup.lmget(name)
         }
+        */
+        lmv, isFunc = fnlookup.lmget(name)
 
         // check if exists in user defined function space
         if isFunc {
