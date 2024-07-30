@@ -273,6 +273,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             bin:=p.preprev.bindpos
             if (*p.ident)[bin].declared {
                 struct_name=(*p.ident)[bin].Kind_override
+                // if struct_name!="" { name+="~"+struct_name }
             }
         }
 
