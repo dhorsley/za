@@ -785,6 +785,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     if method {
         bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
+        // pf("setting self in actor.go : value -> %#v\n",method_value)
         t:=(*ident)[bin]
         t.ITyped=false
         t.declared=true
@@ -3328,7 +3329,7 @@ pcloop:
                 parent:=""
                 if structMode {
                     parent=structName
-                    // definitionName+="~"+parent
+                    definitionName+="~"+parent
                 }
 
                 // pf("[#4]Now defining %s[#-]\n",definitionName)

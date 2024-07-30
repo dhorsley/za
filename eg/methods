@@ -8,6 +8,9 @@ struct q
         self.a*=2
         println "(in double) self kind : ",self.kind
     end
+    def geta()
+        return self.a
+    end
     c bool
 endstruct
 
@@ -15,9 +18,17 @@ struct w
     a int
     b float
     c bool
+    def triple()
+        self.a*=3
+    end
+    def geta()
+        return self.a
+    end
 endstruct
 
 def title(a); println "[#4]{a}[#-]"; end
+
+showdef
 
 var a q
 var b w
@@ -27,24 +38,24 @@ b.a=10
 
 println "a->",a
 println "b->",b
-title("calling double")
 
+title("calling double")
 a.double
-b.double
+title("calling triple")
+b.triple
 
 title("setting pi+true in b")
 b.b=pi()
 b.c=true
 
-println "a->",a
-println "b->",b
+println "a.geta->",a.geta
+println "b.geta->",b.geta
 
-title("creating c from a, modifying and calling double")
+title("creating c from a, modifying and calling double, should fail currently")
 c=a
 c.b=100f
 c.c=true
 c.double
-
 println "c->",c
 
 title("calling double on (c) (should fail with nil, currently)")
