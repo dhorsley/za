@@ -23,6 +23,14 @@ func typeOf(val any) string {
     }
 
     kind := reflect.TypeOf(val).Kind()
+  
+    /*
+    rval := reflect.ValueOf(val)
+    if kind == reflect.Struct {
+        pf("kind->%#v\n",kind)
+        pf("rval->%#v\n",rval)
+    }
+    */
 
     if kind.String()=="map" { return "map" }
 

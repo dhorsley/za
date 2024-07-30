@@ -149,6 +149,18 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             p.next()
         }
 
+        // set parent type name
+        struct_name:=""
+        if p.preprev.tokType==Identifier {
+            bin:=p.preprev.bindpos
+            if (*p.ident)[bin].declared {
+                struct_name=(*p.ident)[bin].Kind_override
+                if struct_name!="" {
+                    name+="~"+struct_name
+                }
+            }
+        }
+
         var fm Funcdef
         var there bool
         if fm,there=funcmap[modname+"::"+name] ; there {
@@ -159,10 +171,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         calling_method:=false
         if isStruct {
             // compare types between (obj) and (parent)
-
             if fm.parent != "" {
                 obj_struct_fields:=make(map[string]string,4)
-                //pln("Object Field Details:")
                 val := reflect.ValueOf(obj)
                 for i:=0; i<val.NumField();i++ {
                     n:=val.Type().Field(i).Name
@@ -178,7 +188,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                         if pfieldtype=="float" {
                             pfieldtype="float64"
                         }
-                        // pf("parent field %2d : %v : %v\n",svpos,structvalues[svpos],pfieldtype)
                         par_struct_fields[structvalues[svpos].(string)]=pfieldtype
                     }
                 }
@@ -196,7 +205,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                     }
                 }
 
-                // pf("parent : %v  object type : %v  :  equal? %v\n",fm.parent,rt,structs_equal)
                 if ! structs_equal {
                     parser.hard_fault=true
                     pf("cannot call function [%v] belonging to an unequal struct type [%s]\nYour object: [%T]", field,fm.parent,obj)
@@ -208,8 +216,15 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // check if stdlib or user-defined function
         if !isFunc {
-            if _, isFunc = stdlib[name]; !isFunc {
+            // if _, isFunc = stdlib[name]; !isFunc {
+            if _, isFunc = stdlib[field]; !isFunc {
                 isFunc = fnlookup.lmexists(name)
+                // pf("checked with fnlookup for name [%s] -> result : %v\n",name,isFunc)
+                /* should put something here to look for same method name in a 
+                   compatible structs defined functions in Funcmap... but not a job for now.
+                */
+            } else {
+                name=field
             }
         }
 
@@ -264,16 +279,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
             if p.peek().tokType==RParen {
                 p.next() // consume rparen 
-            }
-        }
-
-        // set parent type name
-        struct_name:=""
-        if p.preprev.tokType==Identifier {
-            bin:=p.preprev.bindpos
-            if (*p.ident)[bin].declared {
-                struct_name=(*p.ident)[bin].Kind_override
-                // if struct_name!="" { name+="~"+struct_name }
             }
         }
 
