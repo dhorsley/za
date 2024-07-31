@@ -33,14 +33,23 @@ CHANGE LOG
             - (struct).kind overridden when Kind_override is not empty.
 
         - todo: stop regretting not handling references better from the start.
-        - todo: consider 'super' or similar fallback to parent funcs.
         - todo: update windows build to incorporate changes above - it probably won't compile currently.
         - done: add mechanism so that funcs can be attached to structs without unique names.
             - non-unique names in different structs would override each other
-            - added a type override when defining funcs (in actor.go)
-            - added, on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
+            - done: a type override when defining funcs (in actor.go)
+            - done: on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
             - todo: ensure copies of a struct retain the override and parent struct type info
+
+        - not doing: adding access modifiers
+            - this is an intentionally, very light object mechanism. nothing more complex needed.
+                even this degree of oo is superfluous. there is no concept of private/public.
+        - not doing: constructors/destructors
+            - a struct can already be given default values and instantiated using struct_name()
+            - member variables can be accessed from anywhere in the calling scope.
+        - not doing: inheritance - more complexity than would ever be needed in this language.
+            - maybe will do: fallback functions if method doesn't exist in object when called.
+
 
 1.1.8
 =====
