@@ -155,6 +155,7 @@ type s_loop struct {
     repeatFrom       int16            // line number to restart block from
     optNoUse         uint8            // for deciding if the local variable should reflect the loop counter
     loopType         uint8            // C_For, C_Foreach, C_While
+    itType           string           // optional type/struct name from FOREACH
     repeatAction     uint8            // enum: ACT_NONE, ACT_INC, ACT_DEC
     repeatCustom     bool             // FOR loop with custom conditions
     iterOverMap      *reflect.MapIter // stored iterator
