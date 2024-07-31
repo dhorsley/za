@@ -39,7 +39,12 @@ CHANGE LOG
             - done: a type override when defining funcs (in actor.go)
             - done: on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
-            - todo: ensure copies of a struct retain the override and parent struct type info
+            - done: ensure copies of a struct retain the override and parent struct type info
+                - note: recipient must be declared as same struct type as the giver.
+                    - e.g.
+                        struct q; a int; endstruct
+                        var a,b q
+                        b=a
 
         - not doing: adding access modifiers
             - this is an intentionally, very light object mechanism. nothing more complex needed.

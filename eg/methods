@@ -55,7 +55,8 @@ title("calling get in distinct structs, (a from a, b from b)")
 println "a.get->",a.get
 println "b.get->",b.get
 
-title("creating c from a, modifying and calling double, should fail currently")
+title("creating c from a, modifying (b->100,c->true) and calling double")
+var c q
 c=a
 c.b=100f
 c.c=true
