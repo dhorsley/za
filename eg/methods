@@ -41,6 +41,7 @@ println "b->",b
 
 title("calling double")
 a.double
+
 title("calling triple")
 b.triple
 
