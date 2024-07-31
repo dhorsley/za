@@ -8,7 +8,7 @@ struct q
         self.a*=2
         println "(in double) self kind : ",self.kind
     end
-    def geta()
+    def get()
         return self.a
     end
     c bool
@@ -21,8 +21,8 @@ struct w
     def triple()
         self.a*=3
     end
-    def geta()
-        return self.a
+    def get()
+        return self.b
     end
 endstruct
 
@@ -48,9 +48,12 @@ b.triple
 title("setting pi+true in b")
 b.b=pi()
 b.c=true
+println a
+println b
 
-println "a.geta->",a.geta
-println "b.geta->",b.geta
+title("calling get in distinct structs, (a from a, b from b)")
+println "a.get->",a.get
+println "b.get->",b.get
 
 title("creating c from a, modifying and calling double, should fail currently")
 c=a
