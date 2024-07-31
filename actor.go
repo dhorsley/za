@@ -593,7 +593,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.ident=ident
-    // parser.kind_override=kind_override
+    parser.kind_override=kind_override
     calllock.Unlock()
 
     lastlock.Lock()
