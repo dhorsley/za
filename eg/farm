@@ -1,0 +1,30 @@
+#!/usr/bin/za
+
+struct animal
+    name    string
+    sound   string
+    def speak()
+        println self.name + " says " + self.sound
+    end
+    def humanize()
+        self.name+="boy"
+    end
+es
+
+var cow,pig,sheep animal
+
+cow=animal(.name "cow",.sound "moo")
+pig=animal(.name "pig",.sound "oink")
+sheep=animal(.name "sheep",.sound "baa")
+
+farm = [cow,pig,sheep]
+foreach a : animal in farm
+    println "[{=a.name}] -> ", a.kind
+    a.speak
+    a.humanize # doesn't work as a is a copy of each animal
+endfor
+
+pig.humanize
+println pig
+println farm
+
