@@ -71,4 +71,13 @@ println "...should fail with nil, currently"
 println w(1,1f,false).double
 
 
+title("same struct type, multiple instances")
+var x,y w
+println "%#v".format(x)
+println "%#v".format(y)
+println "setting .b in each."
+x.b=42f
+y.b=123f
+println "x.b->",x.get
+println "y.b->",y.get
 
