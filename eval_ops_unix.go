@@ -33,7 +33,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
     default:
 
-        // rt:= reflect.TypeOf(obj)
         r := reflect.ValueOf(obj)
         isStruct:=false
         
@@ -42,8 +41,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         case reflect.Struct:
 
             isStruct=true
-            // pf("     -> is struct\n")
-            // pf("      > field : [%v]\n",field)
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -301,6 +298,9 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                     return nil,true
                 }
             } else {
+                if p.preprev.tokType==RightSBrace {
+                    pf("maybe ary element : obj %#v\n",obj) 
+                }
                 // no action required as invoker was not a struct name
                 // pf("method call without identifier\nresult : %#v\nerror : %+v\n",res,err)
             }

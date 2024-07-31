@@ -57,12 +57,18 @@ CHANGE LOG
             - methods which modify self on iterated elements will not stick, as they are working
                 with a copy of the object. may fix this later.
 
+        - not doing yet: ary[expr].method calls won't work. not likely to change as it involves
+            chasing back through the tokens and checking the type of ary[expr].
+            - could fix, but not high priority.
+
         - not doing: adding access modifiers
             - this is an intentionally, very light object mechanism. nothing more complex needed.
                 even this degree of oo is superfluous. there is no concept of private/public.
+
         - not doing: constructors/destructors
             - a struct can already be given default values and instantiated using struct_name()
             - member variables can be accessed from anywhere in the calling scope.
+
         - not doing: inheritance - more complexity than would ever be needed in this language.
             - maybe will do: fallback functions if method doesn't exist in object when called.
 
