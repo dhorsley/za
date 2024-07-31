@@ -24,7 +24,14 @@ foreach a : animal in farm
     a.humanize # doesn't work as a is a copy of each animal
 endfor
 
-pig.humanize
+# workaround for not currently supporting ary[i].method:
+var t animal
+for e = 0 to farm.len-1
+    t=farm[e]
+    t.humanize
+    farm[e]=t
+endfor
+
 println pig
 println farm
 
