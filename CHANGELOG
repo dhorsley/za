@@ -35,16 +35,12 @@ CHANGE LOG
         - todo: stop regretting not handling references better from the start.
         - todo: consider 'super' or similar fallback to parent funcs.
         - todo: update windows build to incorporate changes above - it probably won't compile currently.
-        - todo: add mechanism so that funcs can be attached to structs without unique names.
-            - currently, non-unique names in different structs override each other, which causes
-              undefined and very unexpected behaviour if not careful.
-            - this would need some kind of override when defining funcs (in actor.go) that ignored the
-               uniqueness check when fm.parent!="" and != current struct under definition.
-            - on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
+        - done: add mechanism so that funcs can be attached to structs without unique names.
+            - non-unique names in different structs would override each other
+            - added a type override when defining funcs (in actor.go)
+            - added, on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
-                - this is a little difficult as it requires knowing the type/kind of arg[0] and searching 
-                    through Funcmap definitions for the matching parent type, which would be, to say the
-                    least, quite slow. think vtables, but worse.
+            - todo: ensure copies of a struct retain the override and parent struct type info
 
 1.1.8
 =====

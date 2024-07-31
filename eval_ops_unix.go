@@ -161,6 +161,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
+
         var fm Funcdef
         var there bool
         if fm,there=funcmap[modname+"::"+name] ; there {
@@ -292,7 +293,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             if p.preprev.tokType==Identifier {
                 bin:=p.preprev.bindpos
                 if (*p.ident)[bin].declared {
-                    vset(nil, p.fs, p.ident, p.preprev.tokText, method_result)
+                    (*p.ident)[bin].IValue=method_result
+                    // vset(nil, p.fs, p.ident, p.preprev.tokText, method_result)
                 } else {
                     parser.hard_fault=true
                     pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
