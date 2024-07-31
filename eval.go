@@ -2674,6 +2674,65 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             dotMode=true
         }
 
+        // struct content duplication
+        isStruct:=reflect.TypeOf(results[assno]).Kind()==reflect.Struct
+        if isStruct && lfs==rfs && len(assignee)==1 {
+            bin:=bind_int(lfs,assignee[0].tokText)
+            assref:=(*lident)[bin]
+            if assref.Kind_override=="" {
+                // recipient not a struct, just overwrite as usual
+            } else {
+                // is a struct, check type is compatible
+                obj_struct_fields:=make(map[string]string,4)
+                val := reflect.ValueOf(results[assno])
+                for i:=0; i<val.NumField();i++ {
+                    n:=val.Type().Field(i).Name
+                    t:=val.Type().Field(i).Type
+                    obj_struct_fields[n]=t.String()
+                }
+                ass_struct_fields:=make(map[string]string,4)
+                val = reflect.ValueOf(assref.IValue)
+                for i:=0; i<val.NumField();i++ {
+                    n:=val.Type().Field(i).Name
+                    t:=val.Type().Field(i).Type
+                    ass_struct_fields[n]=t.String()
+                }
+
+                structs_equal:=true
+                if len(ass_struct_fields)!=len(obj_struct_fields) {
+                    structs_equal=false
+                }
+
+                for k,v:=range ass_struct_fields {
+                    if obj_v,exists:=obj_struct_fields[k] ; exists {
+                        if v!=obj_v {
+                            structs_equal=false
+                            break
+                        }
+                    } else {
+                        structs_equal=false
+                        break
+                    }
+                }
+
+                if structs_equal {
+                    assref.IValue=results[assno]
+                    assref.ITyped=false
+                    assref.declared=true
+                    // assref.Kind_override=kind_override
+                    (*lident)[bin]=assref
+                } else {
+                    expr.errVal=fmt.Errorf(
+                        "Dissimilar struct types in assignment [left:%s] [right:%s]",
+                        assref.Kind_override,
+                        reflect.TypeOf(results[assno]).Kind(),
+                    )
+                    expr.evalError=true
+                    return
+                }
+            }
+        }
+
         switch {
         case len(assignee)==1:
             ///////////// CHECK FOR a       /////////////////////////////////////////////
@@ -2682,6 +2741,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             // inter:=interpolate(p.namespace,rfs,rident,assignee[0].tokText)
             // @note: this is slow, mainly due to allowing interpolation.
             //  if we didn't, then we could re-use the binding value from the assignee[0] token *CHANGED*
+
             if lfs==rfs {
                 vset(&assignee[0], lfs, lident, assignee[0].tokText, results[assno])
             } else {

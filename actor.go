@@ -785,8 +785,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     if method {
         bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
-        // pf("setting self in actor.go : value -> %#v\n",method_value)
         t:=(*ident)[bin]
+        t.IValue=method_value
         t.ITyped=false
         t.declared=true
         t.Kind_override=kind_override
