@@ -46,6 +46,17 @@ CHANGE LOG
                         var a,b q
                         b=a
 
+        - todo: lots of other things need touching relating to this , like for/foreach iterators
+            - this is complicated because the expression results being assigned in assignments, 
+                or assigned to iterators, etc don't carry type information with them.
+            - i'm sure there's a perfectly good, extremely complex way of doing this, if only i didn't 
+                fall asleep every time i even think about reading a type theory book.
+            - done: may possibly bodge this for now by adding an optional clause to for/foreach such as:
+                foreach i : type in array
+                ... to force a type constraint on the iterator receiving each array element.
+            - methods which modify self on iterated elements will not stick, as they are working
+                with a copy of the object. may fix this later.
+
         - not doing: adding access modifiers
             - this is an intentionally, very light object mechanism. nothing more complex needed.
                 even this degree of oo is superfluous. there is no concept of private/public.

@@ -842,6 +842,79 @@ tco_reentry:
     typeInvalid:=false        // used during struct building for indicating type validity.
     statement:=Error
 
+    // this needs reworking:
+    // ++
+    var tb bool
+    var tu8 uint8
+    var tu32 uint32
+    var tu64 uint64
+    var tu uint
+    var ti int
+    var tf64 float64
+    var ts string
+    var tbi *big.Int
+    var tbf *big.Float
+    var tmixed any
+
+    var stb     []bool
+    var stu     []uint
+    var stu8    []uint8
+    var stu32   []uint32
+    var stu64   []uint64
+    var sti     []int
+    var stf64   []float64
+    var sts     []string
+    var stbi    []*big.Int
+    var stbf    []*big.Float
+    var stmixed []any
+
+    // *sigh* - really need to move this stuff out of here:
+    gob.Register(tbi)
+    gob.Register(tbf)
+    gob.Register(stb)
+    gob.Register(stu)
+    gob.Register(stu8)
+    gob.Register(stu32)
+    gob.Register(stu64)
+    gob.Register(sti)
+    gob.Register(stf64)
+    gob.Register(stbi)
+    gob.Register(stbf)
+    gob.Register(stmixed)
+
+    // instantiate fields with an empty expected type:
+    typemap:=make(map[string]reflect.Type)
+    typemap["bool"]     = reflect.TypeOf(tb)
+    typemap["uint"]     = reflect.TypeOf(tu)
+    typemap["uint8"]    = reflect.TypeOf(tu8)
+    typemap["uint32"]   = reflect.TypeOf(tu32)
+    typemap["uint64"]   = reflect.TypeOf(tu64)
+    typemap["ulong"]    = reflect.TypeOf(tu32)
+    typemap["uxlong"]   = reflect.TypeOf(tu64)
+    typemap["byte"]     = reflect.TypeOf(tu8)
+    typemap["int"]      = reflect.TypeOf(ti)
+    typemap["float"]    = reflect.TypeOf(tf64)
+    typemap["bigi"]     = reflect.TypeOf(tbi)
+    typemap["bigf"]     = reflect.TypeOf(tbf)
+    typemap["string"]   = reflect.TypeOf(ts)
+    typemap["mixed"]    = reflect.TypeOf(tmixed)
+    typemap["any"]      = reflect.TypeOf(tmixed)
+    typemap["[]bool"]   = reflect.TypeOf(stb)
+    typemap["[]uint"]   = reflect.TypeOf(stu)
+    typemap["[]uint8"]  = reflect.TypeOf(stu8)
+    typemap["[]byte"]   = reflect.TypeOf(stu8)
+    typemap["[]int"]    = reflect.TypeOf(sti)
+    typemap["[]uint32"]  = reflect.TypeOf(stu32)
+    typemap["[]uint64"]  = reflect.TypeOf(stu64)
+    typemap["[]float"]  = reflect.TypeOf(stf64)
+    typemap["[]string"] = reflect.TypeOf(sts)
+    typemap["[]bigi"]   = reflect.TypeOf(stbi)
+    typemap["[]bigf"]   = reflect.TypeOf(stbf)
+    typemap["[]mixed"]  = reflect.TypeOf(stmixed)
+    typemap["[]any"]    = reflect.TypeOf(stmixed)
+    typemap["[]"]       = reflect.TypeOf(stmixed)
+    typemap["map"]    = nil
+    // --
 
 pcloop:
     for {
@@ -1138,83 +1211,6 @@ pcloop:
                 }
             }
 
-            // this needs reworking:
-            //   if we pulled them out to global scope then will cause parallelism problems,
-            //   but could probably just stick a lock around this process given it's
-            //   expected infrequency. (or find a better way to initialise types dynamically)
-
-            // ++
-            var tb bool
-            var tu8 uint8
-            var tu32 uint32
-            var tu64 uint64
-            var tu uint
-            var ti int
-            var tf64 float64
-            var ts string
-            var tbi *big.Int
-            var tbf *big.Float
-            var tmixed any
-
-            var stb     []bool
-            var stu     []uint
-            var stu8    []uint8
-            var stu32   []uint32
-            var stu64   []uint64
-            var sti     []int
-            var stf64   []float64
-            var sts     []string
-            var stbi    []*big.Int
-            var stbf    []*big.Float
-            var stmixed []any
-
-            // *sigh* - really need to move this stuff out of here:
-            gob.Register(tbi)
-            gob.Register(tbf)
-            gob.Register(stb)
-            gob.Register(stu)
-            gob.Register(stu8)
-            gob.Register(stu32)
-            gob.Register(stu64)
-            gob.Register(sti)
-            gob.Register(stf64)
-            gob.Register(stbi)
-            gob.Register(stbf)
-            gob.Register(stmixed)
-
-            // instantiate fields with an empty expected type:
-            typemap:=make(map[string]reflect.Type)
-            typemap["bool"]     = reflect.TypeOf(tb)
-            typemap["uint"]     = reflect.TypeOf(tu)
-            typemap["uint8"]    = reflect.TypeOf(tu8)
-            typemap["uint32"]   = reflect.TypeOf(tu32)
-            typemap["uint64"]   = reflect.TypeOf(tu64)
-            typemap["ulong"]    = reflect.TypeOf(tu32)
-            typemap["uxlong"]   = reflect.TypeOf(tu64)
-            typemap["byte"]     = reflect.TypeOf(tu8)
-            typemap["int"]      = reflect.TypeOf(ti)
-            typemap["float"]    = reflect.TypeOf(tf64)
-            typemap["bigi"]     = reflect.TypeOf(tbi)
-            typemap["bigf"]     = reflect.TypeOf(tbf)
-            typemap["string"]   = reflect.TypeOf(ts)
-            typemap["mixed"]    = reflect.TypeOf(tmixed)
-            typemap["any"]      = reflect.TypeOf(tmixed)
-            typemap["[]bool"]   = reflect.TypeOf(stb)
-            typemap["[]uint"]   = reflect.TypeOf(stu)
-            typemap["[]uint8"]  = reflect.TypeOf(stu8)
-            typemap["[]byte"]   = reflect.TypeOf(stu8)
-            typemap["[]int"]    = reflect.TypeOf(sti)
-            typemap["[]uint32"]  = reflect.TypeOf(stu32)
-            typemap["[]uint64"]  = reflect.TypeOf(stu64)
-            typemap["[]float"]  = reflect.TypeOf(stf64)
-            typemap["[]string"] = reflect.TypeOf(sts)
-            typemap["[]bigi"]   = reflect.TypeOf(stbi)
-            typemap["[]bigf"]   = reflect.TypeOf(stbf)
-            typemap["[]mixed"]  = reflect.TypeOf(stmixed)
-            typemap["[]any"]    = reflect.TypeOf(stmixed)
-            typemap["[]"]       = reflect.TypeOf(stmixed)
-            typemap["map"]    = nil
-            // --
 
             // name iterations
 
@@ -1558,7 +1554,7 @@ pcloop:
 
         case C_Foreach:
 
-            // FOREACH var IN expr
+            // FOREACH var [ : type ] IN expr
             // iterates over the result of expression expr as a list
 
             if inbound.TokenCount<4 {
@@ -1567,8 +1563,29 @@ pcloop:
                 break
             }
 
-            // if ! str.EqualFold(inbound.Tokens[2].tokText,"in") {
-            if inbound.Tokens[2].tokType!=C_In {
+            skip:=0
+            it_type:=""
+            if inbound.Tokens[2].tokType == SYM_COLON {
+                it_type=inbound.Tokens[3].tokText
+                skip=2
+                // valid type?
+                // check if it_type is a key in either typemap or structmaps
+                if !str.Contains(it_type,"::") {
+                    it_type=parser.namespace+"::"+it_type
+                }
+
+                found:=false
+                if _,found=structmaps[it_type]; !found {
+                    _,found=typemap[it_type]
+                }
+                if ! found {
+                    parser.report(inbound.SourceLine,"invalid type for iterator in FOREACH.")
+                    finish(false,ERR_SYNTAX)
+                    break
+                }
+            }
+
+            if inbound.Tokens[2+skip].tokType!=C_In {
                 parser.report(inbound.SourceLine,"malformed FOREACH statement.")
                 finish(false, ERR_SYNTAX)
                 break
@@ -1584,12 +1601,12 @@ pcloop:
 
             fid := inbound.Tokens[1].tokText
 
-            switch inbound.Tokens[3].tokType {
+            switch inbound.Tokens[3+skip].tokType {
 
             // cause evaluation of all terms following IN
             case SYM_BOR, O_InFile, ResultBlock, Block, NumericLiteral, StringLiteral, LeftSBrace, LParen, Identifier:
 
-                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3:])
+                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[3+skip:])
                 if we.evalError {
                     parser.report(inbound.SourceLine,sf("error evaluating term in FOREACH statement '%v'\n%+v\n",we.text,we.errVal))
                     finish(false,ERR_EVAL)
@@ -1603,7 +1620,7 @@ pcloop:
                     we.result=we.result.(struct {out string; err string; code int; okay bool}).out
                 case string:
                 default:
-                    if inbound.Tokens[3].tokType==ResultBlock {
+                    if inbound.Tokens[3+skip].tokType==ResultBlock {
                         parser.report(inbound.SourceLine,"system command did not return a string in FOREACH statement\n")
                         finish(false,ERR_EVAL)
                         break
@@ -1906,6 +1923,16 @@ pcloop:
                     if len(we.result.([]any)) > 0 {
                         vset(nil,ifs, ident,"key_"+fid, 0)
                         vset(&inbound.Tokens[1],ifs, ident, fid, we.result.([]any)[0])
+
+                        if it_type != "" {
+                            bin:=bind_int(ifs,fid)
+                            t:=(*ident)[bin]
+                            t.ITyped=true
+                            t.declared=true
+                            t.Kind_override=it_type
+                            (*ident)[bin]=t
+                        }
+
                         condEndPos = len(we.result.([]any)) - 1
                     }
 
@@ -1923,7 +1950,7 @@ pcloop:
                     optNoUse: Opt_LoopStart,
                     repeatFrom: parser.pc + 1, iterOverMap: iter, iterOverArray: we.result,
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
-                    loopType: LT_FOREACH,
+                    loopType: LT_FOREACH, itType: it_type,
                 }
 
             default:
@@ -2158,6 +2185,8 @@ pcloop:
                         (*thisLoop).optNoUse = Opt_LoopSet
                     }
 
+                    it_type:=(*thisLoop).itType
+
                     if (*thisLoop).counter > (*thisLoop).condEnd {
                         loopEnd = true
                     } else {
@@ -2216,6 +2245,15 @@ pcloop:
                             // @note: should put a proper exit in here.
                             pv,_:=vget(nil,ifs,ident,sf("%v",(*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter]))
                             pf("Unknown type [%T] in END/Foreach\n",pv)
+                        }
+
+                        if it_type != "" {
+                            bin:=bind_int(ifs,(*thisLoop).loopVar)
+                            t:=(*ident)[bin]
+                            t.ITyped=true
+                            // t.declared=true
+                            t.Kind_override=it_type
+                            (*ident)[bin]=t
                         }
 
                     }
