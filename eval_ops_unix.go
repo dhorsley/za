@@ -10,6 +10,55 @@ import (
     "unsafe"
 )
 
+func struct_match(obj any) (name string,count int) {
+   
+    // get name and types of all fields in the subject struct
+    obj_struct_fields:=make(map[string]string,4)
+    val := reflect.ValueOf(obj)
+    for i:=0; i<val.NumField();i++ {
+        n:=val.Type().Field(i).Name
+        t:=val.Type().Field(i).Type
+        obj_struct_fields[n]=t.String()
+    }
+
+    for n,structvalues:=range structmaps {
+        // discard if struct field count doesn't match
+        if val.NumField()!=len(structvalues)/4 {
+            continue
+        }
+
+        // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+        sm_struct_fields:=make(map[string]string,4)
+        for svpos:=0; svpos<len(structvalues); svpos+=4 {
+            pfieldtype:=structvalues[svpos+1].(string)
+            if pfieldtype=="float" {
+                pfieldtype="float64"
+            }
+            sm_struct_fields[structvalues[svpos].(string)]=pfieldtype
+        }
+
+        // compare struct to subject
+        structs_equal:=true
+        for k,v:=range sm_struct_fields {
+            if obj_v,exists:=obj_struct_fields[k] ; exists {
+                if v!=obj_v {
+                    structs_equal=false
+                    break
+                }
+            } else {
+                structs_equal=false
+                break
+            }
+        }
+
+        if structs_equal {
+            count+=1
+            name=n
+        }
+    }
+    return
+}
+
 // accessFieldOrFunc() is kept separate for now due to the *syscall.Stat_t
 //  reference. eventually, fileStatSys will build a local struct with only
 //  common fields between windows and unix/bsd and then this func can be
@@ -145,19 +194,26 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
             p.next()
         }
-
-        // set parent type name
+                
+        // set struct parent type name
         struct_name:=""
-        if p.preprev.tokType==Identifier {
-            bin:=p.preprev.bindpos
-            if (*p.ident)[bin].declared {
-                struct_name=(*p.ident)[bin].Kind_override
-                if struct_name!="" {
-                    name+="~"+struct_name
+        if isStruct {
+            if p.preprev.tokType==Identifier {
+                bin:=p.preprev.bindpos
+                if (*p.ident)[bin].declared {
+                    struct_name=(*p.ident)[bin].Kind_override
+                }
+            } else {
+                // if there's a matching struct signature, and only one match, assign the type string to it
+                type_string,count:=struct_match(obj)
+                if count==1 {
+                    struct_name=type_string
                 }
             }
+            if struct_name!="" {
+                name+="~"+struct_name
+            }
         }
-
 
         var fm Funcdef
         var there bool

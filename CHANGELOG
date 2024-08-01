@@ -57,6 +57,10 @@ CHANGE LOG
             - methods which modify self on iterated elements will not stick, as they are working
                 with a copy of the object. may fix this later.
 
+        - done: added support for infering type of structs during evaluation to allow method calls
+            to the struct type, when only a single struct field declaration list matches the 
+            instance being inferred from. 
+
         - not doing yet: ary[expr].method calls won't work. not likely to change as it involves
             chasing back through the tokens and checking the type of ary[expr].
             - could fix, but not high priority.
