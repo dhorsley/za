@@ -9,6 +9,9 @@ struct animal
     def humanize()
         self.name+="boy"
     end
+    def animate()
+        self.name=self.name.replace("boy$","")
+    end
 es
 
 var cow,pig,sheep animal
@@ -20,18 +23,16 @@ sheep=animal(.name "sheep",.sound "baa")
 farm = [cow,pig,sheep]
 foreach a : animal in farm
     println "[{=a.name}] -> ", a.kind
+    a.humanize
     a.speak
-    a.humanize # doesn't work as a is a copy of each animal
 endfor
 
 # workaround for not currently supporting ary[i].method:
 var t animal
 for e = 0 to farm.len-1
     t=farm[e]
-    t.humanize
+    t.animate
     farm[e]=t
 endfor
-
-println pig
 println farm
 

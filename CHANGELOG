@@ -14,7 +14,7 @@ CHANGE LOG
     other
     -----
 
-    * started: adding support for functions inside structs.
+    * done (for linux/bsd) : adding support for functions inside structs.
         - done: permit definition, setting a parent field to the struct.
         - done: change UFCS in eval_ops.* to:
             - done: recognise parent when called as (obj).(method)
@@ -22,8 +22,8 @@ CHANGE LOG
             - done: permit calling fn if (obj) encapulates the same field names and types
                 - i.e. all of fn parent's fields must be present in (obj)
             - done: if (obj) is a variable rather than expression result, then
-                     set some kind of self/this variable local to the func on call
-               done: which is written back to the (obj) variable on return
+                    set some kind of self/this variable local to the func on call
+                    which is written back to the (obj) variable on return
                done: on call error, leave (obj) variable in pre-call state
                done: on call, if (expr).(method) do not try to assign self back in caller.
         - done: either re-use or strip out remaining 'self' code/structs.
@@ -35,27 +35,24 @@ CHANGE LOG
         - todo: stop regretting not handling references better from the start.
         - todo: update windows build to incorporate changes above - it probably won't compile currently.
         - done: add mechanism so that funcs can be attached to structs without unique names.
-            - non-unique names in different structs would override each other
             - done: a type override when defining funcs (in actor.go)
             - done: on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
-            - done: ensure copies of a struct retain the override and parent struct type info
+            - done: ensure copies of a struct retain the override struct type info
                 - note: recipient must be declared as same struct type as the giver.
                     - e.g.
                         struct q; a int; endstruct
                         var a,b q
                         b=a
 
-        - todo: lots of other things need touching relating to this , like for/foreach iterators
+        - done'ish: lots of other things need touching relating to this , like for/foreach iterators
             - this is complicated because the expression results being assigned in assignments, 
                 or assigned to iterators, etc don't carry type information with them.
             - i'm sure there's a perfectly good, extremely complex way of doing this, if only i didn't 
                 fall asleep every time i even think about reading a type theory book.
-            - done: may possibly bodge this for now by adding an optional clause to for/foreach such as:
+            - done: bodged this for now by adding an optional clause to foreach:
                 foreach i : type in array
                 ... to force a type constraint on the iterator receiving each array element.
-            - methods which modify self on iterated elements will not stick, as they are working
-                with a copy of the object. may fix this later.
 
         - done: added support for infering type of structs during evaluation to allow method calls
             to the struct type, when only a single struct field declaration list matches the 
@@ -66,7 +63,7 @@ CHANGE LOG
             - could fix, but not high priority.
 
         - not doing: adding access modifiers
-            - this is an intentionally, very light object mechanism. nothing more complex needed.
+            - this is an, intentionally, very light object mechanism. nothing more complex needed.
                 even this degree of oo is superfluous. there is no concept of private/public.
 
         - not doing: constructors/destructors
