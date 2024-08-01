@@ -67,7 +67,6 @@ println "c->",c
 println "c.kind->",c.kind
 
 title("calling double on (c), assigning (c).a to j")
-var j q
 println "c->",c
 j=(c).double
 println "j->",j
