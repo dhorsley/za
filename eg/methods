@@ -22,6 +22,7 @@ struct w
     d bool
     def triple()
         self.a*=3
+        return self.a
     end
     def get()
         return self.b
@@ -67,16 +68,14 @@ println "c->",c
 println "c.kind->",c.kind
 
 title("calling double on (c), assigning (c).a to j")
-var j q
 println "c->",c
 j=(c).double
 println "j->",j
 
-title("calling triple on struct literal of type w:")
-println w(1,1f,false,false)
-println "...should fail with nil, currently"
-println w(1,1f,false,false).triple
-
+title("calling triple on struct literal of type w, and assigning .a to j:")
+println "literal->",w(1,1f,false,false)
+j=w(1,1f,false,false).triple
+println "j->",j
 
 title("same struct type, multiple instances")
 var x,y w
