@@ -1570,16 +1570,17 @@ pcloop:
                 skip=2
                 // valid type?
                 // check if it_type is a key in either typemap or structmaps
+                otype:=it_type
                 if !str.Contains(it_type,"::") {
                     it_type=parser.namespace+"::"+it_type
                 }
 
                 found:=false
                 if _,found=structmaps[it_type]; !found {
-                    _,found=typemap[it_type]
+                    _,found=typemap[otype]
                 }
                 if ! found {
-                    parser.report(inbound.SourceLine,"invalid type for iterator in FOREACH.")
+                    parser.report(inbound.SourceLine,sf("invalid type [%s] for iterator in FOREACH.",otype))
                     finish(false,ERR_SYNTAX)
                     break
                 }
