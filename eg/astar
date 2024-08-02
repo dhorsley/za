@@ -44,7 +44,7 @@ def randx()
 end
 
 def randy()
-    return rand(mh)-1
+    return rand(mh-1)-1
 end
 
 
