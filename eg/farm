@@ -32,7 +32,6 @@ var t animal
 for e = 0 to farm.len-1
     t=farm[e]
     t.animate
-    farm[e]=t
 endfor
 println farm
 
