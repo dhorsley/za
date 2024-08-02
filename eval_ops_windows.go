@@ -7,16 +7,66 @@ import (
     "reflect"
     str "strings"
     "syscall"
-    "fmt"
     "unsafe"
 )
 
-// accessFieldOrFunc() is kept separate for now due to the reference to the
-//  *syscall.Win32FileAttributeData struct. Eventually, fileStatSys will 
-//  build a local struct with only common fields between windows and unix/bsd
-//  and then this func can be returned to eval_ops.go.
+func struct_match(obj any) (name string,count int) {
+   
+    // get name and types of all fields in the subject struct
+    obj_struct_fields:=make(map[string]string,4)
+    val := reflect.ValueOf(obj)
+    for i:=0; i<val.NumField();i++ {
+        n:=val.Type().Field(i).Name
+        t:=val.Type().Field(i).Type
+        obj_struct_fields[n]=t.String()
+    }
+
+    for n,structvalues:=range structmaps {
+        // discard if struct field count doesn't match
+        if val.NumField()!=len(structvalues)/4 {
+            continue
+        }
+
+        // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+        sm_struct_fields:=make(map[string]string,4)
+        for svpos:=0; svpos<len(structvalues); svpos+=4 {
+            pfieldtype:=structvalues[svpos+1].(string)
+            if pfieldtype=="float" {
+                pfieldtype="float64"
+            }
+            sm_struct_fields[structvalues[svpos].(string)]=pfieldtype
+        }
+
+        // compare struct to subject
+        structs_equal:=true
+        for k,v:=range sm_struct_fields {
+            if obj_v,exists:=obj_struct_fields[k] ; exists {
+                if v!=obj_v {
+                    structs_equal=false
+                    break
+                }
+            } else {
+                structs_equal=false
+                break
+            }
+        }
+
+        if structs_equal {
+            count+=1
+            name=n
+        }
+    }
+    return
+}
+
+// accessFieldOrFunc() is kept separate for now due to the *syscall.Stat_t
+//  reference. eventually, fileStatSys will build a local struct with only
+//  common fields between windows and unix/bsd and then this func can be
+//  returned to eval_ops.go.
 
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
+
+    // pf(" (afof) -> assessing obj %+v field %s\n",obj,field)
 
     switch obj:=obj.(type) {
 
@@ -33,13 +83,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
     default:
 
         r := reflect.ValueOf(obj)
-        // isStruct:=false
-
+        isStruct:=false
+        
         switch r.Kind() {
 
         case reflect.Struct:
 
-            // isStruct=true
+            isStruct=true
 
             // work with mutable copy as we need to make field unsafe
             // further down in switch.
@@ -138,36 +188,109 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 modname=name
                 name=p.peek().tokText
             default:
-                panic(fmt.Errorf("invalid name in function call '%s'",p.peek().tokText))
+                parser.hard_fault=true
+                pf("invalid name in function call '%s'\n",p.peek().tokText)
+                return nil,true
             }
             p.next()
         }
-        if _,there:=funcmap[modname+"::"+name] ; there {
+                
+        // set struct parent type name
+        struct_name:=""
+        if isStruct {
+            if p.preprev.tokType==Identifier {
+                bin:=p.preprev.bindpos
+                if (*p.ident)[bin].declared {
+                    struct_name=(*p.ident)[bin].Kind_override
+                }
+            } else {
+                // if there's a matching struct signature, and only one match, assign the type string to it
+                type_string,count:=struct_match(obj)
+                if count==1 {
+                    struct_name=type_string
+                }
+            }
+            if struct_name!="" {
+                name+="~"+struct_name
+            }
+        }
+
+        var fm Funcdef
+        var there bool
+        if fm,there=funcmap[modname+"::"+name] ; there {
             name=modname+"::"+name
             isFunc=true
         }
 
+        calling_method:=false
+        if isStruct {
+            // compare types between (obj) and (parent)
+            if fm.parent != "" {
+                obj_struct_fields:=make(map[string]string,4)
+                val := reflect.ValueOf(obj)
+                for i:=0; i<val.NumField();i++ {
+                    n:=val.Type().Field(i).Name
+                    t:=val.Type().Field(i).Type
+                    obj_struct_fields[n]=t.String()
+                }
+
+                // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                par_struct_fields:=make(map[string]string,4)
+                if structvalues,exists:=structmaps[fm.parent] ; exists {
+                    for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                        pfieldtype:=structvalues[svpos+1].(string)
+                        if pfieldtype=="float" {
+                            pfieldtype="float64"
+                        }
+                        par_struct_fields[structvalues[svpos].(string)]=pfieldtype
+                    }
+                }
+
+                structs_equal:=true
+                for k,v:=range par_struct_fields {
+                    if obj_v,exists:=obj_struct_fields[k] ; exists {
+                        if v!=obj_v {
+                            structs_equal=false
+                            break
+                        }
+                    } else {
+                        structs_equal=false
+                        break
+                    }
+                }
+
+                if ! structs_equal {
+                    parser.hard_fault=true
+                    pf("cannot call function [%v] belonging to an unequal struct type [%s]\nYour object: [%T]", field,fm.parent,obj)
+                    return nil,true
+                }
+                calling_method=true
+            }
+        }
+
         // check if stdlib or user-defined function
         if !isFunc {
-            if _, isFunc = stdlib[name]; !isFunc {
+            // if _, isFunc = stdlib[name]; !isFunc {
+            if _, isFunc = stdlib[field]; !isFunc {
                 isFunc = fnlookup.lmexists(name)
+                // pf("checked with fnlookup for name [%s] -> result : %v\n",name,isFunc)
+                /* should put something here to look for same method name in a 
+                   compatible structs defined functions in Funcmap... but not a job for now.
+                */
+            } else {
+                name=field
             }
         }
 
         if !isFunc {
-            panic(fmt.Errorf("no function, enum or record field found for %v", field))
+            parser.hard_fault=true
+            pf("no function, enum or record field found for %v\n", field)
+            return nil,true
         }
 
         // user-defined or stdlib call, exception here for file handles
         var iargs []any
-        // if isFileHandle || !isStruct {
-            iargs=[]any{obj}
-        // }
-
-        /*
-        arg_names:=[]string{}
-        argpos:=1
-        */
+        iargs=[]any{obj}
 
         if p.peek().tokType==LParen {
             p.next()
@@ -197,7 +320,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
                 */
                 for {
-                    dp,err:=p.dparse(0,false)
+                    dp,err,_:=p.dparse(0,false)
                     if err!=nil {
                         return nil,true
                     }
@@ -213,19 +336,33 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
         }
 
-        /*
-        self:=self_s{}
-        if isStruct {
-            self.aware=true
-            self.ptr=&obj
+        // make call
+        res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
+        // pf("res/err/method_result -> %#v,%v,%v\n",res,err,method_result)
+
+        // process results
+        if calling_method && !err {
+            // check if previous is an identifer/expression result
+            if p.preprev.tokType==Identifier {
+                bin:=p.preprev.bindpos
+                if (*p.ident)[bin].declared {
+                    (*p.ident)[bin].IValue=method_result
+                    // vset(nil, p.fs, p.ident, p.preprev.tokText, method_result)
+                } else {
+                    parser.hard_fault=true
+                    pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
+                    return nil,true
+                }
+            } else {
+                if p.preprev.tokType==RightSBrace {
+                    pf("maybe ary element : obj %#v\n",obj) 
+                }
+                // no action required as invoker was not a struct name
+                // pf("method call without identifier\nresult : %#v\nerror : %+v\n",res,err)
+            }
         }
-        */
 
-        // return callFunctionExt(p.fs,p.ident,name,self,[]string{},iargs)
-        return callFunctionExt(p.fs,p.ident,name,[]string{},iargs)
-
+        return res,err
     }
-
-    return nil,false
 }
 
