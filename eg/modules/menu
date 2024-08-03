@@ -41,9 +41,11 @@ define menu(p,opts)
     n=-1
     while n==-1 and not finished
 
-        at 4+sel,10 ; print "[#invert]-[#-]"
+        at 4+sel,10,"[#invert]-[#-]"
+        at 4+sel,16,"[#3]",opts[sel],"[#-]"
         k=keypress()
-        at 4+sel,10 ; print " "
+        at 4+sel,10," "
+        at 4+sel,16,opts[sel]
 
         if k>=49 && k<maxchoice
             n=k-48

@@ -2416,7 +2416,7 @@ func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     var crushedOpcodes str.Builder
-    crushedOpcodes.Grow(2)
+    // crushedOpcodes.Grow(2)
 
     for t:=range intoks {
         crushedOpcodes.WriteString(intoks[t].tokText)
@@ -2647,6 +2647,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
     }
 
     for assno := range largs {
+
+        if assno>len(results)-1 { break }
 
         assignee:=largs[assno]
 
