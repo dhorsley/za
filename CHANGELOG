@@ -11,6 +11,7 @@ CHANGE LOG
     * updated windows build to incorporate oo/method changes below
         - compiles and executes
         - no real testing done yet.
+    * added missing bigi+bigf types to sqr operand
 
     library
     -------
