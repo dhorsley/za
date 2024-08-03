@@ -146,8 +146,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // check for enum membership:
         globlock.RLock()
-        // pf("checking obj %#v | enum %s\n",obj,p.preprev.tokText)
-        ename:=p.namespace+"::"+p.preprev.tokText
+        // pf("checking obj %#v | enum %s\n",obj,p.prev2.tokText)
+        ename:=p.namespace+"::"+p.prev2.tokText
         // isFileHandle:=false
         switch obj.(type) {
         case string:
@@ -198,8 +198,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         // set struct parent type name
         struct_name:=""
         if isStruct {
-            if p.preprev.tokType==Identifier {
-                bin:=p.preprev.bindpos
+            if p.prev2.tokType==Identifier {
+                bin:=p.prev2.bindpos
                 if (*p.ident)[bin].declared {
                     struct_name=(*p.ident)[bin].Kind_override
                 }
@@ -343,18 +343,18 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         // process results
         if calling_method && !err {
             // check if previous is an identifer/expression result
-            if p.preprev.tokType==Identifier {
-                bin:=p.preprev.bindpos
+            if p.prev2.tokType==Identifier {
+                bin:=p.prev2.bindpos
                 if (*p.ident)[bin].declared {
                     (*p.ident)[bin].IValue=method_result
-                    // vset(nil, p.fs, p.ident, p.preprev.tokText, method_result)
+                    // vset(nil, p.fs, p.ident, p.prev2.tokText, method_result)
                 } else {
                     parser.hard_fault=true
-                    pf("struct [%s] could not be assigned to after method call\n",p.preprev.tokText)
+                    pf("struct [%s] could not be assigned to after method call\n",p.prev2.tokText)
                     return nil,true
                 }
             } else {
-                if p.preprev.tokType==RightSBrace {
+                if p.prev2.tokType==RightSBrace {
                     pf("maybe ary element : obj %#v\n",obj) 
                 }
                 // no action required as invoker was not a struct name

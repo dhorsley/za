@@ -48,7 +48,7 @@ type leparser struct {
     tokens      []Token                 // the thing getting evaluated
     ident       *[]Variable             // where are the local variables at?
     prev        Token                   // bodge for post-fix operations
-    preprev     Token                   //   and the same for assignment
+    prev2       Token                   //   and the same for assignment
     fs          uint32                  // working function space
     mident      uint32                  // fs of main() (1 or 2 depending on interactive mode)
                                         // @note: mident is necessary to say whether globals are stored under fs #1 or #2
@@ -83,7 +83,7 @@ type leparser struct {
 
 
 func (p *leparser) next() Token {
-    p.preprev=p.prev
+    p.prev2=p.prev
     if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
     return p.tokens[p.pos]
@@ -106,21 +106,20 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         brace_level:=0
         skiploop1:
         for {
-            token := p.peek()
-            switch token.tokType {
+            switch p.peek().tokType {
             case LParen:
                 brace_level+=1
             case RParen:
                 if brace_level==0 {
-                    // pf("[skip breaking on token %v] ",tokNames[token.tokType])
+                    // pf("[skip breaking on token %v] ",tokNames[p.peek().tokType])
                     break skiploop1
                 }
                 brace_level-=1
             case O_Comma,SYM_COLON,EOF:
-                // pf("[skip breaking on token %v] ",tokNames[token.tokType])
+                // pf("[skip breaking on token %v] ",tokNames[p.peek().tokType])
                 break skiploop1
             }
-            // pf("[skip token %+v] ",token)
+            // pf("[skip token %+v] ",p.peek())
             p.next()
         }
         return left,err,try_fault
@@ -128,7 +127,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
 
 
     // inlined next() manually:
-    p.preprev=p.prev
+    p.prev2=p.prev
     if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
 
@@ -199,7 +198,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
             // pf("  (eval) namespacing, next token %v at %d\n",token.tokText,p.pos)
             if p.pos==p.namespace_pos+1 {
                 p.namespacing=false
-                left=p.preprev.tokText+"::"+token.tokText
+                left=p.prev2.tokText+"::"+token.tokText
                 // pf("  (eval) completed namespace -> %#v at pos %d\n",left,p.pos)
                 continue
             }
@@ -1001,8 +1000,6 @@ func (p *leparser) accessArray(left any,right Token) (any) {
         return slice(left,start,end)
     }
 
-    // @unreachable:
-    // panic(fmt.Errorf("array access error on token '%s'",tokNames[p.peek().tokType]))
     return nil
 
 }
@@ -1157,8 +1154,6 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 */
             } else {
                 panic(fmt.Errorf("length mismatch of argument names [%d] to struct fields [%d]",len(arg_names),len(iargs)))
-                // finish(false,ERR_EVAL)
-                // return nil,true
             }
         }
 
@@ -1176,8 +1171,6 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
                 }
                 if !typeFound {
                     panic(fmt.Errorf("unknown type in struct(anon) field %s [%v]",arg_names[n],t))
-                    // finish(false,ERR_EVAL)
-                    // return nil,true
                 }
                 structvalues=append(structvalues,true)
                 structvalues=append(structvalues,iargs[n])
@@ -1387,6 +1380,14 @@ func unOpSqr(n any) any {
         return n*n
     case float64:
         return n*n
+    case *big.Int:
+        var tmp big.Int
+        tmp.Set(n)
+        return tmp.Mul(&tmp,n)
+    case *big.Float:
+        var tmp big.Float
+        tmp.Set(n)
+        return tmp.Mul(&tmp,n)
     default:
         panic(fmt.Errorf("sqr does not support type '%T'",n))
     }
@@ -1845,10 +1846,19 @@ func vdelete(fs uint32, ident *[]Variable, name string, ename string) {
         case map[string]int:
             delete(m,ename)
             vset(nil,fs,ident,name,m)
+        case map[string]uint:
+            delete(m,ename)
+            vset(nil,fs,ident,name,m)
         case map[string]float64:
             delete(m,ename)
             vset(nil,fs,ident,name,m)
         case map[string]bool:
+            delete(m,ename)
+            vset(nil,fs,ident,name,m)
+        case map[string]*big.Int:
+            delete(m,ename)
+            vset(nil,fs,ident,name,m)
+        case map[string]*big.Float:
             delete(m,ename)
             vset(nil,fs,ident,name,m)
         case map[string]any:
@@ -2242,8 +2252,7 @@ func isBool(expr any) bool {
 
 
 func isNumber(expr any) bool {
-    typeof := reflect.TypeOf(expr).Kind()
-    switch typeof {
+    switch reflect.TypeOf(expr).Kind() {
     case reflect.Float64, reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint8:
         return true
     }
@@ -2407,7 +2416,7 @@ func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 func crushEvalTokens(intoks []Token) ExpressionCarton {
 
     var crushedOpcodes str.Builder
-    // crushedOpcodes.Grow(16)
+    crushedOpcodes.Grow(2)
 
     for t:=range intoks {
         crushedOpcodes.WriteString(intoks[t].tokText)

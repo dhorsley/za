@@ -942,8 +942,6 @@ pcloop:
 
 
         /////// LINE DEBUG //////////////////////////////////////////////////////
-
-        // should probably comment this in release mode, it's slow:
         if lineDebug {
             clr:="2"
             if defining {
@@ -951,7 +949,6 @@ pcloop:
             }
             pf("[#dim][#7]%20s: %5d : [#"+clr+"]%+v[#-]\n",display_fs,inbound.SourceLine+1,basecode[source_base][parser.pc])
         }
-
         /////////////////////////////////////////////////////////////////////////
 
         if parser.try_fault && statement != C_Fix {
@@ -1448,7 +1445,6 @@ pcloop:
             } else {
 
                 etoks=inbound.Tokens[1:]
-
                 we = parser.wrappedEval(ifs,ident,ifs,ident,etoks)
                 if we.evalError {
                     parser.report(inbound.SourceLine,"could not evaluate WHILE condition")
