@@ -23,6 +23,7 @@ type tui_style struct {
     bg      string
     fg      string
     border  map[string]string
+    fill    bool
     wrap    bool 
 }
 
@@ -71,21 +72,25 @@ func tui_box(row,col,height,width int,title string,s tui_style) {
     // top
     absat(row,col)
     fmt.Print(tl)
-    fmt.Print(rep(tm,int(width-2)))
+    fmt.Print(rep(tm,width-2))
     fmt.Print(tr)
 
     // sides
     for r:=row+1; r<row+height; r++ {
         absat(r,col)
         fmt.Print(lm)
-        absat(r,col+width-1)
+        if s.fill {
+            fmt.Print(rep(" ",width-2))
+        } else {
+            absat(r,col+width-1)
+        }
         fmt.Print(rm)
     }
 
     // bottom
     absat(row+height,col)
     fmt.Print(bl)
-    fmt.Print(rep(bm,int(width-2)))
+    fmt.Print(rep(bm,width-2))
     fmt.Print(br)
 
     // title
