@@ -65,7 +65,7 @@ func tui_box(row,col,height,width int,title string,s tui_style) {
     bg:=s.border["bg"]
     fg:=s.border["fg"]
 
-    if bg!="" { pf("[#"+bg+"]") }
+    if bg!="" { pf("[#b"+bg+"]") }
     if fg!="" { pf("[#"+fg+"]") }
 
     // top
