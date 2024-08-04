@@ -1638,15 +1638,21 @@ pcloop:
                     l=len(lv)
                 case []bool:
                     l=len(lv)
-                case []dirent:
+                case []tui:
                     l=len(lv)
                 case []*big.Int:
                     l=len(lv)
                 case []*big.Float:
                     l=len(lv)
+                case []dirent:
+                    l=len(lv)
                 case []alloc_info:
                     l=len(lv)
                 case map[string]alloc_info:
+                    l=len(lv)
+                case map[string]dirent:
+                    l=len(lv)
+                case map[string]tui:
                     l=len(lv)
                 case map[string]string:
                     l=len(lv)
@@ -1733,6 +1739,16 @@ pcloop:
                         condEndPos = len(we.result.(map[string]float64)) - 1
                     }
 
+                case map[string]tui:
+                    if len(we.result.(map[string]tui)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]tui)).MapRange()
+                        if iter.Next() {
+                            vset(nil,ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1],ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]tui)) - 1
+                    }
+
                 case map[string]alloc_info:
                     if len(we.result.(map[string]alloc_info)) > 0 {
                         iter = reflect.ValueOf(we.result.(map[string]alloc_info)).MapRange()
@@ -1741,6 +1757,16 @@ pcloop:
                             vset(&inbound.Tokens[1],ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]alloc_info)) - 1
+                    }
+
+                case map[string]dirent:
+                    if len(we.result.(map[string]dirent)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]dirent)).MapRange()
+                        if iter.Next() {
+                            vset(nil,ifs, ident,"key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1],ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]dirent)) - 1
                     }
 
                 case map[string]bool:
@@ -1869,6 +1895,13 @@ pcloop:
                         vset(nil,ifs, ident,"key_"+fid, 0)
                         vset(&inbound.Tokens[1],ifs, ident, fid, we.result.([]string)[0])
                         condEndPos = len(we.result.([]string)) - 1
+                    }
+
+                case []tui:
+                    if len(we.result.([]tui)) > 0 {
+                        vset(nil,ifs, ident,"key_"+fid, 0)
+                        vset(&inbound.Tokens[1],ifs, ident, fid, we.result.([]tui)[0])
+                        condEndPos = len(we.result.([]tui)) - 1
                     }
 
                 case []dirent:
@@ -2193,7 +2226,7 @@ pcloop:
                         switch (*thisLoop).iterOverArray.(type) {
 
                         // map ranges are randomly ordered!!
-                        case map[string]any, map[string]alloc_info, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
+                        case map[string]any, map[string]alloc_info, map[string]tui, map[string]dirent, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -2217,6 +2250,9 @@ pcloop:
                         case []dirent:
                             vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
+                        case []tui:
+                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]tui)[(*thisLoop).counter])
                         case []alloc_info:
                             vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
