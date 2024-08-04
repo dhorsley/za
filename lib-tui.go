@@ -40,6 +40,17 @@ type tui_style struct {
 
 */
 
+// switch to secondary buffer
+func secScreen() {
+    pf("\033[?1049h\033[H")
+}
+
+// switch to primary buffer
+func priScreen() {
+    pf("\033[?1049l")
+}
+
+
 func tui_box(row,col,height,width int,title string,s tui_style) {
 
     // pf("\n%d,%d,%d,%d,%s,%#v\n",row,col,height,width,title,s)
@@ -198,13 +209,27 @@ func buildTuiLib() {
 
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
-        "tui_new","tui_new_style","tui","tui_box",
+        "tui_new","tui_new_style","tui","tui_box","tui_screen",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
     stdlib["tui_new"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tui_new",args,0); !ok { return nil,err }
         return tui{},nil
+    }
+
+    slhelp["tui_screen"] = LibHelp{in: "int", out: "", action: "switch to primary (0) or secondary (1) screen buffer"}
+    stdlib["tui_screen"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_screen",args,1,"1","int"); !ok { return nil,err }
+            switch args[0].(int) {
+            case 0:
+                priScreen()
+            case 1:
+                secScreen()
+            default:
+                return nil,fmt.Errorf("invalid buffer specified in tui_screen() : %d",args[0].(int))
+            }
+        return nil,nil
     }
 
     slhelp["tui_new_style"] = LibHelp{in: "", out: "tui_style_struct", action: "create a tui style struct"}

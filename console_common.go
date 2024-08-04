@@ -943,19 +943,6 @@ func cls() {
 }
 
 
-// probably not used now...
-
-// switch to secondary buffer
-func secScreen() {
-    pf("\033[?1049h\033[H")
-}
-
-// switch to primary buffer
-func priScreen() {
-    pf("\033[?1049l")
-}
-
-
 // search for pane by name and return its dimensions
 func paneLookup(s string) (row int, col int, w int, h int, err error) {
     for p := range panes {
