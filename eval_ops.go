@@ -1322,7 +1322,11 @@ func accessArray(ident *[]Variable, obj any, field any) (any) {
             }
         }
         panic(fmt.Errorf("string sub-script '%v' must be a number",field))
+    case map[string]tui:
+        return obj[field.(string)]
     case map[string]alloc_info:
+        return obj[field.(string)]
+    case map[string]dirent:
         return obj[field.(string)]
     case map[string]string:
         return obj[field.(string)]
@@ -1363,6 +1367,8 @@ func accessArray(ident *[]Variable, obj any, field any) (any) {
                 case []*big.Float:
                     if len(obj)>ifield { return obj[ifield] }
                 case []dirent:
+                    if len(obj)>ifield { return obj[ifield] }
+                case []tui:
                     if len(obj)>ifield { return obj[ifield] }
                 case []alloc_info:
                     if len(obj)>ifield { return obj[ifield] }

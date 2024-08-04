@@ -30,5 +30,6 @@ func buildStandardLib() {
     buildDbLib()
     buildHtmlLib()
     buildImageLib()
+    buildTuiLib()
 
 }

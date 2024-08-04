@@ -878,6 +878,8 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 
     switch left:=left.(type) {
 
+    case []tui:
+        p.rangelen=len(left)
     case []bool:
         p.rangelen=len(left)
     case []string:
@@ -903,7 +905,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
     case []any:
         p.rangelen=len(left)
 
-    case map[string]any,map[string]alloc_info,map[string]string,map[string]int:
+    case map[string]any,map[string]alloc_info,map[string]tui,map[string]string,map[string]int:
 
         // check for key
         var mkey string
