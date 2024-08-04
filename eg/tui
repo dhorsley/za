@@ -26,11 +26,11 @@ es
 cls
 t=tui_new()
 s=tui_new_style()
-for e=0 to 9
-    t.row=4+e*3
-    t.col=4+e*3
-    t.height=20
-    t.width=50
+for e=0 to 999
+    t.row=rand(term_h()-20)
+    t.col=rand(term_w()-50)
+    t.height=term_h().rand
+    t.width=30
     tui_box(t,s)
 endfor
 exit
