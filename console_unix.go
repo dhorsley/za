@@ -54,6 +54,7 @@ func enableEcho() {
 
 func term_complete() {
     if tt!=nil {
+        // disable_mouse()
         tt.Restore()
         tt.Close()
     }
