@@ -18,7 +18,8 @@ struct tui_style
     bg      string
     fg      string
     border  map[string]string
-    wrap    bool 
+    fill    bool
+    wrap    bool
 es
 
 `
@@ -42,6 +43,7 @@ endfor
 border["bg"]=bg.as_string
 border["fg"]=fg.as_string
 s.border=border
+s.fill=true
 
 tui_screen(1)
 tui_box(t,s)
