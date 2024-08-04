@@ -772,7 +772,7 @@ func main() {
 
         // prepare for getInput() keyboard input (from main process)
         tt, _ = term.Open("/dev/tty")
-
+        // enable_mouse()
     }
 
 
