@@ -147,6 +147,42 @@ func setupAnsiPalette() {
     }
 }
 
+func enable_mouse() {
+    pf("\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h")
+}
+
+func disable_mouse() {
+    pf("\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l")
+}
+
+func mouse_press(inp []byte) {
+
+    // @wip: notes
+
+    /*
+       Normal tracking mode (not implemented in Linux 2.0.24) sends an
+       escape sequence on both button press and release.  Modifier
+       information is also sent.  It is enabled by sending ESC [ ? 1000
+       h and disabled with ESC [ ? 1000 l.  On button press or release,
+       xterm(1) sends ESC [ M bxy.  The low two bits of b encode button
+       information: 0=MB1 pressed, 1=MB2 pressed, 2=MB3 pressed,
+       3=release.  The upper bits encode what modifiers were down when
+       the button was pressed and are added together: 4=Shift, 8=Meta,
+       16=Control.  Again x and y are the x and y coordinates of the
+       mouse event.  The upper left corner is (1,1).
+    */
+
+    // lmb down and up ➜ down : 0;69;28M up : 0;69;28m
+    // rmb down and up ➜ down : 2;68;27M up : 2;68;27m
+    // mmb down and up ➜ down : 1;67;27M up : 1;67;27m
+    // mwheel up       ➜      : 64;67;27M
+    // mwheel down     ➜      : 65;67;27M
+
+    switch {
+    // case bytes.Equal(inp, []byte{27,91,49,126}): // home // from showkey -a
+    }
+}
+
 
 // getInput() : get an input string from stdin, in raw mode
 //  it does have some issues with utf8 input when moving the cursor around.
@@ -270,6 +306,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
         // get key stroke
         c, _ , pasted, pbuf := getch(0)
+        fmt.Printf("\n\n%#v\n",pbuf) 
 
         if pasted {
 

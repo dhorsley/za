@@ -23,13 +23,16 @@ es
 
 `
 
+cls
 t=tui_new()
 s=tui_new_style()
-t.row=4
-t.col=4
-t.height=20
-t.width=50
-tui_box(t,s)
+for e=0 to 9
+    t.row=4+e*3
+    t.col=4+e*3
+    t.height=20
+    t.width=50
+    tui_box(t,s)
+endfor
 exit
 
 menu=tui_new()
