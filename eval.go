@@ -2054,6 +2054,21 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     switch list.(type) {
 
+    case map[string]string:
+        var key string
+        switch el.(type) {
+        case int:
+            key=strconv.FormatInt(int64(el.(int)), 10)
+        case float64:
+            key=strconv.FormatFloat(el.(float64), 'f', -1, 64)
+        case uint:
+            key=strconv.FormatUint(uint64(el.(uint)), 10)
+        case string:
+            key=el.(string)
+        }
+        (*ident)[bin].IValue.(map[string]string)[key] = value.(string)
+        return
+
     case map[string]any:
         var key string
         switch el.(type) {

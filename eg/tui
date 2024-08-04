@@ -23,16 +23,33 @@ es
 
 `
 
-cls
+cursoroff()
+seed(-1)
+
 t=tui_new()
 s=tui_new_style()
-for e=0 to 999
-    t.row=rand(term_h()-20)
-    t.col=rand(term_w()-50)
-    t.height=term_h().rand
-    t.width=30
-    tui_box(t,s)
+t.row=rand(term_h()-20)
+t.col=rand(term_w()-50)
+t.height=term_h().rand
+t.width=30
+t.title="test panel"
+
+border=s.border
+bg=0; fg=1
+for ,bg==fg,
+    bg,fg=[rand(7),rand(7)]
 endfor
+border["bg"]=bg.as_string
+border["fg"]=fg.as_string
+s.border=border
+
+tui_screen(1)
+tui_box(t,s)
+
+# cleanup
+keypress()
+tui_screen(0)
+cursoron()
 exit
 
 menu=tui_new()
