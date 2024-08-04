@@ -306,7 +306,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
         // get key stroke
         c, _ , pasted, pbuf := getch(0)
-        fmt.Printf("\n\n%#v\n",pbuf) 
 
         if pasted {
 
