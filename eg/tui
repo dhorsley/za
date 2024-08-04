@@ -1,0 +1,45 @@
+#!/usr/bin/za
+
+doc `
+
+struct tui
+    row     int
+    col     int
+    height  int
+    width   int
+    action  string
+    options []
+    cursor  string
+    title   string
+    prompt  string
+es
+
+struct tui_style
+    bg      string
+    fg      string
+    border  map[string]string
+    wrap    bool 
+es
+
+`
+
+t=tui_new()
+s=tui_new_style()
+t.row=4
+t.col=4
+t.height=20
+t.width=50
+tui_box(t,s)
+exit
+
+menu=tui_new()
+menu.x,menu.y,menu.action = [10,10,"hcheck"]
+menu.options=["one","two","three"]
+menu.title  ="test check box"
+menu.prompt ="Please select an option:"
+menu_style=tui_new_style()
+
+println menu
+result=tui(menu)
+println result
+

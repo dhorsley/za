@@ -1261,33 +1261,25 @@ func paneBox(c string) {
 
     // corners
     absat(p.row, p.col)
-    // pf(tl)
     fmt.Print(tl)
     absat(p.row, p.col+p.w-1)
-    // pf(tr)
     fmt.Print(tr)
     absat(p.row+p.h, p.col+p.w-1)
-    // pf(br)
     fmt.Print(br)
     absat(p.row+p.h, p.col)
-    // pf(bl)
     fmt.Print(bl)
 
     // top, bottom
     absat(p.row, p.col+1)
-    // pf(rep(tlr, int(p.w-2)))
     fmt.Print(rep(tlr, int(p.w-2)))
     absat(p.row+p.h, p.col+1)
-    // pf(rep(blr, int(p.w-2)))
     fmt.Print(rep(blr, int(p.w-2)))
 
     // left, right
     for r := p.row + 1; r < p.row+p.h; r++ {
         absat(r, p.col)
-        // pf(ud)
         fmt.Print(ud)
         absat(r, p.col+p.w-1)
-        // pf(ud)
         fmt.Print(ud)
     }
 
