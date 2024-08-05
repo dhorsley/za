@@ -66,12 +66,12 @@ menu.cursor="[#b1][#6]*[##][#-]"
 
 result=menu.tui_menu(s)
 
-# output text
-cls
-cursoroff()
-t.height=40
-t.width=118
-t.title="modal text box"
+# pager
+s.bg,s.fg=["2","7"]
+border["bg"]=s.bg
+border["fg"]=s.fg
+s.border=border
+t.height,t.width,t.title=[40,118,"modal text box"]
 t.tui_box(s)
 t.content=$in "CHANGELOG"
 t.tui_text_modal(s)
