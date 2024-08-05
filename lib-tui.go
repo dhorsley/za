@@ -32,13 +32,12 @@ type tui_style struct {
 
 /*
    actions to add:
-   vertical menu
    horizontal menu
    display pane (with word splitting)
    progress bar
    input box
    cascading input selector
-   mouse support
+   mouse support?
    movable panes? 
 
 */
@@ -260,7 +259,8 @@ func buildTuiLib() {
         t:=args[0].(tui)
         s:=default_tui_style
         switch str.ToLower(t.action) {
-        case "box": stdlib["tui_box"](ns,evalfs,ident,t,s)
+        case "box"  : stdlib["tui_box"](ns,evalfs,ident,t,s)
+        case "menu" : stdlib["tui_menu"](ns,evalfs,ident,t,s)
         }
         return "",err
     }
