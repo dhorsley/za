@@ -35,7 +35,7 @@ s=tui_new_style()
 t.row=10
 t.col=10
 t.height=15
-t.width=60
+t.width=100
 t.title="test panel"
 
 border=s.border
@@ -68,14 +68,18 @@ result=menu.tui_menu(s)
 
 # output text
 cls
+cursoroff()
+t.height=40
+t.width=118
+t.title="modal text box"
+t.tui_box(s)
 t.content=$in "CHANGELOG"
-t.tui_text(s)
+t.tui_text_modal(s)
 
 # cleanup
-keypress()
 tui_screen(0)
 
 println "menu result -> ",result
-println "     option -> ",menu.options[result-1]
+on result>0 do println "     option -> ",menu.options[result-1]
 cursoron()
 
