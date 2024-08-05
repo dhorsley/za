@@ -18,6 +18,45 @@ const ( // tr_actions
     TRANSLATE
 )
 
+func inset(s string,dist int) (rs string) {
+
+    if dist==0 { return s }
+
+    var list []string
+
+    lsep:="\n"
+    if runtime.GOOS=="windows" { lsep="\r\n" }
+
+    s+=lsep
+
+    if runtime.GOOS!="windows" {
+        list = str.Split(s,lsep)
+    } else {
+        list = str.Split(str.Replace(s, lsep, "\n", -1), "\n")
+    }
+
+    llen:=len(list)
+
+    var newstring str.Builder
+    newstring.Grow(20)
+    if llen>0 {
+        for k:=0; k<llen-1; k++ {
+            if len(list[k])>0 {
+                newstring.WriteString(sf("\033[%dC%s%s",dist,list[k],lsep))
+            } else {
+                newstring.WriteString("\n")
+            }
+        }
+    }
+
+    // always remove trailing lsep 
+    rs=newstring.String()
+    if rs[len(rs)-1] == '\n' {
+        rs = rs[:len(rs)-len(lsep)]
+    }
+    return rs
+}
+
 func tr(s string, action int, cases string, xlates string) string {
 
     original := []byte(s)
@@ -828,49 +867,9 @@ func buildStringLib() {
     slhelp["inset"] = LibHelp{in: "nl_string,distance", out: "nl_string", action: "Left pads each line of [#i1]nl_string[#i0] with [#i1]distance[#i0] cursor right commands."}
     stdlib["inset"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("inset",args,1,"2","string","int"); !ok { return "",err }
-
         s:=args[0].(string)
         dist:=args[1].(int)
-
-        var list []string
-
-        if dist==0 { return s,nil }
-
-        lsep:="\n"
-        if runtime.GOOS=="windows" {
-            lsep="\r\n"
-        }
-
-        s+=lsep
-
-        if runtime.GOOS!="windows" {
-            list = str.Split(s,lsep)
-        } else {
-            list = str.Split(str.Replace(s, lsep, "\n", -1), "\n")
-        }
-
-        llen:=len(list)
-
-        var newstring str.Builder
-        newstring.Grow(20)
-        if llen>0 {
-            for k:=0; k<llen-1; k++ {
-                if len(list[k])>0 {
-                    newstring.WriteString(sf("\033[%dC%s%s",dist,list[k],lsep))
-                } else {
-                    newstring.WriteString("\n")
-                }
-            }
-        }
-
-        // always remove trailing lsep 
-        s=newstring.String()
-        if s[len(s)-1] == '\n' {
-            s = s[:len(s)-len(lsep)]
-        }
-
-        return s,nil
-
+        return inset(s,dist),nil
     }
 
     slhelp["line_head"] = LibHelp{in: "nl_string,count", out: "nl_string", action: "Returns the top [#i1]count[#i0] lines of [#i1]nl_string[#i0]."}
