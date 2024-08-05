@@ -17,6 +17,8 @@ es
 struct tui_style
     bg      string
     fg      string
+    hi_bg   string
+    hi_fg   string
     border  map[string]string
     fill    bool
     wrap    bool
@@ -46,6 +48,8 @@ s.bg=bg.as_string
 s.fg=fg.as_string
 s.border=border
 s.fill=true
+s.hi_fg="2"
+s.hi_bg="7"
 
 tui_screen(1)
 t.tui_box(s)
@@ -57,10 +61,9 @@ menu.prompt ="Please select an option:"
 menu.cursor="[#b1][#6]*[##][#-]"
 
 result=menu.tui_menu(s)
-println "menu result -> ",result
 
 # cleanup
-keypress()
 tui_screen(0)
+println "menu result -> ",result
 cursoron()
 

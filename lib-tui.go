@@ -25,6 +25,8 @@ type tui_style struct {
     border  map[string]string
     fill    bool
     wrap    bool 
+    hi_bg   string
+    hi_fg   string
 }
 
 
@@ -116,10 +118,15 @@ func tui_menu(t tui,s tui_style) (result int) {
     prompt:=t.prompt
     bg:=s.bg
     fg:=s.fg
+    hi_bg:=s.hi_bg
+    hi_fg:=s.hi_fg
 
     addbg:=""; addfg:=""
+    addhibg:=""; addhifg:=""
     if bg!="" { addbg="[#b"+bg+"]" }
     if fg!="" { addfg="[#"+fg+"]" }
+    if hi_bg!="" { addhibg="[#b"+hi_bg+"]" }
+    if hi_fg!="" { addhifg="[#"+hi_fg+"]" }
     pf(addbg); pf(addfg)
 
     absat(row+2,col+2)
@@ -159,12 +166,12 @@ func tui_menu(t tui,s tui_style) (result int) {
     for ;!finished; {
 
         absat(row+4+sel,col+4); pf(cursor)
-        // at(4+sel,6,"[#3]",t.options[sel],"[#-]")
+        absat(row+4+sel,col+6); pf(addhibg+addhifg+t.options[sel].(string)+"[##][#-]")
         k:=wrappedGetCh(0,false)
         absat(row+4+sel,col+4)
         pf(addbg); pf(addfg)
         pf(" ")
-        // at(4+sel,6,t.options[sel])
+        at(row+4+sel,col+6); pf(t.options[sel].(string))
 
         //if k>=49 && k<maxchoice {
         //    result=k-48
