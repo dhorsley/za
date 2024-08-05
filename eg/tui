@@ -29,9 +29,9 @@ seed(-1)
 
 t=tui_new()
 s=tui_new_style()
-t.row=rand(term_h()-20)
-t.col=rand(term_w()-50)
-t.height=term_h().rand
+t.row=10
+t.col=10
+t.height=20
 t.width=30
 t.title="test panel"
 
@@ -42,26 +42,25 @@ for ,bg==fg,
 endfor
 border["bg"]=bg.as_string
 border["fg"]=fg.as_string
+s.bg=bg.as_string
+s.fg=fg.as_string
 s.border=border
 s.fill=true
 
 tui_screen(1)
-tui_box(t,s)
+t.tui_box(s)
+
+menu=tui_new()
+menu.row,menu.col,menu.action = [10,10,"menu"]
+menu.options=["one","two","three"]
+menu.prompt ="Please select an option:"
+menu.cursor="[#b1][#6]*[##][#-]"
+
+result=menu.tui_menu(s)
+println "menu result -> ",result
 
 # cleanup
 keypress()
 tui_screen(0)
 cursoron()
-exit
-
-menu=tui_new()
-menu.x,menu.y,menu.action = [10,10,"hcheck"]
-menu.options=["one","two","three"]
-menu.title  ="test check box"
-menu.prompt ="Please select an option:"
-menu_style=tui_new_style()
-
-println menu
-result=tui(menu)
-println result
 

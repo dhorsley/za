@@ -37,7 +37,7 @@ type tui_style struct {
    input box
    cascading input selector
    mouse support
-   movable panes
+   movable panes? 
 
 */
 
@@ -66,8 +66,10 @@ func tui_box(row,col,height,width int,title string,s tui_style) {
     bg:=s.border["bg"]
     fg:=s.border["fg"]
 
-    if bg!="" { pf("[#b"+bg+"]") }
-    if fg!="" { pf("[#"+fg+"]") }
+    addbg:=""; addfg:=""
+    if bg!="" { addbg="[#b"+bg+"]" }
+    if fg!="" { addfg="[#"+fg+"]" }
+    pf(addbg); pf(addfg)
 
     // top
     absat(row,col)
@@ -104,86 +106,87 @@ func tui_box(row,col,height,width int,title string,s tui_style) {
 
 }
 
+
 /////////////////////////////////////////////////////////////////
-/*
-func menu(t tui,s tui_style) {
+
+func tui_menu(t tui,s tui_style) (result int) {
     row:=t.row
     col:=t.col
     cursor:=t.cursor
-    title:=t.title
     prompt:=t.prompt
     bg:=s.bg
     fg:=s.fg
-    border:=s.border
-    wrap:=s.wrap
-    cursoroff()
 
-    at 2,10
-    print "[#b1]{p}[##]"
+    addbg:=""; addfg:=""
+    if bg!="" { addbg="[#b"+bg+"]" }
+    if fg!="" { addfg="[#"+fg+"]" }
+    pf(addbg); pf(addfg)
 
-    sel=0
-    ol=opts.len
+    absat(row+2,col+2)
+    pf(prompt)
 
-    # determine shortcut keys per option
-    case
-    has ol<10
-        key_range = "1".asc .. "1".asc+ol-1
-        break
-    has ol<30
-        key_range = ( "1".asc .. "9".asc ) +  ( "a".asc .. "a".asc+ol-10 )
-        break
-    has ol>=30
-        key_range = nil
-    ec
+    sel:=0
 
-    # display menu
-    foreach p in opts
-        at 4+key_p,12
-        short_code=" "
-        on key_range!=nil do short_code=key_range[key_p].char
-        print "[#b1][{=short_code}][##] {p}"
-    endfor
+    /*
+    ol:=len(t.options)
+    key_range = -1
+    // determine shortcut keys per option
+    if t.shortcut {
+        if ol<30 {
+            key_range = ( "1".asc .. "9".asc ) +  ( "a".asc .. "a".asc+ol-10 )
+        } else {
+            if ol<10 {
+                key_range = "1".asc .. "1".asc+ol-1
+            }
+        }
+    } 
+    */
 
-    maxchoice=49+len(opts)
+    // display menu
+    for k,p := range t.options {
+        absat(row+4+k,col+6)
+        // short_code=" "
+        // on key_range!=nil do short_code=key_range[key_p].char
+        pf(p.(string))
+        // "[{=short_code}]{p}"
+    }
 
-    at 5+opts.len,10
-    print "[#b2][q][##] Quit menu"
+    // maxchoice=49+len(t.options)
 
-    # input loop
-    finished=false
-    n=-1
-    while n==-1 and not finished
+    // input loop
+    finished:=false
 
-        at 4+sel,10,"[#invert]-[#-]"
-        at 4+sel,16,"[#3]",opts[sel],"[#-]"
-        k=keypress()
-        at 4+sel,10," "
-        at 4+sel,16,opts[sel]
+    for ;!finished; {
 
-        if k>=49 && k<maxchoice
-            n=k-48
-        endif
+        absat(row+4+sel,col+4); pf(cursor)
+        // at(4+sel,6,"[#3]",t.options[sel],"[#-]")
+        k:=wrappedGetCh(0,false)
+        absat(row+4+sel,col+4)
+        pf(addbg); pf(addfg)
+        pf(" ")
+        // at(4+sel,6,t.options[sel])
 
-        on char(k)=="q" do break
+        //if k>=49 && k<maxchoice {
+        //    result=k-48
+        //}
 
-        case k
-        is 11
-            sel=sel-btoi(sel>0)
-        is 10
-            sel=sel+btoi(sel<opts.len-1)
-        is 13
-            n=sel+1
+        if k=='q' || k=='Q' {
+            break
+        }
+
+        switch k {
+        case 11:
+            if sel>0 { sel-- }
+        case 10:
+            if sel<len(t.options)-1 { sel++ }
+        case 13:
+            result=sel+1
             finished=true
-        ec
+        }
 
-    endwhile
-
-    cursoron()
-    return n
-
-end
-
-*/
+    }
+    return result
+}
 
 /////////////////////////////////////////////////////////////////
 
@@ -255,7 +258,7 @@ func buildTuiLib() {
         return "",err
     }
 
-    slhelp["tui_box"] = LibHelp{in: "tui_struct", out: "", action: "draw box"}
+    slhelp["tui_box"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "draw box"}
     stdlib["tui_box"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tui_box",args,2,
             "1","main.tui",
@@ -265,6 +268,17 @@ func buildTuiLib() {
         if len(args)==2 { s=args[1].(tui_style) }
         tui_box(t.row,t.col,t.height,t.width,t.title,s) 
         return nil,err
+    }
+
+    slhelp["tui_menu"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "present menu"}
+    stdlib["tui_menu"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_menu",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        return tui_menu(t,s),err
     }
 
 }
