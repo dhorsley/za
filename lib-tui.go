@@ -171,7 +171,7 @@ func tui_menu(t tui,s tui_style) (result int) {
         absat(row+4+sel,col+4)
         pf(addbg); pf(addfg)
         pf(" ")
-        at(row+4+sel,col+6); pf(t.options[sel].(string))
+        absat(row+4+sel,col+6); pf(t.options[sel].(string))
 
         //if k>=49 && k<maxchoice {
         //    result=k-48
