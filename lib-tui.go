@@ -62,7 +62,7 @@ func priScreen() {
    may add a left/right/full justify option to it later.
 */
 const nbsp = 0xA0
-func WrapString(s string, lim uint) string {
+func wrapString(s string, lim uint) string {
 	// Initialize a buffer with a slightly larger size to account for breaks
 	init := make([]byte, 0, len(s))
 	buf := bytes.NewBuffer(init)
@@ -132,8 +132,21 @@ func WrapString(s string, lim uint) string {
 }
 /* end of theft */
 
+
+// at row,col, width of t.width-2, print wordWrap'd t.content using inset() to move line starts to col+1
 func tui_text(t tui,s tui_style) {
-    // at row,col, width of t.width-2, print wordWrap'd t.content using inset() to move line starts to col+2
+    addbg:=""; addfg:=""
+    if s.bg!="" { addbg="[#b"+s.bg+"]" }
+    if s.fg!="" { addfg="[#"+s.fg+"]" }
+    pf(addbg); pf(addfg)
+
+    absat(t.row,t.col+1)
+    var w uint
+    w=uint(t.width-2)
+    pf(inset(wrapString(t.content,w),t.col+1))
+    // may have to tame this a bit (max rows can be exceeded. bg+fg can spill.
+    // might need to split to array on \n, then loop over each line, adding bg+fg and removing at end.
+    //  possibly need to trim col length on each line too.
 }
 
 
@@ -312,7 +325,7 @@ func buildTuiLib() {
 
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
-        "tui_new","tui_new_style","tui","tui_box","tui_screen",
+        "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_menu",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -363,7 +376,6 @@ func buildTuiLib() {
         t:=args[0].(tui)
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
-        // tui_box(t.row,t.col,t.height,t.width,t.title,s) 
         tui_box(t,s) 
         return nil,err
     }
@@ -381,7 +393,7 @@ func buildTuiLib() {
     }
 
 
-    slhelp["tui_menu"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "present menu"}
+    slhelp["tui_menu"] = LibHelp{in: "tui_struct[,tui_style]", out: "int_selection_position", action: "present menu"}
     stdlib["tui_menu"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tui_menu",args,2,
             "1","main.tui",

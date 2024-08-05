@@ -23,6 +23,8 @@ CHANGE LOG
             tui_new_style   : create a default style
             tui_screen      : switch screen buffers
             tui_box         : direct call to border fn
+            tui_text        : display text block
+            tui_menu        : present options menu
             ...
         - others to be added
 
