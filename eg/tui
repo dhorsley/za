@@ -12,6 +12,7 @@ struct tui
     cursor  string
     title   string
     prompt  string
+    content string
 es
 
 struct tui_style
@@ -65,8 +66,15 @@ menu.cursor="[#b1][#6]*[##][#-]"
 
 result=menu.tui_menu(s)
 
+# output text
+cls
+t.content=$in "CHANGELOG"
+t.tui_text(s)
+
 # cleanup
+keypress()
 tui_screen(0)
+
 println "menu result -> ",result
 println "     option -> ",menu.options[result-1]
 cursoron()
