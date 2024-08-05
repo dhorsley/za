@@ -4,8 +4,8 @@ package main
 
 import (
     "fmt"
-	"bytes"
-	"unicode"
+    "bytes"
+    "unicode"
     str "strings"
 )
 
@@ -54,6 +54,12 @@ func priScreen() {
     pf("\033[?1049l")
 }
 
+func absClearChars(row int,col int,l int) {
+    if l<1 { return }
+    absat(row,col)
+    fmt.Print(str.Repeat(" ",l))
+}
+
 
 /* mitchell hashimoto word wrap code below
     from: https://github.com/mitchellh/go-wordwrap/blob/master/wordwrap.go
@@ -63,75 +69,116 @@ func priScreen() {
 */
 const nbsp = 0xA0
 func wrapString(s string, lim uint) string {
-	// Initialize a buffer with a slightly larger size to account for breaks
-	init := make([]byte, 0, len(s))
-	buf := bytes.NewBuffer(init)
+    // Initialize a buffer with a slightly larger size to account for breaks
+    init := make([]byte, 0, len(s))
+    buf := bytes.NewBuffer(init)
 
-	var current uint
-	var wordBuf, spaceBuf bytes.Buffer
-	var wordBufLen, spaceBufLen uint
+    var current uint
+    var wordBuf, spaceBuf bytes.Buffer
+    var wordBufLen, spaceBufLen uint
 
-	for _, char := range s {
-		if char == '\n' {
-			if wordBuf.Len() == 0 {
-				if current+spaceBufLen > lim {
-					current = 0
-				} else {
-					current += spaceBufLen
-					spaceBuf.WriteTo(buf)
-				}
-				spaceBuf.Reset()
-				spaceBufLen = 0
-			} else {
-				current += spaceBufLen + wordBufLen
-				spaceBuf.WriteTo(buf)
-				spaceBuf.Reset()
-				spaceBufLen = 0
-				wordBuf.WriteTo(buf)
-				wordBuf.Reset()
-				wordBufLen = 0
-			}
-			buf.WriteRune(char)
-			current = 0
-		} else if unicode.IsSpace(char) && char != nbsp {
-			if spaceBuf.Len() == 0 || wordBuf.Len() > 0 {
-				current += spaceBufLen + wordBufLen
-				spaceBuf.WriteTo(buf)
-				spaceBuf.Reset()
-				spaceBufLen = 0
-				wordBuf.WriteTo(buf)
-				wordBuf.Reset()
-				wordBufLen = 0
-			}
+    for _, char := range s {
+        if char == '\n' {
+            if wordBuf.Len() == 0 {
+                if current+spaceBufLen > lim {
+                    current = 0
+                } else {
+                    current += spaceBufLen
+                    spaceBuf.WriteTo(buf)
+                }
+                spaceBuf.Reset()
+                spaceBufLen = 0
+            } else {
+                current += spaceBufLen + wordBufLen
+                spaceBuf.WriteTo(buf)
+                spaceBuf.Reset()
+                spaceBufLen = 0
+                wordBuf.WriteTo(buf)
+                wordBuf.Reset()
+                wordBufLen = 0
+            }
+            buf.WriteRune(char)
+            current = 0
+        } else if unicode.IsSpace(char) && char != nbsp {
+            if spaceBuf.Len() == 0 || wordBuf.Len() > 0 {
+                current += spaceBufLen + wordBufLen
+                spaceBuf.WriteTo(buf)
+                spaceBuf.Reset()
+                spaceBufLen = 0
+                wordBuf.WriteTo(buf)
+                wordBuf.Reset()
+                wordBufLen = 0
+            }
 
-			spaceBuf.WriteRune(char)
-			spaceBufLen++
-		} else {
-			wordBuf.WriteRune(char)
-			wordBufLen++
+            spaceBuf.WriteRune(char)
+            spaceBufLen++
+        } else {
+            wordBuf.WriteRune(char)
+            wordBufLen++
 
-			if current+wordBufLen+spaceBufLen > lim && wordBufLen < lim {
-				buf.WriteRune('\n')
-				current = 0
-				spaceBuf.Reset()
-				spaceBufLen = 0
-			}
-		}
-	}
+            if current+wordBufLen+spaceBufLen > lim && wordBufLen < lim {
+                buf.WriteRune('\n')
+                current = 0
+                spaceBuf.Reset()
+                spaceBufLen = 0
+            }
+        }
+    }
 
-	if wordBuf.Len() == 0 {
-		if current+spaceBufLen <= lim {
-			spaceBuf.WriteTo(buf)
-		}
-	} else {
-		spaceBuf.WriteTo(buf)
-		wordBuf.WriteTo(buf)
-	}
+    if wordBuf.Len() == 0 {
+        if current+spaceBufLen <= lim {
+            spaceBuf.WriteTo(buf)
+        }
+    } else {
+        spaceBuf.WriteTo(buf)
+        wordBuf.WriteTo(buf)
+    }
 
-	return buf.String()
+    return buf.String()
 }
 /* end of theft */
 
+func tui_text_modal(t tui,s tui_style) {
+    addbg:=""; addfg:=""
+    if s.bg!="" { addbg="[#b"+s.bg+"]" }
+    if s.fg!="" { addfg="[#"+s.fg+"]" }
+    pf(addbg); pf(addfg)
+
+    cpos:=0
+    
+    var w uint
+    w=uint(t.width-2)
+    rs:=wrapString(t.content,w)
+    ra:=str.Split(rs,"\n")
+
+    quit:=false
+    for ;!quit; {
+        max:=t.height-1
+        if cpos+t.height-1>len(ra) { max=len(ra)-cpos }
+        for k,v:=range ra[cpos:cpos+max] {
+            absClearChars(t.row+k+1,t.col+1,t.width-2)
+            absat(t.row+k+1,t.col+1)
+            pf(addbg+addfg+v)
+            absClearChars(t.row+k+1,t.col+1+len(v),t.width-2-len(v))
+        }
+        pf("[##][#-]")
+        k:=wrappedGetCh(0,false)
+        switch k {
+        case 10: //down
+            if cpos<len(ra)-t.height { cpos++ }
+        case 11: //up
+            if cpos>0 { cpos-- }
+        case 'q','Q',27:
+            quit=true
+        case 'b',15:
+            cpos-=t.height
+            if cpos<0 { cpos=0 }
+        case ' ',14:
+            cpos+=t.height
+            if cpos>len(ra)-t.height { cpos=len(ra)-t.height }
+        }
+    }
+}
 
 // at row,col, width of t.width-2, print wordWrap'd t.content using inset() to move line starts to col+1
 func tui_text(t tui,s tui_style) {
@@ -140,17 +187,21 @@ func tui_text(t tui,s tui_style) {
     if s.fg!="" { addfg="[#"+s.fg+"]" }
     pf(addbg); pf(addfg)
 
-    absat(t.row,t.col+1)
     var w uint
     w=uint(t.width-2)
-    pf(inset(wrapString(t.content,w),t.col+1))
-    // may have to tame this a bit (max rows can be exceeded. bg+fg can spill.
-    // might need to split to array on \n, then loop over each line, adding bg+fg and removing at end.
-    //  possibly need to trim col length on each line too.
+    rs:=wrapString(t.content,w)
+    ra:=str.Split(rs,"\n")
+    if len(ra)>t.height-2 {
+        ra=ra[len(ra)-t.height:]
+    }
+    for k,v:=range ra {
+        absat(t.row+k+1,t.col+1)
+        pf(addbg+addfg+v)
+    }
+    pf("[##][#-]")
 }
 
 
-// func tui_box(row,col,height,width int,title string,s tui_style) {
 func tui_box(t tui,s tui_style) {
 
     row:=t.row; col:=t.col
@@ -325,7 +376,7 @@ func buildTuiLib() {
 
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
-        "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_menu",
+        "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -364,6 +415,7 @@ func buildTuiLib() {
         case "box"  : stdlib["tui_box"](ns,evalfs,ident,t,s)
         case "menu" : stdlib["tui_menu"](ns,evalfs,ident,t,s)
         case "text" : stdlib["tui_text"](ns,evalfs,ident,t,s)
+        case "modal": stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
         }
         return "",err
     }
@@ -389,6 +441,18 @@ func buildTuiLib() {
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
         tui_text(t,s)
+        return nil,err
+    }
+
+    slhelp["tui_text_modal"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "pager for text"}
+    stdlib["tui_text_modal"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_text_modal",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        tui_text_modal(t,s)
         return nil,err
     }
 
