@@ -33,8 +33,8 @@ t=tui_new()
 s=tui_new_style()
 t.row=10
 t.col=10
-t.height=20
-t.width=30
+t.height=15
+t.width=60
 t.title="test panel"
 
 border=s.border
@@ -56,7 +56,10 @@ t.tui_box(s)
 
 menu=tui_new()
 menu.row,menu.col,menu.action = [10,10,"menu"]
-menu.options=["one","two","three"]
+menu.options=[
+    "cow","pig","cat","dog",
+    "sheep","horse","monkey","spider","hamster",
+]
 menu.prompt ="Please select an option:"
 menu.cursor="[#b1][#6]*[##][#-]"
 
@@ -65,5 +68,6 @@ result=menu.tui_menu(s)
 # cleanup
 tui_screen(0)
 println "menu result -> ",result
+println "     option -> ",menu.options[result-1]
 cursoron()
 
