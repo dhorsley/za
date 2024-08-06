@@ -64,10 +64,12 @@ t.height,t.width,t.title=[30,118,"modal text box"]
 t.tui_box(s)
 t.content=$in "CHANGELOG"
 t.tui_text_modal(s)
+t.tui_clear
 
 # cleanup
-tui_screen(0)
+# tui_screen(0)
 
+at term_h(),1
 println "menu result -> ",result
 on result>0 do println "     option -> ",menu.options[result-1]
 cursoron()
