@@ -20,6 +20,7 @@ type tui struct {
     title   string
     prompt  string
     content string
+    value   float64
 }
 
 type tui_style struct {
@@ -38,7 +39,6 @@ type tui_style struct {
    horizontal menu
    drop-down selector
    horizontal radio button
-   progress bar
    input box
    cascading input selector
    mouse support?
@@ -140,6 +140,44 @@ func wrapString(s string, lim uint) string {
 }
 /* end of theft */
 
+
+func tui_progress(t tui,s tui_style) {
+    hsize:=t.width
+    row:=t.row
+    col:=t.col
+    pc:=t.value
+    colour:="[#"+s.fg+"]"
+
+    part_3q:="▊"
+    part_2q:="▌"
+    part_1q:="▎"
+    us := float64(hsize) / 100.0   // 1% width of total
+    d  := pc*us                    // width of input percent
+    r  := d-float64(int(d))        // remainder
+
+    if pc==0 {
+        absat(row,col)
+        fmt.Print(rep(" ",hsize))
+        return
+    }
+
+    for e:=0;e<hsize;e+=1 {
+        absat(row,col+e)
+        c:=" "
+        if e<int(d) {
+            c="█"
+        } else {
+            if e<int(d+1) {
+                if r>=0.25*us { c=part_1q }
+                if r>=0.50*us { c=part_2q }
+                if r>=0.75*us { c=part_3q }
+            }
+        }
+        pf(colour+c+"[#-]")
+    }
+}
+
+
 func tui_text_modal(t tui,s tui_style) {
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
@@ -149,9 +187,24 @@ func tui_text_modal(t tui,s tui_style) {
     cpos:=0
     
     var w uint
+    var rs string
     w=uint(t.width-3)
-    rs:=wrapString(t.content,w)
+    if s.wrap {
+        rs=wrapString(t.content,w)
+    } else {
+        rs=t.content
+    }
     ra:=str.Split(rs,"\n")
+    if !s.wrap {
+        // do something to clip long lines here
+        //  if we add horizontal scroll bars later, this will
+        //  need to change to a bounded clip on display instead.
+        for k,v:=range ra {
+            if len(v) > t.width-2 {
+                ra[k]=ra[k][:t.width-2]
+            }
+        }
+    }
 
     quit:=false
     max:=t.height-1
@@ -187,7 +240,7 @@ func tui_text_modal(t tui,s tui_style) {
     }
 }
 
-// at row,col, width of t.width-2, print wordWrap'd t.content using inset() to move line starts to col+1
+// at row,col, width of t.width-2, print wordWrap'd t.content
 func tui_text(t tui,s tui_style) {
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
@@ -384,6 +437,7 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
+        "tui_progress",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -415,16 +469,32 @@ func buildTuiLib() {
     slhelp["tui"] = LibHelp{in: "tui_struct", out: "result", action: "perform tui action"}
     stdlib["tui"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         // pf("tui in  %#v\n",args[0])
-        if ok,err:=expect_args("tui",args,1,"1","main.tui"); !ok { return nil,err }
+        if ok,err:=expect_args("tui",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
         t:=args[0].(tui)
         s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
         switch str.ToLower(t.action) {
-        case "box"  : stdlib["tui_box"](ns,evalfs,ident,t,s)
-        case "menu" : stdlib["tui_menu"](ns,evalfs,ident,t,s)
-        case "text" : stdlib["tui_text"](ns,evalfs,ident,t,s)
-        case "modal": stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
+        case "box"      : stdlib["tui_box"](ns,evalfs,ident,t,s)
+        case "menu"     : stdlib["tui_menu"](ns,evalfs,ident,t,s)
+        case "text"     : stdlib["tui_text"](ns,evalfs,ident,t,s)
+        case "modal"    : stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
+        case "progress" : stdlib["tui_text_progress"](ns,evalfs,ident,t,s)
         }
         return "",err
+    }
+
+    slhelp["tui_progress"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "update a progress bar"}
+    stdlib["tui_progress"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_progress",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        tui_progress(t,s) 
+        return nil,err
     }
 
     slhelp["tui_box"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "draw box"}
