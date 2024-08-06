@@ -37,15 +37,12 @@ type tui_style struct {
 
 /*
    actions to add:
-   horizontal menu
-   drop-down selector
-   horizontal radio button
+   horizontal / vertical radio button (single/multi-selector)
    input box
-   cascading input selector
    mouse support?
-   movable panes? 
-   call-back support and async actions?
+   call-back support and async actions? timers?
 */
+
 
 // switch to secondary buffer
 func secScreen() {
