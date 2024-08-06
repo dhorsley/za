@@ -22,6 +22,9 @@ type tui struct {
     content string
     value   float64
     bdrawn  bool
+    data    any
+    format  string
+    sep     string
 }
 
 type tui_style struct {
@@ -37,8 +40,39 @@ type tui_style struct {
 
 /*
    actions to add:
+
    horizontal / vertical radio button (single/multi-selector)
+
+   table data output formatting (and pass through to pager)
+    - possible input formats, specified in tui.format/tui.sep, with data in tui.data:
+      - csv, tsv, space or pipe delimited (or some other custom separator)
+      - array of struct
+      - newline separated (i.e. consume fixed number of lines)?
+      - newline separated with record separator (consume variable lines as columns)?
+      - json?
+      - yaml/toml/etc?
+      - option to bypass pager and go straight to stdout or file
+    - this would require some further style choices
+      - e.g. fixed bg/fg for table/columns.
+      - per column and row options for colour
+      - modulus-based bg for rows (i.e. fixed/odd/even/every X bg shading)
+      - inner border styles as well as outer
+    - column headings should be optional
+    - table title should be taken from tui.title if present.
+    - tui.height would be ignored
+    - tui.width could be ignored, flag dependent.
+      - i.e. permit dynamic growth of width to accommodate columns.
+
+   structured templates:
+    - i.e. pass in a template and a struct,
+    - var replacement in template using struct fields
+    - then output parsed template using tui_text. (and style)
+
    input box
+    - title and prompt, with border support and colour styling
+    - optional input validation (free if re-using getInput()
+    - optional masked input (again, free if re-using getInput()
+
    mouse support?
    call-back support and async actions? timers?
 */
