@@ -33,7 +33,7 @@ seed(-1)
 
 t=tui_new()
 s=tui_new_style()
-t.row=4
+t.row=5
 t.col=10
 t.height=15
 t.width=100
@@ -72,10 +72,10 @@ pb=tui_new()
 pb.row,pb.col,pb.action = [2,20,"progress"]
 pb.width=80
 s.fg="5"
-for e=1 to 50
-    pb.value=e.as_float
+for e=1 to 100
+    pb.value=e.as_float/100
     pb.tui_progress(s)
-    pause 50
+    pause 25
 endfor
 keypress()
 
