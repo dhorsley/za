@@ -1,33 +1,5 @@
 #!/usr/bin/za
 
-doc `
-
-struct tui
-    row     int
-    col     int
-    height  int
-    width   int
-    action  string
-    options []
-    cursor  string
-    title   string
-    prompt  string
-    content string
-    value   float
-es
-
-struct tui_style
-    bg      string
-    fg      string
-    hi_bg   string
-    hi_fg   string
-    border  map[string]string
-    fill    bool
-    wrap    bool
-es
-
-`
-
 cursoroff()
 seed(-1)
 
