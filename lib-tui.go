@@ -21,6 +21,7 @@ type tui struct {
     prompt  string
     content string
     value   float64
+    bdrawn  bool
 }
 
 type tui_style struct {
@@ -147,20 +148,27 @@ func tui_progress(t tui,s tui_style) {
     col:=t.col
     pc:=t.value
     colour:="[#"+s.fg+"]"
+    if pc==0 {
+        absat(row,col)
+        fmt.Print(rep(" ",hsize))
+        border:=empty_border_map
+        tui_box(
+            tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
+            tui_style{ border:border },
+        )
+        return
+    } else {
+        if !t.bdrawn { tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 }, s) }
+        t.bdrawn=true
+    }
 
     part_3q:="▊"
     part_2q:="▌"
     part_1q:="▎"
-    us := float64(hsize) / 100.0   // 1% width of total
-    d  := pc*us                    // width of input percent
+    d  := pc*float64(hsize)        // width of input percent
     r  := d-float64(int(d))        // remainder
 
-    if pc==0 {
-        absat(row,col)
-        fmt.Print(rep(" ",hsize))
-        return
-    }
-
+    pf(colour)
     for e:=0;e<hsize;e+=1 {
         absat(row,col+e)
         c:=" "
@@ -168,13 +176,14 @@ func tui_progress(t tui,s tui_style) {
             c="█"
         } else {
             if e<int(d+1) {
-                if r>=0.25*us { c=part_1q }
-                if r>=0.50*us { c=part_2q }
-                if r>=0.75*us { c=part_3q }
+                if r>=0.25 { c=part_1q }
+                if r>=0.50 { c=part_2q }
+                if r>=0.75 { c=part_3q }
             }
         }
-        pf(colour+c+"[#-]")
+        fmt.Print(c)
     }
+    // pf("[#-]")
 }
 
 
@@ -312,7 +321,7 @@ func tui_box(t tui,s tui_style) {
     // title
     if title != "" {
         absat(row,col+4)
-        pf(title)
+        pf(" "+title+" ")
     }
 
     if bg!="" { pf("[##]") }
@@ -411,6 +420,7 @@ func tui_menu(t tui,s tui_style) (result int) {
 
 var default_tui_style tui_style
 var default_border_map map[string]string
+var empty_border_map map[string]string
 
 func buildTuiLib() {
 
@@ -425,6 +435,18 @@ func buildTuiLib() {
     default_border_map["rm"]="│"
     default_border_map["bg"]="0"
     default_border_map["fg"]="7"
+
+    empty_border_map = make(map[string]string,10)
+    empty_border_map["tl"]=" "
+    empty_border_map["tr"]=" "
+    empty_border_map["bl"]=" "
+    empty_border_map["br"]=" "
+    empty_border_map["tm"]=" "
+    empty_border_map["bm"]=" "
+    empty_border_map["lm"]=" "
+    empty_border_map["rm"]=" "
+    empty_border_map["bg"]="default"
+    empty_border_map["fg"]="default"
 
     default_tui_style = tui_style{
         bg: "0", 
