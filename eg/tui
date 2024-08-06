@@ -43,7 +43,8 @@ result=menu.tui_menu(s)
 pb=tui_new()
 pb.row,pb.col,pb.action = [2,20,"progress"]
 pb.width=80
-s.fg="5"
+pb.cursor="▒"
+s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
 for e=1 to 100
     pb.value=e.as_float/100
     pb.tui_progress(s)

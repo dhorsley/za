@@ -147,7 +147,13 @@ func tui_progress(t tui,s tui_style) {
     row:=t.row
     col:=t.col
     pc:=t.value
-    colour:="[#"+s.fg+"]"
+    c:="█"
+    if t.cursor != "" { c=t.cursor }
+
+    hideCursor()
+    bgcolour:="[#b"+s.bg+"]"
+    fgcolour:="[#"+s.fg+"]"
+
     if pc==0 {
         absat(row,col)
         fmt.Print(rep(" ",hsize))
@@ -162,28 +168,15 @@ func tui_progress(t tui,s tui_style) {
         t.bdrawn=true
     }
 
-    part_3q:="▊"
-    part_2q:="▌"
-    part_1q:="▎"
     d  := pc*float64(hsize)        // width of input percent
-    r  := d-float64(int(d))        // remainder
 
-    pf(colour)
+    absat(row,col)
+    pf(bgcolour+fgcolour)
     for e:=0;e<hsize;e+=1 {
-        absat(row,col+e)
-        c:=" "
-        if e<int(d) {
-            c="█"
-        } else {
-            if e<int(d+1) {
-                if r>=0.25 { c=part_1q }
-                if r>=0.50 { c=part_2q }
-                if r>=0.75 { c=part_3q }
-            }
-        }
+        if e>int(d) { break }
         fmt.Print(c)
     }
-    // pf("[#-]")
+    pf("[#-]")
 }
 
 
