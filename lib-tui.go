@@ -36,12 +36,14 @@ type tui_style struct {
 /*
    actions to add:
    horizontal menu
+   drop-down selector
+   horizontal radio button
    progress bar
    input box
    cascading input selector
    mouse support?
    movable panes? 
-
+   call-back support and async actions?
 */
 
 // switch to secondary buffer
@@ -147,13 +149,13 @@ func tui_text_modal(t tui,s tui_style) {
     cpos:=0
     
     var w uint
-    w=uint(t.width-2)
+    w=uint(t.width-3)
     rs:=wrapString(t.content,w)
     ra:=str.Split(rs,"\n")
 
     quit:=false
+    max:=t.height-1
     for ;!quit; {
-        max:=t.height-1
         if cpos+t.height-1>len(ra) { max=len(ra)-cpos }
         for k,v:=range ra[cpos:cpos+max] {
             absClearChars(t.row+k+1,t.col+1,t.width-2)
@@ -162,6 +164,11 @@ func tui_text_modal(t tui,s tui_style) {
             absClearChars(t.row+k+1,t.col+1+len(v),t.width-2-len(v))
         }
         pf("[##][#-]")
+        // scroll position
+        scroll_pos:=int(float64(cpos)*float64(t.height-1)/float64(len(ra)))
+        absat(t.row+1+scroll_pos,t.col+t.width-2)
+        pf("[#invert]*[#-]")
+        // process keypresses
         k:=wrappedGetCh(0,false)
         switch k {
         case 10: //down
