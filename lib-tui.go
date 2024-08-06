@@ -270,6 +270,13 @@ func tui_text(t tui,s tui_style) {
     pf("[##][#-]")
 }
 
+func tui_clear(t tui, s tui_style) {
+    pf("[##][#-]") 
+    for e:=0;e<t.height+1;e+=1 {
+        absat(t.row+e,t.col)
+        fmt.Print(rep(" ",t.width))
+    }
+}
 
 func tui_box(t tui,s tui_style) {
 
@@ -301,7 +308,7 @@ func tui_box(t tui,s tui_style) {
     fmt.Print(tr)
 
     // sides
-    for r:=row+1; r<row+height; r++ {
+    for r:=row+1; r<row+height; r+=1 {
         absat(r,col)
         fmt.Print(lm)
         if s.fill {
@@ -516,6 +523,18 @@ func buildTuiLib() {
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
         tui_progress(t,s) 
+        return nil,err
+    }
+
+    slhelp["tui_clear"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "clear a tui element's area"}
+    stdlib["tui_clear"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_clear",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        tui_clear(t,s) 
         return nil,err
     }
 
