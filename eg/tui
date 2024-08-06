@@ -68,7 +68,7 @@ t.tui_text_modal(s)
 t.tui_clear
 
 # cleanup
-# tui_screen(0)
+tui_screen(0)
 
 at term_h(),1
 println "menu result -> ",result
