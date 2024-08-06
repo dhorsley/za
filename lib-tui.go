@@ -240,10 +240,10 @@ func tui_text_modal(t tui,s tui_style) {
         case 'q','Q',27:
             quit=true
         case 'b',15:
-            cpos-=t.height
+            cpos-=t.height-1
             if cpos<0 { cpos=0 }
         case ' ',14:
-            cpos+=t.height
+            cpos+=t.height-1
             if cpos>len(ra)-t.height { cpos=len(ra)-t.height }
         }
     }
