@@ -44,6 +44,17 @@ i.height,i.width=[1,80]
 s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
 ires=i.tui_input(s)
 
+# radio buttons
+rad=tui_new()
+rad.row,rad.col=[10,20]
+rad.prompt="Please select : "
+rad.options=["Red","Green","Blue","White"]
+rad.selected=[false,false,true,false].list_bool
+rad.vertical=true
+rad.sep=" : "
+rad.tui_radio(s)
+rres=rad.selected
+
 # .. reset some colours
 s.bg=bg.as_string
 s.fg=fg.as_string

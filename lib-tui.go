@@ -16,6 +16,8 @@ type tui struct {
     width   int
     action  string
     options []any
+    selected []bool
+    vertical bool
     cursor  string
     title   string
     prompt  string
@@ -41,8 +43,6 @@ type tui_style struct {
 
 /*
    actions to add:
-
-   horizontal / vertical radio button (single/multi-selector)
 
    table data output formatting (and pass through to pager)
     - possible input formats, specified in tui.format/tui.sep, with data in tui.data:
@@ -167,6 +167,56 @@ func wrapString(s string, lim uint) string {
     return buf.String()
 }
 /* end of theft */
+
+
+func str_inset(n int) (string) {
+    return sf("\033[%dG",n)
+}
+
+//   horizontal / vertical radio button (single/multi-selector)
+func tui_radio(t tui, s tui_style) {
+
+    options:=[]string{}
+    for _,v:=range t.options {
+        o:=GetAsString(v)
+        options=append(options,o)
+    }
+
+    cursor:="x"
+    if t.cursor!="" {
+        cursor=t.cursor
+    }
+
+    // build output string
+    op:=t.prompt
+    sep:=" "
+    if t.sep != "" { sep=t.sep }
+
+    for k:=0; k<len(options); k+=1 {
+        op+="["
+        if t.selected[k] {
+            op+=cursor
+        } else {
+            op+=" "
+        }
+        op+="] "+options[k]
+        if t.vertical {
+            op+="\n"+str_inset(t.col+len(t.prompt))
+        } else {
+            op+=sep
+        }
+    }
+
+    // display
+    absat(t.row,t.col)
+    pf(op)
+
+    // key loop
+    // key:=wrappedGetCh(0,false)
+    wrappedGetCh(0,false)
+
+}
+
 
 
 func tui_progress(t tui,s tui_style) {
@@ -592,6 +642,7 @@ func buildTuiLib() {
         case "text"     : stdlib["tui_text"](ns,evalfs,ident,t,s)
         case "modal"    : stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
         case "input"    : stdlib["tui_input"](ns,evalfs,ident,t,s)
+        case "radio"    : stdlib["tui_radio"](ns,evalfs,ident,t,s)
         case "progress" : stdlib["tui_text_progress"](ns,evalfs,ident,t,s)
         }
         return "",err
@@ -606,6 +657,18 @@ func buildTuiLib() {
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
         tui_progress(t,s) 
+        return nil,err
+    }
+
+    slhelp["tui_radio"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "checkbox selector"}
+    stdlib["tui_radio"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_radio",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        tui_radio(t,s) 
         return nil,err
     }
 
