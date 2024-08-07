@@ -296,8 +296,10 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         } else {
             fmt.Printf(str.Repeat(mask,inputL))
         }
-        for i:=irow+1+rowLen;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
-        at(irow+1,1); fmt.Printf(sparkle(helpstring))
+        if startedContextHelp {
+            for i:=irow+1+rowLen;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
+            at(irow+1,1); fmt.Printf(sparkle(helpstring))
+        }
 
         // move cursor to correct position (cpos)
         if irow==MH-BMARGIN && cursAtCol==1 { srow--; rowLen++; fmt.Printf("\n\033M") }
@@ -486,6 +488,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                             curHist = lastHist
                             orig_s = s
                         }
+                        clearChars(irow, icol, inputL)
                         if curHist > 0 {
                             curHist--
                             s = hist[curHist]
@@ -508,6 +511,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
                 if histEnable {
                     if navHist {
+                        clearChars(irow, icol, inputL)
                         if curHist < lastHist-1 {
                             curHist++
                             s = hist[curHist]
@@ -518,8 +522,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         cpos = len(s)
                         wordUnderCursor,_ = getWord(s, cpos)
                         if curHist != lastHist {
-                            l := displayedLen(s)
-                            clearChars(irow, icol, l)
                         }
                     }
                 }
@@ -585,7 +587,9 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     }
                 }
 
-                for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
+                if startedContextHelp {
+                    for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
+                }
             }
 
         } // paste or char input end

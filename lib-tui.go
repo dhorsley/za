@@ -358,7 +358,7 @@ func tui_clear(t tui, s tui_style) {
 
 func tui_input(t tui, s tui_style) (input string) {
 
-    // t.content : default value
+    // t.content : default value and output value on return
     // t.prompt  : prompt string
     // t.cursor  : echo mask
     // s.bg,s.fg : input colours
@@ -402,6 +402,8 @@ func tui_input(t tui, s tui_style) (input string) {
     if t.cursor!="" {
         gvset("@echomask",oldmask)
     }
+
+    t.content=input
 
     return
 }
