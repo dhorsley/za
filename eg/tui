@@ -76,15 +76,16 @@ i.content="blah"
 i.prompt="type away... "
 i.title="test input box"
 i.border=true
-i.height,i.width=[0,80]
+i.height,i.width=[1,80]
 s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
-i.tui_input(s)
+ires=i.tui_input(s)
 
 # cleanup
 # tui_screen(0)
 
 at term_h(),1
-println "menu result -> ",result
+println "menu result  -> ",result
+println "input result -> ",ires
 on result>0 do println "     option -> ",menu.options[result-1]
 cursoron()
 

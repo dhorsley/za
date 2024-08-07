@@ -186,8 +186,8 @@ func tui_progress(t tui,s tui_style) {
     fgcolour:="[#"+s.fg+"]"
 
     absat(row,col)
-    fmt.Print(rep(" ",hsize))
     if pc==0 && t.border {
+        fmt.Print(rep(" ",hsize))
         border:=empty_border_map
         tui_box(
             tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
@@ -210,6 +210,7 @@ func tui_progress(t tui,s tui_style) {
         fmt.Print(c)
     }
     pf("[#-]")
+    fmt.Print(rep(" ",hsize-int(d)-1))
 }
 
 
@@ -339,7 +340,7 @@ func tui_input(t tui, s tui_style) (input string) {
         mask=t.cursor
     }
     promptColour:=addbg+addfg
-    input, _, _ = getInput(t.prompt, t.content, "global", t.row, t.col, promptColour, false, false, mask)
+    input, _, _ = getInput(t.prompt, t.content, "global", t.row, t.col, t.width, promptColour, false, false, mask)
     input=sanitise(input)
 
     // remove border box
@@ -349,6 +350,7 @@ func tui_input(t tui, s tui_style) (input string) {
             tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
             tui_style{ border:border },
         )
+        tui_clear(t,s)
     }
 
     if t.cursor!="" {
@@ -365,7 +367,6 @@ func tui_box(t tui,s tui_style) {
     height:=t.height; width:=t.width
     title:=t.title
 
-    // pf("\n%d,%d,%d,%d,%s,%#v\n",row,col,height,width,title,s)
     tl:=s.border["tl"]
     tr:=s.border["tr"]
     bl:=s.border["bl"]
@@ -377,6 +378,10 @@ func tui_box(t tui,s tui_style) {
     bg:=s.border["bg"]
     fg:=s.border["fg"]
 
+    if tl==" " && tr==" " && bl==" " && br==" " { // should probably deep compare to empty_border_map instead
+        title=""
+    }
+    
     addbg:=""; addfg:=""
     if bg!="" { addbg="[#b"+bg+"]" }
     if fg!="" { addfg="[#"+fg+"]" }
