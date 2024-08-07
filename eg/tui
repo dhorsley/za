@@ -76,7 +76,6 @@ for e=1 to 100
     pb.tui_progress(s)
     pause 25
 endfor
-keypress()
 
 # reset bar
 pb.value=0.0
@@ -101,4 +100,14 @@ at term_h(),1
 println "input result -> ",ires
 println "menu result  -> ",result
 on result>0 do println "     option  -> ",menu.options[result-1]
+
+t.content="<removed>"
+println
+println "t    -> ",t
+println "s    -> ",s
+println "i    -> ",i
+println "menu -> ",menu
+println "pb   -> ",pb
+println 
+
 
