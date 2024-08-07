@@ -21,6 +21,7 @@ type tui struct {
     prompt  string
     content string
     value   float64
+    border  bool
     bdrawn  bool
     data    any
     format  string
@@ -70,7 +71,6 @@ type tui_style struct {
 
    input box
     - title and prompt, with border support and colour styling
-    - optional input validation (free if re-using getInput()
     - optional masked input (again, free if re-using getInput()
 
    mouse support?
@@ -185,9 +185,9 @@ func tui_progress(t tui,s tui_style) {
     bgcolour:="[#b"+s.bg+"]"
     fgcolour:="[#"+s.fg+"]"
 
-    if pc==0 {
-        absat(row,col)
-        fmt.Print(rep(" ",hsize))
+    absat(row,col)
+    fmt.Print(rep(" ",hsize))
+    if pc==0 && t.border {
         border:=empty_border_map
         tui_box(
             tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
@@ -195,8 +195,10 @@ func tui_progress(t tui,s tui_style) {
         )
         return
     } else {
-        if !t.bdrawn { tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 }, s) }
-        t.bdrawn=true
+        if !t.bdrawn && t.border {
+            tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 }, s)
+            t.bdrawn=true
+        }
     }
 
     d  := pc*float64(hsize)        // width of input percent
@@ -301,6 +303,61 @@ func tui_clear(t tui, s tui_style) {
         fmt.Print(rep(" ",t.width))
     }
 }
+
+
+// problems:  getInput uses either clearToEOL / clearToEOP
+//              this is breaking through the right border
+//              and smearing the colours to EOL also.
+
+func tui_input(t tui, s tui_style) (input string) {
+
+    // t.content : default value
+    // t.prompt  : prompt string
+    // t.cursor  : echo mask
+    // s.bg,s.fg : input colours
+    // t.row,t.col: position
+    // t.title   : border title
+    // t.border  : border toggle
+    // t.height,t.width : border size
+
+    addbg:=""; addfg:=""
+    if s.bg!="" { addbg="[#b"+s.bg+"]" }
+    if s.fg!="" { addfg="[#"+s.fg+"]" }
+
+    // draw border box
+    if t.border {
+        tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+1 }, s)
+    }
+
+    // get input
+    mask:="*"
+    oldmask:=""
+    if t.cursor!="" {
+        emask,_:=gvget("@echomask")
+        oldmask=emask.(string)
+        gvset("@echomask",t.cursor)
+        mask=t.cursor
+    }
+    promptColour:=addbg+addfg
+    input, _, _ = getInput(t.prompt, t.content, "global", t.row, t.col, promptColour, false, false, mask)
+    input=sanitise(input)
+
+    // remove border box
+    if t.border {
+        border:=empty_border_map
+        tui_box(
+            tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
+            tui_style{ border:border },
+        )
+    }
+
+    if t.cursor!="" {
+        gvset("@echomask",oldmask)
+    }
+
+    return
+}
+
 
 func tui_box(t tui,s tui_style) {
 
@@ -490,7 +547,7 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
-        "tui_progress",
+        "tui_progress","tui_input",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -533,6 +590,7 @@ func buildTuiLib() {
         case "menu"     : stdlib["tui_menu"](ns,evalfs,ident,t,s)
         case "text"     : stdlib["tui_text"](ns,evalfs,ident,t,s)
         case "modal"    : stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
+        case "input"    : stdlib["tui_input"](ns,evalfs,ident,t,s)
         case "progress" : stdlib["tui_text_progress"](ns,evalfs,ident,t,s)
         }
         return "",err
@@ -572,6 +630,17 @@ func buildTuiLib() {
         if len(args)==2 { s=args[1].(tui_style) }
         tui_box(t,s) 
         return nil,err
+    }
+
+    slhelp["tui_input"] = LibHelp{in: "tui_struct[,tui_style]", out: "string", action: "input text. relevant tui struct fields: .border, .content, .prompt, .cursor, .bg, .fg, .title, .width, .height, .row, .col"}
+    stdlib["tui_input"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_input",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        return tui_input(t,s),err
     }
 
     slhelp["tui_text"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "output text"}
