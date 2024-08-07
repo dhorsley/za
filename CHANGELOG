@@ -12,11 +12,14 @@ CHANGE LOG
         - compiles and executes
         - no real testing done yet.
     * added missing bigi+bigf types to sqr operator
+    * tweaked cosmetic parts of getInput()
 
     library
     -------
 
     * (experimental, testing) added lib-tui.go (text user interface elements)
+        - call parameters and behaviour liable to change after feedback
+        - demo in eg/tui
         - call list:
             tui             : make an action call
             tui_new         : create a blank action
@@ -26,6 +29,8 @@ CHANGE LOG
             tui_text        : display text block
             tui_text_modal  : interactive text pager
             tui_menu        : present options menu
+            tui_clear       : empty the area of the element
+            tui_input       : get user input
             ...
         - others to be added
 

@@ -69,10 +69,6 @@ type tui_style struct {
     - var replacement in template using struct fields
     - then output parsed template using tui_text. (and style)
 
-   input box
-    - title and prompt, with border support and colour styling
-    - optional masked input (again, free if re-using getInput()
-
    mouse support?
    call-back support and async actions? timers?
 */
@@ -552,7 +548,7 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
-        "tui_progress","tui_input",
+        "tui_progress","tui_input","tui_clear",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
