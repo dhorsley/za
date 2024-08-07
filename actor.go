@@ -4443,7 +4443,7 @@ pcloop:
                                     intext := ""
                                     validated := false
                                     for !validated || broken {
-                                        intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                        intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, panes[currentpane].w-2, promptColour, false, false, echoMask.(string))
                                         intext=sanitise(intext)
                                         validated, _ = regexp.MatchString(validator, intext)
                                     }
@@ -4452,7 +4452,7 @@ pcloop:
                                     }
                                 } else {
                                     var inp string
-                                    inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, promptColour, false, false, echoMask.(string))
+                                    inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, panes[currentpane].w-2, promptColour, false, false, echoMask.(string))
                                     inp=sanitise(inp)
                                     vset(&inbound.Tokens[1],ifs, ident,inbound.Tokens[1].tokText, inp)
                                 }
