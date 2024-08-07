@@ -1166,7 +1166,7 @@ func main() {
                 }
 
                 gvset("@last",0)
-                input, eof, broken = getInput(tempPrompt, "", "global", row, col, pcol, true, true, echoMask)
+                input, eof, broken = getInput(tempPrompt, "", "global", row, col, panes["global"].w-2,pcol, true, true, echoMask)
 
                 if eof || broken { break }
 

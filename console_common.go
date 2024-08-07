@@ -191,7 +191,7 @@ func mouse_press(inp []byte) {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(prompt string, defaultString string, pane string, row int, col int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func getInput(prompt string, defaultString string, pane string, row int, col int, width int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
     if !interactive { BMARGIN=0 }
@@ -244,6 +244,8 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
     irow=srow
     lastsrow:=row
 
+    fmt.Printf(sparkle(pcol))
+    clearChars(row,col,width)
     for {
 
         // calc new values for row,col
@@ -294,7 +296,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         } else {
             fmt.Printf(str.Repeat(mask,inputL))
         }
-        clearToEOP(cursAtCol)
         for i:=irow+1+rowLen;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
         at(irow+1,1); fmt.Printf(sparkle(helpstring))
 
@@ -781,10 +782,13 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
     } // input loop
 
     if echo.(bool) {
-        at(srow, icol) ; clearToEOL()
-        fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))
-        cposRowLen:=int(scol+cpos-1)/MW
-        at(srow+cposRowLen,1)
+        fmt.Printf(sparkle(pcol))
+        clearChars(srow, scol, width)
+        at(srow, scol)
+        fmt.Printf(sparkle(sprompt))
+        fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))  // recolour const sets italics
+        // cposRowLen:=int(scol+cpos-1)/MW
+        // at(srow+cposRowLen,1)
     }
 
     lineWrap=old_wrap
@@ -1204,11 +1208,11 @@ func clearToEOPane(row int, col int, va ...int) {
         lines := va[0] / (p.w - 1)
         for ; lines >= 0; lines-- {
             at(row+lines-1, 1)
-            fmt.Print(rep(" ",p.w))
+            fmt.Print(rep(" ",p.w-1))
         }
     } else {
         at(row, col)
-        fmt.Print(rep(" ", int(p.w-col-1)))
+        fmt.Print(rep(" ", int(p.w-col-2)))
     }
     // restore cursor pos
     fmt.Printf("\033[u")
