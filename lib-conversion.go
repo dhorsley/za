@@ -467,10 +467,10 @@ func buildConversionLib() {
             }
         } else {
             switch args[0].(type) {
-            case big.Int:
+            case *big.Int:
                 n:=args[0].(*big.Int)
                 i = n.String()
-            case big.Float:
+            case *big.Float:
                 f:=args[0].(*big.Float)
                 i = f.String()
             default:

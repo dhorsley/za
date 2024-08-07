@@ -235,6 +235,19 @@ func strcmp(a string, b string) (bool) {
     return true
 }
 
+func GetAsString(v any) (i string) {
+    switch v.(type) {
+    case *big.Int:
+        n:=v.(*big.Int)
+        i = n.String()
+    case *big.Float:
+        f:=v.(*big.Float)
+        i = f.String()
+    default:
+        i = sf("%v",v)
+    }
+    return
+}
 
 func GetAsBigInt(i any) (*big.Int) {
     var ri big.Int
