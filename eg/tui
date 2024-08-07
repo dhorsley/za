@@ -1,8 +1,16 @@
 #!/usr/bin/za
 
-cursoroff()
 seed(-1)
 
+trap("int","cleanup()")
+
+def cleanup()
+    tui_screen(0)
+    cursoron()
+    exit
+end
+
+# set up a general tui and tui_style struct for re-use
 t=tui_new()
 s=tui_new_style()
 t.row=5
@@ -11,23 +19,40 @@ t.height=15
 t.width=100
 t.title="test panel"
 
-border=s.border
 bg=0; fg=1
 for ,bg==fg,
     bg,fg=[rand(7),rand(7)]
 endfor
+border=s.border
 border["bg"]=bg.as_string
 border["fg"]=fg.as_string
-s.bg=bg.as_string
-s.fg=fg.as_string
 s.border=border
 s.fill=true
+
+# switch to alt screen
+tui_screen(1)
+
+# input box
+i=tui_new()
+i.row=term_h()-4
+i.col=10
+i.content="blah"
+i.prompt="[#b1][#6]type away... "
+i.title="test input box"
+i.border=true
+i.height,i.width=[1,80]
+s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
+ires=i.tui_input(s)
+
+# .. reset some colours
+s.bg=bg.as_string
+s.fg=fg.as_string
 s.hi_fg="2"
 s.hi_bg="7"
 
-tui_screen(1)
+# menu
+cursoroff()
 t.tui_box(s)
-
 menu=tui_new()
 menu.row,menu.col,menu.action = [4,10,"menu"]
 menu.options=[
@@ -68,24 +93,12 @@ t.content=$in "CHANGELOG"
 t.tui_text_modal(s)
 t.tui_clear
 
-# input box
-i=tui_new()
-i.row=term_h()-4
-i.col=10
-i.content="blah"
-i.prompt="type away... "
-i.title="test input box"
-i.border=true
-i.height,i.width=[1,80]
-s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
-ires=i.tui_input(s)
-
 # cleanup
-# tui_screen(0)
+tui_screen(0)
+cursoron()
 
 at term_h(),1
-println "menu result  -> ",result
 println "input result -> ",ires
-on result>0 do println "     option -> ",menu.options[result-1]
-cursoron()
+println "menu result  -> ",result
+on result>0 do println "     option  -> ",menu.options[result-1]
 
