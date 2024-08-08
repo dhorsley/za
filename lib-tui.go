@@ -176,7 +176,18 @@ func str_inset(n int) (string) {
 }
 
 //   horizontal / vertical radio button (single/multi-selector)
-func tui_radio(t tui, s tui_style) {
+func tui_radio(t tui, s tui_style) tui {
+
+    hi_bg:=s.hi_bg
+    hi_fg:=s.hi_fg
+    fg:=s.fg
+    bg:=s.bg
+    addbg:=""; addfg:=""
+    addhibg:=""; addhifg:=""
+    if bg!="" { addbg="[#b"+bg+"]" }
+    if fg!="" { addfg="[#"+fg+"]" }
+    if hi_bg!="" { addhibg="[#b"+hi_bg+"]" }
+    if hi_fg!="" { addhifg="[#"+hi_fg+"]" }
 
     options:=[]string{}
     for _,v:=range t.Options {
@@ -189,34 +200,63 @@ func tui_radio(t tui, s tui_style) {
         cursor=t.Cursor
     }
 
-    // build output string
-    op:=t.Prompt
-    sep:=" "
-    if t.Sep != "" { sep=t.Sep }
-
-    for k:=0; k<len(options); k+=1 {
-        op+="["
-        if t.Selected[k] {
-            op+=cursor
-        } else {
-            op+=" "
-        }
-        op+="] "+options[k]
-        if t.Vertical {
-            op+="\n"+str_inset(t.Col+len(t.Prompt))
-        } else {
-            op+=sep
-        }
-    }
-
-    // display
-    absat(t.Row,t.Col)
-    pf(op)
+    orig:=make([]bool,len(t.Selected))
+    copy(orig,t.Selected)
 
     // key loop
-    // key:=wrappedGetCh(0,false)
-    wrappedGetCh(0,false)
+    var key int
+    cpos:=0
+    t.Cancel=false
 
+    for ;!t.Cancel; {
+            
+        // build output string
+        op:="[##][#-]"+t.Prompt
+        sep:=" "
+        if t.Sep != "" { sep=t.Sep }
+
+        for k:=0; k<len(options); k+=1 {
+            op+="["
+            if cpos==k { op+=addhibg+addhifg }
+            if t.Selected[k] {
+                op+=cursor
+            } else {
+                op+=" "
+            }
+            if cpos==k { op+="[##][#-]" }
+            op+="] "+addbg+addfg+options[k]+"[##][#-]"
+            if t.Vertical {
+                op+="\n"+str_inset(t.Col+len(t.Prompt))
+            } else {
+                if k!=len(options)-1 { op+=sep }
+            }
+        }
+
+        // display
+        absat(t.Row,t.Col)
+        pf(op)
+
+        key=wrappedGetCh(0,false)
+        switch key {
+        case 9,10: // right or down
+            if cpos<len(options)-1 {
+                cpos+=1
+            }
+        case 8,11: //left or up
+            if cpos>0 {
+                cpos-=1
+            }
+        case 13,'q','Q',27: // enter, q or escape
+            if key!=13 {
+                // discard changes
+                copy(t.Selected,orig)
+            }
+            t.Cancel=true
+        case ' ': // toggle
+            t.Selected[cpos]=!t.Selected[cpos]
+        }
+    }
+    return t
 }
 
 
@@ -678,8 +718,7 @@ func buildTuiLib() {
         t:=args[0].(tui)
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
-        tui_radio(t,s) 
-        return nil,err
+        return tui_radio(t,s),nil
     }
 
     slhelp["tui_clear"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "clear a tui element's area"}
