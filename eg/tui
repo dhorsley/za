@@ -10,17 +10,12 @@ def cleanup()
     exit
 end
 
-# set up a general tui and tui_style struct for re-use
-t=tui_new()
-t.Row=5
-t.Col=10
-t.Height=15
-t.Width=100
-t.Title="test panel"
-# misc colours
-
 # switch to alt screen
 tui_screen(1)
+
+s=tui_new_style()
+s.fill=true
+border=s.border
 
 quit=false
 while not quit
@@ -28,14 +23,11 @@ while not quit
     # menu
     cursoroff()
     menu=tui_new()
-    s=tui_new_style()
     s.bg,s.fg       =["3","7"]
     s.hi_bg,s.hi_fg =["2","7"]
-    border=s.border
     border["bg"]="3"
     border["fg"]="7"
     s.border=border
-    s.fill=true
     menu.Row,menu.Col,menu.Title = [2,2,"test options menu"]
     menu.Height,menu.Width=[11,32]
     menu.Options=[
@@ -61,24 +53,30 @@ while not quit
         i.Title="test input box"
         i.Border=true
         i.Height,i.Width=[1,80]
-        s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
+        s.bg,s.fg=["1","6"]
+        border["bg"]=s.bg
+        border["fg"]=s.fg
+        s.border=border
         i=i.tui_input(s)
         ires=i.Result
     is 2
         # radio buttons
         rad=tui_new()
-        rad.Row,rad.Col=[10,20]
+        rad.Row,rad.Col=[2,36]
+        rad.Height,rad.Width=[6,30]
         rad.Prompt="Please select : "
         rad.Options=["Red","Green","Blue","White"]
         rad.Selected=[false,false,true,false].list_bool
         rad.Vertical=true
         rad.Sep=" : "
+        s.bg,s.fg=["2","6"]
         rad.tui_radio(s)
         rres=rad.Selected
+        rad.tui_clear
     is 3
         # example progress bar
         pb=tui_new()
-        pb.Row,pb.Col,pb.Action = [2,20,"progress"]
+        pb.Row,pb.Col = [20,20]
         pb.Width=80
         pb.Cursor="▒"
         pb.Border=true
@@ -94,27 +92,31 @@ while not quit
     is 4
         # text box
         tb=tui_new()
-        tb.Height,tb.Width,tb.Title=[30,118,"modal text box"]
-        s.bg,s.fg=["0","6"]
+        tb.Row,tb.Col=[2,36]
+        tb.Height,tb.Width,tb.Title=[15,40,"text display"]
         border["bg"]=s.bg
         border["fg"]=s.fg
-        s.border=border
-        s.wrap=false
-        t.Content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+        s.wrap=true
+        s.bg,s.fg=["3","7"]
+        tb.Content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
         tb.tui_box(s)
         tb.tui_text(s)
         keypress(0)
+        tb.tui_clear
     is 5
         # pager
+        p=tui_new()
+        p.Row,p.Col=[2,36]
         s.bg,s.fg=["2","7"]
+        s.wrap=false
         border["bg"]=s.bg
         border["fg"]=s.fg
         s.border=border
-        t.Height,t.Width,t.Title=[30,118,"modal text box"]
-        t.tui_box(s)
-        t.Content=$in "CHANGELOG"
-        t.tui_text_modal(s)
-        t.tui_clear
+        p.Height,p.Width,p.Title=[30,110,"modal text box"]
+        p.tui_box(s)
+        p.Content=$in "CHANGELOG"
+        p.tui_text_modal(s)
+        p.tui_clear
     is 6
         quit=true
     endcase
