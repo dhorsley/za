@@ -93,6 +93,7 @@ while not quit
         # reset bar
         pb.Value=0.0
         pb.tui_progress(s)
+        pb.Started=false
     is 4
         # text box
         tb.Row,tb.Col=[2,36]
