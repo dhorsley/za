@@ -17,12 +17,19 @@ s=tui_new_style()
 s.fill=true
 border=s.border
 
+i=tui_new()
+rad=tui_new()
+rad.Selected=[false,false,false,false].list_bool
+pb=tui_new()
+menu=tui_new()
+tb=tui_new()
+p=tui_new()
+
 quit=false
 while not quit
 
     # menu
     cursoroff()
-    menu=tui_new()
     s.bg,s.fg       =["3","7"]
     s.hi_bg,s.hi_fg =["2","7"]
     border["bg"]="3"
@@ -45,7 +52,6 @@ while not quit
     case menu.Result
     is 1
         # input box
-        i=tui_new()
         i.Row=term_h()-4
         i.Col=10
         i.Content="blah"
@@ -61,21 +67,18 @@ while not quit
         ires=i.Result
     is 2
         # radio buttons
-        rad=tui_new()
         rad.Row,rad.Col=[2,36]
-        rad.Height,rad.Width=[6,30]
+        rad.Height,rad.Width=[6,64]
         rad.Prompt="Please select : "
         rad.Options=["Red","Green","Blue","White"]
-        rad.Selected=[false,false,true,false].list_bool
         rad.Vertical=true
-        rad.Sep=" : "
-        s.bg,s.fg=["2","6"]
-        rad.tui_radio(s)
-        rres=rad.Selected
+        rad.Sep=" "
+        s.bg,s.fg=["0","5"]
+        rad=rad.tui_radio(s)
         rad.tui_clear
+        # rad.Selected [] contains end state
     is 3
         # example progress bar
-        pb=tui_new()
         pb.Row,pb.Col = [20,20]
         pb.Width=80
         pb.Cursor="▒"
@@ -91,7 +94,6 @@ while not quit
         pb.tui_progress(s)
     is 4
         # text box
-        tb=tui_new()
         tb.Row,tb.Col=[2,36]
         tb.Height,tb.Width,tb.Title=[15,40,"text display"]
         border["bg"]=s.bg
@@ -105,7 +107,6 @@ while not quit
         tb.tui_clear
     is 5
         # pager
-        p=tui_new()
         p.Row,p.Col=[2,36]
         s.bg,s.fg=["2","7"]
         s.wrap=false
