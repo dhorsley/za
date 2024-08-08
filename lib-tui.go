@@ -30,6 +30,7 @@ type tui struct {
     Sep     string
     Result  any
     Cancel  bool
+    Multi   bool
 }
 
 type tui_style struct {
@@ -208,6 +209,11 @@ func tui_radio(t tui, s tui_style) tui {
     cpos:=0
     t.Cancel=false
 
+    selCount:=0
+    for k:=range t.Selected {
+        if t.Selected[k] { selCount++ }
+    }
+
     for ;!t.Cancel; {
             
         // build output string
@@ -254,6 +260,17 @@ func tui_radio(t tui, s tui_style) tui {
             t.Cancel=true
         case ' ': // toggle
             t.Selected[cpos]=!t.Selected[cpos]
+            if t.Selected[cpos] {
+                selCount++
+            } else {
+                selCount--
+            }
+            if selCount>1 && !t.Multi {
+                // exclude all the others
+                for k:=range t.Selected { t.Selected[k]=false }
+                t.Selected[cpos]=true
+                selCount=1
+            }
         }
     }
     return t

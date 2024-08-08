@@ -72,6 +72,7 @@ while not quit
         rad.Prompt="Please select : "
         rad.Options=["Red","Green","Blue","White"]
         rad.Vertical=true
+        rad.Multi=true
         rad.Sep=" "
         s.bg,s.fg=["0","5"]
         rad=rad.tui_radio(s)
