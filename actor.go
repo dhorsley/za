@@ -4367,8 +4367,6 @@ pcloop:
 
         case C_Prompt:
 
-            // else continue
-
             if inbound.TokenCount < 2 {
                 usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ] [ IS [#i1]def_string[#i0] ]"
                 parser.report(inbound.SourceLine,  "Not enough arguments for PROMPT.\n"+usage)
@@ -4408,7 +4406,7 @@ pcloop:
                             break
                         } else {
                             validator := ""
-
+            
                             // capture default string
                             defString := ""
                             defAt := findDelim(inbound.Tokens, C_Is, 1)
@@ -4436,14 +4434,20 @@ pcloop:
                                 processedPrompt := expr.(string)
                                 echoMask,_:=gvget("@echomask")
 
-                                // get validator
+                                // get validator (should be at [3:C_Is|EOTokens])
                                 vposEnd:=inbound.TokenCount
-                                if defAt!=-1 {
+                                hasValidator:=false
+                                if defAt!=-1 {      // has C_Is
                                     vposEnd=defAt
                                 }
+                                if vposEnd>3 {
+                                    hasValidator=true
+                                }
 
-                                if inbound.TokenCount > 3 {
+                                if hasValidator {
+                                pf(" >1> ")
                                     val_ex,val_ex_error, _ := parser.Eval(ifs,inbound.Tokens[3:vposEnd])
+                                pf(" >2> ")
                                     if val_ex_error != nil {
                                         parser.report(inbound.SourceLine,"Validator invalid in PROMPT!")
                                         finish(false,ERR_EVAL)
