@@ -25,8 +25,8 @@ type tui struct {
     Content string
     Value   float64
     Border  bool
-    data    any
-    format  string
+    Data    any
+    Format  string
     Sep     string
     Result  any
     Cancel  bool
@@ -48,7 +48,7 @@ type tui_style struct {
    actions to add:
 
    table data output formatting (and pass through to pager)
-    - possible input formats, specified in tui.format/tui.Sep, with data in tui.data:
+    - possible input formats, specified in tui.Format/tui.Sep, with data in tui.Data:
       - csv, tsv, space or pipe delimited (or some other custom separator)
       - array of struct
       - newline separated (i.e. consume fixed number of lines)?
