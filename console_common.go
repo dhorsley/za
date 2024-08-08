@@ -201,7 +201,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
     showCursor()
 
-    s=defaultString
+    s=""
 
     sprompt := sparkle(prompt)
 
@@ -292,7 +292,18 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         // show input
         at(irow, icol)
         if echo.(bool) {
-            fmt.Print(s)
+            if len(s)>len(defaultString) {
+                fmt.Print(s)
+            } else {
+                if str.HasPrefix(defaultString,s) {
+                    // #dim + italic + string + normal
+                    fmt.Print("\033[2m\033[3m"+defaultString+"\033[23m\033[22m")
+                } else {
+                    clearChars(irow, icol, len(defaultString))
+                    at(irow, icol)
+                    fmt.Print(s)
+                }
+            }
         } else {
             fmt.Printf(str.Repeat(mask,inputL))
         }
@@ -436,6 +447,10 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
+                if s=="" && defaultString!="" {
+                    clearChars(irow, icol, len(defaultString))
+                    defaultString=""
+                }
                 if cpos < len(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor,_ = getWord(s, cpos)
@@ -784,6 +799,10 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         }
 
     } // input loop
+
+    if s=="" && defaultString!="" {
+        s=defaultString
+    }
 
     if echo.(bool) {
         fmt.Printf(sparkle(pcol))

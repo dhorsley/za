@@ -13,6 +13,12 @@ CHANGE LOG
         - no real testing done yet.
     * added missing bigi+bigf types to sqr operator
     * tweaked cosmetic parts of getInput()
+        - DEL key now removes a default string
+        - default string displayed dim+italicised.
+        - any content in string overrides the default string
+        - if default string present, and input string empty, then final input is
+            the default string.
+        - while typed text left matches the default string, the default remains visible.
 
     library
     -------
