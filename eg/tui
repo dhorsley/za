@@ -83,7 +83,7 @@ while not quit
         s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
         for e=1 to 100
             pb.Value=e.as_float/100
-            pb.tui_progress(s)
+            pb=pb.tui_progress(s)
             pause 25
         endfor
         # reset bar
