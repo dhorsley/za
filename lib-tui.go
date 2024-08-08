@@ -280,6 +280,7 @@ func tui_text_modal(t tui,s tui_style) {
     } else {
         rs=t.Content
     }
+    rs=str.Replace(rs,"%","%%",-1)
     ra:=str.Split(rs,"\n")
     if !s.wrap {
         // do something to clip long lines here
@@ -337,6 +338,7 @@ func tui_text(t tui,s tui_style) {
     w=uint(t.Width-2)
     rs:=t.Content
     if s.wrap { rs=wrapString(rs,w) }
+    rs=str.Replace(rs,"%","%%",-1)
     ra:=str.Split(rs,"\n")
     if len(ra)>t.Height-2 {
         ra=ra[len(ra)-t.Height:]
