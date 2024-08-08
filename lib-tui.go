@@ -5,6 +5,8 @@ package main
 import (
     "fmt"
     "bytes"
+    "reflect"
+    "regexp"
     "unicode"
     str "strings"
 )
@@ -175,6 +177,41 @@ func wrapString(s string, lim uint) string {
 func str_inset(n int) (string) {
     return sf("\033[%dG",n)
 }
+
+func tui_template(t tui, s tui_style) (string,error) {
+
+    // t.Content : inbound template
+    // t.Data    : inbound struct
+
+    var refstruct reflect.Value
+    switch refstruct = reflect.ValueOf(t.Data); refstruct.Kind() {
+    case reflect.Struct:
+    default:
+        return "",fmt.Errorf(".Data not a struct")
+    }
+
+    // find all {.field} (non-greedy shortest matches)
+    r := regexp.MustCompile(`{\.([^{}]*)}`)
+
+    // loop through each match
+    for {
+        matches := r.FindAllStringSubmatch(t.Content,-1)
+        for _, v := range matches {
+            // get name from match
+            field_name:=v[1]
+            // get t.Data.<field> with reflection
+            field_value:=refstruct.FieldByName(field_name)
+            // search/replace all {.<field>} with value from above
+            t.Content = str.Replace(t.Content,"{."+field_name+"}", sf("%v",field_value),-1)
+        }
+    }
+
+    // pass result through to tui_text
+    tui_text(t,s)
+
+    return t.Content,nil
+}
+
 
 //   horizontal / vertical radio button (single/multi-selector)
 func tui_radio(t tui, s tui_style) tui {
@@ -666,7 +703,7 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
-        "tui_progress","tui_input","tui_clear",
+        "tui_progress","tui_input","tui_clear","tui_template",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -714,6 +751,17 @@ func buildTuiLib() {
         case "progress" : stdlib["tui_text_progress"](ns,evalfs,ident,t,s)
         }
         return "",err
+    }
+
+    slhelp["tui_template"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "replace {.field} matches in template string, with struct field values"}
+    stdlib["tui_template"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_template",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        return tui_template(t,s)
     }
 
     slhelp["tui_progress"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "update a progress bar"}
