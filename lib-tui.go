@@ -10,24 +10,26 @@ import (
 )
 
 type tui struct {
-    row     int
-    col     int
-    height  int
-    width   int
-    action  string
-    options []any
-    selected []bool
-    vertical bool
-    cursor  string
-    title   string
-    prompt  string
-    content string
-    value   float64
-    border  bool
-    bdrawn  bool
+    Row     int
+    Col     int
+    Height  int
+    Width   int
+    Action  string
+    Options []any
+    Selected []bool
+    Vertical bool
+    Cursor  string
+    Title   string
+    Prompt  string
+    Content string
+    Value   float64
+    Border  bool
+    Bdrawn  bool
     data    any
     format  string
-    sep     string
+    Sep     string
+    Result  any
+    Cancel  bool
 }
 
 type tui_style struct {
@@ -45,7 +47,7 @@ type tui_style struct {
    actions to add:
 
    table data output formatting (and pass through to pager)
-    - possible input formats, specified in tui.format/tui.sep, with data in tui.data:
+    - possible input formats, specified in tui.format/tui.Sep, with data in tui.data:
       - csv, tsv, space or pipe delimited (or some other custom separator)
       - array of struct
       - newline separated (i.e. consume fixed number of lines)?
@@ -59,9 +61,9 @@ type tui_style struct {
       - modulus-based bg for rows (i.e. fixed/odd/even/every X bg shading)
       - inner border styles as well as outer
     - column headings should be optional
-    - table title should be taken from tui.title if present.
-    - tui.height would be ignored
-    - tui.width could be ignored, flag dependent.
+    - table title should be taken from tui.Title if present.
+    - tui.Height would be ignored
+    - tui.Width could be ignored, flag dependent.
       - i.e. permit dynamic growth of width to accommodate columns.
 
    structured templates:
@@ -177,38 +179,38 @@ func str_inset(n int) (string) {
 func tui_radio(t tui, s tui_style) {
 
     options:=[]string{}
-    for _,v:=range t.options {
+    for _,v:=range t.Options {
         o:=GetAsString(v)
         options=append(options,o)
     }
 
     cursor:="x"
-    if t.cursor!="" {
-        cursor=t.cursor
+    if t.Cursor!="" {
+        cursor=t.Cursor
     }
 
     // build output string
-    op:=t.prompt
+    op:=t.Prompt
     sep:=" "
-    if t.sep != "" { sep=t.sep }
+    if t.Sep != "" { sep=t.Sep }
 
     for k:=0; k<len(options); k+=1 {
         op+="["
-        if t.selected[k] {
+        if t.Selected[k] {
             op+=cursor
         } else {
             op+=" "
         }
         op+="] "+options[k]
-        if t.vertical {
-            op+="\n"+str_inset(t.col+len(t.prompt))
+        if t.Vertical {
+            op+="\n"+str_inset(t.Col+len(t.Prompt))
         } else {
             op+=sep
         }
     }
 
     // display
-    absat(t.row,t.col)
+    absat(t.Row,t.Col)
     pf(op)
 
     // key loop
@@ -220,30 +222,30 @@ func tui_radio(t tui, s tui_style) {
 
 
 func tui_progress(t tui,s tui_style) {
-    hsize:=t.width
-    row:=t.row
-    col:=t.col
-    pc:=t.value
+    hsize:=t.Width
+    row:=t.Row
+    col:=t.Col
+    pc:=t.Value
     c:="█"
-    if t.cursor != "" { c=t.cursor }
+    if t.Cursor != "" { c=t.Cursor }
 
     hideCursor()
     bgcolour:="[#b"+s.bg+"]"
     fgcolour:="[#"+s.fg+"]"
 
     absat(row,col)
-    if pc==0 && t.border {
+    if pc==0 && t.Border {
         fmt.Print(rep(" ",hsize))
         border:=empty_border_map
         tui_box(
-            tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
+            tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 },
             tui_style{ border:border },
         )
         return
     } else {
-        if !t.bdrawn && t.border {
-            tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 }, s)
-            t.bdrawn=true
+        if !t.Bdrawn && t.Border {
+            tui_box(tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 }, s)
+            t.Bdrawn=true
         }
     }
 
@@ -270,11 +272,11 @@ func tui_text_modal(t tui,s tui_style) {
     
     var w uint
     var rs string
-    w=uint(t.width-3)
+    w=uint(t.Width-3)
     if s.wrap {
-        rs=wrapString(t.content,w)
+        rs=wrapString(t.Content,w)
     } else {
-        rs=t.content
+        rs=t.Content
     }
     ra:=str.Split(rs,"\n")
     if !s.wrap {
@@ -282,47 +284,47 @@ func tui_text_modal(t tui,s tui_style) {
         //  if we add horizontal scroll bars later, this will
         //  need to change to a bounded clip on display instead.
         for k,v:=range ra {
-            if len(v) > t.width-2 {
-                ra[k]=ra[k][:t.width-2]
+            if len(v) > t.Width-2 {
+                ra[k]=ra[k][:t.Width-2]
             }
         }
     }
 
-    quit:=false
-    max:=t.height-1
-    for ;!quit; {
-        if cpos+t.height-1>len(ra) { max=len(ra)-cpos }
+    t.Cancel=false
+    max:=t.Height-1
+    for ;!t.Cancel; {
+        if cpos+t.Height-1>len(ra) { max=len(ra)-cpos }
         for k,v:=range ra[cpos:cpos+max] {
-            absClearChars(t.row+k+1,t.col+1,t.width-2)
-            absat(t.row+k+1,t.col+1)
+            absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
+            absat(t.Row+k+1,t.Col+1)
             pf(addbg+addfg+v)
-            absClearChars(t.row+k+1,t.col+1+len(v),t.width-2-len(v))
+            absClearChars(t.Row+k+1,t.Col+1+len(v),t.Width-2-len(v))
         }
         pf("[##][#-]")
         // scroll position
-        scroll_pos:=int(float64(cpos)*float64(t.height-1)/float64(len(ra)))
-        absat(t.row+1+scroll_pos,t.col+t.width-2)
+        scroll_pos:=int(float64(cpos)*float64(t.Height-1)/float64(len(ra)))
+        absat(t.Row+1+scroll_pos,t.Col+t.Width-2)
         pf("[#invert]*[#-]")
         // process keypresses
         k:=wrappedGetCh(0,false)
         switch k {
         case 10: //down
-            if cpos<len(ra)-t.height { cpos++ }
+            if cpos<len(ra)-t.Height { cpos++ }
         case 11: //up
             if cpos>0 { cpos-- }
         case 'q','Q',27:
-            quit=true
+            t.Cancel=true
         case 'b',15:
-            cpos-=t.height-1
+            cpos-=t.Height-1
             if cpos<0 { cpos=0 }
         case ' ',14:
-            cpos+=t.height-1
-            if cpos>len(ra)-t.height { cpos=len(ra)-t.height }
+            cpos+=t.Height-1
+            if cpos>len(ra)-t.Height { cpos=len(ra)-t.Height }
         }
     }
 }
 
-// at row,col, width of t.width-2, print wordWrap'd t.content
+// at row,col, width of t.Width-2, print wordWrap'd t.Content
 func tui_text(t tui,s tui_style) {
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
@@ -330,14 +332,15 @@ func tui_text(t tui,s tui_style) {
     pf(addbg); pf(addfg)
 
     var w uint
-    w=uint(t.width-2)
-    rs:=wrapString(t.content,w)
+    w=uint(t.Width-2)
+    rs:=t.Content
+    if s.wrap { rs=wrapString(rs,w) }
     ra:=str.Split(rs,"\n")
-    if len(ra)>t.height-2 {
-        ra=ra[len(ra)-t.height:]
+    if len(ra)>t.Height-2 {
+        ra=ra[len(ra)-t.Height:]
     }
     for k,v:=range ra {
-        absat(t.row+k+1,t.col+1)
+        absat(t.Row+k+1,t.Col+1)
         pf(addbg+addfg+v)
     }
     pf("[##][#-]")
@@ -345,9 +348,9 @@ func tui_text(t tui,s tui_style) {
 
 func tui_clear(t tui, s tui_style) {
     pf("[##][#-]") 
-    for e:=0;e<t.height+1;e+=1 {
-        absat(t.row+e,t.col)
-        fmt.Print(rep(" ",t.width))
+    for e:=0;e<t.Height+1;e+=1 {
+        absat(t.Row+e,t.Col)
+        fmt.Print(rep(" ",t.Width))
     }
 }
 
@@ -356,64 +359,64 @@ func tui_clear(t tui, s tui_style) {
 //              this is breaking through the right border
 //              and smearing the colours to EOL also.
 
-func tui_input(t tui, s tui_style) (input string) {
+func tui_input(t tui, s tui_style) tui {
 
-    // t.content : default value and output value on return
-    // t.prompt  : prompt string
-    // t.cursor  : echo mask
+    // t.Result  : final result in here
+    // t.Content : default value
+    // t.Prompt  : prompt string
+    // t.Cursor  : echo mask
     // s.bg,s.fg : input colours
-    // t.row,t.col: position
-    // t.title   : border title
-    // t.border  : border toggle
-    // t.height,t.width : border size
+    // t.Row,t.Col: position
+    // t.Title   : border title
+    // t.Border  : border toggle
+    // t.Height,t.Width : border size
 
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
     if s.fg!="" { addfg="[#"+s.fg+"]" }
 
     // draw border box
-    if t.border {
-        tui_box(tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+1 }, s)
+    if t.Border {
+        tui_box(tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+1 }, s)
     }
 
     // get input
     mask:="*"
     oldmask:=""
-    if t.cursor!="" {
+    if t.Cursor!="" {
         emask,_:=gvget("@echomask")
         oldmask=emask.(string)
-        gvset("@echomask",t.cursor)
-        mask=t.cursor
+        gvset("@echomask",t.Cursor)
+        mask=t.Cursor
     }
     promptColour:=addbg+addfg
-    input, _, _ = getInput(t.prompt, t.content, "global", t.row, t.col, t.width, promptColour, false, false, mask)
+    input, _, _ := getInput(t.Prompt, t.Content, "global", t.Row, t.Col, t.Width, promptColour, false, false, mask)
     input=sanitise(input)
 
     // remove border box
-    if t.border {
+    if t.Border {
         border:=empty_border_map
         tui_box(
-            tui{ title:t.title,row:t.row-1,width:t.width+2,col:t.col-1,height:t.height+2 },
+            tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 },
             tui_style{ border:border },
         )
         tui_clear(t,s)
     }
 
-    if t.cursor!="" {
+    if t.Cursor!="" {
         gvset("@echomask",oldmask)
     }
 
-    t.content=input
-
-    return
+    t.Result=input
+    return t
 }
 
 
 func tui_box(t tui,s tui_style) {
 
-    row:=t.row; col:=t.col
-    height:=t.height; width:=t.width
-    title:=t.title
+    row:=t.Row; col:=t.Col
+    height:=t.Height; width:=t.Width
+    title:=t.Title
 
     tl:=s.border["tl"]
     tr:=s.border["tr"]
@@ -473,11 +476,11 @@ func tui_box(t tui,s tui_style) {
 
 /////////////////////////////////////////////////////////////////
 
-func tui_menu(t tui,s tui_style) (result int) {
-    row:=t.row
-    col:=t.col
-    cursor:=t.cursor
-    prompt:=t.prompt
+func tui_menu(t tui,s tui_style) tui {
+    row:=t.Row
+    col:=t.Col
+    cursor:=t.Cursor
+    prompt:=t.Prompt
     bg:=s.bg
     fg:=s.fg
     hi_bg:=s.hi_bg
@@ -497,7 +500,7 @@ func tui_menu(t tui,s tui_style) (result int) {
     sel:=0
 
     /*
-    ol:=len(t.options)
+    ol:=len(t.Options)
     key_range = -1
     // determine shortcut keys per option
     if t.shortcut {
@@ -512,7 +515,7 @@ func tui_menu(t tui,s tui_style) (result int) {
     */
 
     // display menu
-    for k,p := range t.options {
+    for k,p := range t.Options {
         absat(row+4+k,col+6)
         // short_code=" "
         // on key_range!=nil do short_code=key_range[key_p].char
@@ -520,26 +523,28 @@ func tui_menu(t tui,s tui_style) (result int) {
         // "[{=short_code}]{p}"
     }
 
-    // maxchoice=49+len(t.options)
+    // maxchoice=49+len(t.Options)
 
     // input loop
     finished:=false
+    t.Cancel=false
 
     for ;!finished; {
 
         absat(row+4+sel,col+4); pf(cursor)
-        absat(row+4+sel,col+6); pf(addhibg+addhifg+t.options[sel].(string)+"[##][#-]")
+        absat(row+4+sel,col+6); pf(addhibg+addhifg+t.Options[sel].(string)+"[##][#-]")
         k:=wrappedGetCh(0,false)
         absat(row+4+sel,col+4)
         pf(addbg); pf(addfg)
         pf(" ")
-        absat(row+4+sel,col+6); pf(t.options[sel].(string))
+        absat(row+4+sel,col+6); pf(t.Options[sel].(string))
 
         //if k>=49 && k<maxchoice {
         //    result=k-48
         //}
 
         if k=='q' || k=='Q' {
+            t.Cancel=true
             break
         }
 
@@ -547,14 +552,14 @@ func tui_menu(t tui,s tui_style) (result int) {
         case 11:
             if sel>0 { sel-- }
         case 10:
-            if sel<len(t.options)-1 { sel++ }
+            if sel<len(t.Options)-1 { sel++ }
         case 13:
-            result=sel+1
+            t.Result=sel+1
             finished=true
         }
 
     }
-    return result
+    return t
 }
 
 /////////////////////////////////////////////////////////////////
@@ -638,7 +643,7 @@ func buildTuiLib() {
         t:=args[0].(tui)
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
-        switch str.ToLower(t.action) {
+        switch str.ToLower(t.Action) {
         case "box"      : stdlib["tui_box"](ns,evalfs,ident,t,s)
         case "menu"     : stdlib["tui_menu"](ns,evalfs,ident,t,s)
         case "text"     : stdlib["tui_text"](ns,evalfs,ident,t,s)
@@ -698,7 +703,7 @@ func buildTuiLib() {
         return nil,err
     }
 
-    slhelp["tui_input"] = LibHelp{in: "tui_struct[,tui_style]", out: "string", action: "input text. relevant tui struct fields: .border, .content, .prompt, .cursor, .bg, .fg, .title, .width, .height, .row, .col"}
+    slhelp["tui_input"] = LibHelp{in: "tui_struct[,tui_style]", out: "string", action: "input text. relevant tui struct fields: .Border, .Content, .Prompt, .Cursor, .Title, .Width, .Height, .Row, .Col"}
     stdlib["tui_input"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("tui_input",args,2,
             "1","main.tui",
