@@ -17,6 +17,7 @@ type tui struct {
     Action  string
     Options []any
     Selected []bool
+    Started bool
     Vertical bool
     Cursor  string
     Title   string
@@ -24,7 +25,6 @@ type tui struct {
     Content string
     Value   float64
     Border  bool
-    Bdrawn  bool
     data    any
     format  string
     Sep     string
@@ -221,12 +221,14 @@ func tui_radio(t tui, s tui_style) {
 
 
 
-func tui_progress(t tui,s tui_style) {
+func tui_progress(t tui,s tui_style) tui {
     hsize:=t.Width
     row:=t.Row
     col:=t.Col
     pc:=t.Value
     c:="█"
+    d  := pc*float64(hsize)        // width of input percent
+
     if t.Cursor != "" { c=t.Cursor }
 
     hideCursor()
@@ -234,22 +236,21 @@ func tui_progress(t tui,s tui_style) {
     fgcolour:="[#"+s.fg+"]"
 
     absat(row,col)
-    if pc==0 && t.Border {
+    if pc==0 && t.Started && t.Border {
         fmt.Print(rep(" ",hsize))
         border:=empty_border_map
         tui_box(
             tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 },
             tui_style{ border:border },
         )
-        return
+        return t
     } else {
-        if !t.Bdrawn && t.Border {
+        if !t.Started && t.Border {
             tui_box(tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 }, s)
-            t.Bdrawn=true
         }
     }
 
-    d  := pc*float64(hsize)        // width of input percent
+    if !t.Started { t.Started = true }
 
     absat(row,col)
     pf(bgcolour+fgcolour)
@@ -259,6 +260,7 @@ func tui_progress(t tui,s tui_style) {
     }
     pf("[#-]")
     fmt.Print(rep(" ",hsize-int(d)-1))
+    return t
 }
 
 
@@ -663,8 +665,7 @@ func buildTuiLib() {
         t:=args[0].(tui)
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
-        tui_progress(t,s) 
-        return nil,err
+        return tui_progress(t,s),err
     }
 
     slhelp["tui_radio"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "checkbox selector"}
