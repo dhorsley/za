@@ -145,6 +145,11 @@ while not quit
             tb.tui_box(s)
             tb.tui_template(s)
         endfor
+        keypress()
+        foreach rec in members
+            tb.Row,tb.Col=[2+6*key_rec,80]
+            tb.tui_clear
+        endfor
     is 7
         quit=true
     endcase
