@@ -10,6 +10,18 @@ def cleanup()
     exit
 end
 
+struct member
+    forename    string
+    surname     string
+    age         int
+    town        string
+endstruct
+
+var members[] any
+append_to(ref members, member(.forename "Fred", .surname "Flintstone", .age 30, .town "Bedrock" ) )
+append_to(ref members, member(.forename "Bugs", .surname "Bunny", .age 80, .town "Albuquerque" ) )
+append_to(ref members, member(.forename "Stimpson", .surname "Cat", .age 3, .town "Los Angeles" ) )
+
 # switch to alt screen
 tui_screen(1)
 
@@ -36,10 +48,10 @@ while not quit
     border["fg"]="7"
     s.border=border
     menu.Row,menu.Col,menu.Title = [2,2,"test options menu"]
-    menu.Height,menu.Width=[11,32]
+    menu.Height,menu.Width=[12,32]
     menu.Options=[
         "input box","radio buttons","progress bar",
-        "text box","modal text viewer",
+        "text box","modal text viewer","templates",
         "quit",
     ]
     menu.Prompt ="Please select an option:"
@@ -121,6 +133,22 @@ while not quit
         p.tui_text_modal(s)
         p.tui_clear
     is 6
+        # templates
+        tb.Height,tb.Width,tb.Title=[4,40,"template display"]
+        border["bg"]=s.bg
+        border["fg"]=s.fg
+        s.wrap=true
+        s.bg,s.fg=["3","7"]
+        tb.Content="Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}"
+        foreach rec in members
+            tb.Row,tb.Col=[2+6*key_rec,36]
+            tb.Data=rec
+            tb.tui_box(s)
+            tb.tui_template(s)
+        endfor
+        keypress(0)
+        # tb.tui_clear
+    is 7
         quit=true
     endcase
 
