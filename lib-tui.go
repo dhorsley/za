@@ -47,6 +47,20 @@ type tui_style struct {
 }
 
 
+func tui_table(t tui,s tui_style) (os string, err error) {
+
+    // read data
+    switch t.Format {
+    case csv:
+    case tsv:
+    case ssv:
+    case psv:
+    case custom:
+    case aos:
+    case json:
+    default:
+    }
+
 /*
    actions to add:
 
@@ -59,6 +73,7 @@ type tui_style struct {
       - json?
       - yaml/toml/etc?
       - option to bypass pager and go straight to stdout or file
+
     - this would require some further style choices
       - e.g. fixed bg/fg for table/columns.
       - per column and row options for colour
@@ -71,6 +86,12 @@ type tui_style struct {
       - i.e. permit dynamic growth of width to accommodate columns.
 
 */
+
+    // output
+    switch t.xyz { // Omode? }
+
+    return os,nil
+}
 
 
 // switch to secondary buffer
