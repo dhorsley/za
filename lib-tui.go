@@ -194,16 +194,14 @@ func tui_template(t tui, s tui_style) (string,error) {
     r := regexp.MustCompile(`{\.([^{}]*)}`)
 
     // loop through each match
-    for {
-        matches := r.FindAllStringSubmatch(t.Content,-1)
-        for _, v := range matches {
-            // get name from match
-            field_name:=v[1]
-            // get t.Data.<field> with reflection
-            field_value:=refstruct.FieldByName(field_name)
-            // search/replace all {.<field>} with value from above
-            t.Content = str.Replace(t.Content,"{."+field_name+"}", sf("%v",field_value),-1)
-        }
+    matches := r.FindAllStringSubmatch(t.Content,-1)
+    for _, v := range matches {
+        // get name from match
+        field_name:=v[1]
+        // get t.Data.<field> with reflection
+        field_value:=refstruct.FieldByName(field_name)
+        // search/replace all {.<field>} with value from above
+        t.Content = str.Replace(t.Content,"{."+field_name+"}", sf("%v",field_value),-1)
     }
 
     // pass result through to tui_text
@@ -433,8 +431,13 @@ func tui_text(t tui,s tui_style) {
     rs:=t.Content
     if s.wrap { rs=wrapString(rs,w) }
     rs=str.Replace(rs,"%","%%",-1)
+    if rs[len(rs)-1]=='\n' {
+        rs=rs[:len(rs)-1]
+    }
     ra:=str.Split(rs,"\n")
-    if len(ra)>t.Height-2 {
+
+    // if len(ra)>t.Height-2 {
+    if len(ra)>t.Height-1 {
         ra=ra[len(ra)-t.Height:]
     }
     for k,v:=range ra {
