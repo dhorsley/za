@@ -33,6 +33,7 @@ type tui struct {
     Result  any
     Cancel  bool
     Multi   bool
+    Reset   bool
 }
 
 type tui_style struct {
@@ -69,13 +70,6 @@ type tui_style struct {
     - tui.Width could be ignored, flag dependent.
       - i.e. permit dynamic growth of width to accommodate columns.
 
-   structured templates:
-    - i.e. pass in a template and a struct,
-    - var replacement in template using struct fields
-    - then output parsed template using tui_text. (and style)
-
-   mouse support?
-   call-back support and async actions? timers?
 */
 
 
@@ -312,6 +306,10 @@ func tui_radio(t tui, s tui_style) tui {
 }
 
 
+func tui_progress_reset(t tui) tui {
+    t.Reset=true
+    return tui_progress(t,default_tui_style)
+}
 
 func tui_progress(t tui,s tui_style) tui {
     hsize:=t.Width
@@ -328,18 +326,23 @@ func tui_progress(t tui,s tui_style) tui {
     fgcolour:="[#"+s.fg+"]"
 
     absat(row,col)
-    if pc==0 && t.Started && t.Border {
+    if t.Reset && t.Border {
+        // reset
         fmt.Print(rep(" ",hsize))
         border:=empty_border_map
         tui_box(
             tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 },
             tui_style{ border:border },
         )
+        t.Value=0
+        t.Started=false
+        t.Reset=false
         return t
-    } else {
-        if !t.Started && t.Border {
-            tui_box(tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 }, s)
-        }
+    } 
+
+    if !t.Started && t.Border {
+        // initial box
+        tui_box(tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 }, s)
     }
 
     if !t.Started { t.Started = true }
@@ -356,7 +359,7 @@ func tui_progress(t tui,s tui_style) tui {
 }
 
 
-func tui_text_modal(t tui,s tui_style) {
+func tui_pager(t tui,s tui_style) {
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
     if s.fg!="" { addfg="[#"+s.fg+"]" }
@@ -705,8 +708,8 @@ func buildTuiLib() {
 
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
-        "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_text_modal","tui_menu",
-        "tui_progress","tui_input","tui_clear","tui_template",
+        "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_pager","tui_menu",
+        "tui_progress","tui_progress_reset", "tui_input","tui_clear","tui_template",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -748,7 +751,7 @@ func buildTuiLib() {
         case "box"      : stdlib["tui_box"](ns,evalfs,ident,t,s)
         case "menu"     : stdlib["tui_menu"](ns,evalfs,ident,t,s)
         case "text"     : stdlib["tui_text"](ns,evalfs,ident,t,s)
-        case "modal"    : stdlib["tui_text_modal"](ns,evalfs,ident,t,s)
+        case "pager"    : stdlib["tui_pager"](ns,evalfs,ident,t,s)
         case "input"    : stdlib["tui_input"](ns,evalfs,ident,t,s)
         case "radio"    : stdlib["tui_radio"](ns,evalfs,ident,t,s)
         case "progress" : stdlib["tui_text_progress"](ns,evalfs,ident,t,s)
@@ -776,6 +779,13 @@ func buildTuiLib() {
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
         return tui_progress(t,s),err
+    }
+
+    slhelp["tui_progress_reset"] = LibHelp{in: "tui_struct", out: "", action: "reset a progress bar"}
+    stdlib["tui_progress_reset"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_progress_reset",args,1,"1","main.tui"); !ok { return nil,err }
+        t:=args[0].(tui)
+        return tui_progress_reset(t),err
     }
 
     slhelp["tui_radio"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "checkbox selector"}
@@ -836,15 +846,15 @@ func buildTuiLib() {
         return nil,err
     }
 
-    slhelp["tui_text_modal"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "pager for text"}
-    stdlib["tui_text_modal"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("tui_text_modal",args,2,
+    slhelp["tui_pager"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "pager for text"}
+    stdlib["tui_pager"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_pager",args,2,
             "1","main.tui",
             "2","main.tui","main.tui_style"); !ok { return nil,err }
         t:=args[0].(tui)
         s:=default_tui_style
         if len(args)==2 { s=args[1].(tui_style) }
-        tui_text_modal(t,s)
+        tui_pager(t,s)
         return nil,err
     }
 

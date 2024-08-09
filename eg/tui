@@ -20,7 +20,7 @@ endstruct
 var members[] any
 append_to(ref members, member(.forename "Fred", .surname "Flintstone", .age 30, .town "Bedrock" ) )
 append_to(ref members, member(.forename "Bugs", .surname "Bunny", .age 80, .town "Albuquerque" ) )
-append_to(ref members, member(.forename "Stimpson", .surname "Cat", .age 3, .town "Los Angeles" ) )
+append_to(ref members, member(.forename "Stimpson J", .surname "Cat", .age 3, .town "Los Angeles" ) )
 
 # switch to alt screen
 tui_screen(1)
@@ -51,7 +51,7 @@ while not quit
     menu.Height,menu.Width=[12,32]
     menu.Options=[
         "input box","radio buttons","progress bar",
-        "text box","modal text viewer","templates",
+        "text box","pager","templates",
         "quit",
     ]
     menu.Prompt ="Please select an option:"
@@ -100,12 +100,10 @@ while not quit
         for e=1 to 100
             pb.Value=e.as_float/100
             pb=pb.tui_progress(s)
-            pause 25
+            pause 10
         endfor
         # reset bar
-        pb.Value=0.0
-        pb.tui_progress(s)
-        pb.Started=false
+        pb=pb.tui_progress_reset
     is 4
         # text box
         tb.Row,tb.Col=[2,36]
@@ -127,27 +125,26 @@ while not quit
         border["bg"]=s.bg
         border["fg"]=s.fg
         s.border=border
-        p.Height,p.Width,p.Title=[30,110,"modal text box"]
+        p.Height,p.Width,p.Title=[30,110,"pager box"]
         p.tui_box(s)
         p.Content=$in "CHANGELOG"
-        p.tui_text_modal(s)
+        p.tui_pager(s)
         p.tui_clear
     is 6
         # templates
         tb.Height,tb.Width,tb.Title=[4,40,"template display"]
+        s.wrap=true
+        s.bg,s.fg=["1","7"]
         border["bg"]=s.bg
         border["fg"]=s.fg
-        s.wrap=true
-        s.bg,s.fg=["3","7"]
         tb.Content="Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}"
         foreach rec in members
-            tb.Row,tb.Col=[2+6*key_rec,36]
+        tb.Title=" Record #{=key_rec+1} "
+            tb.Row,tb.Col=[2+6*key_rec,80]
             tb.Data=rec
             tb.tui_box(s)
             tb.tui_template(s)
         endfor
-        keypress(0)
-        # tb.tui_clear
     is 7
         quit=true
     endcase
