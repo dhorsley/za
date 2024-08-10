@@ -53,7 +53,7 @@ while not quit
         "input box","radio buttons","progress bar",
         "text box","pager","templates",
         "quit",
-    ]
+    ].list_string
     menu.Prompt ="Please select an option:"
     menu.Cursor="[#b1][#6]*[##][#-]"
 
@@ -82,7 +82,7 @@ while not quit
         rad.Row,rad.Col=[2,36]
         rad.Height,rad.Width=[6,64]
         rad.Prompt="Please select : "
-        rad.Options=["Red","Green","Blue","White"]
+        rad.Options=["Red","Green","Blue","White"].list_string
         rad.Vertical=true
         rad.Multi=true
         rad.Sep=" "
