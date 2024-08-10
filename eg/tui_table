@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+t=tui_new()
+s=tui_new_style()
+z=$in "/home/daniel/eg.csv"
+
+t.Data=z
+t.Format="csv"
+t.Display=[1,3,5,7].list_int
+
+aos=tui_table(t,s)
+foreach l in aos
+    println format("%+v",l)
+endfor
+
