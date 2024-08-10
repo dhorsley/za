@@ -17,8 +17,10 @@ type tui struct {
     Height  int
     Width   int
     Action  string
-    Options []any
+    Options []string
     Selected []bool
+    Sizes   []int
+    Display []int
     Started bool
     Vertical bool
     Cursor  string
@@ -50,30 +52,172 @@ type tui_style struct {
 func tui_table(t tui,s tui_style) (os string, err error) {
 
     // read data
-    switch t.Format {
-    case csv:
-    case tsv:
-    case ssv:
-    case psv:
-    case custom:
-    case aos:
-    case json:
+    sep:=","
+    lineMethod:=""
+    switch str.ToLower(t.Format) {
+    case "csv":
+        sep=" *, *"
+        lineMethod="regex"
+    case "tsv":
+        sep=" *\t *"
+        lineMethod="regex"
+    case "ssv":
+        sep=" +"
+        lineMethod="regex"
+    case "psv":
+        sep=" *\\| *"
+        lineMethod="regex"
+    case "custom":
+        sep=" *"+t.Sep+" *"
+        lineMethod="regex"
+    case "aos":
+        lineMethod="struct"
     default:
+        return "",fmt.Errorf("Unknown separator type in tui_table() [%s]",t.Format)
     }
 
-/*
-   actions to add:
+    var hasHeader bool
+    var aaos [][]string
+    var aos []string
+    var maxSize int
+    var colMax int
+    var fieldNames []string
 
-   table data output formatting (and pass through to pager)
-    - possible input formats, specified in tui.Format/tui.Sep, with data in tui.Data:
-      - csv, tsv, space or pipe delimited (or some other custom separator)
-      - array of struct
-      - newline separated (i.e. consume fixed number of lines)?
-      - newline separated with record separator (consume variable lines as columns)?
-      - json?
-      - yaml/toml/etc?
-      - option to bypass pager and go straight to stdout or file
+    switch lineMethod {
+    case "regex":
+        aos=str.Split(t.Data.(string),"\n")
+        maxSize=len(aos)
+    case "aos":
+        maxSize=len(t.Data.([]any))+1 // 0 element is headers
+    }
+    aaos=make([][]string,maxSize)
 
+    switch lineMethod {
+    case "regex":
+        // convert to array of strings, newline separated
+        var first bool = true
+        re := regexp.MustCompile(sep)
+
+        for i,v:=range aos {
+            cols:=re.Split(v,-1)
+            if first {
+                colMax=len(cols)
+            }
+            if len(cols)!=colMax {
+                return "",fmt.Errorf("Column count mismatch in tui_table() at .Data line %d",i)
+            }
+            for j,c:=range cols {
+                l:=len(c)
+                c=stripDoubleQuotes(c)
+                if l!=len(c) {
+                    c=stripSingleQuotes(c)
+                }
+                cols[j]=c
+            }
+            aaos[i+1]=cols
+        }
+
+    case "struct":
+        // convert to array of strings, from array of struct (reflect on each field)
+        isArray:=reflect.TypeOf(t.Data).Kind()==reflect.Array
+        if !isArray {
+           return "",fmt.Errorf(".Data not an array (%T)",t.Data)
+        }
+        var first bool = true
+        var refstruct reflect.Value
+        for i:=0; i<len(t.Data.([]any));i+=1 {
+            switch refstruct = reflect.ValueOf(t.Data.([]any)[i]); refstruct.Kind() {
+            case reflect.Struct:
+            default:
+                return "",fmt.Errorf(".Data element %d not a struct",i)
+            }
+            // get each field value, append to aaos
+            rvalue:=reflect.ValueOf(t.Data.([]any)[i])
+            if first { // set header field names also
+                colMax=rvalue.NumField()
+                fieldNames=make([]string,colMax)
+                for j:=0; j<colMax;i+=1 {
+                    rname:=rvalue.Type().Field(j).Name
+                    fieldNames[j]=rname
+                }
+                first=false
+            }
+            if rvalue.NumField()!=colMax {
+                return "",fmt.Errorf("Column count mismatch in tui_table() at .Data line %d",i)
+            }
+            for j:=0; j<colMax;i+=1 {
+                field_value:=refstruct.FieldByName(aaos[0][j])
+                aaos[i+1][j]=field_value.String()
+            }
+        }
+        hasHeader=true
+    }
+        
+    // get field headers from either options array (manually provided), or from field names
+    // if reading data from an array of structs
+    if len(t.Options)>0 {
+        if lineMethod != "struct" {
+            fieldNames=make([]string,len(t.Options))
+            if len(fieldNames)!=colMax {
+                return "",fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
+            }
+        }
+        copy(fieldNames,t.Options)
+        aaos[0]=fieldNames
+        hasHeader=true
+    }
+
+
+    pf("Row Max    %d\n",len(aaos))
+    pf("Column Max %d\n",colMax)
+    pf("Field Names : %+v\n",fieldNames)
+
+    // dummy uses
+    if hasHeader {}
+
+    // set which columns will be displayed, and set user width preferences
+    var selected []bool
+    selected=make([]bool,colMax)
+
+    if len(t.Display)>0 {
+        for _,v:=range t.Display {
+            selected[v]=true
+        }
+    } else { // display all
+        for j:=0; j<colMax; j+=1 {
+            selected[j]=true
+        }
+    }
+
+    // do some thing to calculate max column width for each column, to use in the formatter afterwards
+    cw:=make([]int,colMax)
+
+    if len(t.Sizes)==colMax {
+        cw=t.Sizes
+    } else {
+        for _,l:=range aaos {
+            for j,v:=range l {
+                if len(v)>cw[j] { 
+                    cw[j]=len(v)
+                }
+            }
+        }
+    }
+
+    // formatter
+    for _,l:=range aaos {
+        for j,v:=range l {
+            if selected[j] {
+                os+=sf("%-*s ",cw[j],v)
+            }
+        }
+        os+="\n"
+    }
+    pf("cw->%#v\n",cw)
+
+    // pass through to pager/other
+      // - option to bypass pager and go straight to stdout or file
+    /*
     - this would require some further style choices
       - e.g. fixed bg/fg for table/columns.
       - per column and row options for colour
@@ -84,11 +228,7 @@ func tui_table(t tui,s tui_style) (os string, err error) {
     - tui.Height would be ignored
     - tui.Width could be ignored, flag dependent.
       - i.e. permit dynamic growth of width to accommodate columns.
-
-*/
-
-    // output
-    switch t.xyz { // Omode? }
+    */
 
     return os,nil
 }
@@ -644,7 +784,7 @@ func tui_menu(t tui,s tui_style) tui {
         absat(row+4+k,col+6)
         // short_code=" "
         // on key_range!=nil do short_code=key_range[key_p].char
-        pf(p.(string))
+        pf(p)
         // "[{=short_code}]{p}"
     }
 
@@ -657,12 +797,12 @@ func tui_menu(t tui,s tui_style) tui {
     for ;!finished; {
 
         absat(row+4+sel,col+4); pf(cursor)
-        absat(row+4+sel,col+6); pf(addhibg+addhifg+t.Options[sel].(string)+"[##][#-]")
+        absat(row+4+sel,col+6); pf(addhibg+addhifg+t.Options[sel]+"[##][#-]")
         k:=wrappedGetCh(0,false)
         absat(row+4+sel,col+4)
         pf(addbg); pf(addfg)
         pf(" ")
-        absat(row+4+sel,col+6); pf(t.Options[sel].(string))
+        absat(row+4+sel,col+6); pf(t.Options[sel])
 
         //if k>=49 && k<maxchoice {
         //    result=k-48
@@ -730,7 +870,7 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_pager","tui_menu",
-        "tui_progress","tui_progress_reset", "tui_input","tui_clear","tui_template",
+        "tui_progress","tui_progress_reset", "tui_input","tui_clear","tui_template","tui_table",
     }
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
@@ -807,6 +947,17 @@ func buildTuiLib() {
         if ok,err:=expect_args("tui_progress_reset",args,1,"1","main.tui"); !ok { return nil,err }
         t:=args[0].(tui)
         return tui_progress_reset(t),err
+    }
+
+    slhelp["tui_table"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "table formatter (.Format=\"csv|tsv|psv|ssv|custom|aos\" .Data=input string"}
+    stdlib["tui_table"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("tui_table",args,2,
+            "1","main.tui",
+            "2","main.tui","main.tui_style"); !ok { return nil,err }
+        t:=args[0].(tui)
+        s:=default_tui_style
+        if len(args)==2 { s=args[1].(tui_style) }
+        return tui_table(t,s)
     }
 
     slhelp["tui_radio"] = LibHelp{in: "tui_struct[,tui_style]", out: "", action: "checkbox selector"}

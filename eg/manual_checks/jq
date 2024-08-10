@@ -6,7 +6,7 @@ iterable=as_bool(iterable)
 
 # example 1: returning filtered instance details
 
-sn=|aws ec2 describe-instances --filter "Name=tag:cluster,Values={cluster}"
+sn=|aws ec2 describe-instances --filter "Name=tag:Name,Values={cluster}"
 
 result=sn.out.json_query(`
     [ [.Reservations[].Instances[]|{state:.State.Name,type:.InstanceType}] |
@@ -43,7 +43,7 @@ println sn.out.json_query(`
 
 println "number running and preparing to operate instances"
 
-sn=| aws ec2 describe-instances --filter "Name=tag:cluster,Values={cluster}"
+sn=| aws ec2 describe-instances --filter "Name=tag:Name,Values={cluster}"
 
 result=sn.out.json_query(`
     .[] | .[] | .Instances[] 
