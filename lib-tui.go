@@ -107,7 +107,7 @@ func tui_table(t tui,s tui_style) (os string, err error) {
         sep=" "
         lineMethod="regex"
     case "psv":
-        sep="\\|"
+        sep="|"
         lineMethod="regex"
     case "custom":
         sep=t.Sep
@@ -172,13 +172,16 @@ func tui_table(t tui,s tui_style) (os string, err error) {
 
     case "struct":
         // convert to array of strings, from array of struct (reflect on each field)
-        isArray:=reflect.TypeOf(t.Data).Kind()==reflect.Array
+        isArray:=( reflect.TypeOf(t.Data).Kind()==reflect.Array || reflect.TypeOf(t.Data).Kind()==reflect.Slice )
         if !isArray {
-           return "",fmt.Errorf(".Data not an array (%T)",t.Data)
+           return "",fmt.Errorf(".Data not an array (%#v)",reflect.TypeOf(t.Data).Kind().String())
         }
+
         var first bool = true
         var refstruct reflect.Value
+        // pf("report: t.data.len : %d\n",len(t.Data.([]any)))
         for i:=0; i<len(t.Data.([]any));i+=1 {
+            // pf("report: i # %d : v %#v\n",i,t.Data.([]any)[i])
             switch refstruct = reflect.ValueOf(t.Data.([]any)[i]); refstruct.Kind() {
             case reflect.Struct:
             default:
@@ -189,18 +192,21 @@ func tui_table(t tui,s tui_style) (os string, err error) {
             if first { // set header field names also
                 colMax=rvalue.NumField()
                 fieldNames=make([]string,colMax)
-                for j:=0; j<colMax;i+=1 {
+                aaos[0]=make([]string,colMax)
+                for j:=0; j<colMax; j+=1 {
                     rname:=rvalue.Type().Field(j).Name
                     fieldNames[j]=rname
+                    aaos[0][j]=rname
                 }
                 first=false
             }
             if rvalue.NumField()!=colMax {
                 return "",fmt.Errorf("Column count mismatch in tui_table() at .Data line %d",i)
             }
-            for j:=0; j<colMax;i+=1 {
+            aaos[i+1]=make([]string,colMax)
+            for j:=0; j<colMax; j+=1 {
                 field_value:=refstruct.FieldByName(aaos[0][j])
-                aaos[i+1][j]=field_value.String()
+                aaos[i+1][j]=sf("%v",field_value) // .String()
             }
         }
         hasHeader=true
@@ -223,17 +229,16 @@ func tui_table(t tui,s tui_style) (os string, err error) {
             if len(t.Options)!=0 { // user provided list of header names from tui struct
                 copy(fieldNames,t.Options)
                 hasHeader=true
-            } else {
             }
         }
     }
 
-    /*
+    /* 
     pf("Row Max    %d\n",len(aaos))
     pf("Column Max %d\n",colMax)
     pf("Field Names : %+v\n",fieldNames)
     pf("Has Header  : %+v\n",hasHeader)
-    */
+    */ 
 
     // set which columns will be displayed, and set user width preferences
     var selected []bool
@@ -287,8 +292,6 @@ func tui_table(t tui,s tui_style) (os string, err error) {
         return "",fmt.Errorf("Column count does not match provided colour list length in tui_table() style .list field")
     }
 
-    // longestAnsiLine:=0
-
     // header display
     if hasHeader {
         if ih!="" {
@@ -303,11 +306,7 @@ func tui_table(t tui,s tui_style) (os string, err error) {
                 os+=section
             }
         }
-        /*
-        if displayedLen(ansiLine)+len(iv)+3 > longestAnsiLine {
-            longestAnsiLine=displayedLen(ansiLine)+len(iv)+3
-        }
-        */
+
         if ih!="" {
             os+="\n"+rep(ih,table_width)+"\n"
         } else {
@@ -333,11 +332,6 @@ func tui_table(t tui,s tui_style) (os string, err error) {
                 os+=ansiLine
             }
         }
-        /*
-        if displayedLen(ansiLine)+len(iv)+3 > longestAnsiLine {
-            longestAnsiLine=displayedLen(ansiLine)+len(iv)+3
-        }
-        */
 
         if ih!="" {
             os+="\n"+rep(ih,table_width)+"\n"
