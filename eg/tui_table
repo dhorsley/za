@@ -1,15 +1,30 @@
 #!/usr/bin/za
 
 t=tui_new()
+
 s=tui_new_style()
-z=$in "/home/daniel/eg.csv"
+border=s.border
+border["ih"] = ""
+s.border=border
+s.hi_bg="[#b1]"
+s.hi_fg="[#6]"
+s.list=["","[#1]","","[#2]","","[#3]","","[#4]","","",""].list_string
+
+z=$in "data/eg.csv"
 
 t.Data=z
 t.Format="csv"
 t.Display=[1,3,5,7].list_int
+t.Headers=true
+t.TableSend="pager"
+t.Row,t.Col=[2,10]
 
+t.Height,t.Width,t.Title=[30,100,"Example Table"]
+
+cls
 aos=tui_table(t,s)
-foreach l in aos
-    println format("%+v",l)
-endfor
+
+t.tui_clear
+at term_h(),1
+cursoron()
 
