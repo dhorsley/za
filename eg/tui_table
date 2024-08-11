@@ -15,7 +15,7 @@ s.hi_bg="[#b1]"
 s.hi_fg="[#6]"
 s.list=["","[#1]","","[#2]","","[#3]","","[#4]","","",""].list_string
 
-z=$in "data/eg.csv"
+z=$in (execpath()+"/data/eg.csv")
 
 t.Data=z
 t.Format="csv"

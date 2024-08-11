@@ -667,13 +667,12 @@ func tui_pager(t tui,s tui_style) {
     rs=str.Replace(rs,"%","%%",-1)
     ra:=str.Split(rs,"\n")
     if !s.wrap {
-        // do something to clip long lines here
-        //  if we add horizontal scroll bars later, this will
-        //  need to change to a bounded clip on display instead.
+        // do something much cleverer than this to clip long lines here:
+        // (it doesn't check for ansi code breakage.)
         /*
         for k,v:=range ra {
             if displayedLen(v) > t.Width-2 {
-                ra[k]=ra[k][:t.Width-2]
+                ra[k]=ra[k][:t.Width-2]+"[##][#-]"
             }
         }
         */
