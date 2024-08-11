@@ -12,30 +12,32 @@ import (
 )
 
 type tui struct {
-    Row     int
-    Col     int
-    Height  int
-    Width   int
-    Action  string
-    Options []string
-    Selected []bool
-    Sizes   []int
-    Display []int
-    Started bool
-    Vertical bool
-    Cursor  string
-    Title   string
-    Prompt  string
-    Content string
-    Value   float64
-    Border  bool
-    Data    any
-    Format  string
-    Sep     string
-    Result  any
-    Cancel  bool
-    Multi   bool
-    Reset   bool
+    Row         int
+    Col         int
+    Height      int
+    Width       int
+    Action      string
+    Options     []string
+    Selected    []bool
+    Sizes       []int
+    Display     []int
+    Started     bool
+    Vertical    bool
+    Cursor      string
+    Title       string
+    Prompt      string
+    Content     string
+    Value       float64
+    Border      bool
+    Data        any
+    Format      string
+    Sep         string
+    Result      any
+    Cancel      bool
+    Multi       bool
+    Reset       bool
+    Headers     bool
+    TableSend   string
 }
 
 type tui_style struct {
@@ -46,29 +48,69 @@ type tui_style struct {
     wrap    bool 
     hi_bg   string
     hi_fg   string
+    list    []string
 }
 
+func delimitedSplit(s string,sep string) (os []string) {
+    inQuote:=false
+    wordStart:=0
+    for e:=0;e<len(s)-1;e+=1 {
+        if !inQuote && s[e]==' ' {
+            continue
+        }
+        if inQuote && s[e]=='\\' {
+            e++
+            continue
+        }
+        if s[e]=='"' {
+            inQuote=!inQuote
+        }
+        if s[e]==sep[0] {
+            if !inQuote {
+                os=append(os,str.TrimSpace(s[wordStart:e]))
+                wordStart=e+1
+            }
+        }
+    }
+    return os
+}
 
 func tui_table(t tui,s tui_style) (os string, err error) {
+
+    // Options []string     // Field Headers
+    // Sizes   []int        // Field Display Widths
+    // Display []int        // Toggle display for columns
+    // Content string       // final output
+    // Data    any          // input data (either array of struct or a string
+    // Format  string       // to specify input data type
+    // Sep     string       // to specify the regex to use as a field separator
+    /* style fields:
+        border["iv"] // inner-vertical
+        border["ih"] // inner-horizontal
+        hi_bg   string
+        hi_fg   string
+        list    []string
+    */
+
 
     // read data
     sep:=","
     lineMethod:=""
     switch str.ToLower(t.Format) {
     case "csv":
-        sep=" *, *"
+        sep=","
         lineMethod="regex"
     case "tsv":
-        sep=" *\t *"
+        sep="\t"
         lineMethod="regex"
     case "ssv":
-        sep=" +"
+        sep=" "
         lineMethod="regex"
     case "psv":
-        sep=" *\\| *"
+        sep="\\|"
         lineMethod="regex"
     case "custom":
-        sep=" *"+t.Sep+" *"
+        sep=t.Sep
         lineMethod="regex"
     case "aos":
         lineMethod="struct"
@@ -83,11 +125,15 @@ func tui_table(t tui,s tui_style) (os string, err error) {
     var colMax int
     var fieldNames []string
 
+    if t.Headers {
+        hasHeader=true
+    }
+
     switch lineMethod {
     case "regex":
         aos=str.Split(t.Data.(string),"\n")
         maxSize=len(aos)
-    case "aos":
+    case "struct":
         maxSize=len(t.Data.([]any))+1 // 0 element is headers
     }
     aaos=make([][]string,maxSize)
@@ -96,15 +142,15 @@ func tui_table(t tui,s tui_style) (os string, err error) {
     case "regex":
         // convert to array of strings, newline separated
         var first bool = true
-        re := regexp.MustCompile(sep)
-
         for i,v:=range aos {
-            cols:=re.Split(v,-1)
+            cols:=delimitedSplit(v,sep)
             if first {
                 colMax=len(cols)
+                aaos[0]=make([]string,colMax)
             }
+            aaos[i+1]=make([]string,colMax)
             if len(cols)!=colMax {
-                return "",fmt.Errorf("Column count mismatch in tui_table() at .Data line %d",i)
+                return "",fmt.Errorf("Column count mismatch (%d,%d) in tui_table() at .Data line %d",len(cols),colMax,i)
             }
             for j,c:=range cols {
                 l:=len(c)
@@ -112,9 +158,16 @@ func tui_table(t tui,s tui_style) (os string, err error) {
                 if l!=len(c) {
                     c=stripSingleQuotes(c)
                 }
+                if first && hasHeader {
+                    aaos[0][j]=c
+                    // append(aaos[0],c)
+                }
                 cols[j]=c
             }
-            aaos[i+1]=cols
+            if ! (first && hasHeader) {
+                aaos[i]=cols
+            }
+            first=false
         }
 
     case "struct":
@@ -155,25 +208,32 @@ func tui_table(t tui,s tui_style) (os string, err error) {
         
     // get field headers from either options array (manually provided), or from field names
     // if reading data from an array of structs
-    if len(t.Options)>0 {
-        if lineMethod != "struct" {
-            fieldNames=make([]string,len(t.Options))
-            if len(fieldNames)!=colMax {
-                return "",fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
-            }
-        }
-        copy(fieldNames,t.Options)
-        aaos[0]=fieldNames
-        hasHeader=true
+
+    if lineMethod!="struct" && hasHeader { // user instructed to take header names from data line 0
+        fieldNames=make([]string,colMax)
+        fieldNames=aaos[0]
     }
 
+    if len(t.Options)>0 {
+        if lineMethod != "struct" {
+            if len(t.Options)!=colMax {
+                return "",fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
+            }
+            fieldNames=make([]string,len(t.Options))
+            if len(t.Options)!=0 { // user provided list of header names from tui struct
+                copy(fieldNames,t.Options)
+                hasHeader=true
+            } else {
+            }
+        }
+    }
 
+    /*
     pf("Row Max    %d\n",len(aaos))
     pf("Column Max %d\n",colMax)
     pf("Field Names : %+v\n",fieldNames)
-
-    // dummy uses
-    if hasHeader {}
+    pf("Has Header  : %+v\n",hasHeader)
+    */
 
     // set which columns will be displayed, and set user width preferences
     var selected []bool
@@ -205,30 +265,103 @@ func tui_table(t tui,s tui_style) (os string, err error) {
     }
 
     // formatter
-    for _,l:=range aaos {
-        for j,v:=range l {
-            if selected[j] {
-                os+=sf("%-*s ",cw[j],v)
+
+    iv:=s.border["iv"]
+    ih:=s.border["ih"]
+    hb:=s.hi_bg
+    hf:=s.hi_fg
+
+    table_width:=5
+    for j:=range cw {
+        if selected[j] {
+            table_width+=2+cw[j]
+        }
+    }
+    if iv=="" {
+        table_width-=2
+    }
+
+    cllen:=len(s.list)
+
+    if cllen>0 && cllen!=colMax {
+        return "",fmt.Errorf("Column count does not match provided colour list length in tui_table() style .list field")
+    }
+
+    // longestAnsiLine:=0
+
+    // header display
+    if hasHeader {
+        if ih!="" {
+            os+=rep(ih,table_width)+"\n"
+        }
+        os+=iv
+        ansiLine:=""
+        for e:=0;e<len(fieldNames);e+=1 {
+            if selected[e] {
+                section:=sf("%s %-*s [##][#-]%s",hb+hf,cw[e],fieldNames[e],iv)
+                ansiLine+=section
+                os+=section
             }
         }
-        os+="\n"
+        /*
+        if displayedLen(ansiLine)+len(iv)+3 > longestAnsiLine {
+            longestAnsiLine=displayedLen(ansiLine)+len(iv)+3
+        }
+        */
+        if ih!="" {
+            os+="\n"+rep(ih,table_width)+"\n"
+        } else {
+            os+="\n"
+        }
     }
-    pf("cw->%#v\n",cw)
+
+    // data display
+    for trow:=1; trow<len(aaos); trow+=1 {
+        line:=aaos[trow]
+
+        if s.bg!="" { os+="[#b"+s.bg+"]" }
+        if s.fg!="" { os+="[#"+s.fg+"]" }
+
+        os+=iv
+        ansiLine:=""
+        for j,v:=range line {
+            field_colour:=""
+            if cllen>0 { field_colour=s.list[j] }
+
+            if selected[j] {
+                ansiLine=sf("%s %-*s [##][#-]%s",field_colour,cw[j],v,iv)
+                os+=ansiLine
+            }
+        }
+        /*
+        if displayedLen(ansiLine)+len(iv)+3 > longestAnsiLine {
+            longestAnsiLine=displayedLen(ansiLine)+len(iv)+3
+        }
+        */
+
+        if ih!="" {
+            os+="\n"+rep(ih,table_width)+"\n"
+        } else {
+            os+="\n"
+        }
+    }
 
     // pass through to pager/other
-      // - option to bypass pager and go straight to stdout or file
-    /*
-    - this would require some further style choices
-      - e.g. fixed bg/fg for table/columns.
-      - per column and row options for colour
-      - modulus-based bg for rows (i.e. fixed/odd/even/every X bg shading)
-      - inner border styles as well as outer
-    - column headings should be optional
-    - table title should be taken from tui.Title if present.
-    - tui.Height would be ignored
-    - tui.Width could be ignored, flag dependent.
-      - i.e. permit dynamic growth of width to accommodate columns.
-    */
+    // Row     int          // Passed through to pager
+    // Col     int          // Passed through to pager
+    // Height  int          // Passed through to pager
+    // Width   int          // Passed through to pager
+    // Border  bool         // Passed through to pager
+    // Title   string       // Passed through to pager
+
+    if t.TableSend!="" {
+        t.Content=os
+        switch str.ToLower(t.TableSend) {
+        case "pager":
+            t.Width=table_width+2
+            tui_pager(t,s)
+        }
+    }
 
     return os,nil
 }
@@ -527,6 +660,7 @@ func tui_pager(t tui,s tui_style) {
     pf(addbg); pf(addfg)
 
     cpos:=0
+    hideCursor()
     
     var w uint
     var rs string
@@ -542,11 +676,13 @@ func tui_pager(t tui,s tui_style) {
         // do something to clip long lines here
         //  if we add horizontal scroll bars later, this will
         //  need to change to a bounded clip on display instead.
+        /*
         for k,v:=range ra {
-            if len(v) > t.Width-2 {
+            if displayedLen(v) > t.Width-2 {
                 ra[k]=ra[k][:t.Width-2]
             }
         }
+        */
     }
 
     t.Cancel=false
@@ -563,7 +699,7 @@ func tui_pager(t tui,s tui_style) {
         // scroll position
         scroll_pos:=int(float64(cpos)*float64(t.Height-1)/float64(len(ra)))
         absat(t.Row+1+scroll_pos,t.Col+t.Width-2)
-        pf("[#invert]*[#-]")
+        pf("[#invert]*[##][#-]")
         // process keypresses
         k:=wrappedGetCh(0,false)
         switch k {
@@ -844,6 +980,8 @@ func buildTuiLib() {
     default_border_map["bm"]="═"
     default_border_map["lm"]="│"
     default_border_map["rm"]="│"
+    default_border_map["iv"]="│"
+    default_border_map["ih"]="─"
     default_border_map["bg"]="0"
     default_border_map["fg"]="7"
 
@@ -856,6 +994,8 @@ func buildTuiLib() {
     empty_border_map["bm"]=" "
     empty_border_map["lm"]=" "
     empty_border_map["rm"]=" "
+    empty_border_map["iv"]=" "
+    empty_border_map["ih"]=" "
     empty_border_map["bg"]="default"
     empty_border_map["fg"]="default"
 
