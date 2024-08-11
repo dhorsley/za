@@ -2112,11 +2112,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []int:
         sz:=cap((*ident)[bin].IValue.([]int))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]int))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]int,newend,newend)
+            newar:=make([]int,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]int))
             (*ident)[bin].IValue=newar
         }
@@ -2124,11 +2126,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []uint8:
         sz:=cap((*ident)[bin].IValue.([]uint8))
-        if numel>=sz-1 {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]uint8))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]uint8,newend,newend)
+            newar:=make([]uint8,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]uint8))
             (*ident)[bin].IValue=newar
         }
@@ -2136,11 +2140,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []uint:
         sz:=cap((*ident)[bin].IValue.([]uint))
-        if numel>=sz-1 {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]uint))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]uint,newend,newend)
+            newar:=make([]uint,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]uint))
             (*ident)[bin].IValue=newar
         }
@@ -2148,11 +2154,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []bool:
         sz:=cap((*ident)[bin].IValue.([]bool))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]bool))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]bool,newend,newend)
+            newar:=make([]bool,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]bool))
             (*ident)[bin].IValue=newar
         }
@@ -2160,11 +2168,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []string:
         sz:=cap((*ident)[bin].IValue.([]string))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]string))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]string,newend,newend)
+            newar:=make([]string,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]string))
             (*ident)[bin].IValue=newar
         }
@@ -2172,11 +2182,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []float64:
         sz:=cap((*ident)[bin].IValue.([]float64))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]float64))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]float64,newend,newend)
+            newar:=make([]float64,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]float64))
             (*ident)[bin].IValue=newar
         }
@@ -2187,11 +2199,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []*big.Int:
         sz:=cap((*ident)[bin].IValue.([]*big.Int))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]*big.Int))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]*big.Int,newend,newend)
+            newar:=make([]*big.Int,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]*big.Int))
             (*ident)[bin].IValue=newar
         }
@@ -2199,11 +2213,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []*big.Float:
         sz:=cap((*ident)[bin].IValue.([]*big.Float))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]*big.Float))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]*big.Float,newend,newend)
+            newar:=make([]*big.Float,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]*big.Float))
             (*ident)[bin].IValue=newar
         }
@@ -2211,11 +2227,13 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     case []any:
         sz:=cap((*ident)[bin].IValue.([]any))
-        if numel>=sz {
-            newend:=sz*2
+        ll:=len((*ident)[bin].IValue.([]any))
+        if numel>=sz || numel>=ll {
+            newend:=sz
+            if numel>=sz { newend=sz*2 }
             if sz==0 { newend=1 }
             if numel>=newend { newend=numel+1 }
-            newar:=make([]any,newend,newend)
+            newar:=make([]any,numel+1,newend)
             copy(newar,(*ident)[bin].IValue.([]any))
             (*ident)[bin].IValue=newar
         }
@@ -2224,7 +2242,6 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
         } else {
             (*ident)[bin].IValue.([]any)[numel]=value.(any)
         }
-
     default:
         pf("DEFAULT: Unknown type %T for list %s\n",list,name)
 
