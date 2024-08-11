@@ -47,6 +47,7 @@ def randy()
     return rand(mh-1)-1
 end
 
+seed(-1)
 
 # setup grid
 mh=term_h()
