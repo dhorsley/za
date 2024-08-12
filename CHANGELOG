@@ -1918,9 +1918,10 @@ CHANGE LOG
 
                 * i'll keep chipping away at it :)
 
-            ****************************************************************************************************************
-            * currently best performance comes from using fixed arrays where you can (with INIT) and avoiding interpolation.
-            ****************************************************************************************************************
+            ************************************************************
+            * currently best performance comes from using fixed arrays *
+            * where you can (with INIT) and avoiding interpolation.    *
+            ************************************************************
 
             associative array performance is acceptable, but things like map writes are still about half the speed of python.
 
