@@ -278,13 +278,15 @@ func tui_table(t tui,s tui_style) (os string, err error) {
     hf:=s.hi_fg
 
     table_width:=5
+    dispColCount:=0
     for j:=range cw {
         if selected[j] {
             table_width+=2+cw[j]
+            dispColCount+=1
         }
     }
     if iv=="" {
-        table_width-=2
+        table_width-=dispColCount
     }
 
     cllen:=len(s.list)
