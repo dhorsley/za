@@ -38,6 +38,7 @@ type tui struct {
     Reset       bool
     Headers     bool
     TableSend   string
+    Index       int         // menu cursor index
 }
 
 type tui_style struct {
@@ -879,7 +880,7 @@ func tui_menu(t tui,s tui_style) tui {
     fg:=s.fg
     hi_bg:=s.hi_bg
     hi_fg:=s.hi_fg
-
+    
     addbg:=""; addfg:=""
     addhibg:=""; addhifg:=""
     if bg!="" { addbg="[#b"+bg+"]" }
@@ -891,7 +892,7 @@ func tui_menu(t tui,s tui_style) tui {
     absat(row+2,col+2)
     pf(prompt)
 
-    sel:=0
+    sel:=t.Index
 
     /*
     ol:=len(t.Options)
@@ -953,6 +954,7 @@ func tui_menu(t tui,s tui_style) tui {
         }
 
     }
+    t.Index=sel
     return t
 }
 
