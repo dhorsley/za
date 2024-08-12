@@ -128,7 +128,7 @@ while not quit
         border["bg"]=s.bg
         border["fg"]=s.fg
         s.border=border
-        p.Height,p.Width,p.Title=[30,110,"pager box"]
+        p.Height,p.Width,p.Title=[30,term_w()-35,"pager box"]
         p.tui_box(s)
         p.Content=$in "CHANGELOG"
         p.tui_pager(s)

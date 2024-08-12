@@ -394,6 +394,7 @@ func wrapString(s string, lim uint) string {
     var current uint
     var wordBuf, spaceBuf bytes.Buffer
     var wordBufLen, spaceBufLen uint
+    var truncCount int
 
     for _, char := range s {
         if char == '\n' {
@@ -406,8 +407,25 @@ func wrapString(s string, lim uint) string {
                 }
                 spaceBuf.Reset()
                 spaceBufLen = 0
-            } else {
-                current += spaceBufLen + wordBufLen
+            } else { // eol and word content in buffer
+
+                // end truncation bodge
+                // this is nasty, it just brutally elides sections that
+                // may lead to overspill. need to replace this entire function tbh.
+                if truncCount>0 {
+                    if buf.Len()-truncCount>0 {
+                        buf.Truncate(buf.Len()-truncCount)
+                        truncCount=0
+                        buf.WriteRune('~')
+                        spaceBuf.Reset()
+                        spaceBufLen=0
+                        wordBuf.Reset()
+                        wordBufLen=0
+                    }
+                }
+
+                // normal operation
+                current += spaceBufLen + wordBufLen // skip position marker past accumulated stuff
                 spaceBuf.WriteTo(buf)
                 spaceBuf.Reset()
                 spaceBufLen = 0
@@ -434,11 +452,15 @@ func wrapString(s string, lim uint) string {
             wordBuf.WriteRune(char)
             wordBufLen++
 
-            if current+wordBufLen+spaceBufLen > lim && wordBufLen < lim {
-                buf.WriteRune('\n')
-                current = 0
-                spaceBuf.Reset()
-                spaceBufLen = 0
+            if current+wordBufLen+spaceBufLen > lim {
+                if wordBufLen < lim {
+                    buf.WriteRune('\n')
+                    current = 0
+                    spaceBuf.Reset()
+                    spaceBufLen = 0
+                } else {
+                    truncCount+=1
+                }
             }
         }
     }
