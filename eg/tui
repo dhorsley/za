@@ -38,6 +38,18 @@ tb=tui_new()
 p=tui_new()
 
 quit=false
+
+menu.Index=0
+menu.Row,menu.Col,menu.Title = [2,2,"test options menu"]
+menu.Height,menu.Width=[12,32]
+menu.Options=[
+    "input box","radio buttons","progress bar",
+    "text box","pager","templates",
+    "quit",
+].list_string
+menu.Prompt ="Please select an option:"
+menu.Cursor="[#b1][#6]*[##][#-]"
+
 while not quit
 
     # menu
@@ -47,15 +59,6 @@ while not quit
     border["bg"]="3"
     border["fg"]="7"
     s.border=border
-    menu.Row,menu.Col,menu.Title = [2,2,"test options menu"]
-    menu.Height,menu.Width=[12,32]
-    menu.Options=[
-        "input box","radio buttons","progress bar",
-        "text box","pager","templates",
-        "quit",
-    ].list_string
-    menu.Prompt ="Please select an option:"
-    menu.Cursor="[#b1][#6]*[##][#-]"
 
     menu.tui_box(s)
     menu=menu.tui_menu(s)
@@ -121,7 +124,7 @@ while not quit
         # pager
         p.Row,p.Col=[2,36]
         s.bg,s.fg=["2","7"]
-        s.wrap=false
+        s.wrap=true
         border["bg"]=s.bg
         border["fg"]=s.fg
         s.border=border
