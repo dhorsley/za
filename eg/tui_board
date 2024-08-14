@@ -1,5 +1,12 @@
 #!/usr/bin/za
 
+doc `
+    simple todo list example
+
+    @todo: delete item
+    @todo: load/save on start/exit
+`
+
 trap("int","cleanup()")
 
 def cleanup()
@@ -100,6 +107,7 @@ while not quit
     # up, down    : move cursor in list
     # shift-right, shift-left : move item between lists
     # esc,q : quit
+    # n : new item
 
     is 8
         on optcol>0 do optcol--
@@ -142,56 +150,6 @@ while not quit
         # then
             append_to(ref tasks, task(.name name.Result, .description desc.Result, .status status.todo))
 
-doc `
-    is 1
-        # input box
-        i.Row=term_h()-4
-        i.Col=10
-        i.Content="blah"
-        i.Prompt="[#b1][#6]type away... "
-        i.Title="test input box"
-        i.Border=true
-        i.Height,i.Width=[1,80]
-        s.bg,s.fg=["1","6"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        s.border=border
-        i=i.tui_input(s)
-        ires=i.Result
-    is 4
-        # text box
-        tb.Row,tb.Col=[2,36]
-        tb.Height,tb.Width,tb.Title=[15,40,"text display"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        s.wrap=true
-        s.bg,s.fg=["3","7"]
-        tb.Content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-        tb.tui_box(s)
-        tb.tui_text(s)
-        keypress(0)
-        tb.tui_clear
-    is 6
-        # templates
-        tb.Height,tb.Width,tb.Title=[4,40,"template display"]
-        s.wrap=true
-        s.bg,s.fg=["1","7"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        tb.Content="Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}"
-        foreach rec in members
-        tb.Title=" Record #{=key_rec+1} "
-            tb.Row,tb.Col=[2+6*key_rec,80]
-            tb.Data=rec
-            tb.tui_box(s)
-            tb.tui_template(s)
-        endfor
-        keypress()
-        foreach rec in members
-            tb.Row,tb.Col=[2+6*key_rec,80]
-            tb.tui_clear
-        endfor
-`
     endcase
 endwhile
 
