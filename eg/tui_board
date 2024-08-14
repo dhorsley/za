@@ -47,7 +47,7 @@ enn=enum_names("status")
 
 intui=tui_new() 
 instyle=tui_new_style()
-intui.Row,intui.Col=[1,1]
+intui.Row,intui.Col=[2,1]
 intui.Height,intui.Width=[1,term_w()]
 
 s=tui_new_style()
@@ -85,6 +85,7 @@ foreach c in enum_all("status")
     at colStartPos-2,startColX+key_c*rec.Width+(rec.Width/2-headers[c].len/2),"[#bold][#ul]{=headers[c]}[#-]"
 endfor
 
+at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#1]e[#-]dit  [#1]d[#-]elete  [#1]u[#-]ndo  [#1]n[#-]ew  [#1]q[#-]uit   [#i1]shift-left and shift-right to move a task or move around with cursor keys.[#i0]"
 
 while not quit
 
@@ -146,7 +147,7 @@ while not quit
         on optrow>0 do optrow--
 
     is 208 # shift left
-        if optcol>0
+        if optcol>0 and coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
             tasks[selected].status-=1
             rec.Row,rec.Col=[colStartPos+5*optrow,startColX+optcol*(rec.Width)]
@@ -158,7 +159,7 @@ while not quit
             optrow=optrow[0:coldepths[optcol]]
         endif
     is 209 # shift right
-        if optcol<maxCol
+        if optcol<maxCol and coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
             tasks[selected].status+=1
             rec.Row,rec.Col=[colStartPos+5*optrow,startColX+optcol*(rec.Width)]
@@ -192,11 +193,13 @@ while not quit
             undo[undoLen]=tasks[selected]
             undoLen++
             tasks=tasks[:selected]+tasks[selected+1:]
+            on optrow >= coldepths[optcol]-1 do optrow--
+            on optrow < 0 do optrow=0
+            coldepths[optcol]-=1
+            footer("[#bold]%s[#boff] task deleted".format(name))
+        else
+            footer("nothing to delete in column [#i1]%s[#i0]".format(headers[optcol]))
         endif
-        on optrow >= coldepths[optcol]-1 do optrow--
-        on optrow < 0 do optrow=0
-        coldepths[optcol]-=1
-        footer("[#bold]%s[#boff] task deleted".format(name))
 
     is asc("e") # edit task under cursor
         selected=task_index["{optrow},{optcol}"]
