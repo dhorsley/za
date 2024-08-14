@@ -2,23 +2,58 @@
 
 doc `
     simple todo list example
-
-    @todo: delete item
-    @todo: load/save on start/exit
 `
 
 trap("int","cleanup()")
 
+def save(tasks,saveloc)
+    saved=false
+    h=fopen(saveloc,"w")
+    if h!=nil
+        foreach e in tasks
+            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n")
+        endfor
+        fclose(h)
+        saved=true
+    endif
+    return saved
+end
+
+def load(saveloc)
+    opened=false
+    h=fopen(saveloc,"r")
+    if h!=nil
+        var tasks []any
+        while !feof(h)
+            name=fread(h,"\n")
+            desc=fread(h,"\n")
+            status=fread(h,"\n").as_int
+            append_to(ref tasks,task(name,desc,status))
+        endwhile
+        fclose(h)
+        opened=true
+    endif
+    return tasks,opened
+end
+
 def cleanup()
     tui_screen(0)
+    saved=save(tasks,saveloc)
+    if saved
+        footer("[#4]tasks saved to %s[#-]".format(saveloc))
+    else
+        footer("[#2]tasks not saved to %s[#-]".format(saveloc))
+    endif
+    println
     cursoron()
+    at term_h(),1
     exit
 end
 
 def footer(s)
     clear_line(term_h(),1)
     at term_h(),1
-    print s  # + format("  : (%d,%d)",optrow,optcol)
+    print s
 end
 
 enum status ( todo=0, inprogress, done )
@@ -29,11 +64,29 @@ struct task
     status      int
 endstruct
 
+
+saveloc=home()+"/.tui_board"
+
 var tasks []any
-append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",            .status status.inprogress   ))
-append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",  .status status.done         ))
-append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",  .status status.todo         ))
-append_to(ref tasks, task(.name "fluff catbeds",    .description "they demand comfort",                 .status status.todo         ))
+
+loaded=false
+if is_file(saveloc)
+    tasks,loaded=load(saveloc)
+    if loaded
+        footer("tasks loaded from %s".format(saveloc))
+        println
+    endif
+endif 
+
+if !loaded
+    append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",            .status status.inprogress   ))
+    append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",  .status status.done         ))
+    append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",  .status status.todo         ))
+    append_to(ref tasks, task(.name "fluff catbeds",    .description "they demand comfort",                 .status status.todo         ))
+    footer("example tasks created")
+endif
+
+
 
 var headers map
 headers[status.todo]="To Do"
@@ -203,15 +256,19 @@ while not quit
 
     is asc("e") # edit task under cursor
         selected=task_index["{optrow},{optcol}"]
+
         intui.Prompt="New task name : "
         intui.Content=tasks[selected].name
         name=intui.tui_input(instyle).Result
+
         intui.Prompt="New task description : "
         intui.Content=tasks[selected].description
         desc=intui.tui_input(instyle).Result
+
         intui.tui_clear(instyle)
         tasks[selected].name=name
         tasks[selected].description=desc
+
         footer("[#bold]%s[#boff] task amended".format(name))
 
     is asc("u") # undo last
@@ -225,9 +282,8 @@ while not quit
 
 endwhile
 
+
 # cleanup
-tui_screen(0)
-cursoron()
-at term_h(),1
+cleanup()
 
 
