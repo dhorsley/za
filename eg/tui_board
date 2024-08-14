@@ -1,0 +1,203 @@
+#!/usr/bin/za
+
+trap("int","cleanup()")
+
+def cleanup()
+    tui_screen(0)
+    cursoron()
+    exit
+end
+
+enum status ( todo=0, inprogress, done )
+
+struct task
+    name        string
+    description string
+    status      int
+endstruct
+
+var tasks []any
+append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",            .status status.inprogress   ))
+append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",  .status status.done         ))
+append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",  .status status.todo         ))
+append_to(ref tasks, task(.name "fluff catbeds",    .description "they demand comfort",                 .status status.todo         ))
+
+var headers map
+headers[status.todo]="To Do"
+headers[status.inprogress]="In Progress"
+headers[status.done]="Complete"
+
+# switch to alt screen
+tui_screen(1)
+
+intui=tui_new() 
+instyle=tui_new_style()
+intui.Row,intui.Col=[1,1]
+intui.Height,intui.Width=[1,term_w()]
+
+s=tui_new_style()
+s.fill=true
+border=s.border
+s.bg,s.fg       =["1","7"]
+s.hi_bg,s.hi_fg =["2","7"]
+border["fg"]="5"
+s.border=border
+s.wrap=true
+
+tmpl="[#bold][#3]{.name}[#boff][#-]\n[#7]{.description}[#-]"
+rec=tui_new()
+rec.Height,rec.Width=[4,40]
+
+quit=false
+
+optcol=0
+optrow=0
+var coldepths []int
+var task_index map
+
+maxCol=enum_all("status").len-1
+colStartPos=5
+
+cursoroff()
+
+# column headers
+foreach c in enum_all("status")
+    at colStartPos-2,10+key_c*rec.Width,"[#bold][#ul]{=headers[c]}[#-]"
+endfor
+
+
+while not quit
+
+    foreach c in enum_all("status")
+        ypos=0
+        foreach t in tasks
+            task_index["{ypos},{c}"]=key_t
+            if t.status==c
+                s.bg="0"
+                if ypos==optrow and c==optcol
+                    s.bg="2"
+                endif
+                rec.Row,rec.Col=[colStartPos+5*ypos,10+key_c*(rec.Width)]
+                rec.Content=tmpl
+                rec.Data=t
+                rec.tui_box(s)
+                rec.tui_template(s)
+                ypos++
+            endif
+        endfor
+        coldepths[c]=ypos
+        # clear one more at the bottom of each column, in case a record was just moved
+        rec.Row,rec.Col=[colStartPos+5*ypos,10+key_c*(rec.Width)]
+        rec.tui_clear(s)
+    endfor
+
+    at 1,1
+
+    k=keypress(0)
+    
+    case k
+    # left, right : switch lists
+    # up, down    : move cursor in list
+    # shift-right, shift-left : move item between lists
+    # esc,q : quit
+
+    is 8
+        on optcol>0 do optcol--
+        on optrow>coldepths[optcol]-1 do optrow=coldepths[optcol]-1
+    is 9
+        on optcol<maxCol do optcol++
+        on optrow>coldepths[optcol]-1 do optrow=coldepths[optcol]-1
+    is 10
+        on optrow<coldepths[optcol]-1 do optrow++
+    is 11
+        on optrow>0 do optrow--
+
+    is 208 # shift left
+        if optcol>0
+            selected=task_index["{optrow},{optcol}"]
+            tasks[selected].status-=1
+            rec.Row,rec.Col=[colStartPos+5*optrow,10+optcol*(rec.Width)]
+            rec.tui_clear(s)
+            optcol--
+        endif
+    is 209 # shift right
+        if optcol<maxCol
+            selected=task_index["{optrow},{optcol}"]
+            tasks[selected].status+=1
+            rec.Row,rec.Col=[colStartPos+5*optrow,10+optcol*(rec.Width)]
+            rec.tui_clear(s)
+            optcol++
+        endif
+
+    has k in [27,asc("q")]
+        quit=true
+
+    is asc("n") # new task
+        # get name, desc
+        intui.Prompt="New task name : "
+        name=intui.tui_input(instyle)
+        intui.Prompt="New task description : "
+        desc=intui.tui_input(instyle)
+        intui.tui_clear(instyle)
+        # then
+            append_to(ref tasks, task(.name name.Result, .description desc.Result, .status status.todo))
+
+doc `
+    is 1
+        # input box
+        i.Row=term_h()-4
+        i.Col=10
+        i.Content="blah"
+        i.Prompt="[#b1][#6]type away... "
+        i.Title="test input box"
+        i.Border=true
+        i.Height,i.Width=[1,80]
+        s.bg,s.fg=["1","6"]
+        border["bg"]=s.bg
+        border["fg"]=s.fg
+        s.border=border
+        i=i.tui_input(s)
+        ires=i.Result
+    is 4
+        # text box
+        tb.Row,tb.Col=[2,36]
+        tb.Height,tb.Width,tb.Title=[15,40,"text display"]
+        border["bg"]=s.bg
+        border["fg"]=s.fg
+        s.wrap=true
+        s.bg,s.fg=["3","7"]
+        tb.Content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+        tb.tui_box(s)
+        tb.tui_text(s)
+        keypress(0)
+        tb.tui_clear
+    is 6
+        # templates
+        tb.Height,tb.Width,tb.Title=[4,40,"template display"]
+        s.wrap=true
+        s.bg,s.fg=["1","7"]
+        border["bg"]=s.bg
+        border["fg"]=s.fg
+        tb.Content="Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}"
+        foreach rec in members
+        tb.Title=" Record #{=key_rec+1} "
+            tb.Row,tb.Col=[2+6*key_rec,80]
+            tb.Data=rec
+            tb.tui_box(s)
+            tb.tui_template(s)
+        endfor
+        keypress()
+        foreach rec in members
+            tb.Row,tb.Col=[2+6*key_rec,80]
+            tb.tui_clear
+        endfor
+`
+    endcase
+endwhile
+
+# cleanup
+tui_screen(0)
+cursoron()
+at term_h(),1
+
+

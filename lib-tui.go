@@ -743,6 +743,9 @@ func tui_text(t tui,s tui_style) {
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
     if s.fg!="" { addfg="[#"+s.fg+"]" }
     pf(addbg); pf(addfg)
+    if s.fill {
+        tui_inner_fill(t,s)
+    }
 
     var w uint
     w=uint(t.Width-2)
@@ -773,6 +776,12 @@ func tui_clear(t tui, s tui_style) {
     }
 }
 
+func tui_inner_fill(t tui, s tui_style) {
+    for e:=1;e<t.Height;e+=1 {
+        absat(t.Row+e,t.Col+1)
+        fmt.Print(rep(" ",t.Width-2))
+    }
+}
 
 // problems:  getInput uses either clearToEOL / clearToEOP
 //              this is breaking through the right border

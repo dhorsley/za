@@ -9,6 +9,7 @@ import (
     str "strings"
     "syscall"
     "time"
+//    "fmt"
 )
 
 
@@ -104,6 +105,10 @@ func wrappedGetCh(p int,disp bool) (i int) {
                     k = 211
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x42}): // SHIFT-DOWN
                     k = 210
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x43}): // SHIFT-RIGHT
+                    k = 209
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x44}): // SHIFT-LEFT
+                    k = 208
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
                     k = 10
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
@@ -119,6 +124,7 @@ func wrappedGetCh(p int,disp bool) (i int) {
                 case bytes.Equal(c, []byte{0x1B}): // ESCAPE
                     k = 27
                 default:
+                    // fmt.Printf("<%#v>",c)
                     if len(c) == 1 {
                         if c[0] > 31 {
                             k = int(c[0])
