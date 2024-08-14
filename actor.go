@@ -135,6 +135,9 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             }
 
             (*t).IValue=tmp.Interface()
+            gob.Register((*t).IValue)
+            // var tmpArray = reflect.ArrayOf(0,val.Type())
+            // gob.Register(tmpArray)
 
         } else {
             (*t).IValue=[]any{}
