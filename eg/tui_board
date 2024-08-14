@@ -4,8 +4,6 @@ doc `
     simple todo list example
 `
 
-trap("int","cleanup()")
-
 def save(tasks,saveloc)
     saved=false
     h=fopen(saveloc,"w")
