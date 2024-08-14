@@ -4,6 +4,8 @@ doc `
     simple todo list example
 `
 
+# functions
+
 def save(tasks,saveloc)
     saved=false
     h=fopen(saveloc,"w")
@@ -50,9 +52,10 @@ end
 
 def footer(s)
     clear_line(term_h(),1)
-    at term_h(),1
-    print s
+    at term_h(),1, s
 end
+
+# definitions
 
 enum status ( todo=0, inprogress, done )
 
@@ -63,8 +66,10 @@ struct task
 endstruct
 
 
-saveloc=home()+"/.tui_board"
+# main
 
+# setup task list
+saveloc=home()+"/.tui_board"
 var tasks []any
 
 loaded=false
@@ -85,7 +90,7 @@ if !loaded
 endif
 
 
-
+# create column headers
 var headers map
 headers[status.todo]="To Do"
 headers[status.inprogress]="In Progress"
@@ -94,13 +99,13 @@ headers[status.done]="Complete"
 # switch to alt screen
 tui_screen(1)
 
-enn=enum_names("status")
-
+# create input element
 intui=tui_new() 
 instyle=tui_new_style()
 intui.Row,intui.Col=[2,1]
 intui.Height,intui.Width=[1,term_w()]
 
+# setup reusable style
 s=tui_new_style()
 s.fill=true
 border=s.border
@@ -110,23 +115,26 @@ border["fg"]="5"
 s.border=border
 s.wrap=true
 
+# screen dimensioning
 colSize=as_int(term_w()-4)/3
 startColX=3
 
+# instantiate record template
 tmpl="[#bold][#3]{.name}[#boff][#-]\n[#7]{.description}[#-]"
 rec=tui_new()
 rec.Height,rec.Width=[4,colSize]
 
-quit=false
-
+# cursor setup and limit tracking
 optcol=0
 optrow=0
+colStartPos=5
+maxCol=enum_all("status").len-1
 var coldepths []int
+
+# setup mapping between on screen lists and the task array
 var task_index map
 
-maxCol=enum_all("status").len-1
-colStartPos=5
-
+# setup undo buffer
 undoLen=0
 maxUndo=10
 var undo []any
@@ -136,8 +144,11 @@ foreach c in enum_all("status")
     at colStartPos-2,startColX+key_c*rec.Width+(rec.Width/2-headers[c].len/2),"[#bold][#ul]{=headers[c]}[#-]"
 endfor
 
+# top option line display
 at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#1]e[#-]dit  [#1]d[#-]elete  [#1]u[#-]ndo  [#1]n[#-]ew  [#1]q[#-]uit   [#i1]shift-left and shift-right to move a task or move around with cursor keys.[#i0]"
 
+# key input loop
+quit=false
 while not quit
 
     cursoroff()
@@ -171,29 +182,33 @@ while not quit
         rec.tui_clear(s)
     endfor
 
-    at 1,1
+    # at 1,1
 
     k=keypress(0)
     
-    case k
     # left, right : switch lists
     # up, down    : move cursor in list
     # shift-right, shift-left : move item between lists
     # esc,q : quit
     # n : new item
 
+    case k
+
     has k in [8,asc("h")] # left
         if optcol>0
             optcol--
             optrow=optrow[0:coldepths[optcol]-1]
         endif
+
     has k in [9,asc("l")] # right
         if optcol<maxCol
             optcol++
             optrow=optrow[0:coldepths[optcol]-1]
         endif
+
     has k in [10,asc("j")] # down
         on optrow<coldepths[optcol]-1 do optrow++
+
     has k in [11,asc("k")] # up
         on optrow>0 do optrow--
 
@@ -226,16 +241,19 @@ while not quit
         quit=true
 
     is asc("n") # new task
-        # get name, desc
+
         intui.Prompt="New task name : "
         name=intui.tui_input(instyle).Result
         intui.Prompt="New task description : "
+
         desc=intui.tui_input(instyle).Result
         intui.tui_clear(instyle)
+
         append_to(ref tasks, task(.name name, .description desc, .status status.todo))
         footer("[#bold]%s[#boff] task added".format(name))
 
     is asc("d") # delete task under cursor
+
         if coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
             name=tasks[selected].name
@@ -253,6 +271,7 @@ while not quit
         endif
 
     is asc("e") # edit task under cursor
+
         selected=task_index["{optrow},{optcol}"]
 
         intui.Prompt="New task name : "
@@ -280,8 +299,6 @@ while not quit
 
 endwhile
 
-
 # cleanup
 cleanup()
-
 
