@@ -2720,7 +2720,11 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
         }
 
         // struct content duplication
-        isStruct:=reflect.TypeOf(results[assno]).Kind()==reflect.Struct
+        isStruct:=false
+        if results[assno]!=nil {
+            isStruct = reflect.TypeOf(results[assno]).Kind() == reflect.Struct
+        }
+
         if isStruct && lfs==rfs && len(assignee)==1 {
             bin:=bind_int(lfs,assignee[0].tokText)
             assref:=(*lident)[bin]
