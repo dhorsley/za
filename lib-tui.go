@@ -770,7 +770,9 @@ func tui_text(t tui,s tui_style) {
 
 func tui_clear(t tui, s tui_style) {
     pf("[##][#-]") 
-    for e:=0;e<t.Height+1;e+=1 {
+    borderedCount:=0
+    if t.Border { borderedCount=1 }
+    for e:=0;e<t.Height+borderedCount;e+=1 {
         absat(t.Row+e,t.Col)
         fmt.Print(rep(" ",t.Width))
     }
