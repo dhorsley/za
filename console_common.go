@@ -243,6 +243,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
     irow=srow
     lastsrow:=row
+    defaultAccepted:=false
 
     fmt.Printf(sparkle(pcol))
     clearChars(row,col,width)
@@ -254,13 +255,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         inputL  := displayedLen(s)
         dispL   :=promptL+inputL
 
-        /*
-        // Count LF in prompt and add below:
-        nlc:=0
-        for c:=range sprompt {
-            if c==10 { nlc+=1 }
-        }
-        */
         
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
@@ -295,7 +289,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             if len(s)>len(defaultString) {
                 fmt.Print(s)
             } else {
-                if str.HasPrefix(defaultString,s) {
+                if str.HasPrefix(defaultString,s) && !defaultAccepted {
                     // #dim + italic + string + normal
                     fmt.Print("\033[2m\033[3m"+defaultString+"\033[23m\033[22m")
                 } else {
@@ -570,6 +564,16 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         for i:=irow+1;i<=irow+BMARGIN;i++ { at(i,1); clearToEOL() }
                         helpstring=""
                         selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                        contextHelpSelected = false
+                        startedContextHelp = false
+                    }
+                } else { // accept default
+                    if str.HasPrefix(defaultString,s) {
+                        s=defaultString
+                        cpos=len(s)
+                        defaultAccepted=true
+                        helpstring=""
+                        selectedStar = -1
                         contextHelpSelected = false
                         startedContextHelp = false
                     }

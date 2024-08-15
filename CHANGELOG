@@ -14,7 +14,8 @@ CHANGE LOG
     * added missing bigi+bigf types to sqr operator
     * tweaked cosmetic parts of getInput()
         - DEL key now removes a default string
-        - default string displayed dim+italicised.
+        - TAB key now accepts the default string and continues editing from its end.
+        - default string displayed dim+italicised until accepted or varied from.
         - any content in string overrides the default string
         - if default string present, and input string empty, then final input is
             the default string.
