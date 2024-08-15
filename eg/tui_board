@@ -61,6 +61,8 @@ def resize()
     @intui.Width=term_w()
 
     cls
+    tui_screen(1)
+
     # column headers
     foreach c in enum_all("status")
         at colStartPos-2,startColX+key_c*rec.Width+(rec.Width/2-headers[c].len/2),"[#bold][#ul]{=headers[c]}[#-]"
