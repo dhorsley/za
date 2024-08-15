@@ -143,6 +143,7 @@ startColX=3
 tmpl="[#bold][#3]{.name}[#boff][#-]\n[#7]{.description}[#-]"
 rec=tui_new()
 rec.Height,rec.Width=[4,colSize]
+rec.Border=true
 
 # cursor setup and limit tracking
 optcol=0
