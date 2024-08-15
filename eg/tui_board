@@ -55,6 +55,23 @@ def footer(s)
     at term_h(),1, s
 end
 
+def resize()
+    @colSize=as_int(term_w()-4)/3
+    @rec.Width=colSize
+    @intui.Width=term_w()
+
+    cls
+    # column headers
+    foreach c in enum_all("status")
+        at colStartPos-2,startColX+key_c*rec.Width+(rec.Width/2-headers[c].len/2),"[#bold][#ul]{=headers[c]}[#-]"
+    endfor
+
+    # top option line display
+    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#1]e[#-]dit  [#1]d[#-]elete  [#1]u[#-]ndo  [#1]n[#-]ew  [#1]q[#-]uit   [#i1]shift-left and shift-right to move a task or move around with cursor keys.[#i0]"
+
+    @TW=term_w()
+end
+
 # definitions
 
 enum status ( todo=0, inprogress, done )
@@ -98,6 +115,7 @@ headers[status.done]="Complete"
 
 # switch to alt screen
 tui_screen(1)
+TW=term_w()
 
 # create input element
 intui=tui_new() 
@@ -139,17 +157,13 @@ undoLen=0
 maxUndo=10
 var undo []any
 
-# column headers
-foreach c in enum_all("status")
-    at colStartPos-2,startColX+key_c*rec.Width+(rec.Width/2-headers[c].len/2),"[#bold][#ul]{=headers[c]}[#-]"
-endfor
-
-# top option line display
-at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#1]e[#-]dit  [#1]d[#-]elete  [#1]u[#-]ndo  [#1]n[#-]ew  [#1]q[#-]uit   [#i1]shift-left and shift-right to move a task or move around with cursor keys.[#i0]"
+resize()
 
 # key input loop
 quit=false
 while not quit
+
+    on TW!=term_w() do resize()
 
     cursoroff()
     foreach c in enum_all("status")
