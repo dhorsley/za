@@ -60,7 +60,9 @@ def resize()
     @rec.Width=colSize
     @intui.Width=term_w()
 
-    cls
+    for e=0 to term_h()-1
+        clear_line(e,1)
+    endfor
     tui_screen(1)
 
     # column headers
@@ -140,7 +142,7 @@ colSize=as_int(term_w()-4)/3
 startColX=3
 
 # instantiate record template
-tmpl="[#bold][#3]{.name}[#boff][#-]\n[#7]{.description}[#-]"
+tmpl="[#bold][#5]{.name}[#boff][#-]\n[#6][#i1]{.description}[#i0][#-]"
 rec=tui_new()
 rec.Height,rec.Width=[4,colSize]
 rec.Border=true
@@ -289,21 +291,24 @@ while not quit
 
     is asc("e") # edit task under cursor
 
-        selected=task_index["{optrow},{optcol}"]
+        if coldepths[optcol]>0
+            selected=task_index["{optrow},{optcol}"]
+            intui.Prompt="New task name : "
+            intui.Content=tasks[selected].name
+            name=intui.tui_input(instyle).Result
 
-        intui.Prompt="New task name : "
-        intui.Content=tasks[selected].name
-        name=intui.tui_input(instyle).Result
+            intui.Prompt="New task description : "
+            intui.Content=tasks[selected].description
+            desc=intui.tui_input(instyle).Result
 
-        intui.Prompt="New task description : "
-        intui.Content=tasks[selected].description
-        desc=intui.tui_input(instyle).Result
+            intui.tui_clear(instyle)
+            tasks[selected].name=name
+            tasks[selected].description=desc
 
-        intui.tui_clear(instyle)
-        tasks[selected].name=name
-        tasks[selected].description=desc
-
-        footer("[#bold]%s[#boff] task amended".format(name))
+            footer("[#bold]%s[#boff] task amended".format(name))
+        else
+            footer("nothing to edit")
+        endif
 
     is asc("u") # undo last
         if undoLen>0 
@@ -316,6 +321,5 @@ while not quit
 
 endwhile
 
-# cleanup
 cleanup()
 
