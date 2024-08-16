@@ -381,13 +381,15 @@ func absClearChars(row int,col int,l int) {
 }
 
 
-/* mitchell hashimoto word wrap code below
+/* mitchell hashimoto word wrap code below, with some amendments
     from: https://github.com/mitchellh/go-wordwrap/blob/master/wordwrap.go
    mit licensed.
    not likely to need an update, so just taking the func.
    may add a left/right/full justify option to it later.
 */
-const nbsp = 0xA0
+// const nbsp = 0xA0
+const nbsp = 26 // ascii substitute char
+
 func wrapString(s string, lim uint) string {
     // Initialize a buffer with a slightly larger size to account for breaks
     init := make([]byte, 0, len(s))
@@ -451,7 +453,11 @@ func wrapString(s string, lim uint) string {
             spaceBuf.WriteRune(char)
             spaceBufLen++
         } else {
-            wordBuf.WriteRune(char)
+            if char==nbsp {
+                wordBuf.WriteRune(' ')
+            } else {
+                wordBuf.WriteRune(char)
+            }
             wordBufLen++
 
             if current+wordBufLen+spaceBufLen > lim {
