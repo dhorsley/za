@@ -11,7 +11,7 @@ def save(tasks,saveloc)
     h=fopen(saveloc,"w")
     if h!=nil
         foreach e in tasks
-            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n")
+            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n{=e.start_date}\n")
         endfor
         fclose(h)
         saved=true
@@ -28,7 +28,8 @@ def load(saveloc)
             name=fread(h,"\n")
             desc=fread(h,"\n")
             status=fread(h,"\n").as_int
-            append_to(ref tasks,task(name,desc,status))
+            start_date=fread(h,"\n").as_int
+            append_to(ref tasks,task(name,desc,status,start_date))
         endwhile
         fclose(h)
         opened=true
@@ -56,7 +57,7 @@ def footer(s)
 end
 
 def resize()
-    @colSize=as_int(term_w()-4)/3
+    @colSize=as_int(term_w()-4)/headers.len
     @rec.Width=colSize
     @intui.Width=term_w()
 
@@ -71,19 +72,20 @@ def resize()
     endfor
 
     # top option line display
-    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#1]e[#-]dit  [#1]d[#-]elete  [#1]u[#-]ndo  [#1]n[#-]ew  [#1]q[#-]uit   [#i1]shift-left and shift-right to move a task or move around with cursor keys.[#i0]"
+    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
 
     @TW=term_w()
 end
 
 # definitions
 
-enum status ( todo=0, inprogress, done )
+enum status ( backlog=0, todo, inprogress, onhold, done )
 
 struct task
     name        string
     description string
     status      int
+    start_date  int
 endstruct
 
 
@@ -103,18 +105,20 @@ if is_file(saveloc)
 endif 
 
 if !loaded
-    append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",            .status status.inprogress   ))
-    append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",  .status status.done         ))
-    append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",  .status status.todo         ))
-    append_to(ref tasks, task(.name "fluff catbeds",    .description "they demand comfort",                 .status status.todo         ))
+    append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",            .status status.inprogress, .start_date 1723761115 ))
+    append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",  .status status.done,       .start_date 1723761115 ))
+    append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",  .status status.todo,       .start_date 0          ))
+    append_to(ref tasks, task(.name "fluff cat beds",   .description "they demand comfort",                 .status status.todo,       .start_date 0          ))
     footer("example tasks created")
 endif
 
 
 # create column headers
 var headers map
+headers[status.backlog]="Backlog"
 headers[status.todo]="To Do"
 headers[status.inprogress]="In Progress"
+headers[status.onhold]="On Hold"
 headers[status.done]="Complete"
 
 # switch to alt screen
@@ -138,13 +142,13 @@ s.border=border
 s.wrap=true
 
 # screen dimensioning
-colSize=as_int(term_w()-4)/3
+colSize=as_int(term_w()-4)/headers.len
 startColX=3
 
 # instantiate record template
-tmpl="[#bold][#5]{.name}[#boff][#-]\n[#6][#i1]{.description}[#i0][#-]"
+tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.description}[#i0]"
 rec=tui_new()
-rec.Height,rec.Width=[4,colSize]
+rec.Height,rec.Width=[5,colSize]
 rec.Border=true
 
 # cursor setup and limit tracking
@@ -154,10 +158,17 @@ colStartPos=5
 maxCol=enum_all("status").len-1
 var coldepths []int
 
+# var maxdepths []int
+# maxdepths[status.todo]=0
+# maxdepths[status.inprogress]=5
+# maxdepths[status.done]=0
+# @todo: display these limits as columns breaks, but
+#        don't actually limit the card counts yet.
+
 # setup mapping between on screen lists and the task array
 var task_index map
 
-# setup undo buffer
+# setup deletion undo buffer
 undoLen=0
 maxUndo=10
 var undo []any
@@ -180,36 +191,36 @@ while not quit
                 if ypos==optrow and c==optcol
                     s.bg="2"
                 endif
-                rec.Row,rec.Col=[colStartPos+5*ypos,startColX+key_c*(rec.Width)]
+                rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
                 rec.Content=tmpl
                 rec.Data=t
                 rec.tui_box(s)
+                if c in [status.inprogress,status.onhold]
+                    dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
+                    dl=dateline.stripcc.len
+                    at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
+                endif
                 rec.tui_template(s)
                 ypos++
             endif
         endfor
         coldepths[c]=ypos
+
+        # clear one more at the bottom of each column, in case a record was just moved
+        rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
+        rec.tui_clear(s)
+
         if coldepths[c]==0
             # highlight empty row
-            at colStartPos+5,startColX+key_c*(rec.Width)
+            at colStartPos+5,startColX+key_c*rec.Width
             emptySelected=""
             on optcol==c do emptySelected="[#invert]"
             print pad("{emptySelected}[#2]<empty>[#-]",0,rec.Width)
         endif
-        # clear one more at the bottom of each column, in case a record was just moved
-        rec.Row,rec.Col=[colStartPos+5*ypos,startColX+key_c*(rec.Width)]
-        rec.tui_clear(s)
     endfor
 
-    # at 1,1
 
     k=keypress(0)
-    
-    # left, right : switch lists
-    # up, down    : move cursor in list
-    # shift-right, shift-left : move item between lists
-    # esc,q : quit
-    # n : new item
 
     case k
 
@@ -234,8 +245,11 @@ while not quit
     is 208 # shift left
         if optcol>0 and coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
+            if optcol==status.inprogress
+                tasks[selected].start_date=0
+            endif
             tasks[selected].status-=1
-            rec.Row,rec.Col=[colStartPos+5*optrow,startColX+optcol*(rec.Width)]
+            rec.Row,rec.Col=[colStartPos+(rec.Height+1)*optrow,startColX+optcol*(rec.Width)]
             footer("Moved [#bold]%s[#boff] from [#i1]%s[#i0] to [#i1]%s[#i0]".
                 format(tasks[selected].name,headers[optcol],headers[optcol-1])
             )
@@ -246,8 +260,11 @@ while not quit
     is 209 # shift right
         if optcol<maxCol and coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
+            if optcol==status.todo and tasks[selected].start_date==0
+                tasks[selected].start_date=epoch_time()
+            endif
             tasks[selected].status+=1
-            rec.Row,rec.Col=[colStartPos+5*optrow,startColX+optcol*(rec.Width)]
+            rec.Row,rec.Col=[colStartPos+(rec.Height+1)*optrow,startColX+optcol*(rec.Width)]
             footer("Moved [#bold]%s[#boff] from [#i1]%s[#i0] to [#i1]%s[#i0]".
                 format(tasks[selected].name,headers[optcol],headers[optcol+1])
             )
@@ -258,6 +275,10 @@ while not quit
 
     has k in [27,asc("q")]
         quit=true
+
+    is asc("t") # touch date
+        selected=task_index["{optrow},{optcol}"]
+        on tasks[selected].start_date!=0 do tasks[selected].start_date=epoch_time() 
 
     is asc("n") # new task
 
