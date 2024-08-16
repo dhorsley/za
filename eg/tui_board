@@ -146,7 +146,7 @@ colSize=as_int(term_w()-4)/headers.len
 startColX=3
 
 # instantiate record template
-tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.description}[#i0]"
+tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.description}[#i0]".addansi
 rec=tui_new()
 rec.Height,rec.Width=[5,colSize]
 rec.Border=true
@@ -175,6 +175,10 @@ var undo []any
 
 resize()
 
+# name mangling
+var taskdup task
+nbsp = char(26) # ascii-substitute, converted to a nbsp
+
 # key input loop
 quit=false
 while not quit
@@ -192,8 +196,10 @@ while not quit
                     s.bg="2"
                 endif
                 rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
+                taskdup=t
+                taskdup.name=replace(taskdup.name," ",nbsp)
                 rec.Content=tmpl
-                rec.Data=t
+                rec.Data=taskdup
                 rec.tui_box(s)
                 if c in [status.inprogress,status.onhold]
                     dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
@@ -289,7 +295,7 @@ while not quit
         desc=intui.tui_input(instyle).Result
         intui.tui_clear(instyle)
 
-        append_to(ref tasks, task(.name name, .description desc, .status status.todo))
+        append_to(ref tasks, task(.name name, .description desc, .status status.todo, .start_date 0))
         footer("[#bold]%s[#boff] task added".format(name))
 
     is asc("d") # delete task under cursor
