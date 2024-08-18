@@ -56,6 +56,17 @@ def cleanup()
     exit
 end
 
+def tagline()
+    var alltags []string
+    foreach t in tasks
+        foreach tag in t.tag_list
+            on not tag in alltags do append_to(ref alltags,tag)
+        endfor
+    endfor
+    clear_line(term_h()-2,1)
+    at term_h()-2,1, "TAG LIST : "+alltags.join(" ")
+end
+
 def footer(s)
     clear_line(term_h(),1)
     at term_h(),1, s
@@ -79,6 +90,7 @@ def resize()
     # top option line display
     at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
 
+    tagline()
     @TW=term_w()
 end
 
@@ -193,6 +205,7 @@ var taskdup task
 nbsp = char(26) # ascii-substitute, converted to a nbsp
 
 # key input loop
+tagfilter=""
 quit=false
 while not quit
 
@@ -201,33 +214,43 @@ while not quit
     cursoroff()
     foreach c in enum_all("status")
         ypos=0
+        cleardepth=0
         foreach t in tasks
             task_index["{ypos},{c}"]=key_t
-            if t.status==c
-                s.bg="0"
-                if ypos==optrow and c==optcol
-                    s.bg="2"
-                endif
+            if t.status==c 
+
                 rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
-                taskdup=t
-                taskdup.name=replace(taskdup.name," ",nbsp)
-                rec.Content=tmpl
-                rec.Data=taskdup
-                rec.tui_box(s)
-                if c in [status.inprogress,status.onhold]
-                    dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
-                    dl=dateline.stripcc.len
-                    at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
+                rec.tui_clear(s)
+
+                if tagfilter=="" or tagfilter in t.tag_list
+                    s.bg="0"
+                    if ypos==optrow and c==optcol
+                        s.bg="2"
+                    endif
+                    # rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
+                    taskdup=t
+                    taskdup.name=replace(taskdup.name," ",nbsp)
+                    rec.Content=tmpl
+                    rec.Data=taskdup
+                    rec.tui_box(s)
+                    if c in [status.inprogress,status.onhold]
+                        dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
+                        dl=dateline.stripcc.len
+                        at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
+                    endif
+                    rec.tui_template(s)
+                    ypos++
                 endif
-                rec.tui_template(s)
-                ypos++
+                cleardepth++
             endif
         endfor
         coldepths[c]=ypos
 
-        # clear one more at the bottom of each column, in case a record was just moved
-        rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
-        rec.tui_clear(s)
+        # clear more at the bottom of each column, in case a record was just moved or a filter applied
+        for cc=ypos to cleardepth
+            rec.Row,rec.Col=[colStartPos+(rec.Height+1)*cc,startColX+key_c*rec.Width]
+            rec.tui_clear(s)
+        endfor
 
         if coldepths[c]==0
             # highlight empty row
@@ -295,19 +318,31 @@ while not quit
     has k in [27,asc("q")]
         quit=true
 
+
     is asc("T") # tagging
+
         selected=task_index["{optrow},{optcol}"]
-        # join existing tags
-        # get input using joined set as default
-        # split and replace tag array in task
-        # update footer
+        tags=tasks[selected].tag_list.join(" ")
+
+        intui.Prompt="New tag list : "
+        intui.Content=tags
+        tags=intui.tui_input(instyle).Result
+
+        tasks[selected].tag_list=tags.split("\n")
+        tagline()
+        footer("[#bold]%s[#boff] task tag list updated [#i1](%s)[#i0]".format(tasks[selected].name,tags))
 
     is asc("f") # filtering (on tags)
-        # get filter input using current filter as default
-        # update footer
-        # (needs filter applying in column display section above)
+
+        intui.Prompt="New filter : "
+        intui.Content=tagfilter
+        tagfilter=intui.tui_input(instyle).Result
+        tagline()
+        footer("tag filter updated [#i1](%s)[#i0]".format(tagfilter))
+
 
     is asc("t") # touch date
+
         selected=task_index["{optrow},{optcol}"]
         on tasks[selected].start_date!=0 do tasks[selected].start_date=epoch_time() 
 
