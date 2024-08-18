@@ -64,7 +64,7 @@ def tagline()
         endfor
     endfor
     clear_line(term_h()-2,1)
-    at term_h()-2,1, "TAG LIST : "+alltags.join(" ")
+    at term_h()-2,1, format("TAG LIST (%d) : %s",alltags.len,alltags.join(" "))
 end
 
 def footer(s)
@@ -162,6 +162,7 @@ s.fill=true
 border=s.border
 s.bg,s.fg       =["1","7"]
 s.hi_bg,s.hi_fg =["2","7"]
+border["bg"]=""
 border["fg"]="5"
 s.border=border
 s.wrap=true
@@ -227,7 +228,6 @@ while not quit
                     if ypos==optrow and c==optcol
                         s.bg="2"
                     endif
-                    # rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
                     taskdup=t
                     taskdup.name=replace(taskdup.name," ",nbsp)
                     rec.Content=tmpl
@@ -237,6 +237,13 @@ while not quit
                         dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
                         dl=dateline.stripcc.len
                         at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
+                    endif
+                    if t.tag_list.len > 0 
+                        invtags=" "
+                        foreach tg in t.tag_list
+                            invtags+="[#bold]"+tg+"[#boff] "
+                        endfor
+                        at rec.Row,rec.Col+2,invtags
                     endif
                     rec.tui_template(s)
                     ypos++
@@ -328,7 +335,7 @@ while not quit
         intui.Content=tags
         tags=intui.tui_input(instyle).Result
 
-        tasks[selected].tag_list=tags.split("\n")
+        tasks[selected].tag_list=tags.split(" ") ?> `# != ""`
         tagline()
         footer("[#bold]%s[#boff] task tag list updated [#i1](%s)[#i0]".format(tasks[selected].name,tags))
 
