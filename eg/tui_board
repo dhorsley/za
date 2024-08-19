@@ -34,6 +34,7 @@ def load(saveloc)
             status=fread(h,"\n").as_int
             start_date=fread(h,"\n").as_int
             tag_list=fread(h,"\n").split(" ")
+            on tag_list.len==1 and trim(tag_list[0],0)=="" do tag_list=list_string([])
             append_to(ref tasks,task(name,desc,status,start_date,tag_list))
         endwhile
         fclose(h)
@@ -180,7 +181,7 @@ startColX=3
 # instantiate record template
 tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.description}[#i0]".addansi
 rec=tui_new()
-rec.Height,rec.Width=[5,colSize]
+rec.Height,rec.Width=[6,colSize]
 rec.Border=true
 
 # cursor setup and limit tracking
