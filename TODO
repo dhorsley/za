@@ -9,6 +9,21 @@ lots, i'm sure.
 TODO
 ----
 
+    * Changes for eg/tui_board:
+        * Assignee field
+        * Additional notes field
+        * Ticket link field?
+        * View action (for all fields)
+            - maybe move description field into the view action, and only show tags and name for task in overview screen.
+            - maybe put Assignee field on to overview screen instead of description field?
+
+        * Where does "pending review"/"pending release"/"released" fit in?
+            - maybe have a sub-status when marked as "Complete" ? Ie. complete is "CI complete" if task is code related.
+            - show sub-status on overview screen.
+
+        * Alternatively, have the columns be scrollable to left and right if they grow past the terminal window width?
+            - this would let us have separate columns for each complete state, but we lose compactness/brevity.
+            
     * add drop down mode for getInput()
         - change inbound params: add ddopts []string
         - when not empty place getInput() in ddmode=true
