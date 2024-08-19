@@ -806,6 +806,7 @@ func tui_input(t tui, s tui_style) tui {
     // t.Title   : border title
     // t.Border  : border toggle
     // t.Height,t.Width : border size
+    // t.Options : drop down options, if present
 
     addbg:=""; addfg:=""
     if s.bg!="" { addbg="[#b"+s.bg+"]" }
@@ -826,7 +827,7 @@ func tui_input(t tui, s tui_style) tui {
         mask=t.Cursor
     }
     promptColour:=addbg+addfg
-    input, _, _ := getInput(t.Prompt, t.Content, "global", t.Row, t.Col, t.Width, promptColour, false, false, mask)
+    input, _, _ := getInput(t.Prompt, t.Content, "global", t.Row, t.Col, t.Width, t.Options, promptColour, false, false, mask)
     input=sanitise(input)
 
     // remove border box

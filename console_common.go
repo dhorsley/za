@@ -191,13 +191,37 @@ func mouse_press(inp []byte) {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(prompt string, defaultString string, pane string, row int, col int, width int, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+/*
+    * add drop down mode for getInput()
+    - DONE: change inbound params: add ddopts []string
+    - DONE: when not empty place getInput() in ddmode=true
+        - when ddmode==true, and down arrow pressed, override history mode (if enabled)
+            - NOT DOING: capture screen in box (irow,icol) to (irow+ddopts.len,icol+maxleninddopts
+                - DECRQCRA not widely supported and may add security holes
+                - would have to change pf() to maintain an internal buffer if we wanted this feature.
+                - will, instead, settle for a horizontal display 1 line below input line for now
+            - display dd opts
+            - create highlight cursor at first opt
+            - start a new key loop:
+                - if input is not in (cursor down/up, enter, space, esc) then break
+                - move cursor, accept option or break, depending on input
+            - NOT DOING: restore screen from earlier capture
+            - if escaped/broken then carry on as normal
+            - if accepted, then insert selection to input string and move cpos cursor to end of
+                the selection in the amended input string
+        - possibly add alternative sources of ddopts array later
+*/
+
+func getInput(prompt string, defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
     if !interactive { BMARGIN=0 }
 
     old_wrap := lineWrap
     lineWrap = false
+
+    var ddmode bool
+    if len(ddopts)>0 { ddmode=true }
 
     showCursor()
 
@@ -414,7 +438,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
             case bytes.Equal(c, []byte{11}): // ctrl-k
                 s = s[:cpos]
-                // cpos = len(s)
                 wordUnderCursor,_ = getWord(s, cpos)
                 clearChars(irow, icol, inputL)
 
@@ -513,6 +536,69 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
 
+                if ddmode {
+
+                    // input loop
+
+                    ddpos:=0
+                    selected:=false
+                    optslen:=0
+                    // noChange:=false
+
+                    for ;; {
+                        absat(irow+1,cpos)
+                        optslen=0
+                        for k,ddo:=range ddopts {
+                            if k==ddpos { pf("[#invert]") }
+                            pf(ddo)
+                            if k==ddpos { pf("[#-]") }
+                            pf(" ")
+                            optslen+=1+len(ddo)
+                        }
+                        c:=wrappedGetCh(0,false)
+
+                        switch c {
+                        case 9:
+                            fallthrough
+                        case 10:
+                            if ddpos<len(ddopts)-1 { ddpos+=1 }
+
+                        case 11:
+                            fallthrough
+                        case 8:
+                            if ddpos>0 { ddpos-=1 }
+
+
+                        case 13:
+                            fallthrough
+                        case 32:
+                            selected=true
+                            break
+                        
+                        // these cases may be removed later, they are reserved for later use
+                        //  it may be the case that we allow partially typed matches.
+
+                        case 27:
+                            // noChange=true
+                            break
+                        default:
+                            // noChange=true
+                            break
+                        }
+                    }
+                    clearChars(irow+1, cpos, optslen)
+                    // - if escaped/broken then carry on as normal
+                    if selected {
+                        // populate input buffer with selection
+                        s=insertWord(s, cpos, ddopts[ddpos])
+                        cpos+=len(ddopts[ddpos])
+                        wordUnderCursor,_ = getWord(s, cpos)
+                    }
+
+                    break
+                }
+
+                // normal down key operations resume here
                 if displayedLen(s)>MW && cpos<MW {
                     cpos+=MW
                     break
