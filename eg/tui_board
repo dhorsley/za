@@ -56,6 +56,12 @@ def cleanup()
     exit
 end
 
+def debugline(s)
+    clear_line(term_h()-4,1)
+    at term_h()-4,1,format("[#5]debug: %s[#-]",s)
+    keypress(0)
+end
+
 def tagline()
     var alltags []string
     foreach t in tasks
@@ -181,6 +187,7 @@ rec.Border=true
 optcol=0
 optrow=0
 colStartPos=5
+keepFocus=""
 maxCol=enum_all("status").len-1
 var coldepths []int
 
@@ -218,14 +225,17 @@ while not quit
         cleardepth=0
         foreach t in tasks
             task_index["{ypos},{c}"]=key_t
+
             if t.status==c 
 
                 rec.Row,rec.Col=[colStartPos+(rec.Height+1)*ypos,startColX+key_c*rec.Width]
                 rec.tui_clear(s)
 
+                on t.name==keepFocus do optrow,keepFocus=[ypos,""]
+
                 if tagfilter=="" or tagfilter in t.tag_list
                     s.bg="0"
-                    if ypos==optrow and c==optcol
+                    if keepFocus=="" and ypos==optrow and c==optcol
                         s.bg="2"
                     endif
                     taskdup=t
@@ -304,8 +314,9 @@ while not quit
             )
             rec.tui_clear(s)
             optcol--
-            optrow=optrow[0:coldepths[optcol]]
+            keepFocus=tasks[selected].name
         endif
+
     has k in [asc("L"),209] # shift right
         if optcol<maxCol and coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
@@ -319,7 +330,7 @@ while not quit
             )
             rec.tui_clear(s)
             optcol++
-            optrow=optrow[0:coldepths[optcol]]
+            keepFocus=tasks[selected].name
         endif
 
     has k in [27,asc("q")]
