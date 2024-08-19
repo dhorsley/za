@@ -243,7 +243,7 @@ while not quit
                     taskdup.name=replace(taskdup.name," ",nbsp)
                     rec.Content=tmpl
                     rec.Data=taskdup
-                    rec.tui_box(s)
+                    # rec.tui_box(s)
                     if c in [status.inprogress,status.onhold]
                         dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
                         dl=dateline.stripcc.len
