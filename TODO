@@ -9,6 +9,22 @@ lots, i'm sure.
 TODO
 ----
 
+    * add drop down mode for getInput()
+        - change inbound params: add ddopts []string
+        - when not empty place getInput() in ddmode=true
+        - when ddmode==true, and down arrow pressed, override history mode (if enabled)
+            - capture screen in box (irow,icol) to (irow+ddopts.len,icol+maxleninddopts
+            - display dd opts
+            - create highlight cursor at first opt
+            - start a new key loop:
+                - if input is not in (cursor down/up, enter, space, esc) then break
+                - move cursor, accept option or break, depending on input
+            - restore screen from earlier capture
+            - if escaped/broken then carry on as normal
+            - if accepted, then insert selection to input string and move cpos cursor to end of
+                the selection in the amended input string
+        - possibly add alternative sources of ddopts array later
+
     * do something about interactive mode interfering with other tools such as vi, more, batcat...
         - currently, if you wish to launch, for example, vi and have it behave correctly,
           you have to turn off za shell command output capture, send commands to the parent process
