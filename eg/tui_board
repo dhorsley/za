@@ -93,7 +93,7 @@ def resize()
     endfor
 
     # top option line display
-    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]v[#-]iew  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
+    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]v[#-]iew  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]s[#-]ubstate  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
 
     tagline()
     @TW=term_w()
@@ -155,7 +155,7 @@ headers[status.onhold]="On Hold"
 headers[status.done]="Complete"
 
 # create sub status names
-var subheaders map
+var subheaders [enum_names("hold_types").len]string
 subheaders[hold_types.OnHold]="On Hold"
 subheaders[hold_types.PendingReview]="Pending Review"
 subheaders[hold_types.PendingRelease]="Pending Release"
@@ -195,7 +195,7 @@ rec.Border=true
 # cursor setup and limit tracking
 optcol=0
 optrow=0
-colStartPos=5
+colStartPos=6
 keepFocus=""
 maxCol=enum_all("status").len-1
 var coldepths []int
@@ -431,6 +431,34 @@ while not quit
 
 
     is asc("v") # view full entry
+
+
+    is asc("s") # edit sub state
+
+        if coldepths[optcol]>0 and optcol==status.onhold
+
+            selected=task_index["{optrow},{optcol}"]
+            intui.Prompt="New sub state : "
+            intui.Content=subheaders[tasks[selected].substatus]
+
+            intui.Options=subheaders.dup
+            new_state=intui.tui_input(instyle).Result
+            intui.Options=[].list_string
+            intui.tui_clear(instyle)
+
+            opt=0
+            foreach h in subheaders
+                if h==new_state
+                    opt=key_h
+                    break
+                endif
+            endfor
+
+            tasks[selected].substatus=opt
+            footer("[#bold]%s[#boff] task sub status amended to %s".format(tasks[selected].name,new_state))
+        else
+            footer("nothing to edit")
+        endif
 
 
     is asc("u") # undo last
