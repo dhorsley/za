@@ -12,7 +12,7 @@ def save(tasks,saveloc)
     if h!=nil
         foreach e in tasks
             tag_list=e.tag_list.join(" ")
-            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n{=e.substatus}\n{=e.start_date}\n{tag_list}\n")
+            fwrite(h,"{=e.name}\n{=e.description}\n{=e.assignee}\n{=e.link}\n{=e.status}\n{=e.substatus}\n{=e.start_date}\n{tag_list}\n")
         endfor
         fclose(h)
         saved=true
@@ -28,12 +28,14 @@ def load(saveloc)
         while !feof(h)
             name=fread(h,"\n")
             desc=fread(h,"\n")
+            assignee=fread(h,"\n")
+            link=fread(h,"\n")
             status=fread(h,"\n").as_int
             substatus=fread(h,"\n").as_int
             start_date=fread(h,"\n").as_int
             tag_list=fread(h,"\n").split(" ")
             on tag_list.len==1 and trim(tag_list[0],0)=="" do tag_list=list_string([])
-            append_to(ref tasks,task(name,desc,status,substatus,start_date,tag_list))
+            append_to(ref tasks,task(name,desc,assignee,link,status,substatus,start_date,tag_list))
         endwhile
         fclose(h)
         opened=true
@@ -81,6 +83,7 @@ def resize()
     @colSize=as_int(term_w()-4)/headers.len
     @rec.Width=colSize
     @intui.Width=term_w()
+    @pager.Width=term_w()-40
 
     for e=0 to term_h()-1
         clear_line(e,1)
@@ -108,6 +111,8 @@ enum hold_types ( OnHold=0, PendingReview, PendingRelease )
 struct task
     name        string
     description string
+    assignee    string
+    link        string
     status      int
     substatus   int
     start_date  int
@@ -134,13 +139,13 @@ if is_file(saveloc)
 endif 
 
 if !loaded
-    append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",
+    append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food", .assignee "", .link "",
                                 .status status.inprogress, .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
-    append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",
+    append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk", .assignee "", .link "",
                                 .status status.done,       .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
-    append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",
+    append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents", .assignee "", .link "",
                                 .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
-    append_to(ref tasks, task(.name "fluff cat beds",   .description "they demand comfort",
+    append_to(ref tasks, task(.name "fluff cat beds",   .description "they demand comfort", .assignee "", .link "",
                                 .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
     footer("example tasks created")
 endif
@@ -169,7 +174,14 @@ TW=term_w()
 intui=tui_new() 
 instyle=tui_new_style()
 intui.Row,intui.Col=[2,1]
-intui.Height,intui.Width=[1,term_w()]
+intui.Height,intui.Width=[1,TW]
+
+# pager for view mode
+pager=tui_new()
+pstyle=tui_new_style()
+pager.Row,pager.Col=[8,20]
+pager.Height,pager.Width=[13,TW-40]
+pager.Title="View Mode"
 
 # setup reusable style
 s=tui_new_style()
@@ -187,7 +199,7 @@ colSize=as_int(term_w()-4)/headers.len
 startColX=3
 
 # instantiate record template
-tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.description}[#i0]".addansi
+tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.assignee}[#i0]".addansi
 rec=tui_new()
 rec.Height,rec.Width=[6,colSize]
 rec.Border=true
@@ -382,12 +394,19 @@ while not quit
 
         intui.Prompt="New task name : "
         name=intui.tui_input(instyle).Result
-        intui.Prompt="New task description : "
 
+        intui.Prompt="New task description (optional) : "
         desc=intui.tui_input(instyle).Result
+
+        intui.Prompt="New task assignee (optional) : "
+        assignee=intui.tui_input(instyle).Result
+
+        intui.Prompt="New task link (optional) : "
+        link=intui.tui_input(instyle).Result
+
         intui.tui_clear(instyle)
 
-        append_to(ref tasks, task(.name name, .description desc, .status status.todo, .start_date 0, .tag_list [].list_string ))
+        append_to(ref tasks, task(.name name, .description desc, .assignee assignee, .link link, .status status.todo, .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
         footer("[#bold]%s[#boff] task added".format(name))
 
     is asc("d") # delete task under cursor
@@ -412,6 +431,7 @@ while not quit
 
         if coldepths[optcol]>0
             selected=task_index["{optrow},{optcol}"]
+
             intui.Prompt="New task name : "
             intui.Content=tasks[selected].name
             name=intui.tui_input(instyle).Result
@@ -420,9 +440,19 @@ while not quit
             intui.Content=tasks[selected].description
             desc=intui.tui_input(instyle).Result
 
+            intui.Prompt="New task assignee : "
+            intui.Content=tasks[selected].assignee
+            assignee=intui.tui_input(instyle).Result
+
+            intui.Prompt="New task link : "
+            intui.Content=tasks[selected].link
+            link=intui.tui_input(instyle).Result
+
             intui.tui_clear(instyle)
             tasks[selected].name=name
             tasks[selected].description=desc
+            tasks[selected].assignee=assignee
+            tasks[selected].link=link
 
             footer("[#bold]%s[#boff] task amended".format(name))
         else
@@ -432,6 +462,32 @@ while not quit
 
     is asc("v") # view full entry
 
+        if coldepths[optcol]>0
+
+            pstyle.bg,pstyle.fg=["1","7"]
+            pstyle.wrap=true
+            pstyle.fill=true
+
+            selected=task_index["{optrow},{optcol}"]
+            vt=tasks[selected]
+
+            # content string : cs
+            pager.Content=`
+                [#6]Task        : %-40s
+                [#6]Progress    : %-40s
+                [#3]Assignee    : %-40s
+                [#3]Hold Status : %-40s
+                [#4]Link        : %-80s
+
+                [#5]Details     : \n
+                %s\n
+            `.format(vt.name,headers[vt.status],vt.assignee,subheaders[vt.substatus],vt.link,vt.description)
+
+            pager.tui_box(pstyle)
+            pager.tui_pager(pstyle)
+            pager.tui_clear
+
+        endif
 
     is asc("s") # edit sub state
 

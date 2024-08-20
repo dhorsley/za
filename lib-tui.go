@@ -737,10 +737,21 @@ func tui_pager(t tui,s tui_style) {
             cpos-=t.Height-1
             if cpos<0 { cpos=0 }
         case ' ',14:
-            cpos+=t.Height-1
-            if cpos>len(ra)-t.Height { cpos=len(ra)-t.Height }
+            if cpos+max<len(ra)-1 {
+                cpos+=t.Height-1
+            }
         }
     }
+    // remove border box
+    if t.Border {
+        border:=empty_border_map
+        tui_box(
+            tui{ Title:t.Title,Row:t.Row-1,Width:t.Width+2,Col:t.Col-1,Height:t.Height+2 },
+            tui_style{ border:border },
+        )
+        tui_clear(t,s)
+    }
+
 }
 
 // at row,col, width of t.Width-2, print wordWrap'd t.Content
@@ -777,8 +788,8 @@ func tui_text(t tui,s tui_style) {
 func tui_clear(t tui, s tui_style) {
     pf("[##][#-]") 
     borderedCount:=0
-    if t.Border { borderedCount=1 }
-    for e:=0;e<t.Height+borderedCount;e+=1 {
+    if t.Border { borderedCount=2 }
+    for e:=0;e<=t.Height+borderedCount;e+=1 {
         absat(t.Row+e,t.Col)
         fmt.Print(rep(" ",t.Width))
     }
