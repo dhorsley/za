@@ -201,7 +201,7 @@ startColX=3
 # instantiate record template
 tmpl="[#bold][#5]{.name}[#boff][#-]\n[#i1]{.assignee}[#i0]".addansi
 rec=tui_new()
-rec.Height,rec.Width=[6,colSize]
+rec.Height,rec.Width=[5,colSize]
 rec.Border=true
 
 # cursor setup and limit tracking
@@ -470,6 +470,7 @@ while not quit
 
             selected=task_index["{optrow},{optcol}"]
             vt=tasks[selected]
+            tags=tasks[selected].tag_list.join(" ")
 
             # content string : cs
             pager.Content=`
@@ -477,11 +478,12 @@ while not quit
                 [#6]Progress    : %-40s
                 [#3]Assignee    : %-40s
                 [#3]Hold Status : %-40s
+                [#3]Tags        : %-40s
                 [#4]Link        : %-80s
 
                 [#5]Details     : \n
                 %s\n
-            `.format(vt.name,headers[vt.status],vt.assignee,subheaders[vt.substatus],vt.link,vt.description)
+            `.format(vt.name,headers[vt.status],vt.assignee,subheaders[vt.substatus],tags,vt.link,vt.description)
 
             pager.tui_box(pstyle)
             pager.tui_pager(pstyle)
