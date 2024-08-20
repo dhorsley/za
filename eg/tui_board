@@ -2,9 +2,6 @@
 
 doc `
     simple todo list example
-
-    @todo: add tagging and filtering
-
 `
 
 # functions
@@ -15,7 +12,7 @@ def save(tasks,saveloc)
     if h!=nil
         foreach e in tasks
             tag_list=e.tag_list.join(" ")
-            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n{=e.start_date}\n{tag_list}\n")
+            fwrite(h,"{=e.name}\n{=e.description}\n{=e.status}\n{=e.substatus}\n{=e.start_date}\n{tag_list}\n")
         endfor
         fclose(h)
         saved=true
@@ -32,10 +29,11 @@ def load(saveloc)
             name=fread(h,"\n")
             desc=fread(h,"\n")
             status=fread(h,"\n").as_int
+            substatus=fread(h,"\n").as_int
             start_date=fread(h,"\n").as_int
             tag_list=fread(h,"\n").split(" ")
             on tag_list.len==1 and trim(tag_list[0],0)=="" do tag_list=list_string([])
-            append_to(ref tasks,task(name,desc,status,start_date,tag_list))
+            append_to(ref tasks,task(name,desc,status,substatus,start_date,tag_list))
         endwhile
         fclose(h)
         opened=true
@@ -95,7 +93,7 @@ def resize()
     endfor
 
     # top option line display
-    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
+    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]v[#-]iew  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
 
     tagline()
     @TW=term_w()
@@ -105,10 +103,13 @@ end
 
 enum status ( backlog=0, todo, inprogress, onhold, done )
 
+enum hold_types ( OnHold=0, PendingReview, PendingRelease )
+
 struct task
     name        string
     description string
     status      int
+    substatus   int
     start_date  int
     tag_list    []string
 endstruct
@@ -134,13 +135,13 @@ endif
 
 if !loaded
     append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food",
-                                .status status.inprogress, .start_date 1723761115, .tag_list [].list_string ))
+                                .status status.inprogress, .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk",
-                                .status status.done,       .start_date 1723761115, .tag_list [].list_string ))
+                                .status status.done,       .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents",
-                                .status status.todo,       .start_date 0, .tag_list [].list_string ))
+                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "fluff cat beds",   .description "they demand comfort",
-                                .status status.todo,       .start_date 0, .tag_list [].list_string ))
+                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
     footer("example tasks created")
 endif
 
@@ -152,6 +153,13 @@ headers[status.todo]="To Do"
 headers[status.inprogress]="In Progress"
 headers[status.onhold]="On Hold"
 headers[status.done]="Complete"
+
+# create sub status names
+var subheaders map
+subheaders[hold_types.OnHold]="On Hold"
+subheaders[hold_types.PendingReview]="Pending Review"
+subheaders[hold_types.PendingRelease]="Pending Release"
+
 
 # switch to alt screen
 tui_screen(1)
@@ -257,6 +265,11 @@ while not quit
                         at rec.Row,rec.Col+2,invtags
                     endif
                     rec.tui_template(s)
+                    if c==status.onhold
+                        # display hold type
+                        holdline=fgrgb(180,100,100)+"[#i1] "+ subheaders[t.substatus] +" [#i0][#-]"
+                        at rec.Row+rec.Height-1,rec.Col+1,holdline
+                    endif
                     ypos++
                 endif
                 cleardepth++
@@ -415,6 +428,10 @@ while not quit
         else
             footer("nothing to edit")
         endif
+
+
+    is asc("v") # view full entry
+
 
     is asc("u") # undo last
         if undoLen>0 
