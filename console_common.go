@@ -545,6 +545,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     optslen:=0
                     // noChange:=false
 
+                inloopdd:
                     for ;; {
                         absat(irow+1,cpos)
                         optslen=0
@@ -573,17 +574,17 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                             fallthrough
                         case 32:
                             selected=true
-                            break
+                            break inloopdd
                         
                         // these cases may be removed later, they are reserved for later use
                         //  it may be the case that we allow partially typed matches.
 
                         case 27:
                             // noChange=true
-                            break
+                            break inloopdd
                         default:
                             // noChange=true
-                            break
+                            break inloopdd
                         }
                     }
                     clearChars(irow+1, cpos, optslen)
