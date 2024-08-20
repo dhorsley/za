@@ -179,7 +179,7 @@ intui.Height,intui.Width=[1,TW]
 # pager for view mode
 pager=tui_new()
 pstyle=tui_new_style()
-pager.Row,pager.Col=[8,20]
+pager.Row,pager.Col=[7,20]
 pager.Height,pager.Width=[13,TW-40]
 pager.Title="View Mode"
 
@@ -467,6 +467,11 @@ while not quit
             pstyle.bg,pstyle.fg=["1","7"]
             pstyle.wrap=true
             pstyle.fill=true
+
+            border=pstyle.border
+            border["bg"]=pstyle.bg
+            border["fg"]=pstyle.fg
+            pstyle.border=border
 
             selected=task_index["{optrow},{optcol}"]
             vt=tasks[selected]
