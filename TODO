@@ -18,12 +18,9 @@ TODO
             - maybe put Assignee field on to overview screen instead of description field?
 
         * Where does "pending review"/"pending release"/"released" fit in?
-            - maybe have a sub-status when marked as "Complete" ? Ie. complete is "CI complete" if task is code related.
+            - will add "On Hold/Pending Review/Pending Release" as sub status for the On Hold column
             - show sub-status on overview screen.
 
-        * Alternatively, have the columns be scrollable to left and right if they grow past the terminal window width?
-            - this would let us have separate columns for each complete state, but we lose compactness/brevity.
-            
     * add drop down mode for getInput()
         - change inbound params: add ddopts []string
         - when not empty place getInput() in ddmode=true
