@@ -87,6 +87,23 @@ def footer(s)
     at term_h(),1, s
 end
 
+def sz_time(n)
+    d,h,m=[0,0,0]
+    if n>86400
+        d=as_int(n)/86400
+        n-=d*86400
+    endif
+    if n>3600
+        h=as_int(n)/3600
+        n-=h*3600
+    endif
+    if n>60
+        m=as_int(n)/60
+        n-=m*60
+    endif
+    return "%dd %dh %dm".format(d,h,m)
+end
+
 def resize()
     @colSize=as_int(term_w()-4)/headers.len
     @rec.Width=colSize
@@ -104,7 +121,7 @@ def resize()
     endfor
 
     # top option line display
-    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]v[#-]iew  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]t[#-]ouch  [#5]s[#-]ubstate  [#5]T[#-]ags [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
+    at 1,1, "[#b1][#7] Todo Editor [##][#-]   [#5]e[#-]dit  [#5]v[#-]iew  [#5]d[#-]elete  [#5]u[#-]ndelete  [#5]n[#-]ew  [#5]S[#-]tart time  [#5]E[#-]nd time  [#5]s[#-]ubstate  [#5]T[#-]ime switch  [#5]t[#-]ags  [#5]q[#-]uit   [#i1]shift-left/right to move a task.[#i0]"
 
     tagline()
     @TW=term_w()
@@ -113,8 +130,8 @@ end
 # definitions
 
 enum status ( backlog=0, todo, inprogress, onhold, done )
-
 enum hold_types ( OnHold=0, PendingReview, PendingRelease )
+enum td ( off=0, elapsed, remaining )
 
 struct task
     name        string
@@ -219,6 +236,7 @@ optrow=0
 colStartPos=6
 keepFocus=""
 maxCol=enum_all("status").len-1
+time_disp=0
 var coldepths []int
 
 # var maxdepths []int
@@ -272,12 +290,22 @@ while not quit
                     taskdup.name=replace(taskdup.name," ",nbsp)
                     rec.Content=tmpl
                     rec.Data=taskdup
-                    # rec.tui_box(s)
+
                     if c in [status.inprogress,status.onhold]
-                        dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
+                        case time_disp
+                        is td.off
+                            dateline=""
+                        is td.elapsed
+                            dateline="[#invert][#4] e:" + sz_time(epoch_time()-t.start_date) + "[#-]"
+                        is td.remaining
+                            dateline="[#invert][#4] r:" + sz_time(t.end_date-epoch_time()) + "[#-]"
+                        endcase
+                        # PIG
+                        # dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
                         dl=dateline.stripcc.len
                         at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
                     endif
+
                     if t.tag_list.len > 0 
                         invtags=" "
                         foreach tg in t.tag_list
@@ -372,7 +400,7 @@ while not quit
         quit=true
 
 
-    is asc("T") # tagging
+    is asc("t") # tagging
 
         selected=task_index["{optrow},{optcol}"]
         tags=tasks[selected].tag_list.join(" ")
@@ -385,6 +413,12 @@ while not quit
         tagline()
         footer("[#bold]%s[#boff] task tag list updated [#i1](%s)[#i0]".format(tasks[selected].name,tags))
 
+
+    is asc("T") # time toggle
+    
+        time_disp=( time_disp + 1 ) % 3
+
+
     is asc("f") # filtering (on tags)
 
         intui.Prompt="New filter : "
@@ -394,10 +428,15 @@ while not quit
         footer("tag filter updated [#i1](%s)[#i0]".format(tagfilter))
 
 
-    is asc("t") # touch date
+    is asc("S") # touch start date
 
         selected=task_index["{optrow},{optcol}"]
         on tasks[selected].start_date!=0 do tasks[selected].start_date=epoch_time() 
+
+    is asc("E") # end date edit
+
+        selected=task_index["{optrow},{optcol}"]
+        on tasks[selected].end_date!=0 do tasks[selected].end_date=epoch_time() 
 
     is asc("n") # new task
 
