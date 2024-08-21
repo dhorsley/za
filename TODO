@@ -14,10 +14,13 @@ TODO
         * DONE: add a version string at head of save file
             - use this to control which fields are ingested on load, defaulting others not present.
         * DONE: end date/time field
+            - TODO: editing/touching end_date
         * TODO: elapsed/remaining time display (with a toggle menu option for off/elapsed/remaining)
+            - this is to replace the start time on the overview screen
         * TODO: changes to colour schemes in lapsed/near lapsed tasks.
         * TODO: alerts: display and/or notifications on near limit tasks
-            type: on screen, emails, nagios/checkmk output format, other?
+            - type: on screen, emails, nagios/checkmk output format, other?
+            - default remaining warning will be less than 1 day.
         * TODO: startup arg just to poll for near limit tasks and notify
                  so that the app can be scheduled non-interactively.
         * TODO: fix: cursoroff() in lib-tui.go getInput() ddmode.
