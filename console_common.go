@@ -191,27 +191,6 @@ func mouse_press(inp []byte) {
 //  the issue is basically that we are not tracking where the code points start
 //  for each char and moving the cursor to those instead of byte by byte.
 
-/*
-    * add drop down mode for getInput()
-    - DONE: change inbound params: add ddopts []string
-    - DONE: when not empty place getInput() in ddmode=true
-        - when ddmode==true, and down arrow pressed, override history mode (if enabled)
-            - NOT DOING: capture screen in box (irow,icol) to (irow+ddopts.len,icol+maxleninddopts
-                - DECRQCRA not widely supported and may add security holes
-                - would have to change pf() to maintain an internal buffer if we wanted this feature.
-                - will, instead, settle for a horizontal display 1 line below input line for now
-            - display dd opts
-            - create highlight cursor at first opt
-            - start a new key loop:
-                - if input is not in (cursor down/up, enter, space, esc) then break
-                - move cursor, accept option or break, depending on input
-            - NOT DOING: restore screen from earlier capture
-            - if escaped/broken then carry on as normal
-            - if accepted, then insert selection to input string and move cpos cursor to end of
-                the selection in the amended input string
-        - possibly add alternative sources of ddopts array later
-*/
-
 func getInput(prompt string, defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
@@ -545,6 +524,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     optslen:=0
                     // noChange:=false
 
+                    hideCursor()
                 inloopdd:
                     for ;; {
                         absat(irow+1,cpos)
@@ -596,6 +576,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         wordUnderCursor,_ = getWord(s, cpos)
                     }
 
+                    showCursor()
                     break
                 }
 

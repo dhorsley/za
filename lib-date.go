@@ -192,7 +192,7 @@ func buildDateLib() {
 		} else {
 			t = time.Now()
 		}
-		return t.Month(), nil
+		return int(t.Month()), nil
 	}
 
 	slhelp["time_year"] = LibHelp{in: "[epochnano]", out: "integer", action: "Returns the current year (no arguments) or the year of the epoch nano time specified in [#i1]epochnano[#i0]."}

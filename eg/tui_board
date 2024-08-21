@@ -65,6 +65,45 @@ def cleanup()
     exit
 end
 
+
+def get_date_human(t,row,col)
+
+    # at current row,col receiving multi-part input for date + time
+
+    on t is nil do t=epoch_time()
+    ty=time_year(t).as_string
+    tmo=time_month(t).as_string
+    td=time_dom(t).as_string
+    th=time_hours(t).as_string
+    tmi=time_minutes(t).as_string
+
+    invalid=true
+    while invalid
+        at row,col
+        prompt dd "" "[0-9]{2}" is format("%02s",td)
+        at row,col+2
+        prompt mo "/" "[0-9]{2}" is format("%02s",tmo)
+        at row,col+5
+        prompt yyyy "/" "[0-9]{4}" is format("%04s",ty)
+        at row,col+10
+        prompt hh " " "[0-9]{2}" is format("%02s",th)
+        at row,col+13
+        prompt mi ":" "[0-9]{2}" is format("%02s",tmi)
+
+        on dd.as_int>31 do continue
+        on mo.as_int>12 do continue
+        on hh.as_int>23 do continue
+        on mi.as_int>59 do continue
+        invalid=false
+    endwhile
+
+    # build rfc3339 fmt string, then convert
+    s="%s-%0s-%0sT%0s:%0s:00.00Z".format(yyyy,mo,dd,hh,mi)
+    return epoch_time(s)
+
+end
+
+
 def debugline(s)
     clear_line(term_h()-4,1)
     at term_h()-4,1,format("[#5]debug: %s[#-]",s)
@@ -298,10 +337,8 @@ while not quit
                         is td.elapsed
                             dateline="[#invert][#4] e:" + sz_time(epoch_time()-t.start_date) + "[#-]"
                         is td.remaining
-                            dateline="[#invert][#4] r:" + sz_time(t.end_date-epoch_time()) + "[#-]"
+                            on t.end_date>0 do dateline="[#invert][#4] r:" + sz_time(t.end_date-epoch_time()) + "[#-]"
                         endcase
-                        # PIG
-                        # dateline="[#invert][#4] Started: "+date_human(t.start_date).replace(" \+.*$","")+" [#-]"
                         dl=dateline.stripcc.len
                         at rec.Row+rec.Height,rec.Col+rec.Width-dl-2,dateline
                     endif
@@ -452,11 +489,16 @@ while not quit
         intui.Prompt="New task link (optional) : "
         link=intui.tui_input(instyle).Result
 
+        intui.Prompt="New task end date (optional) : "
+        end_date=intui.tui_input(instyle).Result
+        on not is_number(end_date) do end_date="0"
+
         intui.tui_clear(instyle)
 
         append_to(ref tasks, task(.name name, .description desc, .assignee assignee, .link link, 
-                                .status status.todo, .substatus hold_types.OnHold, .start_date 0, .end_Date 0, .tag_list [].list_string ))
+                                .status status.todo, .substatus hold_types.OnHold, .start_date 0, .end_date end_date, .tag_list [].list_string ))
         footer("[#bold]%s[#boff] task added".format(name))
+
 
     is asc("d") # delete task under cursor
 
@@ -497,11 +539,25 @@ while not quit
             intui.Content=tasks[selected].link
             link=intui.tui_input(instyle).Result
 
+            #intui.Prompt="New task start date (optional) : "
+            #intui.Content=tasks[selected].start_date.as_string
+            #start_date=intui.tui_input(instyle).Result
+            at 2,1,"New task start date : "
+            start_date=get_date_human(tasks[selected].start_date,2,23)
+            on not is_number(start_date) do start_date="0"
+
+            intui.Prompt="New task end date : "
+            intui.Content=tasks[selected].end_date.as_string
+            end_date=intui.tui_input(instyle).Result
+            on not is_number(end_date) do end_date="0"
+
             intui.tui_clear(instyle)
             tasks[selected].name=name
             tasks[selected].description=desc
             tasks[selected].assignee=assignee
             tasks[selected].link=link
+            tasks[selected].start_date=start_date.as_int
+            tasks[selected].end_date=end_date.as_int
 
             footer("[#bold]%s[#boff] task amended".format(name))
         else
