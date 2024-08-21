@@ -14,7 +14,7 @@ TODO
         * DONE: add a version string at head of save file
             - use this to control which fields are ingested on load, defaulting others not present.
         * TODO: end date/time field
-            - TODO: editing/ end_date
+            - TODO: editing end_date
             - DONE: touching end_date
         * DONE: elapsed/remaining time display
             - DONE: toggle menu option for off/elapsed/remaining
