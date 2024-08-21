@@ -11,7 +11,9 @@ TODO
 
     * Changes for eg/tui_board:
 
-        * TODO: end date/time field
+        * DONE: add a version string at head of save file
+            - use this to control which fields are ingested on load, defaulting others not present.
+        * DONE: end date/time field
         * TODO: elapsed/remaining time display (with a toggle menu option for off/elapsed/remaining)
         * TODO: changes to colour schemes in lapsed/near lapsed tasks.
         * TODO: alerts: display and/or notifications on near limit tasks
