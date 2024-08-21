@@ -6,13 +6,16 @@ doc `
 
 # functions
 
+save_version=2
+
 def save(tasks,saveloc)
     saved=false
     h=fopen(saveloc,"w")
+    fwrite(h,"{=save_version}\n")
     if h!=nil
         foreach e in tasks
             tag_list=e.tag_list.join(" ")
-            fwrite(h,"{=e.name}\n{=e.description}\n{=e.assignee}\n{=e.link}\n{=e.status}\n{=e.substatus}\n{=e.start_date}\n{tag_list}\n")
+            fwrite(h,"{=e.name}\n{=e.description}\n{=e.assignee}\n{=e.link}\n{=e.status}\n{=e.substatus}\n{=e.start_date}\n{=e.end_date}\n{tag_list}\n")
         endfor
         fclose(h)
         saved=true
@@ -25,6 +28,10 @@ def load(saveloc)
     h=fopen(saveloc,"r")
     if h!=nil
         var tasks []any
+        load_version=1
+        on !feof(h) do load_version=fread(h,"\n").as_int
+        # v2 new field: end_date
+        end_date=0
         while !feof(h)
             name=fread(h,"\n")
             desc=fread(h,"\n")
@@ -33,9 +40,10 @@ def load(saveloc)
             status=fread(h,"\n").as_int
             substatus=fread(h,"\n").as_int
             start_date=fread(h,"\n").as_int
+            on load_version>1 do end_date=fread(h,"\n").as_int
             tag_list=fread(h,"\n").split(" ")
             on tag_list.len==1 and trim(tag_list[0],0)=="" do tag_list=list_string([])
-            append_to(ref tasks,task(name,desc,assignee,link,status,substatus,start_date,tag_list))
+            append_to(ref tasks,task(name,desc,assignee,link,status,substatus,start_date,end_date,tag_list))
         endwhile
         fclose(h)
         opened=true
@@ -116,6 +124,7 @@ struct task
     status      int
     substatus   int
     start_date  int
+    end_date    int
     tag_list    []string
 endstruct
 
@@ -140,13 +149,13 @@ endif
 
 if !loaded
     append_to(ref tasks, task(.name "feed cats",        .description "give the cats their food", .assignee "", .link "",
-                                .status status.inprogress, .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
+                                .status status.inprogress, .substatus hold_types.OnHold, .start_date 1723761115, .end_date 0, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "fill water bowls", .description "water only, they get too much milk", .assignee "", .link "",
-                                .status status.done,       .substatus hold_types.OnHold, .start_date 1723761115, .tag_list [].list_string ))
+                                .status status.done,       .substatus hold_types.OnHold, .start_date 1723761115, .end_date 0, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "hunt furballs",    .description "they like to leave little presents", .assignee "", .link "",
-                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
+                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .end_date 0, .tag_list [].list_string ))
     append_to(ref tasks, task(.name "fluff cat beds",   .description "they demand comfort", .assignee "", .link "",
-                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
+                                .status status.todo,       .substatus hold_types.OnHold, .start_date 0, .end_date 0, .tag_list [].list_string ))
     footer("example tasks created")
 endif
 
@@ -406,7 +415,8 @@ while not quit
 
         intui.tui_clear(instyle)
 
-        append_to(ref tasks, task(.name name, .description desc, .assignee assignee, .link link, .status status.todo, .substatus hold_types.OnHold, .start_date 0, .tag_list [].list_string ))
+        append_to(ref tasks, task(.name name, .description desc, .assignee assignee, .link link, 
+                                .status status.todo, .substatus hold_types.OnHold, .start_date 0, .end_Date 0, .tag_list [].list_string ))
         footer("[#bold]%s[#boff] task added".format(name))
 
     is asc("d") # delete task under cursor
