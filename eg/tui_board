@@ -189,7 +189,7 @@ intui.Height,intui.Width=[1,TW]
 pager=tui_new()
 pstyle=tui_new_style()
 pager.Row,pager.Col=[7,20]
-pager.Height,pager.Width=[13,TW-40]
+pager.Height,pager.Width=[16,TW-40]
 pager.Title="View Mode"
 
 # setup reusable style
@@ -487,10 +487,19 @@ while not quit
             vt=tasks[selected]
             tags=tasks[selected].tag_list.join(" ")
 
+            hold_status=subheaders[vt.substatus]
+            on vt.status!=status.OnHold do hold_status=""
+
+            start_date="" ; end_date=""
+            on vt.start_date!=0 do start_date=date_human(vt.start_date)
+            on vt.end_date!=0 do end_date=date_human(vt.end_date)
+
             # content string : cs
             pager.Content=`
                 [#6]Task        : %-40s
                 [#6]Progress    : %-40s
+                [#6]Start Date  : %-40s
+                [#6]End Date    : %-40s
                 [#3]Assignee    : %-40s
                 [#3]Hold Status : %-40s
                 [#3]Tags        : %-40s
@@ -498,7 +507,7 @@ while not quit
 
                 [#5]Details     : \n
                 %s\n
-            `.format(vt.name,headers[vt.status],vt.assignee,subheaders[vt.substatus],tags,vt.link,vt.description)
+            `.format(vt.name,headers[vt.status],start_date, end_date, vt.assignee,hold_status,tags,vt.link,vt.description)
 
             pager.tui_box(pstyle)
             pager.tui_pager(pstyle)
