@@ -13,10 +13,12 @@ TODO
 
         * DONE: add a version string at head of save file
             - use this to control which fields are ingested on load, defaulting others not present.
-        * DONE: end date/time field
-            - TODO: editing/touching end_date
-        * TODO: elapsed/remaining time display (with a toggle menu option for off/elapsed/remaining)
-            - this is to replace the start time on the overview screen
+        * TODO: end date/time field
+            - TODO: editing/ end_date
+            - DONE: touching end_date
+        * DONE: elapsed/remaining time display
+            - DONE: toggle menu option for off/elapsed/remaining
+            - DONE: this is to replace the start time on the overview screen
         * TODO: changes to colour schemes in lapsed/near lapsed tasks.
         * TODO: alerts: display and/or notifications on near limit tasks
             - type: on screen, emails, nagios/checkmk output format, other?
