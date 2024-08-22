@@ -24,6 +24,9 @@ CHANGE LOG
     library
     -------
 
+    * added time_zone() and time_zone_offset() to lib-date.
+        - these return a string (tz name) and an int (tz offset in seconds) respectively.
+
     * (experimental, testing) added lib-tui.go (text user interface elements)
         - call parameters and behaviour liable to change after feedback
         - demo in eg/tui
