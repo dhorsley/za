@@ -11,7 +11,8 @@ TODO
 
     * Changes for eg/tui_board:
 
-        * TODO: fix utc difference when touching stamps
+        * DONE: fix utc difference when touching stamps
+            - amended get_date_human() in tui_board example to read tz offset and sign before parsing.
         * DONE: add a version string at head of save file
             - use this to control which fields are ingested on load, defaulting others not present.
         * DONE: end date/time field

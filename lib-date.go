@@ -12,7 +12,7 @@ func buildDateLib() {
 	features["date"] = Feature{version: 1, category: "date"}
 	categories["date"] = []string{"date", "epoch_time", "epoch_nano_time", "time_diff", "date_human",
                                 "time_hours","time_minutes","time_seconds","time_nanos",
-                                "time_dow","time_dom","time_month","time_year" }
+                                "time_dow","time_dom","time_month","time_year", "time_zone", "time_zone_offset", }
 
 	slhelp["date"] = LibHelp{in: "[integer]", out: "string", action: "Returns a date/time string (RFC3339 format). Optional [#i1]integer[#i0] defaults to the current date/time, otherwise must be an epoch timestamp."}
 	stdlib["date"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -57,6 +57,42 @@ func buildDateLib() {
             return nil,e
         }
 		return int(time.Now().Unix()), err
+	}
+
+	slhelp["time_zone"] = LibHelp{in: "[string]", out: "integer", action: "Returns the time zone."}
+	stdlib["time_zone"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("time_zone",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
+        name:=""
+        if len(args)==1 {
+            dt,e:=time.Parse(time.RFC3339,args[0].(string))
+            if e==nil { 
+                name,_=dt.Zone()
+                return name,nil
+            }
+            return nil,e
+        }
+        name,_=time.Now().Zone()
+        return name,nil
+	}
+
+	slhelp["time_zone_offset"] = LibHelp{in: "[string]", out: "integer", action: "Returns the time zone offset in seconds."}
+	stdlib["time_zone_offset"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("time_zone_offset",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
+        var offset int
+        if len(args)==1 {
+            dt,e:=time.Parse(time.RFC3339,args[0].(string))
+            if e==nil { 
+                _,offset=dt.Zone()
+                return offset,nil
+            }
+            return nil,e
+        }
+        _,offset=time.Now().Zone()
+        return offset,nil
 	}
 
 	slhelp["epoch_nano_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
