@@ -59,43 +59,47 @@ func buildDateLib() {
 		return int(time.Now().Unix()), err
 	}
 
-	slhelp["time_zone"] = LibHelp{in: "[string]", out: "integer", action: "Returns the time zone."}
+	slhelp["time_zone"] = LibHelp{in: "[integer]", out: "string", action: "Returns the time zone."}
 	stdlib["time_zone"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("time_zone",args,2,
             "1","int",
             "0"); !ok { return nil,err }
         name:=""
+		var t time.Time
         if len(args)==1 {
-            dt,e:=time.Parse(time.RFC3339,args[0].(string))
-            if e==nil { 
-                name,_=dt.Zone()
-                return name,nil
-            }
-            return nil,e
+			when := args[0].(int)
+            whensecs:=int(when/1000000000)
+            whennano:=when-(whensecs*1000000000)
+			t = time.Unix(int64(whensecs),int64(whennano))
+        } else {
+            t = time.Now()
         }
-        name,_=time.Now().Zone()
+
+        name,_=t.Zone()
         return name,nil
 	}
 
-	slhelp["time_zone_offset"] = LibHelp{in: "[string]", out: "integer", action: "Returns the time zone offset in seconds."}
+	slhelp["time_zone_offset"] = LibHelp{in: "[integer]", out: "integer", action: "Returns the time zone offset in seconds."}
 	stdlib["time_zone_offset"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("time_zone_offset",args,2,
             "1","int",
             "0"); !ok { return nil,err }
         var offset int
+		var t time.Time
         if len(args)==1 {
-            dt,e:=time.Parse(time.RFC3339,args[0].(string))
-            if e==nil { 
-                _,offset=dt.Zone()
-                return offset,nil
-            }
-            return nil,e
+			when := args[0].(int)
+            whensecs:=int(when/1000000000)
+            whennano:=when-(whensecs*1000000000)
+			t = time.Unix(int64(whensecs),int64(whennano))
+        } else {
+            t = time.Now()
         }
-        _,offset=time.Now().Zone()
-        return offset,nil
+
+        _,offset=t.Zone()
+       return offset,nil
 	}
 
-	slhelp["epoch_nano_time"] = LibHelp{in: "none", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
+	slhelp["epoch_nano_time"] = LibHelp{in: "[string]", out: "integer", action: "Returns the current epoch (Unix) time in nano-seconds."}
 	stdlib["epoch_nano_time"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("epoch_nano_time",args,2,
             "1","string",
