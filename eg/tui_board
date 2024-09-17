@@ -517,6 +517,7 @@ while not quit
 
     is asc("n") # new task
 
+        intui.Content=""
         intui.Prompt="New task name : "
         name=intui.tui_input(instyle).Result
 
