@@ -20,6 +20,7 @@ CHANGE LOG
         - if default string present, and input string empty, then final input is
             the default string.
         - while typed text left matches the default string, the default remains visible.
+    * ? op at eol fix
 
     library
     -------
