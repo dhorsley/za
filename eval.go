@@ -207,6 +207,12 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         switch token.tokType {
         case EOF:
             break binloop1
+    
+        case O_Query: // handle ? at end of expression
+            if p.pos==p.len-1 {
+                left=p.tern_if(nil,nil)
+                continue
+            }
 
         case SYM_PP,SYM_MM:
             left = p.postIncDec(token)
@@ -243,7 +249,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error,try_fault boo
         }
 
         if p.pos>=p.len {
-            panic(fmt.Errorf("Incomplete expression, terminates early"))
+            panic(fmt.Errorf("Incomplete expression, terminates early (on token-2,token-1,token: %s %s %s)",tokNames[p.prev2.tokType],tokNames[p.prev.tokType],tokNames[token.tokType]))
         }
 
         var right any
