@@ -168,7 +168,7 @@ if is_installed("figlet")
     use_effect = effects[effects.len.rand-1]
 
     p=${toilet -f {fv} {use_effect} -S -w {=term_w()} "{=banner}"}
-    unset variants, fontdir
+    unset variants, fontdir, use_effect
 else
     p=banner
 endif
@@ -180,7 +180,7 @@ help
 #println "fv->",fv
 #println "ue->",use_effect
 
-unset banner,p,ignore_fonts,effects,use_effect
+unset banner,p,ignore_fonts,effects
 
 # enum helpers
 enum s3sum ( okay=0, warn, file, sum )
