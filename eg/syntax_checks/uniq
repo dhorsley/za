@@ -1,25 +1,24 @@
-#!/usr/bin/za -f
+#!/usr/bin/za
 
 ################################################
-# test script for variable assignment
+# test script for some random stuff
 ################################################
 
-
-print "\n[#fcyan]Unique Tests\n[#default]\n\n"
+println "\n[#fcyan]Unique Tests\n[#default]\n"
 
 cls
-print "[#fyellow]Console Positioning Test\n\n"
+println "[#fyellow]Console Positioning Test\n"
 for y = 1 to 20 step 2
     row=y+2
     at row,y
     z=1+(y/2)
-    print "[#invert]Test {z} - ({row},{y})\n"
+    println "[#invert]Test {z} - ({row},{y})"
 endfor
 
-print "\n\n[#fcyan]Colour Tests\n"
-print "[#bbcyan][#fbgray][#bold][#blink]Test Font[#default]\n\n"
+println "\n\n[#fcyan]Colour Tests"
+println "[#bbcyan][#fbgray][#bold][#blink]Test Font[#default]\n"
 
-print "[#fcyan]PAUSE test[#default]\n\n"
+println "[#fcyan]PAUSE test[#default]\n"
 
 for x = 1 to 3
     print "Pausing {x} seconds\n"
