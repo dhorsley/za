@@ -1995,6 +1995,12 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
     var ok bool
     v, ok = vget(nil,fs,ident,name)
 
+    //if name=="desc_map" {
+        pf("(vgei) name : %#v",name)
+        pf("(vgei) el   : %#v",el)
+        pf("(vgei) val  : %#v",v)
+    //}
+ 
     switch v:=v.(type) {
     case map[string]int:
         return v[el], ok
@@ -2046,7 +2052,7 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
     var ok bool
 
     if tok==nil {
-    list, ok = vget(nil,fs,ident,name)
+        list, ok = vget(nil,fs,ident,name)
     } else {
         list, ok = vget(tok,fs,ident,name)
     }
@@ -2058,6 +2064,7 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
 
     bin:=bind_int(fs,name)
 
+    // pf("(vse) fs %v name %v bin %v listtype %T inbound value %+v\n",fs,name,bin,list,value)
     switch list.(type) {
 
     case map[string]string:
@@ -2073,6 +2080,7 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
             key=el.(string)
         }
         (*ident)[bin].IValue.(map[string]string)[key] = value.(string)
+        // pf("(vse-s) set %v[%v] (key:%v) to %+v\n",name,el,key,(*ident)[bin].IValue.(map[string]string)[key])
         return
 
     case map[string]any:
@@ -2088,6 +2096,7 @@ func vsetElement(tok *Token,fs uint32, ident *[]Variable, name string, el any, v
             key=el.(string)
         }
         (*ident)[bin].IValue.(map[string]any)[key] = value
+        // pf("(vse-a) set %v[%v] (key:%v) to %+v\n",name,el,key,(*ident)[bin].IValue.(map[string]any)[key])
         return
     }
 
@@ -2871,6 +2880,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 
                 // pf("(da) about to vget-element : %v[%v]\n",aryName,eleName)
                 tempStore ,found = vgetElementi(lfs,lident,aryName,eleName)
+                // pf("(da)              received : %v\n",tempStore)
 
                 if found {
 
@@ -2964,8 +2974,12 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                 element = interpolate(p.namespace,rfs,rident,element.(string))
                 if lfs==rfs {
                     vsetElement(&assignee[0], lfs, lident, assignee[0].tokText, element.(string), results[assno])
+                    // pf("(da-el-string-local) ass %v lfs %v el %v res %+v", assignee[0].tokText, lfs, element.(string), results[assno])
                 } else {
                     vsetElement(nil, lfs, lident, assignee[0].tokText, element.(string), results[assno])
+                    // pf("(da-el-string-global) ass %v lfs %v el %v res %+v\n", assignee[0].tokText, lfs, element.(string), results[assno])
+                    // tmpV , _ := vgetElementi(lfs,lident,assignee[0].tokText,element.(string))
+                    // pf("(da-el-string-global) value written : %+v\n",tmpV)
                 }
             case int:
                 if element.(int)<0 {
