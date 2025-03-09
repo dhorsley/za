@@ -12,7 +12,7 @@
  join  is_setgid  line_match  clear_line  lang  zsh_version  get_cores  asc  has_start  line_tail argc fopen  reg_filter  line_add_before 
  write_struct  download  varbind  web_download  any  line_head  filter  get_env  cwd  permit  otod  tokens  web_custom  term_h reverse  key  log2 
  web_serve_decode  sinh  cursoroff  asinh  all  tail  stripcc  tan  dtoo  is_dir  web_post  sum  replace  is_socket  func_inputs  fwrite  min  
- insert btoi  ln2  ppid  ev_exists  web_get  web_serve_log  pad  append_to  stripansi  glob_key net_interfaces stripquotes  dir  cos  avg  file_size
+ insert btoi  ln2  ppid  ev_exists  web_get  web_serve_log  pad  append_to  stripansi  key net_interfaces stripquotes  dir  cos  avg  file_size
  cosh  env  read_file  acosh  read_struct shell_pid  format write_file
 
  ftell fflush

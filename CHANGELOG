@@ -25,6 +25,9 @@ CHANGE LOG
     library
     -------
 
+    * (breaking) moved glob_key() functionality into key()
+        - removed glob_key() call
+
     * added time_zone() and time_zone_offset() to lib-date.
         - these return a string (tz name) and an int (tz offset in seconds) respectively.
 

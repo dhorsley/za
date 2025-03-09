@@ -172,7 +172,6 @@ syntax match internal_functions "\(^|.\|\s*\)exec\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)eval\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)keypress\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)tokens\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)glob_key\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)clear_line\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)key\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)clktck\s*("he=e-1

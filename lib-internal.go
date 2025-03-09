@@ -247,7 +247,7 @@ func buildInternalLib() {
         "release_name", "release_version", "release_id", "winterm", "hostname", "argc","argv",
         "funcs", "keypress", "tokens", "key", "clear_line","pid","ppid", "system",
         "func_inputs","func_outputs","func_descriptions","func_categories",
-        "local", "clktck", "glob_key", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
+        "local", "clktck", "funcref", "thisfunc", "thisref","cursoron","cursoroff","cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w","pane_r","pane_c","utf8supported","execpath","trap","coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term","term","has_colour",
         "len","echo","get_row","get_col","unmap","await","get_mem","zainfo","get_cores","permit",
@@ -1065,7 +1065,11 @@ func buildInternalLib() {
         var found bool
 
         if v, found = vget(nil,evalfs,ident, args[0].(string)); !found {
-            return false, nil
+            var mloc uint32
+            if interactive { mloc=1 } else { mloc=2 }
+            if v, found = vget(nil,mloc,&mident,args[0].(string)); !found {
+                return false, nil
+            }
         }
 
         key:=interpolate(ns,evalfs,ident,args[1].(string))
@@ -1097,63 +1101,6 @@ func buildInternalLib() {
             if _, found = v[key]; found { return true, nil }
         default:
             return false, errors.New("key() requires a map")
-        }
-        return false, nil
-    }
-
-    slhelp["glob_key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in the global associative array [#i1]ary_name[#i0]?"}
-    stdlib["glob_key"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("glob_key",args,1,"2","string","string"); !ok { return nil,err }
-
-        var v any
-        var found bool
-
-        locked:=false
-        if atomic.LoadUint32(&has_global_lock)!=evalfs {
-            sglock.RLock(); locked=true
-        }
-
-        var mloc uint32
-        if interactive {
-            mloc=1
-        } else {
-            mloc=2
-        }
-        if v, found = vget(nil,mloc,&mident,args[0].(string)); !found {
-            if locked { sglock.RUnlock() }
-            return false, nil
-        }
-        if locked { sglock.RUnlock() }
-
-        key:=interpolate(ns,evalfs,ident,args[1].(string))
-
-        switch v:=v.(type) {
-        case http.Header:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]float64:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]uint8:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]uint:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]uint64:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]int64:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]int:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]bool:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]string:
-            if _, found = v[key]; found { return true, nil }
-        case map[string][]string:
-            if _, found = v[key]; found { return true, nil }
-        case map[string]any:
-            if _, found = v[key]; found { return true, nil }
-        case map[string][]any:
-            if _, found = v[key]; found { return true, nil }
-        default:
-            return false, errors.New("glob_key() requires a map")
         }
         return false, nil
     }

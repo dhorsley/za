@@ -3,7 +3,7 @@
 define fib(n)
     @ memo["calls"] = memo["calls"]+1
     var m bigi
-    if glob_key("memo",as_string(n))
+    if key("memo",as_string(n))
         m=memo[n]
     else
         m=fib(n-2)+fib(n-1)
