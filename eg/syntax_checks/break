@@ -3,21 +3,26 @@
 bc=4
 input bc optarg 1 is "Break Count"
 
-while ; #b4
+while #b4
 
-    while ; #b3
-        for e=1 to 50 # b2
+    while #b3
+        for e=0 to 2e4 #b2
             case # b1
             has e > 0
                 break bc
             ec
-            println e
+            assert bc==1
+            println "e=",e
         endfor
         println "FOR COMPLETE!"
+        assert bc==2
     endwhile
+
+    assert bc==3
     println "INNER WHILE COMPLETE!"
 
 endwhile
 
+assert bc==4
 println "OUTER WHILE COMPLETE"
 
