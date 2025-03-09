@@ -15,5 +15,12 @@ x=42
 y="abc"
 z=ts("f1string",2,"three")
 
+println "\n[#2]Local Var Dump"
+dump()
+println "[#-]"
+
+println "[#1]Template"
+| cat "files/tmpl1.txt"
+println "[#-]"
 $in "files/tmpl1.txt".interpolate.ccformat $out "/dev/stdout"
 
