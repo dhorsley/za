@@ -1995,12 +1995,6 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
     var ok bool
     v, ok = vget(nil,fs,ident,name)
 
-    //if name=="desc_map" {
-        pf("(vgei) name : %#v",name)
-        pf("(vgei) el   : %#v",el)
-        pf("(vgei) val  : %#v",v)
-    //}
- 
     switch v:=v.(type) {
     case map[string]int:
         return v[el], ok
