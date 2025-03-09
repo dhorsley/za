@@ -452,7 +452,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             endfor
             
             # set initial value for the global store
-            if !glob_key("prev","{name}_total")
+            if !key("prev","{name}_total")
                 foreach i in indexlist
                     @ prev["{name}_{i}"] = vals[i]
                 endfor
@@ -460,7 +460,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
             # now populate local prev from global prev
             foreach i in indexlist
-                if glob_key("prev","{name}_{i}")
+                if key("prev","{name}_{i}")
                     g=prev["{name}_{i}"]
                     if g.is_number
                         one_prev[i]=g
