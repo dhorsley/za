@@ -1587,7 +1587,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             res, err := f(p.namespace,evalfs,ident,args...)
             if err != nil {
                 p.std_faulted=true
-                p.try_err=err
                 pf("%s\n",err)
             }
             return res,err!=nil,method_result

@@ -55,6 +55,9 @@ CHANGE LOG
     other
     -----
 
+    * removed experimental fix, resume statements and try operator
+        - not enough flexibility to be of much use as a trade-off for the performance loss.
+
     * done: adding support for functions inside structs.
         - done: permit definition, setting a parent field to the struct.
         - done: change UFCS in eval_ops.* to:

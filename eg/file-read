@@ -11,9 +11,10 @@ is "fedora"
     fn="/usr/share/dict/words"
 endcase
 
-fn.is_file.f2n?"notfound"
+on not fn.is_file do exit 1,"File does not exist"
 
-fhand=fn.fopen("r")?"open"
+fhand=fn.fopen("r")
+on fhand==nil do exit 2,"Could not open file."
 
 while not feof(fhand)
     println fread(fhand,"\n")
@@ -23,9 +24,5 @@ fhand.fclose
 
 exit errors.okay
 
-fix notfound
-    exit errors.not_found,"File not found."
-fix open
-    exit errors.file_open,"Could not open dictionary file."
 
 
