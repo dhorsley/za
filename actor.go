@@ -631,63 +631,59 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     // error handler
     defer func() {
         if r := recover(); r != nil {
-            if parser.try_fault {
-                // pf("(eh) tf found.\nwith : %+v\n",parser.try_err)
-            } else {
 
-                // fall back to shell command?
-                if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
-                    cmd:=basecode[source_base][parser.pc].Original
-                    // pf("<fallback executing : %v>\n",cmd)
-                    // prevcap,_:=gvget("@commandCapture")
-                    // gvset("@commandCapture",false)
+            // fall back to shell command?
+            if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
+                cmd:=basecode[source_base][parser.pc].Original
+                // pf("<fallback executing : %v>\n",cmd)
+                // prevcap,_:=gvget("@commandCapture")
+                // gvset("@commandCapture",false)
 
-                    s:=interpolate(currentModule,1,&mident,cmd)
-                    s=str.TrimRight(s,"\n")
-                    if len(s) > 0 {
-                        cop := Copper(s, false)
-                        gvset("@last",cop.code)
-                        gvset("@last_err",cop.err)
-                        if ! cop.okay {
-                            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
-                            pf(cop.err+"\n")
-                        } else {
-                            if len(cop.out) > 0 {
-                                if cop.out[len(cop.out)-1] != '\n' {
-                                    cop.out += "\n"
-                                }
-                                pf("%s", cop.out)
+                s:=interpolate(currentModule,1,&mident,cmd)
+                s=str.TrimRight(s,"\n")
+                if len(s) > 0 {
+                    cop := Copper(s, false)
+                    gvset("@last",cop.code)
+                    gvset("@last_err",cop.err)
+                    if ! cop.okay {
+                        pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s," \t"))
+                        pf(cop.err+"\n")
+                    } else {
+                        if len(cop.out) > 0 {
+                            if cop.out[len(cop.out)-1] != '\n' {
+                                cop.out += "\n"
                             }
+                            pf("%s", cop.out)
                         }
                     }
-                    if row>=MH-BMARGIN {
-                        if row>MH { row=MH }
-                        for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print("\n") }
-                        row=MH-BMARGIN
-                    }
-                    // gvset("@commandCapture",prevcap.(bool))
-                    // pf("<fallback complete.>\n")
-                } else {
-                    // if parser.std_call && interactive && permit_cmd_fallback {
-                    // }
-                    parser.hard_fault=false
-                    if _,ok:=r.(runtime.Error); ok {
-                        parser.report(inbound.SourceLine,sf("\n%v\n",r))
-                        if debug_level>0 { err:=r.(error); panic(err) }
-                        finish(false,ERR_EVAL)
-                    }
-                    err:=r.(error)
-                    parser.report(inbound.SourceLine,sf("\n%v\n",err))
-                    if debug_level>0 { panic(r) }
-                    setEcho(true)
+                }
+                if row>=MH-BMARGIN {
+                    if row>MH { row=MH }
+                    for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print("\n") }
+                    row=MH-BMARGIN
+                }
+                // gvset("@commandCapture",prevcap.(bool))
+                // pf("<fallback complete.>\n")
+            } else {
+                // if parser.std_call && interactive && permit_cmd_fallback {
+                // }
+                parser.hard_fault=false
+                if _,ok:=r.(runtime.Error); ok {
+                    parser.report(inbound.SourceLine,sf("\n%v\n",r))
+                    if debug_level>0 { err:=r.(error); panic(err) }
                     finish(false,ERR_EVAL)
                 }
+                err:=r.(error)
+                parser.report(inbound.SourceLine,sf("\n%v\n",err))
+                if debug_level>0 { panic(r) }
+                setEcho(true)
+                finish(false,ERR_EVAL)
             }
         }
     }()
 
     // some tracking variables for this function call
-    var break_count,old_break_count int // usually 0. when >0 stops breakIn from resetting
+    var break_count int                 // usually 0. when >0 stops breakIn from resetting
                                         //  used for multi-level breaks.
     var breakIn int64                   // true during transition from break to outer.
     var forceEnd bool                   // used by BREAK for skipping context checks when
@@ -776,26 +772,23 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
 
     // generic nesting indentation counter
     // this being local prevents re-entrance i guess
-    var depth,old_depth int
+    var depth int
 
     // stores the active construct/loop types outer->inner
     //  for the break and continue statements
     var lastConstruct     = []int64{}
-    var old_lastConstruct = []int64{}
 
     // initialise condition states: CASE stack depth
     // initialise the loop positions: FOR, FOREACH, WHILE
 
     // active CASE..ENDCASE statement meta info
     var wc     = make([]caseCarton, CASE_CAP)
-    var old_wc = make([]caseCarton, CASE_CAP)
 
     // count of active CASE..ENDCASE statements
-    var wccount,old_wccount int
+    var wccount int
 
     // counters per loop type
     var loops     = make([]s_loop, MAX_LOOPS)
-    var old_loops = make([]s_loop, MAX_LOOPS)
 
     // assign self from calling object
     if method {
@@ -932,7 +925,6 @@ tco_reentry:
     typemap["map"]    = nil
     // --
 
-pcloop:
     for {
 
         parser.pc+=1
@@ -967,10 +959,6 @@ pcloop:
         }
         /////////////////////////////////////////////////////////////////////////
 
-        if parser.try_fault && statement != C_Fix {
-            // pf("(line %d) skipping to fix.\n",inbound.SourceLine+1)
-            continue
-        }
 
         // append statements to a function if currently inside a DEFINE block.
         if defining && statement != C_Enddef {
@@ -2089,7 +2077,7 @@ pcloop:
                 var err error
 
                 if toAt>3 {
-                    expr, err, _ = parser.Eval(ifs,inbound.Tokens[3:toAt])
+                    expr, err = parser.Eval(ifs,inbound.Tokens[3:toAt])
                     if err==nil && isNumber(expr) {
                         fstart, _ = GetAsInt(expr)
                     } else {
@@ -2105,9 +2093,9 @@ pcloop:
 
                 if inbound.TokenCount>toAt+1 {
                     if stepAt>0 {
-                        expr, err, _ = parser.Eval(ifs, inbound.Tokens[toAt+1:stepAt])
+                        expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:stepAt])
                     } else {
-                        expr, err, _ = parser.Eval(ifs, inbound.Tokens[toAt+1:])
+                        expr, err = parser.Eval(ifs, inbound.Tokens[toAt+1:])
                     }
                     if err==nil && isNumber(expr) {
                         fend, _ = GetAsInt(expr)
@@ -2124,7 +2112,7 @@ pcloop:
 
                 if stepped {
                     if inbound.TokenCount>stepAt+1 {
-                        expr, err, _ = parser.Eval(ifs, inbound.Tokens[stepAt+1:])
+                        expr, err = parser.Eval(ifs, inbound.Tokens[stepAt+1:])
                         if err==nil && isNumber(expr) {
                             fstep, _ = GetAsInt(expr)
                         } else {
@@ -2577,88 +2565,6 @@ pcloop:
             }
 
 
-        case C_Resume:
-
-            if parser.in_fix {
-                parser.in_fix=false
-                parser.pc=parser.resume_pos
-                break_count=old_break_count
-                depth=old_depth
-                lastConstruct=old_lastConstruct
-                wc=old_wc[:]
-                wccount=old_wccount
-                loops=old_loops[:]
-                continue
-            }
-
-        case C_Fix:
-
-            var fix_type string
-            if inbound.TokenCount>1 {
-                fix_type=inbound.Tokens[1].tokText
-            }
-
-            // pf("Checking fix %s\n",fix_type)
-
-            if fix_type=="" || fix_type==parser.try_type {
-
-                if parser.try_fault {
-
-                    // in case of resume...
-                    old_break_count=break_count
-                    old_depth=depth
-                    old_lastConstruct=lastConstruct
-                    old_wc=wc[:]
-                    old_wccount=wccount
-                    old_loops=loops[:]
-
-                    // reset everything
-                    defining=false
-                    breakIn=Error
-                    break_count=0
-                    forceEnd=false
-                    depth=0
-                    lastConstruct = []int64{}
-                    wc=make([]caseCarton, CASE_CAP)
-                    wccount=0
-                    loops = make([]s_loop, MAX_LOOPS)
-                    inside_test=false
-                    inside_with=false
-                    structMode=false
-                    structName=""
-                    structNode=[]any{}
-                    definitionName=""
-                    si=false
-                    typeInvalid=false
-
-                    // create some info
-                    // pf("in evalfault : current try_err : %+v\n",parser.try_err)
-                    vset(nil,ifs,ident,"_try_fault",parser.try_fault)
-                    vset(nil,ifs,ident,"_try_err",parser.try_err)
-                    vset(nil,ifs,ident,"_try_info",parser.try_info)
-                    inbound = &functionspaces[source_base][parser.try_pos]
-                    vset(nil,ifs,ident,"_try_line",inbound.SourceLine+1)
-
-                    // then restart execution
-                    parser.try_fault=false
-                    parser.try_err=nil
-                    parser.resume_pos=int16(parser.try_pos)
-                    parser.try_pos=0
-                    parser.try_line=-1
-                    parser.try_info=""
-                    parser.std_call=false
-                    parser.std_faulted=false
-                    parser.in_fix=true
-                } else {
-                    vset(nil,ifs,ident,"_try_fault",false)
-                    vset(nil,ifs,ident,"_try_err",nil)
-                    vset(nil,ifs,ident,"_try_line",-1)
-                    vset(nil,ifs,ident,"_try_info","")
-                    break pcloop
-                }
-            }
-
-
         case C_Enum:
 
             if inbound.TokenCount<4 || (
@@ -2800,7 +2706,7 @@ pcloop:
                     break
                 }
 
-                cp,_,_ := parser.Eval(ifs,inbound.Tokens[2:3])
+                cp,_ := parser.Eval(ifs,inbound.Tokens[2:3])
 
                 switch cp:=cp.(type) {
                 case string:
@@ -2993,7 +2899,7 @@ pcloop:
                         if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
                         if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
                         if evnest==0 && (term==len(inbound.Tokens[1:])-1 || nt.tokType == O_Comma) {
-                            v,_,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
+                            v,_ := parser.Eval(ifs,inbound.Tokens[1+newstart:term+2])
                             newstart=term+1
                             switch v.(type) { case string: v=interpolate(currentModule,ifs,ident,v.(string)) }
                             docout += sparkle(sf(`%v`, v))
@@ -3127,9 +3033,6 @@ pcloop:
                             }
 
                         default:
-                            if parser.try_fault && we.result==nil {
-                                continue
-                            }
                             pf("Result Type -> %T expression was -> %v\n", we.text, we.result)
                             parser.report(inbound.SourceLine,"ON cannot operate without a condition.")
                             finish(false, ERR_EVAL)
@@ -3270,7 +3173,7 @@ pcloop:
             var nival any
             if rightParenLoc!=inbound.TokenCount-1 {
                 var err error
-                nival,err,_ = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
+                nival,err = parser.Eval(ifs,inbound.Tokens[rightParenLoc+1:])
                 if err!=nil {
                     parser.report(inbound.SourceLine,sf("could not evaluate handle key argument '%+v' in ASYNC.",inbound.Tokens[rightParenLoc+1:]))
                     finish(false,ERR_EVAL)
@@ -3575,9 +3478,7 @@ pcloop:
                     // set tco flag if required, and perform.
                     if !skip_reentry {
                         wccount=0
-                        old_wccount=0
                         depth=0
-                        old_depth=0
                         parser.pc=-1
                         goto tco_reentry
                     }
@@ -3588,7 +3489,7 @@ pcloop:
             var ev_er error
             retvalues=make([]any,curArg)
             for q:=0;q<int(curArg);q+=1 {
-                retvalues[q], ev_er, _ = parser.Eval(ifs,rargs[q])
+                retvalues[q], ev_er = parser.Eval(ifs,rargs[q])
                 if ev_er!=nil {
                     parser.report(inbound.SourceLine,"Could not evaluate RETURN arguments")
                     finish(true,ERR_EVAL)
@@ -4340,7 +4241,7 @@ pcloop:
                 finish(false, ERR_SYNTAX)
             } else {
 
-                expr_row, err, _ := parser.Eval(ifs,inbound.Tokens[1:commaAt])
+                expr_row, err := parser.Eval(ifs,inbound.Tokens[1:commaAt])
                 if expr_row==nil || err != nil {
                     parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_row))
                 }
@@ -4350,7 +4251,7 @@ pcloop:
                     nextCommaAt=inbound.TokenCount
                 }
 
-                expr_col, err, _ := parser.Eval(ifs,inbound.Tokens[commaAt+1:nextCommaAt])
+                expr_col, err := parser.Eval(ifs,inbound.Tokens[commaAt+1:nextCommaAt])
                 if expr_col==nil || err != nil {
                     parser.report(inbound.SourceLine,sf("Evaluation error in %v", expr_col))
                 }
@@ -4426,7 +4327,7 @@ pcloop:
 
                             // get prompt
                             broken := false
-                            expr, prompt_ev_err, _ := parser.Eval(ifs,inbound.Tokens[2:3])
+                            expr, prompt_ev_err := parser.Eval(ifs,inbound.Tokens[2:3])
                             if expr==nil {
                                 parser.report(inbound.SourceLine, "Could not evaluate in PROMPT command.")
                                 finish(false,ERR_EVAL)
@@ -4449,7 +4350,7 @@ pcloop:
 
                                 if hasValidator {
                                 pf(" >1> ")
-                                    val_ex,val_ex_error, _ := parser.Eval(ifs,inbound.Tokens[3:vposEnd])
+                                    val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:vposEnd])
                                 pf(" >2> ")
                                     if val_ex_error != nil {
                                         parser.report(inbound.SourceLine,"Validator invalid in PROMPT!")
@@ -4650,15 +4551,11 @@ pcloop:
             }
 
             // eval
-            expr, err, _ = parser.Eval(ifs, inbound.Tokens[1:])
+            expr, err = parser.Eval(ifs, inbound.Tokens[1:])
             if err!=nil {
                 parser.report(inbound.SourceLine,"Could not evaluate expression.")
                 finish(false, ERR_SYNTAX)
                 break
-            }
-
-            if parser.try_fault {
-                continue
             }
 
             if isBool(expr.(bool)) && expr.(bool) {
@@ -4784,21 +4681,17 @@ pcloop:
         // pf("[#2]about to delete %v[#-]\n",fs)
         // pf("about to enter call de-allocation with fs of '%s'\n",fs)
 
-        // if !str.HasPrefix(fs,"@mod_") {
+        // drop allocated names
+        if varmode != MODE_STATIC {
+            fnlookup.lmdelete(fs)
+            numlookup.lmdelete(ifs)
+        }
 
-            // drop allocated names
-            if varmode != MODE_STATIC {
-                fnlookup.lmdelete(fs)
-                numlookup.lmdelete(ifs)
-            }
-
-            // we keep a record here of recently disposed functionspace names
-            //  so that mem_summary can label disposed of function allocations.
-            lastlock.Lock()
-            lastfunc[ifs]=fs
-            lastlock.Unlock()
-
-        // }
+        // we keep a record here of recently disposed functionspace names
+        //  so that mem_summary can label disposed of function allocations.
+        lastlock.Lock()
+        lastfunc[ifs]=fs
+        lastlock.Unlock()
 
     }
 
@@ -4905,13 +4798,6 @@ func coprocCall(s string) {
 /// print user-defined function definition(s) to stdout
 func ShowDef(fn string) bool {
 
-    /*
-    if str.HasPrefix(fn,"@mod_") {
-        // pf("(sd) MOD CHECK FAILED!\n")
-        return false
-    }
-    */
-
     var ifn uint32
     var present bool
     if ifn, present = fnlookup.lmget(fn); !present {
@@ -5003,14 +4889,14 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []any, 
         if nt.tokType==RParen { evnest-=1 }
         if evnest==0 {
             if term==lt-1 {
-                v, e, _ := parser.Eval(ifs,tokens[newstart:term+1])
+                v, e := parser.Eval(ifs,tokens[newstart:term+1])
                 resu=append(resu,v)
                 errs=append(errs,e)
                 newstart=term+1
                 continue
             }
             if nt.tokType == O_Comma {
-                v, e, _ := parser.Eval(ifs,tokens[newstart:term])
+                v, e := parser.Eval(ifs,tokens[newstart:term])
                 resu=append(resu,v)
                 errs=append(errs,e)
                 newstart=term+1
@@ -5033,7 +4919,7 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variab
             if nt.tokType==LParen || nt.tokType==LeftSBrace  { evnest+=1 }
             if nt.tokType==RParen || nt.tokType==RightSBrace { evnest-=1 }
             if evnest==0 && (term==len(tokens)-1 || nt.tokType == O_Comma) {
-                v, e, _ := parser.Eval(ifs,tokens[newstart:term+1])
+                v, e := parser.Eval(ifs,tokens[newstart:term+1])
                 if e!=nil {
                     parser.report(sourceLine,sf("Error in PRINT term evaluation: %s",e))
                     finish(false,ERR_EVAL)

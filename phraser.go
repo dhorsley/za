@@ -106,7 +106,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     assert_found:=false
     on_found:=false
     do_found:=false
-    fix_found:=false
     borpos:=-1
     discard_phrase:=false
 
@@ -141,11 +140,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         if !assert_found && tokenType==C_Assert && !enableAsserts {
             discard_phrase=true
             assert_found=true
-        }
-
-        // FIX present?
-        if !fix_found && tokenType==C_Fix {
-            fix_found=true
         }
 
         // ON present?
@@ -230,11 +224,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
         if tokenType == EOL || tokenType == SYM_Semicolon {
 
-            // -- store fix presence
-            if fix_found {
-                base.HasFix=true
-            }
-
             // -- add original version
             if pos>0 {
                 if phrase.TokenCount>0 {
@@ -283,7 +272,6 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
             borpos        = -1
             do_found      = false
             on_found      = false
-            fix_found     = false
             assert_found  = false
             discard_phrase= false
 
