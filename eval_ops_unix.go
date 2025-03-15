@@ -320,7 +320,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
                 */
                 for {
-                    dp,err,_:=p.dparse(0,false)
+                    dp,err:=p.dparse(0,false)
                     if err!=nil {
                         return nil,true
                     }
