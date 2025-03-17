@@ -467,6 +467,8 @@ func searchToken(source_base uint32, start int16, end int16, sval string) bool {
 //  @note: lookahead only returns _,_,true when over dedented.
 func lookahead(fs uint32, startLine int16, indent int, endlevel int, term int64, indenters []int64, dedenters []int64) (bool, int16, bool) {
 
+    // pf("(la) searching for %s from statement #%d\n",tokNames[term],startLine)
+
     range_fs:=functionspaces[fs][startLine:]
 
     for i, v := range range_fs {
@@ -493,6 +495,7 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term int64,
     }
 
     // return found, distance, nesting_fault_status
+    // pf("token %s not found.\n",tokNames[term])
     return false, -1, false
 
 }
