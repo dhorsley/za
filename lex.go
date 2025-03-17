@@ -413,29 +413,35 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
                 w:=[]byte(carton.tokText)
                 nw:=[]byte{}
-                var prev1 byte
+                var workingSlash bool
                 for i:=0; i<len(w); i+=1 {
-                    if i>0 { prev1=w[i-1] }
-                        if prev1=='\\' {
-                            switch w[i] {
-                            case '\\':
-                                nw=append(nw,'\\','\\')
-                            case 'r':
-                                nw=append(nw,'\r')
-                            case 't':
-                                nw=append(nw,'\t')
-                            case 'n':
-                                nw=append(nw,'\n')
-                            case '"':
-                                nw=append(nw,'\\','"')
-                            default:
-                                nw=append(nw,'\\',w[i])
-                            }
-                        } else {
-                            if w[i]!='\\' {
-                                nw=append(nw,w[i])
-                            }
+
+                    if w[i]=='\\' && !workingSlash {
+                        workingSlash=true
+                        continue
+                    }
+
+                    if workingSlash {
+                        switch w[i] {
+                        case '\\':
+                            nw=append(nw,'\\','\\')
+                        case 'r':
+                            nw=append(nw,'\r')
+                        case 't':
+                            nw=append(nw,'\t')
+                        case 'n':
+                            nw=append(nw,'\n')
+                        case '"':
+                            nw=append(nw,'\\','"')
+                        default:
+                            nw=append(nw,'\\',w[i])
                         }
+                        workingSlash=false
+                    } else {
+                        if w[i]!='\\' {
+                            nw=append(nw,w[i])
+                        }
+                    }
                 }
                 carton.tokText=string(nw)
 
