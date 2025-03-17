@@ -68,7 +68,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var badFloat,scientific,expectant,hasPoint bool
     var maybeBaseChange, thisHex, thisOct, thisBin bool
     var blockBraceLevel int
-    var skip_backslash bool
+    var skip_backslash,escaping bool
 
     beforeE := "."
     thisWordStart := -1
@@ -241,15 +241,17 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
 
         // allow \\[:space:]* in identifier names, which will be removed later in lex:
         //  this may also allow keywords to be used as identifier names.
-        if tokType==0 {
-            if skip_backslash && str.IndexByte(" \t\r",input[currentChar])!=-1 {
-                continue
-            }
-            skip_backslash=false
+        if !matchQuote {
+            if tokType==0 {
+                if skip_backslash && str.IndexByte(" \t\r",input[currentChar])!=-1 {
+                    continue
+                }
+                skip_backslash=false
 
-            if input[currentChar]=='\\' {
-                skip_backslash=true
-                continue
+                if input[currentChar]=='\\' {
+                    skip_backslash=true
+                    continue
+                }
             }
         }
 
@@ -358,9 +360,14 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             (*curLine)+=1
         }
 
-        if (matchBlock||matchQuote) && input[currentChar]=='\\' {
-            // skip past
-            continue
+        if (matchBlock||matchQuote) {
+            if input[currentChar]=='\\' {
+                // skip past
+                escaping=!escaping
+                continue
+            } else {
+                escaping=false
+            }
         }
 
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
@@ -390,41 +397,40 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                 goto get_nt_exit_point
             }
 
-            if input[currentChar-1]!='\\' {
-                if matchQuote {
-                    // get word and end, include terminal quote
-                    startNextTokenAt=currentChar+1
-                    carton.tokType= StringLiteral
-                    carton.tokText= input[thisWordStart:currentChar+1]
+            if matchQuote && !escaping {
+                // get word and end, include terminal quote
+                startNextTokenAt=currentChar+1
+                carton.tokType= StringLiteral
+                carton.tokText= input[thisWordStart:currentChar+1]
 
-                    // unescape escapes
-                    switch firstChar {
-                    case '"':
-                        carton.tokText=stripDoubleQuotes(carton.tokText)
-                    case '`':
-                        carton.tokText=stripBacktickQuotes(carton.tokText)
-                    }
-
-                    carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
-                    carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
-
-                    goto get_nt_exit_point
+                // unescape escapes
+                switch firstChar {
+                case '"':
+                    carton.tokText=stripDoubleQuotes(carton.tokText)
+                case '`':
+                    carton.tokText=stripBacktickQuotes(carton.tokText)
                 }
-            } else {
-                // found a terminator, so get word and end.
-                // we need to start next search on this terminator as
-                // it wasn't part of the previous word.
-                if !matchQuote {
-                    word = input[thisWordStart:currentChar]
-                    startNextTokenAt=currentChar
-                    break
-                }
+
+                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
+                carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
+                carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
+                carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
+                carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
+                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
+                carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
+
+                goto get_nt_exit_point
             }
+
+            // found a terminator, so get word and end.
+            // we need to start next search on this terminator as
+            // it wasn't part of the previous word.
+            if !matchQuote {
+                word = input[thisWordStart:currentChar]
+                startNextTokenAt=currentChar
+                break
+            }
+
         }
     }
 
