@@ -411,13 +411,33 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                     carton.tokText=stripBacktickQuotes(carton.tokText)
                 }
 
-                carton.tokText=str.Replace(carton.tokText, `\\`, "\\", -1)
-                carton.tokText=str.Replace(carton.tokText, `\r`, "\r", -1)
-                carton.tokText=str.Replace(carton.tokText, `\t`, "\t", -1)
-                carton.tokText=str.Replace(carton.tokText, `\x`, "\\x", -1)
-                carton.tokText=str.Replace(carton.tokText, `\u`, "\\u", -1)
-                carton.tokText=str.Replace(carton.tokText, `\n`, "\n", -1)
-                carton.tokText=str.Replace(carton.tokText, `\"`, "\"", -1)
+                w:=[]byte(carton.tokText)
+                nw:=[]byte{}
+                var prev1 byte
+                for i:=0; i<len(w); i+=1 {
+                    if i>0 { prev1=w[i-1] }
+                        if prev1=='\\' {
+                            switch w[i] {
+                            case '\\':
+                                nw=append(nw,'\\','\\')
+                            case 'r':
+                                nw=append(nw,'\r')
+                            case 't':
+                                nw=append(nw,'\t')
+                            case 'n':
+                                nw=append(nw,'\n')
+                            case '"':
+                                nw=append(nw,'\\','"')
+                            default:
+                                nw=append(nw,'\\',w[i])
+                            }
+                        } else {
+                            if w[i]!='\\' {
+                                nw=append(nw,w[i])
+                            }
+                        }
+                }
+                carton.tokText=string(nw)
 
                 goto get_nt_exit_point
             }

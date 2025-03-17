@@ -49,14 +49,14 @@ while next<=final
     c=per(next)
     if c>maxc
         maxc=c
-        maxn=as_bigi(next)
+        maxn=next.as_bigi
     endif
-    summary[c]+=[as_bigi(next)]
+    summary[c]+=[next.as_bigi]
     next++
 endwhile
 
 println "\n[#6]Summary[#-]"
-println "Max persistence found for {=maxn} with {maxc} steps."
+println "Max persistence found for {maxn} with {maxc} steps."
 println "Similar matches:"
 println summary[maxc]
 
