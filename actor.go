@@ -3136,9 +3136,8 @@ tco_reentry:
 
         case C_Async:
 
-            // ASYNC IDENTIFIER IDENTIFIER LPAREN [EXPRESSION[,...]] RPAREN [IDENTIFIER]
-            // async handles    q          (      [e[,...]]          )      [key]
-            // 0     1          2          3      4
+            // ASYNC IDENTIFIER (namespace :: ) IDENTIFIER LPAREN [EXPRESSION[,...]] RPAREN [IDENTIFIER]
+            // async handles    (ns :: )        q          (      [e[,...]]          )      [key]
 
             if inbound.TokenCount<5 {
                 usage := "ASYNC [#i1]handle_map function_call([args]) [next_id][#i0]"
@@ -3148,9 +3147,18 @@ tco_reentry:
             }
 
             handles := inbound.Tokens[1].tokText
-            call    := parser.namespace+"::"+inbound.Tokens[2].tokText
+                
+            // namespace check
+            skip:=int16(0)
+            found_namespace:=parser.namespace
+            if inbound.Tokens[3].tokType==SYM_DoubleColon {
+                found_namespace=inbound.Tokens[2].tokText
+                skip=2
+            }
 
-            if inbound.Tokens[3].tokType!=LParen {
+            call := found_namespace+"::"+inbound.Tokens[2+skip].tokText
+
+            if inbound.Tokens[3+skip].tokType!=LParen {
                 parser.report(inbound.SourceLine,"could not find '(' in ASYNC function call.")
                 finish(false,ERR_SYNTAX)
             }
@@ -3158,7 +3166,7 @@ tco_reentry:
             // get arguments
 
             var rightParenLoc int16
-            for ap:=inbound.TokenCount-1; ap>3; ap-=1 {
+            for ap:=inbound.TokenCount-1; ap>3+skip; ap-=1 {
                 if inbound.Tokens[ap].tokType==RParen {
                     rightParenLoc=ap
                     break
@@ -3170,7 +3178,7 @@ tco_reentry:
                 finish(false,ERR_SYNTAX)
             }
 
-            resu,errs:=parser.evalCommaArray(ifs, inbound.Tokens[4:rightParenLoc])
+            resu,errs:=parser.evalCommaArray(ifs, inbound.Tokens[4+skip:rightParenLoc])
 
             // find the optional key argument, for stipulating the key name to be used in handles
             var nival any
