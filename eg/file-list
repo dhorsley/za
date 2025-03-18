@@ -3,7 +3,8 @@
 # read a file line-by-line
 # test filter and map operators on it
 
-var words []string
+# fixed starting length of array to save on reallocations (they really slow it down)
+var words [110000]string
 var n int
 
 testfile="/usr/share/dict/american-english"
@@ -20,17 +21,19 @@ endcase
 if is_file(testfile)
     q=fopen(testfile,"r")
     while !feof(q)
-        words[n++]=fread(q,"\n")
+        words[n]=fread(q,"\n")
+        # fread(q,"\n")
+        n+=1
     endwhile
     fclose(q)
 else
     exit 1,"File not found. ({testfile})"
 endif
 
-println words.len
+println n
 
 println "starting with z and len > 4:"
-w1 = words ?> "# ~ `^z` and #.len>4"
+w1 = words[:n] ?> "# ~ `^z` and #.len>4"
 println w1,"\n"
 
 println "mapped to upper then drop apostrophes and lose front and back char and get unique words:"
