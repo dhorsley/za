@@ -22,7 +22,6 @@ if is_file(testfile)
     q=fopen(testfile,"r")
     while !feof(q)
         words[n]=fread(q,"\n")
-        # fread(q,"\n")
         n+=1
     endwhile
     fclose(q)
