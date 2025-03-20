@@ -25,7 +25,7 @@ def find_path(MapArray, DimensionX, DimensionY)
 
     ListLength=DimensionX*DimensionY
     var OriginalSquare, DestinationSquare, CurrentSquare XY
-    var SolvedMapArray  [] any
+    var SolvedMapArray  [ListLength] any
     var FinalPath       [ListLength] any
     var ClosedList      [ListLength] any
     var OpenList        [ListLength] any
