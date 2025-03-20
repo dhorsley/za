@@ -628,7 +628,7 @@ func buildListLib() {
     // append returns a[]+arg
     slhelp["append"] = LibHelp{in: "[list,]item", out: "[]mixed", action: "Returns [#i1]new_list[#i0] containing [#i1]item[#i0] appended to [#i1]list[#i0]. If [#i1]list[#i0] is omitted then a new list is created containing [#i1]item[#i0]."}
     stdlib["append"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("append",args,1,"2","any","any"); !ok { return nil,err }
+        if ok,err:=expect_args("append",args,2,"1","any","2","any","any"); !ok { return nil,err }
 
         // should really do some kind of implicit conversion here (and elsewhere)
         // but not a high-priority, as with most things. 
