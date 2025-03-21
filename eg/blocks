@@ -50,16 +50,26 @@ done = ${
 println done
 
 r={ls -l | wc -l}
-on r.okay do on r.out.as_int > 30 do println "Many files!"
+on r.okay do on r.out.as_int > 30 do println "Too many files!"
 
 | echo
 | ls {working_home}
 
 println "\n[#1]Async result:[#-]\n"
-r=await(ref m,true)
-println "Tail :\n",r[h.name].out.line_tail(10)
-println "Status : ",r[h.name].code
-on not r[h.name].okay do println "Stderr: ",r[h.name].err
+while
+    results=await(ref m)
+    if key(ref results,h.name)
+        selected=results[h.name]
+        break
+    endif
+    pause 1000
+    print "."
+endwhile
+print
+
+println "Tail :\n",selected.out.line_tail(10)
+println "Status : ",selected.code
+on not selected.okay do println "Stderr: ",selected.err
 
 | echo -e "\nend of script\n"
 
