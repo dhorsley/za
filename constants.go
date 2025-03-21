@@ -19,6 +19,7 @@ const FAIRY_CAP = 64             // max ansi mappings
 const LIST_SIZE_CAP = 16         // initial list size on construction
 const CASE_CAP = 8               // how many placeholders to create for CASE...ENDCASE meta info per func
                                  // ... this is currently only bounds checked in actor.go
+const appGrowthFactor float64 = 1.5 // new slice capacity growth factor in lib-list:append()
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
 const promptContinuation  = "[#b6][#0]--[#-][##] "

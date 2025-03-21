@@ -690,42 +690,84 @@ func buildListLib() {
             }
         }
 
-        switch args[0].(type) {
+        switch s:=args[0].(type) {
         case []string:
-            l := append(args[0].([]string), sf("%v", args[1]))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]string,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, sf("%v", args[1]))
             return l, nil
         case []float64:
             if "float64" != sf("%T", args[1]) {
                 return nil, errors.New(sf("(l:float64,a:%T) data types must match in append()", args[1]))
             }
-            l := append(args[0].([]float64), args[1].(float64))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]float64,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(float64))
             return l, nil
         case []bool:
             if "bool" != sf("%T", args[1]) {
                 return nil, errors.New(sf("(l:bool,a:%T) data types must match in append()", args[1]))
             }
-            l := append(args[0].([]bool), args[1].(bool))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]bool,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(bool))
             return l, nil
         case []int:
             if "int" != sf("%T", args[1]) {
                 return nil, errors.New(sf("(l:int,a:%T) data types must match in append()", args[1]))
             }
-            l := append(args[0].([]int), args[1].(int))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]int,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(int))
             return l, nil
         case []*big.Int:
             if "*big.Int" != sf("%T", args[1]) {
                 return nil, errors.New(sf("(l:bigi,a:%T) data types must match in append()", args[1]))
             }
-            l := append(args[0].([]*big.Int), args[1].(*big.Int))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]*big.Int,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(*big.Int))
             return l, nil
         case []*big.Float:
             if "*big.Float" != sf("%T", args[1]) {
                 return nil, errors.New(sf("(l:bigf,a:%T) data types must match in append()", args[1]))
             }
-            l := append(args[0].([]*big.Float), args[1].(*big.Float))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]*big.Float,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(*big.Float))
             return l, nil
         case []any:
-            l := append(args[0].([]any), args[1].(any))
+            ll:=len(s)
+            if ll+1>cap(s) {
+                l:=make([]any,ll,int(float64(cap(s))*appGrowthFactor))
+                copy(l,s)
+                s=l
+            }
+            l := append(s, args[1].(any))
             return l, nil
         default:
             return nil, errors.New(sf("data type [%T] not supported in append()",args[0]))
