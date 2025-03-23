@@ -1078,11 +1078,11 @@ tco_reentry:
         // it would mean we could probably remove the stanza below and some
         // code further in (in the C_End* types) as well as speed up break/continues.
 
+        // breakIn holds either Error or a token_type for ending the current construct
         if breakIn != Error {
-            // breakIn holds either Error or a token_type for ending the current construct
-            if statement != breakIn {
-                continue
-            }
+            if (breakIn==C_For || breakIn==C_Foreach) && statement!=C_Endfor { continue }
+            if breakIn==C_While && statement!=C_Endwhile { continue }
+            if breakIn==C_Case && statement!=C_Endcase { continue }
         }
         ////////////////////////////////////////////////////////////////
 
@@ -1495,7 +1495,7 @@ tco_reentry:
             }
 
             // time to die?
-            if breakIn == C_Endwhile {
+            if breakIn == C_While {
                 depth-=1
                 lastConstruct = lastConstruct[:depth]
                 breakIn = Error
@@ -1503,12 +1503,8 @@ tco_reentry:
                 break_count-=1
                 if break_count>0 {
                     switch lastConstruct[depth-1] {
-                    case C_For,C_Foreach:
-                        breakIn=C_Endfor
-                    case C_While:
-                        breakIn=C_Endwhile
-                    case C_Case:
-                        breakIn=C_Endcase
+                    case C_For,C_Foreach,C_While,C_Case:
+                        breakIn=lastConstruct[depth-1]
                     }
                 }
                 // pf("ENDWHILE-BREAK: bc %d\n",break_count)
@@ -2209,7 +2205,7 @@ tco_reentry:
 
             // perform cond action and check condition
 
-            if breakIn!=C_Endfor {
+            if breakIn!=C_For && breakIn!=C_Foreach {
 
                 switch (*thisLoop).loopType {
 
@@ -2375,13 +2371,13 @@ tco_reentry:
 
             } else {
                 // time to die, mr bond? C_Break reached
-                breakIn = Error // reset to unbroken
-                forceEnd=false
-                loopEnd = true
+                if ( (*thisLoop).loopType==LT_FOR && breakIn==C_For ) || ( (*thisLoop).loopType==LT_FOREACH && breakIn==C_Foreach ) {
+                    // pf("**reached break reset**\n")
+                    breakIn = Error // reset to unbroken
+                    forceEnd=false
+                    loopEnd = true
+                }
             }
-
-            // @note: this is bad. should really be a list of break contexts instead of
-            //   just a count.
 
             if loopEnd {
                 // leave the loop
@@ -2393,12 +2389,8 @@ tco_reentry:
                     break_count-=1
                     if break_count>0 {
                         switch lastConstruct[depth-1] {
-                        case C_For,C_Foreach:
-                            breakIn=C_Endfor
-                        case C_While:
-                            breakIn=C_Endwhile
-                        case C_Case:
-                            breakIn=C_Endcase
+                        case C_For,C_Foreach,C_While,C_Case:
+                            breakIn=lastConstruct[depth-1]
                         }
                     }
                 }
@@ -2464,28 +2456,28 @@ tco_reentry:
                     thisLoop = &loops[depth]
                     forceEnd=false
 
-                    /* @note: removed as buggy when breaking from nested for/foreach combination:
+                    // /* @note: removed as buggy when breaking from nested for/foreach combination:
 
                     var efound,er bool
                     switch inbound.Tokens[1].tokType {
                     case C_Case:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endcase, []int64{C_Case},    []int64{C_Endcase})
-                        breakIn=C_Endcase
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endcase, []int64{C_Case},[]int64{C_Endcase})
+                        breakIn=C_Case
                         forceEnd=true
                         parser.pc = wc[wccount].endLine - 1
                     case C_For:
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]int64{C_For,C_Foreach},[]int64{C_Endfor})
-                        breakIn=C_Endfor
+                        breakIn=C_For
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_Foreach:
                         efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endfor,[]int64{C_For,C_Foreach},[]int64{C_Endfor})
-                        breakIn=C_Endfor
+                        breakIn=C_Foreach
                         forceEnd=true
                         parser.pc = (*thisLoop).forEndPos - 1
                     case C_While:
-                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]int64{C_While},   []int64{C_Endwhile})
-                        breakIn=C_Endwhile
+                        efound,_,er=lookahead(source_base,parser.pc,1,0,C_Endwhile,[]int64{C_While},[]int64{C_Endwhile})
+                        breakIn=C_While
                         forceEnd=true
                         parser.pc = (*thisLoop).whileContinueAt-1
                     }
@@ -2499,7 +2491,7 @@ tco_reentry:
                         // break jump point is set, so continue pc loop 
                         continue
                     }
-                    */
+                    //*/
                 }
 
                 if !forceEnd {
@@ -2545,19 +2537,19 @@ tco_reentry:
 
             case C_For:
                 parser.pc = (*thisLoop).forEndPos - 1
-                breakIn = C_Endfor
+                breakIn = C_For
 
             case C_Foreach:
                 parser.pc = (*thisLoop).forEndPos - 1
-                breakIn = C_Endfor
+                breakIn = C_Foreach
 
             case C_While:
                 parser.pc = (*thisLoop).whileContinueAt - 1
-                breakIn = C_Endwhile
+                breakIn = C_While
 
             case C_Case:
                 parser.pc = wc[wccount].endLine - 1
-                breakIn = C_Endcase
+                breakIn = C_Case
 
             default:
                 parser.report(inbound.SourceLine,"A grue is attempting to BREAK out. (Breaking without a surrounding context!)")
@@ -4069,12 +4061,8 @@ tco_reentry:
                 break_count-=1
                 if break_count>0 {
                     switch lastConstruct[depth-1] {
-                    case C_For,C_Foreach:
-                        breakIn=C_Endfor
-                    case C_While:
-                        breakIn=C_Endwhile
-                    case C_Case:
-                        breakIn=C_Endcase
+                    case C_For,C_Foreach,C_While,C_Case:
+                        breakIn=lastConstruct[depth-1]
                     }
                 }
                 // pf("ENDCASE-BREAK: bc %d\n",break_count)
