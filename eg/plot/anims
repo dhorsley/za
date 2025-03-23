@@ -85,6 +85,7 @@ define moveall()
             o.x=1f
             on o.dx<0 do o.dx=-o.dx*1.5
         endif
+        on o.dx==0 do o.dx=0.3
         if o.x+o.w>=term_w()
             o.x=term_w().as_float-o.w
             o.dx=-o.dx*1.5
@@ -93,6 +94,7 @@ define moveall()
             o.y=1f
             on o.dy<0 do o.dy=-o.dy*1.5
         endif
+        on o.dy==0 do o.dy=0.3
         if o.y+o.h>=term_h()
             o.y=term_h().as_float-o.h
             o.dy=-o.dy*1.5
