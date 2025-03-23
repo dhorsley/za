@@ -4,8 +4,8 @@ debug 0
 c1=false; c2=false
 input ic1 optarg 1
 input ic2 optarg 2
-on kind(ic1)=="bool" do c1=bool(ic1)
-on kind(ic2)=="bool" do c2=bool(ic2)
+on ic1 ~i "^(true|false)$" do c1=as_bool(ic1)
+on ic2 ~i "^(true|false)$" do c2=as_bool(ic2)
 
 if c1
     if true 
@@ -15,8 +15,10 @@ if c1
             println "gollum!"
         endif
     else
+        # should never appear:
         println "gandalf."
     endif
+    # should always appear if arg1 true
     println "monty"
 endif
 
