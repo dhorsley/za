@@ -3,7 +3,7 @@
 maxc=1
 input maxc param 1 is "count"
 
-h=40
+h=term_h()-7
 w=term_w()
 
 var y [h]string

@@ -5,6 +5,13 @@ BUGS
 
 lots, i'm sure.
 
+    * issues with globals in expressions when setting start/end/step of normal for loops
+        - not convinced i will be fixing this. there are probably similar issues in a few places,
+            and although they can all be fixed, i still want use of globals to be more explicit.
+        - globals can currently be used freely in assignments (rhs) and on the lhs with the @(setglob) keyword.
+        - i'll make up my mind on this when i get around to adding better pass-by-reference support.
+        - for now, you should pre-compute start/end/step counts in FOR when using globals.
+
 
 TODO
 ----
