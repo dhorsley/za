@@ -1,9 +1,17 @@
-
-foreach e in 0..9
-    for f=0 to 9
+println "e f"
+for e = 0 to 9
+    foreach f in 0..19
         println e," ",f
-        on f==5 do break 2
+        on f==3 do break foreach
+        println ": should not see this after f=3"
+        assert f!=3
     ef
-    println ": post for"
+    println ": post inner foreach"
+    if e==2
+        break for
+    endif
+    println ": should not see this after e=2"
+    assert e!=2
 ef
+println ": post outer for"
 
