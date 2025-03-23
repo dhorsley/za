@@ -11,7 +11,9 @@ CHANGE LOG
     * updated windows build to incorporate oo/method changes below
         - compiles and executes
         - no real testing done yet.
+
     * added missing bigi+bigf types to sqr operator
+
     * tweaked cosmetic parts of getInput()
         - DEL key now removes a default string
         - TAB key now accepts the default string and continues editing from its end.
@@ -20,7 +22,15 @@ CHANGE LOG
         - if default string present, and input string empty, then final input is
             the default string.
         - while typed text left matches the default string, the default remains visible.
-    * ? op at eol fix
+
+    * (experimental) reintroduced break <type> handling (i.e. BREAK [FOR|FOREACH|WHILE|CASE])
+        - this was disabled in an earlier version due to some suspect test results.
+            - break FOR|FOREACH could confuse each other as they shared the ENDFOR keyword.
+                - this has now been resolved with some additional logic and 
+                    breakIn now uses the opening token type instead of the closing one.
+        - just checking if the issue still presents.
+        - this cannot be combined with a break count integer.
+
 
     library
     -------
@@ -40,8 +50,8 @@ CHANGE LOG
             tui_new_style       : create a default style
             tui_screen          : switch screen buffers
             tui_box             : direct call to border fn
-            tui_progress        : display text block
-            tui_progress_reset  : display text block
+            tui_progress        : display horizontal progress bar
+            tui_progress_reset  : reset progress bar
             tui_text            : display text block
             tui_pager           : interactive text pager
             tui_menu            : present options menu
@@ -58,44 +68,43 @@ CHANGE LOG
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
 
-    * done: adding support for functions inside structs.
-        - done: permit definition, setting a parent field to the struct.
-        - done: change UFCS in eval_ops.* to:
-            - done: recognise parent when called as (obj).(method)
-            - done: ensure (obj) matches type of parent struct
-            - done: permit calling fn if (obj) encapulates the same field names and types
+    * added support for functions inside structs.
+        - permitted func definition, setting a parent field to the struct.
+        - changed UFCS in eval_ops.* to:
+            - recognise parent when called as (obj).(method)
+            - ensure (obj) matches type of parent struct
+            - permit calling fn if (obj) encapulates the same field names and types
                 - i.e. all of fn parent's fields must be present in (obj)
-            - done: if (obj) is a variable rather than expression result, then
+            - if (obj) is a variable rather than expression result, then
                     set some kind of self/this variable local to the func on call
                     which is written back to the (obj) variable on return
-               done: on call error, leave (obj) variable in pre-call state
-               done: on call, if (expr).(method) do not try to assign self back in caller.
-        - done: either re-use or strip out remaining 'self' code/structs.
-        - done: add type information, somewhere, so that self.kind calls show the struct name.
+               - on call error, leave (obj) variable in pre-call state
+               - on call, if (expr).(method) do not try to assign self back in caller.
+        - either re-use or strip out remaining 'self' code/structs.
+        - needed to add type information so that self.kind calls show the struct name.
             - when struct var declared, Kind_override field populated in variable
             - this is read during method calls, and passed through where required.
             - (struct).kind overridden when Kind_override is not empty.
 
-        - todo: stop regretting not handling references better from the start.
-        - done: add mechanism so that funcs can be attached to structs without unique names.
-            - done: a type override when defining funcs (in actor.go)
-            - done: on dispatch attempt would need to consider the .parent field as part of base/ifs calculation
+        - added mechanism so that funcs can be attached to structs without unique names.
+            - added a type override when defining funcs (in actor.go)
+            - on dispatch attempt needed to consider the .parent field as part of base/ifs calculation
                to issue the correct Call() details.
-            - done: ensure copies of a struct retain the override struct type info
+            - copies of a struct retain the override struct type info
                 - note: recipient must be declared as same struct type as the giver.
                     - e.g.
                         struct q; a int; endstruct
                         var a,b q
                         b=a
 
-        - done: added an optional clause to foreach:
+        - added an optional clause to foreach:
                 foreach i [ : type ] in array
                 ... to force a type constraint on the iterator receiving each array element.
                 - this is only really useful currently for saying what struct type to expect,
                     so that its methods carry over to the iterator variable.
                 - see eg/farm for example.
 
-        - done: added support for infering type of structs during evaluation to allow method calls
+        - added support for infering type of structs during evaluation to allow method calls
             to the struct type, when only a single struct field declaration list matches the 
             instance being inferred from. 
 
