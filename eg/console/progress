@@ -42,11 +42,11 @@ for i=0 to rep.as_int-1
     sp=0
     at row,1,"Progress %02d: ".format(i+1)
     for e = 0 to 100
-        bar(row,13,hs,e,c)
+        bar(row,14,hs,e,c)
         msg=" {e} % "
         spinmsg=" "+spin(sp)
         on e==100 do spinmsg=" "
-        cursorx(38)
+        cursorx(hs+14)
         print spinmsg,msg
         on e%5==0 do sp=++sp%4
         pause 20
