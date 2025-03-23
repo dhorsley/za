@@ -1,10 +1,10 @@
 #!/usr/bin/za
 
 #
-# collison and bounce logic is a bit wrong in here,
-# objects can stick to each other, i'm too lazy
-# to figure it out though!
-# but you get the idea... it's just an object test.
+# collison and bounce logic is very wrong in here,
+# objects can stick to edges, get stuck inside each other or miss entirely,
+# but i'm too lazy to fix it.
+# however, you get the idea... it's just an object test.
 #
 
 boxcount=35
@@ -28,14 +28,12 @@ struct object
 endstruct
 
 define is_inside(obj,obj2)
-    on obj.x+obj.w+obj.dx<obj2.x or obj.x+obj.dx>obj2.x+obj2.w do return false
-    on obj.y+obj.h+obj.dy<obj2.y or obj.y+obj.dy>obj2.y+obj2.h do return false
-    return true
+    return (obj.x < (obj2.x + obj2.w)) && ((obj.x + obj.w) > obj2.x) && (obj.y < (obj2.y + obj2.h)) && ((obj.y + obj.h) > obj2.y)
 end
 
 define collides(obkey)
     i=objects[obkey]
-    for e=0 to objects.len-1
+    for e=0 to boxcount-1
         on e==obkey || objects[e]==nil do continue
         j=objects[e]
         on is_inside(i,j) do return e
@@ -45,7 +43,7 @@ end
 
 # meh, this is a mess, but it kinda works.
 define moveall()
-    for e=0 to objects.len-1
+    for e=0 to boxcount-1
         on objects[e]==nil do continue
         o=objects[e]
         o.px=o.x; o.py=o.y
@@ -193,14 +191,12 @@ quit=false
 
 while !quit
 
-    # quit=true
-
     objects.show
     moveall()
 
     # quit when everything has collided
     all_colours_dead=true
-    for e=0 to objects.len-1
+    for e=0 to boxcount-1
         on objects[e]==nil do continue
         o=objects[e]
         if o.bg>0
