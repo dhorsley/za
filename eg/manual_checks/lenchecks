@@ -1,0 +1,57 @@
+#!/usr/bin/za
+
+struct rec
+    a int
+    b string
+    c float
+endstruct
+
+var a1 []string
+var a2 [100]string
+var a3 []any
+var a4 [100]any
+
+def append_to_global()
+    l3=a3.len-1
+    l4=a4.len-1
+    j3=a3[l3]
+    j4=a4[l4]
+    @a3[l3+1]=rec()
+    @a4[l4+1]=rec()
+    println "a3 len-1 in fn -> ",l3
+    println "a4 len-1 in fn -> ",l4
+end
+
+
+for c=0 to 99
+    append_to(ref a1,"test")
+    a2[c]="test2"
+    append_to(ref a3,rec(42,"test3",pi()))
+    a4[c]=rec(42,"test4",pi())
+endfor
+
+println "pre-append"
+println a1.len
+println a2.len
+println a3.len
+println a4.len
+
+append_to(ref a1,"test")
+append_to(ref a2,"test2")
+append_to(ref a3,rec(42,"test3",pi()))
+append_to(ref a4,rec(42,"test4",pi()))
+
+println "post-append"
+println a1.len
+println a2.len
+println a3.len
+println a4.len
+
+append_to_global()
+
+println "post-fn-append"
+println a1.len
+println a2.len
+println a3.len
+println a4.len
+
