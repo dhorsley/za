@@ -4,7 +4,7 @@ package main
 // CONSTANTS
 //
 
-const MAX_LOOPS = 8
+const MAX_LOOPS = 16
 
 const identInitialSize = 4       // initial ident size on creation
 const identGrowthSize = 4        // how many extra spaces to add when ident needs to grow
