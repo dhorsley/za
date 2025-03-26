@@ -180,7 +180,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     for {
 
         // pf("[cprec->%d tokprec->%d]\n",prec,p.prectable[p.peek().tokType])
-        if p.pos<p.len && prec >= p.prectable[p.peek().tokType] && !p.namespacing { break }
+        if prec >= p.prectable[p.peek().tokType] && p.pos<p.len && !p.namespacing { break }
 
         token := p.next()
         // pf("binloop nt -> %v at pos %d\n",token.tokText,p.pos)
