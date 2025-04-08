@@ -22,7 +22,6 @@ func bind_int(fs uint32,name string) (i uint64) {
     // fmt.Printf("Bind request for %s (fs:%d)\n",name,fs)
 
     bindlock.Lock()
-    defer bindlock.Unlock()
 
     if bindings[fs]==nil {
         bindings[fs]=make(map[string]uint64)
@@ -33,6 +32,7 @@ func bind_int(fs uint32,name string) (i uint64) {
     i,present=bindings[fs][name]
     if present {
         // fmt.Printf("present @ %d\n",i)
+        bindlock.Unlock()
         return
     }
 
@@ -53,6 +53,7 @@ func bind_int(fs uint32,name string) (i uint64) {
 
     bindings[fs][name]=i
     // fmt.Printf("new binding @ %d\n",i)
+    bindlock.Unlock()
     return
 }
 
