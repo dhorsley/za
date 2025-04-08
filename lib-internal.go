@@ -311,23 +311,6 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    /*
-    slhelp["symtest"] = LibHelp{in: "none", out: "none", action: "(debug)"}
-    stdlib["symtest"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        var q = make(map[uint64]int)
-        start:=""
-        if len(args)>1 { start=args[1].(string) }
-        for e:=0; e<args[0].(int); e++ {
-            bie:=bind_int(evalfs,sf("%s%d",start))
-            if _,there:=q[bie]; there {
-                pf("* clash on %s\n",sf("%s%d",start,e))
-            }
-            q[bie]++
-        }
-        return len(q),nil
-    }
-*/
-
     slhelp["dup"] = LibHelp{in: "map", out: "copy_of_map", action: "returns a duplicate copy of [#i1]map[#i0]."}
     stdlib["dup"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("dup",args,17,
