@@ -1979,7 +1979,7 @@ tco_reentry:
                 depth+=1
                 lastConstruct = append(lastConstruct, C_Foreach)
 
-                loops[depth] = s_loop{loopVar: fid,
+                loops[depth] = s_loop{loopVar: fid, keyVar: "key_"+fid,
                     optNoUse: Opt_LoopStart,
                     repeatFrom: parser.pc + 1, iterOverMap: iter, iterOverArray: we.result,
                     counter: 0, condEnd: condEndPos, forEndPos: enddistance + parser.pc,
@@ -2160,6 +2160,7 @@ tco_reentry:
                 depth+=1
                 loops[depth] = s_loop{
                     loopVar:  fid,
+                    keyVar: "key_"+fid,
                     loopVarBinding: bin,
                     optNoUse: Opt_LoopStart,
                     loopType: LT_FOR, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
@@ -2231,51 +2232,51 @@ tco_reentry:
                         // map ranges are randomly ordered!!
                         case map[string]any, map[string]alloc_info, map[string]tui, map[string]dirent, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
-                                vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(nil,ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
                         case []bool:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]bool)[(*thisLoop).counter])
                         case []int:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
                         case []uint:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
                         case []uint64:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint64)[(*thisLoop).counter])
                         case []string:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
                         case []dirent:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
                         case []tui:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]tui)[(*thisLoop).counter])
                         case []alloc_info:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]alloc_info)[(*thisLoop).counter])
                         case []float64:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
                         case []*big.Int:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]*big.Int)[(*thisLoop).counter])
                         case []*big.Float:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]*big.Float)[(*thisLoop).counter])
                         case [][]int:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([][]int)[(*thisLoop).counter])
                         case []map[string]any:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]map[string]any)[(*thisLoop).counter])
                         case []any:
-                            vset(nil,ifs, ident,"key_"+(*thisLoop).loopVar, (*thisLoop).counter)
+                            vset(nil,ifs, ident,(*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil,ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]any)[(*thisLoop).counter])
                         default:
                             // @note: should put a proper exit in here.
