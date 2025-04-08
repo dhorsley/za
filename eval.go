@@ -75,7 +75,8 @@ type leparser struct {
 
 func (p *leparser) next() Token {
     p.prev2=p.prev
-    if p.pos>=0 { p.prev=p.tokens[p.pos] }
+    // if p.pos>=0 { p.prev=p.tokens[p.pos] }
+    p.prev=p.tokens[p.pos]
     p.pos+=1
     return p.tokens[p.pos]
 }
@@ -119,7 +120,8 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
 
     // inlined next() manually:
     p.prev2=p.prev
-    if p.pos>=0 { p.prev=p.tokens[p.pos] }
+    // if p.pos>=0 { p.prev=p.tokens[p.pos] }
+    p.prev=p.tokens[p.pos]
     p.pos+=1
 
     ct:=&p.tokens[p.pos]
@@ -1025,11 +1027,11 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         // check if exists in user defined function space
         if _, isFunc = stdlib[name]; !isFunc {
             if !str.Contains(name,"::") {
-                useName:=p.namespace
-                if p.namespace=="" {
-                    useName="main"
+                useName:="main::"+name
+                if len(p.namespace)>0 {
+                    useName=p.namespace+"::"+name
                 }
-                name=useName+"::"+name
+                name=useName
             }
             isFunc = fnlookup.lmexists(name)
         }
@@ -1644,11 +1646,10 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
         stdlib["exec"](p.namespace,p.fs,p.ident,"define "+csumName+"()\nr={"+cmd+"\n}\nreturn r;end\n")
 
         // exec it async
-        useName:=p.namespace
-        if p.namespace=="" {
-            useName="main"
+        name:="main::"+csumName
+        if len(p.namespace)!=0 {
+            name=p.namespace+"::"+csumName
         }
-        name:=useName+"::"+csumName
 
         lmv, isfunc := fnlookup.lmget(name)
 
@@ -1714,7 +1715,7 @@ func (p *leparser) identifier(token *Token) (any) {
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             useName:=p.namespace
-            if p.namespace=="" {
+            if len(p.namespace)==0 {
                 useName="main"
             }
             // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
@@ -2646,11 +2647,13 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
         return
     }
 
+    var assignee []Token
+
     for assno := range largs {
 
         if assno>len(results)-1 { break }
 
-        assignee:=largs[assno]
+        assignee=largs[assno]
 
         /*
         pf("[#6]");
