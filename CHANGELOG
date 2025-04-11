@@ -68,6 +68,13 @@ CHANGE LOG
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
 
+    * added some support for more array arithmetic:
+        - array = array(a)+b | a+array(b)
+        - array = array(a)-b | a-array(b)
+        - div and mul already existed
+        - todo: add per element array(a) [ + | - | * | / ] array(b)
+            - need to move array concatenation away from the + operator first
+ 
     * added support for functions inside structs.
         - permitted func definition, setting a parent field to the struct.
         - changed UFCS in eval_ops.* to:
