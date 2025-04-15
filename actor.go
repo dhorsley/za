@@ -798,7 +798,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
         bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
         t:=(*ident)[bin]
-        t.IValue=method_value
+        // t.IValue=method_value
         t.ITyped=false
         t.declared=true
         t.Kind_override=kind_override
@@ -813,17 +813,26 @@ tco_reentry:
 
     if len(va) > 0 {
         farglock.RLock()
+        if method { va=va[1:] } // remove self at pos 0
         for q, _ := range va {
             if q>=len(functionArgs[source_base].args) { break }
             if len(arg_names)>0 {
+                // pf("(fa1) %s %v\n",arg_names[q],va[q])
                 vset(nil,ifs,ident,arg_names[q],va[q])
             } else {
                 fa:=functionArgs[source_base].args[q]
+                // pf("(fa2) %s %v\n",fa,va[q])
                 vset(nil,ifs,ident,fa,va[q])
             }
         }
         farglock.RUnlock()
     }
+
+    /*
+    if method {
+        pf("ident post fargs: %#v\n",*ident)
+    }
+    */
 
     if len(functionspaces[source_base])>32767 {
         parser.report(-1,"function too long!")
@@ -4664,16 +4673,16 @@ tco_reentry:
 
         // populate return variable in the caller with retvals
         calllock.Lock()
+        // populate method_result
+        if method {
+            method_result,_=vget(nil,ifs,ident,"self")
+        }
         if retvalues!=nil {
             calltable[ifs].retvals=retvalues
         }
         calltable[ifs].disposable=true
         calllock.Unlock()
 
-        // populate method_result
-        if method {
-            method_result,_=vget(nil,ifs,ident,"self")
-        }
 
         // clean up
 
