@@ -42,13 +42,13 @@ b.a=10
 println "a->",a
 println "b->",b
 
-title("calling double")
+title("calling a.double")
 a.double
 
-title("calling triple")
+title("calling b.triple")
 b.triple
 
-title("setting pi+true in b")
+title("setting b.b to pi and b.c to true")
 b.b=pi()
 b.c=true
 println a
