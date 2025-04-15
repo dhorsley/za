@@ -48,7 +48,7 @@ define process(i)
             print eval(f)
         endfor
     or
-        result={{i}}
+        result=|{i}
         if result.okay
             println result.out
         else
