@@ -66,7 +66,14 @@ func struct_match(obj any) (name string,count int) {
 
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
-    // pf(" (afof) -> assessing obj %+v field %s\n",obj,field)
+    /*
+    pf(" (afof) -> assessing obj %+v field %s\n",obj,field)
+    pf(" (afof) -> prev2 %s prev %s\n",p.prev2.tokText,p.prev.tokText)
+    */
+
+    pre_name:=p.prev2.tokText
+    pre_pos:=p.prev2.bindpos
+    pre_tok:=p.prev2
 
     switch obj:=obj.(type) {
 
@@ -274,7 +281,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // check if stdlib or user-defined function
         if !isFunc {
-            // if _, isFunc = stdlib[name]; !isFunc {
             if _, isFunc = stdlib[field]; !isFunc {
                 isFunc = fnlookup.lmexists(name)
                 // pf("checked with fnlookup for name [%s] -> result : %v\n",name,isFunc)
@@ -342,19 +348,32 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // make call
         res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
-        // pf("res/err/method_result -> %#v,%v,%v\n",res,err,method_result)
+
+        /*
+        str_was_method:="normal func"
+        if calling_method { str_was_method="was method" }
+        pf("call to %s (%s) (args: %+v) : res/err/method_result -> %#v,%v,%v\n",name,str_was_method,iargs,res,err,method_result)
+        */
 
         // process results
         if calling_method && !err {
             // check if previous is an identifer/expression result
-            if p.prev2.tokType==Identifier {
-                bin:=p.prev2.bindpos
+            if pre_tok.tokType==Identifier {
+                bin:=pre_pos
                 if (*p.ident)[bin].declared {
                     (*p.ident)[bin].IValue=method_result
-                    // vset(nil, p.fs, p.ident, p.prev2.tokText, method_result)
+                    // pf("declared : result assignment : res->%#v bin->%v name->%v\n",method_result,bin,pre_name)
                 } else {
                     parser.hard_fault=true
-                    pf("struct [%s] could not be assigned to after method call\n",p.prev2.tokText)
+                    // pf("struct_name [%s]\n",struct_name)
+                    pf("[%s] could not be assigned to after method call\n",pre_name)
+                    /*
+                    tstring:=""
+                    for _,tk:=range p.tokens {
+                        tstring+=tk.tokText+" "
+                    }
+                    pf("p->%v\n",tstring)
+                    */
                     return nil,true
                 }
             } else {
