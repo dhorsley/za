@@ -226,12 +226,17 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         if isStruct {
             // compare types between (obj) and (parent)
             if fm.parent != "" {
+                // pf(" : has parent : %s\n",fm.parent)
                 obj_struct_fields:=make(map[string]string,4)
                 val := reflect.ValueOf(obj)
                 for i:=0; i<val.NumField();i++ {
                     n:=val.Type().Field(i).Name
                     t:=val.Type().Field(i).Type
-                    obj_struct_fields[n]=t.String()
+                    if t.String()=="[]interface {}" {
+                        obj_struct_fields[n]="[]"
+                    } else {
+                        obj_struct_fields[n]=t.String()
+                    }
                 }
 
                 // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
@@ -239,9 +244,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 if structvalues,exists:=structmaps[fm.parent] ; exists {
                     for svpos:=0; svpos<len(structvalues); svpos+=4 {
                         pfieldtype:=structvalues[svpos+1].(string)
-                        if pfieldtype=="float" {
-                            pfieldtype="float64"
-                        }
+                        if pfieldtype=="float" { pfieldtype="float64" }
                         par_struct_fields[structvalues[svpos].(string)]=pfieldtype
                     }
                 }
@@ -258,10 +261,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                         break
                     }
                 }
+                // pf(" : struct equality : %v\n",structs_equal)
 
                 if ! structs_equal {
                     parser.hard_fault=true
-                    pf("cannot call function [%v] belonging to an unequal struct type [%s]\nYour object: [%T]", field,fm.parent,obj)
+                    pf("cannot call function [%v] belonging to an unequal struct type [%s]\nParent Struct: [%+v]\nYour object: [%T]", field,fm.parent,par_struct_fields,obj)
                     return nil,true
                 }
                 calling_method=true
