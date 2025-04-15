@@ -75,8 +75,7 @@ type leparser struct {
 
 func (p *leparser) next() Token {
     p.prev2=p.prev
-    // @maybe unsafe without this, still testing: if p.pos>=0 { p.prev=p.tokens[p.pos] }
-    p.prev=p.tokens[p.pos]
+    if p.pos>=0 { p.prev=p.tokens[p.pos] }
     p.pos+=1
     return p.tokens[p.pos]
 }
@@ -121,7 +120,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     // inlined next() manually:
     p.prev2=p.prev
     if p.pos>=0 { p.prev=p.tokens[p.pos] }
-    // p.prev=p.tokens[p.pos]
     p.pos+=1
 
     ct:=&p.tokens[p.pos]
