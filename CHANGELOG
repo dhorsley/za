@@ -76,6 +76,7 @@ CHANGE LOG
             - need to move array concatenation away from the + operator first
  
     * added support for functions inside structs.
+        - todo: add skip of assignment back to 'self' if it was not used in a lhs context during a method call. 
         - permitted func definition, setting a parent field to the struct.
         - changed UFCS in eval_ops.* to:
             - recognise parent when called as (obj).(method)
