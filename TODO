@@ -44,8 +44,8 @@ TODO
 
                 1. explicit namespace (name::)
                 2. use_chain match
-                2. current namespace (no :: ref), then
-                3. main:: (global namespace)
+                3. current namespace (no :: ref), then
+                4. main:: (global namespace)
 
         - example:
 
