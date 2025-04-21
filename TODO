@@ -68,6 +68,9 @@ TODO
                                     # explicit name > use_chain > current namespace > main
 
 
+        - also, considering changing :: symbol to : for namespace referencing. (or . if it makes sense)
+
+
     * Changes for eg/tui_board:
 
         * DONE: fix utc difference when touching stamps
