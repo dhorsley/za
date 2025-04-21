@@ -40,8 +40,10 @@ TODO
         - If you want to use a different namespace then you need to create a new file and import it with MODULE.
 
         - The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
-            matches ahead of the default behaviour of
+            matches ahead of the default behaviour, if no explicit name is supplied
+
                 1. explicit namespace (name::)
+                2. use_chain match
                 2. current namespace (no :: ref), then
                 3. main:: (global namespace)
 
