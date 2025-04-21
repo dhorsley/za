@@ -16,6 +16,56 @@ lots, i'm sure.
 TODO
 ----
 
+    * USE statement
+        USE -           # empties the use_chain internal array
+        USE + name      # adds name to the use_chain namespace list (if unique)
+        USE - name      # removes name from use_chain namespace list
+        USE ^ name      # places namespace name at the top of the use_chain namespace list (pushes rest down)
+                        # new name: inserts, existing name: moves
+
+        USE PUSH        # push current chain on chain stack
+        USE POP         # pop chain from top of chain stack
+                        # push and pop would be used to completely isolate namespacing in a module.
+
+            - var uchain = make([]string,0,1)
+            - var ustack = make([][]string,0,8)
+            - new funcs: uc_add(), uc_remove(), uc_top(), uc_reset(), ucs_push(), ucs_pop(),
+                         uc_match_func(func_name), uc_match_enum(enum_name), uc_match_struct(struct_name)
+
+                - the match functions will return either a "ns::name" string on match, or an empty string ""
+                    - if empty, then current namespace or main:: used
+
+        - The current namespace is always either main:: or the module name/alias.
+
+        - If you want to use a different namespace then you need to create a new file and import it with MODULE.
+
+        - The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
+            matches ahead of the default behaviour of
+                1. explicit namespace (name::)
+                2. current namespace (no :: ref), then
+                3. main:: (global namespace)
+
+        - example:
+
+            # global ns / main program
+            MODULE "modpath/time" AS tm
+
+            tm::string_date()       # call function string_date in module time with explicit alias 'tm'
+            string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
+                                    # which should error as undefined.
+
+            USE +tm
+
+            string_date()           # check if string_date() exists in tm namespace and call it if found.
+
+                                    # if not found (even though this one would be) then try to call it in current namespace (main::)
+                                    #  which should error as undefined.
+
+                                    # whenever there are conflicting names then the first match takes precedence.
+                                    #  i.e.
+                                    # explicit name > use_chain > current namespace > main
+
+
     * Changes for eg/tui_board:
 
         * DONE: fix utc difference when touching stamps
