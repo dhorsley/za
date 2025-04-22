@@ -94,42 +94,42 @@ func uc_show() {
     }
 }
 
-func uc_match_func(s string) (bool) {
+func uc_match_func(s string) (string) {
     chainlock.RLock()
     defer chainlock.RUnlock()
     for p:=0; p<len(uchain); p+=1 {
         if fnlookup.lmexists(uchain[p]+"::"+s) {
-            return true 
+            return uchain[p]
         }
     } 
-    return false
+    return ""
 }
 
-func uc_match_enum(s string) (bool) {
+func uc_match_enum(s string) (string) {
     chainlock.RLock()
     globlock.RLock()
     defer globlock.RUnlock()
     defer chainlock.RUnlock()
     for p:=0; p<len(uchain); p+=1 {
         if _,found:=enum[uchain[p]+"::"+s]; found {
-            return true
+            return uchain[p]
         }
     } 
-    return false
+    return ""
 }
 
 // @todo: structmaps is completely unprotected by locks throughout the code
 //          this should be corrected. will do this later, honest.
 
-func uc_match_struct(s string) (bool) {
+func uc_match_struct(s string) (string) {
     chainlock.RLock()
     defer chainlock.RUnlock()
     for p:=0; p<len(uchain); p+=1 {
         if _,found:=structmaps[uchain[p]+"::"+s]; found {
-            return true
+            return uchain[p]
         }
     } 
-    return false
+    return ""
 }
 
 

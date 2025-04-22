@@ -1025,9 +1025,14 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         // check if exists in user defined function space
         if _, isFunc = stdlib[name]; !isFunc {
             if !str.Contains(name,"::") {
-                useName:="main::"+name
-                if len(p.namespace)>0 {
-                    useName=p.namespace+"::"+name
+                var useName string
+                if found:=uc_match_func(name); found!="" {
+                    useName=found+"::"+name
+                } else {
+                    useName="main::"+name
+                    if len(p.namespace)>0 {
+                        useName=p.namespace+"::"+name
+                    }
                 }
                 name=useName
             }
@@ -1714,7 +1719,11 @@ func (p *leparser) identifier(token *Token) (any) {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             useName:=p.namespace
             if len(p.namespace)==0 {
-                useName="main"
+                if found:=uc_match_func(token.tokText); found!="" {
+                    useName=found
+                } else {
+                    useName="main"
+                }
             }
             // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
             if fnlookup.lmexists(useName+"::"+token.tokText) {
