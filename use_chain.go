@@ -77,6 +77,9 @@ func ucs_push() (bool) {
 func ucs_pop() (bool) {
     chainlock.Lock()
     defer chainlock.Unlock()
+    if len(ustack)==0 {
+        return false
+    }
     uchain=ustack[0]
     ustack=ustack[1:]
     return true
