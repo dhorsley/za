@@ -177,7 +177,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
             }
         case pfile:
-
         }
 
         en:=enum[ename]
@@ -209,6 +208,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             // no :: qualifier, so either leave modname as 'main' or replace from use chain
             if found:=uc_match_func(name); found!="" {
                 modname=found
+                // pf("uc_matcher (func) using name %s | found? [%v]\n",name,found)
             }
         }
                 
@@ -293,7 +293,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         if !isFunc {
             if _, isFunc = stdlib[field]; !isFunc {
                 isFunc = fnlookup.lmexists(name)
-                // pf("checked with fnlookup for name [%s] -> result : %v\n",name,isFunc)
+                pf("checked with fnlookup for name [%s] -> result : %v\n",name,isFunc)
                 /* should put something here to look for same method name in a 
                    compatible structs defined functions in Funcmap... but not a job for now.
                 */
