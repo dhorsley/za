@@ -29,9 +29,11 @@ func uc_remove(s string) (bool) {
     for p:=0; p<len(uchain); p+=1 {
         if uchain[p]==s {
             na:=make([]string,len(uchain)-1)
-            copy(na,uchain[:p])
+            if p!=0 {
+                copy(na,uchain[:p])
+            }
             if p<len(uchain)-1 {
-                na=append(na,uchain[p+1:]...)
+                na=append(na[:p],uchain[p+1:]...)
             }
             uchain=na
             return true
@@ -41,10 +43,10 @@ func uc_remove(s string) (bool) {
 }
 
 func uc_top(s string) (bool) {
+    uc_remove(s)
     chainlock.Lock()
     defer chainlock.Unlock()
-    uc_remove(s)
-    na:=make([]string,len(uchain)+1)
+    na:=make([]string,0,len(uchain)+1)
     na=append(na,s)
     for p:=0; p<len(uchain); p+=1 {
         na=append(na,uchain[p])
@@ -63,7 +65,7 @@ func uc_reset() {
 func ucs_push() (bool) {
     chainlock.Lock()
     defer chainlock.Unlock()
-    na:=make([][]string,len(ustack))
+    na:=make([][]string,0,len(ustack))
     na=append(na,uchain)
     for p:=0; p<len(ustack); p+=1 {
         na=append(na,ustack[p])
