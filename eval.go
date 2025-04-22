@@ -1717,14 +1717,18 @@ func (p *leparser) identifier(token *Token) (any) {
     // filter for functions here. this also sets the subtype for funcs defined late.
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
-            useName:=p.namespace
-            // if len(p.namespace)==0 {
+            var useName string
+            if p.prev.tokType!=SYM_DoubleColon {
                 if found:=uc_match_func(token.tokText); found!="" {
                     useName=found
                 } else {
-                    useName="main"
+                    if len(p.namespace)>0 {
+                        useName=p.namespace
+                    } else {
+                        useName="main"
+                    }
                 }
-            // }
+            }
             // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
             if fnlookup.lmexists(useName+"::"+token.tokText) {
                 p.tokens[p.pos].subtype=subtypeUser
@@ -1764,13 +1768,18 @@ func (p *leparser) identifier(token *Token) (any) {
 
     // permit namespace:: names
     var ename string
-    // if len(p.namespace)==0 {
+    if p.prev.tokType!=SYM_DoubleColon {
         if found:=uc_match_enum(token.tokText); found!="" {
             ename=found+"::"+token.tokText
         } else {
-            ename=p.namespace+"::"+token.tokText
+            if len(p.namespace)>0 {
+                ename=p.namespace+"::"+token.tokText
+            } else {
+                ename="main::"+token.tokText
+            }
         }
-    // }
+    }
+    // pf("ename is [%v]\n",ename)
 
     if enum[ename]!=nil {
         // pf("(eval) permitting enum name %s\n",ename)
@@ -1785,15 +1794,19 @@ func (p *leparser) identifier(token *Token) (any) {
     // permit struct names
     sname:="anon"
     if token.tokText!="anon" {
-        // if len(p.namespace)==0 {
+        if p.prev.tokType!=SYM_DoubleColon {
             if found:=uc_match_struct(token.tokText); found!="" {
                 sname=found+"::"+token.tokText
-                pf("sname->%s\n",sname)
+                // pf("sname->%s\n",sname)
             } else {
-                sname=p.namespace+"::"+token.tokText
-                pf("sname->%s\n",sname)
+                if len(p.namespace)>0 {
+                    sname=p.namespace+"::"+token.tokText
+                    // pf("sname->%s\n",sname)
+                } else {
+                    sname="main::"+token.tokText
+                }
             }
-        // }
+        }
     }
     if _,found:=structmaps[sname];found || sname=="anon" {
         return sname
