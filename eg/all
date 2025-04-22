@@ -15,13 +15,15 @@ foreach tf in files
     println "[#fbgreen]Check : {filename} , Last Change : ",date(tf.mtime),"[#-]"
 
     println "[#invert][#3]"+format("%-{=term_w()}s","{filename} starting.")+"[#-]"
-    | za {check_path}/{filename}
-    println "[#invert][#3]{filename} done.[#-]\n"
-
-    if last()!=0
+    ex =| za {check_path}/{filename}
+    println ex.out
+    if not ex.okay
+        println "[#2]failure\n{=ex.err}[#-]\n"
         er=true
         break
+    else
     endif
+    println "[#invert][#3]{filename} done.[#-]\n"
 
 endfor
 
