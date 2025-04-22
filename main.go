@@ -825,7 +825,11 @@ func main() {
             if usih!="" {
 
                 if !str.Contains(usih,"::") {
-                    usih=currentModule+"::"+usih
+                    if found:=uc_match_func(usih); found!="" {
+                        usih=found+"::"+usih
+                    } else {
+                        usih=currentModule+"::"+usih
+                    }
                 }
 
                 argString:=""

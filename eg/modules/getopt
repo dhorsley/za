@@ -23,6 +23,7 @@ enum optNature ( n=1, m=2, o=4, h=8 )
 enum optErr ( NoError, General=126, Mandatory=125, Casting=124 )
 
 define opthelp(reqs)
+    on reqs is nil do return
     println "Help:"
     foreach o in reqs
         print ("[#4]"+key_o).inset(4).pad(-1,20)

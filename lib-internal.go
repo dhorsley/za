@@ -92,7 +92,11 @@ func enum_names(ns string, e string) []string {
     defer globlock.RUnlock()
     l:=[]string{}
     if ! str.Contains(e,"::") {
-        e=ns+"::"+e
+        if found:=uc_match_enum(e); found!="" {
+            e=found+"::"+e
+        } else {
+            e=ns+"::"+e
+        }
     }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
@@ -109,7 +113,11 @@ func enum_all(ns string,e string) []any {
     defer globlock.RUnlock()
     l:=[]any{}
     if ! str.Contains(e,"::") {
-        e=ns+"::"+e
+        if found:=uc_match_enum(e); found!="" {
+            e=found+"::"+e
+        } else {
+            e=ns+"::"+e
+        }
     }
     if _, found := enum[e]; ! found { return l }
     if len(enum[e].members)==0 {
