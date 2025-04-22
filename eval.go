@@ -1718,13 +1718,13 @@ func (p *leparser) identifier(token *Token) (any) {
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             useName:=p.namespace
-            if len(p.namespace)==0 {
+            // if len(p.namespace)==0 {
                 if found:=uc_match_func(token.tokText); found!="" {
                     useName=found
                 } else {
                     useName="main"
                 }
-            }
+            // }
             // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
             if fnlookup.lmexists(useName+"::"+token.tokText) {
                 p.tokens[p.pos].subtype=subtypeUser
@@ -1763,7 +1763,14 @@ func (p *leparser) identifier(token *Token) (any) {
     }
 
     // permit namespace:: names
-    ename:=p.namespace+"::"+token.tokText
+    var ename string
+    // if len(p.namespace)==0 {
+        if found:=uc_match_enum(token.tokText); found!="" {
+            ename=found+"::"+token.tokText
+        } else {
+            ename=p.namespace+"::"+token.tokText
+        }
+    // }
 
     if enum[ename]!=nil {
         // pf("(eval) permitting enum name %s\n",ename)
@@ -1778,7 +1785,15 @@ func (p *leparser) identifier(token *Token) (any) {
     // permit struct names
     sname:="anon"
     if token.tokText!="anon" {
-        sname=p.namespace+"::"+token.tokText
+        // if len(p.namespace)==0 {
+            if found:=uc_match_struct(token.tokText); found!="" {
+                sname=found+"::"+token.tokText
+                pf("sname->%s\n",sname)
+            } else {
+                sname=p.namespace+"::"+token.tokText
+                pf("sname->%s\n",sname)
+            }
+        // }
     }
     if _,found:=structmaps[sname];found || sname=="anon" {
         return sname
