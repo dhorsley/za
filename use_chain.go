@@ -1,9 +1,7 @@
 package main
 
 import (
-//    "fmt"
     "sync"
-//    str "strings"
     "slices"
 )
 
@@ -55,7 +53,7 @@ func uc_top(s string) (bool) {
     return true
 }
 
-func uc_reset(s string) {
+func uc_reset() {
     chainlock.Lock()
     defer chainlock.Unlock()
     na:=make([]string,0)
@@ -94,26 +92,42 @@ func uc_show() {
     }
 }
 
-func uc_match_func(c *[]string, s string) (bool) {
+func uc_match_func(s string) (bool) {
     chainlock.RLock()
     defer chainlock.RUnlock()
-    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    for p:=0; p<len(uchain); p+=1 {
+        if fnlookup.lmexists(uchain[p]+"::"+s) {
+            return true 
+        }
+    } 
     return false
 }
 
-func uc_match_enum(c *[]string, s string) (bool) {
+func uc_match_enum(s string) (bool) {
     chainlock.RLock()
+    globlock.RLock()
+    defer globlock.RUnlock()
     defer chainlock.RUnlock()
-    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    for p:=0; p<len(uchain); p+=1 {
+        if _,found:=enum[uchain[p]+"::"+s]; found {
+            return true
+        }
+    } 
     return false
 }
 
-func uc_match_struct(c *[]string, s string) (bool) {
+// @todo: structmaps is completely unprotected by locks throughout the code
+//          this should be corrected. will do this later, honest.
+
+func uc_match_struct(s string) (bool) {
     chainlock.RLock()
     defer chainlock.RUnlock()
-    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    for p:=0; p<len(uchain); p+=1 {
+        if _,found:=structmaps[uchain[p]+"::"+s]; found {
+            return true
+        }
+    } 
     return false
 }
-
 
 
