@@ -277,7 +277,7 @@ const (
 	C_Lib
 	C_Module
 	C_Namespace
-	C_Uses
+	C_Use
 	C_While
 	C_Endwhile
 	C_For

@@ -1433,6 +1433,16 @@ tco_reentry:
 
             } // end-of-name-list
 
+        case C_Use:
+            parser.report(inbound.SourceLine,sf("USE keyword reserved but not yet implemented."))
+            finish(true, ERR_UNSUPPORTED)
+            break
+
+
+        case C_Namespace:
+            parser.report(inbound.SourceLine,sf("NAMESPACE keyword reserved but not yet implemented."))
+            finish(true, ERR_UNSUPPORTED)
+            break
 
         case C_While:
 
