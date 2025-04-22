@@ -578,7 +578,7 @@ func ihelp(ns string,hargs string) {
                 funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
                 foundFunction = true
             } else {
-                pf("(no match):%s\n",cmd)
+                // pf("(no match):%s\n",cmd)
             }
 
             if foundFunction || foundCommand {
@@ -654,6 +654,7 @@ Available commands:
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
+[#7]USE [-|+|^|POP|PUSH] [[#i1]name[#i0]][#-]                     - namespace chain rule configuration.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
 [#i1]name[#i0][#i1](params)[#i0]                                    - call a function, with parameters <params>
 [#i1]var[#i0] = [#i1]value[#i0]                                     - assign to variable.
