@@ -1434,9 +1434,18 @@ tco_reentry:
             } // end-of-name-list
 
         case C_Use:
-            parser.report(inbound.SourceLine,sf("USE keyword reserved but not yet implemented."))
-            finish(true, ERR_UNSUPPORTED)
-            break
+
+            switch inbound.TokenCount {
+            case 1:
+                uc_show()
+            case 2:
+                // - PUSH POP
+            case 3:
+                // - + ^
+            default:
+                parser.report(inbound.SourceLine,sf("USE keyword has invalid arguments."))
+                finish(true, ERR_SYNTAX)
+            }
 
 
         case C_Namespace:

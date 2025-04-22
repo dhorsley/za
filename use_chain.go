@@ -1,0 +1,119 @@
+package main
+
+import (
+//    "fmt"
+    "sync"
+//    str "strings"
+    "slices"
+)
+
+var chainlock = &sync.RWMutex{}  // chain access lock
+
+var uchain = make([]string,0)
+var ustack = make([][]string,0)
+
+
+func uc_add(s string) (bool) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+
+    if slices.Contains(uchain,s) {
+        return false
+    }
+
+    uchain=append(uchain,s)
+    return true
+}
+
+func uc_remove(s string) (bool) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+    for p:=0; p<len(uchain); p+=1 {
+        if uchain[p]==s {
+            na:=make([]string,len(uchain)-1)
+            copy(na,uchain[:p])
+            if p<len(uchain)-1 {
+                na=append(na,uchain[p+1:]...)
+            }
+            uchain=na
+            return true
+        }
+    }
+    return false
+}
+
+func uc_top(s string) (bool) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+    uc_remove(s)
+    na:=make([]string,len(uchain)+1)
+    na=append(na,s)
+    for p:=0; p<len(uchain); p+=1 {
+        na=append(na,uchain[p])
+    }
+    uchain=na 
+    return true
+}
+
+func uc_reset(s string) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+    na:=make([]string,0)
+    uchain=na
+}
+
+func ucs_push() (bool) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+    na:=make([][]string,len(ustack))
+    na=append(na,uchain)
+    for p:=0; p<len(ustack); p+=1 {
+        na=append(na,ustack[p])
+    }
+    ustack=na
+    return true
+}
+
+func ucs_pop() (bool) {
+    chainlock.Lock()
+    defer chainlock.Unlock()
+    uchain=ustack[0]
+    ustack=ustack[1:]
+    return true
+}
+
+func uc_show() {
+    chainlock.RLock()
+    defer chainlock.RUnlock()
+    pf("USE chain\n")
+    if len(uchain)==0 {
+        pf("[#2]Empty[#-]\n")
+    }
+    for p:=0; p<len(uchain); p+=1 {
+        pf("[%2d] %s\n",p,uchain[p])
+    }
+}
+
+func uc_match_func(c *[]string, s string) (bool) {
+    chainlock.RLock()
+    defer chainlock.RUnlock()
+    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    return false
+}
+
+func uc_match_enum(c *[]string, s string) (bool) {
+    chainlock.RLock()
+    defer chainlock.RUnlock()
+    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    return false
+}
+
+func uc_match_struct(c *[]string, s string) (bool) {
+    chainlock.RLock()
+    defer chainlock.RUnlock()
+    // panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
+    return false
+}
+
+
+
