@@ -36,8 +36,7 @@ for e = 1 to 10
     broke=false
 endfor
 
-print "\n{f}  broke==",broke,"\n"
-
+assert !broke,"for loop didn't break correctly."
 
 print
 
