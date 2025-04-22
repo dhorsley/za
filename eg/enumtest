@@ -3,8 +3,16 @@
 module "modules/enumtesta" as ea
 module "modules/enumtestb" as eb
 
-println ea::tenum1.check
-println eb::tenum1.check
+showdef
+showstruct
+
+use + eb
+println "eb:tenum1 -> ",enum_all(ref tenum1)
+println tenum1.check
+
+use ^ ea
+println "ea:tenum1 -> ",enum_all(ref tenum1)
+println tenum1.check
 
 var x ea::tstruct
 var y eb::tstruct
