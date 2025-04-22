@@ -1155,7 +1155,7 @@ tco_reentry:
 
             var hasAry bool
             var size int
-            found_namespace:=parser.namespace
+            found_namespace:=""
 
             if !varSyntaxError {
                 // continue from last 'c' value
@@ -1166,6 +1166,14 @@ tco_reentry:
                         found_namespace=inbound.Tokens[dcpos-1].tokText
                         break
                     }
+                }
+               
+                if found_namespace=="" {
+                    if found:=uc_match_func(inbound.Tokens[c+1].tokText); found!="" {
+                        found_namespace=found
+                    } else {
+                        found_namespace=parser.namespace
+                    } 
                 }
 
                 if inbound.Tokens[c].tokType==LeftSBrace {

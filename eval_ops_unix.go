@@ -154,8 +154,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         // check for enum membership:
         globlock.RLock()
         // pf("checking obj %#v | enum %s\n",obj,p.prev2.tokText)
-        ename:=p.namespace+"::"+p.prev2.tokText
-        // isFileHandle:=false
+        var ename string
+        if found:=uc_match_enum(p.prev2.tokText); found!="" {
+            ename=found+"::"+p.prev2.tokText
+        } else {
+            ename=p.namespace+"::"+p.prev2.tokText
+        }
+
         switch obj.(type) {
         case string:
             ename=p.namespace+"::"+obj.(string)
@@ -172,7 +177,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 }
             }
         case pfile:
-            // isFileHandle=true
+
         }
 
         en:=enum[ename]
@@ -200,6 +205,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 return nil,true
             }
             p.next()
+        } else {
+            // no :: qualifier, so either leave modname as 'main' or replace from use chain
+            if found:=uc_match_func(name); found!="" {
+                modname=found
+            }
         }
                 
         // set struct parent type name
