@@ -1456,7 +1456,9 @@ tco_reentry:
                     case "push":
                         ucs_push()
                     case "pop":
-                        ucs_pop()
+                        if ucs_pop()==false {
+                            parser.report(inbound.SourceLine,sf("Cannot pop an empty stack in USE command."))
+                        }
                     default:
                         parser.report(inbound.SourceLine,sf("Unknown argument in USE (%s).",arg.tokText))
                         finish(false, ERR_SYNTAX)

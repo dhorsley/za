@@ -16,7 +16,7 @@ lots, i'm sure.
 TODO
 ----
 
-    * USE statement
+    * DONE: USE statement
         USE -           # empties the use_chain internal array
         USE + name      # adds name to the use_chain namespace list (if unique)
         USE - name      # removes name from use_chain namespace list
@@ -66,10 +66,6 @@ TODO
                                     # whenever there are conflicting names then the first match takes precedence.
                                     #  i.e.
                                     # explicit name > use_chain > current namespace > main
-
-
-        - also, considering changing :: symbol to : for namespace referencing. (or . if it makes sense)
-
 
     * Changes for eg/tui_board:
 
