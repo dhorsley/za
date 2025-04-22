@@ -1439,12 +1439,41 @@ tco_reentry:
             case 1:
                 uc_show()
             case 2:
-                // - PUSH POP
+                arg:=inbound.Tokens[1]
+                switch arg.tokType {
+                case O_Minus:
+                    uc_reset()
+                case Identifier:
+                    switch str.ToLower(arg.tokText) {
+                    case "push":
+                        ucs_push()
+                    case "pop":
+                        ucs_pop()
+                    default:
+                        parser.report(inbound.SourceLine,sf("Unknown argument in USE (%s).",arg.tokText))
+                        finish(false, ERR_SYNTAX)
+                    }
+                default:
+                    parser.report(inbound.SourceLine,sf("Unknown argument in USE (%s).",arg.tokText))
+                    finish(false, ERR_SYNTAX)
+                }
             case 3:
-                // - + ^
+                arg1:=inbound.Tokens[1]
+                arg2:=inbound.Tokens[2]
+                switch arg1.tokType {
+                case O_Minus:
+                    uc_remove(arg2.tokText)
+                case O_Plus:
+                    uc_add(arg2.tokText)
+                case SYM_Caret:
+                    uc_top(arg2.tokText)
+                default:
+                    parser.report(inbound.SourceLine,sf("Unknown argument in USE (%s).",arg1.tokText))
+                    finish(false, ERR_SYNTAX)
+                }
             default:
                 parser.report(inbound.SourceLine,sf("USE keyword has invalid arguments."))
-                finish(true, ERR_SYNTAX)
+                finish(false, ERR_SYNTAX)
             }
 
 
