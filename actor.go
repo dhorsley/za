@@ -1169,11 +1169,12 @@ tco_reentry:
                 }
                
                 if found_namespace=="" {
-                    if found:=uc_match_func(inbound.Tokens[c+1].tokText); found!="" {
-                        found_namespace=found
-                    } else {
-                        found_namespace=parser.namespace
-                    } 
+                    found_namespace=parser.namespace
+                    if c+1<inbound.TokenCount {
+                        if found:=uc_match_func(inbound.Tokens[c+1].tokText); found!="" {
+                            found_namespace=found
+                        }
+                    }
                 }
 
                 if inbound.Tokens[c].tokType==LeftSBrace {
@@ -1487,10 +1488,18 @@ tco_reentry:
             }
 
 
+        // @note: use this at your own risk... (experimental)
         case C_Namespace:
-            parser.report(inbound.SourceLine,sf("NAMESPACE keyword reserved but not yet implemented."))
-            finish(true, ERR_UNSUPPORTED)
-            break
+            switch inbound.TokenCount {
+            case 2:
+                ns:=inbound.Tokens[1].tokText
+                parser.namespace=ns
+                currentModule=ns
+            default:
+                parser.report(inbound.SourceLine,sf("NAMESPACE needs a single argument."))
+                finish(false, ERR_SYNTAX)
+            }
+
 
         case C_While:
 
@@ -3724,25 +3733,6 @@ tco_reentry:
                 */
             }
 
-        /*
-
-        // This is disabled until I do something about filemodmap and others mapping
-        //  their fs value 1:1 against the namespace value.
-
-        case C_Namespace:
-
-            var ns string
-            if inbound.TokenCount>1 {
-                ns=inbound.Tokens[1].tokText
-            }
-
-            parser.namespace=ns
-            currentModule=ns
-
-            // @note: we want to decouple namespace from module eventually
-            // needed? : interparse.namespace=ns
-
-        */
 
         case C_Module:
 
