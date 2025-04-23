@@ -1494,6 +1494,7 @@ tco_reentry:
             case 2:
                 ns:=inbound.Tokens[1].tokText
                 parser.namespace=ns
+                interparse.namespace=ns
                 currentModule=ns
             default:
                 parser.report(inbound.SourceLine,sf("NAMESPACE needs a single argument."))
