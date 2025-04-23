@@ -68,6 +68,49 @@ CHANGE LOG
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
 
+    * USE statement
+        USE -           # empties the use_chain internal array
+        USE + name      # adds name to the use_chain namespace list (if unique)
+        USE - name      # removes name from use_chain namespace list
+        USE ^ name      # places namespace name at the top of the use_chain namespace list (pushes rest down)
+                        # new name: inserts, existing name: moves
+
+        USE PUSH        # push current chain on chain stack
+        USE POP         # pop chain from top of chain stack
+                        # push and pop would be used to completely isolate namespacing in a module.
+
+        - The current namespace is always either main:: or the module name/alias.
+
+        - If you want to use a different namespace then you need to create a new file and import it with MODULE.
+
+        - The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
+            matches ahead of the default behaviour, if no explicit name is supplied
+
+                1. explicit namespace (name::)
+                2. use_chain match
+                3. current namespace (no :: ref), then
+                4. main:: (global namespace)
+
+        - example:
+
+            # global ns / main program
+            MODULE "modpath/time" AS tm
+
+            tm::string_date()       # call function string_date in module time with explicit alias 'tm'
+            string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
+                                    # which should error as undefined.
+
+            USE +tm
+
+            string_date()           # check if string_date() exists in tm namespace and call it if found.
+
+                                    # if not found (even though this one would be) then try to call it in current namespace (main::)
+                                    #  which should error as undefined.
+
+                                    # whenever there are conflicting names then the first match takes precedence.
+                                    #  i.e.
+                                    # explicit name > use_chain > current namespace > main
+
     * added some support for more array arithmetic:
         - array = array(a)+b | a+array(b)
         - array = array(a)-b | a-array(b)
