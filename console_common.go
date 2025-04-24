@@ -249,7 +249,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
     defaultAccepted:=false
 
     fmt.Printf(sparkle(pcol))
-    clearChars(row,col,width)
+    clearChars(row,col,width-col)
     for {
 
         // calc new values for row,col
@@ -878,7 +878,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
     if echo.(bool) {
         fmt.Printf(sparkle(pcol))
-        clearChars(srow, scol, width)
+        clearChars(srow, scol, width-scol)
         at(srow, scol)
         fmt.Printf(sparkle(sprompt))
         fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))  // recolour const sets italics
