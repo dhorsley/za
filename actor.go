@@ -4330,7 +4330,7 @@ tco_reentry:
         case C_Prompt:
 
             if inbound.TokenCount < 2 {
-                usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ] [ IS [#i1]def_string[#i0] ]"
+                usage := "PROMPT [#i1]storage_variable prompt_string[#i0] [ [#i1]validator_regex[#i0] ] [ TO [#i1]width[#i0] ] [ IS [#i1]def_string[#i0] ]"
                 parser.report(inbound.SourceLine,  "Not enough arguments for PROMPT.\n"+usage)
                 finish(false, ERR_SYNTAX)
                 break
@@ -4368,7 +4368,28 @@ tco_reentry:
                             break
                         } else {
                             validator := ""
-            
+           
+                            // capture width
+                            var w_okay bool
+                            var providedWidth int
+                            if widthAt:=findDelim(inbound.Tokens,C_To,1); widthAt != -1 {
+                                expr:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[widthAt+1:widthAt+2])
+                                if expr.evalError {
+                                    parser.report(inbound.SourceLine, "Bad width value in PROMPT command.")
+                                    finish(false, ERR_EVAL)
+                                    break
+                                } else {
+                                    providedWidth,w_okay=GetAsInt(expr.result)
+                                    if w_okay {
+                                        parser.report(inbound.SourceLine, "Width value is not an integer in PROMPT command.")
+                                        finish(false, ERR_EVAL)
+                                        break
+                                    }
+                                }
+                            }
+                            inWidth:=panes[currentpane].w-2
+                            if providedWidth>0 { inWidth=providedWidth }
+ 
                             // capture default string
                             defString := ""
                             defAt := findDelim(inbound.Tokens, C_Is, 1)
@@ -4376,7 +4397,7 @@ tco_reentry:
                                 pdefault:=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[defAt+1:])
                                 if pdefault.evalError {
                                     parser.report(inbound.SourceLine, "Bad default string in PROMPT command.")
-                                    finish(false, ERR_SYNTAX)
+                                    finish(false, ERR_EVAL)
                                     break
                                 } else {
                                     defString=sf("%v",pdefault.result)
@@ -4407,9 +4428,7 @@ tco_reentry:
                                 }
 
                                 if hasValidator {
-                                pf(" >1> ")
                                     val_ex,val_ex_error := parser.Eval(ifs,inbound.Tokens[3:vposEnd])
-                                pf(" >2> ")
                                     if val_ex_error != nil {
                                         parser.report(inbound.SourceLine,"Validator invalid in PROMPT!")
                                         finish(false,ERR_EVAL)
@@ -4422,7 +4441,7 @@ tco_reentry:
                                     intext := ""
                                     validated := false
                                     for !validated || broken {
-                                        intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, panes[currentpane].w-2, []string{}, promptColour, false, false, echoMask.(string))
+                                        intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string))
                                         intext=sanitise(intext)
                                         validated, _ = regexp.MatchString(validator, intext)
                                     }
@@ -4431,7 +4450,7 @@ tco_reentry:
                                     }
                                 } else {
                                     var inp string
-                                    inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, panes[currentpane].w-2, []string{}, promptColour, false, false, echoMask.(string))
+                                    inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string))
                                     inp=sanitise(inp)
                                     vset(&inbound.Tokens[1],ifs, ident,inbound.Tokens[1].tokText, inp)
                                 }
