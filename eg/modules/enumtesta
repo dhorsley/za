@@ -2,9 +2,15 @@
 enum tenum1 ( check=42 , demo = 100 )
 
 struct tstruct
+
     a int = 42
     b bool = true
     c string = "test_string"
+
+    def example(a,b,c)
+        nop
+    end
+
 endstruct
     
 println tenum1.demo
