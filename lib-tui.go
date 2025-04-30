@@ -721,7 +721,7 @@ func tui_pager(t tui,s tui_style) {
             absClearChars(t.Row+k+1,t.Col+1+len(v),t.Width-2-len(v))
         }
         for k:=max-1;k<omax;k++ {
-            absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
+            absClearChars(t.Row+k+1,t.Col+1,t.Width-1)
         }
         pf("[##][#-]")
         // scroll position
