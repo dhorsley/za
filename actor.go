@@ -4893,11 +4893,14 @@ func ShowDef(fn string) bool {
 
         first := true
 
+        // main::triple~main::w()
+
         for q := range functionspaces[ifn] {
             strOut := "\t\t "
             if first == true {
                 first = false
-                strOut = sf("\n[#4][#bold]%s(%v)[#boff][#-]\n\t\t ", fn, str.Join(falist, ","))
+                strOut = sf("\n[#4][#bold]%s[#boff][#-]\n\t\t ",fn)
+                strOut = str.Replace(strOut,"~",sf("(%v) ~ in struct ",str.Join(falist,",")),1)
             }
             pf(sparkle(str.ReplaceAll(sf("%s%s\n", strOut, basecode[ifn][q].Original),"%","%%")))
         }
