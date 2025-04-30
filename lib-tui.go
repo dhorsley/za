@@ -710,14 +710,18 @@ func tui_pager(t tui,s tui_style) {
     }
 
     t.Cancel=false
-    max:=t.Height-1
+    omax:=t.Height-1
     for ;!t.Cancel; {
+        max:=omax
         if cpos+t.Height-1>len(ra) { max=len(ra)-cpos }
         for k,v:=range ra[cpos:cpos+max] {
             absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
             absat(t.Row+k+1,t.Col+1)
             pf(addbg+addfg+v)
             absClearChars(t.Row+k+1,t.Col+1+len(v),t.Width-2-len(v))
+        }
+        for k:=max-1;k<omax;k++ {
+            absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
         }
         pf("[##][#-]")
         // scroll position
