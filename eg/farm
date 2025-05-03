@@ -25,13 +25,16 @@ foreach a : animal in farm
     println "[{=a.name}] -> ", a.kind
     a.humanize
     a.speak
+    farm[key_a]=a
 endfor
 
 # workaround for not currently supporting ary[i].method:
+println farm
 var t animal
 for e = 0 to farm.len-1
     t=farm[e]
     t.animate
+    farm[e]=t
 endfor
 println farm
 

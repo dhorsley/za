@@ -33,7 +33,7 @@ endfor
 
 # GCLIMIT = "madvdontneed=0 GOGC=1600 GOMAXPROCS=4"
 GCLIMIT = "madvdontneed=0 GOGC=1600"
-GCFLAGS = "-gcflags='-B -l=4'"
+GCFLAGS = "-buildvcs=false -gcflags='-B -l=4'"
 
 GCCGOFLAGS=""
 doc " uncomment line below when testing with GCC-GO compiler:
