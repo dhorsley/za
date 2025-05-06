@@ -365,9 +365,9 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                     return nil,true
                 }
             } else {
-                if p.prev2.tokType==RightSBrace {
-                    pf("maybe ary element : obj %#v\n",obj) 
-                }
+                // if p.prev2.tokType==RightSBrace {
+                //     pf("array element : obj %#v\n",obj) 
+                // }
                 // no action required as invoker was not a struct name
                 // pf("method call without identifier\nresult : %#v\nerror : %+v\n",res,err)
             }
