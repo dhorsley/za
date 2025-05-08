@@ -798,7 +798,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
         bin:=bind_int(ifs,"self")
         vset(nil,ifs,ident,"self", method_value)
         t:=(*ident)[bin]
-        // t.IValue=method_value
         t.ITyped=false
         t.declared=true
         t.Kind_override=kind_override
@@ -2035,13 +2034,20 @@ tco_reentry:
                         vset(nil,ifs, ident,"key_"+fid, 0)
                         vset(&inbound.Tokens[1],ifs, ident, fid, we.result.([]any)[0])
 
+                        bin:=bind_int(ifs,fid)
                         if it_type != "" {
-                            bin:=bind_int(ifs,fid)
                             t:=(*ident)[bin]
                             t.ITyped=true
                             t.declared=true
                             t.Kind_override=it_type
                             (*ident)[bin]=t
+                        }
+
+                        isStruct := reflect.TypeOf(we.result.([]any)[0]).Kind() == reflect.Struct
+                        if isStruct && it_type=="" {
+                            if s,count:=struct_match(we.result.([]any)[0]); count==1 {
+                                (*ident)[bin].Kind_override=s
+                            }
                         }
 
                         condEndPos = len(we.result.([]any)) - 1
@@ -2362,14 +2368,21 @@ tco_reentry:
                             pf("Unknown type [%T] in END/Foreach\n",pv)
                         }
 
+                        bin:=bind_int(ifs,(*thisLoop).loopVar)
                         if it_type != "" {
-                            bin:=bind_int(ifs,(*thisLoop).loopVar)
                             t:=(*ident)[bin]
                             t.ITyped=true
-                            // t.declared=true
                             t.Kind_override=it_type
                             (*ident)[bin]=t
                         }
+
+                        isStruct := reflect.TypeOf((*ident)[bin].IValue).Kind() == reflect.Struct
+                        if isStruct && it_type=="" {
+                            if s,count:=struct_match((*ident)[bin].IValue); count==1 {
+                                (*ident)[bin].Kind_override=s
+                            }
+                        }
+
 
                     }
 

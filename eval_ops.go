@@ -1668,7 +1668,14 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
         // hijack kind() calls here
         if name == "kind" {
-            res,err := kind(kind_override,args...)
+            isStruct := reflect.TypeOf(args[0]).Kind() == reflect.Struct
+            struct_name:=""
+            if isStruct {
+                if s,count:=struct_match(args[0]); count==1 {
+                    struct_name=s
+                }
+            }
+            res,err := kind(struct_name,args...)
             return res,err!=nil,method_result
         } else {
             // normal stdlib call
