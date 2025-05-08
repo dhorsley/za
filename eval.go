@@ -2729,6 +2729,15 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             isStruct = reflect.TypeOf(results[assno]).Kind() == reflect.Struct
         }
 
+        struct_name:=""
+        if isStruct {
+            type_string,count:=struct_match(results[assno])
+            if count==1 {
+                struct_name=type_string
+            }
+            // pf("[ev] [asslen1] struct match string [%s]\n",struct_name)
+        }
+
         if isStruct && lfs==rfs && len(assignee)==1 {
             bin:=bind_int(lfs,assignee[0].tokText)
             assref:=(*lident)[bin]
@@ -2772,7 +2781,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                     assref.IValue=results[assno]
                     assref.ITyped=false
                     assref.declared=true
-                    // assref.Kind_override=kind_override
+                    assref.Kind_override=struct_name
                     (*lident)[bin]=assref
                 } else {
                     expr.errVal=fmt.Errorf(
@@ -2799,6 +2808,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                 vset(&assignee[0], lfs, lident, assignee[0].tokText, results[assno])
             } else {
                 vset(nil, lfs, lident, assignee[0].tokText, results[assno])
+                bin:=bind_int(lfs,assignee[0].tokText)
+                if isStruct { (*lident)[bin].Kind_override=struct_name }
             }
 
         case len(assignee)==2:
@@ -2958,6 +2969,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
             /////////////////////////////////////////////////////////////////////////////
 
 
+            bin:=bind_int(lfs,assignee[0].tokText)
             switch element.(type) {
             case string:
                 element = interpolate(p.namespace,rfs,rident,element.(string))
@@ -2987,6 +2999,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                 expr.evalError=true
                 expr.errVal=err
             }
+            if isStruct { (*lident)[bin].Kind_override=struct_name }
 
         // case eqPos==3:
         case len(assignee)==3:

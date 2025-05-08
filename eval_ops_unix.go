@@ -211,7 +211,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 // pf("uc_matcher (func) using name %s | found? [%v]\n",name,found)
             }
         }
-                
+
         // set struct parent type name
         struct_name:=""
         if isStruct {

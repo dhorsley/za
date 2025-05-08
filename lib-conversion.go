@@ -27,6 +27,7 @@ func kind(kind_override string, args ...any) (ret any, err error) {
     }
 
     if kind_override!="" {
+        // pf("[k] passed an override of [%s]\n",kind_override)
         return kind_override,nil
     }
 
