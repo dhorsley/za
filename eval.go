@@ -1893,6 +1893,11 @@ func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
 
     var bin uint64
 
+    if fs<3 {
+        vlock.Lock()
+        defer vlock.Unlock()
+    }
+
     if tok==nil {
         bin=bind_int(fs,name)
         if bin>=uint64(len(*ident)) {

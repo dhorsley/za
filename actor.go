@@ -1614,8 +1614,8 @@ tco_reentry:
             }
 
             // fmt.Printf("(sg) in fs %d (mident->%d) eval -> %+v\n",ifs,parser.mident,inbound.Tokens[1:])
-            sglock.Lock()
             atomic.StoreUint32(&has_global_lock,ifs)
+            sglock.Lock()
             if res:=parser.wrappedEval(parser.mident,&mident,ifs,ident,inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine,sf("Error in SETGLOB evaluation\n%+v\n",res.errVal))
                 atomic.StoreUint32(&has_global_lock,0)
@@ -1623,8 +1623,8 @@ tco_reentry:
                 finish(false,ERR_EVAL)
                 break
             }
-            atomic.StoreUint32(&has_global_lock,0)
             sglock.Unlock()
+            atomic.StoreUint32(&has_global_lock,0)
 
 
         case C_Foreach:
