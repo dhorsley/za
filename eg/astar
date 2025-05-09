@@ -24,6 +24,8 @@ def fill_path(grid,sx,sy,ex,ey)
 end
 
 def show_grid(g)
+    colarr="241"
+    colpos=0
     for p=0 to mh*mw-1
         r,c=[as_int(p/mw),p%mw]
         case g[r*mw+c]
@@ -34,7 +36,8 @@ def show_grid(g)
         is a::ptype.target
             at r+1,c+1,"[#invert][#6]E[#-]"
         is a::ptype.path
-            at r+1,c+1,"[#5]•[#-]"
+            colour=colarr[colpos++%3]
+            at r+1,c+1,"[#{colour}]•[#-]"
         endcase
     endfor
 end
