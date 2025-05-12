@@ -2960,7 +2960,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                             return
                         }
                     } else {
-                        expr.errVal=fmt.Errorf("variable %v[%v] is not a STRUCT (it's a %T)",aryName,eleName,typ.Kind())
+                        expr.errVal=fmt.Errorf("variable %v[%v] is not a STRUCT (it's a %s)",aryName,eleName,typ.Kind())
                         expr.evalError=true
                         return
                     }
