@@ -4219,6 +4219,41 @@ tco_reentry:
 
 
         case C_With:
+
+            // WITH STRUCT|ENUM name
+            if inbound.TokenCount == 3 {
+                with_error:=false
+                switch inbound.Tokens[1].tokType {
+                case C_Struct:
+                    if parser.inside_with_struct {
+                        parser.report(inbound.SourceLine,"Already inside a WITH STRUCT")
+                        finish(false, ERR_SYNTAX)
+                        with_error=true
+                    } else {
+                        parser.inside_with_struct=true
+                        parser.with_struct_name=inbound.Tokens[2].tokText
+                        // pf("set with struct name to %s\n",parser.with_struct_name)
+                    }
+                case C_Enum:
+                    if parser.inside_with_enum {
+                        parser.report(inbound.SourceLine,"Already inside a WITH ENUM")
+                        finish(false, ERR_SYNTAX)
+                        with_error=true
+                    } else {
+                        parser.inside_with_enum=true
+                        parser.with_enum_name=inbound.Tokens[2].tokText
+                        // pf("set with enum name to %s\n",parser.with_enum_name)
+                    }
+                default:
+                    parser.report(inbound.SourceLine,"Unknown WITH type")
+                    finish(false, ERR_SYNTAX)
+                    with_error=true
+                }
+                if with_error { break }
+                continue
+            }
+
+
             // WITH var AS file
             // get params
 
@@ -4276,7 +4311,21 @@ tco_reentry:
                 }
             }()
 
+
         case C_Endwith:
+
+            if parser.inside_with_struct {
+                parser.inside_with_struct=false
+                parser.with_struct_name=""
+                continue
+            }
+
+            if parser.inside_with_enum {
+                parser.inside_with_enum=false
+                parser.with_enum_name=""
+                continue
+            }
+
             if !inside_with {
                 parser.report(inbound.SourceLine,"ENDWITH without a WITH.")
                 finish(false,ERR_SYNTAX)
@@ -4382,7 +4431,7 @@ tco_reentry:
                             break
                         } else {
                             validator := ""
-           
+
                             // capture width
                             var w_okay bool
                             var providedWidth int
@@ -4403,7 +4452,7 @@ tco_reentry:
                             }
                             inWidth:=panes[currentpane].w-2
                             if providedWidth>0 { inWidth=providedWidth }
- 
+
                             // capture default string
                             defString := ""
                             defAt := findDelim(inbound.Tokens, C_Is, 1)

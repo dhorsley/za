@@ -91,7 +91,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         r := reflect.ValueOf(obj)
         isStruct:=false
-        
+
         switch r.Kind() {
 
         case reflect.Struct:
@@ -153,12 +153,12 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
         // check for enum membership:
         globlock.RLock()
-        // pf("checking obj %#v | enum %s\n",obj,p.prev2.tokText)
+        // pf("checking obj %#v | enum %s\n",obj,pre_name)
         var ename string
-        if found:=uc_match_enum(p.prev2.tokText); found!="" {
-            ename=found+"::"+p.prev2.tokText
+        if found:=uc_match_enum(pre_name); found!="" {
+            ename=found+"::"+pre_name
         } else {
-            ename=p.namespace+"::"+p.prev2.tokText
+            ename=p.namespace+"::"+pre_name
         }
 
         switch obj.(type) {
@@ -180,6 +180,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         }
 
         en:=enum[ename]
+        // pf("enum name to try [%s] : %#v\n",ename,en)
         globlock.RUnlock()
         if en!=nil {
             return en.members[name],false
@@ -231,6 +232,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
                 name+="~"+struct_name
             }
         }
+        // pf("afof::name        -> [%s]\n",name)
+        // pf("afof::struct_name -> [%s]\n",struct_name)
 
         var fm Funcdef
         var there bool
