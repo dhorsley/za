@@ -1,0 +1,31 @@
+
+input all optarg 1
+all = all!=""
+
+enum errors ( okay=0, one, two, three )
+
+struct ts
+    a int
+    b bool
+    c string
+    d float
+endstruct
+
+with enum errors
+    println "e> " , .okay
+    println "e> " , .one
+    println "e> " , .two
+    println "e> " , .three
+    on all do println "e> " , .four
+endwith
+
+var q ts
+println "q->%#v".format(q)
+with struct q
+    println "s> ", .a
+    println "s> ", .b
+    println "s> ", .c
+    println "s> ", .d
+    on all do println "s> ", .nope
+endwith
+

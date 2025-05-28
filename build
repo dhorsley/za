@@ -1,6 +1,7 @@
 #!/usr/bin/za
 
 module "mod_build/defines" as defs
+use +defs
 
 var strip_enable,upx_enable bool
 
@@ -51,19 +52,19 @@ upxfound= ${which upx | wc -l} . trim(0) . as_bool
 if ! os() ~ "^freebsd"
     case tgt
     is "default"
-        on defs::buildDefault(bvers,bdate)!=0 do exit defs::e.build,"Failed to build default version."
+        on buildDefault(bvers,bdate)!=0 do exit e.build,"Failed to build default version."
     has tgt ~i "^(alpine)$"
-        on defs::buildMusl(bvers,bdate)!=0 do exit defs::e.build,"Failed to build musl version."
+        on buildMusl(bvers,bdate)!=0 do exit e.build,"Failed to build musl version."
     is "libc"
-        on defs::buildLibc(bvers,bdate)!=0 do exit defs::e.build,"Failed to build libc version."
+        on buildLibc(bvers,bdate)!=0 do exit e.build,"Failed to build libc version."
     is "win"
-        on strip_enable do "Windows build does not strip!".defs::warning
-        on defs::buildWin(bvers,bdate) != 0 do exit defs::e.build,"Failed to build windows version."
+        on strip_enable do "Windows build does not strip!".warning
+        on buildWin(bvers,bdate) != 0 do exit e.build,"Failed to build windows version."
     or
-        exit defs::e.notfound,"Target type unknown."
+        exit e.notfound,"Target type unknown."
     endcase
 else
-    on defs::buildFreeBSD(bvers,bdate) != 0 do exit defs::e.build,"Failed to build bsd version."
+    on buildFreeBSD(bvers,bdate) != 0 do exit e.build,"Failed to build bsd version."
 endif
 
 
@@ -75,7 +76,7 @@ if is_file("za")
                 on upx_enable do | upx za
             endif
         else
-            "Note: Please consider installing the upx package for compressing the binary.".defs::warning
+            "Note: Please consider installing the upx package for compressing the binary.".warning
         endif
     else
         # don't strip/upx freebsd version
@@ -85,7 +86,7 @@ endif
 
 case tgt
 contains "^(default|alpine|libc)$"
-    "Installing {tgt} build to {ipath}".defs::progress
+    "Installing {tgt} build to {ipath}".progress
     | sudo cp -f za {ipath}
     | sudo chmod 755 {ipath}/za
 endcase
