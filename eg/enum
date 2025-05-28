@@ -6,10 +6,6 @@ enum errors ( okay=0, one, two, three )
 
 input ex_state param 1 is "exit status"
 
-with enum errors
-    println ">" , .two
-endwith
-
 on ex_state in enum_all(ref errors) do exit ex_state, `ERROR #{ex_state} : {=enum_names("errors")[ex_state]}\n`
 
 exit 127
