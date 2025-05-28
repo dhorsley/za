@@ -45,6 +45,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
 
 
 type leparser struct {
+
     tokens      []Token                 // the thing getting evaluated
     ident       *[]Variable             // where are the local variables at?
     prev        Token                   // bodge for post-fix operations
@@ -69,6 +70,12 @@ type leparser struct {
 
     hard_fault  bool                    // stop error bypass in fallback mode
     kind_override string                // when self has been created, this bears the struct type.
+
+    inside_with_struct  bool
+    inside_with_enum    bool
+    with_struct_name    string
+    with_enum_name      string
+
 }
 
 
@@ -153,6 +160,14 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
         right,err := p.dparse(10,false) // allow strings to accumulate to the right
         if err!=nil { panic(err) }
         left=p.unaryPathOp(right,(*ct).tokType)
+
+    case SYM_DOT:
+        if p.inside_with_struct || p.inside_with_enum {
+            left=p.unary(ct)
+            panic("WITH handler goes here!")
+        }
+        panic("unary dot field operator present outside of a WITH clause.")
+
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         left=p.unary(ct)
     case O_Assign, O_Plus, O_Minus:      // prec variable
@@ -198,7 +213,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
         switch token.tokType {
         case EOF:
             break binloop1
-    
+
         case O_Query: // handle ? at end of expression
             if p.pos==p.len-1 {
                 left=p.tern_if(nil,nil)
@@ -1353,6 +1368,25 @@ func (p *leparser) unary(token *Token) (any) {
 	    right,err := p.dparse(70,false) // higher than dot op
         if err!=nil { panic(err) }
         return unaryFileInput(right)
+    case SYM_DOT:
+        // get next token's tokText
+        next_tok:=p.peek()
+        if next_tok.tokType==Identifier {
+            p.next()
+        } else {
+            panic(fmt.Errorf("unary value is not an identifier [%s]",next_tok.tokText))
+        }
+        if p.inside_with_struct {
+            left:=p.identifier(&Token{tokType:Identifier,tokText:p.with_struct_name})
+            p.std_faulted=false
+            left,_ = p.accessFieldOrFunc(left,next_tok.tokText)
+            return left
+        }
+        if p.inside_with_enum {
+            // lookup p.with_enum_name . next_tok.tokText
+            // if exists then return enum value
+            // else panic with invalid name
+        }
     }
 
 	right,err := p.dparse(38,false) // between grouping and other ops
