@@ -162,11 +162,12 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
         left=p.unaryPathOp(right,(*ct).tokType)
 
     case SYM_DOT:
-        if p.inside_with_struct || p.inside_with_enum {
+
+        if !(p.inside_with_struct || p.inside_with_enum) {
+            panic("unary dot field operator present outside of a WITH clause.")
+        } else {
             left=p.unary(ct)
-            panic("WITH handler goes here!")
         }
-        panic("unary dot field operator present outside of a WITH clause.")
 
     case O_Slc,O_Suc,O_Sst,O_Slt,O_Srt:
         left=p.unary(ct)
@@ -1377,15 +1378,30 @@ func (p *leparser) unary(token *Token) (any) {
             panic(fmt.Errorf("unary value is not an identifier [%s]",next_tok.tokText))
         }
         if p.inside_with_struct {
-            left:=p.identifier(&Token{tokType:Identifier,tokText:p.with_struct_name})
+            var err bool
+            bin:=bind_int(p.fs,p.with_struct_name)
+            tok:=Token{tokType:Identifier,tokText:p.with_struct_name,bindpos:bin}
+            left:=p.identifier(&tok)
+            // pf("with_struct : left -> [%#v]\n",left)
+            p.prev2=tok
             p.std_faulted=false
-            left,_ = p.accessFieldOrFunc(left,next_tok.tokText)
+            left,err = p.accessFieldOrFunc(left,next_tok.tokText)
+            if left==nil {
+                panic(fmt.Errorf("unary value is not a valid struct field [%s,with err:%v]",next_tok.tokText,err))
+            }
             return left
         }
         if p.inside_with_enum {
-            // lookup p.with_enum_name . next_tok.tokText
-            // if exists then return enum value
-            // else panic with invalid name
+            bin:=bind_int(p.fs,p.with_enum_name)
+            tok:=Token{tokType:Identifier,tokText:p.with_enum_name,bindpos:bin}
+            left:=p.identifier(&tok)
+            p.prev2=tok
+            p.std_faulted=false
+            left,_ = p.accessFieldOrFunc(left,next_tok.tokText)
+            if left==nil {
+                panic(fmt.Errorf("unary value is not a valid enum member [%s]",next_tok.tokText))
+            }
+            return left
         }
     }
 
