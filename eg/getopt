@@ -1,18 +1,19 @@
 #!/usr/bin/za
 
 module "modules/getopt" as go
+use +go
 
 var reqs map
-reqs["a"]   =["s",go::optNature.m,                      "test string"     ]
-reqs["b"]   =["n",go::optNature.o,                      "test number"     ]
-reqs["c"]   =["b",go::optNature.n,                      "test bool"       ]
-reqs["long"]=["s",go::optNature.m,                      "test long name"  ]
-reqs["h"]   =["b",go::optNature.n | go::optNature.h,    "help"            ]
+reqs["a"]   =["s",optNature.m,                  "test string"     ]
+reqs["b"]   =["n",optNature.o,                  "test number"     ]
+reqs["c"]   =["b",optNature.n,                  "test bool"       ]
+reqs["long"]=["s",optNature.m,                  "test long name"  ]
+reqs["h"]   =["b",optNature.n | optNature.h,    "help"            ]
 
-opts,args=go::getopt(reqs)
+opts,args=getopt(reqs)
 
 if opts["h"]
-    go::opthelp(reqs)
+    opthelp(reqs)
     exit
 endif
 

@@ -1,6 +1,7 @@
 #!/usr/bin/za
 
 module "./astar.mod" as a
+use +a
 
 max_block = 550
 
@@ -13,11 +14,11 @@ def get(c,r)
 end
 
 def fill_path(grid,sx,sy,ex,ey)
-    ng,status,steps=a::find_path(grid,mw,mh)
+    ng,status,steps=find_path(grid,mw,mh)
     case status
-    is a::waytypes.InvalidInput
+    is waytypes.InvalidInput
         exit 1,"\nInvalid Input"
-    is a::waytypes.NoPath
+    is waytypes.NoPath
         exit 2,"\nNo Path Found"
     endcase
     return ng,steps
@@ -29,13 +30,13 @@ def show_grid(g)
     for p=0 to mh*mw-1
         r,c=[as_int(p/mw),p%mw]
         case g[r*mw+c]
-        is a::ptype.block
+        is ptype.block
             at r+1,c+1,"░"
-        is a::ptype.start
+        is ptype.start
             at r+1,c+1,"[#invert][#3]S[#-]"
-        is a::ptype.target
+        is ptype.target
             at r+1,c+1,"[#invert][#6]E[#-]"
-        is a::ptype.path
+        is ptype.path
             colour=colarr[colpos++%3]
             at r+1,c+1,"[#{colour}]•[#-]"
         endcase
@@ -58,13 +59,13 @@ mw=term_w()
 
 var g [mh*mw] int
 for e=0 to mh*mw-1
-    g[e]=a::ptype.empty
+    g[e]=ptype.empty
 endfor
 
 
 # add start
 px,py=[randx(),randy()]
-set(px,py,a::ptype.start)
+set(px,py,ptype.start)
 
 
 # add target
@@ -72,15 +73,15 @@ tx,ty=[px,py]
 while px==tx and py==ty
     tx,ty=[randx(),randy()]
 endwhile
-set(tx,ty,a::ptype.target)
+set(tx,ty,ptype.target)
 
 
 # add blocks
 for e=0 to max_block-1
     for ,,
         rx,ry=[randx(),randy()]
-        if get(rx,ry)==a::ptype.empty
-            set(rx,ry,a::ptype.block)
+        if get(rx,ry)==ptype.empty
+            set(rx,ry,ptype.block)
             break
         endif
     endfor

@@ -50,7 +50,6 @@ define ps(filter)
 
     on filter=="" do filter="^.*$"
     procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
-    # was : procs = ${ls -1 /proc}.grep("^[0-9]+$")
 
     var args        map
     var proc_list   map
@@ -202,7 +201,7 @@ foreach r in keys
 
     if !termless
         l=args.len
-        args=args[0:(l<tempwidth?l:tempwidth)]
+        args=args[0:(l<(tempwidth-1)?l:(tempwidth-1))]
         on args.len!=l do args+="[#2]…[#-]"
 
         if defName
