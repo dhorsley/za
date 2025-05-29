@@ -15,9 +15,10 @@ define parse(time_val,crontab)
     time=time.append(t.time_minutes.as_string)
     time=time.append(t.time_hours.as_string)
     time=time.append(t.time_dom.as_string)
-    time=time.append(eval("months."+t.time_month.as_string))
+    time=time.append(eval("enum_all(ref months)["+t.time_month.as_string+"]"))
     time=time.append(eval("days."+t.time_dow.as_string))
-       
+    # println ">> ",time
+
     crontab=crontab.split(" ")
 
     rDig="[0-9]+"
