@@ -1,11 +1,12 @@
 #!/usr/bin/za
 
 module "modules/x11colours" as x11
+use +x11
 
 input filter param 1 is "colour filter"
 
-foreach n in enum_names(ref x11::colour)
-  on n ~ filter do print "{=x11::fg(n)}{n} [#-]"
+foreach n in enum_names(ref colour)
+  on n ~ filter do print "{=fg(n)}{n} [#-]"
 endfor
 print
 

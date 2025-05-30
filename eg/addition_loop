@@ -8,6 +8,7 @@ doc `
 `
 
 module "./modules/timing.mod"
+use +timing
 
 max_count=40_000_000
 input max_count optarg 1
@@ -22,6 +23,6 @@ te=epoch_nano_time()
 
 println "total {a} , loop-count {f}"
 
-timing::report(ts,te,max_count)
+report(ts,te,max_count)
 
 

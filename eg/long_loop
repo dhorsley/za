@@ -3,6 +3,7 @@
 # long loop test - checks base FOR speed.
 
 module "modules/timing.mod" as tim
+use + tim
 
 max_count=100_000_000
 input max_count optarg 1
@@ -22,5 +23,5 @@ interpol(true)
 #
 
 # ops = 1*endfor  ( FOR statement executes once only )
-tim::report(ts,te,max_count,1)
+report(ts,te,max_count,1)
 
