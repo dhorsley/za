@@ -1,10 +1,11 @@
 #!/usr/bin/za
 
 module "syntax_checks/modules/math.mod" as math
+use +math
 
 var x int = 1
 input x param 1
 
-println math::factorial(x)
+println factorial(x)
 
 
