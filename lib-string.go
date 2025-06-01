@@ -704,10 +704,8 @@ func buildStringLib() {
         }
 
         c:=len(ta)-1
-        vlock.Lock()
         vset(nil,evalfs,ident,"F",ta)
         vset(nil,evalfs,ident,"NF",c)
-        vlock.Unlock()
 
         return c, err
     }
