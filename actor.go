@@ -963,7 +963,7 @@ tco_reentry:
         /////// LINE DEBUG //////////////////////////////////////////////////////
         if lineDebug {
             clr:="2"
-            if defining {
+            if defining || statement==C_Define {
                 clr="4"
             }
             pf("[#dim][#7]%20s: %5d : [#"+clr+"]%+v[#-]\n",display_fs,inbound.SourceLine+1,basecode[source_base][parser.pc])
