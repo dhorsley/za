@@ -27,6 +27,8 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
         return true,nil
     }
 
+    var sb str.Builder
+
     for v:=0; v<variants; v+=1 {
         nc,err:=strconv.Atoi(types[next])
         if nc==0 && la==0 {
@@ -65,8 +67,16 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
             case []bool:
                 if types[p]=="[]bool" { n+=1; continue }
             }
-            if reflect.TypeOf(args[n]).String()!=types[p] && types[p]!="any" {
-                type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]))
+            actualType:=reflect.TypeOf(args[n]).String()
+            if actualType != types[p] && types[p]!="any" {
+                // type_errs+=sf("\nargument %d - %s expected (got %s)",n+1,types[p],reflect.TypeOf(args[n]))
+                sb.WriteString("\nargument ")
+                sb.WriteString(strconv.Itoa(n + 1))
+                sb.WriteString(" - ")
+                sb.WriteString(types[p])
+                sb.WriteString(" expected (got ")
+                sb.WriteString(actualType)
+                sb.WriteString(")")
                 tryNext=true
                 break
             }
@@ -76,7 +86,9 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
         if ! tryNext { break }
     }
 
-    type_errs=str.ReplaceAll(type_errs,"interface {}","any")
+    if sb.Len()>0 {
+        type_errs=str.ReplaceAll(sb.String(),"interface {}","any")
+    }
 
     if tryNext || !triedOne {
         return false,errors.New(sf("\nInvalid arguments in %v",name)+type_errs)
