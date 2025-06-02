@@ -8,9 +8,9 @@ import (
     "math"
     "math/big"
     "net/http"
-    "sync"
     "path/filepath"
     str "strings"
+    "sync"
     "unsafe"
     "regexp"
     "crypto/md5"
@@ -839,7 +839,7 @@ func (p *leparser) list_map(left any,right any) any {
     // unreachable: // return nil
 }
 
-
+/*
 func (p *leparser) rcompare (left any,right any,insensitive bool, multi bool) any {
 
     switch left.(type) {
@@ -876,7 +876,44 @@ func (p *leparser) rcompare (left any,right any,insensitive bool, multi bool) an
 
 	return re.MatchString(left.(string))
 }
+*/
 
+func (p *leparser) rcompare(left any, right any, insensitive bool, multi bool) any {
+    switch left.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("regex comparison requires strings"))
+    }
+    switch right.(type) {
+    case string:
+    default:
+        panic(fmt.Errorf("regex comparison requires strings"))
+    }
+
+    insenStr := ""
+    if insensitive { insenStr = "(?i)" }
+    key := insenStr + right.(string)
+
+    // Attempt to load from sync.Map
+    v, ok := ifCompileCache.Load(key)
+    var re *regexp.Regexp
+    if ok {
+        re = v.(*regexp.Regexp)
+    } else {
+        // Compile and store
+        compiled, err := regexp.Compile(key)
+        if err != nil {
+            panic(fmt.Errorf("supplied regex is invalid: %s", right.(string)))
+        }
+        ifCompileCache.Store(key, compiled)
+        re = compiled
+    }
+
+    if multi {
+        return re.FindAllString(left.(string), -1)
+    }
+    return re.MatchString(left.(string))
+}
 
 func (p *leparser) accessArray(left any,right Token) (any) {
 
@@ -2465,7 +2502,7 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
 func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 
     // build token list from string 'ws'
-    toks:=make([]Token,0,6)
+    toks:=make([]Token,0,len(ws)/3+1)
     var cl int16
     var p int
     var t *lcstruct

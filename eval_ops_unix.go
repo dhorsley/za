@@ -10,6 +10,7 @@ import (
     "unsafe"
 )
 
+
 func struct_match(obj any) (name string,count int) {
    
     // get name and types of all fields in the subject struct

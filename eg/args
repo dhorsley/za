@@ -25,16 +25,19 @@ endif
 println "\n2. mandatory parameters"
 println "( not processed in example! )"
 # INPUT colour PARAM 1
-# INPUT number PARAM 2
+# INPUT num PARAM 2
 println "Colour : {colour}"
-println "Number : {number}"
+println "Num    : {num}"
 
 # method 3: optional arguments
 println "\n3. optional parameters"
 INPUT colour OPTARG 1
-INPUT number OPTARG 2
+INPUT num    OPTARG 2
+println "k.colour -> ",colour.kind
+println "k.num    -> ",num.kind
+
 println "Colour : {colour}"
-println "Number : {number}"
+println "Number : {num}"
 
 
 # method 4: traditional arg parsing

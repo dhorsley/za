@@ -11,6 +11,7 @@ import (
 func lgrep(s string,reg string) string {
     list:=str.Split(s,"\n")
     var ns str.Builder
+    ns.Grow(len(s)/4)
     for _,v:=range list {
         if m,_:=regexp.MatchString(reg,v); m {
             ns.WriteString(v+"\n")
@@ -84,6 +85,7 @@ func pad(s string, just int, w int, fill string) string {
 
 func sanitise(s string) string {
     var ns str.Builder
+    ns.Grow(len(s))
     pass:=true
     nest:=0
     for p:=0;p<len(s); p+=1 {
