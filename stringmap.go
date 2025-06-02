@@ -5,53 +5,36 @@ import (
     )
 
 type Lmap struct {
-    sync.RWMutex
-    smap    map[string]uint32
+    m sync.Map // map[string]uint32
 }
 
 func lmcreate(sz int) *Lmap {
-    return &Lmap{smap:make(map[string]uint32,sz)}
+    return &Lmap{}
 }
 
 func (u *Lmap) lmshow() string {
-    return sf("%#v",u.smap)
+    return sf("%#v",u.m)
 }
 
 func (u *Lmap) lmexists(k string) bool {
-    u.RLock()
-    if _,ok:=u.smap[k]; ok {
-        u.RUnlock()
-        return true
-    }
-    u.RUnlock()
-    return false
+    _,ok:=u.m.Load(k)
+    return ok
 }
 
 func (u *Lmap) lmset(k string,v uint32) {
-    u.Lock()
-    u.smap[k] = v
-	u.Unlock()
+    u.m.Store(k,v)
 }
 
 func (u *Lmap) lmget(k string) (tmp uint32,ok bool) {
-    u.RLock()
-    if tmp,ok=u.smap[k]; ok {
-	    u.RUnlock()
-        return tmp,true
+    if v,ok:=u.m.Load(k); ok {
+        return v.(uint32), true
     }
-	u.RUnlock()
     return 0,false
 }
 
 func (u *Lmap) lmdelete(k string) bool {
-    u.Lock()
-    if _,ok:=u.smap[k]; ok {
-        delete(u.smap,k)
-        u.Unlock()
-        return true
-    }
-    u.Unlock()
-    return false
+    _,loaded:=u.m.LoadAndDelete(k)
+    return loaded
 }
 
 

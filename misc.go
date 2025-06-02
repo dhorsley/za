@@ -67,9 +67,12 @@ func dir(filter string) ([]dirent) {
     f.Close()
     if err != nil { return []dirent{} }
 
+    re:=regexp.MustCompile(filter)
+
     var dl []dirent
     for _, file := range files {
-        if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
+        // if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
+        if !re.MatchString(file.Name()) { continue }
         var fs dirent
         fs.name=file.Name()
         fs.size=file.Size()

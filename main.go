@@ -15,9 +15,10 @@ import (
     "os"
     "os/exec"
     "os/signal"
-    "regexp"
+//    "regexp"
     "runtime"
     str "strings"
+    "sync"
     "syscall"
     "time"
 )
@@ -227,8 +228,8 @@ var keywordset map[string]struct{}
 var structmaps map[string][]any
 
 // compile cache for regex operator
-var ifCompileCache map[string]regexp.Regexp
-
+// var ifCompileCache map[string]regexp.Regexp
+var ifCompileCache sync.Map // maps string -> *regexp.Regexp
 
 // repl prompt
 var PromptTemplate string
@@ -419,7 +420,7 @@ func main() {
     structmaps = make(map[string][]any)
 
     // compile cache for regex operator
-    ifCompileCache = make(map[string]regexp.Regexp)
+    // ifCompileCache = make(map[string]regexp.Regexp)
 
     // get terminal dimensions
     MW, MH, _ = GetSize(1)

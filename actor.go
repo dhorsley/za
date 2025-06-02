@@ -3501,6 +3501,19 @@ tco_reentry:
                 }
 
             } else {
+
+                fnlookup.m.Range(func(key, value interface{}) bool {
+                    name := key.(string)
+                    count := value.(uint32)
+                    if count < 2 {
+                        return true // continue
+                    }
+                    ShowDef(name)
+                    return true // keep iterating
+                })
+                pf("\n")
+
+                /*
                 for oq := range fnlookup.smap {
                     if fnlookup.smap[oq] < 2 {
                         continue
@@ -3508,6 +3521,8 @@ tco_reentry:
                     ShowDef(oq)
                 }
                 pf("\n")
+                */
+
             }
 
 

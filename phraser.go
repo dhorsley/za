@@ -82,7 +82,10 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     lstart := start
 
     var tempToken *lcstruct
-    var phrase = Phrase{}
+    // var phrase = Phrase{}
+    phrase := Phrase{
+        Tokens: make([]Token,0,8),
+    }
     var base   = BaseCode{}
 
     tokenType := Error
@@ -97,8 +100,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
     isSource[lmv]=true
 
     fspacelock.Lock()
-    functionspaces[lmv] = []Phrase{}
-    basecode[lmv]=[]BaseCode{}
+    functionspaces[lmv] = make([]Phrase,0,8)
+    basecode[lmv]=make([]BaseCode,0,8)
     fspacelock.Unlock()
 
     addToPhrase:=false

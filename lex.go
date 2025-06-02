@@ -64,7 +64,8 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
     var secondChar byte
     var twoChars bool
     var norepeat string
-    var norepeatMap = make(map[byte]int)
+    // var norepeatMap = make(map[byte]int)
+    var norepeatMap [256]int
     var badFloat,scientific,expectant,hasPoint bool
     var maybeBaseChange, thisHex, thisOct, thisBin bool
     var blockBraceLevel int
