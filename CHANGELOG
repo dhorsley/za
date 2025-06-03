@@ -38,6 +38,16 @@ CHANGE LOG
     * (breaking) moved glob_key() functionality into key()
         - removed glob_key() call
 
+    * added ssort() : this function is for multi-key sorting of []struct types.
+        - e.g. ssort(ary,["b","a"].list_string,[false,true].list_bool)
+        - new_array=ssort(array,field_name_ordered_list,asc_desc_order_list)
+        - the original array is left untouched.
+        - this is probably terribly slow and janky
+            - lots of unsafe/reflection, use at your own risk.
+            - necessary as Za structs are formed as real Go structs, but 
+                without the public/private field name case restrictions.
+        - order booleans are false for descending and true for ascending.
+
     * added time_zone() and time_zone_offset() to lib-date.
         - these return a string (tz name) and an int (tz offset in seconds) respectively.
 

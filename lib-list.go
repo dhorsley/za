@@ -12,7 +12,6 @@ package main
 
 import (
     "errors"
-	"fmt"
     "math"
     "math/big"
     "reflect"
@@ -20,9 +19,12 @@ import (
     "sort"
     str "strings"
     "strconv"
-	// "sync"
+	"sync"
+    "unsafe"
 )
 
+
+var multiSortMu sync.Mutex
 
 type sortStructInt struct {
     k string
@@ -52,124 +54,136 @@ type sortStructFloat struct {
 
 ///////////////////////////////////////////////////////////////////////
 
-type ms_interface any
-type ms_slice []ms_interface
-
-func (ms ms_slice) Less(i, j int) bool {
-
-    if len(sortKeys)==0 {
-        pf("(ssort) no sort keys\n")
-        return true
-    }
-
-    if len(sortKeys)>1 {
-        for currentKey:=0 ; currentKey<len(sortKeys) ; currentKey+=1 {
-            if reflect.ValueOf(ms[i]).FieldByName(sortKeys[currentKey]) == reflect.ValueOf(ms[j]).FieldByName(sortKeys[currentKey]) {
-                pf("(ssort) fields at sort key %d are same. continuing.\n",currentKey)
-                continue
-            }
-            return getLessValue(reflect.ValueOf(ms[i]).FieldByName(sortKeys[currentKey]), reflect.ValueOf(ms[j]).FieldByName(sortKeys[currentKey]))
-        }
-    }
-
-    pf("(ssort) sort key 0 values not the same. returning lesser value.\n")
-	return getLessValue(reflect.ValueOf(ms[i]).FieldByName(sortKeys[0]), reflect.ValueOf(ms[j]).FieldByName(sortKeys[0]))
-
+// readUnexportedField uses unsafe to access an unexported field of an addressable struct.
+func readUnexportedField(v reflect.Value) any {
+	ptr := unsafe.Pointer(v.UnsafeAddr())
+	rv := reflect.NewAt(v.Type(), ptr).Elem()
+	return rv.Interface()
 }
 
-func (ms ms_slice) Len() int {
-	return len(ms)
-}
-
-func (ms ms_slice) Swap(i, j int) {
-	ms[i], ms[j] = ms[j], ms[i]
-}
-
-// @note: this is broken: it sorts by one column, then a different one and so on until done
-//        when it should instead have the Less function comparing subsequent inputSortKeys[] entries
-//        only when Less(i,j) are equal.
-
-// sortKeys : global, race cond.
-
-func MultiSorted(unsortedSlice any, inputSortKeys []string, ascendingSortOrder []bool) ([]ms_interface, error) {
-
-	if reflect.TypeOf(unsortedSlice).Kind() != reflect.Slice {
-		return nil, fmt.Errorf("input is not a slice")
+// getFieldValue extracts the field value as interface, handling private fields via unsafe.
+func getFieldValue(structVal reflect.Value, fieldName string) any {
+	// Try exact match first
+	field := structVal.FieldByName(fieldName)
+	// If not found, try capitalized variant
+	if !field.IsValid() && fieldName != "" {
+		field = structVal.FieldByName(str.Title(fieldName))
+	}
+	if !field.IsValid() {
+		return nil // field does not exist
 	}
 
-    /*
-    // setup wait group
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go copyKeys(&wg, inputSortKeys)
-	var ms ms_slice
-	ms = copyUnsortedSliceToMultiSorted(unsortedSlice)
-	wg.Wait()
-    */
-
-	copyKeys(inputSortKeys)
-	var ms ms_slice
-	ms = copyUnsortedSliceToMultiSorted(unsortedSlice)
-
-    reflectValue := reflect.ValueOf(ms[0]).FieldByName(sortKeys[0])
-    if !reflectValue.IsValid() {
-        return ms, fmt.Errorf("%v, not present (as key) on the input slice", sortKeys[0])
-    }
-    if len(ascendingSortOrder) > 0 {
-        if ascendingSortOrder[0] {
-            sort.Sort(ms)
-        } else {
-            sort.Sort(sort.Reverse(ms))
-        }
-    } else {
-        sort.Sort(ms)
-    }
-
-	return ms, nil
-}
-
-var sortKeys []string
-
-// func copyKeys(wg *sync.WaitGroup, sortKeys []string) {
-func copyKeys(inputSortKeys []string) {
-//	defer wg.Done()
-    sortKeys=[]string{}
-	for _, key := range inputSortKeys {
-		sortKeys = append(sortKeys, key)
+	if field.CanInterface() {
+		return field.Interface()
 	}
+	// Fallback for unexported fields
+	return readUnexportedField(field)
 }
 
-
-func copyUnsortedSliceToMultiSorted(unsortedSlice any) ms_slice {
-	var sortSlice ms_slice
-	reflectCopy := reflect.Indirect(reflect.ValueOf(unsortedSlice))
-	for i := 0; i < reflectCopy.Len(); i++ {
-		sortSlice = append(sortSlice, reflectCopy.Index(i).Interface())
+// getLessValue compares two interface values (already resolved).
+func getLessValue(a, b any) bool {
+	switch ai := a.(type) {
+	case int:
+		return ai < b.(int)
+	case int8:
+		return ai < b.(int8)
+	case int16:
+		return ai < b.(int16)
+	case int32:
+		return ai < b.(int32)
+	case int64:
+		return ai < b.(int64)
+	case uint:
+		return ai < b.(uint)
+	case uint8:
+		return ai < b.(uint8)
+	case uint16:
+		return ai < b.(uint16)
+	case uint32:
+		return ai < b.(uint32)
+	case uint64:
+		return ai < b.(uint64)
+	case float32:
+		return ai < b.(float32)
+	case float64:
+		return ai < b.(float64)
+	case string:
+		return ai < b.(string)
+	case *big.Int:
+		return ai.Cmp(b.(*big.Int)) < 0
+	case *big.Float:
+		return ai.Cmp(b.(*big.Float)) < 0
 	}
-	return sortSlice
+	return false
 }
 
-func getLessValue(i, j reflect.Value) bool {
-	switch i.Kind() {
-	case reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint8:
-		return i.Int() < j.Int()
-	case reflect.Float64:
-		return i.Float() < j.Float()
-    // @todo: add bigi, bigf
-	default:
-		return i.String() < j.String()
+func MultiSorted(inputSlice any, inputSortKeys []string, ascendingSortOrder []bool) ([]any, error) {
+	sliceVal := reflect.ValueOf(inputSlice)
+	if sliceVal.Kind() != reflect.Slice {
+		return nil, errors.New("MultiSorted: inputSlice must be a slice")
 	}
-}
+	if len(ascendingSortOrder) == 0 {
+		ascendingSortOrder = make([]bool, len(inputSortKeys))
+		for i := range ascendingSortOrder {
+			ascendingSortOrder[i] = true
+		}
+	}
+	if len(inputSortKeys) != len(ascendingSortOrder) {
+		return nil, errors.New("MultiSorted: sort keys and sort orders length mismatch")
+	}
 
+	// Shallow copy
+	sliceCopy := reflect.MakeSlice(sliceVal.Type(), sliceVal.Len(), sliceVal.Len())
+	reflect.Copy(sliceCopy, sliceVal)
 
-/*
-func MultiSortHelp() string {
-	return `outputSlice, err := MultiSorted(inputSlice, inputKeys, inputOrder)
-	for i := range outputSlice {
-		outputSlice[i] = outputSlice[i].(desiredType)
-	}`
+	multiSortMu.Lock()
+	defer multiSortMu.Unlock()
+
+	sort.Slice(sliceCopy.Interface(), func(i, j int) bool {
+		vi := sliceCopy.Index(i)
+		vj := sliceCopy.Index(j)
+
+		// Unwrap interfaces
+		if vi.Kind() == reflect.Interface {
+			vi = vi.Elem()
+		}
+		if vj.Kind() == reflect.Interface {
+			vj = vj.Elem()
+		}
+
+		// Create real, addressable struct copies (like 'tmp' in eval.go)
+		tmpi := reflect.New(vi.Type()).Elem()
+		tmpi.Set(vi)
+		tmpj := reflect.New(vj.Type()).Elem()
+		tmpj.Set(vj)
+
+		// Compare based on priority keys
+		for idx, key := range inputSortKeys {
+			fi := getFieldValue(tmpi, key)
+			fj := getFieldValue(tmpj, key)
+
+			if fi == nil || fj == nil {
+				continue
+			}
+
+			if getLessValue(fi, fj) {
+				return ascendingSortOrder[idx]
+			} else if getLessValue(fj, fi) {
+				return !ascendingSortOrder[idx]
+			}
+			// else equal, check next key
+		}
+
+		return false
+	})
+
+	// Convert sorted copy to []any
+	out := make([]any, sliceCopy.Len())
+	for i := 0; i < sliceCopy.Len(); i++ {
+		out[i] = sliceCopy.Index(i).Interface()
+	}
+	return out, nil
 }
-*/
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -1413,34 +1427,6 @@ func buildListLib() {
         return nil,err
 
     }
-
-
-/*
-    slhelp["ssort"] = LibHelp{in: "list,field_name[,bool_reverse]", out: "[]any", action: "Sorts a [#i1]list[#i0] of structs, on a given field name, in ascending (true) or descending (false) order."}
-    stdlib["ssort"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("ssort",args,2,
-            "3","[]any","[]string","[]bool",
-            "2","[]any","[]string"); !ok { return nil,err }
-
-        list := args[0]
-        field_list:= args[1].([]string)
-        direction_list:=[]bool{}
-        if len(args) == 3 {
-            direction_list = args[2].([]bool)
-        }
-
-        outputSlice,err:=MultiSorted(list,field_list,direction_list)
-        if err==nil {
-            ret_ar:=make([]any,len(outputSlice))
-            for i:=range outputSlice {
-                ret_ar[i]=outputSlice[i].(any)
-            }
-            return ret_ar,nil
-        }
-        return nil,err
-
-    }
-*/
 
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
