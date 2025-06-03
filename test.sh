@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
 cp tests/* .
-go test
+go test -v
 rm -f *_test.go
 

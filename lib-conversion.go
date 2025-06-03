@@ -110,14 +110,18 @@ func buildConversionLib() {
     slhelp["s2m"] = LibHelp{in: "struct", out: "map", action: "Convert a struct to map."}
     stdlib["s2m"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("s2m",args,1,"1","any"); !ok { return nil,err }
-        // @todo: reflect test for struct type before conversion
+        if reflect.TypeOf(args[0]).Kind() != reflect.Struct {
+            return nil, errors.New("s2m: expected struct argument")
+        }
         return s2m(args[0]),nil
     }
 
     slhelp["m2s"] = LibHelp{in: "map,struct_example", out: "struct", action: "Convert a map to struct following field form of [#i1]struct_example[#i0]."}
     stdlib["m2s"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("m2s",args,1,"2","map[string]interface {}","any"); !ok { return nil,err }
-        // @todo: reflect test for struct input type before conversion
+        if reflect.TypeOf(args[1]).Kind() != reflect.Struct {
+            return nil, errors.New("m2s: expected second argument to be struct")
+        }
         m:=m2s(args[0].(map[string]any),args[1])
         return m,nil
     }
