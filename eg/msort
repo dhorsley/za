@@ -1,0 +1,19 @@
+
+struct q
+    a int
+    b string
+es
+
+var a []any
+
+a[0]=q(42,"test")
+a[1]=q(42,"abc")
+a[2]=q(3,"blah")
+a[3]=q(4,"fooblah")
+a[4]=q(1,"fooblah")
+
+foreach z in ssort(a,["b","a"].list_string,[false,true].list_bool)
+    println z
+endfor
+
+
