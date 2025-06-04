@@ -194,6 +194,8 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
         _,_,left,_=p.blockCommand(ct.tokText,false)
     }
 
+    var right any
+
     // binaries
     binloop1:
     for {
@@ -224,6 +226,57 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
                 continue
             }
 
+        case SYM_LAND:
+
+            if !asBool(left) {
+                // short-circuit: parse right just to consume tokens
+                _, _ = p.dparse(p.prectable[token.tokType] + 1, true)
+                left = false
+                continue
+            }
+
+            right, err = p.dparse(p.prectable[token.tokType] + 1, false)
+            if err != nil { panic(err) }
+            left = asBool(right)
+            continue
+
+        case SYM_LOR, C_Or:
+
+            if lstr, lok := left.(string); lok {
+                if lstr != "" {
+                    // left is non-empty → short-circuit: parse right just to consume tokens
+                    _, _ = p.dparse(p.prectable[token.tokType] + 1, true)
+                    left = lstr
+                    continue
+                }
+
+                // left is empty → parse right to get fallback
+                right, err = p.dparse(p.prectable[token.tokType] + 1, false)
+                if err != nil { panic(err) }
+
+                if rstr, rok := right.(string); rok {
+                    left = rstr
+                } else {
+                    left = right
+                }
+                continue
+            }
+
+            // fallback for booleans
+            if asBool(left) {
+                // short-circuit: left is true, must parse right to consume tokens
+                _, _ = p.dparse(p.prectable[token.tokType] + 1, true)
+                left = true
+                continue
+            }
+
+            // left is false: parse right normally
+            right, err = p.dparse(p.prectable[token.tokType] + 1, false)
+            if err != nil { panic(err) }
+            left = asBool(right)
+            continue
+
+
         case SYM_PP,SYM_MM:
             left = p.postIncDec(token)
             continue
@@ -243,7 +296,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
             continue
         case SYM_DOT:
             p.std_faulted=false
-            // pf("toks->%+v\n",p.tokens)
             left,_ = p.accessFieldOrFunc(left,p.next().tokText)
             continue
         case C_Is:
@@ -262,7 +314,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
             panic(fmt.Errorf("Incomplete expression, terminates early (on token-2,token-1,token: %s %s %s)",tokNames[p.prev2.tokType],tokNames[p.prev.tokType],tokNames[token.tokType]))
         }
 
-        var right any
         right,err = p.dparse(p.prectable[token.tokType] + 1,false)
 
         switch token.tokType {
@@ -289,10 +340,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
             left = ev_mod(left,right)
 
         case O_Query:                       // ternary 
-            /*
-            pf("(o_query) right is %v\n",right)
-            pf("(o_query) tokens -> %+v\n",p.tokens)
-            */
             left=p.tern_if(left,right)
 
         case SYM_EQ:
@@ -307,23 +354,6 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
             left = compare(left,right,SYM_LE)
         case SYM_GE:
             left = compare(left,right,SYM_GE)
-
-        case SYM_LOR,C_Or: // OR and AND here for non-bool types
-
-            switch left.(type) {
-            case string:
-                switch right.(type) {
-                case string:
-                    if left.(string)=="" {
-                        return right.(string),nil
-                    }
-                    return left.(string),nil
-                }
-            }
-            left = asBool(left) || asBool(right)
-
-        case SYM_LAND:
-            left = asBool(left) && asBool(right)
 
         case SYM_Tilde:
             left = p.rcompare(left,right,false,false)
