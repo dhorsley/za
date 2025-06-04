@@ -31,6 +31,8 @@ CHANGE LOG
         - just checking if the issue still presents.
         - this cannot be combined with a break count integer.
 
+    * finally got around to adding short-circuit evaluation and fixes for bool evaluation chaining.
+
 
     library
     -------
