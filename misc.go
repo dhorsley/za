@@ -109,7 +109,7 @@ func showCallChain(base string) {
     evalChainTotal:=0
     pf("[#CTE][#5]")
     calllock.RLock()
-    for k,v:=range callChain {
+    for k,v:=range errorChain {
         if k==0 { continue }
         if v.registrant==ciEval { evalChainTotal++ }
         if evalChainTotal>5 {

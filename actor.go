@@ -585,8 +585,8 @@ var sglock     = &sync.RWMutex{}  // setglob lock
 
 // for error reporting : keeps a list of parent->child function calls
 //   will probably blow up during recursion.
-
-var callChain []chainInfo
+//   errorChain tracks the full call stack (with caller/line info) for error reporting only.
+var errorChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
@@ -611,15 +611,12 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     if caller_str=="global" { caller_str="main" }
 
     if calltable[csloc].caller!=0 {
-        callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+        errorChain=append(errorChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
     }
 
     // profile setup
-    var callChainList []string
-    for _,j:=range callChain {
-        callChainList=append(callChainList,j.name)
-    }
-    callChainList=append(callChainList,display_fs)
+
+    pushToCallChain(display_fs)
 
     if enableProfiling {
         startProfile(caller_str)
@@ -631,7 +628,6 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     parser:=&leparser{}
     parser.ident=ident
     parser.kind_override=kind_override
-    parser.callchain=callChainList
 
     calllock.Unlock()
 
@@ -4871,24 +4867,28 @@ tco_reentry:
     }
 
     // Determine if this is a recursive call (same function appears more than once in the callChain)
-    if enableProfiling && isRecursive(callChainList) {
-        // Record or flag that this profile is recursive
-        pathKey := collapseCallPath(callChainList)
-        profileMu.Lock()
-        if _, exists := profiles[pathKey]; !exists {
-            profiles[pathKey] = &ProfileContext{Times: make(map[string]time.Duration)}
+    if enableProfiling {
+        chain := getCallChain()
+        if isRecursive(chain) {
+            // Record or flag that this profile is recursive
+            pathKey := collapseCallPath(chain)
+            profileMu.Lock()
+            if _, exists := profiles[pathKey]; !exists {
+                profiles[pathKey] = &ProfileContext{Times: make(map[string]time.Duration)}
+            }
+            profiles[pathKey].Times["recursive"] = 1 // special marker
+            profileMu.Unlock()
+        } else {
+            // Record execution time only if not a recursive call
+            recordExclusiveExecutionTime(chain, time.Since(startTime))
         }
-        profiles[pathKey].Times["recursive"] = 1 // special marker
-        profileMu.Unlock()
-        // Record execution time only if not a recursive call
-        recordExclusiveExecutionTime(callChainList, time.Since(startTime))
     }
-
 
     calllock.Lock()
     // fmt.Printf("Releasing fs %d (%s). Call table :\n%#v\n",ifs,fs,calltable[ifs])
     if calltable[csloc].caller!=0 {
-        callChain=callChain[:len(callChain)-1]
+        errorChain=errorChain[:len(errorChain)-1]
+        popCallChain()
     }
     calllock.Unlock()
 
