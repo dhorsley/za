@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
     "runtime"
 	"sort"
     "context"
@@ -18,7 +17,6 @@ var (
 	profiles        = make(map[string]*ProfileContext)
 	enableProfiling bool // set via flag
     profilerKey     = profilerKeyType{}
-    // goroutineCallChains sync.Map // map[goroutineID][]string
     profileCallChains sync.Map
 )
 
@@ -33,22 +31,6 @@ func withProfilerContext(parent context.Context) context.Context {
     return context.WithValue(parent, profilerKey, id)
 }
 
-/*
-func CallWithContext(ctx context.Context, fnName string, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
-
-    if enableProfiling {
-        pushToCallChain(ctx, fnName)
-    }
-
-    retval_count,endFunc,method_result = Call(varmode,ident,csloc,registrant,method,method_value,kind_override,arg_names,va...)
-
-    if enableProfiling {
-        popCallChain(ctx)
-    }
-
-    return retval_count,endFunc,method_result
-}
-*/
 
 // getGoroutineID returns the current goroutine's unique ID
 func getGoroutineID() uint64 {
@@ -199,7 +181,6 @@ func recordPhase(ctx context.Context, phase string, elapsed time.Duration) {
 
     callChain:=getCallChain(ctx)
 
-    // pathKey := buildCallPathKey(callChain)
     pathKey := collapseCallPath(callChain)
 
     profileMu.Lock()
@@ -215,7 +196,6 @@ func recordExclusiveExecutionTime(ctx context.Context, callChain []string, elaps
         return
     }
 
-    // pathKey := collapseCallPath(callChain)
     pathKey := collapseCallPath(getCallChain(ctx))
 
     profileMu.Lock()
@@ -231,7 +211,7 @@ func dumpProfileSummary() {
     profileMu.Lock()
     defer profileMu.Unlock()
 
-    fmt.Println("Profile Summary:")
+    pf("\n[#bold][#5]Profile Summary[#boff][#-]\n\n")
 
     var keys []string
     for k := range profiles {
@@ -240,6 +220,10 @@ func dumpProfileSummary() {
     sort.Strings(keys)
 
     for _, path := range keys {
+
+        if len(path)==0 {
+            continue
+        }
 
         p:=profiles[path]
 
@@ -259,19 +243,19 @@ func dumpProfileSummary() {
         indentLevel := str.Count(path, ">")
         indent := str.Repeat("  ", indentLevel)
 
-
         if isRecursive {
-            fmt.Printf("%s%s (recursive [unreliable timings]):\n", indent, path)
+            pf("%s[#2]%s[#-] (recursive [unreliable timings]):\n", indent, path)
         } else {
-            fmt.Printf("%s%s:\n", indent, path)
+            pf("%s[#4]%s[#-]:\n", indent, path)
         }
 
         for phase, t := range p.Times {
             if phase=="recursive" {
                 continue
             }
-            fmt.Printf("%s  %s: %v\n", indent, phase, t)
+            pf("%s  %s: %v\n", indent, phase, t)
         }
+        pln()
     }
 }
 
