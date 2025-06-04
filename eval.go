@@ -11,6 +11,7 @@ import (
     "path/filepath"
     str "strings"
     "sync"
+//    "time"
     "unsafe"
     "regexp"
     "crypto/md5"
@@ -62,6 +63,7 @@ type leparser struct {
     namespacing bool                    // pending namespace completion?
     namespace_pos int16                 // token position of namespace start
 
+    callchain   []string
     std_call    bool                    // if a call to stdlib has been made
     std_faulted bool                    // and if it faulted.
 
@@ -2501,6 +2503,8 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
 // evaluate an expression string
 func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
 
+    // startTime:=time.Now()
+
     // build token list from string 'ws'
     toks:=make([]Token,0,len(ws)/3+1)
     var cl int16
@@ -2541,6 +2545,8 @@ func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
         }
     }
 
+    // recordPhase(parser.callchain,"execution time",time.Since(startTime))
+
     return result, err
 
 }
@@ -2569,6 +2575,8 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
 
+    // startTime:=time.Now()
+
     eqPos:=-1
     var newEval []Token
     var err error
@@ -2582,6 +2590,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
             p.prev=tks[0]
             p.postIncDec(tks[1])
             expr.assign=true
+            // recordPhase(p.callchain,"execution time",time.Since(startTime))
             return expr
         }
     }
@@ -2665,6 +2674,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
                         p.report(-1,"you may only amend existing variables outside of local scope")
                         expr.evalError=true
                         finish(false,ERR_SYNTAX)
+                        // recordPhase(p.callchain,"execution time",time.Since(startTime))
                         return expr
                     }
                 }
@@ -2684,6 +2694,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
     if err!=nil {
         expr.evalError=true
         expr.errVal=err
+        // recordPhase(p.callchain,"execution time",time.Since(startTime))
         return expr
     }
 
@@ -2693,6 +2704,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
         p.doAssign(lfs,lident,fs,rident,tks,&expr,eqPos)
     }
 
+    // recordPhase(p.callchain,"execution time",time.Since(startTime))
     return expr
 
 }

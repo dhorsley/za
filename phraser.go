@@ -3,6 +3,7 @@ package main
 import (
     str "strings"
     "sync"
+    "time"
     "fmt"
 )
 
@@ -78,11 +79,12 @@ func getFileFromIFS(ifs uint32) (string) {
 
 func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
+    startTime:=time.Now()
+
     pos := start
     lstart := start
 
     var tempToken *lcstruct
-    // var phrase = Phrase{}
     phrase := Phrase{
         Tokens: make([]Token,0,8),
     }
@@ -286,6 +288,8 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
         }
 
     }
+
+    recordPhase([]string{fs},"parse",time.Since(startTime))
 
     return badword, eof
 
