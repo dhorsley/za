@@ -1375,13 +1375,20 @@ func main() {
             vset(nil,1,&mident,"_stdin", string(data))
         }
 
+        var startTime time.Time
         if enableProfiling {
+            startTime=time.Now() 
             startProfile("main")
         }
 
         Call(MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
+
+        if enableProfiling {
+            recordExclusiveExecutionTime([]string{"main"}, time.Since(startTime))
+        }
+
 
     }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+    "runtime"
 	"sort"
 	"sync"
 	"time"
@@ -12,10 +13,55 @@ var (
 	profileMu       sync.Mutex
 	profiles        = make(map[string]*ProfileContext)
 	enableProfiling bool // set via flag
+    goroutineCallChains sync.Map // map[goroutineID][]string
 )
 
 type ProfileContext struct {
 	Times map[string]time.Duration
+}
+
+
+// getGoroutineID returns the current goroutine's unique ID
+func getGoroutineID() uint64 {
+    // Use runtime.Stack to extract the goroutine ID
+    var buf [64]byte
+    n := runtime.Stack(buf[:], false)
+    var id uint64
+    for _, b := range buf[:n] {
+        if b >= '0' && b <= '9' {
+            id = id*10 + uint64(b-'0')
+        } else if id > 0 {
+            break
+        }
+    }
+    return id
+}
+
+func getCallChain() []string {
+    id := getGoroutineID()
+    if v, ok := goroutineCallChains.Load(id); ok {
+        return v.([]string)
+    }
+    return []string{}
+}
+
+func setCallChain(chain []string) {
+    id := getGoroutineID()
+    goroutineCallChains.Store(id, chain)
+}
+
+func pushToCallChain(name string) {
+    chain := getCallChain()
+    chain = append(chain, name)
+    setCallChain(chain)
+}
+
+func popCallChain() {
+    chain := getCallChain()
+    if len(chain) > 0 {
+        chain = chain[:len(chain)-1]
+    }
+    setCallChain(chain)
 }
 
 
@@ -82,6 +128,35 @@ func startProfile(caller string) {
 	profileMu.Unlock()
 }
 
+func stopProfile(name string, startTime time.Time) {
+    if !enableProfiling {
+        return
+    }
+
+    // Lock to safely update the profile map
+    profileMu.Lock()
+    defer profileMu.Unlock()
+
+    // Collapse the current call chain to form the path key
+    pathKey := name
+
+    // Check if the profile entry exists
+    ctx, exists := profiles[pathKey]
+    if !exists {
+        // Create a new profile entry if it doesn’t exist
+        ctx = &ProfileContext{Times: make(map[string]time.Duration)}
+        profiles[pathKey] = ctx
+    }
+
+    // Record the exclusive execution time for this profile
+    duration := time.Since(startTime)
+    if d, ok := ctx.Times[name]; ok {
+        ctx.Times[name] = d + duration
+    } else {
+        ctx.Times[name] = duration
+    }
+}
+
 // Called inside any phase you want to profile
 func recordPhase(callChain []string, phase string, elapsed time.Duration) {
     if !enableProfiling {
@@ -104,7 +179,8 @@ func recordExclusiveExecutionTime(callChain []string, elapsed time.Duration) {
         return
     }
 
-    pathKey := collapseCallPath(callChain)
+    // pathKey := collapseCallPath(callChain)
+    pathKey := collapseCallPath(getCallChain())
 
     profileMu.Lock()
     if _, exists := profiles[pathKey]; !exists {
