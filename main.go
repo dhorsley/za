@@ -28,7 +28,7 @@ import (
     "log"
     "net/http"
     _ "net/http/pprof"
-    "runtime/trace"
+    // "runtime/trace"
 )
 
 
@@ -186,6 +186,7 @@ var coproc_reset  bool          // for resetting locked coproc instances
 var coproc_active bool          // 
 var no_shell      bool          // disable sub-shell
 var shellrep      bool          // enable shell command reporting
+
 
 // Global: behaviours
 var permit_uninit               bool    // default:false, will evaluation cause a run-time failure if it
@@ -497,7 +498,7 @@ func main() {
     var a_debug          =    flag.Int("d",0,"set debug level (0:off)")
     var a_lineDebug      =   flag.Bool("D",false,"enable line debug")
     var a_profile        =   flag.Bool("p",false,"enable profiler")
-    var a_trace          =   flag.Bool("P",false,"enable trace capture")
+    // var a_trace          =   flag.Bool("P",false,"enable trace capture")
     var a_test           =   flag.Bool("t",false,"enable tests")
     var a_test_file      = flag.String("o","za_test.out","set the test output filename")
     var a_filename       = flag.String("f","","input filename, when present. default is stdin")
@@ -518,10 +519,16 @@ func main() {
     var a_var_refs       = flag.String("V","","find all references to a variable")
     var a_var_warn       =   flag.Bool("W",false,"emit errors when addition contains string mixed types")
     var a_enable_asserts =   flag.Bool("a",false,"enable assertions. default is false, unless -t specified.")
+    var a_enable_profiling=  flag.Bool("P",false, "enable profiling of Za interpreter phases.")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
     exec_file_name := ""
+
+    // phase profiling flag
+    if *a_enable_profiling {
+        enableProfiling=true
+    }
 
     // mono flag
     ansiMode=true
@@ -610,6 +617,7 @@ func main() {
         gvset("mark_time", true)
     }
 
+    /*
     // trace capture - not advertised.
     if *a_trace {
         tf, err := os.Create("trace.out")
@@ -625,6 +633,7 @@ func main() {
             tf.Close()
         }()
     }
+    */
 
     // pprof - not advertised.
     if *a_profile {
@@ -1365,9 +1374,20 @@ func main() {
         if *a_program!="" {
             vset(nil,1,&mident,"_stdin", string(data))
         }
+
+        if enableProfiling {
+            startProfile("main")
+        }
+
         Call(MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
+
+    }
+
+    // profiling summary
+    if enableProfiling {
+        dumpProfileSummary()
     }
 
     // a little paranoia to finish things off...

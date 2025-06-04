@@ -75,6 +75,13 @@ CHANGE LOG
     other
     -----
 
+    * added a small profiler, invoked with the -P CLI option. 
+        - this returns a breakdown of parse and execution times for each function called.
+            - this includes the execution times of stdlib calls as well as user defined calls.
+            - the output should be hierarchical, following the stored call chain.
+        - this option replaces a previously undocumented -P call that generated Go trace output.
+        - i don't recommend using this option for deeply recursive programs!
+
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
 
