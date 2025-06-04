@@ -1631,7 +1631,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             if enableProfiling {
                 startTime:=time.Now()
                 rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
-                recordPhase(p.callchain,name,time.Since(startTime))
+                recordPhase(getCallChain(),name,time.Since(startTime))
             } else {
                 rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
             }
@@ -1682,7 +1682,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             if enableProfiling {
                 startTime:=time.Now()
                 res, err = f(p.namespace,evalfs,ident,args...)
-                recordPhase(p.callchain,name,time.Since(startTime))
+                recordPhase(getCallChain(),name,time.Since(startTime))
             } else {
                 res, err = f(p.namespace,evalfs,ident,args...)
             } 
