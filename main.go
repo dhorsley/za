@@ -1382,22 +1382,10 @@ func main() {
             vset(nil,1,&mident,"_stdin", string(data))
         }
 
-        var startTime time.Time
-        if enableProfiling {
-            startTime=time.Now() 
-            startProfile("main")
-            Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
-        } else {
-            Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
-        }
+        Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
 
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
-
-        if enableProfiling {
-            recordExclusiveExecutionTime(ctx,[]string{"main"}, time.Since(startTime))
-        }
-
 
     }
 
