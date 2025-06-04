@@ -632,7 +632,9 @@ func buildInternalLib() {
         p.ident=ident
         p.fs=evalfs
         p.namespace=ns
+        p.ctx=withProfilerContext(context.Background())
         calllock.RUnlock()
+
         // pf("-- [eval] ns %s fs %s q:|%s|\n",ns,evalfs,args[0].(string))
         return ev(p,evalfs,args[0].(string))
     }
