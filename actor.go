@@ -19,6 +19,7 @@ import (
     str "strings"
     "time"
     "unsafe"
+    "context"
 )
 
 func showIdent(ident *[]Variable) {
@@ -150,11 +151,11 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
 
 
 
-func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) (chan any,string) {
+func task(caller uint32, base uint32, endClose bool, callname string, iargs ...any) (chan any,string) {
 
     r:=make(chan any)
 
-    loc,id := GetNextFnSpace(true,call+"@",call_s{prepared:true,base:base,caller:caller,gc:true,gcShyness:1000})
+    loc,id := GetNextFnSpace(true,callname+"@",call_s{prepared:true,base:base,caller:caller,gc:true,gcShyness:1000})
     // fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
     go func() {
@@ -162,7 +163,22 @@ func task(caller uint32, base uint32, endClose bool, call string, iargs ...any) 
         var ident = make([]Variable,identInitialSize)
 
         atomic.AddInt32(&concurrent_funcs,1)
-        rcount,_,_:=Call(MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+
+        var rcount byte
+
+        ctx := withProfilerContext(context.Background())
+        if enableProfiling {
+            id_for_profiling:="async_task: "+str.Replace(id,"@"," instance ",-1)
+            pf("id->%s\n",id_for_profiling)
+            startTime := time.Now()
+            startProfile(id_for_profiling)
+            pushToCallChain(ctx, id_for_profiling)
+            rcount,_,_=Call(ctx, MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+            popCallChain(ctx)
+            recordExclusiveExecutionTime(ctx,[]string{id_for_profiling}, time.Since(startTime))
+        } else {
+            rcount,_,_=Call(ctx,MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+        }
 
         switch rcount {
         case 0:
@@ -590,7 +606,7 @@ var errorChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
+func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -616,9 +632,8 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
 
     // profile setup
 
-    pushToCallChain(display_fs)
-
     if enableProfiling {
+        pushToCallChain(ctx,display_fs)
         startProfile(caller_str)
     }
     startTime:=time.Now()
@@ -628,6 +643,7 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     parser:=&leparser{}
     parser.ident=ident
     parser.kind_override=kind_override
+    parser.ctx = ctx
 
     calllock.Unlock()
 
@@ -3922,11 +3938,11 @@ tco_reentry:
 
                 if debug_level>10 {
                     start := time.Now()
-                    phraseParse(modRealAlias, string(mod), 0)
+                    phraseParse(parser.ctx,modRealAlias, string(mod), 0)
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod translation for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    phraseParse(modRealAlias, string(mod), 0)
+                    phraseParse(parser.ctx,modRealAlias, string(mod), 0)
                 }
                 modcs := call_s{}
                 modcs.base = loc
@@ -3940,11 +3956,11 @@ tco_reentry:
 
                 if debug_level>10 {
                     start := time.Now()
-                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
+                    Call(ctx,MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
                     elapsed := time.Since(start)
                     pf("(timings-module) elapsed in mod execution for '%s' : %v\n",modRealAlias,elapsed)
                 } else {
-                    Call(MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
+                    Call(ctx,MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
                 }
 
                 calllock.Lock()
@@ -4868,7 +4884,7 @@ tco_reentry:
 
     // Determine if this is a recursive call (same function appears more than once in the callChain)
     if enableProfiling {
-        chain := getCallChain()
+        chain := getCallChain(ctx)
         if isRecursive(chain) {
             // Record or flag that this profile is recursive
             pathKey := collapseCallPath(chain)
@@ -4880,7 +4896,7 @@ tco_reentry:
             profileMu.Unlock()
         } else {
             // Record execution time only if not a recursive call
-            recordExclusiveExecutionTime(chain, time.Since(startTime))
+            recordExclusiveExecutionTime(ctx,chain, time.Since(startTime))
         }
     }
 
@@ -4888,7 +4904,9 @@ tco_reentry:
     // fmt.Printf("Releasing fs %d (%s). Call table :\n%#v\n",ifs,fs,calltable[ifs])
     if calltable[csloc].caller!=0 {
         errorChain=errorChain[:len(errorChain)-1]
-        popCallChain()
+        if enableProfiling {
+            popCallChain(ctx)
+        }
     }
     calllock.Unlock()
 

@@ -15,6 +15,7 @@ import (
     "unsafe"
     "regexp"
     "crypto/md5"
+    "context"
 )
 
 
@@ -54,6 +55,7 @@ type leparser struct {
     fs          uint32                  // working function space
     mident      uint32                  // fs of main() (1 or 2 depending on interactive mode)
                                         // @note: mident is necessary to say whether globals are stored under fs #1 or #2
+    ctx         context.Context
     len         int16                   // assigned length to save calling len() during parsing
     line        int16                   // shadows lexer source line
     pc          int16                   // shadows program counter (pc)
@@ -402,6 +404,7 @@ func (p *leparser) list_filter(left any,right any) any {
     reduceparser=&leparser{}
     reduceparser.ident=p.ident
     reduceparser.fs=p.fs
+    reduceparser.ctx = p.ctx
 
     switch left.(type) {
 
@@ -642,6 +645,7 @@ func (p *leparser) list_map(left any,right any) any {
     reduceparser=&leparser{}
     reduceparser.ident=p.ident
     reduceparser.fs=p.fs
+    reduceparser.ctx = p.ctx
 
     // to generalise the []dirent case to all []structs we need:
     //  1. something to detect field access in the condition ahead of the switch/case.
@@ -2418,6 +2422,8 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
     interparse.fs=fs
     interparse.ident=ident
     interparse.namespace=ns
+    interparse.ctx = withProfilerContext(context.Background())
+
     if interactive {
         interparse.mident=1
     } else {
