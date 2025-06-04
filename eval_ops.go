@@ -9,6 +9,7 @@ import (
     "strconv"
     str "strings"
     "fmt"
+    "time"
 )
 
 
@@ -1606,17 +1607,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         var lmv uint32
         var isFunc bool
 
-        // var fm Funcdef
-        // @note: is this still correct? why are we checking for dot here
-        /*
-        if str.Contains(name,".") {
-            fm,isFunc = funcmap[name]
-            name=fm.name
-            if isFunc { lmv=fm.fs }
-        } else {
-            lmv, isFunc = fnlookup.lmget(name)
-        }
-        */
         lmv, isFunc = fnlookup.lmget(name)
 
         // check if exists in user defined function space
@@ -1637,7 +1627,14 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             var ident = make([]Variable,identInitialSize)
 
             var rcount uint8
-            rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+
+            if enableProfiling {
+                startTime:=time.Now()
+                rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+                recordPhase(p.callchain,name,time.Since(startTime))
+            } else {
+                rcount,_,method_result=Call(MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+            }
 
             // handle the returned result, if present.
             calllock.Lock()
@@ -1678,8 +1675,18 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             res,err := kind(struct_name,args...)
             return res,err!=nil,method_result
         } else {
+
             // normal stdlib call
-            res, err := f(p.namespace,evalfs,ident,args...)
+            var res any
+            var err error
+            if enableProfiling {
+                startTime:=time.Now()
+                res, err = f(p.namespace,evalfs,ident,args...)
+                recordPhase(p.callchain,name,time.Since(startTime))
+            } else {
+                res, err = f(p.namespace,evalfs,ident,args...)
+            } 
+
             if err != nil {
                 p.std_faulted=true
                 pf("%s\n",err)

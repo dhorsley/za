@@ -605,14 +605,34 @@ func Call(varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, meth
     display_fs,_:=numlookup.lmget(calltable[csloc].base)
 
     calllock.Lock()
+
     // register call
     caller_str,_:=numlookup.lmget(calltable[csloc].caller)
-    callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+    if caller_str=="global" { caller_str="main" }
+
+    if calltable[csloc].caller!=0 {
+        callChain=append(callChain,chainInfo{loc:calltable[csloc].caller,name:caller_str,registrant:registrant})
+    }
+
+    // profile setup
+    var callChainList []string
+    for _,j:=range callChain {
+        callChainList=append(callChainList,j.name)
+    }
+    callChainList=append(callChainList,display_fs)
+
+    if enableProfiling {
+        startProfile(caller_str)
+    }
+    startTime:=time.Now()
+
 
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.ident=ident
     parser.kind_override=kind_override
+    parser.callchain=callChainList
+
     calllock.Unlock()
 
     lastlock.Lock()
@@ -4850,9 +4870,26 @@ tco_reentry:
 
     }
 
+    // Determine if this is a recursive call (same function appears more than once in the callChain)
+    if enableProfiling && isRecursive(callChainList) {
+        // Record or flag that this profile is recursive
+        pathKey := collapseCallPath(callChainList)
+        profileMu.Lock()
+        if _, exists := profiles[pathKey]; !exists {
+            profiles[pathKey] = &ProfileContext{Times: make(map[string]time.Duration)}
+        }
+        profiles[pathKey].Times["recursive"] = 1 // special marker
+        profileMu.Unlock()
+        // Record execution time only if not a recursive call
+        recordExclusiveExecutionTime(callChainList, time.Since(startTime))
+    }
+
+
     calllock.Lock()
     // fmt.Printf("Releasing fs %d (%s). Call table :\n%#v\n",ifs,fs,calltable[ifs])
-    callChain=callChain[:len(callChain)-1]
+    if calltable[csloc].caller!=0 {
+        callChain=callChain[:len(callChain)-1]
+    }
     calllock.Unlock()
 
     return retval_count,endFunc,method_result
