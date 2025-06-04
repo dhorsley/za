@@ -2,6 +2,7 @@
 package main
 
 import "testing"
+import "context"
 
 func TestPhraseParseSimple(t *testing.T) {
     // 1) Map "test" → 0 in fnlookup
@@ -11,7 +12,8 @@ func TestPhraseParseSimple(t *testing.T) {
     functionspaces[0] = []Phrase{}
 
     // 3) Parse "foo;" starting at 0; ignore eof return
-    bad, _ := phraseParse("test", "foo;", 0)
+    ctx := withProfilerContext(context.Background())
+    bad, _ := phraseParse(ctx,"test", "foo;", 0)
     if bad {
         t.Fatalf("phraseParse returned badword=true unexpectedly")
     }
