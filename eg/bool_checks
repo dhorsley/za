@@ -1,0 +1,64 @@
+#!/usr/bin/za
+
+# Define a side-effect function
+def expensiveCall()
+  println "expensiveCall was executed"
+  return true
+end
+
+println "=== Testing chained short-circuiting (AND) ==="
+# Short-circuit should skip expensiveCall() entirely
+if false && expensiveCall() && expensiveCall()
+  println "This should NOT appear"
+endif
+
+# Should evaluate first two expensiveCall() but skip third
+def alwaysTrue()
+  println "alwaysTrue was executed"
+  return true
+end
+
+if alwaysTrue() && alwaysTrue() && false && expensiveCall()
+  println "This should NOT appear"
+endif
+
+# Should evaluate all
+if alwaysTrue() && alwaysTrue() && true
+  println "This should appear because all are true"
+endif
+
+println "=== Testing chained short-circuiting (OR) ==="
+# Should skip expensiveCall() entirely
+if true || expensiveCall() || expensiveCall()
+  println "This should appear, but expensiveCall() is NOT executed"
+endif
+
+# Should evaluate until true is found
+if false || alwaysTrue() || expensiveCall()
+  println "This should appear because alwaysTrue() was executed"
+endif
+
+println "=== Testing 'string || string' fallback behavior ==="
+# First string empty, fallback to second
+var s1 string
+var s2 string
+var result string
+
+s1 = ""
+s2 = "fallback"
+result = s1 || s2
+println "Result should be 'fallback' -> ", result
+
+# First string non-empty, so fallback not used
+s1 = "primary"
+s2 = "fallback"
+result = s1 || s2
+println "Result should be 'primary' -> ", result
+
+# Both strings empty
+s1 = ""
+s2 = ""
+result = s1 || s2
+println "Result should be '' -> '", result, "'"
+
+
