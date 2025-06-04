@@ -4,22 +4,51 @@ import (
 	"fmt"
     "runtime"
 	"sort"
+    "context"
 	"sync"
+	"sync/atomic"
 	"time"
     str "strings"
 )
+
+type profilerKeyType struct{}
 
 var (
 	profileMu       sync.Mutex
 	profiles        = make(map[string]*ProfileContext)
 	enableProfiling bool // set via flag
-    goroutineCallChains sync.Map // map[goroutineID][]string
+    profilerKey     = profilerKeyType{}
+    // goroutineCallChains sync.Map // map[goroutineID][]string
+    profileCallChains sync.Map
 )
 
 type ProfileContext struct {
 	Times map[string]time.Duration
 }
 
+var nextProfileID uint64 = 1
+
+func withProfilerContext(parent context.Context) context.Context {
+    id := atomic.AddUint64(&nextProfileID, 1)
+    return context.WithValue(parent, profilerKey, id)
+}
+
+/*
+func CallWithContext(ctx context.Context, fnName string, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
+
+    if enableProfiling {
+        pushToCallChain(ctx, fnName)
+    }
+
+    retval_count,endFunc,method_result = Call(varmode,ident,csloc,registrant,method,method_value,kind_override,arg_names,va...)
+
+    if enableProfiling {
+        popCallChain(ctx)
+    }
+
+    return retval_count,endFunc,method_result
+}
+*/
 
 // getGoroutineID returns the current goroutine's unique ID
 func getGoroutineID() uint64 {
@@ -37,31 +66,37 @@ func getGoroutineID() uint64 {
     return id
 }
 
-func getCallChain() []string {
-    id := getGoroutineID()
-    if v, ok := goroutineCallChains.Load(id); ok {
+func getCallChain(ctx context.Context) []string {
+    id, ok := ctx.Value(profilerKey).(uint64)
+    if !ok {
+        return []string{}
+    }
+    if v, ok := profileCallChains.Load(id); ok {
         return v.([]string)
     }
     return []string{}
 }
 
-func setCallChain(chain []string) {
-    id := getGoroutineID()
-    goroutineCallChains.Store(id, chain)
+func setCallChain(ctx context.Context, chain []string) {
+    id, ok := ctx.Value(profilerKey).(uint64)
+    if !ok {
+        return
+    }
+    profileCallChains.Store(id, chain)
 }
 
-func pushToCallChain(name string) {
-    chain := getCallChain()
+func pushToCallChain(ctx context.Context, name string) {
+    chain := getCallChain(ctx)
     chain = append(chain, name)
-    setCallChain(chain)
+    setCallChain(ctx, chain)
 }
 
-func popCallChain() {
-    chain := getCallChain()
+func popCallChain(ctx context.Context) {
+    chain := getCallChain(ctx)
     if len(chain) > 0 {
         chain = chain[:len(chain)-1]
     }
-    setCallChain(chain)
+    setCallChain(ctx, chain)
 }
 
 
@@ -110,7 +145,6 @@ func collapseCallPath(callChain []string) string {
         }
     }
 
-    // collapsed = append(collapsed, last+" (recursive)") // [unreliable timings])")
     collapsed = append(collapsed, last)
     return str.Join(collapsed, " > ")
 }
@@ -158,10 +192,12 @@ func stopProfile(name string, startTime time.Time) {
 }
 
 // Called inside any phase you want to profile
-func recordPhase(callChain []string, phase string, elapsed time.Duration) {
+func recordPhase(ctx context.Context, phase string, elapsed time.Duration) {
     if !enableProfiling {
         return
     }
+
+    callChain:=getCallChain(ctx)
 
     // pathKey := buildCallPathKey(callChain)
     pathKey := collapseCallPath(callChain)
@@ -174,13 +210,13 @@ func recordPhase(callChain []string, phase string, elapsed time.Duration) {
     profileMu.Unlock()
 }
 
-func recordExclusiveExecutionTime(callChain []string, elapsed time.Duration) {
+func recordExclusiveExecutionTime(ctx context.Context, callChain []string, elapsed time.Duration) {
     if !enableProfiling {
         return
     }
 
     // pathKey := collapseCallPath(callChain)
-    pathKey := collapseCallPath(getCallChain())
+    pathKey := collapseCallPath(getCallChain(ctx))
 
     profileMu.Lock()
     if _, exists := profiles[pathKey]; !exists {

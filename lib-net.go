@@ -432,9 +432,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 ifn,_=fnlookup.lmget(fn)
                 loc,_ := GetNextFnSpace(true,fn+"@",call_s{prepared:true,base: ifn, caller: evalfs})
 
+                ctx:=withProfilerContext(context.Background())
                 var ident = make([]Variable,identInitialSize)
                 atomic.AddInt32(&concurrent_funcs,1)
-                rcount,_,_:=Call(MODE_NEW, &ident, loc, ciLnet, false, nil, "", []string{}, webcallstruct)
+                rcount,_,_:=Call(ctx,MODE_NEW, &ident, loc, ciLnet, false, nil, "", []string{}, webcallstruct)
                 atomic.AddInt32(&concurrent_funcs,-1)
 
                 calllock.Lock()

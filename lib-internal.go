@@ -9,6 +9,7 @@ import (
     "fmt"
     "io/ioutil"
     "math/big"
+    "context"
     "os"
     "unicode/utf8"
     "net/http" // for key()
@@ -656,11 +657,13 @@ func buildInternalLib() {
             }
         }
 
+        ctx:=withProfilerContext(context.Background())
+
         // allocate function space for source
         sloc,sfn:=GetNextFnSpace(true,"exec@",call_s{prepared:true,caller:evalfs})
 
         // parse
-        badword,_:=phraseParse(sfn, code, 0)
+        badword,_:=phraseParse(ctx,sfn, code, 0)
         if badword {
             return nil,errors.New("exec could not lex input.")
         }
@@ -683,9 +686,9 @@ func buildInternalLib() {
         atomic.AddInt32(&concurrent_funcs,1)
         var rcount uint8
         if len(args)>1 {
-            rcount,_,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, args[1:]...)
+            rcount,_,_=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, args[1:]...)
         } else {
-            rcount,_,_=Call(MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{})
+            rcount,_,_=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{})
         }
 
         execMode=false
