@@ -169,7 +169,6 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         ctx := withProfilerContext(context.Background())
         if enableProfiling {
             id_for_profiling:="async_task: "+str.Replace(id,"@"," instance ",-1)
-            pf("id->%s\n",id_for_profiling)
             startTime := time.Now()
             startProfile(id_for_profiling)
             pushToCallChain(ctx, id_for_profiling)

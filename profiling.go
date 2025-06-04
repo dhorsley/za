@@ -244,16 +244,18 @@ func dumpProfileSummary() {
         indent := str.Repeat("  ", indentLevel)
 
         if isRecursive {
-            pf("%s[#2]%s[#-] (recursive [unreliable timings]):\n", indent, path)
+            pf("%s[#bold][#2]%s[#-] (recursive [unreliable timings]):\n", indent, path)
         } else {
-            pf("%s[#4]%s[#-]:\n", indent, path)
+            pf("%s[#bold][#4]%s[#-]:\n", indent, path)
         }
 
         for phase, t := range p.Times {
             if phase=="recursive" {
                 continue
             }
-            pf("%s  %s: %v\n", indent, phase, t)
+            colour:="[#1]"
+            if phase=="execution time" { colour="[#6]" }
+            pf("%s "+colour+"%s[#-]: %v\n", indent, phase, t)
         }
         pln()
     }
