@@ -11,6 +11,7 @@ package main
 */
 
 import (
+    "context"
     "errors"
     "math"
     "math/big"
@@ -283,6 +284,8 @@ func buildListLib() {
         calllock.RLock()
         reduceparser.ident=ident
         reduceparser.fs=evalfs
+        reduceparser.ctx=withProfilerContext(context.Background())
+
         calllock.RUnlock()
 
         switch args[0].(type) {

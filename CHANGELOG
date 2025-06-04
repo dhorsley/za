@@ -87,6 +87,7 @@ CHANGE LOG
         - Updated all `recordPhase`, `recordExclusiveExecutionTime`, and profiler-related calls to use the new goroutine-aware stack.
         - Validated correct profiler behavior in normal, recursive, and async test cases.
         - Preserved error call chain reporting (`errorChain`) as before.
+        - some further changes made to track calls using a context instead of the current horror show that was slowing things down.
 
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.

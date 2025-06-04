@@ -21,6 +21,7 @@ import (
     "sync"
     "syscall"
     "time"
+    "context"
 )
 
 // for profiling:
@@ -484,11 +485,17 @@ func main() {
     }
     gvset("@ct_info", BuildComment)
 
+
+    // create default context for main
+    ctx := withProfilerContext(context.Background())
+
     // initialise global parser
     parser=&leparser{}
+    parser.ctx=ctx
 
     // interpolation parser
     interparse=&leparser{}
+    interparse.ctx=ctx
 
     // arg parsing
     var a_help           =   flag.Bool("h",false,"help page")
@@ -894,7 +901,7 @@ func main() {
 
                 var trident = make([]Variable,identInitialSize)
 
-                Call(MODE_NEW, &trident, loc, ciTrap, false, nil, "", []string{}, iargs...)
+                Call(ctx, MODE_NEW, &trident, loc, ciTrap, false, nil, "", []string{}, iargs...)
                 if calltable[loc].retvals!=nil {
                     sigintreturn := calltable[loc].retvals.([]any)
                     if len(sigintreturn)>0 {
@@ -1141,9 +1148,9 @@ func main() {
 
             // startup script processing:
             if !started && hasScript {
-                phraseParse("main", startScript, 0)
+                phraseParse(ctx, "main", startScript, 0)
                 basemodmap[1]="main"
-                _,endFunc,_ = Call(MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
+                _,endFunc,_ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
                 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1260,13 +1267,13 @@ func main() {
 
             if nestAccept==0 {
                 fileMap[0]=exec_file_name
-                phraseParse("main", totalInput, 0)
+                phraseParse(ctx,"main", totalInput, 0)
                 currentModule="main"
                 parser.namespace="main"
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
-                _,endFunc,_ = Call(MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
+                _,endFunc,_ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
@@ -1353,11 +1360,11 @@ func main() {
         fileMap[1]=exec_file_name
         if debug_level>10 {
             start:=time.Now()
-            phraseParse("main", input, 0)
+            phraseParse(ctx,"main", input, 0)
             elapsed:=time.Since(start)
             pf("(timings-main) elapsed in parse translation for main : %v\n",elapsed)
         } else {
-            phraseParse("main", input, 0)
+            phraseParse(ctx,"main", input, 0)
         }
 
         // initialise the main program
@@ -1379,14 +1386,16 @@ func main() {
         if enableProfiling {
             startTime=time.Now() 
             startProfile("main")
+            Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
+        } else {
+            Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
         }
 
-        Call(MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
         calltable[mainloc].gcShyness=0
         calltable[mainloc].gc=false
 
         if enableProfiling {
-            recordExclusiveExecutionTime([]string{"main"}, time.Since(startTime))
+            recordExclusiveExecutionTime(ctx,[]string{"main"}, time.Since(startTime))
         }
 
 

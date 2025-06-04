@@ -5,6 +5,7 @@ import (
     "sync"
     "time"
     "fmt"
+    "context"
 )
 
 // global binding list - populated during phrasing
@@ -77,7 +78,7 @@ func getFileFromIFS(ifs uint32) (string) {
 //
 
 
-func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
+func phraseParse(ctx context.Context, fs string, input string, start int) (badword bool, eof bool) {
 
     startTime:=time.Now()
 
@@ -289,7 +290,7 @@ func phraseParse(fs string, input string, start int) (badword bool, eof bool) {
 
     }
 
-    recordPhase([]string{fs},"parse",time.Since(startTime))
+    recordPhase(ctx,"parse",time.Since(startTime))
 
     return badword, eof
 
