@@ -30,6 +30,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
     // short circuit pure numeric literals and const names
     if l==1 {
         if toks[0].tokType==NumericLiteral { return toks[0].tokVal,nil }
+        if toks[0].tokType==StringLiteral  { return toks[0].tokText,nil }
         switch toks[0].subtype {
         case subtypeConst:
             return toks[0].tokVal,nil
