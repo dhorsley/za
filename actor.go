@@ -791,18 +791,16 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
         testlock.Unlock()
     }
 
+/* AI
     // missing varargs in call result in nil assignments back to caller:
     farglock.RLock()
-    /*
-    fmt.Printf("[call-fa] ifs#%d source_base -> %+v\n",ifs,source_base)
-    fmt.Printf("[call-fa] ifs#%d fargs       -> %+v\n",ifs,functionArgs[source_base].args)
-    */
     if len(functionArgs[source_base].args)>len(va) {
         for e:=0; e<=(len(functionArgs[source_base].args)-len(va)); e+=1 {
             va=append(va,nil)
         }
     }
     farglock.RUnlock()
+*/
 
     // generic nesting indentation counter
     // this being local prevents re-entrance i guess
@@ -841,6 +839,31 @@ tco_reentry:
     //  from each va value.
     // - functionArgs[] created at definition time from the call signature
 
+    farglock.RLock()
+    if method { va=va[1:] }
+
+    for q, argName := range functionArgs[source_base].args {
+        var value any
+        if q < len(va) {
+            // Use provided argument
+            value = va[q]
+        } else if functionArgs[source_base].hasDefault[q] {
+            // Use default
+            value = functionArgs[source_base].defaults[q]
+        } else {
+            farglock.RUnlock()
+            parser.report(-1, sf("missing required argument: %s", argName))
+            finish(false, ERR_SYNTAX)
+            return
+        }
+        // pf("Assigning argName=%v, value=%v\n",argName,value)
+        vset(nil, ifs, ident, argName, value)
+    }
+
+    farglock.RUnlock()
+
+
+/* AI
     if len(va) > 0 {
         farglock.RLock()
         if method { va=va[1:] } // remove self at pos 0
@@ -857,6 +880,7 @@ tco_reentry:
         }
         farglock.RUnlock()
     }
+*/
 
     /*
     if method {
@@ -3210,8 +3234,8 @@ tco_reentry:
                             break
                         }
                         // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
-                            group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, we.text)
+                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s (tried this: %+v)[#-]",
+                            group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, we.text, basecode[source_base][parser.pc].Original)
                         testsFailed+=1
                         appendToTestReport(test_output_file,ifs, 1+inbound.SourceLine, test_report)
                         temp_test_assert := test_assert
@@ -3452,20 +3476,30 @@ tco_reentry:
 
                 loc, _ := GetNextFnSpace(true,definitionName,call_s{prepared:false})
                 var dargs []string
+                var hasDefault []bool
+                var defaults []any
 
                 if inbound.TokenCount > 2 {
-                    // params supplied:
-                    argString := crushEvalTokens(inbound.Tokens[2:]).text
-                    argString = stripOuter(argString, '(')
-                    argString = stripOuter(argString, ')')
+                    // process tokens directly (no string splitting!)
+                    tokens := inbound.Tokens[2:]
 
-                    if len(argString)>0 {
-                        dargs = str.Split(argString, ",")
-                        for karg,_:=range dargs {
-                            dargs[karg]=str.Trim(dargs[karg]," \t")
-                            // pf("-- set darg in ifs %d of %d with '%+v'\n",loc,karg,dargs[karg])
-                            bind_int(loc,dargs[karg])
+                    // remove outer parens if present
+                    if tokens[0].tokType == LParen && tokens[len(tokens)-1].tokType == RParen {
+                        tokens = tokens[1 : len(tokens)-1]
+                    }
+
+                    var currentArgTokens []Token
+                    for _, tok := range tokens {
+                        if tok.tokType == O_Comma {
+                            parser.processArgumentTokens(currentArgTokens, &dargs, &hasDefault, &defaults, loc,ifs,ident)
+                            currentArgTokens = nil
+                        } else {
+                            currentArgTokens = append(currentArgTokens, tok)
                         }
+                    }
+                    // process the final argument
+                    if len(currentArgTokens) > 0 {
+                        parser.processArgumentTokens(currentArgTokens, &dargs, &hasDefault, &defaults, loc,ifs,ident)
                     }
                 }
 
@@ -3490,9 +3524,8 @@ tco_reentry:
                 }
 
                 basemodmap[loc]=parser.namespace
-
                 sourceMap[loc]=source_base     // relate defined base 'loc' to parent 'ifs' instance's 'base' source
-                // pf("[sm] loc %d -> %v\n",loc,source_base)
+
                 fspacelock.Lock()
                 functionspaces[loc] = []Phrase{}
                 basecode[loc] = []BaseCode{}
@@ -3500,6 +3533,8 @@ tco_reentry:
 
                 farglock.Lock()
                 functionArgs[loc].args   = dargs
+                functionArgs[loc].hasDefault = hasDefault
+                functionArgs[loc].defaults = defaults
                 farglock.Unlock()
 
                 // pf("defining new function %s (%d)\n",definitionName,loc)
@@ -5160,5 +5195,52 @@ func (parser *leparser) console_output(tokens []Token,ifs uint32,ident *[]Variab
     }
 }
 
+func joinTokens(tokens []Token) string {
+    var sb str.Builder
+    for _, t := range tokens {
+        sb.WriteString(t.tokText)
+    }
+    return str.Trim(sb.String(), " \t")
+}
+
+
+func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, hasDefault *[]bool, defaults *[]any, loc uint32,ifs uint32,ident *[]Variable) {
+    eqPos := -1
+    for i, t := range tokens {
+        if t.tokType == O_Assign {
+            eqPos = i
+            break
+        }
+    }
+
+    var argName string
+
+    if eqPos != -1 {
+        // Default value present
+        argName = joinTokens(tokens[0:eqPos])
+        defaultExprTokens := tokens[eqPos+1:]
+
+        // Evaluate
+        evaluated := parser.wrappedEval(ifs, ident, ifs, ident, defaultExprTokens)
+        if evaluated.evalError {
+            parser.report(-1, sf("Error evaluating default for argument '%s': %v", argName, evaluated.errVal))
+            finish(false, ERR_EVAL)
+            return
+        }
+
+        *dargs = append(*dargs, argName)
+        *hasDefault = append(*hasDefault, true)
+        *defaults = append(*defaults, evaluated.result)
+    } else {
+        // No default
+        argName = joinTokens(tokens)
+        *dargs = append(*dargs, argName)
+        *hasDefault = append(*hasDefault, false)
+        *defaults = append(*defaults, nil)
+    }
+
+    // Bind argument name to local scope
+    bind_int(loc, argName)
+}
 
 

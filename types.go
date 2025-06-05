@@ -33,6 +33,8 @@ func (p BaseCode) String() string {
 type fa_s struct { // function args struct
     module  int
     args    []string
+    defaults []any
+    hasDefault []bool
 }
 
 // ExpressionFunction can be called from within expressions.
