@@ -178,7 +178,7 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
             popCallChain(ctx)
             recordExclusiveExecutionTime(ctx,[]string{id_for_profiling}, time.Since(startTime))
         } else {
-            rcount,_,_,_=Call(ctx,MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+            rcount,_,_,errVal=Call(ctx,MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
         }
         if errVal!=nil {
             panic(errors.New(sf("call error in async task %s",id)))
