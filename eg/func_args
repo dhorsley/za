@@ -1,0 +1,76 @@
+#!/usr/bin/za
+
+# Function with one required and two optional arguments
+def test_func(a, b=42, c="hello")
+  return a, b, c
+end
+
+# Function with one optional argument
+def test_nil(a, b="default")
+  return a, b
+end
+
+# Function with optional argument that includes a quoted string with commas
+def test_string(s="1,2,3")
+  return s
+end
+
+# Group: "Defaults"
+
+TEST AllArgs group "Defaults" assert continue
+  a, b, c = test_func(1, 2, "world")
+  ASSERT a==1
+  ASSERT b==2
+  ASSERT c=="world"
+ENDTEST
+
+TEST OmitC group "Defaults" assert continue
+  a, b, c = test_func(1, 2)
+  println "a=",a 
+  println "b=",b 
+  println "c=",c 
+  ASSERT a==1
+  ASSERT b==2
+  ASSERT c=="hello"
+ENDTEST
+
+TEST OmitBandC group "Defaults" assert continue
+  a, b, c = test_func(1)
+  ASSERT a==1
+  ASSERT b==42
+  ASSERT c=="hello"
+ENDTEST
+
+TEST ExplicitNil group "Defaults" assert continue
+  a, b = test_nil(1, nil)
+    println "a=",a,",b=",b
+    ASSERT a==1
+    ASSERT b==nil
+ENDTEST
+
+TEST OmittedOptional group "Defaults" assert continue
+    a, b = test_nil(1)
+    println "a=",a,",b=",b
+    ASSERT a==1
+    ASSERT b=="default"
+ENDTEST
+
+TEST QuotedStringDefault group "Defaults" assert continue
+  s = test_string()
+    println "in quotedStringDefault test : returned value of s from test_string():"
+    println "s value : ",s
+    println "s type  : ",s.kind
+  ASSERT s=="1,2,3"
+ENDTEST
+
+TEST QuotedStringOverride group "Defaults" assert continue
+  s = test_string("abc,def")
+  ASSERT s=="abc,def"
+ENDTEST
+
+TEST MissingA group "Defaults" assert continue
+    # ASSERT ERROR test_func()
+    println "skipping MissingA test as to ASSERT ERROR yet."
+ENDTEST
+
+
