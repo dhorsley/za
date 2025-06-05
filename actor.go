@@ -20,6 +20,7 @@ import (
     "time"
     "unsafe"
     "context"
+    "errors"
 )
 
 func showIdent(ident *[]Variable) {
@@ -165,6 +166,7 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         atomic.AddInt32(&concurrent_funcs,1)
 
         var rcount byte
+        var errVal error
 
         ctx := withProfilerContext(context.Background())
         if enableProfiling {
@@ -172,13 +174,15 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
             startTime := time.Now()
             startProfile(id_for_profiling)
             pushToCallChain(ctx, id_for_profiling)
-            rcount,_,_=Call(ctx, MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+            rcount,_,_,errVal=Call(ctx, MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
             popCallChain(ctx)
             recordExclusiveExecutionTime(ctx,[]string{id_for_profiling}, time.Since(startTime))
         } else {
-            rcount,_,_=Call(ctx,MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
+            rcount,_,_,_=Call(ctx,MODE_NEW, &ident, loc, ciAsyn, false, nil, "", []string{}, iargs...)
         }
-
+        if errVal!=nil {
+            panic(errors.New(sf("call error in async task %s",id)))
+        }
         switch rcount {
         case 0:
             r<-struct{l uint32;r any}{loc,nil}
@@ -605,7 +609,7 @@ var errorChain []chainInfo
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
-func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any) {
+func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, va ...any) (retval_count uint8,endFunc bool,method_result any,callErr error) {
 
     /*
     dispifs,_:=fnlookup.lmget(calltable[csloc].fs)
@@ -669,9 +673,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
             // fall back to shell command?
             if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
                 cmd:=basecode[source_base][parser.pc].Original
-                // pf("<fallback executing : %v>\n",cmd)
-                // prevcap,_:=gvget("@commandCapture")
-                // gvset("@commandCapture",false)
 
                 s:=interpolate(currentModule,1,&mident,cmd)
                 s=str.TrimRight(s,"\n")
@@ -696,11 +697,13 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print("\n") }
                     row=MH-BMARGIN
                 }
-                // gvset("@commandCapture",prevcap.(bool))
-                // pf("<fallback complete.>\n")
             } else {
-                // if parser.std_call && interactive && permit_cmd_fallback {
-                // }
+
+                if !enforceError {
+                    callErr = errors.New(sf("suppressed panic: %v",r))
+                    return
+                }
+
                 parser.hard_fault=false
                 if _,ok:=r.(runtime.Error); ok {
                     parser.report(inbound.SourceLine,sf("\n%v\n",r))
@@ -841,9 +844,13 @@ tco_reentry:
             value = functionArgs[source_base].defaults[q]
         } else {
             farglock.RUnlock()
-            parser.report(-1, sf("missing required argument: %s", argName))
-            finish(false, ERR_SYNTAX)
-            return
+            if enforceError {
+                parser.report(-1, sf("missing required argument: %s", argName))
+                finish(false, ERR_SYNTAX)
+                return
+            } else {
+                panic(errors.New(sf("missing required argument: %s",argName)))
+            }
         }
         // pf("Assigning argName=%v, value=%v\n",argName,value)
         vset(nil, ifs, ident, argName, value)
@@ -851,31 +858,6 @@ tco_reentry:
 
     farglock.RUnlock()
 
-
-/* AI
-    if len(va) > 0 {
-        farglock.RLock()
-        if method { va=va[1:] } // remove self at pos 0
-        for q, _ := range va {
-            if q>=len(functionArgs[source_base].args) { break }
-            if len(arg_names)>0 {
-                // pf("(fa1) %s %v\n",arg_names[q],va[q])
-                vset(nil,ifs,ident,arg_names[q],va[q])
-            } else {
-                fa:=functionArgs[source_base].args[q]
-                // pf("(fa2) %s %v\n",fa,va[q])
-                vset(nil,ifs,ident,fa,va[q])
-            }
-        }
-        farglock.RUnlock()
-    }
-*/
-
-    /*
-    if method {
-        pf("ident post fargs: %#v\n",*ident)
-    }
-    */
 
     if len(functionspaces[source_base])>32767 {
         parser.report(-1,"function too long!")
@@ -3182,73 +3164,82 @@ tco_reentry:
         case C_Assert:
 
             if inbound.TokenCount < 2 {
-                parser.report(inbound.SourceLine,"Insufficient arguments supplied to ASSERT")
+                parser.report(inbound.SourceLine, "Insufficient arguments supplied to ASSERT")
                 finish(false, ERR_ASSERT)
+                break
+            }
+
+            // Determine if this is ASSERT ERROR or normal ASSERT
+            isAssertError := inbound.TokenCount > 2 && inbound.Tokens[1].tokText == "ERROR"
+
+            var exprTokens []Token
+            if isAssertError {
+                exprTokens = inbound.Tokens[2:]
             } else {
+                exprTokens = inbound.Tokens[1:]
+            }
 
-                cet := crushEvalTokens(inbound.Tokens[1:])
-                we = parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens[1:])
+            // Evaluate once
+            oldEnforceError:=enforceError
+            enforceError=false
+            we := parser.wrappedEval(ifs, ident, ifs, ident, exprTokens)
+            enforceError=oldEnforceError
 
+            // Non-test mode: exit early with lightweight checks
+            if !under_test {
+                if isAssertError {
+                    if !we.evalError {
+                        parser.report(inbound.SourceLine, "ASSERT ERROR: expression did not throw an error")
+                        finish(false, ERR_ASSERT)
+                    }
+                    // Passed: errored as expected
+                    break
+                }
+
+                // Normal ASSERT
                 if we.assign {
-                    // someone typo'ed a condition 99.9999% of the time
-                    parser.report(inbound.SourceLine,"[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
-                    finish(false,ERR_ASSERT)
+                    parser.report(inbound.SourceLine, "[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
+                    finish(false, ERR_ASSERT)
                     break
                 }
-
                 if we.evalError {
-                    parser.report(inbound.SourceLine,"Could not evaluate expression in ASSERT statement")
-                    finish(false,ERR_EVAL)
+                    parser.report(inbound.SourceLine, "Could not evaluate expression in ASSERT statement")
+                    finish(false, ERR_EVAL)
                     break
                 }
-
-                testlock.Lock()
-                switch we.result.(type) {
-                case bool:
-                    var test_report string
-
-                    group_name_string := ""
-                    if test_group != "" {
-                        group_name_string += test_group + "/"
-                    }
-                    if test_name != "" {
-                        group_name_string += test_name
-                    }
-
-                    if !we.result.(bool) {
-                        if !under_test {
-                            parser.report(inbound.SourceLine,sf("Could not assert! ( %s )", cet.text))
-                            finish(false, ERR_ASSERT)
-                            testlock.Unlock()
-                            break
-                        }
-                        // under test
-                        test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s (tried this: %+v)[#-]",
-                            group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine, we.text, basecode[source_base][parser.pc].Original)
-                        testsFailed+=1
-                        appendToTestReport(test_output_file,ifs, 1+inbound.SourceLine, test_report)
-                        temp_test_assert := test_assert
-                        if fail_override != "" {
-                            temp_test_assert = fail_override
-                        }
-                        switch temp_test_assert {
-                        case "fail":
-                            parser.report(inbound.SourceLine,sf("Could not assert! (%s)", we.text))
-                            finish(false, ERR_ASSERT)
-                        case "continue":
-                            parser.report(inbound.SourceLine,sf("Assert failed (%s), but continuing.", we.text))
-                        }
-                    } else {
-                        if under_test {
-                            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
-                                group_name_string, getReportFunctionName(ifs,false), 1+inbound.SourceLine,cet.text)
-                            testsPassed+=1
-                            appendToTestReport(test_output_file,ifs, parser.pc, test_report)
-                        }
-                    }
+                if b, ok := we.result.(bool); !ok || !b {
+                    parser.report(inbound.SourceLine, "Could not assert! (assertion failed)")
+                    finish(false, ERR_ASSERT)
                 }
-                testlock.Unlock()
+                break
+            }
 
+            // Under test: use full test reporting
+            if isAssertError {
+                if we.evalError {
+                    handleTestResult(ifs, true, inbound.SourceLine, "ASSERT ERROR", "expression threw an error as expected")
+                } else {
+                    handleTestResult(ifs, false, inbound.SourceLine, "ASSERT ERROR", "expression did not throw an error")
+                }
+                break
+            }
+
+            // Regular ASSERT with full test reporting
+            cet := crushEvalTokens(exprTokens)
+            if we.assign {
+                parser.report(inbound.SourceLine, "[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
+                finish(false, ERR_ASSERT)
+                break
+            }
+            if we.evalError {
+                parser.report(inbound.SourceLine, "Could not evaluate expression in ASSERT statement")
+                finish(false, ERR_EVAL)
+                break
+            }
+            if b, ok := we.result.(bool); !ok || !b {
+                handleTestResult(ifs, false, inbound.SourceLine, cet.text, sf("Could not assert! (%s)", we.text))
+            } else {
+                handleTestResult(ifs, true, inbound.SourceLine, cet.text, cet.text)
             }
 
 
@@ -4933,7 +4924,7 @@ tco_reentry:
     }
     calllock.Unlock()
 
-    return retval_count,endFunc,method_result
+    return retval_count,endFunc,method_result,callErr
 
 }
 
@@ -5232,4 +5223,45 @@ func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, h
     bind_int(loc, argName)
 }
 
+
+func handleTestResult(ifs uint32, passed bool, sourceLine int16, exprText string, msg string) {
+  testlock.Lock()
+  defer testlock.Unlock()
+
+  group_name_string := ""
+  if test_group != "" {
+    group_name_string += test_group + "/"
+  }
+  if test_name != "" {
+    group_name_string += test_name
+  }
+
+  var test_report string
+  if passed {
+    if under_test {
+      test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
+        group_name_string, getReportFunctionName(ifs, false), 1+sourceLine, msg)
+      testsPassed++
+      appendToTestReport(test_output_file, ifs, parser.pc, test_report)
+    }
+  } else {
+    if under_test {
+      test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
+        group_name_string, getReportFunctionName(ifs, false), 1+sourceLine, msg)
+      testsFailed++
+      appendToTestReport(test_output_file, ifs, 1+sourceLine, test_report)
+    }
+    temp_test_assert := test_assert
+    if fail_override != "" {
+      temp_test_assert = fail_override
+    }
+    switch temp_test_assert {
+    case "fail":
+      parser.report(sourceLine, msg)
+      finish(false, ERR_ASSERT)
+    case "continue":
+      parser.report(sourceLine, msg+" (but continuing)")
+    }
+  }
+}
 

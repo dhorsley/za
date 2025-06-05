@@ -6,7 +6,7 @@ define humansize(i,prec,unit)
     return format( "%." + prec + "f %s" ,i,unit)
 end
 
-define report(ts,te,max_count,op_count)
+define report(ts,te,max_count,op_count=nil)
     dur=time_diff(te,ts)/1000000
     println format("\nduration       [#5]%0.3f s[#-]",dur)
     println format("iterations     %v",humansize(max_count.as_float,3,""))

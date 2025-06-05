@@ -43,6 +43,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
     p.len    = int16(l)
     p.pos    = -1
 
+    // pf("\n(eval) about to dparse with : %+v\n",toks)
     return p.dparse(0,false)
 }
 
@@ -134,7 +135,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     p.pos+=1
 
     ct:=&p.tokens[p.pos]
-    // pf("nt->%s\n",(*ct).tokText)
+    // pf("(dparse) next token->%s\n",(*ct).tokText)
 
     // unaries
     switch (*ct).tokType {
@@ -305,7 +306,10 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
         case LParen:
             switch left.(type) {
             case string:
-                left,_ = p.buildStructOrFunction(left,token)
+                left,err = p.buildStructOrFunction(left,token)
+                if err!=nil {
+                    return nil,err
+                }
                 continue
             }
 
@@ -1093,7 +1097,7 @@ func (p *leparser) accessArray(left any,right Token) (any) {
 }
 
 
-func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
+func (p *leparser) buildStructOrFunction(left any,right Token) (any,error) {
 
     name:=left.(string)
     isStruct:=false
@@ -1150,7 +1154,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
             }
             dp,err:=p.dparse(0,false)
             if err!=nil {
-                return nil,true
+                return nil,err
             }
             iargs=append(iargs,dp)
             if p.peek().tokType!=O_Comma {
@@ -1313,7 +1317,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
             panic(err.Error())
         }
 
-        return t.IValue,false
+        return t.IValue,nil
 
     }
 
@@ -1346,7 +1350,11 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,bool) {
         }
     }
 
-    res,err,_:=p.callFunctionExt(p.fs,p.ident,name,false,nil,"",arg_names,iargs)
+    res,_,_,err:=p.callFunctionExt(p.fs,p.ident,name,false,nil,"",arg_names,iargs)
+    if err!=nil {
+        return nil,err
+    }
+
     return res,err
 
 }
@@ -1826,7 +1834,7 @@ func (p *leparser) command() (string) {
 
 func (p *leparser) identifier(token *Token) (any) {
 
-    // pf("(id, got token -> %#v)\n",token)
+    // pf("(identifier) got token -> %#v)\n",token)
 
     switch token.subtype {
     case subtypeConst:
@@ -2608,8 +2616,6 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 
     // search for any assignment operator +=,-=,*=,/=,%=
     // compound the terms beyond the assignment symbol and eval them.
-
-    // startTime:=time.Now()
 
     eqPos:=-1
     var newEval []Token

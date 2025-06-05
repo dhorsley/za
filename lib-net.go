@@ -435,8 +435,12 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 ctx:=withProfilerContext(context.Background())
                 var ident = make([]Variable,identInitialSize)
                 atomic.AddInt32(&concurrent_funcs,1)
-                rcount,_,_:=Call(ctx,MODE_NEW, &ident, loc, ciLnet, false, nil, "", []string{}, webcallstruct)
+                rcount,_,_,errVal:=Call(ctx,MODE_NEW, &ident, loc, ciLnet, false, nil, "", []string{}, webcallstruct)
                 atomic.AddInt32(&concurrent_funcs,-1)
+
+                if errVal!=nil {
+                    panic(sf("error in web router called function (%s)",fn))
+                }
 
                 calllock.Lock()
                 tmp:=calltable[loc].retvals
