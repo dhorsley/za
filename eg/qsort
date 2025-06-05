@@ -14,7 +14,7 @@ end
 
 epoch_nano_time().seed
 
-reps=100
+reps=50
 input reps optarg 1
 
 var arr [1000] int
