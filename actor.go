@@ -791,17 +791,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
         testlock.Unlock()
     }
 
-/* AI
-    // missing varargs in call result in nil assignments back to caller:
-    farglock.RLock()
-    if len(functionArgs[source_base].args)>len(va) {
-        for e:=0; e<=(len(functionArgs[source_base].args)-len(va)); e+=1 {
-            va=append(va,nil)
-        }
-    }
-    farglock.RUnlock()
-*/
-
     // generic nesting indentation counter
     // this being local prevents re-entrance i guess
     var depth int
