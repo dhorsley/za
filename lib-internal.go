@@ -686,11 +686,16 @@ func buildInternalLib() {
 
         // execute code
         atomic.AddInt32(&concurrent_funcs,1)
+
         var rcount uint8
         if len(args)>1 {
-            rcount,_,_=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, args[1:]...)
+            rcount,_,_,err=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, args[1:]...)
         } else {
-            rcount,_,_=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{})
+            rcount,_,_,err=Call(ctx,MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{})
+        }
+
+        if err!=nil {
+            return nil,err
         }
 
         execMode=false

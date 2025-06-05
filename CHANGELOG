@@ -94,6 +94,23 @@ CHANGE LOG
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
 
+    * (experimental) added support for default arguments in function signatures.
+        - normal usage without defaults continues as before
+        - calls can include now include defaults:
+            define f(a="123",b=42)
+            end
+            f(b=0) 
+            # ... now will populate args with (a="123",b=0)
+        - optional args should be specified in their function signature with f(optarg=nil)
+        - early work, may still have issues with more complex types, needs more testing.
+
+    * added support for test mode assert error continue with:
+        - ASSERT ERROR f(...)
+        - just using the continue flag in the TEST statement was not robust enough for function call error handling.
+            - the above syntax allows for continued execution past the function failure.
+        - various call sites have been updated to bubble these errors up better
+        - see test script eg/func_args for examples.
+
     * USE statement
         USE -           # empties the use_chain internal array
         USE + name      # adds name to the use_chain namespace list (if unique)

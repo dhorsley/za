@@ -348,8 +348,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         }
 
         // make call
-        res,err,method_result:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
+        res,err,method_result,errVal:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
         // pf("res/err/method_result -> %#v,%v,%v\n",res,err,method_result)
+        if errVal != nil {
+            reurn nil,true
+        }
 
         // process results
         if calling_method && !err {

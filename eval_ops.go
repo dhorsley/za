@@ -1598,7 +1598,7 @@ func slice(v any, from, to any) any {
 }
 
 
-func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any,hasError bool,method_result any) {
+func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any,hasError bool,method_result any,errVal error) {
 
     // pf("(cfe) kind_override -> %s\n",kind_override)
 
@@ -1627,13 +1627,18 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             var ident = make([]Variable,identInitialSize)
 
             var rcount uint8
+            var callErr error
 
             if enableProfiling {
                 startTime:=time.Now()
-                rcount,_,method_result=Call(p.ctx,MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+                rcount,_,method_result,callErr=Call(p.ctx,MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
                 recordPhase(p.ctx,name,time.Since(startTime))
             } else {
-                rcount,_,method_result=Call(p.ctx,MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+                rcount,_,method_result,callErr=Call(p.ctx,MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, args...)
+            }
+            if callErr != nil {
+                return nil,true,method_result,callErr
+                // panic(errors.New(sf("call error in function call %s",id)))
             }
 
             // handle the returned result, if present.
@@ -1645,15 +1650,15 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
             switch rcount {
             case 0:
-                return nil,false,method_result
+                return nil,false,method_result,nil
             case 1:
                 switch res.(type) {
                 case []any:
-                    return res.([]any)[0],false,method_result
+                    return res.([]any)[0],false,method_result,nil
                 }
-                return nil,false,method_result
+                return nil,false,method_result,nil
             default:
-                return res,false,method_result
+                return res,false,method_result,nil
             }
 
         } else {
@@ -1673,7 +1678,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                 }
             }
             res,err := kind(struct_name,args...)
-            return res,err!=nil,method_result
+            return res,err!=nil,method_result,nil
         } else {
 
             // normal stdlib call
@@ -1691,7 +1696,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                 p.std_faulted=true
                 pf("%s\n",err)
             }
-            return res,err!=nil,method_result
+            return res,err!=nil,method_result,nil
         }
     }
 }
