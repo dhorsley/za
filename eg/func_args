@@ -15,6 +15,10 @@ def test_string(s="1,2,3")
   return s
 end
 
+def test_list(a,b,c)
+    return a,sum(b),c
+end
+
 # Group: "Defaults"
 
 TEST AllArgs group "Defaults" assert continue
@@ -41,6 +45,10 @@ TEST OmitBandC group "Defaults" assert continue
   ASSERT c=="hello"
 ENDTEST
 
+test ProvidingAList group "Defaults" assert continue
+    assert test_list(1,[2,3,4],5) == [1,9,5]
+endtest
+
 TEST ExplicitNil group "Defaults" assert continue
   a, b = test_nil(1, nil)
     println "a=",a,",b=",b
@@ -57,7 +65,6 @@ ENDTEST
 
 TEST QuotedStringDefault group "Defaults" assert continue
   s = test_string()
-    println "in quotedStringDefault test : returned value of s from test_string():"
     println "s value : ",s
     println "s type  : ",s.kind
   ASSERT s=="1,2,3"
@@ -69,8 +76,7 @@ TEST QuotedStringOverride group "Defaults" assert continue
 ENDTEST
 
 TEST MissingA group "Defaults" assert continue
-    # ASSERT ERROR test_func()
-    println "skipping MissingA test as to ASSERT ERROR yet."
+    ASSERT ERROR test_func()
 ENDTEST
 
 

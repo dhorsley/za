@@ -215,6 +215,7 @@ var test_output_file string
 var testsPassed int
 var testsFailed int
 var testsTotal int
+var enforceError bool
 
 // - not currently used too much. may eventually be removed
 var debug_level int             // 0:off, >0 max displayed debug level
@@ -654,6 +655,7 @@ func main() {
     // test mode
 
     enableAsserts = false
+    enforceError=true
 
     if *a_test {
         testMode = true
@@ -1147,11 +1149,14 @@ func main() {
             calltable[mainloc]=cs
 
             // startup script processing:
+            var errVal error
             if !started && hasScript {
                 phraseParse(ctx, "main", startScript, 0)
                 basemodmap[1]="main"
-                _,endFunc,_ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
-                
+                _,endFunc,_,errVal = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
+                if errVal != nil {
+                    pf("error in startup script processing:%s\n",errVal)
+                } 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
                     for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
@@ -1273,7 +1278,7 @@ func main() {
 
                 // throw away break and continue positions in interactive mode
                 // pf("[main] loc -> %d\n",mainloc)
-                _,endFunc,_ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
+                _,endFunc,_,_ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
 
                 if row>=MH-BMARGIN {
                     if row>MH { row=MH }
