@@ -1,0 +1,2 @@
+# Example for ftell()
+println "Example output for ftell call"

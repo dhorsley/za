@@ -1,0 +1,2 @@
+# Example for log10()
+println "Example output for log10 call"

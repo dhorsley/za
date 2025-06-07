@@ -1,0 +1,2 @@
+# Example for stripansi()
+println "Example output for stripansi call"

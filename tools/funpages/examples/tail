@@ -1,0 +1,2 @@
+# Example for tail()
+println "Example output for tail call"

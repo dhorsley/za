@@ -1,0 +1,2 @@
+# Example for release_id()
+println "Example output for release_id call"

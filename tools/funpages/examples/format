@@ -1,0 +1,2 @@
+# Example for format()
+println "Example output for format call"

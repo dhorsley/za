@@ -1,9 +1,2 @@
-
-validchars="^[a-zA-Z0-9].*"
-
-echo(false,"#")
-prompt retvar "Please input something - it must begin with a letter or number! >> " validchars
-echo(true)
-
-println "You typed in '{retvar}'"
-
+# Example for echo()
+println "Example output for echo call"

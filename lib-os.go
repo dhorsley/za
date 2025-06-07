@@ -236,7 +236,7 @@ func buildOsLib() {
         return syscall.Getwd()
     }
 
-    slhelp["umask"] = LibHelp{in: "int", out: "int", action: "Sets the umask value. Returns the previous value. umask() with args just returns the current value."}
+    slhelp["umask"] = LibHelp{in: "int", out: "int", action: "Sets the umask value. Returns the previous value. umask() without args just returns the current value."}
     stdlib["umask"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("umask",args,2,
             "1","int",

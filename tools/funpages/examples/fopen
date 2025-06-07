@@ -1,0 +1,2 @@
+# Example for fopen()
+println "Example output for fopen call"

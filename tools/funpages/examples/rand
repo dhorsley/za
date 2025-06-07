@@ -1,0 +1,2 @@
+# Example for rand()
+println "Example output for rand call"

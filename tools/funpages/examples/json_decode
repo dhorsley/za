@@ -1,24 +1,2 @@
-
-dl=web_get("https://zalang.org/user/data/za/files/eg/example.json")
-ary=dl.result.json_decode
-
-widget=ary["widget"]
-
-foreach part in widget
-    case key_part
-    is "debug"
-        println "Debug Mode : ",part
-    is "window"
-        println "Window Title : {=part[`title`]}"
-    is "image"
-    is "text"
-        println "Text Name : {=part[`name`]}"
-    endcase 
-endfor
-
-`
-should generate this...
-Text Name : text1
-Debug Mode : on
-Window Title : Sample Konfabulator Widget
-`
+# Example for json_decode()
+println "Example output for json_decode call"

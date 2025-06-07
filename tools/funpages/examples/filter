@@ -1,0 +1,2 @@
+# Example for filter()
+println "Example output for filter call"

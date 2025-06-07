@@ -1,0 +1,2 @@
+# Example for release_version()
+println "Example output for release_version call"

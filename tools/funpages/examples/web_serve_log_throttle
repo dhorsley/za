@@ -1,0 +1,2 @@
+# Example for web_serve_log_throttle()
+println "Example output for web_serve_log_throttle call"

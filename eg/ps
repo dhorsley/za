@@ -132,14 +132,15 @@ filter=""
 
 n=0
 while argc()>n
-    case argv()[n]
+    case argv(n)
     is "-f"
         force_colour=true
     is "-w"
-        force_width=argv()[++n].interpolate
-        on not force_width.is_number do exit 1,"-w needs an int"
+        on ++n>=argc() do exit 1,"missing argument."
+        force_width=argv(n).interpolate
+        on not force_width.is_number do exit 1,"-w needs an int (not '{=argc(n)}')"
     or
-        filter=argv()[n]
+        filter=argv(n)
         break
     endcase
     n++

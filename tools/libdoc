@@ -40,8 +40,6 @@ style=`
 `
 interpol(true)
 
-println format("style set to : %q\n",style)
-
 hc[`\[#0]`] = `<span class='f0'>`
 hc[`\[#1]`] = `<span class='f1'>`
 hc[`\[#2]`] = `<span class='f2'>`
@@ -95,6 +93,7 @@ foreach c in func_categories()
     ef
     sfuncs=sfuncs.sort
 
+    func_count=0
     foreach i in sfuncs
 
         totfunc++
@@ -125,6 +124,7 @@ foreach c in func_categories()
             f=f.html_escape.replace("{","&#123;").replace("}","&#125;")
             interpol(true)
             body+=wp("<i>Example:</i><br><pre>"+f+"</pre>")
+            func_count++
         endif
 
         body+="<br>\n"
@@ -145,9 +145,7 @@ foreach c in func_categories()
     )
 
 
-    println format(">> key_c before page creation: %q\n", key_c)
     oldI=interpol(true)
-    println format(">> interpolation status before wpage: %#v\n", interpol(true))
     interpol(oldI)
 
     page=wpage(
@@ -164,9 +162,7 @@ foreach c in func_categories()
       `lang="en"`
     )
 
-    println "{=execpath()}/{docpath}/{key_c}.html"
-
-    println format(">> page content before $out = %q\n", page)
+    println "Generating {key_c}.html page ({func_count} functions)."
     page $out [execpath(),docpath,key_c+".html"].join("/")
 
 endfor
@@ -207,7 +203,7 @@ indexpage=wpage(
 
 indexpage $out [execpath(),docpath,"/index.html"].join("/")
 
-println "Total functions : {totfunc}"
+println "\nTotal functions : {totfunc}"
 
 exit
 

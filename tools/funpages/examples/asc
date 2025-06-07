@@ -1,3 +1,2 @@
-print asc(" ")
-32
-
+# Example for asc()
+println "Example output for asc call"

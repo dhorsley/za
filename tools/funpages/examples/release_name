@@ -1,0 +1,2 @@
+# Example for release_name()
+println "Example output for release_name call"

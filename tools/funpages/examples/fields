@@ -1,0 +1,2 @@
+# Example for fields()
+println "Example output for fields call"

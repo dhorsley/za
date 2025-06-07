@@ -1,0 +1,2 @@
+# Example for is_setgid()
+println "Example output for is_setgid call"

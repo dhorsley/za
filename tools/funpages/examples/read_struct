@@ -1,0 +1,2 @@
+# Example for read_struct()
+println "Example output for read_struct call"

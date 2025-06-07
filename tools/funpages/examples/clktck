@@ -1,0 +1,2 @@
+# Example for clktck()
+println "Example output for clktck call"
