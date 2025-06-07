@@ -217,10 +217,10 @@ def get_name()
     return $pa (join([npath,file.name],"/").tr("s","/"))
 end
 
-def refresh(lp,rp)
+def refresh(lp=true,rp=true)
     clear_pane("left"); clear_pane("right")
-    show_left(ld,lrow,lwinheight,cursorl)
-    show_right(rd,rrow,rwinheight,cursorr)
+    on lp do show_left(ld,lrow,lwinheight,cursorl)
+    on rp do show_right(rd,rrow,rwinheight,cursorr)
 end
 
 def redef_layout()

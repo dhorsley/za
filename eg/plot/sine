@@ -17,7 +17,7 @@ define calcWave(dx,amplitude)
     return yvalues
 end
 
-define renderWave(yv,height,glyph)
+define renderWave(yv,height,glyph=nil)
     on len(yv)==0 do return
     on glyph==nil do glyph="+"
     for x = 0 to len(yv)-1
