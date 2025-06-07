@@ -832,9 +832,13 @@ tco_reentry:
     // - functionArgs[] created at definition time from the call signature
 
     farglock.RLock()
-    if method { va=va[1:] }
+
+    if len(va)>0 {
+        if method { va=va[1:] }
+    }
 
     for q, argName := range functionArgs[source_base].args {
+
         var value any
         if q < len(va) {
             // Use provided argument
@@ -852,7 +856,10 @@ tco_reentry:
                 panic(errors.New(sf("missing required argument: %s",argName)))
             }
         }
-        // pf("Assigning argName=%v, value=%v\n",argName,value)
+
+        if s,ok:=value.(string); ok {
+            value=interpolate(currentModule,ifs,ident,s)
+        }
         vset(nil, ifs, ident, argName, value)
     }
 

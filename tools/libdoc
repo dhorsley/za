@@ -40,6 +40,8 @@ style=`
 `
 interpol(true)
 
+println format("style set to : %q\n",style)
+
 hc[`\[#0]`] = `<span class='f0'>`
 hc[`\[#1]`] = `<span class='f1'>`
 hc[`\[#2]`] = `<span class='f2'>`
@@ -50,7 +52,6 @@ hc[`\[#6]`] = `<span class='f6'>`
 hc[`\[#7]`] = `<span class='f7'>`
 hc[`\[#-]`] = `</span>`
 hc[`\[##]`] = `</span>`
-
 
 define cc_clean(s)
     s=s.replace(`\[#i0]`,    `</span>`)
@@ -143,6 +144,12 @@ foreach c in func_categories()
         wa("Return to index",`href="./index.html"`)
     )
 
+
+    println format(">> key_c before page creation: %q\n", key_c)
+    oldI=interpol(true)
+    println format(">> interpolation status before wpage: %#v\n", interpol(true))
+    interpol(oldI)
+
     page=wpage(
         whead(format(meta)+"<style>\n"+style+"\n</style>\n")+
         wbody(
@@ -158,6 +165,8 @@ foreach c in func_categories()
     )
 
     println "{=execpath()}/{docpath}/{key_c}.html"
+
+    println format(">> page content before $out = %q\n", page)
     page $out [execpath(),docpath,key_c+".html"].join("/")
 
 endfor

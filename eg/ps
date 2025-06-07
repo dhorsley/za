@@ -86,6 +86,7 @@ define ps(filter)
         # read data from .../statm
         pm = $in "{dn}/statm"
         pm.fields
+
         parts.size    = F[mem_parts.size].as_int     # tot prog size
         parts.rss     = F[mem_parts.rss].as_int      # page count
         parts.shared  = F[mem_parts.shared].as_int   # page count

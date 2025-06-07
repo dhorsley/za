@@ -10,6 +10,8 @@ import (
     str "strings"
     "fmt"
     "time"
+    "net/http"
+    "unsafe"
 )
 
 
@@ -25,14 +27,6 @@ func typeOf(val any) string {
 
     kind := reflect.TypeOf(val).Kind()
   
-    /*
-    rval := reflect.ValueOf(val)
-    if kind == reflect.Struct {
-        pf("kind->%#v\n",kind)
-        pf("rval->%#v\n",rval)
-    }
-    */
-
     if kind.String()=="map" { return "map" }
 
     if kind.String()=="ptr" {
@@ -1598,6 +1592,15 @@ func slice(v any, from, to any) any {
 }
 
 
+func (p *leparser) interpolateStringArgs(args []any) []any {
+    for i,arg := range args {
+        if str,ok := arg.(string); ok {
+            args[i] = interpolate(p.namespace,p.fs,p.ident,str)
+        }
+    }
+    return args
+}
+
 func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any,hasError bool,method_result any,errVal error) {
 
     // pf("(cfe) kind_override -> %s\n",kind_override)
@@ -1682,6 +1685,9 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         } else {
 
             // normal stdlib call
+
+            args=p.interpolateStringArgs(args)
+
             var res any
             var err error
             if enableProfiling {
@@ -1702,3 +1708,317 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 }
 
 
+func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
+    
+//    pf("\nENTERED accessFieldOrFunc() with obj : %#v\n",obj)
+//    pf("\n                           and field : %s\n",field)
+//    pf("\n            and *leparser content is :\n%#v\n\n",p)
+
+    if _,ok:=obj.(http.Header); ok {
+        r := reflect.ValueOf(obj)
+        if r.Kind() == reflect.Map && r.IsNil() {
+            
+        }
+        f := reflect.Indirect(r).FieldByName(field)
+        if f.IsValid() {
+            return f, false
+        }
+    }
+
+    if f,ok:=accessSyscallStatField(obj,field); ok {
+        return f,false
+    }
+
+    pre_name:=p.prev2.tokText
+    pre_type:=p.prev2.tokType
+    pre_pos:=p.prev2.bindpos
+    pre_tok:=p.prev2
+
+    var isStruct bool
+    var struct_name string
+
+    // main reflection handler
+
+    r := reflect.ValueOf(obj)
+
+
+    switch r.Kind() {
+    case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func, reflect.Interface:
+        if r.IsNil() {
+            return nil, true
+        }
+    }
+
+    if r.Kind() == reflect.Struct {
+        isStruct=true
+
+        // kind() override
+        if field == "kind" {
+            struct_name_for_kind := ""
+            if s, count := struct_match(obj); count == 1 {
+               struct_name_for_kind = s
+            }
+            res, err := kind(struct_name_for_kind, obj)
+            return res, err != nil
+        }
+
+        if pre_type == Identifier {
+            bin := pre_pos
+            if (*p.ident)[bin].declared {
+                struct_name = (*p.ident)[bin].Kind_override
+            }
+        } else {
+            if type_string, count := struct_match(obj); count == 1 {
+                struct_name = type_string
+            }
+        }
+
+        // work with mutable copy as we need to make field unsafe
+        // further down in switch.
+
+        rcopy := reflect.New(r.Type()).Elem()
+        rcopy.Set(r)
+
+        // get the required struct field and make a r/w copy
+        f := rcopy.FieldByName(field)
+
+        if f.IsValid() {
+ 
+            switch f.Type().Kind() {
+            case reflect.String:
+                return f.String(),false
+            case reflect.Bool:
+                return f.Bool(),false
+            case reflect.Int:
+                return int(f.Int()),false
+            case reflect.Int64:
+                return int(f.Int()),false
+            case reflect.Float64:
+                return f.Float(),false
+            case reflect.Uint:
+                return uint(f.Uint()),false
+            case reflect.Uint8:
+                return uint8(f.Uint()),false
+            case reflect.Uint64:
+                return uint64(f.Uint()),false
+
+            case reflect.Slice:
+
+                f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+                slc:=f.Slice(0,f.Len())
+
+                switch f.Type().Elem().Kind() {
+                case reflect.Interface,reflect.String:
+                    return slc.Interface(),false
+                default:
+                    return []any{},false
+                }
+
+            case reflect.Interface:
+                return f.Interface(),false
+
+            default:
+                f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+                return f.Interface(),false
+            }
+
+        }
+
+        
+    }
+        
+    name:=field
+
+    // Perform enum lookup next:
+    globlock.RLock()
+    var ename string
+    if found:=uc_match_enum(pre_name); found!="" {
+        ename=found+"::"+pre_name
+    } else {
+        ename=p.namespace+"::"+pre_name
+    }
+
+    switch obj.(type) {
+    case string:
+        ename=p.namespace+"::"+obj.(string)
+        checkstr:=obj.(string)
+        if str.Contains(checkstr,"::") {
+            cpos:=str.IndexByte(checkstr,':')
+            if cpos!=-1 {
+                if len(checkstr)>cpos+1 {
+                    if checkstr[cpos+1]==':' {
+                        ename=checkstr
+                    }
+                }
+            }
+        }
+    case pfile:
+    }
+
+    en := enum[ename]
+    globlock.RUnlock()
+
+    if en != nil {
+        val, found := en.members[name]
+        if found {
+            return val, false
+        }
+    }
+
+    if en!=nil {
+        return en.members[name],false
+    }
+
+
+    // ── At this point, either:
+    //    • obj was not a struct (nil pointer/map/slice/etc. → skip struct code), or
+    //    • obj was a struct but had no valid field named “field” (so f.IsValid()==false), or
+    //    • obj was a struct, we appended struct_name, but still want to test enum/func. ──
+
+    // try a function call..
+    // lhs_v would become the first argument of func lhs_f
+
+    var isFunc bool
+
+    // parse the function call as module '::' funcname
+    modname:="main"
+    if p.peek().tokType==SYM_DoubleColon {
+        p.next()
+        switch p.peek().tokType {
+        case Identifier:
+            modname=name
+            name=p.peek().tokText
+        default:
+            parser.hard_fault=true
+            pf("invalid name in function call '%s'\n",p.peek().tokText)
+            return nil,true
+        }
+        p.next()
+    } else {
+        // no :: qualifier, so either leave modname as 'main' or replace from use chain
+        if found:=uc_match_func(name); found!="" {
+            modname=found
+        }
+    }
+
+        
+    if struct_name!="" {
+        name+="~"+struct_name
+    }
+
+    var fm Funcdef
+    var there bool
+    if fm,there=funcmap[modname+"::"+name] ; there {
+        name=modname+"::"+name
+        isFunc=true
+    }
+
+    calling_method:=false
+    if isStruct {
+        // compare types between (obj) and (parent)
+        if fm.parent != "" {
+            obj_struct_fields:=make(map[string]string,4)
+            val := reflect.ValueOf(obj)
+            for i:=0; i<val.NumField();i++ {
+                n:=val.Type().Field(i).Name
+                t:=val.Type().Field(i).Type
+                if t.String()=="[]interface {}" {
+                    obj_struct_fields[n]="[]"
+                } else {
+                    obj_struct_fields[n]=t.String()
+                }
+            }
+
+            // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+            par_struct_fields:=make(map[string]string,4)
+            if structvalues,exists:=structmaps[fm.parent] ; exists {
+                for svpos:=0; svpos<len(structvalues); svpos+=4 {
+                    pfieldtype:=structvalues[svpos+1].(string)
+                    if pfieldtype=="float" { pfieldtype="float64" }
+                    par_struct_fields[structvalues[svpos].(string)]=pfieldtype
+                }
+            }
+
+            structs_equal:=true
+            for k,v:=range par_struct_fields {
+                if obj_v,exists:=obj_struct_fields[k] ; exists {
+                    if v!=obj_v {
+                        structs_equal=false
+                        break
+                    }
+                } else {
+                    structs_equal=false
+                    break
+                }
+            }
+
+            if ! structs_equal {
+                parser.hard_fault=true
+                pf("cannot call function [%v] belonging to an unequal struct type [%s]\nParent Struct: [%+v]\nYour object: [%T]", field,fm.parent,par_struct_fields,obj)
+                return nil,true
+            }
+            calling_method=true
+        }
+    }
+
+    // check if stdlib or user-defined function
+    if !isFunc {
+        if _, isFunc = stdlib[field]; !isFunc {
+            isFunc = fnlookup.lmexists(name)
+        } else {
+            name=field
+        }
+    }
+    if !isFunc {
+        parser.hard_fault=true
+        pf("no function, enum or record field found for %v\n", field)
+        return nil,true
+    }
+
+    // user-defined or stdlib call, exception here for file handles
+    var iargs []any
+    iargs=[]any{obj}
+
+    if p.peek().tokType==LParen {
+        p.next()
+        if p.peek().tokType!=RParen {
+            for {
+                dp,err:=p.dparse(0,false)
+                if err!=nil {
+                    return nil,true
+                }
+                iargs=append(iargs,dp)
+                if p.peek().tokType!=O_Comma {
+                    break
+                }
+                p.next()
+            }
+        }
+        if p.peek().tokType==RParen {
+            p.next() // consume rparen
+        }
+    }
+
+    // make call
+    res,err,method_result,errVal:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
+    if errVal != nil {
+        return nil,true
+    }
+
+    // process results
+    if calling_method && !err {
+        // check if previous is an identifer/expression result
+        if pre_tok.tokType==Identifier {
+            bin:=pre_pos
+            if (*p.ident)[bin].declared {
+                (*p.ident)[bin].IValue=method_result
+            } else {
+                parser.hard_fault=true
+                pf("[%s] could not be assigned to after method call\n",pre_name)
+                return nil,true
+            }
+        }
+    }
+
+    return res,err
+}

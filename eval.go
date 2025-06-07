@@ -1363,10 +1363,12 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,error) {
 // mut is currently unused and may remain so.
 func (p *leparser) reference(mut bool) string {
     vartok:=p.next()
+    /*
     bin:=vartok.bindpos
     if ! (*p.ident)[bin].declared {
         vset(&vartok,p.fs,p.ident,vartok.tokText,nil)
     }
+    */
     return vartok.tokText
 }
 
@@ -2022,6 +2024,8 @@ func gvset(name string, value any) {
 
 func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
 
+//    fmt.Printf("vset called for variable: %s with value: %#v (type: %T)\n", name, value, value)
+
     var bin uint64
 
     if fs<3 {
@@ -2049,6 +2053,16 @@ func vset(tok *Token,fs uint32, ident *[]Variable, name string, value any) {
 
     (*ident)[bin].IName=name
     (*ident)[bin].declared=true
+
+    // struct type inference
+    if value!=nil {
+        if reflect.TypeOf(value).Kind() == reflect.Struct {
+            structName, count := struct_match(value)
+            if count == 1 {
+                (*ident)[bin].Kind_override = structName
+            }
+        }
+    }
 
     if (*ident)[bin].ITyped {
         var ok bool
@@ -2438,8 +2452,175 @@ func isNumber(expr any) bool {
 }
 
 
+/////////////////////////////////////////
+
+func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
+    if !interpolation || len(s) == 0 {
+        return s
+    }
+    if str.IndexByte(s, '{') == -1 {
+        return s
+    }
+
+    // Fallback to manual scan if string is larger than 250 KB
+    if len(s) > 250*1024 {
+        return manualInterpolate(ns, fs, ident, s)
+    }
+
+    orig := s
+    r := regexp.MustCompile(`{([^{}]*)}`)
+
+    var interparse *leparser
+    interparse = &leparser{}
+    interparse.fs = fs
+    interparse.ident = ident
+    interparse.namespace = ns
+    interparse.ctx = withProfilerContext(context.Background())
+
+    if interactive {
+        interparse.mident = 1
+    } else {
+        interparse.mident = 2
+    }
+
+    for {
+        orig_s := s
+        matches := r.FindAllStringSubmatch(s, -1)
+
+        for _, v := range matches {
+            kn := v[1]
+            if kn[0] == '=' {
+                continue
+            }
+
+            if kv, there := vget(nil, fs, ident, kn); there {
+                switch kv.(type) {
+                case int:
+                    s = str.Replace(s, "{"+kn+"}", strconv.FormatInt(int64(kv.(int)), 10), -1)
+                case float64:
+                    s = str.Replace(s, "{"+kn+"}", strconv.FormatFloat(kv.(float64), 'g', -1, 64), -1)
+                case bool:
+                    s = str.Replace(s, "{"+kn+"}", strconv.FormatBool(kv.(bool)), -1)
+                case string:
+                    s = str.Replace(s, "{"+kn+"}", kv.(string), -1)
+                case uint:
+                    s = str.Replace(s, "{"+kn+"}", strconv.FormatUint(uint64(kv.(uint)), 10), -1)
+                case []uint, []float64, []int, []bool, []any, []string:
+                    s = str.Replace(s, "{"+kn+"}", sf("%v", kv), -1)
+                case any:
+                    s = str.Replace(s, "{"+kn+"}", sf("%v", kv), -1)
+                default:
+                    s = str.Replace(s, "{"+kn+"}", sf("!%T!%v", kv, kv), -1)
+                }
+            }
+        }
+
+        if orig_s == s {
+            break
+        }
+    }
+
+    var modified bool
+    redo := true
+
+    for ; redo; {
+        modified = false
+        p := 0
+        for ; p < len(s)-1; p += 1 {
+            if s[p] == '{' && s[p+1] == '=' {
+                nest := 0
+                close_index := p
+                for ; close_index < len(s); close_index += 1 {
+                    if s[close_index] == '{' {
+                        nest += 1
+                    }
+                    if s[close_index] == '}' {
+                        nest -= 1
+                    }
+                    if s[close_index] == '}' && nest == 0 {
+                        break
+                    }
+                }
+                if nest > 0 {
+                    break
+                }
+
+                if aval, err := ev(interparse, fs, s[p+2:close_index]); err == nil {
+                    s = s[:p] + sf("%v", aval) + s[close_index+1:]
+                    modified = true
+                    break
+                }
+                p = close_index + 1
+            }
+        }
+        if !modified {
+            redo = false
+        }
+    }
+
+    if s == "<nil>" {
+        s = orig
+    }
+
+    return s
+}
+
+// fallback manual interpolation for large strings
+func manualInterpolate(ns string, fs uint32, ident *[]Variable, s string) string {
+    orig := s
+    var interparse *leparser
+    interparse = &leparser{}
+    interparse.fs = fs
+    interparse.ident = ident
+    interparse.namespace = ns
+    interparse.ctx = withProfilerContext(context.Background())
+
+    if interactive {
+        interparse.mident = 1
+    } else {
+        interparse.mident = 2
+    }
+
+    for {
+        start := str.IndexByte(s, '{')
+        if start == -1 {
+            break
+        }
+        end := str.IndexByte(s[start:], '}')
+        if end == -1 {
+            break
+        }
+        end += start
+        segment := s[start+1 : end]
+        if len(segment) > 0 && segment[0] == '=' {
+            if aval, err := ev(interparse, fs, segment[1:]); err == nil {
+                s = s[:start] + sf("%v", aval) + s[end+1:]
+            } else {
+                s = s[:start] + s[end+1:]
+            }
+        } else {
+            if kv, there := vget(nil, fs, ident, segment); there {
+                s = s[:start] + sf("%v", kv) + s[end+1:]
+            } else {
+                s = s[:start] + s[end+1:]
+            }
+        }
+    }
+
+    if s == "<nil>" {
+        s = orig
+    }
+    return s
+}
+
+/////////////////////////////////////////
+
+
+/*
 /// convert variable placeholders in strings to their values
 func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
+
+    // fmt.Printf("interpolate called with string : %s\n",s)
 
     if !interpolation || len(s)==0 {
         return s
@@ -2451,7 +2632,15 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
     }
 
     orig:=s
-    r := regexp.MustCompile(`{([^{}]*)}`)
+
+    // switch algorithm based on input size
+    var matches [][]string
+    if len(s) < 250*1024 { // < 250 KB: regex
+        r := regexp.MustCompile(`{([^{}]*)}`)
+        matches = r.FindAllStringSubmatch(s, -1)
+    } else { // manual scan
+        matches = manualFindCurlyPairs(s)
+    }
 
     //   interparse.mident is set to either 1 or 2 in actor.go
     //   depending on interactive mode flag.
@@ -2507,6 +2696,7 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
         if orig_s==s { break }
     }
 
+
     // if nothing was replaced, check if evaluation possible, then it's time to leave this infernal place
     var modified bool
 
@@ -2540,9 +2730,10 @@ func interpolate(ns string,fs uint32, ident *[]Variable, s string) (string) {
 
     if s=="<nil>" { s=orig }
 
+    // fmt.Printf("interpolate call ending here, new string : %s\n",s)
     return s
 }
-
+*/
 
 // evaluate an expression string
 func ev(parser *leparser,fs uint32, ws string) (result any, err error) {
