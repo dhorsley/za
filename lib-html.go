@@ -4,7 +4,6 @@ package main
 
 import (
     "errors"
-    "fmt"
 )
 
 // This package includes functions for generating HTML
