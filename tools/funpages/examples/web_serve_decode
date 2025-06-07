@@ -1,15 +1,2 @@
-
-define dynamic_request(call)
-
-    c=web_serve_decode(call)
-
-    h=c.host
-    p=c.path
-    r=c.remote
-    m=c.method
-    d=c.data
-
-    # ... rest of request handler
-
-end
-
+# Example for web_serve_decode()
+println "Example output for web_serve_decode call"

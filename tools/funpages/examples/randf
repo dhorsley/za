@@ -1,0 +1,2 @@
+# Example for randf()
+println "Example output for randf call"

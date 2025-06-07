@@ -1,0 +1,2 @@
+# Example for coproc()
+println "Example output for coproc call"

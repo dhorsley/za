@@ -1,0 +1,2 @@
+# Example for web_custom()
+println "Example output for web_custom call"

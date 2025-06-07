@@ -1,0 +1,2 @@
+# Example for db_close()
+println "Example output for db_close call"

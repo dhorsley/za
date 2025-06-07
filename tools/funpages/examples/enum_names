@@ -1,0 +1,2 @@
+# Example for enum_names()
+println "Example output for enum_names call"

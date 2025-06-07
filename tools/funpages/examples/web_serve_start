@@ -1,0 +1,2 @@
+# Example for web_serve_start()
+println "Example output for web_serve_start call"

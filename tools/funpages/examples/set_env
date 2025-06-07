@@ -1,17 +1,2 @@
-
-eng=get_env("ZA_DB_ENGINE")
-host=get_env("ZA_DB_HOST")
-user=get_env("ZA_DB_USER")
-pass=get_env("ZA_DB_PASS")
-port=get_env("ZA_DB_PORT")
-
-creds="tests/db.creds"
-if is_file(creds)
-    z=read_file(creds)
-    on eng==""  do set_env("ZA_DB_ENGINE", get_value(z,"ZA_DB_ENGINE"))
-    on host=="" do set_env("ZA_DB_HOST",   get_value(z,"ZA_DB_HOST"))
-    on user=="" do set_env("ZA_DB_USER",   get_value(z,"ZA_DB_USER"))
-    on pass=="" do set_env("ZA_DB_PASS",   get_value(z,"ZA_DB_PASS"))
-    on port=="" do set_env("ZA_DB_PORT",   get_value(z,"ZA_DB_PORT"))
-endif
-
+# Example for set_env()
+println "Example output for set_env call"

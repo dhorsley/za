@@ -1,0 +1,2 @@
+# Example for is_dir()
+println "Example output for is_dir call"

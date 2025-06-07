@@ -1,0 +1,2 @@
+# Example for push_front()
+println "Example output for push_front call"

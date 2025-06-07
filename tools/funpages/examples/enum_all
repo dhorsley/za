@@ -1,0 +1,2 @@
+# Example for enum_all()
+println "Example output for enum_all call"

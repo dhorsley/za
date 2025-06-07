@@ -1,0 +1,2 @@
+# Example for fseek()
+println "Example output for fseek call"

@@ -1,0 +1,2 @@
+# Example for pane_w()
+println "Example output for pane_w call"

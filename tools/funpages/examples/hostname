@@ -1,0 +1,2 @@
+# Example for hostname()
+println "Example output for hostname call"

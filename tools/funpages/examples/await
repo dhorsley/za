@@ -1,0 +1,2 @@
+# Example for await()
+println "Example output for await call"

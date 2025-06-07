@@ -1,0 +1,2 @@
+# Example for fflush()
+println "Example output for fflush call"

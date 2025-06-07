@@ -1,0 +1,2 @@
+# Example for web_serve_path()
+println "Example output for web_serve_path call"

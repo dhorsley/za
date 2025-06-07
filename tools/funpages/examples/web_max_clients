@@ -1,0 +1,2 @@
+# Example for web_max_clients()
+println "Example output for web_max_clients call"

@@ -1,0 +1,2 @@
+# Example for capture_shell()
+println "Example output for capture_shell call"

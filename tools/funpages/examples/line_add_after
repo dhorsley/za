@@ -1,0 +1,2 @@
+# Example for line_add_after()
+println "Example output for line_add_after call"

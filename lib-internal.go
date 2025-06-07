@@ -609,7 +609,12 @@ func buildInternalLib() {
 
     slhelp["argv"] = LibHelp{in: "", out: "[]string", action: "CLI arguments as an array."}
     stdlib["argv"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-        if ok,err:=expect_args("argv",args,0); !ok { return nil,err }
+        if ok,err:=expect_args("argv",args,2,
+            "1","int",
+            "0"); !ok { return nil,err }
+            if len(args)==1 {
+                return cmdargs[args[0].(int)],nil
+            }
         return cmdargs, nil
     }
 
