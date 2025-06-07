@@ -1,0 +1,2 @@
+# Example for ev_mask()
+println "Example output for ev_mask call"

@@ -1,0 +1,2 @@
+# Example for feof()
+println "Example output for feof call"

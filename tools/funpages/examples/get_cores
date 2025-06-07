@@ -1,0 +1,2 @@
+# Example for get_cores()
+println "Example output for get_cores call"

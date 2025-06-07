@@ -1,5 +1,2 @@
-
-foreach e in env()
-    println e
-endfor
-
+# Example for env()
+println "Example output for env call"

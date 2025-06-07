@@ -1,0 +1,2 @@
+# Example for system()
+println "Example output for system call"

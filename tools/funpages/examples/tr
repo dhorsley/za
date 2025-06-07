@@ -1,0 +1,2 @@
+# Example for tr()
+println "Example output for tr call"

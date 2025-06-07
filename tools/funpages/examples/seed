@@ -1,0 +1,2 @@
+# Example for seed()
+println "Example output for seed call"

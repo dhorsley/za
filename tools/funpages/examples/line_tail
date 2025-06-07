@@ -1,0 +1,2 @@
+# Example for line_tail()
+println "Example output for line_tail call"

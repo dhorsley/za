@@ -1,0 +1,2 @@
+# Example for is_installed()
+println "Example output for is_installed call"

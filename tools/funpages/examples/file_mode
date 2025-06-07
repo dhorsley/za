@@ -1,0 +1,2 @@
+# Example for file_mode()
+println "Example output for file_mode call"

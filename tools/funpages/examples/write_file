@@ -1,0 +1,2 @@
+# Example for write_file()
+println "Example output for write_file call"

@@ -1,0 +1,2 @@
+# Example for html_escape()
+println "Example output for html_escape call"

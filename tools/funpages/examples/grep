@@ -1,0 +1,2 @@
+# Example for grep()
+println "Example output for grep call"

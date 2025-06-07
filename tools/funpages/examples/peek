@@ -1,0 +1,2 @@
+# Example for peek()
+println "Example output for peek call"

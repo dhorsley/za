@@ -1,5 +1,2 @@
-
-foreach f in dir("/","^[Vv]")
-    println f.name
-endfor
-
+# Example for dir()
+println "Example output for dir call"

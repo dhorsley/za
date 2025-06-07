@@ -1,3 +1,2 @@
-
-println cwd()
-
+# Example for cwd()
+println "Example output for cwd call"

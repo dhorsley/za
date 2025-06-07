@@ -1,0 +1,2 @@
+# Example for argc()
+println "Example output for argc call"

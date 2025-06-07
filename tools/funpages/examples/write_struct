@@ -1,0 +1,2 @@
+# Example for write_struct()
+println "Example output for write_struct call"

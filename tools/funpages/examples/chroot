@@ -1,7 +1,2 @@
-
-chroot("/tmp")
-
-foreach f in dir("/")
-    println f.name
-endfor
-
+# Example for chroot()
+println "Example output for chroot call"

@@ -3422,6 +3422,7 @@ tco_reentry:
                 if len(resu)>1 && errs[1]==nil {
                     switch resu[1].(type) {
                     case string:
+                        resu[1]=interpolate(currentModule,ifs,ident,resu[1].(string))
                         errmsg=sf("%v\n",resu[1])
                     }
                 }

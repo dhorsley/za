@@ -1,2 +1,2 @@
-print dtoo(488)
-750
+# Example for dtoo()
+println "Example output for dtoo call"

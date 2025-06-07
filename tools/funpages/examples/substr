@@ -1,0 +1,2 @@
+# Example for substr()
+println "Example output for substr call"

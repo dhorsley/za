@@ -1,0 +1,2 @@
+# Example for stripquotes()
+println "Example output for stripquotes call"
