@@ -1,0 +1,16 @@
+enum e (ok=0,one,two,three)
+
+a[0]="test"
+a[1]="string one"
+a[2]="string two"
+a[3]="string three"
+
+println a[0]
+
+println e.ok
+println a[e.ok]
+
+z=e.ok
+println a[z]
+
+

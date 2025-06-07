@@ -4,6 +4,7 @@ package main
 
 import (
     "errors"
+    "fmt"
 )
 
 // This package includes functions for generating HTML
@@ -87,6 +88,8 @@ func buildHtmlLib() {
         content=sf("%v",args[0])
         if len(args)>1 { o,err=parseHtmlArgs(args[1]) }
         if err!=nil { return "",err }
+        fmt.Printf(">> whead() received arg 0 -> %q\n",content)
+        fmt.Printf(">> whead() received arg 1+ -> %#v\n",o)
         return "<HEAD "+o+">\n"+content+"</HEAD>\n",nil
 	}
 

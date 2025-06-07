@@ -1,18 +1,19 @@
-#!/usr/bin/za
-
+# --- Struct definitions ---
 
 struct q
     a int
     b float
+    c bool
+
     def double()
-        self.a*=2
-        println "(in double) self kind : ",self.kind
+        self.a *= 2
+        println "(in double) self kind: ", self.kind
         return self.a
     end
+
     def get()
         return self.a
     end
-    c bool
 endstruct
 
 struct w
@@ -20,70 +21,120 @@ struct w
     b float
     c bool
     d bool
+
     def triple()
-        self.a*=3
+        self.a *= 3
         return self.a
     end
+
     def get()
         return self.b
     end
 endstruct
 
-def title(a); println "\n[#4]{a}[#-]"; end
+# --- Utility for printing section titles ---
+def title(a)
+    println "\n[#4]" + a + "[#-]"
+end
 
-showdef
+# --- Begin unit test ---
 
+title("Struct instantiation and field access")
 var a q
 var b w
+a.a = 42
+b.a = 10
+println "a: ", a
+println "b: ", b
 
-a.a=42
-b.a=10
-
-println "a->",a
-println "b->",b
-
-title("calling a.double")
+title("Calling a.double()")
 a.double
+assert a.a == 84
 
-title("calling b.triple")
+title("Calling b.triple()")
 b.triple
+assert b.a == 30
 
-title("setting b.b to pi and b.c to true")
-b.b=pi()
-b.c=true
-println a
-println b
+title("Setting fields and verifying")
+b.b = pi()
+b.c = true
+println "a: ", a
+println "b: ", b
+assert b.b == pi()
+assert b.c == true
 
-title("calling get in distinct structs, (a from a, b from b)")
-println "a.get->",a.get
-println "b.get->",b.get
+title("Calling get() methods on distinct structs")
+assert a.get == 84
+assert b.get == b.b
 
-title("creating c from a, modifying (b->100,c->true) and calling double")
+title("Copying struct and modifying")
 var c q
-c=a
-c.b=100f
-c.c=true
+c = a
+c.b = 100f
+c.c = true
 c.double
-println "c->",c
-println "c.kind->",c.kind
+println "c: ", c
+println "c.kind: ", c.kind
+assert c.a == 168
 
-title("calling double on (c), assigning (c).a to j")
-println "c->",c
-j=(c).double
-println "j->",j
+title("Calling double() on literal (c), assigning to j")
+j = (c).double
+println "j: ", j
+assert j == 336
 
-title("calling triple on struct literal of type w, and assigning .a to j:")
-println "literal->",w(1,1f,false,false)
-j=w(1,1f,false,false).triple
-println "j->",j
+title("Calling triple() on struct literal of type w and assigning to j")
+j = ( w(1, 1f, false, false) ).triple
+print "j: ", j
+assert j == 3
 
-title("same struct type, multiple instances")
-var x,y w
-println "%#v".format(x)
-println "%#v".format(y)
-println "setting .b in each."
-x.b=42f
-y.b=123f
-println "x.b->",x.get
-println "y.b->",y.get
+title("Same struct type, multiple instances")
+var x, y w
+println "x: ", x
+println "y: ", y
+x.b = 42f
+y.b = 123f
+println "x.b: ", x.get
+println "y.b: ", y.get
+assert x.b == 42f
+assert y.b == 123f
+
+# --- New section: Arrays of structs ---
+title("Arrays of structs: creation and access")
+var arr_q []any = [ q(1, 1f, false), q(2, 2f, true), q(3, 3f, false) ]
+println "arr_q: ", arr_q
+
+title("Access and modify struct fields in array")
+arr_q[0].a = 10
+arr_q[1].b = 20.5
+arr_q[2].c = true
+println "Modified arr_q: ", arr_q
+assert arr_q[0].a == 10
+assert arr_q[1].b == 20.5
+assert arr_q[2].c == true
+
+title("Iterating over array of structs")
+foreach s in arr_q
+    println "struct in arr_q: ", s
+endfor
+
+# --- Passing structs to functions ---
+def print_struct(s)
+    println "Inside print_struct: ", s
+end
+
+title("Passing structs as function arguments")
+print_struct(a)
+print_struct(b)
+
+title("Calling method on struct in function")
+def call_double_and_return(s)
+    println "In call_double_and_return() with s: ", s
+    return s.double
+end
+res = call_double_and_return(q(7, 0f, false))
+println "Result of call_double_and_return: ", res
+assert res == 14
+
+# --- End ---
+println "Unit test for struct arrays, passing to functions, and UFCS-style calls passed!"
 
