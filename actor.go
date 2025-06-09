@@ -27,10 +27,11 @@ import (
 var debugger = &Debugger{
     breakpoints: make(map[uint64]string),
     watchList:     []string{},
+    listContext: 10,
 }
 
 var activeDebugContext *leparser
-var currentPC int16
+// var currentPC int16
 
 func showIdent(ident *[]Variable) {
     for k,e:=range (*ident) {
@@ -763,6 +764,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     calllock.RUnlock()
 
+    // pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 
     // -- generate bindings
 
@@ -991,7 +993,7 @@ tco_reentry:
 
         if debugMode {
 
-            currentPC=parser.pc-1
+            // currentPC=parser.pc
 
             for {
                 debugger.lock.RLock()

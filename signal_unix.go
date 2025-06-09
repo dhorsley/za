@@ -24,7 +24,7 @@ func setupSignalHandlers(signals chan os.Signal, breaksig chan os.Signal) {
                     if activeDebugContext != nil {
                         ifs := activeDebugContext.fs
                         baseIFS := getBaseIFS(ifs)
-                        pc := currentPC
+                        pc := activeDebugContext.pc
                         key := (uint64(ifs) << 32) | uint64(pc)
                         debugger.enterDebugger(key, functionspaces[baseIFS], activeDebugContext.ident, &mident, &gident)
                     } else {

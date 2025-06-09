@@ -40,7 +40,7 @@ type Debugger struct {
     lock        sync.RWMutex
     activeRepl  bool
     paused      bool
-
+    listContext int
 }
 
 
