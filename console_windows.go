@@ -36,18 +36,27 @@ func setEcho(s bool) {
 
 }
 
+// windows version does not open a sub tty, uses cmd.exe instead
 func isatty() bool {
-    // windows version does not open a sub tty, uses cmd.exe instead
-    return false
+    var mode uint32
+    r, _, err := procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(&mode)))
+    return r != 0 && err == nil
 }
 
 func disableEcho() {
-    // does nothing
+    var mode uint32
+    procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(&mode)))
+    mode &^= 4 // disable ENABLE_ECHO_INPUT
+    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
 }
 
 func enableEcho() {
-    // does nothing
+    var mode uint32
+    procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(&mode)))
+    mode |= 4 // enable ENABLE_ECHO_INPUT
+    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
 }
+
 
 func GetCursorPos() (int,int) {
     tcol,trow,e:=GetRowCol(1)
