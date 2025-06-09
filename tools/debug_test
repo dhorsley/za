@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+while
+
+    k=keypress(1000)
+    println "keypress timed out, looping."
+
+endwhile
+
+

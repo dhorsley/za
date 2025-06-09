@@ -1,0 +1,6 @@
+#!/usr/bin/za
+x=42
+println "Start of script"
+debug break
+println "End of script"
+

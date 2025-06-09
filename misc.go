@@ -202,12 +202,6 @@ func (parser *leparser) report(line int16,s string) {
         pf("\n[#CTE]")
     }
 
-    /*
-    if debug_level>0 {
-        pf("\nBindings : %#v\n",bindings[ifs])
-    }
-    */
-
 }
 
 
