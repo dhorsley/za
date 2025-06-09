@@ -23,6 +23,15 @@ import (
     "errors"
 )
 
+
+var debugger = &Debugger{
+    breakpoints: make(map[uint64]string),
+    watchList:     []string{},
+}
+
+var activeDebugContext *leparser
+var currentPC int16
+
 func showIdent(ident *[]Variable) {
     for k,e:=range (*ident) {
         pf("%3d -- %s -> %+v -- decl -> %v\n",k,e.IName,e.IValue,e.declared)
@@ -641,7 +650,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     }
     startTime:=time.Now()
 
-
     // set up evaluation parser - one per function
     parser:=&leparser{}
     parser.ident=ident
@@ -707,12 +715,12 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                 parser.hard_fault=false
                 if _,ok:=r.(runtime.Error); ok {
                     parser.report(inbound.SourceLine,sf("\n%v\n",r))
-                    if debug_level>0 { err:=r.(error); panic(err) }
+                    if debugMode { err:=r.(error); panic(err) }
                     finish(false,ERR_EVAL)
                 }
                 err:=r.(error)
                 parser.report(inbound.SourceLine,sf("\n%v\n",err))
-                if debug_level>0 { panic(r) }
+                if debugMode { panic(r) }
                 setEcho(true)
                 finish(false,ERR_EVAL)
             }
@@ -742,14 +750,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // where the tokens are:
     source_base = calltable[csloc].base
 
-    /*
-    if debug_level>7 {
-        fmt.Printf("  - fs   : %v\n",fs)
-        fmt.Printf("  - base : %d\n",source_base)
-        fmt.Printf("  - csloc: %d\n",csloc)
-    }
-    */
-
     currentModule=basemodmap[source_base]
     parser.namespace    = currentModule
     interparse.namespace= currentModule
@@ -757,6 +757,9 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
+
+    // fake a filename to ifs relationship, for debugger use.
+    fileMap[ifs]=fileMap[source_base]
 
     calllock.RUnlock()
 
@@ -969,9 +972,66 @@ tco_reentry:
     typemap["map"]    = nil
     // --
 
+    // debug mode stuff:
+
+    activeDebugContext = parser
+
+    if debugMode && ifs<3 {
+        pf("[#fgreen]Debugger is active. Pausing before startup.[#-]\n")
+        debugger.enterDebugger(0,functionspaces[source_base], ident, &mident, &gident)
+    }
+
+
+    // main statement loop:
+
+
     for {
 
         parser.pc+=1
+
+        if debugMode {
+
+            currentPC=parser.pc-1
+
+            for {
+                debugger.lock.RLock()
+                isPaused := debugger.paused
+                debugger.lock.RUnlock()
+
+                if !isPaused {
+                    break
+                }
+                time.Sleep(10 * time.Millisecond)
+            }
+
+            debugger.lock.Lock()
+            // key:=(uint64(source_base) << 32) | uint64(parser.pc)
+            key:=(uint64(ifs) << 32) | uint64(parser.pc)
+            cond, hasBP := debugger.breakpoints[key]
+            debugger.lock.Unlock()
+
+            if hasBP {
+                if cond == "" {
+                    debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+                } else {
+                    result, err := ev(parser, ifs, cond)
+                    if err != nil {
+                        pf("[#fred]Error evaluating breakpoint condition: %v[#-]\n", err)
+                        debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+                    } else if isTruthy(result) {
+                        debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+                    }
+                }
+            }
+
+            if debugger.stepMode {
+                debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+            }
+
+            if debugger.nextMode && len(errorChain) <= debugger.nextCallDepth {
+                debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+            }
+        }
 
         // @note: sig_int can be a race condition. alternatives?
         // if sig_int removed from below then user ctrl-c handler cannot
@@ -3958,7 +4018,7 @@ tco_reentry:
                 fileMap[loc]=moduleloc
                 basemodmap[loc]=modRealAlias
 
-                if debug_level>10 {
+                if debugMode {
                     start := time.Now()
                     phraseParse(parser.ctx,modRealAlias, string(mod), 0)
                     elapsed := time.Since(start)
@@ -3976,7 +4036,7 @@ tco_reentry:
 
                 var modident = make([]Variable,identInitialSize)
 
-                if debug_level>10 {
+                if debugMode {
                     start := time.Now()
                     Call(ctx,MODE_NEW, &modident, loc, ciMod, false, nil, "", []string{})
                     elapsed := time.Since(start)
@@ -4798,6 +4858,30 @@ tco_reentry:
 
             // ENDIF *should* just be an end-of-block marker
 
+        case C_Debug:
+            // "debug on|off|break"
+            if inbound.TokenCount < 2 {
+                pf("[#fred]debug statement requires an argument: on, off, or break[#-]\n")
+                break
+            }
+            action := str.ToLower(inbound.Tokens[1].tokText)
+
+            switch action {
+            case "on":
+                debugMode = true
+                pf("[#fgreen]Debug mode enabled.[#-]\n")
+            case "off":
+                debugMode = false
+                pf("[#fgreen]Debug mode disabled.[#-]\n")
+            case "break":
+                pf("[#fyellow]Entering debugger on explicit break command.[#-]\n")
+                key:=(uint64(source_base) << 32) | uint64(parser.pc)
+                debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
+            default:
+                pf("[#fred]Unknown debug command: %s[#-]\n", action)
+            }
+            continue
+
 
         default:
 
@@ -4868,6 +4952,14 @@ tco_reentry:
     lastlock.RLock()
     si=sig_int
     lastlock.RUnlock()
+
+    if debugMode && ifs<3 {
+        pf("[#fyellow]Debugger active at program end. Entering final pause.[#-]\n")
+        key:=(uint64(source_base) << 32) | uint64(parser.pc)
+        debugger.enterDebugger(key,functionspaces[source_base], ident, &mident, &gident)
+        activeDebugContext=nil
+    }
+
 
     if !si {
 
@@ -5271,5 +5363,20 @@ func handleTestResult(ifs uint32, passed bool, sourceLine int16, exprText string
       parser.report(sourceLine, msg+" (but continuing)")
     }
   }
+}
+
+func isTruthy(val any) bool {
+    switch v := val.(type) {
+    case bool:
+        return v
+    case int, int32, int64:
+        return v != 0
+    case float32, float64:
+        return v != 0.0
+    case string:
+        return v != ""
+    default:
+        return val != nil
+    }
 }
 

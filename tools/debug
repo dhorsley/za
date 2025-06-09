@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+echo "Searching for Za processes..."
+
+# Alpine detection
+if grep -qi 'alpine' /etc/os-release 2>/dev/null; then
+  echo "Detected Alpine Linux."
+  procs=$(ps -u $(whoami) -o pid=,cmd= | grep ' za' | grep -v grep)
+else
+  if command -v pgrep >/dev/null 2>&1; then
+    procs=$(pgrep -af 'za')
+  else
+    procs=$(ps -u $(whoami) -o pid=,cmd= | grep ' za' | grep -v grep)
+  fi
+fi
+
+if [ -z "$procs" ]; then
+  echo "No running Za processes found."
+  exit 1
+fi
+
+num_procs=$(echo "$procs" | wc -l)
+
+if [ "$num_procs" -eq 1 ]; then
+  pid=$(echo "$procs" | awk '{print $1}')
+  echo "Found single Za process: $procs"
+  read -p "Send SIGUSR1 to $pid? (y/N): " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Aborting."
+    exit 0
+  fi
+  kill -USR1 "$pid"
+  echo "Debugger triggered."
+  exit 0
+fi
+
+echo "Multiple Za processes found:"
+echo "$procs" | nl -w2 -s': '
+
+read -p "Enter the number of the process to debug: " num
+pid=$(echo "$procs" | sed -n "${num}p" | awk '{print $1}')
+
+if [ -z "$pid" ]; then
+  echo "Invalid selection."
+  exit 1
+fi
+
+read -p "Are you sure you want to send SIGUSR1 to PID $pid? (y/N): " confirm
+if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+  echo "Aborting."
+  exit 0
+fi
+
+kill -USR1 "$pid"
+echo "Debugger triggered!"
+

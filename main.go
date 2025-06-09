@@ -14,12 +14,9 @@ import (
     "io/ioutil"
     "os"
     "os/exec"
-    "os/signal"
-//    "regexp"
     "runtime"
     str "strings"
     "sync"
-    "syscall"
     "time"
     "context"
 )
@@ -29,7 +26,6 @@ import (
     "log"
     "net/http"
     _ "net/http/pprof"
-    // "runtime/trace"
 )
 
 
@@ -218,7 +214,7 @@ var testsTotal int
 var enforceError bool
 
 // - not currently used too much. may eventually be removed
-var debug_level int             // 0:off, >0 max displayed debug level
+var debugMode   bool            //  enable debugging repl
 var lineDebug   bool            // 
 var enableAsserts bool          // turn assert interpretation on/off
 
@@ -299,6 +295,12 @@ func main() {
             }
         }
     }()
+
+    // debug mode setup:
+    var breaksig = make(chan os.Signal, 1)
+    var signals = make(chan os.Signal, 1)
+    setupSignalHandlers(signals,breaksig)
+    // end of debug setup
 
 
     // lower number means : "binding is less tight than operators with higher number"
@@ -431,8 +433,6 @@ func main() {
     // set default prompt colour
     promptColour=defaultPromptColour
 
-    // turn debug mode off
-    debug_level = 0
     lineDebug=false
 
     // start processing startup flags
@@ -503,7 +503,7 @@ func main() {
     var a_version        =   flag.Bool("v",false,"display the Za version")
     var a_interactive    =   flag.Bool("i",false,"run interactively")
     var a_scriptBypass   =   flag.Bool("b",false,"bypass startup script")
-    var a_debug          =    flag.Int("d",0,"set debug level (0:off)")
+    var a_debug          =    flag.Bool("d",false,"set debug mode")
     var a_lineDebug      =   flag.Bool("D",false,"enable line debug")
     var a_profile        =   flag.Bool("p",false,"enable profiler")
     // var a_trace          =   flag.Bool("P",false,"enable trace capture")
@@ -608,8 +608,8 @@ func main() {
         gvset("@cmdsep",byte(*a_cmdsep))
     }
 
-    if *a_debug != 0 {
-        debug_level = *a_debug
+    if *a_debug {
+        debugMode = *a_debug
     }
 
     if *a_lineDebug {
@@ -794,10 +794,6 @@ func main() {
         // enable_mouse()
     }
 
-
-    // ctrl-c handler
-    var breaksig = make(chan os.Signal, 1)
-    signal.Notify(breaksig,syscall.SIGINT)
 
     // - name of Za function that handles ctrl-c.
     gvset("@trapInt", "")
@@ -1363,7 +1359,7 @@ func main() {
     // tokenise and part-parse the input
     if len(input) > 0 {
         fileMap[1]=exec_file_name
-        if debug_level>10 {
+        if debugMode {
             start:=time.Now()
             phraseParse(ctx,"main", input, 0)
             elapsed:=time.Since(start)

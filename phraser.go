@@ -64,6 +64,14 @@ func getFileFromIFS(ifs uint32) (string) {
     return fileMap[ifs]
 }
 
+func getIFSFromFile(f string) (uint32) {
+    for k,v:=range fileMap {
+        if v==f {
+            return k
+        }
+    }
+    return uint32(0)
+}
 
 // phraseParse():
 //
