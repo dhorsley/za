@@ -58,6 +58,13 @@ func buildFileLib() {
         return nil,nil
     }
 
+
+slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool",
+    action: "Not supported on Windows."}
+stdlib["flock"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    return true, errors.New("flock() is not supported on Windows")
+}
+
 /* not in windows
     slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool", 
         action: "(experimental,linux only) Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\nReturns true if the file could not be locked."}

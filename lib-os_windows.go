@@ -13,12 +13,14 @@ import (
 )
 
 
-// not implemented! will eventually fix this to return a common structure
-// that re-interprets either *syscall.Win32FileAttributeData or Stat_t
-// depending on the system in use.
 func fileStatSys(fp string) (*syscall.Win32FileAttributeData) {
-    return nil
-}
+    var data syscall.Win32FileAttributeData
+    err := syscall.GetFileAttributesEx(syscall.StringToUTF16Ptr(fp), syscall.GetFileExInfoStandard, (*byte)(unsafe.Pointer(&data)))
+    if err != nil {
+        return nil
+    }
+    return &data
+
 
 
 func fcopy(s, d string) (int64, error) {

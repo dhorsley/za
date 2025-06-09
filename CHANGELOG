@@ -33,6 +33,8 @@ CHANGE LOG
 
     * finally got around to adding short-circuit evaluation and fixes for bool evaluation chaining.
 
+    * added a few of the missing file and console handling routines for windows.
+
 
     library
     -------
