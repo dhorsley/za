@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+
+match_max 1000000
+set timeout 2
+
+spawn za -d -c test_script.za
+
+# Initial pseudo breakpoint - no variables yet!
+send "\n\n"
+expect -re "debug>"
+send "\n\nc\n"
+
+# Second pause at explicit debug break (after x=42 has been executed)
+expect -re "debug>"
+send "p\n"
+expect "Variable name:"
+send "x\n"
+
+# List variables (optional)
+expect -re "debug>"
+send "v\n"
+
+# Add a breakpoint
+expect -re "debug>"
+send "b+\n"
+expect " for breakpoint:"
+send "2\n"
+expect "Enter optional condition"
+send "\n"
+
+# List breakpoints
+expect -re "debug>"
+send "b\n"
+
+# Remove breakpoint
+expect -re "debug>"
+send "b-\n"
+expect " to remove breakpoint: "
+send "2\n"
+
+# Show call chain
+expect -re "debug>"
+send "where\n"
+
+# Continue execution
+expect -re "debug>"
+send "c\n"
+
+expect eof
+

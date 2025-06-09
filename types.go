@@ -6,6 +6,7 @@ package main
 
 import (
     "reflect"
+    "sync"
 )
 
 // this type is for holding a complete line from statement to EOL/Semicolon
@@ -20,13 +21,26 @@ type BaseCode struct {
     borcmd      string  // issued command if SYM_BOR present
 }
 
+func (p BaseCode) String() string {
+    return p.Original
+}
+
 type bc_block struct {
     Block       []byte
     compiled    bool
 }
 
-func (p BaseCode) String() string {
-    return p.Original
+// debugger stuff:
+type Debugger struct {
+    breakpoints map[uint64]string
+    stepMode    bool
+    nextMode    bool
+    nextCallDepth int
+    watchList   []string
+    lock        sync.RWMutex
+    activeRepl  bool
+    paused      bool
+
 }
 
 
@@ -66,6 +80,9 @@ type Token struct {
 }
 
 func (t Token) String() string {
+    if t.tokType == StringLiteral {
+        return sf("\"%s\"",Strip(t.tokText))
+    }
     return t.tokText
 }
 
@@ -108,14 +125,6 @@ type Feature struct {
     version  int    // for standard library and REQUIRE statement support.
     category string // for stdlib funcs() output splitting
 }
-
-/*
-// holds state about a while loop
-type WhileMarker struct {
-    pc          int16
-    enddistance int
-}
-*/
 
 // holds internal state for the CASE command
 type caseCarton struct {
