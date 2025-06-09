@@ -12,6 +12,7 @@ import (
     "strconv"
     "bufio"
     "os"
+    "path/filepath"
 )
 
 type profilerKeyType struct{}
@@ -51,6 +52,20 @@ func getGoroutineID() uint64 {
     }
     return id
 }
+
+func humanReadableSize(size int64) string {
+    const unit = 1024
+    if size < unit {
+        return sf("%d B", size)
+    }
+    div, exp := int64(unit), 0
+    for n := size / unit; n >= unit; n /= unit {
+        div *= unit
+        exp++
+    }
+    return sf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
+}
+
 
 func getCallChain(ctx context.Context) []string {
     id, ok := ctx.Value(profilerKey).(uint64)
@@ -284,14 +299,9 @@ func getBaseSourceIFS(ifs uint32) uint32 {
 }
 
 func getBaseIFS(ifs uint32) uint32 {
-    // Walk the calltable or store source_base per ifs
-    // Example (if calltable has .base field):
-    // if ifs < uint32(len(calltable)) {
     calllock.RLock()
     defer calllock.RUnlock()
     return calltable[ifs].base
-    // }
-    // return ifs // fallback
 }
 
 
@@ -309,32 +319,17 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
     ifs = uint32(key >> 32)
     pc := int(key & 0xffffffff)
 
+    // pf("Inside enterDebugger. From key decode : ifs=%d pc=%d\n",ifs,pc)
 
-    // Get true source line from the Phrase
-    sourceLine := -1
-    sourceBase := getBaseSourceIFS(ifs)
-
-    // Get file name
-    filename:=getFileFromIFS(ifs)
-
-    pf("\n[#-]")
-
-    if int(sourceBase) < len(functionspaces) {
-        phrases:=functionspaces[sourceBase]
-        if pc >= 0 && pc < len(phrases) {
-            sourceLine = int(phrases[pc].SourceLine)
-        }
-        /*
-        if phrases!=nil && len(phrases)>0 && pc>0 && pc<len(phrases) {
-            pf("[#fblue]Debug: ifs=%d pc=%d phrases.len=%d phrase sourceLine=%d\n[#-]", ifs, pc, len(phrases), phrases[pc].SourceLine)
-        } else {
-            pf("[#fblue]Debug: phrases is nil or pc out of range! ifs=%d pc=%d phrases.len=%d\n[#-]", ifs, pc, len(phrases))
-        }
-        */
+    // Get positional details
+    filename    := getFileFromIFS(ifs)
+    sourceBase  := getBaseSourceIFS(ifs)
+    phrases     := functionspaces[sourceBase]
+    display_fs,_:= numlookup.lmget(ifs)
+    sourceLine  := int16(-1)
+    if pc>=0 && len(phrases)>pc {
+        sourceLine  = int16(phrases[pc].SourceLine)
     }
-
-
-    display_fs,_:=numlookup.lmget(ifs)
 
     if key==0 {
         pf("\n[#fred]🛑 Pseudo breakpoint at startup or from interrupt.[#-]\n")
@@ -357,7 +352,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
     reader := bufio.NewReader(os.Stdin)
 
     for {
-        pf("[#bold][[#3]scope %s : [#6]srcline %05d : [#7]stmtnum %05d] [#5]debug> [#-]",display_fs,sourceLine,pc)
+        pf("[#bold][[#3]scope %s : [#6]line %05d : [#7]idx %05d] [#5]debug> [#-]",display_fs,sourceLine,pc)
         input, _ := reader.ReadString('\n')
         input = str.TrimSpace(input)
 
@@ -390,44 +385,108 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             d.nextCallDepth = len(errorChain)
             return
 
+        case "ctx", "context":
+            pf("Current context range for listing is: %d\n", d.listContext)
+            pf("Enter new context range (default: 10): ")
+            input, _ := reader.ReadString('\n')
+            input = str.TrimSpace(input)
+            if input == "" {
+                pf("[#fyellow]No change made.[#-]\n")
+                break
+            }
+            newCtx, err := strconv.Atoi(input)
+            if err != nil || newCtx < 0 {
+                pf("[#fred]Invalid context value. Please enter a positive number.[#-]\n")
+                break
+            }
+            d.listContext = newCtx
+            pf("[#fgreen]Updated context range to: %d[#-]\n", d.listContext)
+
 
         case "l", "list":
-            context := 10 
-            pf("[#bold]Source context around PC %d:[#-]\n", pc)
 
-            start := pc - context
+            // Determine phrase list and context window
+            start := pc - d.listContext
             if start < 0 {
                 start = 0
             }
-
-            end := pc + context
-            if end >= len(statements) {
-                end = len(statements) - 1
+            end := pc + d.listContext
+            if end >= len(phrases) {
+                end = len(phrases) - 1
             }
+
+            // Calculate relative file path
+            filePath := getFileFromIFS(ifs)
+            cwd, _ := os.Getwd()
+            relPath, err := filepath.Rel(cwd, filePath)
+            if err != nil {
+                relPath = filePath // fallback
+            }
+
+            // Calculate human-readable file size
+            fileStat, _ := os.Stat(filePath)
+            var fileSize string
+            if fileStat != nil {
+                fileSize = humanReadableSize(fileStat.Size())
+            } else {
+                fileSize = "unknown"
+            }
+
+            // Header line
+            pf("\n[#bold]Source file: %s (size: %s)[#-]\n", relPath, fileSize)
+            pf("[#bold]Source context around PC %d:[#-]\n", pc)
+            header := sf("[#6]  %-5s %-3s %-5s %-3s %s[#-]", "IDX", "BP", "LINE", "CUR", "TOKENS")
+            pf(header + "\n")
+
+            // Calculate max visible width of rows
+            maxWidth := len(Strip(StripCC(header)))
+            rows := []string{}
 
             for i := start; i <= end; i++ {
-                line := statements[i].SourceLine
-                lineStr := sf("%04d", line)
-                stmtTokens := statements[i].Tokens
+                phrase := phrases[i]
+                line := phrase.SourceLine
 
-                // Check if there is a breakpoint for this line
-                key := (uint64(ifs) << 32) | uint64(line)
-                d.lock.RLock()
-                _, hasBP := d.breakpoints[key]
-                d.lock.RUnlock()
-
-                bpMarker := " "  // No BP
-                if hasBP {
-                    bpMarker = "[#fred]🛑[#-]"
+                // Check for breakpoint marker
+                bpMarker := "   "
+                if _, hasBP := debugger.breakpoints[(uint64(ifs)<<32)|uint64(i)]; hasBP {
+                    bpMarker = sparkle("[#fred] ● [#.]")
                 }
 
-                if i == pc {
-                    pf("%s [#fblue]%s[#-] [#fmagenta]* %v[#-]\n", bpMarker, lineStr, stmtTokens)
-                } else {
-                    pf("%s [#7]%s[#-]   %v[#-]\n", bpMarker, lineStr, stmtTokens)
+                scope := "   "
+                if line == sourceLine {
+                    scope = sparkle("[#fblue] ★ [#.]")
+                }
+
+                // Convert Tokens slice to a plain string list
+                tokens := []string{}
+                for _, t := range phrase.Tokens {
+                    tokens = append(tokens, sf("%v",t))
+                }
+                tokenStr := str.Join(tokens, " ")
+
+                row := sparkle(sf("  %-5d %-3s [#dim]%-5d[#.] %-3s %s", i, bpMarker, line, scope, tokenStr))
+                rows = append(rows, row)
+
+                plainRow := Strip(StripCC(row))
+                if len(plainRow) > maxWidth {
+                    maxWidth = len(plainRow)
                 }
             }
 
+            // Display rows with full background coverage
+            for _, row := range rows {
+
+                plainRow := Strip(StripCC(row))
+                pad := maxWidth - len(plainRow)
+                if pad < 0 {
+                    pad = 0
+                }
+
+                pf("%s%s[#-]\n", row, str.Repeat(" ", pad))
+            }
+
+            // Footer line
+            pf(str.Repeat("─", maxWidth) + "\n")
 
         case "v", "vars":
             _, err := stdlib["dump"]("", 0, ident)
@@ -490,8 +549,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                 pc := int(bpKey & 0xffffffff)
 
                 // Determine correct sourceBase for decoding
-                sourceBase := getBaseSourceIFS(bpIFS)
-                phrases := functionspaces[sourceBase]
+                // phrases := functionspaces[sourceBase]
 
                 lineNum := -1
                 if pc >= 0 && pc < len(phrases) {
@@ -511,13 +569,12 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
 
         case "b+","ba":
 
-            pf("Enter line number for breakpoint: ")
-            lineStr, _ := reader.ReadString('\n')
-            lineStr = str.TrimSpace(lineStr)
-
-            lineNum, err := strconv.Atoi(lineStr)
+            pf("Enter statement index (PC) for breakpoint: ")
+            idxStr, _ := reader.ReadString('\n')
+            idxStr = str.TrimSpace(idxStr)
+            idx, err := strconv.Atoi(idxStr)
             if err != nil {
-                pf("[#fred]Invalid line number: %v[#-]\n", err)
+                pf("[#fred]Invalid PC index: %v[#.]\n", err)
                 break
             }
 
@@ -525,77 +582,38 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             cond, _ := reader.ReadString('\n')
             cond = str.TrimSpace(cond)
 
-            // Use the current ifs for the executing context
-            bpIFS := ifs
-            sourceBase := getBaseSourceIFS(bpIFS)
-            phrases := functionspaces[sourceBase]
-
-            // Find statement index (PC) for lineNum
-            pc := -1
-            for i, ph := range phrases {
-                if int(ph.SourceLine) == lineNum {
-                    pc = i
-                    break
-                }
-            }
-            if pc == -1 {
-                pf("[#fred]Could not find statement for line %d in current file context[#-]\n", lineNum)
-                break
-            }
-
-            key := (uint64(bpIFS) << 32) | uint64(pc)
-
+            // Validate condition if present
             if cond != "" {
-                _, err := ev(p, bpIFS, cond)
+                _, err := ev(p, ifs, cond)
                 if err != nil {
-                    pf("[#fred]Error in condition expression: %v[#-]\n", err)
+                    pf("[#fred]Error in condition expression: %v[#.]\n", err)
                     break
                 }
-                pf("[#fyellow]⚠️  Warning: Conditional breakpoints may slow down execution.[#-]\n")
+                pf("[#fyellow]⚠️  Warning: Conditional breakpoints may slow down execution.[#.]\n")
             }
 
-            d.lock.Lock()
-            d.breakpoints[key] = cond
-            d.lock.Unlock()
-            pf("[#fgreen]Breakpoint added at line: %d (0x%x)[#-]\n", lineNum, key)
+            key := (uint64(ifs) << 32) | uint64(idx)
+            debugger.lock.Lock()
+            debugger.breakpoints[key] = cond
+            debugger.lock.Unlock()
+            pf("[#fgreen]Breakpoint added at PC index: %d (0x%x)[#.]\n", idx, key)
 
 
         case "b-","br":
-
-            pf("Enter line number to remove breakpoint: ")
-            lineStr, _ := reader.ReadString('\n')
-            lineStr = str.TrimSpace(lineStr)
-
-            lineNum, err := strconv.Atoi(lineStr)
+            pf("Enter statement index (PC) to remove breakpoint: ")
+            idxStr, _ := reader.ReadString('\n')
+            idxStr = str.TrimSpace(idxStr)
+            idx, err := strconv.Atoi(idxStr)
             if err != nil {
-                pf("[#fred]Invalid line number: %v[#-]\n", err)
+                pf("[#fred]Invalid PC index: %v[#.]\n", err)
                 break
             }
 
-            // Use the current ifs for the executing context
-            bpIFS := ifs
-            sourceBase := getBaseSourceIFS(bpIFS)
-            phrases := functionspaces[sourceBase]
-
-            // Find statement index (PC) for lineNum
-            pc := -1
-            for i, ph := range phrases {
-                if int(ph.SourceLine) == lineNum {
-                    pc = i
-                    break
-                }
-            }
-            if pc == -1 {
-                pf("[#fred]Could not find statement for line %d in current file context[#-]\n", lineNum)
-                break
-            }
-
-            key := (uint64(bpIFS) << 32) | uint64(pc)
-
-            d.lock.Lock()
-            delete(d.breakpoints, key)
-            d.lock.Unlock()
-            pf("[#fgreen]Breakpoint removed at line: %d (0x%x)[#-]\n", lineNum, key)
+            key := (uint64(ifs) << 32) | uint64(idx)
+            debugger.lock.Lock()
+            delete(debugger.breakpoints, key)
+            debugger.lock.Unlock()
+            pf("[#fgreen]Breakpoint removed at PC index: %d (0x%x)[#.]\n", idx, key)
 
 
         case "cls":
@@ -724,7 +742,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             pf("[#fgreen]Line-by-line tracing disabled.[#-]\n")
 
         case "q", "quit":
-            pf("[#fred]Exiting interpreter.[#-]\n")
+            pf("[#fred]Exiting interpreter.[#-]\n\n")
             os.Exit(0)
 
         case "h", "help":
@@ -734,17 +752,18 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
   [#bold]s / step[#-]           - Execute next statement (step into).
   [#bold]n / next[#-]           - Execute next statement in current function (step over).
   [#bold]l / list[#-]           - Show current statement tokens.
+  [#bold]ctx[#-]                - Set the list mode line spread context size.
   [#bold]v / vars[#-]           - Dump local variables (via stdlib dump()).
   [#bold]mvars[#-]              - Dump module/global-scope variables (via mdump()).
   [#bold]gvars[#-]              - Dump system variables (via gdump()).
-  [#bold]sf / showf[#-]         - show function definitions.
-  [#bold]ss / shows[#-]         - show struct definitions.
+  [#bold]sf / showf[#-]         - Show function definitions.
+  [#bold]ss / shows[#-]         - Show struct definitions.
   [#bold]p / print <var>[#-]    - Show a single variable's value.
   [#bold]bt / where[#-]         - Show call chain backtrace.
   [#bold]fn / file[#-]          - Show current file name.
   [#bold]b / breakpoints[#-]    - List all breakpoints.
-  [#bold]b+[#-]                 - Add a breakpoint interactively.
-  [#bold]b-[#-]                 - Remove a breakpoint.
+  [#bold]b+ / ba[#-]            - Add a breakpoint interactively.
+  [#bold]b- / br[#-]            - Remove a breakpoint.
   [#bold]d / dis[#-]            - Token disassembly.
   [#bold]w / watch[#-]          - Add a variable to watch list.
   [#bold]uw / unwatch[#-]       - Remove a variable from watch list.
@@ -753,8 +772,8 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
   [#bold]src / source[#-]       - Source commands from a file.
   [#bold]ton / traceon[#-]      - Toggle line-by-line tracing on.
   [#bold]toff / traceoff[#-]    - Toggle line-by-line tracing off.
-  [#bold]fs / functionspace[#-] - show debug entry point.
-  [#bold]cls[#-]                - Toggle line-by-line tracing off.
+  [#bold]fs / functionspace[#-] - Show debug entry point.
+  [#bold]cls[#-]                - Clear the screen.
   [#bold]q / quit / exit[#-]    - Exit the interpreter.
   [#bold]h / help[#-]           - Show this help message.
 
