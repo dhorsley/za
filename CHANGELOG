@@ -103,7 +103,6 @@ CHANGE LOG
             - the output should be hierarchical, following the stored call chain.
         - this option replaces a previously undocumented -P call that generated Go trace output.
 
-        - Refactored profiler to use goroutine-local call stacks, enabling accurate profiling of async and concurrent executions.
         - Separated error reporting stack (`errorChain`) from profiler stack, ensuring clarity in tracebacks and no mixing with performance data.
         - Removed global `callChainList` and replace with goroutine-local tracking (`getCallChain` and helpers).
         - Updated all `recordPhase`, `recordExclusiveExecutionTime`, and profiler-related calls to use the new goroutine-aware stack.
