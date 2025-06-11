@@ -1,0 +1,3 @@
+# Example for is_pipe
+println is_pipe(4516)  # false
+

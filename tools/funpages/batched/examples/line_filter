@@ -1,0 +1,4 @@
+# Example for line_filter
+var s="a\nb\nc"
+println line_filter(s,"b")  # "b"
+

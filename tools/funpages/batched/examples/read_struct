@@ -1,0 +1,3 @@
+# Example for read_struct
+println read_struct("/tmp/struct","s")
+

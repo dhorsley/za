@@ -1,0 +1,3 @@
+# Example for is_number
+println is_number("123")  # true
+

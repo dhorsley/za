@@ -35,6 +35,21 @@ CHANGE LOG
 
     * added a few of the missing file and console handling routines for windows.
 
+    * some improvements to REPL line editor ;)
+
+        - Reworked getInput() and multilineEditor() for full UTF-8 support.
+        - Replaced all internal string handling with rune-based logic for safe cursor movement and editing.
+            - this still isn't perfect, but its much better.
+            - there's a plan to deal with cursor movement more cleanly over variable width utf-8/unicode, just not done yet.
+        - Paste handling supports stripping ANSI codes and truncating multiline pastes to single-line input.
+
+        - Added multi line editor extension to REPL. (ctrl-o)
+            - opens on alternate screen
+            - ctrl-d to accept input, escape to abandon, ctrl-r to return top-line only.
+            - Added dynamic height adjustment in multi line editor.
+            - Line numbering in multi line editor with colored 5-digit width and truncation indicator (…) for long lines.
+            - tab key generates 4 spaces. not changing this.
+
 
     library
     -------
@@ -54,6 +69,9 @@ CHANGE LOG
 
     * added time_zone() and time_zone_offset() to lib-date.
         - these return a string (tz name) and an int (tz offset in seconds) respectively.
+
+    * added editor() which calls into the new multi line editor
+        - usage: content_string=editor("default string",width,height,"title string")
 
     * (experimental, testing) added lib-tui.go (text user interface elements)
         - call parameters and behaviour liable to change after feedback
@@ -109,6 +127,8 @@ CHANGE LOG
 
     * removed experimental fix, resume statements and try operator
         - not enough flexibility to be of much use as a trade-off for the performance loss.
+
+    * added some more examples for the library docs
 
     * (experimental) added support for default arguments in function signatures.
         - normal usage without defaults continues as before

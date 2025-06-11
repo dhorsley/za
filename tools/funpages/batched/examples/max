@@ -1,0 +1,4 @@
+# Example for max
+var lst=[1.2, 3, 2.3, 4]
+println max(lst)  # 4
+

@@ -1,0 +1,3 @@
+# Example for ev_exists
+println ev_exists(watcher)  # true/false
+

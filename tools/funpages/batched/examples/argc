@@ -1,0 +1,3 @@
+# Example for argc
+println argc()  # e.g., 1
+

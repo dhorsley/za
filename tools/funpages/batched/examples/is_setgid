@@ -1,0 +1,3 @@
+# Example for is_setgid
+println is_setgid(2755)  # true/false
+

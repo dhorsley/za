@@ -1,0 +1,3 @@
+# Example for substr
+println substr("hello",1,3)  # hel
+

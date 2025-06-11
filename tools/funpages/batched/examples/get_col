@@ -1,0 +1,3 @@
+# Example for get_col
+println get_col()
+

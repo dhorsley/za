@@ -1,0 +1,3 @@
+# Example for asc
+println asc("A")  # 65
+

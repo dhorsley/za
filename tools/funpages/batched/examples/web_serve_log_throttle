@@ -1,0 +1,3 @@
+# Example for web_serve_log_throttle
+web_serve_log_throttle(10,20)
+

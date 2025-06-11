@@ -1,0 +1,4 @@
+# Example for grep
+var s="a\nb\nc"
+println grep(s,"b")  # "b"
+

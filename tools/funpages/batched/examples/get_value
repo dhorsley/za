@@ -1,0 +1,4 @@
+# Example for get_value
+var m={"key":"val"}
+println get_value(m,"key")  # val
+

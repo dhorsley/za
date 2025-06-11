@@ -1,0 +1,3 @@
+# Example for avg
+println avg([1,2,3])  # 2
+

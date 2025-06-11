@@ -1,0 +1,3 @@
+# Example for addansi
+println addansi("[#cyan]Hello World[#-]")  # \033[36mHello World\033[0m
+

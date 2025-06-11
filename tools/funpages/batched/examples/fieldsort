@@ -1,0 +1,4 @@
+# Example for fieldsort
+var text="4 one\n2 two\n3 three\n1 four"
+println fieldsort(text,1,"n",false)
+

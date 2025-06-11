@@ -1,0 +1,3 @@
+# Example for can_write
+println can_write("/tmp")  # true
+

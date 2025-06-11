@@ -1,0 +1,3 @@
+# Example for permit
+println permit("shell",false)
+

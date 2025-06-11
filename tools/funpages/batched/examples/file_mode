@@ -1,0 +1,3 @@
+# Example for file_mode
+println file_mode("/tmp/file")  # e.g., 33188
+

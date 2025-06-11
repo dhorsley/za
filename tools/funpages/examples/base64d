@@ -1,5 +1,0 @@
-println base64d("VGhlIEJhbnlhbiBUcmVl")
-`
-produces:
-The Banyan Tree
-`

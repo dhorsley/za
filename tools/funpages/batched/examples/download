@@ -1,0 +1,3 @@
+# Example for download
+println download("https://example.com")  # saved file name
+

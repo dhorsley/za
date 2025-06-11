@@ -1,0 +1,3 @@
+# Example for logn
+println logn(8,2)  # 3
+

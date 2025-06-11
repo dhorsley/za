@@ -1,0 +1,3 @@
+# Example for tan
+println tan(0.5)
+

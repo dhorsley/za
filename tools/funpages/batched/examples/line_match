@@ -1,0 +1,3 @@
+# Example for line_match
+println line_match("a\nb\nc","b")  # true
+

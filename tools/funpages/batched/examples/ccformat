@@ -1,0 +1,3 @@
+# Example for ccformat
+println ccformat("Hello [#2]%s[#.]","World")  # "Hello World" with World in red ink.
+

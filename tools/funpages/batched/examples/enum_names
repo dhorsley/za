@@ -1,0 +1,3 @@
+# Example for enum_names
+println enum_names(e)  # ["ok","one","two","three"]
+

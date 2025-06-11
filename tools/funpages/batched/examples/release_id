@@ -1,0 +1,3 @@
+# Example for release_id
+println release_id()
+

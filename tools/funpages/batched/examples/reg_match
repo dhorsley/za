@@ -1,0 +1,3 @@
+# Example for reg_match
+println reg_match("abc123","\\d+")  # true
+

@@ -1,0 +1,4 @@
+# Example for set_env
+set_env("MYVAR","abc")
+println get_env("MYVAR")  # abc
+

@@ -1,0 +1,3 @@
+# Example for ibase
+println ibase(2,10)  # "1010"
+

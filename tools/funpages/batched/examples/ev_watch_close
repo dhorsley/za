@@ -1,0 +1,3 @@
+# Example for ev_watch_close
+ev_watch_close(w)
+

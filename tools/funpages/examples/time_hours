@@ -1,5 +1,0 @@
-
-now=epoch_nano_time()
-println format( "%02d:%02d.%02d off_ns %d", time_hours(now), time_minutes(now), time_seconds(now), time_nanos(now) )
-println format( "%s %02d-%02d-%04d", time_dow(now), time_dom(now), time_month(now), time_year(now) )
-

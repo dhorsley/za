@@ -1,0 +1,3 @@
+# Example for itob
+println itob(1)  # true
+

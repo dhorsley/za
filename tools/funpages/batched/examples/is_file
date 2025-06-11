@@ -1,0 +1,3 @@
+# Example for is_file
+println is_file("/tmp/file")  # true
+

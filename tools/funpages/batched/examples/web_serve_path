@@ -1,0 +1,4 @@
+# Example for web_serve_path
+id=web_serve_start(".",8080)
+web_serve_path(id,"s","/old","/new")
+
