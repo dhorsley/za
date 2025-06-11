@@ -72,6 +72,8 @@ syntax match time_functions "\(^|.\|\s*\)time_hours\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)time_minutes\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)time_seconds\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)time_nanos\s*("he=e-1
+syntax match time_functions "\(^|.\|\s*\)time_zone\s*("he=e-1
+syntax match time_functions "\(^|.\|\s*\)time_zone_offset\s*("he=e-1
 
 syntax match list_functions "\(^|.\|\s*\)empty\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)col\s*("he=e-1
@@ -141,7 +143,7 @@ syntax match internal_functions "\(^|.\|\s*\)feed\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)sizeof\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)sysvar\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)varbind\s*("he=e-1
-
+syntax match internal_functions "\(^|.\|\s*\)set_depth\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)execpath\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)last\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)last_err\s*("he=e-1
@@ -216,6 +218,23 @@ syntax match internal_functions "\(^|.\|\s*\)enum_all\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)dup\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)expect\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)trap\s*("he=e-1
+
+syntax match tui_functions   "\(^|.\|\s*\)tui\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)editor\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_new_style\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_new\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_template\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_clear\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_box\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_progress_reset\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_menu\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_table\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_pager\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_progress\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_screen\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_radio\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_text\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)tui_input\s*("he=e-1
 
 syntax match image_functions "\(^|.\|\s*\)svg_start\s*("he=e-1
 syntax match image_functions "\(^|.\|\s*\)svg_end\s*("he=e-1
@@ -515,7 +534,7 @@ syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,tui_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
