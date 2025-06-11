@@ -7,7 +7,7 @@ println "\n[#bold][#fbblue]Library web page autogen[#-]\n"
 
 
 c_link="azure"
-cf_body="#aaa"
+cf_body="#ccc"
 cb_head="#027"
 cb_foot="#259"
 cf_foot="#8cc"
@@ -30,7 +30,7 @@ style=`
     .ttableft   {width:90%;padding-left:16px;}
     .ttabright  {width:9%;}
     .hdbg       {width:100%;background-color:{=cb_head};line-height:0px;}
-    .bodystyle  {background-color:#448;color:{=cf_body};}
+    .bodystyle  {background-color:#66a;color:{=cf_body};}
     .ilink      {width:100%;font-size:2.0rem; }
     a:link      {color:{=c_link};background-color:transparent;text-decoration:none;}
     a:visited   {color:{=c_link};background-color:transparent;text-decoration:none;}
