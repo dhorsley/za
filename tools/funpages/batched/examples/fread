@@ -1,0 +1,5 @@
+# Example for fread
+f=fopen("/tmp/file","r")
+println fread(f,"\n")
+fclose(f)
+

@@ -1,0 +1,3 @@
+# Example for min
+println min([3,2,5])  # 2
+

@@ -1007,7 +1007,6 @@ tco_reentry:
             }
 
             debugger.lock.Lock()
-            // key:=(uint64(source_base) << 32) | uint64(parser.pc)
             key:=(uint64(ifs) << 32) | uint64(parser.pc)
             cond, hasBP := debugger.breakpoints[key]
             debugger.lock.Unlock()

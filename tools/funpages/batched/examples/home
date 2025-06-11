@@ -1,0 +1,3 @@
+# Example for home
+println home()  # e.g., "/home/user"
+

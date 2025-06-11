@@ -1,0 +1,3 @@
+# Example for bash_version
+println bash_version()
+

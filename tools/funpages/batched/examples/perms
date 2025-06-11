@@ -1,0 +1,3 @@
+# Example for perms
+println perms("/tmp")  # e.g., 16877
+

@@ -1,0 +1,3 @@
+# Example for web_head
+println web_head("https://example.com")  # true
+

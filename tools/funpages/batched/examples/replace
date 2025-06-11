@@ -1,0 +1,3 @@
+# Example for replace
+println replace("abc","b","B")  # aBc
+

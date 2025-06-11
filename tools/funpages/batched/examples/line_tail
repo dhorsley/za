@@ -1,0 +1,3 @@
+# Example for line_tail
+println line_tail("a\nb\nc",2)  # "b\nc"
+

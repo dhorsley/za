@@ -1,0 +1,3 @@
+# Example for rad2deg
+println rad2deg(3.14159)  # 180
+

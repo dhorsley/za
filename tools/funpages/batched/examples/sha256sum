@@ -1,0 +1,3 @@
+# Example for sha256sum
+println sha256sum("abc")
+

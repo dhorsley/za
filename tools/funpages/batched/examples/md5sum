@@ -1,0 +1,3 @@
+# Example for md5sum
+println md5sum("abc")
+

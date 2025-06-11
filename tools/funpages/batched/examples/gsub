@@ -1,0 +1,3 @@
+# Example for gsub
+println gsub("hello world","l","x")  # hexxo worxd
+

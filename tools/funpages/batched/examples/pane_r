@@ -1,0 +1,3 @@
+# Example for pane_r
+println pane_r()  # 0
+

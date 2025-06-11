@@ -1,0 +1,4 @@
+# Example for stripansi
+var s=char(27)+"[31mred"+char(27)+"[0m"
+println stripansi(s)  # "red"
+

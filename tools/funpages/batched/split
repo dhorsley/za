@@ -1,0 +1,50 @@
+#!/usr/bin/za
+
+input_file="batch"
+out_path="examples"
+
+# Use a map to track seen examples
+var seen map
+
+# Read the entire file as a single string
+file_contents=read_file(input_file)
+
+# Split into lines
+lines=split(file_contents,"\n")
+
+current_file=""
+skip=false
+out=string
+
+foreach line in lines
+    if has_start(line,"--- example:")
+        # Extract example name
+        start= strpos(line," example:") + 9
+        endpos= strpos(line," ---")
+        println "With {example_name} :"
+        example_name= substr(line,start,endpos-start)
+        
+        # Check if already seen
+        if key(ref seen,example_name)
+            skip=true
+        else
+            seen[example_name]=true
+            current_file=example_name
+            skip=false
+            out=""  # Reset output buffer for new file
+        endif
+    else
+        # Collect lines to 'out' string if we’re not skipping
+        if !skip and current_file!=""
+            out=out+line+"\n"
+        endif
+    endif
+
+    # If we reach the end of a snippet or file, write to file
+    if !skip and current_file!="" and (line=="" or line==lines[lines.len-1])
+        println "- writing : ",current_file
+        write_file(out_path+"/"+current_file,trim(out,0))
+        out=""
+    endif
+endfor
+

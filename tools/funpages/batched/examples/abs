@@ -1,0 +1,3 @@
+# Example for abs
+println abs(-5)  # 5
+

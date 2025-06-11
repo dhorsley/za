@@ -1,0 +1,4 @@
+# Example for line_add_after
+var s="a\nb\nc"
+println line_add_after(s,"b","inserted")  # a\nb\ninserted\nc
+

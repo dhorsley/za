@@ -1,0 +1,3 @@
+# Example for hostname
+println hostname()  # e.g., "myhost"
+

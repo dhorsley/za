@@ -1,0 +1,3 @@
+# Example for get_mem
+println get_mem().alloc  # allocated memory in MB
+

@@ -1,0 +1,3 @@
+# Example for format
+println format("%s %d", "Age:", 30)
+

@@ -1,0 +1,3 @@
+# Example for log10
+println log10(100)  # 2
+

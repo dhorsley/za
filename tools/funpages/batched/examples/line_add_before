@@ -1,0 +1,4 @@
+# Example for line_add_before
+var s="a\nb\nc"
+println line_add_before(s,"b","x")  # a\nx\nb\nc
+

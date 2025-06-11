@@ -1,0 +1,3 @@
+# Example for umask
+println umask()  # e.g., 18
+

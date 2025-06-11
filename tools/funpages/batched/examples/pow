@@ -1,0 +1,3 @@
+# Example for pow
+println pow(2,3)  # 8
+

@@ -1,0 +1,3 @@
+# Example for match
+println match("hello","ell")  # true
+

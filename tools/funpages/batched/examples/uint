@@ -1,0 +1,3 @@
+# Example for uint
+println uint(123)  # 123
+

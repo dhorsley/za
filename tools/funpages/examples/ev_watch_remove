@@ -1,2 +1,0 @@
-# Example for ev_watch_remove()
-println "Example output for ev_watch_remove call"

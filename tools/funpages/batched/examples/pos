@@ -1,0 +1,3 @@
+# Example for pos
+println pos(10,20)  # ANSI cursor string
+

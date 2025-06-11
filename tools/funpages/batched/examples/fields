@@ -1,0 +1,5 @@
+# Example for fields
+var txt="a b c"
+println fields(txt)  # 3
+println F  # ["a","b","c"]
+

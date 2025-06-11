@@ -1,0 +1,3 @@
+# Example for copy
+copy("/tmp/file1","/tmp/file2")
+

@@ -1,0 +1,3 @@
+# Example for btoi
+println btoi(true)  # 1
+

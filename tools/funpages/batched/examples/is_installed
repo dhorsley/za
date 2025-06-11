@@ -1,0 +1,3 @@
+# Example for is_installed
+println is_installed("curl")  # true/false
+

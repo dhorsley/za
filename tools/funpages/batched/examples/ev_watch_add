@@ -1,0 +1,4 @@
+# Example for ev_watch_add
+watch,code=ev_watch("/tmp")
+ev_watch_add(watch,"/var")
+

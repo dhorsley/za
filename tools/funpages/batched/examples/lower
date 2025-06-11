@@ -1,0 +1,3 @@
+# Example for lower
+println lower("HELLO")  # hello
+

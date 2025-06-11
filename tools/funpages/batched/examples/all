@@ -1,0 +1,3 @@
+# Example for all
+println all([1,1,1])  # true
+

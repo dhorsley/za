@@ -1,0 +1,3 @@
+# Example for e
+println e()  # 2.7182...
+

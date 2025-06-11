@@ -1,0 +1,5 @@
+# Example for zip
+var a=[1,2]
+var b=["a","b"]
+println zip(a,b)  # [[1,"a"],[2,"b"]]
+

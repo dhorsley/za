@@ -1,0 +1,7 @@
+# Example for ev_mask
+watch,code=ev_watch("/tmp")
+ev=ev_event(watch)
+if ev_mask(ev,"create")!=nil
+  println "File created"
+endif
+

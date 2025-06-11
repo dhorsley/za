@@ -1,0 +1,3 @@
+# Example for system
+println system("echo hello",true)
+

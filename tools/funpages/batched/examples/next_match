@@ -1,0 +1,4 @@
+# Example for next_match
+var t="a\nb\nc"
+println next_match(t,"b",1)  # 2
+

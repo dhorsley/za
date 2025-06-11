@@ -1,0 +1,3 @@
+# Example for count
+println count("a\nb\nc")  # 3
+

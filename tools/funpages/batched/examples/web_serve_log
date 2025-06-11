@@ -1,0 +1,3 @@
+# Example for web_serve_log
+web_serve_log("entry")
+

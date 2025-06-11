@@ -1,0 +1,4 @@
+# Example for ev_event
+var e=ev_event(watcher)
+println e  # Event struct with .Name and .Op fields
+

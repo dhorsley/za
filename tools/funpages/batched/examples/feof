@@ -1,0 +1,5 @@
+# Example for feof
+f=fopen("/tmp/file","r")
+println feof(f)
+fclose(f)
+

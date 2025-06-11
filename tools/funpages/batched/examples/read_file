@@ -1,0 +1,3 @@
+# Example for read_file
+println read_file("/etc/hostname")
+

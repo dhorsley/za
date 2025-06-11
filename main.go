@@ -271,6 +271,10 @@ func main() {
         setWinchSignal(sigs)
     }
 
+    if runtime.GOOS == "windows" {
+        winmode = true
+    }
+
     BMARGIN=8
 
     permit_shell=true

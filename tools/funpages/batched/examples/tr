@@ -1,0 +1,3 @@
+# Example for tr
+println tr("aabbcc","d","ab")  # cc
+

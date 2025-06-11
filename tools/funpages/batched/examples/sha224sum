@@ -1,0 +1,3 @@
+# Example for sha224sum
+println sha224sum("abc")
+

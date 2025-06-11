@@ -1,0 +1,3 @@
+# Example for release_version
+println release_version()
+

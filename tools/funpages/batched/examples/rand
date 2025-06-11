@@ -1,0 +1,3 @@
+# Example for rand
+println rand(100)  # e.g., 73
+

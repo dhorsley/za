@@ -1,0 +1,3 @@
+# Example for is_socket
+println is_socket(49152)  # false
+

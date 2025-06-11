@@ -1,0 +1,3 @@
+# Example for phi
+println phi()  # 1.618033...
+

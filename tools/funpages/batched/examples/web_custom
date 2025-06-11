@@ -1,0 +1,3 @@
+# Example for web_custom
+println web_custom("GET","https://example.com")  # response content
+

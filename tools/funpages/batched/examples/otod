@@ -1,0 +1,3 @@
+# Example for otod
+println otod("77")  # 63
+

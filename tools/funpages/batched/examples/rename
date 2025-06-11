@@ -1,0 +1,3 @@
+# Example for rename
+println rename("/tmp/old","/tmp/new")  # true
+
