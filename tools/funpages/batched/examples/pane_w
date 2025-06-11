@@ -1,0 +1,3 @@
+# Example for pane_w
+println pane_w()  # 80
+

@@ -1,0 +1,3 @@
+# Example for split
+println split("a b c")  # ["a","b","c"]
+

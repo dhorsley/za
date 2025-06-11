@@ -1,0 +1,3 @@
+# Example for len
+println len("abcd")  # 4
+

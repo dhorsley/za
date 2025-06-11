@@ -1,0 +1,3 @@
+# Example for ansi
+ansi(false)  # disable ANSI
+

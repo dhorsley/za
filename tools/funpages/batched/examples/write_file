@@ -1,0 +1,3 @@
+# Example for write_file
+println write_file("/tmp/f","hi",0644)
+

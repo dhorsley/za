@@ -1,0 +1,3 @@
+# Example for s3sum
+println s3sum("/tmp/f").sum
+

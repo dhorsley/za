@@ -1,0 +1,3 @@
+# Example for dtoo
+println dtoo(8)  # 10
+

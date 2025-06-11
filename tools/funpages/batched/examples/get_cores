@@ -1,0 +1,3 @@
+# Example for get_cores
+println get_cores()  # e.g., 4
+

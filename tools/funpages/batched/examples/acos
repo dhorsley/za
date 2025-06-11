@@ -1,0 +1,3 @@
+# Example for acos
+println acos(1)  # 0
+

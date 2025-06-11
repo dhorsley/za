@@ -1,0 +1,3 @@
+# Example for user
+println user()  # e.g., "daniel"
+

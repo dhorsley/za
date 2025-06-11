@@ -1,0 +1,4 @@
+# Example for ev_watch_remove
+watch,code=ev_watch("/tmp")
+ev_watch_remove(watch,"/tmp")
+

@@ -1,0 +1,3 @@
+# Example for clktck
+println clktck()  # e.g., 100
+

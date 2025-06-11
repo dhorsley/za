@@ -1,0 +1,3 @@
+# Example for term_h
+println term_h()  # e.g., 24
+

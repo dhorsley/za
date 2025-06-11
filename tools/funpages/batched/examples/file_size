@@ -1,0 +1,3 @@
+# Example for file_size
+println file_size("/tmp/f")
+

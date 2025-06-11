@@ -1,0 +1,3 @@
+# Example for is_dir
+println is_dir("/tmp")  # true
+

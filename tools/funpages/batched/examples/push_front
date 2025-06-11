@@ -1,0 +1,5 @@
+# Example for push_front
+var lst=[1,2,3]
+lst=push_front(lst,0)
+println lst  # [0,1,2,3]
+

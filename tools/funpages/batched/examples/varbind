@@ -1,0 +1,3 @@
+# Example for varbind
+println varbind("a")  # 1
+

@@ -1,0 +1,3649 @@
+--- example:empty ---
+# Example for empty
+var lst=[1,2,3]
+println empty(lst)  # false
+
+--- example:push_front ---
+# Example for push_front
+var lst=[1,2,3]
+lst=push_front(lst,0)
+println lst  # [0,1,2,3]
+
+--- example:pop ---
+# Example for pop
+var lst=[1,2,3]
+var item=pop("lst")
+println "Last item:",item
+
+--- example:max ---
+# Example for max
+var lst=[1.2, 3, 2.3, 4]
+println max(lst)  # 4
+
+--- example:parent ---
+# Example for parent
+println parent("/usr/local/bin/")  # /usr/local
+
+--- example:fieldsort ---
+# Example for fieldsort
+var text="4 one\n2 two\n3 three\n1 four"
+println fieldsort(text,1,"n",false)
+
+--- example:web_serve_stop ---
+# Example for web_serve_stop
+id=web_serve_start(".",8080)
+web_serve_stop(id)
+
+--- example:ev_watch_remove ---
+# Example for ev_watch_remove
+watch,code=ev_watch("/tmp")
+ev_watch_remove(watch,"/tmp")
+
+--- example:web_max_clients ---
+# Example for web_max_clients
+println web_max_clients()  # e.g., 100
+
+--- example:enum_all ---
+# Example for enum_all
+enum e(ok=0,one,two,three)
+println enum_all(e)  # [0,1,2,3]
+
+--- example:tr ---
+# Example for tr
+println tr("aabbcc","d","ab")  # cc
+
+--- example:atanh ---
+# Example for atanh
+println atanh(0.5)  # 0.5493...
+
+--- example:bgrgb ---
+# Example for bgrgb
+println bgrgb(255,0,0)  # \033[48;2;255;0;0m
+
+--- example:uniq ---
+# Example for uniq
+var lst=[1,2,2,3,3,3]
+println uniq(lst)  # [1,2,3]
+
+--- example:ev_mask ---
+# Example for ev_mask
+watch,code=ev_watch("/tmp")
+ev=ev_event(watch)
+if ev_mask(ev,"create")!=nil
+  println "File created"
+endif
+
+--- example:chroot ---
+# Example for chroot
+chroot("/mydir")
+
+--- example:web_serve_path ---
+# Example for web_serve_path
+id=web_serve_start(".",8080)
+web_serve_path(id,"s","/old","/new")
+
+--- example:scan_left ---
+# Example for scan_left
+println scan_left([1,2,3,4],"+",0)  # [1,3,6,10]
+
+--- example:html_unescape ---
+# Example for html_unescape
+println html_unescape("&lt;div&gt;")  # <div>
+
+--- example:pid ---
+# Example for pid
+println pid()
+
+--- example:ev_watch_add ---
+# Example for ev_watch_add
+watch,code=ev_watch("/tmp")
+ev_watch_add(watch,"/var")
+
+--- example:json_format ---
+# Example for json_format
+json='{"a":1,"b":2}'
+println json_format(json)
+
+--- example:perms ---
+# Example for perms
+println perms("/tmp")  # e.g., 16877
+
+--- example:copy ---
+# Example for copy
+copy("/tmp/file1","/tmp/file2")
+
+--- example:substr ---
+# Example for substr
+println substr("hello",1,3)  # hel
+
+--- example:inset ---
+# Example for inset
+var text="line1\nline2"
+println inset(text,4)
+
+--- example:delete ---
+# Example for delete
+delete("/tmp/file")
+
+--- example:deg2rad ---
+# Example for deg2rad
+println deg2rad(180)  # 3.14159...
+
+--- example:json_query ---
+# Example for json_query
+var data='{"a":[1,2,3]}'
+println json_query(data,".a")  # [1,2,3]
+
+--- example:randf ---
+# Example for randf
+println randf()
+
+--- example:head ---
+# Example for head
+var lst=[1,2,3,4]
+println head(lst)  # 1
+
+--- example:pane_r ---
+# Example for pane_r
+println pane_r()  # 0
+
+--- example:user ---
+# Example for user
+println user()  # e.g., "daniel"
+
+--- example:bash_versinfo ---
+# Example for bash_versinfo
+println bash_versinfo()
+
+--- example:umask ---
+# Example for umask
+println umask()  # e.g., 18
+
+--- example:esplit ---
+# Example for esplit
+var lst=[1,2,3,4,5]
+esplit(lst,"l","r",3)
+println l  # [1,2]
+println r  # [3,4,5]
+
+--- example:has_term ---
+# Example for has_term
+println has_term()  # true
+
+--- example:ibase ---
+# Example for ibase
+println ibase(2,10)  # "1010"
+
+--- example:append ---
+# Example for append
+var lst=[1,2,3]
+lst=append(lst,4)
+println lst  # [1,2,3,4]
+
+--- example:fields ---
+# Example for fields
+var txt="a b c"
+println fields(txt)  # 3
+println F  # ["a","b","c"]
+
+--- example:pow ---
+# Example for pow
+println pow(2,3)  # 8
+
+--- example:rand ---
+# Example for rand
+println rand(100)  # e.g., 73
+
+--- example:asin ---
+# Example for asin
+println asin(0.5)  # 0.5235...
+
+--- example:next_match ---
+# Example for next_match
+var t="a\nb\nc"
+println next_match(t,"b",1)  # 2
+
+--- example:fread ---
+# Example for fread
+f=fopen("/tmp/file","r")
+println fread(f,"\n")
+fclose(f)
+
+--- example:has_shell ---
+# Example for has_shell
+println has_shell()  # true
+
+--- example:release_version ---
+# Example for release_version
+println release_version()
+
+--- example:fgrgb ---
+# Example for fgrgb
+println fgrgb(255,0,0)  # \033[38;2;255;0;0m
+
+--- example:feof ---
+# Example for feof
+f=fopen("/tmp/file","r")
+println feof(f)
+fclose(f)
+
+--- example:get_col ---
+# Example for get_col
+println get_col()
+
+--- example:set_env ---
+# Example for set_env
+set_env("MYVAR","abc")
+println get_env("MYVAR")  # abc
+
+--- example:system ---
+# Example for system
+println system("echo hello",true)
+
+--- example:eqlen ---
+# Example for eqlen
+println eqlen([[1,2],[3,4]])  # true
+
+--- example:release_id ---
+# Example for release_id
+println release_id()
+
+--- example:e ---
+# Example for e
+println e()  # 2.7182...
+
+--- example:is_number ---
+# Example for is_number
+println is_number("123")  # true
+
+--- example:bg256 ---
+# Example for bg256
+println bg256(34)  # \033[48;5;34m
+
+--- example:clean ---
+# Example for clean
+println clean("a{b{c}}d")  # ad
+
+--- example:unmap ---
+# Example for unmap
+var m=map{"a":1,"b":2}
+unmap("m","a")
+println m  # {"b":2}
+
+--- example:ast ---
+# Example for ast
+println ast("myfunction")
+
+--- example:is_pipe ---
+# Example for is_pipe
+println is_pipe(4516)  # false
+
+--- example:addansi ---
+# Example for addansi
+println addansi("[#cyan]Hello World[#-]")  # \033[36mHello World\033[0m
+
+--- example:reg_match ---
+# Example for reg_match
+println reg_match("abc123","\\d+")  # true
+
+--- example:cursoron ---
+# Example for cursoron
+cursoron()
+
+--- example:numcomma ---
+# Example for numcomma
+println numcomma(1000000)  # 1,000,000
+
+--- example:line_add ---
+# Example for line_add
+var s="a\nb\nc"
+println line_add(s,"d")  # "a\nb\nc\nd"
+
+--- example:capture_shell ---
+# Example for capture_shell
+capture_shell(true)
+
+--- example:peek ---
+# Example for peek
+var lst=[1,2,3]
+println peek("lst")  # 3
+
+--- example:is_file ---
+# Example for is_file
+println is_file("/tmp/file")  # true
+
+--- example:lines ---
+# Example for lines
+var s="a\nb\nc"
+println lines(s,"1:2")  # "a\nb"
+
+--- example:db_close ---
+# Example for db_close
+var db=db_init("mydb")
+db_close(db)
+
+--- example:atan ---
+# Example for atan
+println atan(1)  # 0.785398...
+
+--- example:upper ---
+# Example for upper
+println upper("hello")  # HELLO
+
+--- example:execpath ---
+# Example for execpath
+println execpath()
+
+--- example:tanh ---
+# Example for tanh
+println tanh(1)  # 0.7615...
+
+--- example:pane_c ---
+# Example for pane_c
+println pane_c()  # 0
+
+--- example:rad2deg ---
+# Example for rad2deg
+println rad2deg(3.14159)  # 180
+
+--- example:logn ---
+# Example for logn
+println logn(8,2)  # 3
+
+--- example:keypress ---
+# Example for keypress
+println keypress(1000)  # (waits for keypress, returns code)
+
+--- example:web_serve_log_throttle ---
+# Example for web_serve_log_throttle
+web_serve_log_throttle(10,20)
+
+--- example:has_end ---
+# Example for has_end
+println has_end("abcdef","ef")  # true
+
+--- example:bash_version ---
+# Example for bash_version
+println bash_version()
+
+--- example:pane_w ---
+# Example for pane_w
+println pane_w()  # 80
+
+--- example:json_decode ---
+# Example for json_decode
+println json_decode("[1,2,3]")  # [1,2,3]
+
+--- example:line_filter ---
+# Example for line_filter
+var s="a\nb\nc"
+println line_filter(s,"b")  # "b"
+
+--- example:argv ---
+# Example for argv
+println argv()  # e.g., ["file.za","arg1","arg2"]
+
+--- example:eval ---
+# Example for eval
+println eval("1+1")  # 2
+
+--- example:ev_watch ---
+# Example for ev_watch
+var w,code=ev_watch("/tmp")
+println w,code  # watcher object, 0
+
+--- example:get_row ---
+# Example for get_row
+println get_row()  # e.g., 0
+
+--- example:enum_names ---
+# Example for enum_names
+println enum_names(e)  # ["ok","one","two","three"]
+
+--- example:file_mode ---
+# Example for file_mode
+println file_mode("/tmp/file")  # e.g., 33188
+
+--- example:release_name ---
+# Example for release_name
+println release_name()  # e.g., "Ubuntu"
+
+--- example:zip ---
+# Example for zip
+var a=[1,2]
+var b=["a","b"]
+println zip(a,b)  # [[1,"a"],[2,"b"]]
+
+--- example:web_serve_start ---
+# Example for web_serve_start
+println web_serve_start("/var/www",8080)
+
+--- example:cd ---
+# Example for cd
+println cd("/tmp")  # true
+
+--- example:feed ---
+# Example for feed
+feed(true)
+
+--- example:field ---
+# Example for field
+println field("a b c",2)  # "b"
+
+--- example:phi ---
+# Example for phi
+println phi()  # 1.618033...
+
+--- example:coproc ---
+# Example for coproc
+coproc(true)
+
+--- example:grep ---
+# Example for grep
+var s="a\nb\nc"
+println grep(s,"b")  # "b"
+
+--- example:strpos ---
+# Example for strpos
+println strpos("abcde","c")  # 3
+
+--- example:is_sticky ---
+# Example for is_sticky
+println is_sticky(17407)  # true/false
+
+--- example:count ---
+# Example for count
+println count("a\nb\nc")  # 3
+
+--- example:cursorx ---
+# Example for cursorx
+cursorx(10)
+
+--- example:fclose ---
+# Example for fclose
+var f=fopen("/tmp/file","r")
+fclose(f)
+
+--- example:sort ---
+# Example for sort
+var l=[3,1,2]
+println sort(l)  # [1,2,3]
+
+--- example:has_colour ---
+# Example for has_colour
+println has_colour()  # true/false
+
+--- example:hostname ---
+# Example for hostname
+println hostname()  # e.g., "myhost"
+
+--- example:ansi ---
+# Example for ansi
+ansi(false)  # disable ANSI
+
+--- example:reg_replace ---
+# Example for reg_replace
+println reg_replace("abc123","\\d+","X")  # abcX
+
+--- example:home ---
+# Example for home
+println home()  # e.g., "/home/user"
+
+--- example:get_mem ---
+# Example for get_mem
+println get_mem().alloc  # allocated memory in MB
+
+--- example:is_symlink ---
+# Example for is_symlink
+println is_symlink(41471)  # true/false
+
+--- example:abs ---
+# Example for abs
+println abs(-5)  # 5
+
+--- example:gsub ---
+# Example for gsub
+println gsub("hello world","l","x")  # hexxo worxd
+
+--- example:ccformat ---
+# Example for ccformat
+println ccformat("Hello [#2]%s[#.]","World")  # "Hello World" with World in red ink.
+
+--- example:round ---
+# Example for round
+println round(1.7)  # 2
+
+--- example:ev_watch_close ---
+# Example for ev_watch_close
+ev_watch_close(w)
+
+--- example:uninstall ---
+# Example for uninstall
+uninstall("mypkg")
+
+--- example:os ---
+# Example for os
+println os()  # e.g., "Linux 5.4.0-42-generic"
+
+--- example:match ---
+# Example for match
+println match("hello","ell")  # true
+
+--- example:web_head ---
+# Example for web_head
+println web_head("https://example.com")  # true
+
+--- example:len ---
+# Example for len
+println len("abcd")  # 4
+
+--- example:itob ---
+# Example for itob
+println itob(1)  # true
+
+--- example:sin ---
+# Example for sin
+println sin(3.14/2)  # ~1
+
+--- example:line_add_after ---
+# Example for line_add_after
+var s="a\nb\nc"
+println line_add_after(s,"b","inserted")  # a\nb\ninserted\nc
+
+--- example:split ---
+# Example for split
+println split("a b c")  # ["a","b","c"]
+
+--- example:collapse ---
+# Example for collapse
+println collapse("a\nb\nc")  # "a b c"
+
+--- example:rename ---
+# Example for rename
+println rename("/tmp/old","/tmp/new")  # true
+
+--- example:seed ---
+# Example for seed
+seed(1234)
+
+--- example:trim ---
+# Example for trim
+println trim("  a  ",0)  # "a"
+
+--- example:is_setuid ---
+# Example for is_setuid
+println is_setuid(4755)  # true/false
+
+--- example:log10 ---
+# Example for log10
+println log10(100)  # 2
+
+--- example:fseek ---
+# Example for fseek
+var f=fopen("/tmp/file","r")
+println fseek(f,10,0)
+
+--- example:can_read ---
+# Example for can_read
+println can_read("/tmp")  # true
+
+--- example:web_serve_up ---
+# Example for web_serve_up
+println web_serve_up(server_handle)  # true/false
+
+--- example:ln10 ---
+# Example for ln10
+println ln10()  # 2.302585
+
+--- example:pane_h ---
+# Example for pane_h
+println pane_h()
+
+--- example:floor ---
+# Example for floor
+println floor(1.9)  # 1
+
+--- example:acos ---
+# Example for acos
+println acos(1)  # 0
+
+--- example:clktck ---
+# Example for clktck
+println clktck()  # e.g., 100
+
+--- example:line_replace ---
+# Example for line_replace
+var s="a\nb\nc"
+println line_replace(s,"b","x")  # a\nx\nc
+
+--- example:pi ---
+# Example for pi
+println pi()  # 3.141592653589793
+
+--- example:vcmp ---
+# Example for vcmp
+println vcmp("1.0.0","1.1.0")  # -1
+
+--- example:remove ---
+# Example for remove
+println remove([1,2,3],2)  # [1,3]
+
+--- example:fg256 ---
+# Example for fg256
+println fg256(31)+"hello"+fg256(0)  # red hello text
+
+--- example:pos ---
+# Example for pos
+println pos(10,20)  # ANSI cursor string
+
+--- example:ln ---
+# Example for ln
+println ln(2.71828)  # ~1
+
+--- example:can_write ---
+# Example for can_write
+println can_write("/tmp")  # true
+
+--- example:ev_event ---
+# Example for ev_event
+var e=ev_event(watcher)
+println e  # Event struct with .Name and .Op fields
+
+--- example:echo ---
+# Example for echo
+println echo(false)  # disables local echo
+
+--- example:is_device ---
+# Example for is_device
+println is_device(6000)  # true for block device mode
+
+--- example:html_escape ---
+# Example for html_escape
+println html_escape("<b>hi</b>")  # "&lt;b&gt;hi&lt;/b&gt;"
+
+--- example:line_delete ---
+# Example for line_delete
+var s="a\nb\nc"
+println line_delete(s,"b")  # a\nc
+
+--- example:term_w ---
+# Example for term_w
+println term_w()  # e.g., 80
+
+--- example:uint ---
+# Example for uint
+println uint(123)  # 123
+
+--- example:await ---
+# Example for await
+var h={"job": 1}
+println await(h)  # list of results
+
+--- example:is_installed ---
+# Example for is_installed
+println is_installed("curl")  # true/false
+
+--- example:get_value ---
+# Example for get_value
+var m={"key":"val"}
+println get_value(m,"key")  # val
+
+--- example:col ---
+# Example for col
+println col("a b\nc d",2)  # ["b","d"]
+
+--- example:lower ---
+# Example for lower
+println lower("HELLO")  # hello
+
+--- example:join ---
+# Example for join
+println join(["a","b","c"],",")  # "a,b,c"
+
+--- example:is_setgid ---
+# Example for is_setgid
+println is_setgid(2755)  # true/false
+
+--- example:line_match ---
+# Example for line_match
+println line_match("a\nb\nc","b")  # true
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(10,0)
+
+--- example:lang ---
+# Example for lang
+println lang()  # e.g., en_GB.UTF-8
+
+--- example:zsh_version ---
+# Example for zsh_version
+println zsh_version()  # e.g., 5.8
+
+--- example:get_cores ---
+# Example for get_cores
+println get_cores()  # e.g., 4
+
+--- example:asc ---
+# Example for asc
+println asc("A")  # 65
+
+--- example:has_start ---
+# Example for has_start
+println has_start("abc","a")  # true
+
+--- example:line_tail ---
+# Example for line_tail
+println line_tail("a\nb\nc",2)  # "b\nc"
+
+--- example:argc ---
+# Example for argc
+println argc()  # e.g., 1
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("/tmp/file","r")
+println f
+
+--- example:reg_filter ---
+# Example for reg_filter
+println reg_filter("hello","l")  # [[2,3],[3,4]]
+
+--- example:line_add_before ---
+# Example for line_add_before
+var s="a\nb\nc"
+println line_add_before(s,"b","x")  # a\nx\nb\nc
+
+--- example:write_struct ---
+# Example for write_struct
+var x={a:1,b:2}
+println write_struct("/tmp/struct","x")  # bytes written
+
+--- example:download ---
+# Example for download
+println download("https://example.com")  # saved file name
+
+--- example:varbind ---
+# Example for varbind
+println varbind("a")  # 1
+
+--- example:web_download ---
+# Example for web_download
+println web_download("https://example.com","/tmp/example")
+
+--- example:any ---
+# Example for any
+println any([0,1,0])  # true
+
+--- example:line_head ---
+# Example for line_head
+println line_head("a\nb\nc",2)  # "a\nb"
+
+--- example:filter ---
+# Example for filter
+println filter("abc def","d")  # "def"
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")  # /home/user
+
+--- example:cwd ---
+# Example for cwd
+println cwd()  # current working directory
+
+--- example:permit ---
+# Example for permit
+println permit("shell",false)
+
+--- example:otod ---
+# Example for otod
+println otod("77")  # 63
+
+--- example:tokens ---
+# Example for tokens
+var t=tokens("a=1")
+println t.tokens  # ["a","=","1"]
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","https://example.com")  # response content
+
+--- example:term_h ---
+# Example for term_h
+println term_h()  # e.g., 24
+
+--- example:reverse ---
+# Example for reverse
+println reverse([1,2,3])  # [3,2,1]
+
+--- example:key ---
+# Example for key
+var m={"a":1}
+println key(m,"a")  # true
+
+--- example:log2 ---
+# Example for log2
+println log2(8)  # 3
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+var w={"host":"localhost:80","path":"/","data":"hi"}
+println web_serve_decode(w)  # struct fields
+
+--- example:sinh ---
+# Example for sinh
+println sinh(0.5)  # ~0.521
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1)  # ~0.881
+
+--- example:all ---
+# Example for all
+println all([1,1,1])  # true
+
+--- example:tail ---
+# Example for tail
+println tail([1,2,3])  # [2,3]
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]red[#-]")  # red
+
+--- example:tan ---
+# Example for tan
+println tan(0.5)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(8)  # 10
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")  # true
+
+--- example:web_post ---
+# Example for web_post
+println web_post("https://example.com",["key","val"])
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3])  # 6
+
+--- example:replace ---
+# Example for replace
+println replace("abc","b","B")  # aBc
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(49152)  # false
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()  # list of function input names
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/f","w")
+fwrite(f,"hi\n")
+
+
+--- example:min ---
+# Example for min
+println min([3,2,5])  # 2
+
+--- example:insert ---
+# Example for insert
+println insert([1,2,3],2,9)  # [1,9,2,3]
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()  # ~0.693
+
+--- example:ppid ---
+# Example for ppid
+println ppid()  # parent PID
+
+--- example:ev_exists ---
+# Example for ev_exists
+println ev_exists(watcher)  # true/false
+
+--- example:web_get ---
+# Example for web_get
+println web_get("https://example.com").result
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("entry")
+
+--- example:pad ---
+# Example for pad
+println pad("abc",1,5,"*")  # "**abc"
+
+--- example:append_to ---
+# Example for append_to
+append_to("list",[1])
+
+--- example:stripansi ---
+# Example for stripansi
+var s=char(27)+"[31mred"+char(27)+"[0m"
+println stripansi(s)  # "red"
+
+--- example:key ---
+# Example for key
+println key(["a", "b", "c"], 1)  # true
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes("'hello'")  # hello
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(0.5)  # ~0.877
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3])  # 2
+
+--- example:file_size ---
+# Example for file_size
+println file_size("/tmp/f")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1)  # ~1.543
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("/etc/hostname")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(2)  # ~1.316
+
+--- example:read_struct ---
+# Example for read_struct
+println read_struct("/tmp/struct","s")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("%s %d", "Age:", 30)
+
+--- example:write_file ---
+# Example for write_file
+println write_file("/tmp/f","hi",0644)
+
+--- example:ftell ---
+# Example for ftell
+var f=fopen("/tmp/f","r")
+println ftell(f)
+
+--- example:fflush ---
+# Example for fflush
+println fflush(f)
+
+--- example:md5sum ---
+# Example for md5sum
+println md5sum("abc")
+
+--- example:sha1sum ---
+# Example for sha1sum
+println sha1sum("abc")
+
+--- example:sha224sum ---
+# Example for sha224sum
+println sha224sum("abc")
+
+--- example:sha256sum ---
+# Example for sha256sum
+println sha256sum("abc")
+
+--- example:s3sum ---
+# Example for s3sum
+println s3sum("/tmp/f").sum
+
+--- example:lines ---
+# Example for lines
+println lines("file", "0:1")
+
+--- example:split ---
+# Example for split
+println split("a,b,c",",")
+
+--- example:collapse ---
+# Example for collapse
+println collapse("a\nb\nc")  # "a b c"
+
+--- example:replace ---
+# Example for replace
+println replace("a-b","-","+")
+
+--- example:reverse ---
+# Example for reverse
+println reverse([1,2,3])
+
+--- example:key ---
+# Example for key
+println key(["a","b","c"],1)
+
+--- example:line_add_after ---
+# Example for line_add_after
+println line_add_after("a\nb","b","c")
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]text[#-]")  # text
+
+--- example:atanh ---
+# Example for atanh
+println atanh(0.5)
+
+--- example:asin ---
+# Example for asin
+println asin(1)
+
+--- example:next_match ---
+# Example for next_match
+println next_match("a\nb\nc","b",1)  # 2
+
+--- example:phi ---
+# Example for phi
+println phi()
+
+--- example:coproc ---
+# Example for coproc
+coproc(true)
+
+--- example:grep ---
+# Example for grep
+println grep("a\nb\nc","b")  # b
+
+--- example:strpos ---
+# Example for strpos
+println strpos("abc","b")  # 2
+
+--- example:is_sticky ---
+# Example for is_sticky
+println is_sticky(01000)  # true
+
+--- example:count ---
+# Example for count
+println count("a\nb\nc")  # 3
+
+--- example:cursorx ---
+# Example for cursorx
+println cursorx(10)
+
+--- example:fclose ---
+# Example for fclose
+f=fopen("/tmp/f","r")
+fclose(f)
+
+--- example:sort ---
+# Example for sort
+println sort([3,1,2])
+
+--- example:has_colour ---
+# Example for has_colour
+println has_colour()
+
+--- example:hostname ---
+# Example for hostname
+println hostname()
+
+--- example:ansi ---
+# Example for ansi
+ansi(true)
+
+--- example:reg_replace ---
+# Example for reg_replace
+println reg_replace("abc","b","X")
+
+--- example:home ---
+# Example for home
+println home()
+
+--- example:get_mem ---
+# Example for get_mem
+println get_mem()
+
+--- example:is_symlink ---
+# Example for is_symlink
+println is_symlink(0120000)  # true
+
+--- example:abs ---
+# Example for abs
+println abs(-1)  # 1
+
+--- example:gsub ---
+# Example for gsub
+println gsub("abc","b","X")  # aXc
+
+--- example:ccformat ---
+# Example for ccformat
+println ccformat("a %d",1)  # a 1
+
+--- example:round ---
+# Example for round
+println round(1.6)  # 2
+
+--- example:ev_watch_close ---
+# Example for ev_watch_close
+var w,err=ev_watch("/tmp")
+println ev_watch_close(w)
+
+--- example:uninstall ---
+# Example for uninstall
+println uninstall("curl")
+
+--- example:os ---
+# Example for os
+println os()
+
+--- example:match ---
+# Example for match
+println match("abc","b")  # true
+
+--- example:web_head ---
+# Example for web_head
+println web_head("https://example.com")
+
+--- example:len ---
+# Example for len
+println len([1,2,3])  # 3
+
+--- example:itob ---
+# Example for itob
+println itob(0)  # false
+
+--- example:sin ---
+# Example for sin
+println sin(1)
+
+--- example:line_add_after ---
+# Example for line_add_after
+println line_add_after("a\nb","b","c")
+
+--- example:split ---
+# Example for split
+println split("a,b,c",",")
+
+--- example:collapse ---
+# Example for collapse
+println collapse("a\nb\nc")  # "a b c"
+
+--- example:rename ---
+# Example for rename
+println rename("/tmp/a","/tmp/b")
+
+--- example:seed ---
+# Example for seed
+seed(123)
+
+--- example:trim ---
+# Example for trim
+println trim("  a  ",0)  # "a"
+
+--- example:is_setuid ---
+# Example for is_setuid
+println is_setuid(04000)  # true
+
+--- example:log10 ---
+# Example for log10
+println log10(100)  # 2
+
+--- example:fseek ---
+# Example for fseek
+f=fopen("/tmp/f","r")
+println fseek(f,0,0)
+fclose(f)
+
+--- example:can_read ---
+# Example for can_read
+println can_read("/tmp")
+
+--- example:web_serve_up ---
+# Example for web_serve_up
+println web_serve_up("h1")
+
+--- example:ln10 ---
+# Example for ln10
+println ln10()
+
+--- example:pane_h ---
+# Example for pane_h
+println pane_h()
+
+--- example:floor ---
+# Example for floor
+println floor(1.8)  # 1
+
+--- example:acos ---
+# Example for acos
+println acos(1)
+
+--- example:clktck ---
+# Example for clktck
+println clktck()
+
+--- example:line_replace ---
+# Example for line_replace
+println line_replace("a\nb","a","c")
+
+--- example:pi ---
+# Example for pi
+println pi()
+
+--- example:vcmp ---
+# Example for vcmp
+println vcmp("1.0.0","1.0.1")  # -1
+
+--- example:remove ---
+# Example for remove
+println remove([1,2,3],2)  # [1,3]
+
+--- example:fg256 ---
+# Example for fg256
+println fg256(196)  # "\x1b[38;5;196m"
+
+--- example:pos ---
+# Example for pos
+println pos(10,10)
+
+--- example:ln ---
+# Example for ln
+println ln(10)
+
+--- example:can_write ---
+# Example for can_write
+println can_write("/tmp")
+
+--- example:ev_event ---
+# Example for ev_event
+var w,er=ev_watch("/tmp")
+println ev_event(w)
+
+--- example:echo ---
+# Example for echo
+echo(false)
+
+--- example:is_device ---
+# Example for is_device
+println is_device(06000)  # true
+
+--- example:html_escape ---
+# Example for html_escape
+println html_escape("<a>")  # "&lt;a&gt;"
+
+--- example:line_delete ---
+# Example for line_delete
+println line_delete("a\nb","b")
+
+--- example:term_w ---
+# Example for term_w
+println term_w()
+
+--- example:uint ---
+# Example for uint
+println uint(1)
+
+--- example:await ---
+# Example for await
+println await({"t":1})
+
+--- example:is_installed ---
+# Example for is_installed
+println is_installed("curl")
+
+--- example:get_value ---
+# Example for get_value
+println get_value({"a":"b"},"a")  # "b"
+
+--- example:col ---
+# Example for col
+println col("a b c",1)
+
+--- example:lower ---
+# Example for lower
+println lower("A")  # "a"
+
+--- example:join ---
+# Example for join
+println join(["a","b"],",")  # "a,b"
+
+--- example:is_setgid ---
+# Example for is_setgid
+println is_setgid(02000)  # true
+
+--- example:line_match ---
+# Example for line_match
+println line_match("a\nb","a")  # true
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(1,1)
+
+--- example:lang ---
+# Example for lang
+println lang()
+
+--- example:zsh_version ---
+# Example for zsh_version
+println zsh_version()
+
+--- example:get_cores ---
+# Example for get_cores
+println get_cores()
+
+--- example:asc ---
+# Example for asc
+println asc("A")  # 65
+
+--- example:has_start ---
+# Example for has_start
+println has_start("abc","a")  # true
+
+--- example:line_tail ---
+# Example for line_tail
+println line_tail("a\nb\nc",1)  # "c"
+
+--- example:argc ---
+# Example for argc
+println argc()
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("/tmp/test","w")
+fwrite(f,"hello world")
+fclose(f)
+
+--- example:reg_filter ---
+# Example for reg_filter
+println reg_filter("abc 123","\\d+")  # [[4,6]]
+
+--- example:line_add_before ---
+# Example for line_add_before
+println line_add_before("a\nb","b","x")  # "a\nx\nb"
+
+--- example:write_struct ---
+# Example for write_struct
+println write_struct("/tmp/struct","s")
+
+--- example:download ---
+# Example for download
+println download("https://example.com")
+
+--- example:varbind ---
+# Example for varbind
+println varbind("x")
+
+--- example:web_download ---
+# Example for web_download
+println web_download("https://example.com","file")
+
+--- example:any ---
+# Example for any
+println any([0,1,0])  # true
+
+--- example:line_head ---
+# Example for line_head
+println line_head("a\nb\nc",2)  # "a\nb"
+
+--- example:filter ---
+# Example for filter
+println filter("a1 b2","\\d")  # "1"
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")
+
+--- example:cwd ---
+# Example for cwd
+println cwd()
+
+--- example:permit ---
+# Example for permit
+permit("shell",true)
+
+--- example:otod ---
+# Example for otod
+println otod("10")  # 8
+
+--- example:tokens ---
+# Example for tokens
+println tokens("a + b").tokens  # ["a","+","b"]
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","https://example.com")
+
+--- example:term_h ---
+# Example for term_h
+println term_h()
+
+--- example:reverse ---
+# Example for reverse
+println reverse("abc")  # "cba"
+
+--- example:key ---
+# Example for key
+var m={"a":1}
+println key(m,"a")  # true
+
+--- example:log2 ---
+# Example for log2
+println log2(8)
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+println web_serve_decode({"path":"/index.html"}).path
+
+--- example:sinh ---
+# Example for sinh
+println sinh(1)
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1)
+
+--- example:all ---
+# Example for all
+println all([1,1,1])  # true
+
+--- example:tail ---
+# Example for tail
+println tail([1,2,3])  # [2,3]
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]text")
+
+--- example:tan ---
+# Example for tan
+println tan(1)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(8)  # "10"
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")
+
+--- example:web_post ---
+# Example for web_post
+println web_post("https://example.com",{"key":"value"})
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3])  # 6
+
+--- example:replace ---
+# Example for replace
+println replace("abc","b","x")  # "axc"
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(0o140000)  # true
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test","w")
+fwrite(f,"hello")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([1,2,3])  # 1
+
+--- example:insert ---
+# Example for insert
+println insert([1,2,3],2,9)  # [1,9,2,3]
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()
+
+--- example:ppid ---
+# Example for ppid
+println ppid()
+
+--- example:ev_exists ---
+# Example for ev_exists
+println ev_exists(watcher)
+
+--- example:web_get ---
+# Example for web_get
+println web_get("https://example.com").result
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("message")
+
+--- example:pad ---
+# Example for pad
+println pad("x",0,3,"*")  # "*x*"
+
+--- example:append_to ---
+# Example for append_to
+append_to("list",[4])
+
+--- example:stripansi ---
+# Example for stripansi
+println stripansi("\x1b[31mred\x1b[0m")
+
+--- example:key ---
+# Example for key
+println key([1,2,3],1)  # true
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes("\"a\"")  # a
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(1)
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3])  # 2
+
+--- example:file_size ---
+# Example for file_size
+println file_size("/tmp/test")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1)
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("/etc/hostname")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(1)
+
+--- example:read_struct ---
+# Example for read_struct
+println read_struct("file","mystruct")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("Hello %s!","world")
+
+--- example:write_file ---
+# Example for write_file
+println write_file("/tmp/test","hello")
+
+--- example:ftell ---
+# Example for ftell
+var f=fopen("/etc/hostname","r")
+println ftell(f)
+fclose(f)
+
+--- example:fflush ---
+# Example for fflush
+var f=fopen("/tmp/test","w")
+fwrite(f,"hi")
+println fflush(f)
+fclose(f)
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(1,1)
+
+--- example:lang ---
+# Example for lang
+println lang()
+
+--- example:zsh_version ---
+# Example for zsh_version
+println zsh_version()
+
+--- example:get_cores ---
+# Example for get_cores
+println get_cores()
+
+--- example:asc ---
+# Example for asc
+println asc("A")  # 65
+
+--- example:has_start ---
+# Example for has_start
+println has_start("abc","a")  # true
+
+--- example:line_tail ---
+# Example for line_tail
+println line_tail("one\ntwo\nthree",2)
+
+--- example:argc ---
+# Example for argc
+println argc()
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("/tmp/test","r")
+fclose(f)
+
+--- example:reg_filter ---
+# Example for reg_filter
+println reg_filter("abc abc","abc")
+
+--- example:line_add_before ---
+# Example for line_add_before
+var s="one\ntwo\nthree"
+println line_add_before(s,"two","new")
+
+--- example:write_struct ---
+# Example for write_struct
+println write_struct("file","mystruct")
+
+--- example:download ---
+# Example for download
+println download("https://example.com")
+
+--- example:varbind ---
+# Example for varbind
+println varbind("a")
+
+--- example:web_download ---
+# Example for web_download
+println web_download("https://example.com","/tmp/file")
+
+--- example:any ---
+# Example for any
+println any([false,true,false])  # true
+
+--- example:line_head ---
+# Example for line_head
+println line_head("one\ntwo\nthree",2)
+
+--- example:filter ---
+# Example for filter
+println filter("one\ntwo\nthree","t")
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")
+
+--- example:cwd ---
+# Example for cwd
+println cwd()
+
+--- example:permit ---
+# Example for permit
+permit("interpol",false)
+
+--- example:otod ---
+# Example for otod
+println otod("10")
+
+--- example:tokens ---
+# Example for tokens
+println tokens("a=1")
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","https://example.com")
+
+--- example:term_h ---
+# Example for term_h
+println term_h()
+
+--- example:reverse ---
+# Example for reverse
+println reverse([1,2,3])
+
+--- example:key ---
+# Example for key
+println key("mymap","key1")
+
+--- example:log2 ---
+# Example for log2
+println log2(8)  # 3
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+println web_serve_decode({"host":"localhost","method":"GET","path":"/","remote":"127.0.0.1:80","data":""})
+
+--- example:sinh ---
+# Example for sinh
+println sinh(1)
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1)
+
+--- example:all ---
+# Example for all
+println all([true,true])  # true
+
+--- example:tail ---
+# Example for tail
+println tail([1,2,3])
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]hello[#-]")  # hello
+
+--- example:tan ---
+# Example for tan
+println tan(1)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(8)  # 10
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")
+
+--- example:web_post ---
+# Example for web_post
+println web_post("https://example.com",[["key","value"]])
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3])  # 6
+
+--- example:replace ---
+# Example for replace
+println replace("abc","b","x")
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(49152)  # false (mode_number example)
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test","w")
+fwrite(f,"hello")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([1,2,3])  # 1
+
+--- example:insert ---
+# Example for insert
+println insert([1,2,3],2,9)
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()  # 0.6931...
+
+--- example:ppid ---
+# Example for ppid
+println ppid()
+
+--- example:ev_exists ---
+# Example for ev_exists
+println ev_exists(watcher_id)
+
+--- example:web_get ---
+# Example for web_get
+println web_get("https://example.com")
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("Accessed /index.html")
+
+--- example:pad ---
+# Example for pad
+println pad("text",1,10,"_")  # "______text"
+
+--- example:append_to ---
+# Example for append_to
+var a=[1,2]
+append_to("a",3)
+println a  # [1,2,3]
+
+--- example:stripansi ---
+# Example for stripansi
+var s=char(27)+"[31mRed text"+char(27)+"[0m"
+println stripansi(s)  # "Red text"
+
+--- example:key ---
+# Example for key
+println key("mymap","key1")
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes("\"quoted\"")  # quoted
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(0)  # 1
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3])  # 2
+
+--- example:file_size ---
+# Example for file_size
+println file_size("/tmp/file")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1)
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("/tmp/file")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(2)
+
+--- example:read_struct ---
+# Example for read_struct
+println read_struct("/tmp/structfile","mystruct")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("%d %s",5,"test")  # "5 test"
+
+--- example:write_file ---
+# Example for write_file
+println write_file("/tmp/test","hello")
+
+--- example:ftell ---
+# Example for ftell
+var f=fopen("/tmp/test","w")
+println ftell(f)
+fclose(f)
+
+--- example:fflush ---
+# Example for fflush
+var f=fopen("/tmp/test","w")
+fwrite(f,"test")
+fflush(f)
+fclose(f)
+
+--- example:unmap ---
+# Example for unmap
+println unmap("mymap","key1")
+
+--- example:field ---
+# Example for field
+println field("a b c",2)
+
+--- example:lang ---
+# Example for lang
+println lang()
+
+--- example:username ---
+# Example for username
+println username(1000)
+
+--- example:groupname ---
+# Example for groupname
+println groupname(1000)
+
+--- example:release_version ---
+# Example for release_version
+println release_version()
+
+--- example:release_id ---
+# Example for release_id
+println release_id()
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(10,0)
+
+--- example:line_add_before ---
+# Example for line_add_before
+var txt="line1\nline2\nline3"
+println line_add_before(txt,"line2","new line")  
+
+--- example:line_tail ---
+# Example for line_tail
+var txt="a\nb\nc\nd"
+println line_tail(txt,2)  # "c\nd"
+
+--- example:argc ---
+# Example for argc
+println argc()  # e.g., 2
+
+--- example:argv ---
+# Example for argv
+println argv()  # e.g., ["arg1","arg2"]
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("/tmp/test","w")
+fwrite(f,"data")
+fclose(f)
+
+--- example:reg_filter ---
+# Example for reg_filter
+println reg_filter("abc abc","a.")  # [[0,2],[4,6]]
+
+--- example:line_add_after ---
+# Example for line_add_after
+var txt="line1\nline2"
+println line_add_after(txt,"line1","after line1")
+
+--- example:write_struct ---
+# Example for write_struct
+println write_struct("/tmp/s","myst")  # number of bytes
+
+--- example:download ---
+# Example for download
+println download("http://example.com/file")
+
+--- example:varbind ---
+# Example for varbind
+println varbind("varname")
+
+--- example:web_download ---
+# Example for web_download
+println web_download("http://example.com","/tmp/output")
+
+--- example:any ---
+# Example for any
+println any([false,false,true])  # true
+
+--- example:line_head ---
+# Example for line_head
+var txt="a\nb\nc\nd"
+println line_head(txt,2)  # "a\nb"
+
+--- example:filter ---
+# Example for filter
+println filter("one two three","t..")  # "two three"
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")
+
+--- example:cwd ---
+# Example for cwd
+println cwd()
+
+--- example:permit ---
+# Example for permit
+permit("uninit",true)
+
+--- example:otod ---
+# Example for otod
+println otod("0755")  # 493
+
+--- example:tokens ---
+# Example for tokens
+println tokens("a=1 b=2 c=3")
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","http://example.com")
+
+--- example:term_h ---
+# Example for term_h
+println term_h()
+
+--- example:reverse ---
+# Example for reverse
+println reverse("abc")  # "cba"
+
+--- example:key ---
+# Example for key
+println key("mymap","key2")
+
+--- example:log2 ---
+# Example for log2
+println log2(8)  # 3
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+println web_serve_decode({host:"localhost:8080",method:"GET"})
+
+--- example:sinh ---
+# Example for sinh
+println sinh(1)
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1)
+
+--- example:all ---
+# Example for all
+println all([true,true])  # true
+
+--- example:tail ---
+# Example for tail
+println tail([1,2,3,4])  # [2,3,4]
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]red text[#-]")
+
+--- example:tan ---
+# Example for tan
+println tan(1)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(8)  # "10"
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")  # true
+
+--- example:web_post ---
+# Example for web_post
+println web_post("http://example.com",[[ "key", "value" ]])
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3])  # 6
+
+--- example:replace ---
+# Example for replace
+println replace("aaab","a","x")  # "xxxb"
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(49152)  # false
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test","w")
+fwrite(f,"data")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([3,1,2])  # 1
+
+--- example:insert ---
+# Example for insert
+println insert([1,3],2,2)  # [1,2,3]
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()  # 0.6931471805599453
+
+--- example:ppid ---
+# Example for ppid
+println ppid()
+
+--- example:ev_exists ---
+# Example for ev_exists
+println ev_exists(1)
+
+--- example:web_get ---
+# Example for web_get
+println web_get("http://example.com").result
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("Starting server...")
+
+--- example:pad ---
+# Example for pad
+println pad("hi",1,5,".")  # "...hi"
+
+--- example:append_to ---
+# Example for append_to
+var l=[1,2]
+append_to(l,3)
+println l  # [1,2,3]
+
+--- example:stripansi ---
+# Example for stripansi
+var coloured=char(27)+"[31mRed text"+char(27)+"[0m"
+println stripansi(coloured)
+
+--- example:key ---
+# Example for key
+var m={"a":1,"b":2}
+println key(m,"b")  # true
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes('"quoted"')  # quoted
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(1)
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3])  # 2
+
+--- example:file_size ---
+# Example for file_size
+println file_size("/etc/passwd")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1)
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("/etc/hostname")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(1.5)
+
+--- example:read_struct ---
+# Example for read_struct
+read_struct("/tmp/file","mystruct")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("Value: %d",10)
+
+--- example:write_file ---
+# Example for write_file
+println write_file("/tmp/test","hello\n",420)  # true
+
+--- example:pi ---
+# Example for pi
+println pi()  # 3.141592653589793
+
+--- example:vcmp ---
+# Example for vcmp
+println vcmp("1.0","1.1")  # -1
+
+--- example:line_delete ---
+# Example for line_delete
+var s="one\ntwo\nthree"
+println line_delete(s,"two")  # one\nthree
+
+--- example:line_add_after ---
+# Example for line_add_after
+var s="one\ntwo"
+println line_add_after(s,"one","two and a half")
+
+--- example:split ---
+# Example for split
+println split("a,b,c",",")
+
+--- example:collapse ---
+# Example for collapse
+println collapse("a\nb\nc")  # a b c
+
+--- example:rename ---
+# Example for rename
+println rename("/tmp/old","/tmp/new")  # true
+
+--- example:seed ---
+# Example for seed
+seed(42)
+
+--- example:trim ---
+# Example for trim
+println trim("  hello  ",0)  # "hello"
+
+--- example:is_setuid ---
+# Example for is_setuid
+println is_setuid(4755)  # true
+
+--- example:log10 ---
+# Example for log10
+println log10(10)  # 1
+
+--- example:fseek ---
+# Example for fseek
+var f=fopen("/tmp/test","r")
+fseek(f,0,0)
+fclose(f)
+
+--- example:can_read ---
+# Example for can_read
+println can_read("/etc/passwd")  # true
+
+--- example:web_serve_up ---
+# Example for web_serve_up
+println web_serve_up("srv1")  # true
+
+--- example:ln10 ---
+# Example for ln10
+println ln10()  # 2.302585092994046
+
+--- example:pane_h ---
+# Example for pane_h
+println pane_h()
+
+--- example:floor ---
+# Example for floor
+println floor(2.9)  # 2
+
+--- example:acos ---
+# Example for acos
+println acos(1)  # 0
+
+--- example:clktck ---
+# Example for clktck
+println clktck()
+
+--- example:line_replace ---
+# Example for line_replace
+var s="one\ntwo"
+println line_replace(s,"two","three")
+
+--- example:pi ---
+# Example for pi
+println pi()
+
+--- example:vcmp ---
+# Example for vcmp
+println vcmp("1.0.0","1.1.0")  # -1
+
+--- example:remove ---
+# Example for remove
+var l=["a","b","c"]
+println remove(l,2)  # ["a","c"]
+
+--- example:fg256 ---
+# Example for fg256
+println fg256(196) + "This is bright red" + fg256(0)
+
+--- example:pos ---
+# Example for pos
+println pos(5,10) + "cursor at row 5, column 10"
+
+--- example:ln ---
+# Example for ln
+println ln(2.71828)  # ~1
+
+--- example:can_write ---
+# Example for can_write
+println can_write("/tmp")  # true
+
+--- example:ev_event ---
+# Example for ev_event
+var w=ev_watch("/tmp")
+println ev_event(w)
+
+--- example:echo ---
+# Example for echo
+echo(false)  # disables echo
+
+--- example:is_device ---
+# Example for is_device
+println is_device(6000)  # true for character devices
+
+--- example:html_escape ---
+# Example for html_escape
+println html_escape("<b>bold</b>")  # &lt;b&gt;bold&lt;/b&gt;
+
+--- example:line_delete ---
+# Example for line_delete
+var s="a\nb\nc"
+println line_delete(s,"b")
+
+--- example:term_w ---
+# Example for term_w
+println term_w()
+
+--- example:uint ---
+# Example for uint
+println uint(5)
+
+--- example:await ---
+# Example for await
+println await(handle_map,true)
+
+--- example:is_installed ---
+# Example for is_installed
+println is_installed("bash")  # true
+
+--- example:get_value ---
+# Example for get_value
+var m=["a","b"]
+println get_value(m,1)
+
+--- example:col ---
+# Example for col
+println col("a b c",2)
+
+--- example:lower ---
+# Example for lower
+println lower("HELLO")  # hello
+
+--- example:join ---
+# Example for join
+println join(["a","b","c"],",")
+
+--- example:is_setgid ---
+# Example for is_setgid
+println is_setgid(2755)  # true
+
+--- example:line_match ---
+# Example for line_match
+println line_match("a\nb","a")
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(10,0)
+
+--- example:lang ---
+# Example for lang
+println lang()
+
+--- example:zsh_version ---
+# Example for zsh_version
+println zsh_version()
+
+--- example:get_cores ---
+# Example for get_cores
+println get_cores()
+
+--- example:asc ---
+# Example for asc
+println asc("A")  # 65
+
+--- example:has_start ---
+# Example for has_start
+println has_start("abcdef","abc")  # true
+
+--- example:line_tail ---
+# Example for line_tail
+println line_tail("a\nb\nc",2)  # b\nc
+
+--- example:argc ---
+# Example for argc
+println argc()
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("/tmp/test.txt","r")
+println f
+
+--- example:reg_filter ---
+# Example for reg_filter
+println reg_filter("one 1 two 2","\\d+")
+
+--- example:line_add_before ---
+# Example for line_add_before
+var s="a\nc"
+println line_add_before(s,"c","b")
+
+--- example:write_struct ---
+# Example for write_struct
+println write_struct("file.bin","struct_name")
+
+--- example:download ---
+# Example for download
+println download("http://example.com/file.txt")
+
+--- example:varbind ---
+# Example for varbind
+println varbind("a")
+
+--- example:web_download ---
+# Example for web_download
+println web_download("http://example.com","file.txt")
+
+--- example:any ---
+# Example for any
+println any([false,true,false])  # true
+
+--- example:line_head ---
+# Example for line_head
+println line_head("a\nb\nc",2)  # a\nb
+
+--- example:filter ---
+# Example for filter
+println filter("one 1 two 2","\\d+")
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")
+
+--- example:cwd ---
+# Example for cwd
+println cwd()
+
+--- example:permit ---
+# Example for permit
+permit("uninit",false)
+
+--- example:otod ---
+# Example for otod
+println otod("12")  # 10
+
+--- example:tokens ---
+# Example for tokens
+println tokens("1+2*3").tokens
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","http://example.com")
+
+--- example:term_h ---
+# Example for term_h
+println term_h()
+
+--- example:reverse ---
+# Example for reverse
+println reverse("abcd")  # dcba
+
+--- example:key ---
+# Example for key
+println key("m","k")
+
+--- example:log2 ---
+# Example for log2
+println log2(8)  # 3
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+println web_serve_decode(webcall)
+
+--- example:sinh ---
+# Example for sinh
+println sinh(1.0)
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1.0)
+
+--- example:all ---
+# Example for all
+println all([true,true,true])  # true
+
+--- example:tail ---
+# Example for tail
+println tail(["a","b","c"])  # ["b","c"]
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#cyan]hello[#-]")  # hello
+
+--- example:tan ---
+# Example for tan
+println tan(1.0)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(8)  # 10
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")
+
+--- example:web_post ---
+# Example for web_post
+println web_post("http://example.com",[["key","value"]])
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3])  # 6
+
+--- example:replace ---
+# Example for replace
+println replace("a b c","b","B")  # a B c
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(4516)  # example
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test.txt","w")
+fwrite(f,"hello\n")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([1,2,3])  # 1
+
+--- example:insert ---
+# Example for insert
+println insert([1,3],2,2)  # [1,2,3]
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()  # 0.6931...
+
+--- example:ppid ---
+# Example for ppid
+println ppid()
+
+--- example:ev_exists ---
+# Example for ev_exists
+println ev_exists(watcher)
+
+--- example:web_get ---
+# Example for web_get
+println web_get("http://example.com")
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("Hello world")
+
+--- example:pad ---
+# Example for pad
+println pad("a",1,3,"-")  # --a
+
+--- example:append_to ---
+# Example for append_to
+append_to("my_list","item")
+
+--- example:stripansi ---
+# Example for stripansi
+coloured=char(27)+"[31mRed text"+char(27)+"[0m"
+println stripansi(coloured)  # Red text
+
+--- example:key ---
+# Example for key
+println key("my_map","my_key")
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes("'hello'")  # hello
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(1.0)
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3])  # 2
+
+--- example:file_size ---
+# Example for file_size
+println file_size("/tmp/test.txt")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1.0)
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("/tmp/test.txt")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(1.0)
+
+--- example:read_struct ---
+# Example for read_struct
+read_struct("myfile","my_struct")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("%d + %d = %d",1,2,1+2)  # 1 + 2 = 3
+
+--- example:write_file ---
+# Example for write_file
+println write_file("/tmp/test.txt","data")
+
+--- example:ftell ---
+# Example for ftell
+var f=fopen("/tmp/test.txt","r")
+println ftell(f)
+fclose(f)
+
+--- example:fflush ---
+# Example for fflush
+var f=fopen("/tmp/test.txt","w")
+fwrite(f,"hello")
+fflush(f)
+fclose(f)
+
+--- example:replace ---
+# Example for replace
+text="this is a test"
+println replace(text,"test","pass")
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(49152)  # Replace with actual file mode to test
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test.txt","w")
+fwrite(f,"data\n")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([3,2,4])
+
+--- example:insert ---
+# Example for insert
+a=[1,2,4]
+println insert(a,3,3)
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)  # 1
+println btoi(false)  # 0
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()
+
+--- example:ppid ---
+# Example for ppid
+println ppid()
+
+--- example:ev_exists ---
+# Example for ev_exists
+w,er=ev_watch("/tmp")
+println ev_exists(w)
+ev_watch_close(w)
+
+--- example:web_get ---
+# Example for web_get
+r=web_get("https://www.example.com")
+println "HTTP Code:",r.code
+println "Result:",r.result
+
+--- example:web_serve_log ---
+# Example for web_serve_log
+web_serve_log("Request handled","extra info")
+
+--- example:pad ---
+# Example for pad
+println pad("Za!",1,10,"*")
+
+--- example:append_to ---
+# Example for append_to
+var l=[1,2,3]
+append_to(l,4)
+println l
+
+--- example:stripansi ---
+# Example for stripansi
+coloured=char(27)+"[31mRed text"+char(27)+"[0m"
+println stripansi(coloured)
+
+--- example:key ---
+# Example for key
+var m
+m["a"]=1
+println key(m,"a")  # true
+
+--- example:net_interfaces ---
+# Example for net_interfaces
+println net_interfaces()
+
+--- example:stripquotes ---
+# Example for stripquotes
+println stripquotes("'quoted'")
+
+--- example:dir ---
+# Example for dir
+println dir("/tmp")
+
+--- example:cos ---
+# Example for cos
+println cos(1.0)
+
+--- example:avg ---
+# Example for avg
+println avg([1,2,3,4,5])
+
+--- example:file_size ---
+# Example for file_size
+println file_size("myfile.txt")
+
+--- example:cosh ---
+# Example for cosh
+println cosh(1.0)
+
+--- example:env ---
+# Example for env
+println env()
+
+--- example:read_file ---
+# Example for read_file
+println read_file("myfile.txt")
+
+--- example:acosh ---
+# Example for acosh
+println acosh(1.0)
+
+--- example:read_struct ---
+# Example for read_struct
+var s my_struct
+read_struct("data.struct","s")
+
+--- example:shell_pid ---
+# Example for shell_pid
+println shell_pid()
+
+--- example:format ---
+# Example for format
+println format("Hello %s", "world!")
+
+--- example:write_file ---
+# Example for write_file
+write_file("myfile.txt","hello",0644)
+
+--- example:ftell ---
+# Example for ftell
+f=fopen("myfile.txt","r")
+println ftell(f)
+fclose(f)
+
+--- example:fflush ---
+# Example for fflush
+f=fopen("myfile.txt","wa")
+fwrite(f,"more data")
+fflush(f)
+fclose(f)
+
+--- example:atanh ---
+# Example for atanh
+println atanh(0.5)
+
+--- example:phi ---
+# Example for phi
+println phi()
+
+--- example:cos ---
+# Example for cos
+println cos(1.0)
+
+--- example:execpath ---
+# Example for execpath
+println execpath()
+
+--- example:tanh ---
+# Example for tanh
+println tanh(1.0)
+
+--- example:pane_c ---
+# Example for pane_c
+println pane_c()
+
+--- example:rad2deg ---
+# Example for rad2deg
+println rad2deg(3.14159)
+
+--- example:logn ---
+# Example for logn
+println logn(100,10)
+
+--- example:asin ---
+# Example for asin
+println asin(0.5)
+
+--- example:next_match ---
+# Example for next_match
+s="a\nbb\nccc"
+println next_match(s,"b",1)
+
+--- example:fread ---
+# Example for fread
+f=fopen("myfile.txt","r")
+println fread(f,"\n")
+fclose(f)
+
+--- example:has_shell ---
+# Example for has_shell
+println has_shell()
+
+--- example:release_version ---
+# Example for release_version
+println release_version()
+
+--- example:fgrgb ---
+# Example for fgrgb
+println fgrgb(255,0,0)
+
+--- example:feof ---
+# Example for feof
+f=fopen("myfile.txt","r")
+println feof(f)
+fclose(f)
+
+--- example:get_col ---
+# Example for get_col
+println get_col()
+
+--- example:set_env ---
+# Example for set_env
+set_env("MYVAR","myvalue")
+
+--- example:system ---
+# Example for system
+println system("ls",false)
+
+--- example:eqlen ---
+# Example for eqlen
+a=["a","b"]
+b=["c","d"]
+println eqlen([a,b])
+
+--- example:release_id ---
+# Example for release_id
+println release_id()
+
+--- example:e ---
+# Example for e
+println e()
+
+--- example:is_number ---
+# Example for is_number
+println is_number("10")
+
+--- example:bg256 ---
+# Example for bg256
+println bg256(3)
+
+--- example:clean ---
+# Example for clean
+println clean("{abc}")
+
+--- example:unmap ---
+# Example for unmap
+m={a=1}
+unmap("m","a")
+
+--- example:is_pipe ---
+# Example for is_pipe
+println is_pipe(4096)
+
+--- example:addansi ---
+# Example for addansi
+println addansi("[#red]Red[#-]")
+
+--- example:reg_match ---
+# Example for reg_match
+println reg_match("abc","b")
+
+--- example:cursoron ---
+# Example for cursoron
+cursoron()
+
+--- example:numcomma ---
+# Example for numcomma
+println numcomma(1000)
+
+--- example:line_add ---
+# Example for line_add
+a="1\n2"
+a=line_add(a,"3")
+println a
+
+--- example:capture_shell ---
+# Example for capture_shell
+capture_shell(true)
+
+--- example:peek ---
+# Example for peek
+a=[1,2,3]
+println peek("a")
+
+--- example:is_file ---
+# Example for is_file
+println is_file("/etc/passwd")
+
+--- example:lines ---
+# Example for lines
+println lines("file.txt","1:2")
+
+--- example:db_close ---
+# Example for db_close
+db=db_init("db")
+db_close(db)
+
+--- example:atan ---
+# Example for atan
+println atan(0.5)
+
+--- example:upper ---
+# Example for upper
+println upper("hello")
+
+--- example:execpath ---
+# Example for execpath
+println execpath()
+
+--- example:tanh ---
+# Example for tanh
+println tanh(1)
+
+--- example:pane_c ---
+# Example for pane_c
+println pane_c()
+
+--- example:rad2deg ---
+# Example for rad2deg
+println rad2deg(3.14)
+
+--- example:logn ---
+# Example for logn
+println logn(8,2)
+
+--- example:keypress ---
+# Example for keypress
+println keypress()
+
+--- example:web_serve_log_throttle ---
+# Example for web_serve_log_throttle
+web_serve_log_throttle(5,10)
+
+--- example:has_end ---
+# Example for has_end
+println has_end("hello world","world")
+
+--- example:bash_version ---
+# Example for bash_version
+println bash_version()
+
+--- example:pane_w ---
+# Example for pane_w
+println pane_w()
+
+--- example:json_decode ---
+# Example for json_decode
+var s=`{"key": "value", "num": 10}`
+var result = json_decode(s)
+println result
+
+--- example:line_filter ---
+# Example for line_filter
+var lines = "line1\nline2\nline3"
+println line_filter(lines, "line2")
+
+--- example:install ---
+# Example for install (not available, internal use only)
+
+--- example:argv ---
+# Example for argv
+println argv()
+
+--- example:eval ---
+# Example for eval
+println eval("1+1")
+
+--- example:ev_watch ---
+# Example for ev_watch
+var w, er = ev_watch("/tmp")
+println w, er
+
+--- example:get_row ---
+# Example for get_row
+println get_row()
+
+--- example:enum_names ---
+# Example for enum_names
+enum e (zero=0, one, two)
+println enum_names(e)
+
+--- example:file_mode ---
+# Example for file_mode
+println file_mode("/etc/passwd")
+
+--- example:release_name ---
+# Example for release_name
+println release_name()
+
+--- example:zip ---
+# Example for zip
+var a=[1,2,3]
+var b=["a","b","c"]
+println zip(a,b)
+
+--- example:web_serve_start ---
+# Example for web_serve_start
+var handle = web_serve_start("/var/www", 8080)
+println handle
+
+--- example:cd ---
+# Example for cd
+println cd("/tmp")
+
+--- example:feed ---
+# Example for feed
+feed(true)
+println "This will be printed after forced feed."
+
+--- example:field ---
+# Example for field
+println field("a b c",2)
+
+--- example:phi ---
+# Example for phi
+println phi()
+
+--- example:coproc ---
+# Example for coproc
+coproc(true)
+println "Coproc mode enabled"
+
+--- example:grep ---
+# Example for grep
+var s="line1\nline2\nline3"
+println grep(s,"line1")
+
+--- example:strpos ---
+# Example for strpos
+println strpos("hello world", "world")
+
+--- example:is_sticky ---
+# Example for is_sticky
+println is_sticky(01777)
+
+--- example:count ---
+# Example for count
+var s="line1\nline2\nline3"
+println count(s)
+
+--- example:cursorx ---
+# Example for cursorx
+println cursorx(10)
+
+--- example:fclose ---
+# Example for fclose
+var f = fopen("/tmp/test", "w")
+fclose(f)
+
+--- example:sort ---
+# Example for sort
+var a=[3,2,1]
+println sort(a)
+
+--- example:has_colour ---
+# Example for has_colour
+println has_colour()
+
+--- example:hostname ---
+# Example for hostname
+println hostname()
+
+--- example:ansi ---
+# Example for ansi
+println ansi(true)
+
+--- example:reg_replace ---
+# Example for reg_replace
+println reg_replace("abc","b","d")
+
+--- example:home ---
+# Example for home
+println home()
+
+--- example:get_mem ---
+# Example for get_mem
+println get_mem()
+
+--- example:is_symlink ---
+# Example for is_symlink
+var f = stat("/tmp")
+println is_symlink(f.Mode)
+
+--- example:abs ---
+# Example for abs
+println abs(-3.14)
+
+--- example:gsub ---
+# Example for gsub
+println gsub("test", "t", "T")
+
+--- example:ccformat ---
+# Example for ccformat
+println ccformat("[#red]This is red text[#-]")
+
+--- example:round ---
+# Example for round
+println round(3.14159)
+
+--- example:ev_watch_close ---
+# Example for ev_watch_close
+var w,err = ev_watch("/tmp")
+on err==0 do
+    println ev_watch_close(w)
+end
+
+--- example:uninstall ---
+# Example for uninstall
+println uninstall("somepackage")
+
+--- example:os ---
+# Example for os
+println os()
+
+--- example:match ---
+# Example for match
+println match("hello world","world")
+
+--- example:web_head ---
+# Example for web_head
+println web_head("https://example.com")
+
+--- example:len ---
+# Example for len
+println len("hello")
+println len([1,2,3,4])
+
+--- example:itob ---
+# Example for itob
+println itob(3)
+
+--- example:sin ---
+# Example for sin
+println sin(3.14)
+
+--- example:line_add_after ---
+# Example for line_add_after
+var s="line1\nline2\nline3"
+println line_add_after(s, "line1", "added line")
+
+--- example:split ---
+# Example for split
+println split("a,b,c",",")
+
+--- example:collapse ---
+# Example for collapse
+println collapse("a\nb\nc")
+
+--- example:rename ---
+# Example for rename
+println rename("/tmp/old","/tmp/new")
+
+--- example:seed ---
+# Example for seed
+println seed(42)
+
+--- example:trim ---
+# Example for trim
+println trim("  hello  ", 0)
+
+--- example:is_setuid ---
+# Example for is_setuid
+var f=stat("/usr/bin/passwd")
+println is_setuid(f.Mode)
+
+--- example:log10 ---
+# Example for log10
+println log10(1000)
+
+--- example:fseek ---
+# Example for fseek
+var f=fopen("testfile","r")
+println fseek(f, 10, 0)
+fclose(f)
+
+--- example:can_read ---
+# Example for can_read
+println can_read("/etc/passwd")
+
+--- example:web_serve_up ---
+# Example for web_serve_up
+var s=web_serve_start("/var/www",8080)
+println web_serve_up(s)
+
+--- example:ln10 ---
+# Example for ln10
+println ln10()
+
+--- example:pane_h ---
+# Example for pane_h
+println pane_h()
+
+--- example:floor ---
+# Example for floor
+println floor(3.14)
+
+--- example:acos ---
+# Example for acos
+println acos(1)
+
+--- example:clktck ---
+# Example for clktck
+println clktck()
+
+--- example:line_replace ---
+# Example for line_replace
+var s="line1\nline2\nline3"
+println line_replace(s, "line2", "newline")
+
+--- example:pi ---
+# Example for pi
+println pi()
+
+--- example:vcmp ---
+# Example for vcmp
+println vcmp("1.0.0","1.0.1")
+
+--- example:remove ---
+# Example for remove
+var l=[1,2,3,4,5]
+println remove(l,3)
+
+--- example:fg256 ---
+# Example for fg256
+println fg256(196) // Use 256-color chart reference: https://jonasjacek.github.io/colors/
+
+--- example:pos ---
+# Example for pos
+println pos(10,20)
+
+--- example:ln ---
+# Example for ln
+println ln(1)
+
+--- example:can_write ---
+# Example for can_write
+println can_write("/tmp")
+
+--- example:ev_event ---
+# Example for ev_event
+var w,err=ev_watch("/tmp")
+println ev_event(w)
+
+--- example:echo ---
+# Example for echo
+println echo(true,"*")
+
+--- example:is_device ---
+# Example for is_device
+println is_device(0o20666)
+
+--- example:html_escape ---
+# Example for html_escape
+println html_escape("<div>")
+
+--- example:line_delete ---
+# Example for line_delete
+var s="a\nb\nc"
+println line_delete(s,"b")
+
+--- example:term_w ---
+# Example for term_w
+println term_w()
+
+--- example:uint ---
+# Example for uint
+println uint(23)
+
+--- example:await ---
+# Example for await
+var h,err=ev_watch("/tmp")
+println await(h)
+
+--- example:is_installed ---
+# Example for is_installed
+println is_installed("bash")
+
+--- example:get_value ---
+# Example for get_value
+var m={"a":"1","b":"2"}
+println get_value(m,"a")
+
+--- example:col ---
+# Example for col
+var s="a b c\nd e f\ng h i"
+println col(s,2)
+
+--- example:lower ---
+# Example for lower
+println lower("ABC")
+
+--- example:join ---
+# Example for join
+var l=["a","b","c"]
+println join(l,",")
+
+--- example:is_setgid ---
+# Example for is_setgid
+var m=stat("somefile")
+println is_setgid(m.Mode)
+
+--- example:line_match ---
+# Example for line_match
+var s="a\nb\nc"
+println line_match(s,"b")
+
+--- example:clear_line ---
+# Example for clear_line
+clear_line(2,1)
+
+--- example:lang ---
+# Example for lang
+println lang()
+
+--- example:zsh_version ---
+# Example for zsh_version
+println zsh_version()
+
+--- example:get_cores ---
+# Example for get_cores
+println get_cores()
+
+--- example:asc ---
+# Example for asc
+println asc("a")
+
+--- example:has_start ---
+# Example for has_start
+println has_start("abcd","ab")
+
+--- example:line_tail ---
+# Example for line_tail
+var s="1\n2\n3\n4\n5"
+println line_tail(s,2)
+
+--- example:argc ---
+# Example for argc
+println argc()
+
+--- example:fopen ---
+# Example for fopen
+var f=fopen("file","r")
+fclose(f)
+
+--- example:reg_filter ---
+# Example for reg_filter
+var s="abc 123"
+println reg_filter(s,"[a-z]+")
+
+--- example:line_add_before ---
+# Example for line_add_before
+var s="a\nb\nc"
+println line_add_before(s,"b","x")
+
+--- example:write_struct ---
+# Example for write_struct
+write_struct("file","structname")
+
+--- example:download ---
+# Example for download
+println download("http://example.com/file")
+
+--- example:varbind ---
+# Example for varbind
+println varbind("x")
+
+--- example:web_download ---
+# Example for web_download
+web_download("http://example.com","file")
+
+--- example:any ---
+# Example for any
+var a=[0,1,2]
+println any(a)
+
+--- example:line_head ---
+# Example for line_head
+var s="a\nb\nc\nd"
+println line_head(s,2)
+
+--- example:filter ---
+# Example for filter
+var s="abc 123"
+println filter(s,"[0-9]+")
+
+--- example:get_env ---
+# Example for get_env
+println get_env("HOME")
+
+--- example:cwd ---
+# Example for cwd
+println cwd()
+
+--- example:permit ---
+# Example for permit
+permit("uninit",false)
+
+--- example:otod ---
+# Example for otod
+println otod("17")
+
+--- example:tokens ---
+# Example for tokens
+var s=tokens("a=1 b=2 c=3")
+println s.tokens
+
+--- example:web_custom ---
+# Example for web_custom
+println web_custom("GET","http://example.com")
+
+--- example:term_h ---
+# Example for term_h
+println term_h()
+
+--- example:reverse ---
+# Example for reverse
+var a=[1,2,3]
+println reverse(a)
+
+--- example:key ---
+# Example for key
+var a=[1,2,3]
+println key(a,1)
+
+--- example:log2 ---
+# Example for log2
+println log2(8)
+
+--- example:web_serve_decode ---
+# Example for web_serve_decode
+var w=web_serve_decode(nil)
+println w
+
+--- example:sinh ---
+# Example for sinh
+println sinh(1.2)
+
+--- example:cursoroff ---
+# Example for cursoroff
+cursoroff()
+
+--- example:asinh ---
+# Example for asinh
+println asinh(1.2)
+
+--- example:all ---
+# Example for all
+var a=[true,true,true]
+println all(a)
+
+--- example:tail ---
+# Example for tail
+var a=[1,2,3]
+println tail(a)
+
+--- example:stripcc ---
+# Example for stripcc
+println stripcc("[#red]coloured[#-]")
+
+--- example:tan ---
+# Example for tan
+println tan(1.0)
+
+--- example:dtoo ---
+# Example for dtoo
+println dtoo(123)
+
+--- example:is_dir ---
+# Example for is_dir
+println is_dir("/tmp")
+
+--- example:web_post ---
+# Example for web_post
+var kv=[["name","value"],["another","field"]]
+println web_post("http://example.com",kv)
+
+--- example:sum ---
+# Example for sum
+println sum([1,2,3,4,5])
+
+--- example:replace ---
+# Example for replace
+println replace("foo bar foo","foo","baz")
+
+--- example:is_socket ---
+# Example for is_socket
+println is_socket(49152)
+
+--- example:func_inputs ---
+# Example for func_inputs
+println func_inputs()
+
+--- example:fwrite ---
+# Example for fwrite
+var f=fopen("/tmp/test","w")
+fwrite(f,"Hello, world!")
+fclose(f)
+
+--- example:min ---
+# Example for min
+println min([3,1,4,2])
+
+--- example:insert ---
+# Example for insert
+var a=[1,2,3]
+println insert(a,2,"new")
+
+--- example:btoi ---
+# Example for btoi
+println btoi(true)
+
+--- example:ln2 ---
+# Example for ln2
+println ln2()
+
+

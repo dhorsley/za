@@ -1,0 +1,4 @@
+# Example for fseek
+var f=fopen("/tmp/file","r")
+println fseek(f,10,0)
+

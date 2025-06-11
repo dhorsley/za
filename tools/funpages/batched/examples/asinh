@@ -1,0 +1,3 @@
+# Example for asinh
+println asinh(1)  # ~0.881
+

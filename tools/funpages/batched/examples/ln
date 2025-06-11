@@ -1,0 +1,3 @@
+# Example for ln
+println ln(2.71828)  # ~1
+

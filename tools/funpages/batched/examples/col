@@ -1,0 +1,3 @@
+# Example for col
+println col("a b\nc d",2)  # ["b","d"]
+

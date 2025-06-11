@@ -1,0 +1,3 @@
+# Example for argv
+println argv()  # e.g., ["file.za","arg1","arg2"]
+

@@ -1,0 +1,5 @@
+# Example for append
+var lst=[1,2,3]
+lst=append(lst,4)
+println lst  # [1,2,3,4]
+

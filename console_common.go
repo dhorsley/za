@@ -12,9 +12,9 @@ import (
     "bufio"
     "errors"
     "encoding/hex"
+    "runtime"
     "strconv"
     "regexp"
-    "runtime"
     "unicode/utf8"
     "sort"
     str "strings"
@@ -35,6 +35,9 @@ var completions = []string{"VAR", "SETGLOB", "PAUSE",
 }
 
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+
+var winmode bool
+var funcnames []string
 
 var ansiReplacables []string
 var fairyReplacer *str.Replacer
@@ -184,14 +187,47 @@ func mouse_press(inp []byte) {
 }
 
 
-// getInput() : get an input string from stdin, in raw mode
-//  it does have some issues with utf8 input when moving the cursor around.
-//  not likely to fix this unless it annoys me too much.. more likely to
-//  replace the input mechanism wholesale.
-//  the issue is basically that we are not tracking where the code points start
-//  for each char and moving the cursor to those instead of byte by byte.
 
-func getInput(prompt string, defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (s string, eof bool, broken bool) {
+func insertAt(runes []rune, pos int, r rune) []rune {
+    return append(runes[:pos], append([]rune{r}, runes[pos:]...)...)
+}
+
+func removeBefore(runes []rune, pos int) []rune {
+    if pos <= 0 || pos > len(runes) {
+        return runes
+    }
+    return append(runes[:pos-1], runes[pos:]...)
+}
+
+func drawBox(r0, c0, r1, c1 int, title string) {
+    at(r0, c0)
+    fmt.Print("┌" + str.Repeat("─", c1-c0-1) + "┐")
+    for r := r0 + 1; r < r1; r++ {
+        at(r, c0)
+        fmt.Print("│" + str.Repeat(" ", c1-c0-1) + "│")
+    }
+    at(r1, c0)
+    fmt.Print("└" + str.Repeat("─", c1-c0-1) + "┘")
+    if title != "" {
+        at(r0, c0+2)
+        fmt.Print(title)
+    }
+}
+
+func hasPrefixRunes(runes, prefix []rune) bool {
+    if len(prefix) > len(runes) {
+        return false
+    }
+    for i, r := range prefix {
+        if runes[i] != r {
+            return false
+        }
+    }
+    return true
+}
+
+// getInput() : get an input string from stdin, in raw mode
+func getInput(prompt string, in_defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
     BMARGIN:=BMARGIN
     if !interactive { BMARGIN=0 }
@@ -204,7 +240,8 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
     showCursor()
 
-    s=""
+    var s, defaultString []rune
+    defaultString=[]rune(in_defaultString)
 
     sprompt := sparkle(prompt)
 
@@ -218,8 +255,8 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
     contextHelpSelected := false // final selection made during auto-completion?
     selectedStar := 0            // starting word position of the current selection during auto-completion
     var starMax int              // fluctuating maximum word position for the auto-completion selector
-    wordUnderCursor := ""        // maintains a copy of the word currently under amendment
-    var helpColoured []string    // populated (on TAB) list of auto-completion possibilities as displayed on console 
+    var wordUnderCursor []rune   // maintains a copy of the word currently under amendment
+    var helpColoured []string    // populated (on TAB) list of auto-completion possibilities as displayed on console
     var helpList []string        // list of remaining possibilities governed by current input word
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
@@ -257,10 +294,11 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         // calc new values for row,col
         srow=row; scol=col
         promptL := displayedLen(sprompt)
-        inputL  := displayedLen(s)
+        inputL  := displayedLen(string(s))
         dispL   :=promptL+inputL
 
-        
+        hideCursor()
+
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
         rowLen:=int(dispL-1)/MW
@@ -292,15 +330,15 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         at(irow, icol)
         if echo.(bool) {
             if len(s)>len(defaultString) {
-                fmt.Print(s)
+                fmt.Print(string(s))
             } else {
-                if str.HasPrefix(defaultString,s) && !defaultAccepted {
+                if str.HasPrefix(in_defaultString,string(s)) && !defaultAccepted {
                     // #dim + italic + string + normal
-                    fmt.Print("\033[2m\033[3m"+defaultString+"\033[23m\033[22m")
+                    fmt.Print("\033[2m\033[3m"+in_defaultString+"\033[23m\033[22m")
                 } else {
-                    clearChars(irow, icol, len(defaultString))
+                    clearChars(irow, icol, len(in_defaultString))
                     at(irow, icol)
-                    fmt.Print(s)
+                    fmt.Print(string(s))
                 }
             }
         } else {
@@ -316,6 +354,8 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         cposCursAtCol:=((icol+cpos-1)%MW)+1
         cposRowLen:=int(icol+cpos-1)/MW
         at(srow+cposRowLen, cposCursAtCol)
+
+        showCursor()
 
         // get key stroke
         c, _ , pasted, pbuf := getch(0)
@@ -340,7 +380,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             // strip ansi codes from pbuf then shove it in the input string
             pbuf=Strip(pbuf)
             s=insertWord(s, cpos, pbuf)
-            cpos+=len(pbuf)
+            cpos += rlen(pbuf)
             wordUnderCursor,_ = getWord(s, cpos)
             selectedStar = -1
 
@@ -353,6 +393,21 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             case bytes.Equal(c, []byte{4}): // ctrl-d
                 eof = true
                 break
+
+            case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor
+                result, eof, broken := multilineEditor(string(s), -1,MH-5, "","", "Editor")
+                if !broken {
+                    // Replace the input buffer in getInput() with the result from the multiline editor
+                    s = []rune(result)
+                    cpos = len(s)
+                } else if eof {
+                    // If user pressed ctrl-d in multiline, treat as EOF in getInput
+                    return "", true, false
+                } else {
+                    // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
+                }
+
+
             case bytes.Equal(c, []byte{13}): // enter
 
                 if startedContextHelp {
@@ -365,9 +420,9 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
                 endLine = true
 
-                if s != "" {
-                    if len(hist)==0 || (len(hist)>0 && s!=hist[len(hist)-1]) {
-                        hist = append(hist, s)
+                if len(s)!=0 {
+                    if len(hist)==0 || (len(hist)>0 && string(s)!=hist[len(hist)-1]) {
+                        hist = append(hist, string(s))
                         lastHist++
                         histEmpty = false
                     }
@@ -381,7 +436,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     contextHelpSelected = false
                     startedContextHelp = false
                     wordUnderCursor,_ = getWord(s, cpos)
-                    cmpStr:=str.ToLower(wordUnderCursor)
+                    cmpStr:=str.ToLower(string(wordUnderCursor))
                     parenPos:=str.IndexByte(cmpStr,'(')
                     if parenPos==-1 && len(helpList) == 1 {
                         var newstart int
@@ -394,10 +449,11 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                     }
                     helpstring = ""
+                    for i:=irow+1;i<=irow+BMARGIN;i+=1 { at(i,1); clearToEOL() }
                 }
 
                 // normal space input
-                s = insertAt(s, cpos, c[0])
+                s = insertAt(s, cpos, rune(c[0]))
                 cpos++
                 wordUnderCursor,_ = getWord(s, cpos)
 
@@ -445,14 +501,14 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
-                if s=="" && defaultString!="" {
+                if len(s)==0 && len(defaultString)!=0 {
                     clearChars(irow, icol, len(defaultString))
-                    defaultString=""
+                    defaultString=[]rune{}
                 }
                 if cpos < len(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor,_ = getWord(s, cpos)
-                    clearChars(irow, icol, displayedLen(s)+1)
+                    clearChars(irow, icol, displayedLenUtf8(s)+1)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
@@ -489,7 +545,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
 
-                if MW<displayedLen(s) && cpos>MW {
+                if MW<displayedLenUtf8(s) && cpos>MW {
                     cpos-=MW
                     break
                 }
@@ -504,7 +560,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         clearChars(irow, icol, inputL)
                         if curHist > 0 {
                             curHist--
-                            s = hist[curHist]
+                            s = []rune(hist[curHist])
                         }
                         cpos = len(s)
                         wordUnderCursor,_ = getWord(s, cpos)
@@ -557,7 +613,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         case 32:
                             selected=true
                             break inloopdd
-                        
+
                         // these cases may be removed later, they are reserved for later use
                         //  it may be the case that we allow partially typed matches.
 
@@ -583,7 +639,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 }
 
                 // normal down key operations resume here
-                if displayedLen(s)>MW && cpos<MW {
+                if displayedLenUtf8(s)>MW && cpos<MW {
                     cpos+=MW
                     break
                 }
@@ -593,7 +649,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         clearChars(irow, icol, inputL)
                         if curHist < lastHist-1 {
                             curHist++
-                            s = hist[curHist]
+                            s = []rune(hist[curHist])
                         } else {
                             s = orig_s
                             navHist = false
@@ -638,7 +694,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         startedContextHelp = false
                     }
                 } else { // accept default
-                    if str.HasPrefix(defaultString,s) {
+                    if hasPrefixRunes(defaultString,s) {
                         s=defaultString
                         cpos=len(s)
                         defaultAccepted=true
@@ -654,12 +710,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
             case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
 
-            // specials over 128 - don't do this.. too messy with runes.
-            case bytes.Equal(c, []byte{0xc2, 0xa3}): // £  194 163
-                s = insertAt(s, cpos, '£')
-                cpos++
-                wordUnderCursor,_ = getWord(s, cpos)
-                selectedStar = -1
 
             // ignore list
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
@@ -669,11 +719,18 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             default:
                 if len(c) == 1 {
                     if c[0] > 32 && c[0]<128 {
-                        s = insertAt(s, cpos, c[0])
+                        s = insertAt(s, cpos, rune(c[0]))
                         cpos++
                         wordUnderCursor,_ = getWord(s, cpos)
                         selectedStar = -1 // also reset the selector position for auto-complete
                     }
+                } else {
+                    // multi-byte, like utf8?
+                    r,_:=utf8.DecodeRune(c)
+                    s = insertAt(s, cpos, r)
+                    cpos++
+                    wordUnderCursor,_ = getWord(s, cpos)
+                    selectedStar = -1 
                 }
 
                 if startedContextHelp {
@@ -693,12 +750,11 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             helpType = []int{}
 
             for _, v := range funcnames {
-                cmpStr:=str.ToLower(wordUnderCursor)
+                cmpStr:=str.ToLower(string(wordUnderCursor))
                 parenPos:=str.IndexByte(cmpStr,'(')
                 if parenPos!=-1 {
                     cmpStr=cmpStr[:parenPos]
                 }
-                // if str.HasPrefix(str.ToLower(v), str.ReplaceAll(str.ToLower(wordUnderCursor),"(","")) {
                 if str.HasPrefix(str.ToLower(v), cmpStr) {
                     helpColoured = append(helpColoured, "[#5]"+v+"[#-]")
                     helpList = append(helpList, v+"(")
@@ -707,7 +763,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             }
 
             for _, v := range completions {
-                if str.HasPrefix(str.ToLower(v), str.ToLower(wordUnderCursor)) {
+                if str.HasPrefix(str.ToLower(v), str.ToLower(string(wordUnderCursor))) {
                     helpColoured = append(helpColoured, "[#6]"+v+"[#-]")
                     helpList = append(helpList, v)
                     helpType = append(helpType, HELP_KEYWORD)
@@ -715,7 +771,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             }
 
             fileList=make(map[string]os.FileInfo)
-    
+
             max_depth,_:=gvget("context_dir_depth")
 
             for _,paf := range dirplus(".",max_depth.(int)) {
@@ -729,7 +785,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                     pan=parent+"/"+name
                 }
 
-                if matched, _ := regexp.MatchString("^"+wordUnderCursor, pan); !matched {
+                if matched, _ := regexp.MatchString("^"+string(wordUnderCursor), pan); !matched {
                      continue
                 }
 
@@ -756,16 +812,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                 }
             }
 
-            /*
-            for _, v := range varnames {
-                if v!="" {
-                    if str.HasPrefix(v, wordUnderCursor) {
-                        helpColoured = append(helpColoured, "[#3]"+v+"[#-]")
-                        helpList = append(helpList, v)
-                    }
-                }
-            }
-            */
 
             //.. build display string
 
@@ -774,15 +820,6 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
             for cnt, v := range helpColoured {
                 starMax = cnt
                 if cnt>29 { break } // limit max length of options
-                /*
-                l := displayedLen(helpstring) + displayedLen(s) + icol
-                if (l + displayedLen(v) + icol + 4) > MW {
-                    if l > 3 {
-                        helpstring += "..."
-                    }
-                    break
-                } else {
-                */
                     if cnt == selectedStar {
                         if winmode {
                             helpstring += "[#b2]*"
@@ -791,13 +828,12 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         }
                     }
                     helpstring += v + " "
-                // }
             }
 
             helpstring += "[#-][##]"
 
             // don't show desc+function help if current word is a keyword instead of function.
-            //   otherwise, find desc+func for either remaining guess in context list 
+            //   otherwise, find desc+func for either remaining guess in context list
             //   or the current word.
 
             keynum:=0
@@ -810,8 +846,9 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
                         if keynum==0 {
                             if len(helpList)>1 {
                                 // show of desc+function help if current word completes a function (but still other completion options)
+                                wuc:=string(wordUnderCursor)
                                 for p,v:=range helpList {
-                                    if wordUnderCursor==v {
+                                    if wuc==v {
                                         pos=p
                                         break
                                     }
@@ -874,7 +911,7 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
 
     } // input loop
 
-    if s=="" && defaultString!="" {
+    if len(s)==0 && len(defaultString)!=0 {
         s=defaultString
     }
 
@@ -885,16 +922,300 @@ func getInput(prompt string, defaultString string, pane string, row int, col int
         clearChars(srow, scol, clearWidth)
         at(srow, scol)
         fmt.Printf(sparkle(sprompt))
-        fmt.Print(sparkle(recolour)+s+sparkle("[#-]"))  // recolour const sets italics
-        // cposRowLen:=int(scol+cpos-1)/MW
-        // at(srow+cposRowLen,1)
+        fmt.Print(string(s))  // recolour const sets italics
     }
 
     lineWrap=old_wrap
 
-    return s, eof, broken
+    return string(s), eof, broken
 }
 
+
+func secScreenActive() bool {
+    return altScreen
+}
+
+
+func findRunesThatFit(runes []rune, maxWidth int) int {
+    if len(runes) > maxWidth {
+        return maxWidth
+    }
+    return len(runes)
+}
+
+/* better way, when i can be bothered. using: mattn/go-runwidth.
+func findRunesThatFit(runes []rune, maxWidth int) int {
+    width := 0
+    for i, r := range runes {
+        width += runeWidth(r) // If you have custom rune width; otherwise assume 1
+        if width > maxWidth {
+            return i
+        }
+    }
+    return len(runes)
+}
+*/
+
+
+func escapeControlChars(s string) string {
+    s = str.ReplaceAll(s, "\\", "\\\\") // escape backslashes first
+    s = str.ReplaceAll(s, "\n", "\\n")
+    s = str.ReplaceAll(s, "\r", "\\r")
+    s = str.ReplaceAll(s, "\t", "\\t")
+    return s
+}
+
+func escapeControlCharsInLiterals(s string) string {
+    var out []rune
+    inLiteral := false
+    literalChar := rune(0)
+
+    for _, r := range s {
+        if !inLiteral {
+            if r == '"' || r == '`' {
+                inLiteral = true
+                literalChar = r
+            }
+            out = append(out, r)
+        } else {
+            if r == literalChar {
+                inLiteral = false
+                literalChar = 0
+                out = append(out, r)
+            } else {
+                // Escape control characters inside the literal
+                switch r {
+                case '\n':
+                    out = append(out, []rune{'\\', 'n'}...)
+                case '\r':
+                    out = append(out, []rune{'\\', 'r'}...)
+                case '\t':
+                    out = append(out, []rune{'\\', 't'}...)
+                case '\\':
+                    out = append(out, []rune{'\\', '\\'}...)
+                default:
+                    out = append(out, r)
+                }
+            }
+        }
+    }
+    return string(out)
+}
+
+
+var altScreen bool
+
+
+func multilineEditor(defaultString string, width, height int, boxColour, inputColour, title string) (string, bool, bool) {
+
+    if width <= 0 { width = MW - 20 }
+    if height <= 0 { height = 1 }
+    if boxColour == "" { boxColour = "[#1]" }
+    if inputColour == "" { inputColour = "[#6]" }
+    if title == "" { title = "Multiline Editor" }
+    
+    currentScreen := "primary"
+    if secScreenActive() { currentScreen = "secondary" }
+    if currentScreen == "primary" { secScreen() } else { priScreen() }
+
+    cls()
+    startRow := (MH - height) / 2
+    startCol := (MW - width) / 2
+
+    lines := [][]rune{}
+    for _, l := range str.Split(defaultString, "\n") {
+        lines = append(lines, []rune(l))
+    }
+    if len(lines) == 0 { lines = append(lines, []rune{}) }
+    lineIndex := len(lines)-1
+    cpos := len(lines[lineIndex])
+    indent:=10
+
+    prevHeight:=-1
+    maxHeight:=MH-startRow-1
+    height=len(lines)
+
+    hintOverlay:=" ctrl-d to accept, ctrl-r to return top line, escape to abandon "
+    spaceRunes:=[]rune{' ',' ',' ',' '}
+
+    for {
+        hideCursor()
+
+        if prevHeight!=height {
+            if height<prevHeight {
+                space:=str.Repeat(" ",width+2)
+                for i:=height;i<=prevHeight;i++ { // height + 1 to clear box bottom line
+                    at(startRow+i+1,startCol)
+                    pf(space)
+                }
+            }
+            drawBox(startRow, startCol, startRow+height+1, startCol+width+1, title)
+            at(startRow+height+1,startCol+width-2-len(hintOverlay))
+            pf(hintOverlay)
+        }
+
+        for i := 0; i < height; i++ {
+            
+            at(startRow+1+i, 2+startCol)
+            pf("[#b5][#7]%5d[#-] | ",i+1)
+
+            visibleWidth:=width-indent
+            if visibleWidth<0 { visibleWidth=0 }
+            line:=lines[i]
+            displayRunes:=line
+            indicator := ""
+
+            // Truncate to fit within visibleWidth-1 and add "…"
+            if displayedLen(string(line)) > visibleWidth {
+                cutoff := findRunesThatFit(line, visibleWidth-1)
+                displayRunes = line[:cutoff]
+                indicator = "…"
+            }
+
+            pf(str.Repeat(" ",visibleWidth))
+            at(startRow+i+1,startCol+indent)
+            pf(string(displayRunes)+indicator)
+
+
+        }
+        at(startRow+1+lineIndex, startCol+cpos+indent)
+        showCursor()
+
+        c, _, pasted, pbuf := getch(0)
+
+        if pasted {
+            // Strip ANSI codes
+            pbuf = Strip(pbuf)
+
+            // Split pasted buffer into lines
+            pasteLines := str.Split(pbuf, "\n")
+
+            // Insert first pasted line into current line at cursor
+            firstLineRunes := []rune(pasteLines[0])
+            lines[lineIndex] = append(lines[lineIndex][:cpos], append(firstLineRunes, lines[lineIndex][cpos:]...)...)
+            cpos += len(firstLineRunes)
+
+            // Insert remaining pasted lines as new lines in editor
+            for i := 1; i < len(pasteLines); i++ {
+                lineIndex++
+                if lineIndex >= len(lines) {
+                    lines = append(lines, []rune{})
+                }
+                lines = append(lines[:lineIndex], append([][]rune{[]rune(pasteLines[i])}, lines[lineIndex:]...)...)
+                cpos = len([]rune(pasteLines[i]))
+            }
+            prevHeight=height
+            height=len(lines)
+            if height>maxHeight {
+                height=maxHeight
+            }
+            cls()
+            continue
+        }
+
+        switch {
+        case bytes.Equal(c, []byte{0x1B}): // ESC
+            cls()
+            if currentScreen == "primary" { priScreen() } else { secScreen() }
+            return "", false, true
+        case bytes.Equal(c, []byte{4}): // Ctrl+D
+            cls()
+            if currentScreen == "primary" { priScreen() } else { secScreen() }
+            var out str.Builder
+            for i, l := range lines {
+                out.WriteString(string(l))
+                if i != len(lines)-1 { out.WriteRune('\n') }
+            }
+            // return out.String(), false, false
+            return escapeControlCharsInLiterals(out.String()),false,false
+        case bytes.Equal(c, []byte{18}): // Ctrl+R
+            cls()
+            if currentScreen == "primary" { priScreen() } else { secScreen() }
+            // if len(lines) > 0 { return string(lines[0]), true, false }
+            if len(lines) > 0 { return escapeControlCharsInLiterals(string(lines[0])),true,false }
+            return "", true, false
+        case bytes.Equal(c, []byte{13}): // Enter
+            if len(lines)+1>=MH-startRow-1 {
+                break
+            }
+            lines = append(lines, []rune{})
+            lineIndex++
+            cpos = 0
+            prevHeight=height
+            height=len(lines)
+            if height>maxHeight {
+                height=maxHeight
+            }
+
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
+            if cpos < len(lines[lineIndex]) {
+                // Remove character under cursor
+                lines[lineIndex] = removeBefore(lines[lineIndex], cpos+1)
+            } else if len(lines[lineIndex]) == 0 && len(lines) > 1 {
+                // Remove the empty line
+                lines = append(lines[:lineIndex], lines[lineIndex+1:]...)
+                if lineIndex >= len(lines) {
+                    lineIndex = len(lines) - 1
+                }
+                cpos = 0
+            }
+
+        case bytes.Equal(c, []byte{0x09}): // TAB key
+            lines[lineIndex] = append(lines[lineIndex][:cpos], append(spaceRunes, lines[lineIndex][cpos:]...)...)
+            cpos += 4
+
+        case bytes.Equal(c, []byte{127}): // Backspace
+            if cpos > 0 {
+                lines[lineIndex] = removeBefore(lines[lineIndex], cpos)
+                cpos--
+            } else if lineIndex > 0 {
+                prevLen := len(lines[lineIndex-1])
+                lines[lineIndex-1] = append(lines[lineIndex-1], lines[lineIndex]...)
+                lines = append(lines[:lineIndex], lines[lineIndex+1:]...)
+                lineIndex--
+                // height--
+                prevHeight=height
+                height=len(lines)
+                if height>maxHeight {
+                    height=maxHeight
+                }
+                cpos = prevLen
+            }
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // Up
+            if lineIndex > 0 {
+                lineIndex--
+                cpos = min(cpos, len(lines[lineIndex]))
+            }
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // Down
+            if lineIndex < len(lines)-1 {
+                lineIndex++
+                cpos = min(cpos, len(lines[lineIndex]))
+            }
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // Left
+            if cpos > 0 {
+                cpos--
+            } else if lineIndex > 0 {
+                lineIndex--
+                cpos = len(lines[lineIndex])
+            }
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // Right
+            if cpos < len(lines[lineIndex]) {
+                cpos++
+            } else if lineIndex < len(lines)-1 {
+                lineIndex++
+                cpos = 0
+            }
+        case bytes.Equal(c, []byte{1}): // Ctrl+A
+            cpos = 0
+        case bytes.Equal(c, []byte{5}): // Ctrl+E
+            cpos = len(lines[lineIndex])
+        case len(c) == 1 && c[0] >= 32 && c[0] < 127:
+            r := rune(c[0])
+            lines[lineIndex] = insertAt(lines[lineIndex], cpos, r)
+            cpos++
+        }
+    }
+}
 
 func clearChars(row int,col int,l int) {
     at(row,col)
@@ -1088,6 +1409,14 @@ func displayedLen(s string) int {
     return rlen(Strip(sparkle(s)))
 }
 
+func rsparkle(ra []rune) []rune {
+    return []rune(sparkle(string(ra)))
+}
+
+func displayedLenUtf8(s []rune) int {
+    return len([]rune(Strip(string(rsparkle(s)))))
+}
+
 // move the console cursor
 func absat(row int, col int) {
     atlock.Lock()
@@ -1140,19 +1469,13 @@ func cursorX(n int) {
     pf("\033[%dG",n)
 }
 
-// remove runes in string s before position pos
-func removeAllBefore(s string, pos int) string {
-    if rlen(s)<pos { return s }
-    return s[pos:]
+func removeAllBefore(runes []rune, pos int) []rune {
+    if len(runes) < pos {
+        return runes
+    }
+    return runes[pos:]
 }
 
-// remove character at position pos
-func removeBefore(s string, pos int) string {
-    if rlen(s)<pos { return s }
-    if pos < 1 { return s }
-    s = s[:pos-1] + s[pos:]
-    return s
-}
 
 // insert a number of characters in string at position pos
 func insertBytesAt(s string, pos int, c []byte) string {
@@ -1164,129 +1487,77 @@ func insertBytesAt(s string, pos int, c []byte) string {
     return s
 }
 
-// insert a single byte at position pos in string s
-func insertAt(s string, pos int, c byte) string {
-    if pos >= rlen(s) { // append
-        s += string(c)
-        return s
-    }
-    s = s[:pos] + string(c) + s[pos:]
-    return s
+func insertWord(runes []rune, cpos int, word string) []rune {
+    // Insert each rune of the word at cpos
+    wordRunes := []rune(word)
+    newRunes := append(runes[:cpos], append(wordRunes, runes[cpos:]...)...)
+    return newRunes
 }
 
-// append a string to end of string or insert it mid-string
-func insertWord(s string, pos int, w string) string {
-    if pos >= rlen(s) { // append
-        s += w
-        return s
+func deleteWord(runes []rune, cpos int) ([]rune, int) {
+    start := 0
+    end := len(runes)
+
+    if end < cpos {
+        return runes, 0
     }
-    s = s[:pos] + w + s[pos:]
-    return s
-}
 
-// delete the word under the cursor
-func deleteWord(s string, pos int) (string,int) {
-
-    start:=0
-    end := len(s)
-
-    if end<pos { return s,0 }
-
-    for p := pos - 1; p >= 0; p-- {
-        if s[p]=='.' {
-            start=p+1
+    // Scan backwards for the start of the word (or dot)
+    for p := cpos - 1; p >= 0; p-- {
+        if runes[p] == '.' {
+            start = p + 1
             break
         }
-        if s[p] == ' ' {
-            start=p+1
+        if runes[p] == ' ' {
+            start = p + 1
             break
         }
     }
 
-    for p := pos; p < len(s); p++ {
-        if s[p] == ' ' || s[p]=='.' {
+    // Scan forward for the end of the word (or dot)
+    for p := cpos; p < len(runes); p++ {
+        if runes[p] == ' ' || runes[p] == '.' {
             end = p
             break
         }
     }
 
-    startsub := ""
-    endsub := ""
+    startsub := []rune{}
+    endsub := []rune{}
 
     if start > 0 {
-        startsub = s[:start]
+        startsub = runes[:start]
     }
 
-    add:=""
-    if end < len(s) {
-        if start!=0 { add=" " }
-        endsub = s[end+1:]
-    }
-
-    rstring := startsub+add+endsub
-
-    return rstring,start
-}
-
-// get the word in string s under the cursor (at position c)
-// using space or dot as separator
-func getWord(s string, c int) (string,bool) {
-    if rlen(s)<c { return s,false }
-    dotted:=false
-
-    // track back
-    var i int
-    i = rlen(s) - 1
-    if c < i { i = c }
-    if i < 0 { i = 0 }
-    for ; i > 0; i-- {
-        if i!=c && (s[i]==' ' || s[i]=='.') {
-            if s[i]=='.' { dotted=true }
-            break
+    add := []rune{}
+    if end < len(runes) {
+        if start != 0 {
+            add = []rune{' '}
         }
-    }
-    if i == 0 { i = -1 }
-
-    // track forwards
-    var j int
-    for j = c; j < rlen(s)-1; j++ {
-        if s[j] == ' ' || s[j]=='.' { break }
+        endsub = runes[end+1:]
     }
 
-    // select word
-    if j > i { return s[i+1 : j],dotted }
+    rstring := append(startsub, append(add, endsub...)...)
 
-    return "",dotted
+    return rstring, start
 }
 
-// get the word in string s under the cursor (at position c)
-// using only space as separator
-func getWordStrict(s string, c int) string {
-    if rlen(s)<c { return s }
 
-    // track back
-    var i int
-    i = rlen(s) - 1
-    if c < i { i = c }
-    if i < 0 { i = 0 }
-    for ; i > 0; i-- {
-        if i!=c && s[i]==' ' {
-            break
-        }
+func getWord(runes []rune, cpos int) ([]rune, int) {
+    if cpos > len(runes) {
+        cpos = len(runes)
     }
-    if i == 0 { i = -1 }
-
-    // track forwards
-    var j int
-    for j = c; j < rlen(s)-1; j++ {
-        if s[j] == ' ' { break }
+    start := cpos
+    for start > 0 && runes[start-1] != ' ' {
+        start--
     }
-
-    // select word
-    if j > i { return s[i+1 : j] }
-
-    return ""
+    end := cpos
+    for end < len(runes) && runes[end] != ' ' {
+        end++
+    }
+    return runes[start:end], start
 }
+
 
 func saveCursor() {
     fmt.Printf("\033[s")

@@ -1,0 +1,3 @@
+# Example for func_inputs
+println func_inputs()  # list of function input names
+

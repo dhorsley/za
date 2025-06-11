@@ -1,0 +1,3 @@
+# Example for web_post
+println web_post("https://example.com",["key","val"])
+

@@ -1,0 +1,3 @@
+# Example for line_head
+println line_head("a\nb\nc",2)  # "a\nb"
+

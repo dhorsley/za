@@ -1,0 +1,3 @@
+# Example for web_get
+println web_get("https://example.com").result
+

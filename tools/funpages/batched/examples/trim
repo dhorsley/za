@@ -1,0 +1,3 @@
+# Example for trim
+println trim("  a  ",0)  # "a"
+

@@ -1,0 +1,4 @@
+# Example for web_serve_decode
+var w={"host":"localhost:80","path":"/","data":"hi"}
+println web_serve_decode(w)  # struct fields
+

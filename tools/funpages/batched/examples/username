@@ -1,0 +1,3 @@
+# Example for username
+println username(1000)
+

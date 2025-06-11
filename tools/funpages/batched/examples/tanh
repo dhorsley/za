@@ -1,0 +1,3 @@
+# Example for tanh
+println tanh(1)  # 0.7615...
+

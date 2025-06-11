@@ -1,0 +1,3 @@
+# Example for get_env
+println get_env("HOME")  # /home/user
+

@@ -1,0 +1,3 @@
+# Example for reg_replace
+println reg_replace("abc123","\\d+","X")  # abcX
+

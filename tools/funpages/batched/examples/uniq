@@ -1,0 +1,4 @@
+# Example for uniq
+var lst=[1,2,2,3,3,3]
+println uniq(lst)  # [1,2,3]
+

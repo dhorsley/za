@@ -1,0 +1,4 @@
+# Example for enum_all
+enum e(ok=0,one,two,three)
+println enum_all(e)  # [0,1,2,3]
+

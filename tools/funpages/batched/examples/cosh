@@ -1,0 +1,3 @@
+# Example for cosh
+println cosh(1)  # ~1.543
+

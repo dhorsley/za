@@ -1,0 +1,3 @@
+# Example for stripquotes
+println stripquotes("'hello'")  # hello
+

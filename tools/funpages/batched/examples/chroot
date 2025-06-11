@@ -1,0 +1,3 @@
+# Example for chroot
+chroot("/mydir")
+

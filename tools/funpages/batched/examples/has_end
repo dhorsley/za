@@ -1,0 +1,3 @@
+# Example for has_end
+println has_end("abcdef","ef")  # true
+

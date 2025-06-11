@@ -367,11 +367,13 @@ func tui_table(t tui,s tui_style) (os string, err error) {
 // switch to secondary buffer
 func secScreen() {
     pf("\033[?1049h\033[H")
+    altScreen=true
 }
 
 // switch to primary buffer
 func priScreen() {
     pf("\033[?1049l")
+    altScreen=false
 }
 
 func absClearChars(row int,col int,l int) {
@@ -1062,8 +1064,40 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new","tui_new_style","tui","tui_box","tui_screen","tui_text","tui_pager","tui_menu",
-        "tui_progress","tui_progress_reset", "tui_input","tui_clear","tui_template","tui_table",
+        "tui_progress","tui_progress_reset", "tui_input","tui_clear","tui_template","tui_table","tui_edit",
     }
+
+
+    slhelp["editor"] = LibHelp{
+        in:     "default_content_string,width,height,title_string",
+        out:    "string",
+        action: "Launches a multiline text editor and returns the edited string",
+    }
+
+    stdlib["editor"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        ok, err := expect_args("editor", args, 1, "4", "string", "number", "number", "string")
+        if !ok {
+            return nil, err
+        }
+
+        // Direct extraction of arguments after type checking
+        content := args[0].(string)
+        width,_ := GetAsInt(args[1])
+        height,_ := GetAsInt(args[2])
+        title := args[3].(string)
+
+        // Call the editor
+        result, eof, broken := multilineEditor(content, width, height, "", "", title)
+
+        // If cancelled (ESC) or EOF (Ctrl-D), return empty string
+        if broken || eof {
+            return "", nil
+        }
+
+        // Otherwise, return the edited text
+        return result, nil
+    }
+
 
     slhelp["tui_new"] = LibHelp{in: "", out: "tui_struct", action: "create a tui options struct"}
     stdlib["tui_new"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
