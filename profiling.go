@@ -322,8 +322,12 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
     // pf("Inside enterDebugger. From key decode : ifs=%d pc=%d\n",ifs,pc)
 
     // Get positional details
+    calllock.RLock()
     filename    := getFileFromIFS(ifs)
-    sourceBase  := getBaseSourceIFS(ifs)
+    sourceBase  := calltable[ifs].base
+    calllock.RUnlock()
+
+    // sourceBase  := getBaseSourceIFS(ifs)
     phrases     := functionspaces[sourceBase]
     display_fs,_:= numlookup.lmget(ifs)
     sourceLine  := int16(-1)
@@ -416,7 +420,8 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             }
 
             // Calculate relative file path
-            filePath := getFileFromIFS(ifs)
+            filePath := filename
+            // getFileFromIFS(ifs)
             cwd, _ := os.Getwd()
             relPath, err := filepath.Rel(cwd, filePath)
             if err != nil {
@@ -537,7 +542,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             }
 
         case "fn","file":
-            currentFile := getFileFromIFS(ifs)
+            currentFile := filename // getFileFromIFS(ifs)
             pf("[#fgreen]Current file: %s[#-]\n", currentFile)
 
         case "b", "breakpoints":
@@ -556,7 +561,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                     lineNum = int(phrases[pc].SourceLine)
                 }
 
-                file := getFileFromIFS(sourceBase)
+                file := filename // getFileFromIFS(sourceBase)
                 funcName, _ := numlookup.lmget(bpIFS)
                 if cond == "" {
                     pf("  %s:%d (%s)\n", file, lineNum, funcName)

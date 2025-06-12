@@ -47,11 +47,17 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
         tryNext=false
         n:=0
         for p=next;p<(next+nc);p+=1 {
+            // pf("[#2]argtype:%T[#-]\n",args[n])
             switch args[n].(type) {
             case nil:
-                return false,errors.New(sf("nil evaluation in stdlib arg #%d parsing",n))
+                if types[p]=="nil" { n+=1; continue }
+                // return false,errors.New(sf("nil evaluation in stdlib arg #%d parsing",n))
+            // case interface{}:
+            //    if types[p]=="any" { n+=1; continue }
             case int,uint,float64,int64,uint64,uint8:
                 if types[p]=="number" { n+=1; continue }
+            case token_result:
+                if types[p]=="any" { n+=1; continue }
             case *big.Int,*big.Float:
                 if types[p]=="bignumber" { n+=1; continue }
             case []interface{}:

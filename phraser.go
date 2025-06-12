@@ -59,12 +59,16 @@ func bind_int(fs uint32,name string) (i uint64) {
     return
 }
 
-
 func getFileFromIFS(ifs uint32) (string) {
+    calllock.RLock()
+    defer calllock.RUnlock()
     return fileMap[ifs]
 }
 
+/*
 func getIFSFromFile(f string) (uint32) {
+    // filelock.RLock()
+    // defer filelock.RUnlock()
     for k,v:=range fileMap {
         if v==f {
             return k
@@ -72,6 +76,7 @@ func getIFSFromFile(f string) (uint32) {
     }
     return uint32(0)
 }
+*/
 
 // phraseParse():
 //

@@ -1604,6 +1604,7 @@ func (p *leparser) interpolateStringArgs(args []any) []any {
 func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any,hasError bool,method_result any,errVal error) {
 
     // pf("(cfe) kind_override -> %s\n",kind_override)
+    // pf("cfe call for %s with [%#v] and arg_names [%#v] \n",name,args,arg_names)
 
     if f, ok := stdlib[name]; !ok {
 
@@ -1683,7 +1684,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             res,err := kind(struct_name,args...)
             return res,err!=nil,method_result,nil
         } else {
-
             // normal stdlib call
 
             args=p.interpolateStringArgs(args)

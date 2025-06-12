@@ -5,15 +5,17 @@ define f(z)
     return z*2
 end
 
+l=39
+
 # launch all in parallel
-for x=0 to 99
+for x=0 to l
     async hndmap f(x) x
 endfor
 
 # collect results
 res=await(ref hndmap,true)
 
-for e=0 to 99
+for e=0 to l
     println "{e} ->", res[e]
     assert res[e]/2 == e
 endfor

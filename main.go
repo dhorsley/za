@@ -245,6 +245,7 @@ var breaksig chan os.Signal
 
 // default precedence table that each parser copy receives.
 var default_prectable [END_STATEMENTS]int8
+const PrecedenceInvalid = -100
 
 func main() {
 
@@ -317,7 +318,44 @@ func main() {
     // Lm notations are how most other people organise these operations
     // with L01 being the most precedent and L15 the least.
 
+    // Set all to invalid
+    for i := range default_prectable {
+        default_prectable[i] = PrecedenceInvalid
+    }
+
     default_prectable[EOF]          =-1
+
+    default_prectable[Identifier] = 1           // dummy value to stop reject in dparse()
+    default_prectable[NumericLiteral] = 1       // dummy value to stop reject in dparse()
+    default_prectable[StringLiteral] = 1        // dummy value to stop reject in dparse()
+    default_prectable[O_Ref] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Sqr] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Sqrt] = 1               // dummy value to stop reject in dparse()
+    default_prectable[O_Mut] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Slc] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Suc] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Sst] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Slt] = 1                // dummy value to stop reject in dparse()
+    default_prectable[O_Pb] = 1                 // dummy value to stop reject in dparse()
+    default_prectable[O_Pa] = 1                 // dummy value to stop reject in dparse()
+    default_prectable[O_Pn] = 1                 // dummy value to stop reject in dparse()
+    default_prectable[O_Pe] = 1                 // dummy value to stop reject in dparse()
+    default_prectable[O_Pp] = 1                 // dummy value to stop reject in dparse()
+    default_prectable[T_Nil] = 1                // dummy value to stop reject in dparse()
+    default_prectable[T_Number] = 1             // dummy value to stop reject in dparse()
+    default_prectable[T_Bool] = 1               // dummy value to stop reject in dparse()
+    default_prectable[T_Uint] = 1               // dummy value to stop reject in dparse()
+    default_prectable[T_Int] = 1                // dummy value to stop reject in dparse()
+    default_prectable[T_String] = 1             // dummy value to stop reject in dparse()
+    default_prectable[T_Float] = 1              // dummy value to stop reject in dparse()
+    default_prectable[T_Bigi] = 1               // dummy value to stop reject in dparse()
+    default_prectable[T_Bigf] = 1               // dummy value to stop reject in dparse()
+    default_prectable[T_Map] = 1                // dummy value to stop reject in dparse()
+    default_prectable[T_Array] = 1              // dummy value to stop reject in dparse()
+    default_prectable[T_Any] = 1                // dummy value to stop reject in dparse()
+    default_prectable[Block] = 1                // dummy value to stop reject in dparse()
+    default_prectable[AsyncBlock] = 1           // dummy value to stop reject in dparse()
+    default_prectable[ResultBlock] = 1          // dummy value to stop reject in dparse()
 
     // assignment-type group
     default_prectable[O_Assign]     =5          // L09
@@ -331,14 +369,14 @@ func main() {
 
     // bit-wise
     default_prectable[SYM_BAND]     =20         // L07
-    default_prectable[SYM_BOR]      =20         // L07
+    default_prectable[SYM_BOR]      =19         // L07
     default_prectable[SYM_Caret]    =20         // L07
     default_prectable[SYM_LSHIFT]   =21         // L07
     default_prectable[SYM_RSHIFT]   =21         // L07
 
     // misc 1
     default_prectable[O_Query]      =23 // tern // L14
-    // unary not @ 24                   // !    // L03
+    default_prectable[SYM_Not]      =24
 
     // equality type tests
     default_prectable[SYM_Tilde]    =25
@@ -351,7 +389,7 @@ func main() {
     default_prectable[SYM_GT]       =25         // L10
     default_prectable[SYM_LE]       =25         // L10
     default_prectable[SYM_GE]       =25         // L10
-    default_prectable[C_In]         =27
+    default_prectable[C_In]         =24
 
     // misc 2
     default_prectable[SYM_RANGE]    =29         // L08
@@ -374,6 +412,9 @@ func main() {
     default_prectable[LeftSBrace]   =45         // L02
     default_prectable[SYM_DoubleColon] =59 //field // L02
     default_prectable[SYM_DOT]      =61 //field // L02
+
+    default_prectable[O_InFile] = 70
+
     default_prectable[LParen]       =100        // L01
 
 
