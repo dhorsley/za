@@ -571,6 +571,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                     }
                 }
 
+
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
 
                 if ddmode {
@@ -1005,6 +1006,22 @@ func escapeControlCharsInLiterals(s string) string {
 
 var altScreen bool
 
+func cleanPasteInput(s string) (string,int) {
+    out := make([]rune, 0, len(s))
+    removed:=0
+    for _, r := range s {
+        switch {
+        case r == '\n' || r == '\t':
+            out = append(out, r)
+        case r >= 32 && r != 127:
+            out = append(out, r)
+        default:
+            removed++
+            // skip control characters like ESC (\x1b), bell, etc.
+        }
+    }
+    return string(out),removed
+}
 
 func multilineEditor(defaultString string, width, height int, boxColour, inputColour, title string) (string, bool, bool) {
 
@@ -1037,11 +1054,93 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
 
     hintOverlay:=" ctrl-d to accept, ctrl-r to return top line, escape to abandon "
     spaceRunes:=[]rune{' ',' ',' ',' '}
+    removed:=0
+
+    prevRendered:=make([]string,len(lines))
 
     for {
+
         hideCursor()
 
-        if prevHeight!=height {
+        // fuzzy match
+        if filterMode {
+            // Draw prompt for filter
+            at(startRow+height+2, startCol)
+            pf("[#b3]filter> [#-]" + filterQuery + str.Repeat(" ", width-len(filterQuery)-8))
+
+            // Get key input
+            c, _, _, _ := getch(0)
+
+            if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
+                filterQuery += string(c)
+            }
+
+            switch {
+            case bytes.Equal(c, []byte{13}): // Enter
+                if filterIndex >= 0 && filterIndex < len(filteredLines) {
+                    lineIndex = filteredLines[filterIndex]
+                    cpos = len(lines[lineIndex])
+                }
+                filterMode = false
+                cls()
+                continue
+
+            case bytes.Equal(c, []byte{27}): // ESC
+                filterMode = false
+                continue
+
+            case bytes.Equal(c, []byte{127}): // backspace
+                if len(filterQuery) > 0 {
+                    filterQuery = filterQuery[:len(filterQuery)-1]
+                }
+
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+                if filterIndex < len(filteredLines)-1 {
+                    filterIndex++
+                }
+
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+                if filterIndex > 0 {
+                    filterIndex--
+                }
+
+            default:
+                if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
+                    filterQuery += string(c)
+                }
+            }
+
+            // Clear old match lines before drawing new ones
+            maxDisplay:=min(10,MH-(startRow+height+5))
+            for i := 0; i < maxDisplay; i++ {
+                at(startRow + height + 3 + i, startCol)
+                pf(str.Repeat(" ", width))
+            }
+
+            // Update matches
+            filteredLines = fuzzyMatch(filterQuery, lines)
+            if len(filteredLines) == 0 {
+                filterIndex = 0
+            } else if filterIndex >= len(filteredLines) {
+                filterIndex = len(filteredLines) - 1
+            }
+
+            // Show first X matches
+            for i := 0; i < min(maxDisplay, len(filteredLines)); i++ {
+                idx := filteredLines[i]
+                at(startRow+height+3+i, startCol+2)
+                if i == filterIndex {
+                    pf("[#invert]" + string(lines[idx]) + "[#-]")
+                } else {
+                    pf(string(lines[idx]) + str.Repeat(" ", width))
+                }
+            }
+
+            continue
+        }
+
+
+        if !filterMode && prevHeight!=height {
             if height<prevHeight {
                 space:=str.Repeat(" ",width+2)
                 for i:=height;i<=prevHeight;i++ { // height + 1 to clear box bottom line
@@ -1052,33 +1151,52 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
             drawBox(startRow, startCol, startRow+height+1, startCol+width+1, title)
             at(startRow+height+1,startCol+width-2-len(hintOverlay))
             pf(hintOverlay)
+            prevRendered=make([]string,len(lines))
         }
+
 
         for i := 0; i < height; i++ {
-            
-            at(startRow+1+i, 2+startCol)
-            pf("[#b5][#7]%5d[#-] | ",i+1)
 
-            visibleWidth:=width-indent
-            if visibleWidth<0 { visibleWidth=0 }
-            line:=lines[i]
-            displayRunes:=line
-            indicator := ""
+            at(startRow+1+i, 1+startCol)
+            pf(" [#b5][#7]%5d [#-]| ",i+1)
 
-            // Truncate to fit within visibleWidth-1 and add "…"
-            if displayedLen(string(line)) > visibleWidth {
-                cutoff := findRunesThatFit(line, visibleWidth-1)
-                displayRunes = line[:cutoff]
-                indicator = "…"
+            rendered:=string(lines[i])
+            if prevRendered[i]!=rendered || lineIndex==i {
+           
+//                at(startRow+1+i, 1+startCol)
+//                pf(" [#b5][#7]%5d [#-]| ",i+1)
+
+                visibleWidth:=width-indent
+                if visibleWidth<0 { visibleWidth=0 }
+                line:=lines[i]
+                displayRunes:=line
+                indicator := ""
+
+                // Truncate to fit within visibleWidth-1 and add "…"
+                if displayedLen(string(line)) > visibleWidth {
+                    cutoff := findRunesThatFit(line, visibleWidth-1)
+                    displayRunes = line[:cutoff]
+                    indicator = "…"
+                }
+
+                pf(str.Repeat(" ",visibleWidth))
+                at(startRow+i+1,startCol+indent)
+                pf(string(displayRunes)+indicator)
+
+                prevRendered[i]=rendered
             }
 
-            pf(str.Repeat(" ",visibleWidth))
-            at(startRow+i+1,startCol+indent)
-            pf(string(displayRunes)+indicator)
-
-
         }
+
+        if removed > 0 {
+            at(startRow-1, startCol+2)
+            pf("[#b2][#7]⚠ %d control characters removed from paste[#-]",removed)
+            removed=0
+        }
+
+
         at(startRow+1+lineIndex, startCol+cpos+indent)
+        pf("\033]12;red\a")
         showCursor()
 
         c, _, pasted, pbuf := getch(0)
@@ -1086,6 +1204,8 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
         if pasted {
             // Strip ANSI codes
             pbuf = Strip(pbuf)
+            // then clean the rest of the jank
+            pbuf,removed=cleanPasteInput(pbuf)
 
             // Split pasted buffer into lines
             pasteLines := str.Split(pbuf, "\n")
@@ -1128,12 +1248,20 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
             }
             // return out.String(), false, false
             return escapeControlCharsInLiterals(out.String()),false,false
+        case bytes.Equal(c, []byte{0x06}): // Ctrl-F // fuzzy match
+            filterMode = true
+            filterQuery = ""
+            filteredLines = []int{}
+            filterIndex = 0
+            continue
         case bytes.Equal(c, []byte{18}): // Ctrl+R
             cls()
             if currentScreen == "primary" { priScreen() } else { secScreen() }
             // if len(lines) > 0 { return string(lines[0]), true, false }
             if len(lines) > 0 { return escapeControlCharsInLiterals(string(lines[0])),true,false }
             return "", true, false
+
+        /*
         case bytes.Equal(c, []byte{13}): // Enter
             if len(lines)+1>=MH-startRow-1 {
                 break
@@ -1146,6 +1274,35 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
             if height>maxHeight {
                 height=maxHeight
             }
+        */
+
+        case bytes.Equal(c, []byte{13}): // Enter key
+            if len(lines)+1 >= MH-startRow-1 {
+                break
+            }
+
+            // Get current line and split at cursor position
+            cur := lines[lineIndex]
+            left := cur[:cpos]
+            right := cur[cpos:]
+
+            // Replace current line with the left half
+            lines[lineIndex] = left
+
+            // Insert right half as a new line below
+            lines = append(lines[:lineIndex+1], append([][]rune{right}, lines[lineIndex+1:]...)...)
+
+            // Move cursor to new line start
+            lineIndex++
+            cpos = 0
+
+            // Adjust height
+            prevHeight = height
+            height = len(lines)
+            if height > maxHeight {
+                height = maxHeight
+            }
+
 
         case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
             if cpos < len(lines[lineIndex]) {
@@ -1181,24 +1338,24 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
                 }
                 cpos = prevLen
             }
-        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // Up
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
             if lineIndex > 0 {
                 lineIndex--
                 cpos = min(cpos, len(lines[lineIndex]))
             }
-        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // Down
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
             if lineIndex < len(lines)-1 {
                 lineIndex++
                 cpos = min(cpos, len(lines[lineIndex]))
             }
-        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // Left
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
             if cpos > 0 {
                 cpos--
             } else if lineIndex > 0 {
                 lineIndex--
                 cpos = len(lines[lineIndex])
             }
-        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // Right
+        case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
             if cpos < len(lines[lineIndex]) {
                 cpos++
             } else if lineIndex < len(lines)-1 {
@@ -1216,6 +1373,40 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
         }
     }
 }
+
+
+// fuzzy filtering for multiline mode
+
+var filterMode bool = false
+var filterQuery string
+var filteredLines []int
+var filterIndex int
+
+func fuzzyMatch(query string, lines [][]rune) []int {
+    matches := []int{}
+    q := str.ToLower(query)
+    for i, line := range lines {
+        if fuzzyScore(q, str.ToLower(string(line))) > 0 {
+            matches = append(matches, i)
+        }
+    }
+    return matches
+}
+
+func fuzzyScore(needle, haystack string) int {
+    ni := 0
+    for hi := 0; hi < len(haystack) && ni < len(needle); hi++ {
+        if haystack[hi] == needle[ni] {
+            ni++
+        }
+    }
+    if ni == len(needle) {
+        return ni
+    }
+    return 0
+}
+
+
 
 func clearChars(row int,col int,l int) {
     at(row,col)
@@ -1379,8 +1570,8 @@ func paneLookup(s string) (row int, col int, w int, h int, err error) {
 }
 
 // remove ansi codes from a string
+var strip_re = regexp.MustCompile(ansi)
 func Strip(s string) string {
-    var strip_re = regexp.MustCompile(ansi)
     return strip_re.ReplaceAllString(s, "")
 }
 

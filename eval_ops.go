@@ -1648,7 +1648,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             // handle the returned result, if present.
             calllock.Lock()
             res = calltable[loc].retvals
-            calltable[loc].gcShyness=10
+            calltable[loc].gcShyness=100
             calltable[loc].gc=true
             calllock.Unlock()
 
@@ -1710,9 +1710,9 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
     
-//    pf("\nENTERED accessFieldOrFunc() with obj : %#v\n",obj)
-//    pf("\n                           and field : %s\n",field)
-//    pf("\n            and *leparser content is :\n%#v\n\n",p)
+    // pf("\nENTERED accessFieldOrFunc() with obj : %#v\n",obj)
+    // pf("\n                           and field : %s\n",field)
+    // pf("\n            and *leparser content is :\n%#v\n\n",p)
 
     if _,ok:=obj.(http.Header); ok {
         r := reflect.ValueOf(obj)
@@ -2002,6 +2002,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
     // make call
     res,err,method_result,errVal:=p.callFunctionExt(p.fs,p.ident,name,calling_method,obj,struct_name,[]string{},iargs)
     if errVal != nil {
+        fmt.Printf("errVal not nil in accessFieldOrFunc(), from call to callFunctionExt() : %+v\n",errVal)
         return nil,true
     }
 
