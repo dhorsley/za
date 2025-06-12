@@ -988,8 +988,9 @@ func buildInternalLib() {
             // Have to lock this as the results may be updated
             // concurrently while this loop is running.
 
-            vlock.Lock()
+            vlock.RLock()
             chanTableCopy:=(*ident)[bin].IValue.(map[string]any)
+            vlock.RUnlock()
 
             for k,v:=range chanTableCopy {
 
@@ -1022,6 +1023,7 @@ func buildInternalLib() {
 
             }
 
+            vlock.Lock()
             (*ident)[bin].IValue=chanTableCopy
 
             keepWaiting=false
@@ -1030,7 +1032,6 @@ func buildInternalLib() {
                     keepWaiting=true
                 }
             }
-
             vlock.Unlock()
 
         }

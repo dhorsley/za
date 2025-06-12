@@ -19,6 +19,8 @@ import (
 )
 
 
+
+
 func (p *leparser) reserved(token Token) (any) {
     panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)",tokNames[token.tokType],token.tokText))
 }
@@ -135,7 +137,11 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     p.pos+=1
 
     ct:=&p.tokens[p.pos]
-    // pf("(dparse) next token->%s\n",(*ct).tokText)
+
+    if p.prectable[ct.tokType] == PrecedenceInvalid {
+        panic(fmt.Errorf("Token '%s' is not allowed in expressions", ct.tokText))
+    }
+
 
     // unaries
     switch (*ct).tokType {
@@ -150,7 +156,10 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     case StringLiteral:
         left=interpolate(p.namespace,p.fs,p.ident,(*ct).tokText)
     case Identifier:
-        left=p.identifier(ct)
+        left,err=p.identifier(ct)
+        if err!=nil {
+            panic(err)
+        }
     case O_Sqr, O_Sqrt,O_InFile:
         left=p.unary(ct)
     case SYM_Caret: // range len
@@ -1153,7 +1162,9 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,error) {
                 panic(fmt.Errorf("missing argument #%d",argpos))
             }
             dp,err:=p.dparse(0,false)
+            // pf("in arg parse with result : %#v and err : %#v\n",dp,err)
             if err!=nil {
+                panic(fmt.Errorf("error here -> %#v\n",err))
                 return nil,err
             }
             iargs=append(iargs,dp)
@@ -1350,6 +1361,7 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,error) {
         }
     }
 
+    // pf("entering cfe with %s args:%#v arg_names:%#v\n",name,iargs,arg_names)
     res,_,_,err:=p.callFunctionExt(p.fs,p.ident,name,false,nil,"",arg_names,iargs)
     if err!=nil {
         return nil,err
@@ -1464,7 +1476,7 @@ func (p *leparser) unary(token *Token) (any) {
             var err bool
             bin:=bind_int(p.fs,p.with_struct_name)
             tok:=Token{tokType:Identifier,tokText:p.with_struct_name,bindpos:bin}
-            left:=p.identifier(&tok)
+            left,_:=p.identifier(&tok)
             // pf("with_struct : left -> [%#v]\n",left)
             p.prev2=tok
             p.std_faulted=false
@@ -1477,7 +1489,7 @@ func (p *leparser) unary(token *Token) (any) {
         if p.inside_with_enum {
             bin:=bind_int(p.fs,p.with_enum_name)
             tok:=Token{tokType:Identifier,tokText:p.with_enum_name,bindpos:bin}
-            left:=p.identifier(&tok)
+            left,_:=p.identifier(&tok)
             p.prev2=tok
             p.std_faulted=false
             left,_ = p.accessFieldOrFunc(left,next_tok.tokText)
@@ -1834,17 +1846,22 @@ func (p *leparser) command() (string) {
 }
 
 
-func (p *leparser) identifier(token *Token) (any) {
+func (p *leparser) identifier(token *Token) (any,error) {
 
     // pf("(identifier) got token -> %#v)\n",token)
 
+    if token.tokType != Identifier {
+        fmt.Printf("error in identifier name: existing token type %s",tokNames[token.tokType])
+        return nil,fmt.Errorf("error in identifier name: existing token type %s",tokNames[token.tokType])
+    }
+
     switch token.subtype {
     case subtypeConst:
-        return token.tokVal
+        return token.tokVal,nil
     case subtypeStandard:
-        return token.tokText
+        return token.tokText,nil
     case subtypeUser:
-        return token.tokText
+        return token.tokText,nil
     }
 
     // filter for functions here. this also sets the subtype for funcs defined late.
@@ -1865,11 +1882,11 @@ func (p *leparser) identifier(token *Token) (any) {
             // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
             if fnlookup.lmexists(useName+"::"+token.tokText) {
                 p.tokens[p.pos].subtype=subtypeUser
-                return token.tokText
+                return token.tokText,nil
             }
         } else {
             p.tokens[p.pos].subtype=subtypeStandard
-            return token.tokText
+            return token.tokText,nil
         }
     }
 
@@ -1884,19 +1901,19 @@ func (p *leparser) identifier(token *Token) (any) {
 
     if (*p.ident)[bin].declared {
         // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
-        return (*p.ident)[bin].IValue
+        return (*p.ident)[bin].IValue,nil
     }
 
     // global lookup:
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {
         // fmt.Printf("(ig) fetched %s->%v from global ident\n",token.tokText,val)
-        return val
+        return val,nil
     }
 
     // permit module names
     if modlist[token.tokText]==true {
         // pf("(eval) permitting mod name %s\n",token.tokText)
-        return nil
+        return nil,nil
     }
 
     // permit namespace:: names
@@ -1916,12 +1933,12 @@ func (p *leparser) identifier(token *Token) (any) {
 
     if enum[ename]!=nil {
         // pf("(eval) permitting enum name %s\n",ename)
-        return nil
+        return nil,nil
     }
 
     // permit references to uninitialised variables
     if permit_uninit {
-        return nil
+        return nil,nil
     }
 
     // permit struct names
@@ -1942,7 +1959,7 @@ func (p *leparser) identifier(token *Token) (any) {
         }
     }
     if _,found:=structmaps[sname];found || sname=="anon" {
-        return sname
+        return sname,nil
     }
 
     panic(fmt.Errorf("'%s' is uninitialised.",token.tokText))

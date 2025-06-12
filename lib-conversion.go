@@ -244,27 +244,26 @@ func buildConversionLib() {
         return strconv.ParseInt(args[0].(string),8,64)
     }
 
+    /*
     // kind stub
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
     stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         return ret,err
     }
-    /*
+    */
+
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
-    stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,kind_override string,args ...any) (ret any, err error) {
+    stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        // pf("k-argtype:[#2]%T[#-]\n",args[0])
+        if ok,err:=expect_args("kind",args,1,"1","any"); !ok { return nil,err }
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to kind()")
-        }
-
-        if kind_override!="" {
-            return kind_override,nil
         }
 
         repl:= str.Replace(sf("%T", args[0]),"float64","float",-1)
         repl = str.Replace(repl,"interface {}","any",-1)
         return repl,nil
     }
-    */
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
     stdlib["base64e"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
