@@ -1,0 +1,61 @@
+# test_precedence.za
+
+println "=== Za Operator Precedence Test ==="
+
+# 1. Function call vs field access
+x = "hello"
+test1 = x.len() == 5
+println "test1 (field before call): {test1}"
+
+# 2. Power vs multiplication
+test2 = 2 ** 3 * 2 == 16  # 2 ** 3 = 8, then 8 * 2 = 16
+println "test2 (power tighter than *): {test2}"
+
+# 3. Unary minus vs multiplication
+test3 = -2 * 3 == -6
+println "test3 (unary - binds tighter than *): {test3}"
+
+# 4. Add vs multiply
+test4 = 1 + 2 * 3 == 7
+println "test4 (2 * 3 first): {test4}"
+
+# 5. Range vs add
+r = 1..3
+test5 = len(r) == 3
+println "test5 (range precedence): {test5}"
+
+# 6. Membership vs equality (C_In is for list membership)
+a = ["a", "b", "c"]
+test6 = "a" in a == true
+test7 = "z" in a == false
+println "test6 (in binds before ==, in list): {test6}"
+println "test7 (in binds before ==, not in list): {test7}"
+
+# 7. Not vs equality
+test8 = !("a" in a) == false
+println "test8 (not binds tighter than in/==): {test8}"
+
+# 8. Ternary vs comparison
+truthy = true
+falsey = false
+test9 = truthy ? 1 : 0 == 1
+println "test9 (ternary looser than ==): {test9}"
+
+# 9. Shift vs bitwise
+test10 = 1 << 2 | 1 == 5  # (1 << 2) = 4, 4 | 1 = 5
+println "test10 (<< before |): {test10}"
+
+# 10. And vs or
+test11 = true || false && false  # should be true
+println "test11 (&& binds tighter than ||): {test11}"
+
+# 11. Assignment lowest precedence
+a = 1
+a = 1 + 2 * 3
+test12 = a == 7
+println "test12 (assignment loose): {test12}"
+
+# Summary check
+pass = test1 and test2 and test3 and test4 and test5 and test6 and test7 and test8 and test9 and test10 and test11 and test12
+println "All tests passed? {pass}"
+

@@ -1,6 +1,6 @@
 #!/usr/bin/za -S
 
-max=100
+max=50
 
 define f()
 

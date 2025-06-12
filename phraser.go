@@ -8,6 +8,9 @@ import (
     "context"
 )
 
+// func space to source file name mappings
+var fileMap sync.Map
+
 // global binding list - populated during phrasing
 var bindings = make([]map[string]uint64,SPACE_CAP)
 var bindlock = &sync.RWMutex{}
@@ -17,7 +20,6 @@ func bindResize() {
     copy(newar,bindings)
     bindings=newar
 }
-
 
 func bind_int(fs uint32,name string) (i uint64) {
 
@@ -59,24 +61,30 @@ func bind_int(fs uint32,name string) (i uint64) {
     return
 }
 
-func getFileFromIFS(ifs uint32) (string) {
-    calllock.RLock()
-    defer calllock.RUnlock()
-    return fileMap[ifs]
+
+func getFileFromIFS(ifs uint32) string {
+    v, ok := fileMap.Load(ifs)
+    if !ok {
+        panic(fmt.Sprintf("getFileFromIFS: IFS %d not found in fileMap", ifs))
+    }
+    return v.(string)
 }
 
-/*
-func getIFSFromFile(f string) (uint32) {
-    // filelock.RLock()
-    // defer filelock.RUnlock()
-    for k,v:=range fileMap {
-        if v==f {
-            return k
+func getIFSFromFile(f string) uint32 {
+    var found uint32 = 0
+    fileMap.Range(func(k, v any) bool {
+        if v.(string) == f {
+            found = k.(uint32)
+            return false // stop iteration
         }
+        return true
+    })
+    if found == 0 {
+        panic(fmt.Sprintf("getIFSFromFile: file %q not found in fileMap", f))
     }
-    return uint32(0)
+    return found
 }
-*/
+
 
 // phraseParse():
 //

@@ -18,7 +18,6 @@ import (
     "sort"
     str "strings"
     "sync/atomic"
-//     "golang.org/x/sys/unix"
 )
 
 
@@ -965,6 +964,7 @@ func buildInternalLib() {
             "2","string","bool",
             "1","string"); !ok { return nil,err }
 
+
         waitForAll:=false
         if len(args)>1 {
             waitForAll=args[1].(bool)
@@ -988,52 +988,39 @@ func buildInternalLib() {
             // Have to lock this as the results may be updated
             // concurrently while this loop is running.
 
-            vlock.RLock()
-            chanTableCopy:=(*ident)[bin].IValue.(map[string]any)
-            vlock.RUnlock()
-
-            for k,v:=range chanTableCopy {
+            vlock.Lock()
+            for k,v:=range (*ident)[bin].IValue.(map[string]any) {
 
                 select {
                 case retval := <-v.(chan any):
 
                     if retval==nil { // shouldn't happen
+                        fmt.Printf("[await] received result for key: %s → %#v\n", k, retval.(struct{l uint32;r any}).r)
                         pf("(k %v) is nil. still waiting for it.\n",k)
                         os.Exit(1) // but you never know!
                     }
 
-                    loc      :=retval.(struct{l uint32;r any}).l
                     results[k]=retval.(struct{l uint32;r any}).r
 
                     // close the channel, yes i know, not at the client end, etc
                     close(v.(chan any))
 
-                    calllock.Lock()
-
-                    calltable[loc].gcShyness=100
-                    calltable[loc].gc=true
-
                     // remove async/await pair from handle list
-                    delete(chanTableCopy,k)
-
-                    calllock.Unlock()
+                    delete((*ident)[bin].IValue.(map[string]any),k)
 
                 default:
                 }
 
             }
-
-            vlock.Lock()
-            (*ident)[bin].IValue=chanTableCopy
+            vlock.Unlock()
 
             keepWaiting=false
+
             if waitForAll {
                 if len((*ident)[bin].IValue.(map[string]any))!=0 {
                     keepWaiting=true
                 }
             }
-            vlock.Unlock()
-
         }
         return results,nil
     }

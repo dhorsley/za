@@ -166,7 +166,7 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
 
     r:=make(chan any)
 
-    loc,id := GetNextFnSpace(true,callname+"@",call_s{prepared:true,base:base,caller:caller,gc:true,gcShyness:1000})
+    loc,id := GetNextFnSpace(true,callname+"@",call_s{prepared:true,base:base,caller:caller,gc:false,gcShyness:100})
     // fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
     go func() {
@@ -193,14 +193,19 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         if errVal!=nil {
             panic(errors.New(sf("call error in async task %s",id)))
         }
+
+        // fmt.Printf("[task] sending into chan for key %s: %p\n", id,r)
+
         switch rcount {
         case 0:
+            // pf("[task] [rcount==0 case] sending result for loc %v: %+v\n", loc, nil)
             r<-struct{l uint32;r any}{loc,nil}
+            // pf("[#3]TASK RESULT : loc %d : no value (nil)[#-]\n",loc)
         case 1:
             calllock.RLock()
             v:=calltable[loc].retvals
-            defer calllock.RUnlock()
-            // calllock.RUnlock()
+            // pf("[task] [rcount==1 case] sending result for loc %v: %+v\n", loc, v)
+            calllock.RUnlock()
             if v==nil {
                 r<-nil
                 break
@@ -210,10 +215,18 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         default:
             calllock.RLock()
             v:=calltable[loc].retvals
-            defer calllock.RUnlock()
-            // calllock.RUnlock()
+            // pf("[task] [default case] sending result for loc %v: %+v\n", loc, v)
+            calllock.RUnlock()
             r<-struct{l uint32;r any}{loc,v}
+            // pf("[#3]TASK RESULT : loc %d : val (%+v)[#-]\n",loc,v.([]any))
         }
+
+        // Now mark for GC AFTER the send
+        calllock.Lock()
+        calltable[loc].gcShyness = 10000
+        calltable[loc].gc = true
+        calllock.Unlock()
+
         atomic.AddInt32(&concurrent_funcs,-1)
 
     }()
@@ -606,7 +619,6 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 }
 
 // setup mutex locks
-var filelock   = &sync.RWMutex{}  // profiler/module related
 var calllock   = &sync.RWMutex{}  // function call related
 var lastlock   = &sync.RWMutex{}  // cached globals
 var farglock   = &sync.RWMutex{}  // function args manipulation
@@ -745,9 +757,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // set up the function space
 
     // -- get call details
-
     calllock.Lock()
-
     // unique name for this execution, pre-generated before call
     fs = calltable[csloc].fs
 
@@ -761,11 +771,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     // the uint32 id attached to fs name
     ifs,_:=fnlookup.lmget(fs)
+    calllock.Unlock()
 
     // fake a filename to ifs relationship, for debugger use.
-    fileMap[ifs]=fileMap[source_base]
-
-    calllock.Unlock()
+    fileMap.Store(ifs,source_base)
 
     // pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 
@@ -3411,8 +3420,10 @@ tco_reentry:
                     h,id:=task(ifs,lmv,false,call,resu...)
                     // assign channel h to handles map
                     if nival==nil {
+                        // fmt.Printf("about to vsetElement() in ASYNC (no key name) : nival:%#v h:%#v\n",nival,h)
                         vsetElement(nil,ifs,ident,handles,sf("async_%v",id),h)
                     } else {
+                        // fmt.Printf("about to vsetElement() in ASYNC : nival:%#v h:%#v\n",nival,h)
                         vsetElement(nil,ifs,ident,handles,sf("%v",nival),h)
                     }
                 }
@@ -4036,10 +4047,9 @@ tco_reentry:
                 modcs.caller = ifs
                 modcs.fs = modRealAlias
                 calltable[loc] = modcs
-
-                fileMap[loc]=moduleloc
-
                 calllock.Unlock()
+
+                fileMap.Store(loc,moduleloc)
 
                 var modident = make([]Variable,identInitialSize)
 
@@ -4933,14 +4943,17 @@ tco_reentry:
                 }
             }
 
+            // pf("[statement-loop] about to try default eval with %#v\n",inbound.Tokens)
             // try to eval and assign
             if we=parser.wrappedEval(ifs,ident,ifs,ident,inbound.Tokens); we.evalError {
                 errmsg:=""
+                // pf("[statement-loop] received this error response from wrappedEval(): %#v\n",we)
                 if we.errVal!=nil { errmsg=sf("%+v\n",we.errVal) }
                 parser.report(inbound.SourceLine,sf("Error in evaluation\n%s",errmsg))
                 finish(false,ERR_EVAL)
                 break
             }
+            // pf("[statement-loop] received this valid response from wrappedEval(): %#v\n",we)
 
             if interactive && !we.assign && we.result!=nil {
                 pf("%+v\n",we.result)
