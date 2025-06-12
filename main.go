@@ -64,9 +64,6 @@ var calltable = make([]call_s,CALL_CAP)
 // enum storage
 var enum = make(map[string]*enum_s)
 
-// func space to source file name mappings
-var fileMap   = make(map[uint32]string)
-
 // id of func space which points to the source which contains
 // the DEFINE..ENDDEF for a defined function
 var sourceMap = make(map[uint32]uint32)
@@ -389,7 +386,7 @@ func main() {
     default_prectable[SYM_GT]       =25         // L10
     default_prectable[SYM_LE]       =25         // L10
     default_prectable[SYM_GE]       =25         // L10
-    default_prectable[C_In]         =24
+    default_prectable[C_In]         =26
 
     // misc 2
     default_prectable[SYM_RANGE]    =29         // L08
@@ -1312,7 +1309,7 @@ func main() {
             // submit input
 
             if nestAccept==0 {
-                fileMap[0]=exec_file_name
+                fileMap.Store(uint32(0),exec_file_name)
                 phraseParse(ctx,"main", totalInput, 0)
                 currentModule="main"
                 parser.namespace="main"
@@ -1403,7 +1400,7 @@ func main() {
 
     // tokenise and part-parse the input
     if len(input) > 0 {
-        fileMap[1]=exec_file_name
+        fileMap.Store(uint32(1),exec_file_name)
         if debugMode {
             start:=time.Now()
             phraseParse(ctx,"main", input, 0)

@@ -13,14 +13,14 @@ coproc(false)
 
 println "Spinning async tasks"
 
-for e = 0 to 399
+for e = 0 to 99
     async handles q(e)
 endfor
 
 while true
 
     println "[#2]Waiting...[#-]"
-    res=await(ref handles,true)
+    res=await("handles",true)
     println "await() complete."
 
     on len(res)==0 do break

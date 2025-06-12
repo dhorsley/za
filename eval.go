@@ -26,6 +26,7 @@ func (p *leparser) reserved(token Token) (any) {
 }
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
+    // pf("\n(eval) called with : %#v\n",toks)
 
     l:=len(toks)
 
@@ -45,7 +46,7 @@ func (p *leparser) Eval(fs uint32, toks []Token) (any,error) {
     p.len    = int16(l)
     p.pos    = -1
 
-    // pf("\n(eval) about to dparse with : %+v\n",toks)
+    // pf("\n(eval) about to call dparse() with : %#v\n",toks)
     return p.dparse(0,false)
 }
 
@@ -105,7 +106,8 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     // @note: skip allows expression to be parsed without error in order to skip 
     // past redundant phrases. not ideal, but okay for now.
 
-    // pf("\ndparse query with fs #%d : spos %v : %+v\n",p.fs,p.pos,p.tokens)
+    // pf("\ndparse query with fs #%d : spos %v : %#v\n",p.fs,p.pos,p.tokens)
+
 
     if skip {
         brace_level:=0
@@ -139,6 +141,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     ct:=&p.tokens[p.pos]
 
     if p.prectable[ct.tokType] == PrecedenceInvalid {
+        // fmt.Printf("token not allowed, panic called : %s\n",tokNames[ct.tokType])
         panic(fmt.Errorf("Token '%s' is not allowed in expressions", ct.tokText))
     }
 
@@ -158,6 +161,7 @@ func (p *leparser) dparse(prec int8,skip bool) (left any,err error) {
     case Identifier:
         left,err=p.identifier(ct)
         if err!=nil {
+            // fmt.Printf("Identifer case will panic with %#+v\n",err)
             panic(err)
         }
     case O_Sqr, O_Sqrt,O_InFile:
@@ -1364,8 +1368,11 @@ func (p *leparser) buildStructOrFunction(left any,right Token) (any,error) {
     // pf("entering cfe with %s args:%#v arg_names:%#v\n",name,iargs,arg_names)
     res,_,_,err:=p.callFunctionExt(p.fs,p.ident,name,false,nil,"",arg_names,iargs)
     if err!=nil {
+        fmt.Printf("error found during callFunctionExt() inside buildStructOrFunction() : %+v\n",err)
         return nil,err
     }
+
+    // fmt.Printf("cleanly exiting from buildStructOrFunction() with result : %#v\n",res)
 
     return res,err
 
@@ -1863,10 +1870,12 @@ func (p *leparser) identifier(token *Token) (any,error) {
     case subtypeUser:
         return token.tokText,nil
     }
+    // pf("(identifier) reached past subtype check.\n")
 
     // filter for functions here. this also sets the subtype for funcs defined late.
     if p.pos+1!=p.len && p.tokens[p.pos+1].tokType == LParen {
         if _, isFunc := stdlib[token.tokText]; !isFunc {
+            // pf("(identifier) inside isFunc? check. not a standard library function '%s'\n",token.tokText)
             var useName string
             if p.prev.tokType!=SYM_DoubleColon {
                 if found:=uc_match_func(token.tokText); found!="" {
@@ -1885,7 +1894,9 @@ func (p *leparser) identifier(token *Token) (any,error) {
                 return token.tokText,nil
             }
         } else {
+            // pf("(identifier) inside isFunc? check else clause. is a standard library function '%s'\n",token.tokText)
             p.tokens[p.pos].subtype=subtypeStandard
+            // pf("(identifier) returning from identifier() at the isFunc? check else clause.\n")
             return token.tokText,nil
         }
     }
@@ -1898,11 +1909,14 @@ func (p *leparser) identifier(token *Token) (any,error) {
         *p.ident=newg
     }
 
+    // pf("(identifier) token binding position set to %d\n",bin)
 
     if (*p.ident)[bin].declared {
         // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
         return (*p.ident)[bin].IValue,nil
     }
+
+    // pf("(identifier) token does not represent a variable, past .declared check\n")
 
     // global lookup:
     if val,there:=vget(nil,p.mident,&mident,token.tokText); there {

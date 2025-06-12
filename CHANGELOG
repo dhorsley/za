@@ -49,6 +49,13 @@ CHANGE LOG
             - Added dynamic height adjustment in multi line editor.
             - Line numbering in multi line editor with colored 5-digit width and truncation indicator (…) for long lines.
             - tab key generates 4 spaces. not changing this.
+            - basic fuzzy search mode (ctrl-f)
+            - some tweaks to filter out undesirable stuff from pastes.
+    
+    * some refinements to asynchronous calls with ASYNC and await()
+        - picked apart a few small issues with it. some new locking mechanisms introduced.
+
+    * precedence order tweaked. IN now higher binding power than == , and similar minor changes.
 
 
     library
