@@ -281,12 +281,11 @@ func buildListLib() {
 
         var reduceparser *leparser
         reduceparser=&leparser{}
-        calllock.RLock()
+        // calllock.RLock()
         reduceparser.ident=ident
         reduceparser.fs=evalfs
         reduceparser.ctx=withProfilerContext(context.Background())
-
-        calllock.RUnlock()
+        // calllock.RUnlock()
 
         switch args[0].(type) {
         case []int:

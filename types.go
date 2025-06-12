@@ -97,6 +97,7 @@ type call_s struct {
     prepared    bool        // some fields pre-filled by caller
     gc          bool        // marked by Call() when disposable
     disposable  bool
+    filename    string      // source file name
 }
 
 func (cs call_s) String() string {

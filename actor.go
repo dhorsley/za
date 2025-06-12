@@ -199,7 +199,8 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         case 1:
             calllock.RLock()
             v:=calltable[loc].retvals
-            calllock.RUnlock()
+            defer calllock.RUnlock()
+            // calllock.RUnlock()
             if v==nil {
                 r<-nil
                 break
@@ -209,7 +210,8 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         default:
             calllock.RLock()
             v:=calltable[loc].retvals
-            calllock.RUnlock()
+            defer calllock.RUnlock()
+            // calllock.RUnlock()
             r<-struct{l uint32;r any}{loc,v}
         }
         atomic.AddInt32(&concurrent_funcs,-1)
@@ -604,6 +606,7 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32,string
 }
 
 // setup mutex locks
+var filelock   = &sync.RWMutex{}  // profiler/module related
 var calllock   = &sync.RWMutex{}  // function call related
 var lastlock   = &sync.RWMutex{}  // cached globals
 var farglock   = &sync.RWMutex{}  // function args manipulation
@@ -743,7 +746,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     // -- get call details
 
-    calllock.RLock()
+    calllock.Lock()
 
     // unique name for this execution, pre-generated before call
     fs = calltable[csloc].fs
@@ -762,7 +765,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // fake a filename to ifs relationship, for debugger use.
     fileMap[ifs]=fileMap[source_base]
 
-    calllock.RUnlock()
+    calllock.Unlock()
 
     // pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 
@@ -3401,6 +3404,7 @@ tco_reentry:
                 // make Za function call
 
                 // construct a go call that includes a normal Call
+                globlock.Lock()
                 if handles=="nil" {
                     _,_=task(ifs,lmv,true,call,resu...)
                 } else {
@@ -3412,6 +3416,7 @@ tco_reentry:
                         vsetElement(nil,ifs,ident,handles,sf("%v",nival),h)
                     }
                 }
+                globlock.Unlock()
 
             } else {
                 // func not found
@@ -4016,7 +4021,6 @@ tco_reentry:
                 */ 
 
                 //.. parse and execute
-                fileMap[loc]=moduleloc
                 basemodmap[loc]=modRealAlias
 
                 if debugMode {
@@ -4032,6 +4036,8 @@ tco_reentry:
                 modcs.caller = ifs
                 modcs.fs = modRealAlias
                 calltable[loc] = modcs
+
+                fileMap[loc]=moduleloc
 
                 calllock.Unlock()
 
