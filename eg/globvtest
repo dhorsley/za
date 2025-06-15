@@ -1,0 +1,35 @@
+#!/usr/bin/za
+println "=== Cross-Scope Global Assignment Tests ==="
+
+struct T; a int; b bool; endstruct
+
+# Declare a global struct variable
+var g T
+g.a = 10
+g.b = false
+
+println "Initial global g =", g
+
+define toggle()
+    # Mutate global g fields
+    @ g.a += 5
+    @ g.b = !g.b
+end
+
+toggle()
+println "After toggle() global g =", g
+
+define mutate_map()
+    @ m["x"].a += 2
+    @ m["x"].b = !m["x"].b
+end
+
+# Create a map of structs in global
+var m map
+m["x"] = g
+
+println "Initial m =", m
+
+mutate_map()
+println "After mutate_map() m =", m
+

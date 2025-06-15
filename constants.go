@@ -167,6 +167,8 @@ const (
 )
 
 
+type TokenType = int64
+
 // Lexeme values
 //  a few of these are unused now and some should probably be renamed.
 //  they should be checked and tidied next time there is any change to be done here.

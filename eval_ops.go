@@ -1686,7 +1686,17 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         } else {
             // normal stdlib call
 
-            args=p.interpolateStringArgs(args)
+            hasBraces := false
+            for _, a := range args {
+                if s, ok := a.(string); ok && str.Contains(s, "{") {
+                    hasBraces = true
+                    break
+                }
+            }
+            if hasBraces {
+                args = p.interpolateStringArgs(args)
+            }
+            // args=p.interpolateStringArgs(args)
 
             var res any
             var err error
