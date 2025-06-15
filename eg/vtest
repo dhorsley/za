@@ -1,0 +1,55 @@
+#!/usr/bin/za
+
+println "=== Struct Field Assignment Tests ==="
+
+struct T; a int; b bool; endstruct
+
+# direct variable assignment
+var q T
+q.a = 42
+q.b = true
+println "q =", q
+
+# toggle struct field
+q.b = !q.b
+println "q after toggle =", q
+
+# map of structs
+var m map
+m["test"] = q
+println "m =", m
+
+# toggle field inside map element
+m["test"].b = !m["test"].b
+println "m after toggle =", m
+
+# update numeric field inside map element
+m["test"].a = 99
+println "m after numeric update =", m
+
+# verify fallback when lfs != rfs (mocked by function scope)
+define checkScope()
+    var local T
+    local.a = 123
+    local.b = true
+    return local
+end
+
+scoped = checkScope()
+println "scoped =", scoped
+
+# compound assignment
+scoped.a += 7
+println "scoped after += 7 =", scoped
+
+# test with string-indexed map and string coercion
+var x map
+x["42"] = scoped
+x["42"].a = 7
+println "x =", x
+
+# assign to discard
+_ = 12345
+
+println "=== All tests executed ==="
+

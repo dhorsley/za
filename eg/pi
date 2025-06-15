@@ -31,7 +31,7 @@ while digs>0
         nr=(2*q+r)*l
         n=(q*7*k+2+r*l)/(t*l)
         q=q*k
-        t=t*l
+        t*=l
         l=l+2
         k=k+1
         r=nr
