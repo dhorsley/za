@@ -1400,6 +1400,7 @@ func main() {
 
     // tokenise and part-parse the input
     if len(input) > 0 {
+        fileMap.Store(uint32(0),exec_file_name)
         fileMap.Store(uint32(1),exec_file_name)
         if debugMode {
             start:=time.Now()

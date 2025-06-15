@@ -16,10 +16,11 @@ println "random:"
 
 for e = 0 to 9
     b=a[e]
-    b.b=as_float(rand(50))
+    b.b=as_float(randf()*50)
     a[e]=b
 endfor
 
 println a
-
+println a[4].a
+println a[4].b
 

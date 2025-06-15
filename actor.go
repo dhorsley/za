@@ -774,7 +774,8 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     calllock.Unlock()
 
     // fake a filename to ifs relationship, for debugger use.
-    fileMap.Store(ifs,source_base)
+    // fileMap.Store(ifs,source_base)
+    fileMap.Store(ifs,currentModule)
 
     // pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 

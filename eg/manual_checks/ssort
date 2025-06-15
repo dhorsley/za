@@ -32,13 +32,6 @@ for e=0 to len(r)-1
     println "string : %10s - int : %v".format(r[e].s,r[e].i)
 endfor
 
-exit
-
-
-# multisort
-# simple sort using extra field as compounded column
-# very limited in use
-# this will eventually be replaced with a proper multisort within the ssort() call.
 
 #-- compound keys
 foreach r in a
