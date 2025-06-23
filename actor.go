@@ -40,7 +40,7 @@ func showIdent(ident *[]Variable) {
 }
 
 // populate a struct.
-func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,hasAry bool,fieldNames []string) (error) {
+func fillStruct(t *Variable,structvalues []any,Typemap map[string]reflect.Type,hasAry bool,fieldNames []string) (error) {
 
     if len(structvalues)>0 {
         var sfields []reflect.StructField
@@ -55,7 +55,7 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
                 nt="any"
             }
 
-            newtype:=typemap[nt]
+            newtype:=Typemap[nt]
 
             // override name if provided in fieldNames:
             if len(fieldNames)>0 {
@@ -84,7 +84,7 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             )
             /*
             pf("fillstruct::pre-offset::nt->%s\n",nt)
-            pf("fillstruct::pre-offset::tme->%s\n",typemap[nt])
+            pf("fillstruct::pre-offset::tme->%s\n",Typemap[nt])
             */
 
             if nt == "any" {
@@ -919,83 +919,6 @@ tco_reentry:
     typeInvalid:=false        // used during struct building for indicating type validity.
     statement:=Error
 
-    /*
-    // this needs reworking:
-    // ++
-    var tb bool
-    var tu8 uint8
-    var tu32 uint32
-    var tu64 uint64
-    var tu uint
-    var ti int
-    var tf64 float64
-    var ts string
-    var tbi *big.Int
-    var tbf *big.Float
-    var tmixed any
-
-    var stb     []bool
-    var stu     []uint
-    var stu8    []uint8
-    var stu32   []uint32
-    var stu64   []uint64
-    var sti     []int
-    var stf64   []float64
-    var sts     []string
-    var stbi    []*big.Int
-    var stbf    []*big.Float
-    var stmixed []any
-
-    // *sigh* - really need to move this stuff out of here:
-    gob.Register(tbi)
-    gob.Register(tbf)
-    gob.Register(stb)
-    gob.Register(stu)
-    gob.Register(stu8)
-    gob.Register(stu32)
-    gob.Register(stu64)
-    gob.Register(sti)
-    gob.Register(stf64)
-    gob.Register(stbi)
-    gob.Register(stbf)
-    gob.Register(stmixed)
-    */
-
-    /*
-    // instantiate fields with an empty expected type:
-    typemap:=make(map[string]reflect.Type)
-    typemap["bool"]     = reflect.TypeOf(tb)
-    typemap["uint"]     = reflect.TypeOf(tu)
-    typemap["uint8"]    = reflect.TypeOf(tu8)
-    typemap["uint32"]   = reflect.TypeOf(tu32)
-    typemap["uint64"]   = reflect.TypeOf(tu64)
-    typemap["ulong"]    = reflect.TypeOf(tu32)
-    typemap["uxlong"]   = reflect.TypeOf(tu64)
-    typemap["byte"]     = reflect.TypeOf(tu8)
-    typemap["int"]      = reflect.TypeOf(ti)
-    typemap["float"]    = reflect.TypeOf(tf64)
-    typemap["bigi"]     = reflect.TypeOf(tbi)
-    typemap["bigf"]     = reflect.TypeOf(tbf)
-    typemap["string"]   = reflect.TypeOf(ts)
-    typemap["mixed"]    = reflect.TypeOf(tmixed)
-    typemap["any"]      = reflect.TypeOf(tmixed)
-    typemap["[]bool"]   = reflect.TypeOf(stb)
-    typemap["[]uint"]   = reflect.TypeOf(stu)
-    typemap["[]uint8"]  = reflect.TypeOf(stu8)
-    typemap["[]byte"]   = reflect.TypeOf(stu8)
-    typemap["[]int"]    = reflect.TypeOf(sti)
-    typemap["[]uint32"]  = reflect.TypeOf(stu32)
-    typemap["[]uint64"]  = reflect.TypeOf(stu64)
-    typemap["[]float"]  = reflect.TypeOf(stf64)
-    typemap["[]string"] = reflect.TypeOf(sts)
-    typemap["[]bigi"]   = reflect.TypeOf(stbi)
-    typemap["[]bigf"]   = reflect.TypeOf(stbf)
-    typemap["[]mixed"]  = reflect.TypeOf(stmixed)
-    typemap["[]any"]    = reflect.TypeOf(stmixed)
-    typemap["[]"]       = reflect.TypeOf(stmixed)
-    typemap["map"]    = nil
-    // --
-    */
 
     // debug mode stuff:
 
@@ -1008,7 +931,6 @@ tco_reentry:
 
 
     // main statement loop:
-
 
     for {
 
@@ -1761,7 +1683,7 @@ tco_reentry:
                 it_type=inbound.Tokens[3].tokText
                 skip=2
                 // valid type?
-                // check if it_type is a key in either typemap or structmaps
+                // check if it_type is a key in either Typemap or structmaps
                 // @todo: add a USE namespace lookup here
                 otype:=it_type
                 if !str.Contains(it_type,"::") {

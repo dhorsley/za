@@ -65,7 +65,6 @@ endfor
 
 
 # add start
-println "kind of following literal for px,py assignment : ",[randx(),randy()].kind
 px,py=[randx(),randy()]
 set(px,py,ptype.start)
 
