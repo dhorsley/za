@@ -1,0 +1,35 @@
+#!/usr/bin/za
+
+# setup nested structures
+a = [ [0, 0, 0], [0, 0, 0] ]
+a[1][2] = 99
+assert a[1][2] == 99
+
+var m map
+m["outer"]["inner"]["x"] = 123
+assert m["outer"]["inner"]["x"] == 123
+
+def mkobj()
+    var ary [10]int
+    test_map["key"]["items"]=ary
+    return test_map
+end
+
+obj = mkobj()
+println "obj:",obj
+obj["key"]["items"][0] = 42
+assert obj["key"]["items"][0] == 42
+println "obj kind -> ",obj.kind
+
+var q map
+q["rows"] = [ [0, 1], [2, 3] ]
+q["rows"][1][0] = 777
+assert q["rows"][1][0] == 777
+
+var nested map
+nested["k1"]["k2"][0]["c"] = [0, 0, 0]
+nested["k1"]["k2"][0]["c"][2] = 555
+assert nested["k1"]["k2"][0]["c"][2] == 555
+
+println("All recursive LHS tests passed.")
+

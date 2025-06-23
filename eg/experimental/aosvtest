@@ -2,9 +2,9 @@
 
 println "=== Array of Struct Field Assignment Tests ==="
 
-struct T;
-    a int;
-    b bool;
+struct T
+    a int
+    b bool
 endstruct
 
 # Create untyped array of any
@@ -14,6 +14,10 @@ var arr [3]any
 arr[0] = T()
 arr[1] = T()
 arr[2] = T()
+println "arr[0].a : ",arr[0].a
+println "arr[0].b : ",arr[0].b
+println "arr[0].a-42 : ",arr[0].a-42
+println "!arr[0].b : ",!arr[0].b
 
 println "arr[] before field changes =", arr
 println "arr[] type before field changes =", arr.kind

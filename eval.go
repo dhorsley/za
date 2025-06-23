@@ -344,6 +344,10 @@ binloop1:
 		switch token.tokType {
 
 		case O_Plus:
+            leftInt,lok:=left.(int)
+            rightInt,rok:=right.(int)
+            if lok && rok { left=leftInt+rightInt } else { left=ev_add(left,right) }
+            /*
 			switch left.(type) {
 			case int:
 				switch right.(type) {
@@ -355,6 +359,7 @@ binloop1:
 			default:
 				left = ev_add(left, right)
 			}
+            */
 		case O_Minus:
 			left = ev_sub(left, right)
 		case O_Multiply:
@@ -1248,6 +1253,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 	// build struct literals
 	if isStruct {
 
+        /*
 		// @note: this typemap set up is also in actor.go
 		// it needs reworking with even more urgency now!
 		// but, leaving it here while testing:
@@ -1310,6 +1316,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 		typemap["map"] = nil
 
 		// end-of-typemap-dogshit
+        */
 
 		var t Variable
 
@@ -1334,7 +1341,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 				structvalues = append(structvalues, arg_names[n])
 				t := reflect.TypeOf(iargs[n])
 				typeFound := false
-				for vk, vt := range typemap {
+				for vk, vt := range Typemap {
 					if vt == t {
 						structvalues = append(structvalues, vk)
 						typeFound = true
@@ -1361,7 +1368,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 						nameMatched := false
 						for j := 0; j < len(structvalues); j += 4 {
 							if structvalues[j].(string) == arg_names[i] {
-								if typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
+								if Typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
 									panic(fmt.Errorf("type mismatch in named field '%s', should be %v", arg_names[i], structvalues[j+1]))
 								}
 								nameMatched = true
@@ -1387,9 +1394,9 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 			}
 		}
 
-		err := fillStruct(&t, structvalues, typemap, false, arg_names)
+		err := fillStruct(&t, structvalues, Typemap, false, arg_names)
 		if err != nil {
-			panic(err.Error())
+			panic(err)
 		}
 
 		return t.IValue, nil
@@ -2255,6 +2262,11 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
 			if ok {
 				(*ident)[bin].IValue = value
 			}
+		case kmap:
+			_, ok = value.(map[string]any)
+			if ok {
+				(*ident)[bin].IValue = value
+			}
 		case ksany:
 			_, ok = value.([]any)
 			if ok {
@@ -2350,7 +2362,8 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
 		var key string
 		switch el.(type) {
 		case int:
-			key = strconv.FormatInt(int64(el.(int)), 10)
+            key = intToString(el.(int))
+			// key = strconv.FormatInt(int64(el.(int)), 10)
 		case float64:
 			key = strconv.FormatFloat(el.(float64), 'f', -1, 64)
 		case uint:
@@ -2996,6 +3009,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 	// compound the terms beyond the assignment symbol and eval them.
 
 	eqPos := -1
+    hasComma := false
 	var newEval []Token
 	var err error
 
@@ -3016,6 +3030,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 
 floop1:
 	for k, _ := range tks {
+        if tks[k].tokType==O_Comma { hasComma=true }
 		switch tks[k].tokType {
 		// use whichever is encountered first
 		case O_Assign:
@@ -3116,7 +3131,7 @@ floop1:
 	if expr.assign {
 		// pf("[#4]Assigning : lfs %d rfs %d toks->%+v[#-]\n",lfs,fs,tks)
 		// pf("[#5]This expression box result address -> %v\n",&expr.result)
-		p.doAssign(lfs, lident, fs, rident, tks, &expr, eqPos)
+		p.doAssign(lfs, lident, fs, rident, tks, &expr, eqPos, hasComma)
 	}
 
 	return expr
