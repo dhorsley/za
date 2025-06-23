@@ -50,20 +50,12 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             nv :=structvalues[svpos].(string)
             nt :=structvalues[svpos+1].(string)
-            /*
-            if nt=="any" || nt=="mixed" {
-                // nt="[]"
-                // @note: reflection returns a nil type for interface{}
-                // not allowing interface{} as a field type until
-                // we have a better way of doing this.
-                return fmt.Errorf("field type must be specific (not any/mixed) at field #%d",(svpos/4)+1)
-            }
-            */
 
+            if nt=="mixed" {
+                nt="any"
+            }
 
             newtype:=typemap[nt]
-
-           //  pf("nt : %s | >> %#v <<\n",nt,structvalues[svpos+3])
 
             // override name if provided in fieldNames:
             if len(fieldNames)>0 {
@@ -71,12 +63,15 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
                 nv=fieldNames[nextNamePos]
                 if nt=="any" {
                     newtype=reflect.TypeOf((*any)(nil)).Elem()
+                } else if nt=="[]" || nt=="[]any" || nt=="[]mixed" {
+                    newtype=reflect.TypeOf([]any{})
                 } else {
                     newtype=reflect.TypeOf(structvalues[svpos+3])
+                    // newtype=Typemap[nt]
                 }
                 nextNamePos++
             }
-            // pf("nt-> >> %#v <<\n",newtype)
+            // pf("  ([#2]nv %s [#6]%v[#-]) \n",nv,newtype)
 
             // populate struct fields:
             sfields=append(sfields,
@@ -91,12 +86,17 @@ func fillStruct(t *Variable,structvalues []any,typemap map[string]reflect.Type,h
             pf("fillstruct::pre-offset::nt->%s\n",nt)
             pf("fillstruct::pre-offset::tme->%s\n",typemap[nt])
             */
-            if nt!="any" {
-                offset+=typemap[nt].Size()
+
+            if nt == "any" {
+                offset += 32  // interface size
+            } else if nt == "[]any" || nt == "[]" {
+                offset += reflect.TypeOf([]any{}).Size()  // slice size (24 bytes)
             } else {
-                offset+=32
+                offset += Typemap[nt].Size()
             }
+
         }
+        // pf(" (inside fillStruct()) [ sf-> %#v ]\n",sfields)
         new_struct:=reflect.StructOf(sfields)
         v:=(reflect.New(new_struct).Elem()).Interface()
 
@@ -734,7 +734,13 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                     if debugMode { err:=r.(error); panic(err) }
                     finish(false,ERR_EVAL)
                 }
-                err:=r.(error)
+                // err:=r.(error)
+				var err error
+				if errVal, ok := r.(error); ok {
+					err = errVal
+				} else {
+					err = errors.New(sf("%v", r))
+				}
                 parser.report(inbound.SourceLine,sf("\n%v\n",err))
                 if debugMode { panic(r) }
                 setEcho(true)
@@ -913,6 +919,7 @@ tco_reentry:
     typeInvalid:=false        // used during struct building for indicating type validity.
     statement:=Error
 
+    /*
     // this needs reworking:
     // ++
     var tb bool
@@ -952,7 +959,9 @@ tco_reentry:
     gob.Register(stbi)
     gob.Register(stbf)
     gob.Register(stmixed)
+    */
 
+    /*
     // instantiate fields with an empty expected type:
     typemap:=make(map[string]reflect.Type)
     typemap["bool"]     = reflect.TypeOf(tb)
@@ -986,6 +995,7 @@ tco_reentry:
     typemap["[]"]       = reflect.TypeOf(stmixed)
     typemap["map"]    = nil
     // --
+    */
 
     // debug mode stuff:
 
@@ -1374,12 +1384,12 @@ tco_reentry:
                 }
 
                 // declaration and initialisation
-                if _,found:=typemap[new_type_token_string]; found {
+                if _,found:=Typemap[new_type_token_string]; found {
 
                     t:=Variable{}
 
                     if new_type_token_string!="map" {
-                        t.IValue = reflect.New(typemap[new_type_token_string]).Elem().Interface()
+                        t.IValue = reflect.New(Typemap[new_type_token_string]).Elem().Interface()
                     }
 
                     t.IName=vname
@@ -1526,7 +1536,7 @@ tco_reentry:
 
                     if isStruct {
                         t:=(*ident)[sid]
-                        err=fillStruct(&t,structvalues,typemap,hasAry,[]string{})
+                        err=fillStruct(&t,structvalues,Typemap,hasAry,[]string{})
                         if err!=nil {
                             parser.report(inbound.SourceLine,err.Error())
                             finish(false,ERR_EVAL)
@@ -1760,7 +1770,7 @@ tco_reentry:
 
                 found:=false
                 if _,found=structmaps[it_type]; !found {
-                    _,found=typemap[otype]
+                    _,found=Typemap[otype]
                 }
                 if ! found {
                     parser.report(inbound.SourceLine,sf("invalid type [%s] for iterator in FOREACH.",otype))

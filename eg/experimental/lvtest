@@ -1,0 +1,66 @@
+#!/usr/bin/za
+
+# === Struct Definitions ===
+
+struct Node
+    name string
+    val  int
+endstruct
+
+struct Container
+    inner any       # will store a map holding Node
+    items []        # array of Holder (dynamic type)
+endstruct
+
+struct Holder
+    thing []int
+endstruct
+
+# === Setup ===
+
+# Create a Node instance
+showstruct
+println "Node() output: ",Node()
+println "Node() type  : ",Node().kind
+println
+n1 = Node()
+n1.name = "leaf"
+n1.val = 0
+
+# Store it in a map
+var m map
+m["inner"] = n1
+
+# Create Container and assign values
+c = Container()
+c.inner = m
+c.items = [Holder(), Holder()]
+
+c.items[0].thing = [0, 0, 0]
+c.items[1].thing = [0, 0, 0]
+
+# === Fixed-size array tests ===
+mat = [[1,2],[3,4],5,6]
+println "Mat before chained assignment : ",mat
+mat[1][1] = 42
+assert mat[1][1] == 42
+
+var labels [4]string
+labels[0], labels[1] = ["a", "b"]
+assert labels[1] == "b"
+
+# === Basic multi-assignment ===
+tmp = [5, 6]
+a, b = tmp
+assert a == 5
+assert b == 6
+
+# === Discard (`_`) use ===
+vals = [100, 200]
+x, _ = vals
+assert x == 100
+
+# === Nested tuple unpack (manual split) ===
+group = [[1, 2], [3, 4]]
+g1a, g
+

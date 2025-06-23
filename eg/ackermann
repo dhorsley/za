@@ -5,24 +5,19 @@
 
 
 define ackermann(m,n)
-    on key("memoA",as_string(m*5+n)) do return memoA[m*5+n]
+    on key("memoA",`{m},{n}`) do return memoA[`{m},{n}`]
     on m==0 do return n+1
     on n==0 do return ackermann(m-1,1)
     o=ackermann(m-1,ackermann(m,n-1))
-    @ memoA[m*5+n] = o
+    @ memoA[`{m},{n}`] = o
     return o
 end
 
-memoA[0*5+0] = 1
-memoA[0*5+1] = 2
-memoA[0*5+2] = 3
-memoA[1*5+0] = 2
-memoA[1*5+1] = 3
-#memoA[`0,0`] = 1
-#memoA[`0,1`] = 2
-#memoA[`0,2`] = 3
-#memoA[`1,0`] = 2
-#memoA[`1,1`] = 3
+memoA[`0,0`] = 1
+memoA[`0,1`] = 2
+memoA[`0,2`] = 3
+memoA[`1,0`] = 2
+memoA[`1,1`] = 3
 
 input a param 1
 input b param 2

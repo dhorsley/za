@@ -57,6 +57,18 @@ CHANGE LOG
 
     * precedence order tweaked. IN now higher binding power than == , and similar minor changes.
 
+    * started overhaul of assignment functionality.
+
+        - split into two paths for current functionality and future use.
+            - current active path retains compatibility with existing test cases
+            - future path will allow for deeply nested LHS access and auto-vivification.
+                - this will not be worked on further until data type handling has been improved:
+                    - specifically, move away from boxing/unboxing of Variable .IValue's
+                    - move struct implementation away from reflection-based Go-compatible structs
+                        towards a map based offering.
+
+        - the new compatible path is quite a bit faster than the old method already in most use cases.
+
 
     library
     -------

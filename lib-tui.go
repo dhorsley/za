@@ -931,6 +931,7 @@ func tui_box(t tui,s tui_style) {
 /////////////////////////////////////////////////////////////////
 
 func tui_menu(t tui,s tui_style) tui {
+    // pf("\n\n\nentered tui_menu func with:\nt : %+v\ns : %+v\n\n\n",t,s)
     row:=t.Row
     col:=t.Col
     cursor:=t.Cursor
@@ -942,6 +943,7 @@ func tui_menu(t tui,s tui_style) tui {
     
     addbg:=""; addfg:=""
     addhibg:=""; addhifg:=""
+
     if bg!="" { addbg="[#b"+bg+"]" }
     if fg!="" { addfg="[#"+fg+"]" }
     if hi_bg!="" { addhibg="[#b"+hi_bg+"]" }
@@ -972,7 +974,7 @@ func tui_menu(t tui,s tui_style) tui {
     for k,p := range t.Options {
         absat(row+4+k,col+6)
         // short_code=" "
-        // on key_range!=nil do short_code=key_range[key_p].char
+        // if key_range!=nil { short_code=key_range[key_p].char }
         pf(p)
         // "[{=short_code}]{p}"
     }

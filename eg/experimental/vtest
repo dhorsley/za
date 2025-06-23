@@ -2,7 +2,10 @@
 
 println "=== Struct Field Assignment Tests ==="
 
-struct T; a int; b bool; endstruct
+struct T
+    a int
+    b bool
+endstruct
 
 # direct variable assignment
 var q T
