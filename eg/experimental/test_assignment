@@ -1,0 +1,175 @@
+#!/usr/bin/za
+
+#
+# Comprehensive Assignment Feature Test
+#
+# This script validates all known assignment features in the Za interpreter,
+# including edge cases and complex scenarios discovered during debugging.
+#
+
+# === 1. Struct and Variable Definitions ===
+println "--> Section 1: Definitions"
+
+struct TestStruct
+    name        string
+    value       int
+    slice       []
+    data_map    any
+endstruct
+
+# Will be populated with TestStruct instances
+var container []any
+
+println "    ... done"
+
+# === 2. Simple Assignments ===
+println "--> Section 2: Simple Assignments"
+
+a = 10
+assert a == 10
+
+b = "hello"
+assert b == "hello"
+
+c = true
+assert c == true
+
+# Test typed variable assignment
+var i int = 99
+assert i == 99
+
+# Test reassignment
+a = 20
+assert a == 20
+
+println "    ... passed"
+
+# === 3. Struct Field Assignments ===
+println "--> Section 3: Struct Field Assignments"
+
+s = TestStruct()
+s.name = "MyStruct"
+s.value = 123
+
+assert s.name == "MyStruct"
+assert s.value == 123
+
+# Assign a whole struct
+s2 = s
+assert s2.name == "MyStruct"
+
+println "    ... passed"
+
+# === 4. Slice and Array Assignments ===
+println "--> Section 4: Slice and Array Assignments"
+
+# Simple slice element
+arr = [0, 1, 2]
+arr[1] = 99
+assert arr[1] == 99
+
+# Nested slice (2D) element
+mat = [[0, 0], [0, 0]]
+mat[1][1] = 42
+assert mat[1][1] == 42
+
+# Slice growing
+grow_slice = [0]
+println "grow_slice start kind : ",grow_slice.kind
+grow_slice[2] = 100 # Should grow the slice
+assert grow_slice[2] == 100
+assert len(grow_slice) == 3
+
+# Typed slice conversion
+# Assign a generic []any to a typed []int field in a struct
+holder_slice = [TestStruct(), TestStruct()]
+holder_slice[0].slice = [10, 20, 30] # This should work as []any
+
+var typed_holder TestStruct
+typed_holder.slice = [1, 2, 3] # This should also work.
+
+# Assign nil to a slice element (in an 'any' slice)
+any_slice = [1, 2, 3]
+any_slice[1] = nil
+assert any_slice[1] == nil
+
+println "    ... passed"
+
+# === 5. Map Assignments ===
+println "--> Section 5: Map Assignments"
+
+# Simple map element
+m["a"] = 1
+m["b"] = 2
+assert m["b"] == 2
+
+# Using non-string key (should be converted to string)
+m[3] = "three"
+assert m["3"] == "three"
+
+# Auto-vivification of nested maps
+nested_map["level1"]["level2"]["level3"] = "deep"
+assert nested_map["level1"]["level2"]["level3"] == "deep"
+
+# Assign nil to a map value
+m["b"] = nil
+assert m["b"] == nil
+
+println "    ... passed"
+
+
+# === 6. Complex Chained Assignments ===
+println "--> Section 6: Complex Chained Assignments"
+
+# Create a complex structure
+root = TestStruct()
+m1["key1"]=100
+m2["key2"]=[0,10,20]
+root.name = "root_struct"
+root.slice = [TestStruct(), TestStruct()]
+root.slice[0].name = "nested_struct_1"
+root.slice[0].data_map = m1
+root.slice[1].name = "nested_struct_2"
+root.slice[1].data_map = m2
+
+# Perform a deeply nested assignment
+root.slice[1].data_map["key2"][2] = 999
+assert root.slice[1].data_map["key2"][2] == 999
+
+println "    ... passed"
+
+
+# === 7. Multiple Assignments (Unpacking) ===
+println "--> Section 7: Multiple Assignments"
+
+# Unpack from a literal
+ma, mb = [10, 20]
+assert ma == 10
+assert mb == 20
+
+# Unpack from a variable
+source_slice = ["x", "y"]
+mx, my = source_slice
+assert mx == "x"
+assert my == "y"
+
+# Unpack with discard
+d1, _ = [99, 100]
+assert d1 == 99
+
+# Unpack into complex targets
+unpack_s = TestStruct()
+unpack_s.name, unpack_s.value = ["unpacked", 789]
+assert unpack_s.name == "unpacked"
+assert unpack_s.value == 789
+
+unpack_arr = [0,0]
+unpack_arr[0], unpack_arr[1] = [11, 22]
+assert unpack_arr[0] == 11
+assert unpack_arr[1] == 22
+
+println "    ... passed"
+
+# === 8. Final Verification ===
+println "\n--> ALL ASSIGNMENT TESTS PASSED! <--"
+

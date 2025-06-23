@@ -62,6 +62,7 @@ while not quit
 
     menu.tui_box(s)
     menu=menu.tui_menu(s)
+
     on menu.Cancel do break
 
     case menu.Result

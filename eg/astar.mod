@@ -51,7 +51,6 @@ def find_path(MapArray, DimensionX, DimensionY)
     # initialise adjacents
     AdjacentSquares[0], AdjacentSquares[1], AdjacentSquares[2], AdjacentSquares[3] =[XY(),XY(),XY(),XY()]
 
-
     # find start and end positions
     for i = 0 to DimensionY-1
         for j = 0 to DimensionX-1

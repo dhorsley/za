@@ -28,7 +28,10 @@ import (
     _ "net/http/pprof"
 )
 
-
+// F_EnableComplexAssignments provides a feature flag to disable deeply nested
+// assignments, which are currently being hardened. When false, only assignments
+// up to two levels of depth (e.g., `a.b.c` or `a[i].b`) are permitted.
+var F_EnableComplexAssignments = false
 //
 // ALIASES
 //
@@ -1172,6 +1175,8 @@ func main() {
             totalInput:=""
             var eof,broken bool
             var input string
+            fileMap.Store(uint32(0),exec_file_name)
+            fileMap.Store(uint32(1),exec_file_name)
 
             // static call IDs
             // 0 global (system vars) // template area in interactive mode

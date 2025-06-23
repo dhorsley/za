@@ -15,6 +15,7 @@ end
 
 def fill_path(grid,sx,sy,ex,ey)
     ng,status,steps=find_path(grid,mw,mh)
+
     case status
     is waytypes.InvalidInput
         exit 1,"\nInvalid Input"
@@ -64,6 +65,7 @@ endfor
 
 
 # add start
+println "kind of following literal for px,py assignment : ",[randx(),randy()].kind
 px,py=[randx(),randy()]
 set(px,py,ptype.start)
 
@@ -109,5 +111,6 @@ at mh,1, "continue? (calc time : %.3fs) (steps : %d)".format(t2/1_000_000,steps)
 keypress()
 cls
 #println g ?> `# != 0`
+
 
 
