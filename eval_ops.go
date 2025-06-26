@@ -1005,7 +1005,7 @@ func ev_shift_right(left,right any) (any) {
     }
 
     if uintInOne && uintInTwo {
-        return uint1 << uint2
+        return uint1 >> uint2
     }
 
     if intInOne && uintInTwo {
