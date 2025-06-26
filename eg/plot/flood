@@ -18,7 +18,7 @@ seed(epoch_nano_time())
 
 for nr=1 to max_reps
     for e=0 to cy-1
-        cb="[#b{=rand(7)}]  "
+        cb="[#b{=rand(7)}]  ".ccformat
         for r=0 to 359
             px=cx-1+2*e*sin(r)
             py=1.0+cy+e*cos(r)

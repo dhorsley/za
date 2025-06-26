@@ -627,6 +627,10 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
     if !hasComma {
         assignee := tks[:eqPos]
         value := expr.result
+        switch value.(type) {
+        case string:
+            value = interpolate(p.namespace, rfs, rident, value.(string))
+        } 
 
         la := len(assignee)
 
