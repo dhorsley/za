@@ -50,6 +50,12 @@ func expect_args(name string, args []any, variants int, types... string) (bool,e
                 return false,errors.New(sf("nil evaluation in stdlib arg #%d parsing",n))
             case int,uint,float64,int64,uint64,uint8:
                 if types[p]=="number" { n+=1; continue }
+            case string:
+                if types[p]=="string" { n+=1; continue }
+            case bool:
+                if types[p]=="bool" { n+=1; continue }
+            case token_result:
+                if types[p]=="any" { n+=1; continue }
             case *big.Int,*big.Float:
                 if types[p]=="bignumber" { n+=1; continue }
             case []interface{}:
