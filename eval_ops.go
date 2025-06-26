@@ -1666,7 +1666,11 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             }
 
         } else {
-            panic(fmt.Errorf("syntax error: no such function %q", name))
+            if !p.softfail {
+                panic(fmt.Errorf("syntax error: no such function %q", name))
+            } else {
+                return nil,true,nil,nil
+            }
         }
     } else {
         // call standard library function
@@ -1696,7 +1700,6 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             if hasBraces {
                 args = p.interpolateStringArgs(args)
             }
-            // args=p.interpolateStringArgs(args)
 
             var res any
             var err error
@@ -1899,7 +1902,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             modname=name
             name=p.peek().tokText
         default:
-            parser.hard_fault=true
+            p.hard_fault=true
             pf("invalid name in function call '%s'\n",p.peek().tokText)
             return nil,true
         }
@@ -1963,7 +1966,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             }
 
             if ! structs_equal {
-                parser.hard_fault=true
+                p.hard_fault=true
                 pf("cannot call function [%v] belonging to an unequal struct type [%s]\nParent Struct: [%+v]\nYour object: [%T]", field,fm.parent,par_struct_fields,obj)
                 return nil,true
             }
@@ -1980,9 +1983,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
         }
     }
     if !isFunc {
-        parser.hard_fault=true
-        pf("no function, enum or record field found for %v\n", field)
-        return nil,true
+        if !p.softfail {
+            pf("no function, enum or record field found for %v\n", field)
+            return nil,true
+        }
     }
 
     // user-defined or stdlib call, exception here for file handles
@@ -2024,11 +2028,16 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
             if (*p.ident)[bin].declared {
                 (*p.ident)[bin].IValue=method_result
             } else {
-                parser.hard_fault=true
+                p.hard_fault=true
                 pf("[%s] could not be assigned to after method call\n",pre_name)
                 return nil,true
             }
         }
+    }
+
+    if p.interpolating && !p.softfail {
+        pf("no function, enum or record field found for %v\n", field)
+        return nil,true
     }
 
     return res,err

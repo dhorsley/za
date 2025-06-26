@@ -73,13 +73,16 @@ type leparser struct {
 	in_range bool // currently in an eval calculating array ranges
 	rangelen int  // length of array referenced in accessArray
 
-	hard_fault    bool   // stop error bypass in fallback mode
-	kind_override string // when self has been created, this bears the struct type.
+    interpolating   bool
+    softfail        bool    // during evaluation, ignore failed states when this is false
+	hard_fault      bool    // stop error bypass in fallback mode
+	kind_override   string  // when self has been created, this bears the struct type.
 
 	inside_with_struct bool
 	inside_with_enum   bool
 	with_struct_name   string
 	with_enum_name     string
+
 }
 
 func (p *leparser) next() Token {
@@ -1874,10 +1877,12 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
 	// pf("(identifier) got token -> %#v)\n",token)
 
+    /*
 	if token.tokType != Identifier {
-		fmt.Printf("error in identifier name: existing token type %s", tokNames[token.tokType])
+		// fmt.Printf("error in identifier name: existing token type %s", tokNames[token.tokType])
 		return nil, fmt.Errorf("error in identifier name: existing token type %s", tokNames[token.tokType])
 	}
+    */
 
 	switch token.subtype {
 	case subtypeConst:
@@ -1993,7 +1998,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
 		return sname, nil
 	}
 
-	panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
+    if p.interpolating && !p.softfail {
+        return sname,nil
+    }
+
+    panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 
 }
 
@@ -2612,7 +2621,8 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 	interparse.ident = ident
 	interparse.namespace = ns
 	interparse.ctx = withProfilerContext(context.Background())
-
+    interparse.softfail=true
+    interparse.interpolating=true
 	if interactive {
 		interparse.mident = 1
 	} else {
@@ -2685,7 +2695,11 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 					s = s[:p] + sf("%v", aval) + s[close_index+1:]
 					modified = true
 					break
-				}
+                } else {
+                    if !parser.softfail {
+                        // maybe an error should go here later
+                    }
+                }
 				p = close_index + 1
 			}
 		}
@@ -2708,6 +2722,8 @@ func manualInterpolate(ns string, fs uint32, ident *[]Variable, s string) string
 	interparse = &leparser{}
 	interparse.fs = fs
 	interparse.ident = ident
+	interparse.interpolating = true
+	interparse.softfail = true
 	interparse.namespace = ns
 	interparse.ctx = withProfilerContext(context.Background())
 
@@ -2894,6 +2910,11 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
 			break
 		}
 	}
+
+    if toks[len(toks)-1].tokType == SYM_Not {
+        parser.softfail=false
+        toks=toks[:len(toks)-1]
+    }
 
 	// evaluate token list
 	if len(toks) != 0 {

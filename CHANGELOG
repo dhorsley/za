@@ -35,6 +35,13 @@ CHANGE LOG
 
     * added a few of the missing file and console handling routines for windows.
 
+    * (experimental) added a ! flag for end-of-interpolated-expression
+        - default behaviour, interpolated expression will soft fail, as prior behaviour
+        - when set, e.g. {=...!} the expression must resolve in a valid manner.
+            - we now error in these conditions rather than ignoring the interpolation.
+
+    * some minor speed increases in places.
+
     * some improvements to REPL line editor ;)
 
         - Reworked getInput() and multilineEditor() for full UTF-8 support.
@@ -115,6 +122,10 @@ CHANGE LOG
 
     other
     -----
+
+    * added JSON logging option to LOG/LOGGING statements.
+        - See unused/test_json_logging.za for example. 
+        - similar syntax to USE statement. (- and + for json field addition/clear. push/pop for stacking the field list)
 
     * added a small profiler, invoked with the -P CLI option. 
         - this returns a breakdown of parse and execution times for each function called.
@@ -1990,8 +2001,8 @@ CHANGE LOG
 
         * removed deval() test function.
 
-        * breaking change - separated interpolation into {...} for var substitution and {=...} for evaluation.
-            * if you need to read a global variable in substitution now, you should eval {=...} instead.
+        * breaking change - separated interpolation into { ... } for var substitution and {= ... } for evaluation.
+            * if you need to read a global variable in substitution now, you should eval {=... } instead.
                 ( or read the variable locally and substitute as normal )
 
             * the reason for the change was to permit such things as =| awk '{print $0}'

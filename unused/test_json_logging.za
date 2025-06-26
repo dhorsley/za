@@ -1,0 +1,40 @@
+#!/usr/bin/za -f
+
+# Test JSON logging functionality
+
+println "Testing JSON logging features..."
+
+# Test 1: Enable JSON logging and basic log
+logging json on
+logging on "test.log"
+log "This is a JSON log message"
+
+# Test 2: Add some fields
+logging json fields +service "test-app" +version "1.0"
+log "Message with fields"
+
+# Test 3: Add more fields dynamically
+logging json fields +user_id "user123" +request_id "req456"
+log "Processing request"
+
+# Test 4: Remove a field
+logging json fields -user_id
+log "User field removed"
+
+# Test 5: Test field stack (PUSH/POP)
+logging json fields push
+logging json fields +operation "backup" +target "/home"
+log "Starting backup operation"
+
+logging json fields pop
+log "Back to previous field set"
+
+# Test 6: Clear all fields
+logging json fields -
+log "All fields cleared"
+
+# Test 7: Switch back to regular logging
+logging json off
+log "Back to regular logging"
+
+println "JSON logging test complete. Check test.log for results." 

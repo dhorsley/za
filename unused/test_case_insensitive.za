@@ -1,0 +1,34 @@
+#!/usr/bin/za -f
+
+# Test case insensitivity of JSON logging
+
+println "Testing case insensitivity..."
+
+# Test mixed case JSON commands
+LOGGING JSON ON
+logging on "case_test.log"
+
+# Test FIELDS with mixed case
+LOGGING JSON FIELDS +Service "test-app" +Version "1.0"
+log "Mixed case fields test"
+
+# Test PUSH/POP with different cases
+LOGGING JSON FIELDS PUSH
+LOGGING JSON FIELDS +operation "backup"
+log "After PUSH"
+
+LOGGING JSON FIELDS pop
+log "After pop"
+
+LOGGING JSON FIELDS Push
+LOGGING JSON FIELDS +task "cleanup"
+log "After Push"
+
+LOGGING JSON FIELDS POP
+log "After POP"
+
+# Test OFF with mixed case
+LOGGING JSON off
+log "Back to regular logging"
+
+println "Case insensitivity test complete. Check case_test.log for results." 
