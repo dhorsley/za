@@ -161,7 +161,7 @@ CHANGE LOG
 
     * (experimental) added support for default arguments in function signatures.
         - normal usage without defaults continues as before
-        - calls can include now include defaults:
+        - calls can now include defaults:
             define f(a="123",b=42)
             end
             f(b=0) 
@@ -278,6 +278,7 @@ CHANGE LOG
         - not doing: constructors/destructors
             - a struct can already be given default values and instantiated using struct_name()
             - member variables can be accessed from anywhere in the calling scope.
+            - the unset statement will already undeclare simple variables
 
         - not doing: inheritance - more complexity than would ever be needed in this language.
             - maybe will do: fallback functions if method doesn't exist in object when called.
