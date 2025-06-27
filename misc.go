@@ -467,7 +467,7 @@ func help_ops(ns string) {
 func help(ns string,hargs string) {
 
     helppage := `
-[#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W] [-P] [-a] [-D]  \
+[#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W] [-P] [-d] [-a] [-D]  \
     [-s [#i1]path[#i0]] [-V [#i1]varname[#i0]]                                      \
     [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]                             \
     [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]                         \
@@ -492,12 +492,13 @@ func help(ns string,hargs string) {
     [#4]-G[#-] : Test group filter [#i1]group_filter[#i0]
     [#4]-N[#-] : Test name filter [#i1]name_filter[#i0]
     [#4]-a[#-] : Enable assertions. default is false, unless -t specified.
-    [#4]-D[#-] : Enable line debug output
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
     [#4]-W[#-] : Emit errors when addition contains strings mixed with other types
     [#4]-V[#-] : find all references to a variable
     [#4]-m[#-] : Mark co-process command progress
     [#4]-U[#-] : Specify system command separator byte (default 30)
+    [#4]-D[#-] : Enable line debug output
+    [#4]-d[#-] : Enable full debugger
     [#4]-P[#-] : Enable function profiling output
     [#4]-Q[#-] : Show shell command options
     
