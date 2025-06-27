@@ -326,6 +326,7 @@ while not quit
         ypos=0
         cleardepth=0
         foreach t in tasks
+
             task_index["{ypos},{c}"]=key_t
 
             if t.status==c 
