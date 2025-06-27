@@ -1754,9 +1754,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any,bool) {
 
     r := reflect.ValueOf(obj)
 
-
     switch r.Kind() {
-    case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func, reflect.Interface:
+    case reflect.Ptr, reflect.Chan, reflect.Func, reflect.Interface:
         if r.IsNil() {
             return nil, true
         }
