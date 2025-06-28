@@ -428,6 +428,11 @@ func main() {
 	gident = make([]Variable, 64)
 	mident = make([]Variable, 64)
 
+	// Initialize emergency memory reserve for error handling
+	if enhancedErrorsEnabled {
+		emergencyMemoryReserve = make([]byte, 1024*1024) // 1MB reserve
+	}
+
 	// setup empty symbol tables for main
 	bindlock.Lock()
 	bindings[1] = make(map[string]uint64)

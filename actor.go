@@ -769,11 +769,33 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 				} else {
 					err = errors.New(sf("%v", r))
 				}
-				parser.report(inbound.SourceLine, sf("\n%v\n", err))
-				if debugMode {
-					panic(r)
+
+				if enhancedErrorsEnabled {
+					// Capture current call arguments only when error occurs
+					currentCallArgs := make(map[string]any)
+					for i, argName := range arg_names {
+						if i < len(va) {
+							currentCallArgs[argName] = va[i]
+						}
+					}
+					currentFunctionName := calltable[csloc].fs
+
+					// Check if this is an enhanced expect_args error for additional context
+					if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok {
+						// Show enhanced error context with stdlib function details
+						showEnhancedExpectArgsErrorWithCallArgs(parser, inbound.SourceLine, enhancedErr, parser.fs, currentCallArgs, currentFunctionName)
+					} else {
+						// Show enhanced error context for any other error type
+						showEnhancedErrorWithCallArgs(parser, inbound.SourceLine, err, parser.fs, currentCallArgs, currentFunctionName)
+					}
+				} else {
+					// Standard error reporting (unchanged)
+					parser.report(inbound.SourceLine, sf("\n%v\n", err))
+					if debugMode {
+						panic(r)
+					}
+					setEcho(true)
 				}
-				setEcho(true)
 				finish(false, ERR_EVAL)
 			}
 		}
