@@ -55,6 +55,8 @@ println "PATH : ",HOME_PATH
 # Set up an access log file
 logging web enable
 logging accessfile ".access"
+logging json enable
+
 
 # Start a web server
 #  HOME_PATH is the document root.

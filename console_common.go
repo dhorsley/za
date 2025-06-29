@@ -1150,11 +1150,11 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
 			// Get key input
 			c, _, _, _ := getch(0)
 
-            /*
-			if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
-				filterQuery += string(c)
-			}
-            */
+			/*
+				if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
+					filterQuery += string(c)
+				}
+			*/
 
 			switch {
 			case bytes.Equal(c, []byte{13}): // Enter
@@ -1637,40 +1637,44 @@ func stripTrailingNewlines(s string) string {
 // logging output printer
 func plog(s string, va ...any) {
 
-	// print if not silent logging
-	if v, _ := gvget("@silentlog"); !v.(bool) {
+	// print if not silent logging (default is to print)
+	shouldPrint := true
+	if v, exists := gvget("@silentlog"); exists && v != nil {
+		if silent, ok := v.(bool); ok && silent {
+			shouldPrint = false
+		}
+	}
+	if shouldPrint {
 		pf(s+"\n", va...)
 	}
 
-	// also write to log file
+	// Queue log request if logging enabled
 	if loggingEnabled {
-		f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Println(err)
+		message := sf(s, va...)
+		request := LogRequest{
+			Message:   message,
+			Fields:    nil, // Plain text logging has no fields
+			IsJSON:    false,
+			IsError:   false,
+			Timestamp: time.Now(),
 		}
-		defer f.Close()
-		subj, _ := gvget("@logsubject")
-		logger := log.New(f, subj.(string), log.LstdFlags)
-
-		// Format the message and strip trailing newlines for file output
-		logMessage := sf(s, va...)
-		logMessage = stripTrailingNewlines(logMessage)
-		logger.Print(logMessage)
+		queueLogRequest(request)
 	}
-
 }
 
 // JSON logging output printer
 func plog_json(message string, fields map[string]any, va ...any) {
 
-	// Build JSON log entry
+	// Build JSON log entry for console output
 	logEntry := make(map[string]any)
 	logEntry["message"] = sf(message, va...)
 	logEntry["timestamp"] = time.Now().Format(time.RFC3339)
 
 	// Add subject if set
-	if subj, _ := gvget("@logsubject"); subj.(string) != "" {
-		logEntry["subject"] = subj.(string)
+	if subj, exists := gvget("@logsubject"); exists && subj != nil {
+		if subjStr, ok := subj.(string); ok && subjStr != "" {
+			logEntry["subject"] = subjStr
+		}
 	}
 
 	// Add custom fields
@@ -1689,22 +1693,32 @@ func plog_json(message string, fields map[string]any, va ...any) {
 	jsonString := string(jsonBytes)
 
 	// Print if not silent logging
-	if v, _ := gvget("@silentlog"); !v.(bool) {
+	shouldPrint := true
+	if v, exists := gvget("@silentlog"); exists && v != nil {
+		if silent, ok := v.(bool); ok && silent {
+			shouldPrint = false
+		}
+	}
+	if shouldPrint {
 		pf("%s\n", jsonString)
 	}
 
-	// Also write to log file
+	// Queue log request if logging enabled
 	if loggingEnabled {
-		f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Println(err)
+		// Create a copy of fields for the queue
+		fieldsCopy := make(map[string]any)
+		for k, v := range fields {
+			fieldsCopy[k] = v
 		}
-		defer f.Close()
-		logger := log.New(f, "", 0) // No prefix for JSON logs
 
-		// Strip trailing newlines and add our own single newline
-		cleanJsonString := stripTrailingNewlines(jsonString)
-		logger.Println(cleanJsonString)
+		request := LogRequest{
+			Message:   sf(message, va...),
+			Fields:    fieldsCopy,
+			IsJSON:    true,
+			IsError:   false,
+			Timestamp: time.Now(),
+		}
+		queueLogRequest(request)
 	}
 }
 
@@ -1721,7 +1735,14 @@ func spf(ns string, fs uint32, ident *[]Variable, s string) string {
 
 // clear screen
 func cls() {
-	if v, _ := gvget("@winterm"); !v.(bool) {
+	isWinTerm := false
+	if v, exists := gvget("@winterm"); exists && v != nil {
+		if wt, ok := v.(bool); ok {
+			isWinTerm = wt
+		}
+	}
+
+	if !isWinTerm {
 		pf("\033c")
 	} else {
 		pf("\033[2J")

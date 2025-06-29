@@ -153,6 +153,12 @@ func lookupChainName(n uint8) string {
 
 func (parser *leparser) report(line int16, s string) {
 
+	// Log error to file if error logging is enabled
+	if errorLoggingEnabled {
+		logError(line, s, parser)
+		// Continue with console output if not in quiet mode
+	}
+
 	// Check if enhanced error handling is enabled and we're not already in an error handler
 	if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
 		// Create a synthetic error and use enhanced error handling

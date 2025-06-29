@@ -42,7 +42,7 @@ CHANGE LOG
 
     * some minor speed increases in places.
 
-    * some improvements to REPL line editor ;)
+    * some improvements to REPL line editor:
 
         - Reworked getInput() and multilineEditor() for full UTF-8 support.
         - Replaced all internal string handling with rune-based logic for safe cursor movement and editing.
@@ -70,7 +70,6 @@ CHANGE LOG
             - current active path retains compatibility with existing test cases
             - future path will allow for deeply nested LHS access and auto-vivification.
                 - this will not be worked on further until data type handling has been improved:
-                    - specifically, move away from boxing/unboxing of Variable .IValue's
                     - move struct implementation away from reflection-based Go-compatible structs
                         towards a map based offering.
 
@@ -137,6 +136,111 @@ CHANGE LOG
     other
     -----
 
+    * (experimental) Enhanced logging features:
+
+        - Added detailed queue statistics showing main vs web access log processing counts
+        - Eliminated parallel logging infrastructure - web logging now uses unified architecture
+        - Enhanced logging status command with queue usage, web logging status, and processing statistics
+        - Web access logs now participate in memory reserve system for better resource management
+        - Web logs now use background queue processing instead of direct file I/O (improves performance)
+        - Web logging now shares rotation, JSON formatting, queue management, and error handling with main logging system
+        - Integrated web access logging with main logging infrastructure
+        - Added log rotation support for web access logs (uses same size/count settings as main logs)
+        - Added enhanced error logging for HTTP 3xx/4xx/5xx responses with status code tracking
+        - Unified JSON formatting between main and web access logs
+        - Added memory management integration - web access logs are dropped gracefully under memory pressure
+        - RFC 5424 Log Levels (8-level system)
+        - Environment Variable Filtering (ZA_LOG_LEVEL) to set maximum verbosity level of logging.
+        - Enhanced Statistics Function (logging_stats()) for more metrics gathering functionality.
+        - Atomic File Writes with locking - on linux/bsd anyway. Windows is shit-of-out-flock.
+
+        - Improved path validation with better cross-platform support (restricts log paths to more sensible possibilities)
+
+        - see eg/manual_checks/test_logging for examples
+
+        - Logging system summary:
+
+            Logging Statement Types
+
+            Application Logging:
+            log "message",x,y,z             - Primary logging statement (goes to log file + console by default)
+            log level: "message",x,y,z      - Primary logging statement (goes to log file + console by default)
+
+            Basic Control:
+            logging on [filepath] - Enable main logging, optionally set log file path
+            logging off - Disable main logging
+            logging status - Display comprehensive logging configuration and statistics
+            logging quiet - Suppress console output from log statements
+            logging loud - Enable console output from log statements (default)
+
+            Format Control:
+            logging json on                     - Enable JSON format for all logs
+            logging json off                    - Use plain text format (default)
+            logging json fields +field value    - Add custom field to JSON logs
+            logging json fields -field          - Remove specific field from JSON logs
+            logging json fields -               - Clear all custom fields
+            logging json fields push            - Save current fields to stack
+            logging json fields pop             - Restore fields from stack
+
+            Web Access Logging:
+            logging web enable                  - Enable web access logging
+            logging web disable                 - Disable web access logging
+            logging accessfile <path>           - Set web access log file location (default: ./za_access.log)
+
+            Advanced Features:
+            logging subject <text>              - Set prefix for all log entries
+            logging error on/off                - Enable/disable automatic error logging
+            logging queue size <number>         - Set background processing queue size (default: 20)
+            logging rotate size <bytes>         - Set log rotation file size threshold
+            logging rotate count <number>       - Set number of rotated files to keep
+            logging reserve <bytes>             - Set emergency memory reserve for logging under pressure
+
+            Infrastructure Design
+
+            Unified Architecture:
+
+                Application Code ──┐
+                                   ├──► Background Queue ──► Processor ──┬──► Main Log File
+                Web Server Code ───┘                                     └──► Web Access Log File
+
+            Key Components:
+
+                Background Queue Processing
+                Non-blocking logging operations
+                Configurable queue size (default: 20 requests)
+                Automatic queue overflow handling with warnings
+                Dual Destination System
+
+                Main logs: Application events, errors, user log statements
+                Web access logs: HTTP requests, service lifecycle, web errors
+                    Separate files, shared formatting and processing
+
+            Format Management
+                Plain text or JSON formatting (applies to both log types)
+                Custom field management for JSON logs
+                Automatic timestamp and subject prefix handling
+
+            Log Rotation
+                Size-based rotation for both main and web access logs
+                Configurable file count retention
+                Automatic cleanup of old rotated files
+
+            Memory Management
+                Emergency memory reserve system
+                Priority-based queue management (errors > main logs > web access logs)
+                Graceful degradation under memory pressure
+
+            Error Integration
+                Automatic error logging for Za interpreter errors
+                HTTP status code tracking for web access logs (3xx=WARNING, 4xx/5xx=ERROR)
+                Enhanced error context with source line numbers
+
+            Performance Characteristics:
+                Non-blocking I/O for all logging operations
+                Memory-aware request dropping for web access logs under pressure
+                Unified statistics tracking and monitoring
+                Cross-platform path validation and security
+
     * Enhanced Error Handling
         - Added comprehensive error context display with error_extend(true)
         - Shows function arguments of calls
@@ -149,9 +253,10 @@ CHANGE LOG
         - allows for a custom error handler using trap("error","func")
         - some new error-related library calls included, listed above.
         - later version will allow for the errors to chain into interactive debugger use
+        - see eg/manual_checks/test_error_handler for examples
 
     * added JSON logging option to LOG/LOGGING statements.
-        - See unused/test_json_logging.za for example. 
+        - See unused/test_json_logging for example. 
         - similar syntax to USE statement. (- and + for json field addition/clear. push/pop for stacking the field list)
 
     * added a small profiler, invoked with the -P CLI option. 

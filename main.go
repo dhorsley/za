@@ -17,6 +17,8 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	str "strings"
 	"sync"
 	"time"
@@ -175,12 +177,35 @@ var histEmpty bool
 var logFile string
 var loggingEnabled bool
 var log_web bool
-var web_log_file string = "/var/log/za_access.log"
+var web_log_file string = "./za_access.log"
 
 // Global: JSON logging related
 var jsonLoggingEnabled bool
 var logFields map[string]any
 var logFieldsStack []map[string]any
+
+// Global: Error logging integration
+var errorLoggingEnabled bool
+var emergencyReserveSize int = 1024 * 1024 // Default 1MB
+var logRotateSize int64
+var logRotateCount int
+var logQueueSize int = 20     // Default queue size
+var webLogRequestCount int64  // Total web access log requests processed
+var mainLogRequestCount int64 // Total main log requests processed
+
+// RFC 5424 Log Severity Levels
+const (
+	LOG_EMERG   = 0 // Emergency: system is unusable
+	LOG_ALERT   = 1 // Alert: action must be taken immediately
+	LOG_CRIT    = 2 // Critical: critical conditions
+	LOG_ERR     = 3 // Error: error conditions
+	LOG_WARNING = 4 // Warning: warning conditions
+	LOG_NOTICE  = 5 // Notice: normal but significant condition
+	LOG_INFO    = 6 // Informational: informational messages
+	LOG_DEBUG   = 7 // Debug: debug-level messages
+)
+
+var logMinLevel int = LOG_DEBUG // Default: show all levels
 
 // Global: generic flags
 var sig_int bool       // ctrl-c pressed?
@@ -431,7 +456,7 @@ func main() {
 	// Initialize emergency memory reserve for error handling
 	if enhancedErrorsEnabled {
 		// Allocate emergency memory reserve dynamically to avoid global layout disruption
-		reserve := make([]byte, 1024*1024) // 1MB reserve
+		reserve := make([]byte, emergencyReserveSize) // Configurable reserve size
 		emergencyMemoryReserve = &reserve
 	}
 
@@ -519,8 +544,8 @@ func main() {
 
 	// set default behaviours
 
-	// - don't echo logging
-	gvset("@silentlog", true)
+	// - don't echo logging (default to console output for log commands)
+	gvset("@silentlog", false)
 
 	// - don't show co-proc command progress
 	gvset("mark_time", false)
@@ -586,6 +611,33 @@ func main() {
 	flag.Parse()
 	cmdargs = flag.Args() // rest of the cli arguments
 	exec_file_name := ""
+
+	// Process ZA_LOG_LEVEL environment variable
+	if envLogLevel := os.Getenv("ZA_LOG_LEVEL"); envLogLevel != "" {
+		switch strings.ToLower(envLogLevel) {
+		case "emerg", "emergency":
+			logMinLevel = LOG_EMERG
+		case "alert":
+			logMinLevel = LOG_ALERT
+		case "crit", "critical":
+			logMinLevel = LOG_CRIT
+		case "err", "error":
+			logMinLevel = LOG_ERR
+		case "warn", "warning":
+			logMinLevel = LOG_WARNING
+		case "notice":
+			logMinLevel = LOG_NOTICE
+		case "info":
+			logMinLevel = LOG_INFO
+		case "debug":
+			logMinLevel = LOG_DEBUG
+		default:
+			// Try parsing as number
+			if level, err := strconv.Atoi(envLogLevel); err == nil && level >= 0 && level <= 7 {
+				logMinLevel = level
+			}
+		}
+	}
 
 	// phase profiling flag
 	if *a_enable_profiling {

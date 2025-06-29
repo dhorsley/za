@@ -261,8 +261,9 @@ func buildInternalLib() {
 		"capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term", "term", "has_colour",
 		"len", "echo", "get_row", "get_col", "unmap", "await", "get_mem", "zainfo", "get_cores", "permit",
 		"enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
-		"ast", "varbind", "sizeof", "dup",
+		"ast", "varbind", "sizeof", "dup", "log_queue_status",
 		"set_depth",
+		"logging_stats",
 		// "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
 	}
 
@@ -524,14 +525,22 @@ func buildInternalLib() {
 		return nil, nil
 	}
 
-	slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
-	slhelp["sysvar"] = LibHelp{in: "system_variable_name", out: "struct", action: "Returns the value of a system variable."}
-	stdlib["sysvar"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-		if ok, err := expect_args("sysvar", args, 1, "1", "string"); !ok {
+	slhelp["log_queue_status"] = LibHelp{in: "", out: "struct", action: "Returns logging queue status: [#i1].used[#i0]: current queue usage, [#i1].total[#i0]: queue size, [#i1].running[#i0]: worker status, [#i1].percentage[#i0]: usage percentage"}
+	stdlib["log_queue_status"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("log_queue_status", args, 0); !ok {
 			return nil, err
 		}
-		v, _ := gvget(args[0].(string))
-		return v, nil
+		used, total, running := getLogQueueUsage()
+		percentage := float64(0)
+		if total > 0 {
+			percentage = (float64(used) / float64(total)) * 100.0
+		}
+		return map[string]any{
+			"used":       used,
+			"total":      total,
+			"running":    running,
+			"percentage": percentage,
+		}, nil
 	}
 
 	slhelp["zainfo"] = LibHelp{in: "", out: "struct", action: "internal info: [#i1].version[#i0]: semantic version number, [#i1].name[#i0]: language name, [#i1].build[#i0]: build type"}
@@ -543,6 +552,15 @@ func buildInternalLib() {
 		l, _ := gvget("@language")
 		c, _ := gvget("@ct_info")
 		return zainfo{version: v.(string), name: l.(string), build: c.(string)}, nil
+	}
+
+	slhelp["sysvar"] = LibHelp{in: "system_variable_name", out: "struct", action: "Returns the value of a system variable."}
+	stdlib["sysvar"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("sysvar", args, 1, "1", "string"); !ok {
+			return nil, err
+		}
+		v, _ := gvget(args[0].(string))
+		return v, nil
 	}
 
 	slhelp["dinfo"] = LibHelp{in: "var", out: "struct", action: "(debug) show var info."}
@@ -1709,6 +1727,21 @@ func buildInternalLib() {
 			return nil, err
 		}
 		return getclktck(), nil
+	}
+
+	slhelp["logging_stats"] = LibHelp{in: "", out: "struct", action: "Returns comprehensive logging statistics: [#i1].queue_used[#i0]: current queue usage, [#i1].queue_total[#i0]: queue size, [#i1].queue_running[#i0]: worker status, [#i1].main_processed[#i0]: main log requests processed, [#i1].web_processed[#i0]: web access log requests processed"}
+	stdlib["logging_stats"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("logging_stats", args, 0); !ok {
+			return nil, err
+		}
+		used, total, running, webRequests, mainRequests := getLogQueueStats()
+		return map[string]any{
+			"queue_used":     used,
+			"queue_total":    total,
+			"queue_running":  running,
+			"main_processed": mainRequests,
+			"web_processed":  webRequests,
+		}, nil
 	}
 
 }

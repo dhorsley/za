@@ -17,7 +17,8 @@ define routing_interface()
 end
 
 HOST=routing_interface().interface_ip
-PORT=61440
+HOST="127.0.0.1"
+PORT=8080
 HOME_PATH="/home/daniel/www"
 
 permit("shell",false)
@@ -49,7 +50,8 @@ web_serve_path(sid, "s",
 
 while web_serve_up(sid)
     # in process tasks go here:
-    pause 200
+    logging status
+    pause 5000
 endwhile
 
 
