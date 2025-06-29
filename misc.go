@@ -1,16 +1,22 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
 	str "strings"
 )
+
+// Global variable to hold current error context for library functions
+var currentErrorContext *ErrorContext
 
 func startupOptions() {
 	shelltype, _ := gvget("@shelltype")
@@ -147,14 +153,25 @@ func lookupChainName(n uint8) string {
 
 func (parser *leparser) report(line int16, s string) {
 
-	var baseId uint32
+	// Check if enhanced error handling is enabled and we're not already in an error handler
+	if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
+		// Create a synthetic error and use enhanced error handling
+		err := errors.New(strings.TrimSpace(s))
+		currentCallArgs := make(map[string]any)
+		currentFunctionName := "main"
 
-	ifs := parser.fs                              // ifs  -> id of failing func
-	funcName := getReportFunctionName(ifs, false) //      -> name of failing func
-	if ifs == 2 {
+		// Use enhanced error handler
+		showEnhancedErrorWithCallArgs(parser, line, err, parser.fs, currentCallArgs, currentFunctionName)
+		return
+	}
+
+	// Original report() logic for standard error handling
+	baseId := parser.fs
+	if parser.fs == 2 {
 		baseId = 1
 	} else {
-		baseId, _ = fnlookup.lmget(funcName) //      -> id of base func
+		funcName := getReportFunctionName(parser.fs, false)
+		baseId, _ = fnlookup.lmget(funcName)
 	}
 	if execMode {
 		pf("\nexecMode : switched fs from %d to %d\n", baseId, execFs)
@@ -687,9 +704,13 @@ func showEnhancedExpectArgsError(parser *leparser, line int16, enhancedErr *Enha
 func showEnhancedExpectArgsErrorWithCallArgs(parser *leparser, line int16, enhancedErr *EnhancedExpectArgsError, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
 	// Free emergency memory reserve immediately
 	if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+		*emergencyMemoryReserve = nil
 		emergencyMemoryReserve = nil
 		runtime.GC()
 	}
+
+	// Populate global error context for library functions
+	populateErrorContext(parser, line, enhancedErr.OriginalError.Error(), ifs, currentCallArgs, currentFunctionName)
 
 	// First show the standard error (maintain compatibility)
 	parser.report(line, sf("\n%v\n", enhancedErr.OriginalError))
@@ -697,8 +718,13 @@ func showEnhancedExpectArgsErrorWithCallArgs(parser *leparser, line int16, enhan
 	// Then show enhanced context
 	pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
 
-	// Show call chain context with current call arguments
-	evalChainCount := showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
+	// For stdlib functions, use the original Args array to preserve order
+	if len(enhancedErr.Args) > 0 {
+		showCallChainContextWithOrderedArgs(enhancedErr.Args, enhancedErr.FunctionName)
+	} else {
+		// Show call chain context with current call arguments (fallback)
+		showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
+	}
 
 	// Show source context
 	showSourceContext(parser, line, ifs)
@@ -719,17 +745,25 @@ func showEnhancedExpectArgsErrorWithCallArgs(parser *leparser, line int16, enhan
 
 	// Check if we're in a deep recursive call chain - if so, exit immediately
 	// to prevent corrupted state propagation
+	evalChainCount := len(errorChain)
 	if evalChainCount > 3 {
 		os.Exit(ERR_EVAL)
 	}
+
+	// Clear error context when exiting error handler
+	clearErrorContext()
 }
 
 func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
 	// Free emergency memory reserve immediately
 	if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+		*emergencyMemoryReserve = nil
 		emergencyMemoryReserve = nil
 		runtime.GC()
 	}
+
+	// Populate global error context for library functions
+	populateErrorContext(parser, line, err.Error(), ifs, currentCallArgs, currentFunctionName)
 
 	// First show the standard error (maintain compatibility)
 	parser.report(line, sf("\n%v\n", err))
@@ -759,31 +793,61 @@ func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs 
 	if evalChainCount > 3 {
 		os.Exit(ERR_EVAL)
 	}
+
+	// Clear error context when exiting error handler
+	clearErrorContext()
 }
 
 func showSourceContext(parser *leparser, line int16, ifs uint32) {
-	pf("[#7]Source Context:[#-]\n")
-
-	// Get base function space for source code
-	baseId := ifs
+	// Get base function space for source code (same logic as report())
+	baseId := parser.fs
 	if parser.fs == 2 {
 		baseId = 1
 	} else {
-		funcName := getReportFunctionName(ifs, false)
+		funcName := getReportFunctionName(parser.fs, false)
 		baseId, _ = fnlookup.lmget(funcName)
 	}
 
-	// Show source lines using existing basecode[]
-	if len(functionspaces[baseId]) > 0 && baseId != 0 {
-		startLine := max(0, int(parser.pc)-2)
-		endLine := min(len(basecode[baseId])-1, int(parser.pc)+2)
+	// Get filename from fileMap using parser.fs (the current function space)
+	filename := ""
+	if fileMapValue, exists := fileMap.Load(parser.fs); exists {
+		storedPath := fileMapValue.(string)
 
-		for i := startLine; i <= endLine; i++ {
+		// Convert to absolute path if it's relative
+		if filepath.IsAbs(storedPath) {
+			filename = storedPath
+		} else {
+			// Get current working directory and make absolute path
+			if cwd, err := os.Getwd(); err == nil {
+				filename = filepath.Join(cwd, storedPath)
+			} else {
+				// Fallback to stored path if we can't get cwd
+				filename = storedPath
+			}
+		}
+	}
+
+	// Show header with filename if available
+	if filename != "" {
+		pf("[#7]Source Context (%s):[#-]\n", filename)
+	} else {
+		pf("[#7]Source Context:[#-]\n")
+	}
+
+	// Show source lines using existing basecode[] and functionspaces[]
+	if len(functionspaces[baseId]) > 0 && baseId != 0 {
+		// Use parser.pc to index into the statement arrays, but get actual source line numbers from SourceLine
+		startStmt := max(0, int(parser.pc)-2)
+		endStmt := min(len(basecode[baseId])-1, int(parser.pc)+2)
+
+		for i := startStmt; i <= endStmt; i++ {
 			marker := "  "
 			if i == int(parser.pc) {
 				marker = "→ "
 			}
-			pf("  %s%d | %s\n", marker, i+1, basecode[baseId][i].Original)
+			// Get the actual source line number from the phrase
+			actualLineNum := functionspaces[baseId][i].SourceLine + 1 // Convert 0-based to 1-based
+			pf("  %s[#b5][#7]%5d[#-] | %s\n", marker, actualLineNum, basecode[baseId][i].Original)
 		}
 	}
 }
@@ -917,24 +981,140 @@ func showCallChainContext() {
 	showCallChainContextWithCurrentCall(nil, "")
 }
 
-func showCallChainContextWithCurrentCall(currentCallArgs map[string]any, currentFunctionName string) int {
+// showCallChainContextWithOrderedArgs displays call chain using ordered argument arrays
+// This preserves the original argument order for stdlib functions
+func showCallChainContextWithOrderedArgs(args []any, functionName string) {
 	pf("\n[#7]Call Chain:[#-]\n")
 
-	// Show current call arguments if available
-	if len(currentCallArgs) > 0 && currentFunctionName != "" {
-		cleanCurrentName := cleanFunctionName(currentFunctionName)
+	// Show current call with ordered arguments
+	if len(args) > 0 && functionName != "" {
+		cleanCurrentName := cleanFunctionName(functionName)
 		pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
 		pf("    [#7]Arguments:[#-] ")
-		argCount := 0
-		for argName, argValue := range currentCallArgs {
-			if argCount > 0 {
+
+		// Display arguments in their original order
+		for i, argValue := range args {
+			if i > 0 {
 				pf(", ")
 			}
 			valueStr := formatVariableValue(argValue)
-			pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
-			argCount++
+			pf("[#2]arg%d[#-]=[#4]%s[#-]", i+1, valueStr)
 		}
 		pf("\n")
+	}
+
+	// Show parent calls from error chain (same as before)
+	if len(errorChain) == 0 {
+		if len(args) == 0 {
+			pf("  (no call chain available)\n")
+		}
+		return
+	}
+
+	// Walk through the errorChain to show call context (with curtailment for deep recursion)
+	evalChainTotal := 0
+	for i, chainInfo := range errorChain {
+		// Count evaluation chains and abort if too many (prevent recursion spam)
+		if chainInfo.registrant == ciEval {
+			evalChainTotal++
+		}
+		if evalChainTotal > 5 {
+			indent := strings.Repeat("  ", i+1)
+			pf("%s[#3]...[#-] [#5]ABORTED CALL CHAIN (>5 evaluation levels)[#-]\n", indent)
+			break
+		}
+
+		calllock.RLock()
+
+		// Get the function space name from the chain info
+		caller_str, exists := numlookup.lmget(chainInfo.loc)
+		if !exists {
+			calllock.RUnlock()
+			continue
+		}
+
+		// Get the call table entry for this location
+		callEntry := calltable[chainInfo.loc]
+
+		calllock.RUnlock()
+
+		// Get module name
+		moduleName := "main"
+		if callEntry.base < uint32(len(basemodmap)) {
+			if mod, modExists := basemodmap[callEntry.base]; modExists {
+				moduleName = mod
+			}
+		}
+
+		// Get filename for this call location - try chainInfo first, then fileMap
+		filename := chainInfo.filename
+		if filename == "" {
+			if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
+				filename = fileMapValue.(string)
+			}
+		}
+
+		// Show the call information
+		indent := strings.Repeat("  ", i+1)
+		cleanCallerName := cleanFunctionName(caller_str)
+		pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
+
+		// Show filename:line if available
+		if filename != "" {
+			if chainInfo.line > 0 {
+				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line)
+			} else {
+				pf(" ([#7]%s[#-])", filename)
+			}
+		} else if chainInfo.line > 0 {
+			pf(" (line %d)", chainInfo.line)
+		}
+
+		// Show arguments if they were captured in the error chain
+		if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
+			pf("\n%s    [#7]Arguments:[#-] ", indent)
+			argCount := 0
+
+			// The error chain preserves argument order in the arrays, so just iterate through them
+			for j, argName := range chainInfo.argNames {
+				if j < len(chainInfo.argValues) {
+					if argCount > 0 {
+						pf(", ")
+					}
+					valueStr := formatVariableValue(chainInfo.argValues[j])
+					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+					argCount++
+				}
+			}
+		}
+
+		pf("\n")
+	}
+}
+
+func showCallChainContextWithCurrentCall(currentCallArgs map[string]any, currentFunctionName string) int {
+	pf("\n[#7]Call Chain:[#-]\n")
+
+	// Show current call arguments from errorChain (last entry) if available
+	if len(errorChain) > 0 {
+		currentCall := errorChain[len(errorChain)-1]
+		if len(currentCall.argNames) > 0 && len(currentCall.argValues) > 0 {
+			cleanCurrentName := cleanFunctionName(currentCall.name)
+			pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
+			pf("    [#7]Arguments:[#-] ")
+
+			// Show arguments in their original order from argNames/argValues arrays
+			for i, argName := range currentCall.argNames {
+				if i < len(currentCall.argValues) {
+					if i > 0 {
+						pf(", ")
+					}
+					valueStr := formatVariableValue(currentCall.argValues[i])
+					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+				}
+			}
+			pf("\n")
+		}
 	}
 
 	// Show parent calls from error chain
@@ -980,21 +1160,229 @@ func showCallChainContextWithCurrentCall(currentCallArgs map[string]any, current
 			}
 		}
 
+		// Get filename for this call location - try chainInfo first, then fileMap
+		filename := chainInfo.filename
+		if filename == "" {
+			if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
+				filename = fileMapValue.(string)
+			}
+		}
+
 		// Show the call information
 		indent := strings.Repeat("  ", i+1)
 		cleanCallerName := cleanFunctionName(caller_str)
 		pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
 
-		// Show source line if available
-		if chainInfo.line > 0 {
+		// Show filename:line if available
+		if filename != "" {
+			if chainInfo.line > 0 {
+				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line)
+			} else {
+				pf(" ([#7]%s[#-])", filename)
+			}
+		} else if chainInfo.line > 0 {
 			pf(" (line %d)", chainInfo.line)
 		}
 
-		// Note: Parent call arguments not available in current implementation
-		// Future enhancement could use reflection or stack walking to capture them
+		// Show arguments if they were captured in the error chain
+		if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
+			pf("\n%s    [#7]Arguments:[#-] ", indent)
+			argCount := 0
+
+			// The error chain preserves argument order in the arrays, so just iterate through them
+			for j, argName := range chainInfo.argNames {
+				if j < len(chainInfo.argValues) {
+					if argCount > 0 {
+						pf(", ")
+					}
+					valueStr := formatVariableValue(chainInfo.argValues[j])
+					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+					argCount++
+				}
+			}
+		}
 
 		pf("\n")
 	}
 
 	return evalChainTotal
+}
+
+// populateErrorContext gathers error information and stores it in globalErrorContext
+func populateErrorContext(parser *leparser, line int16, errorMessage string, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
+	globalErrorContext.Message = errorMessage
+	globalErrorContext.SourceLine = line
+	globalErrorContext.FunctionName = currentFunctionName
+	globalErrorContext.InErrorHandler = true
+
+	// Get module name
+	baseId := ifs
+	if parser.fs == 2 {
+		baseId = 1
+	} else {
+		funcName := getReportFunctionName(ifs, false)
+		baseId, _ = fnlookup.lmget(funcName)
+	}
+	globalErrorContext.ModuleName = basemodmap[baseId]
+
+	// Collect source lines
+	globalErrorContext.SourceLines = []string{}
+	if len(functionspaces[baseId]) > 0 && baseId != 0 {
+		startLine := max(0, int(parser.pc)-2)
+		endLine := min(len(basecode[baseId])-1, int(parser.pc)+2)
+		for i := startLine; i <= endLine; i++ {
+			globalErrorContext.SourceLines = append(globalErrorContext.SourceLines, basecode[baseId][i].Original)
+		}
+	}
+
+	// Build call chain
+	globalErrorContext.CallChain = []map[string]any{}
+	globalErrorContext.CallStack = []string{}
+
+	// Add current call to chain
+	if currentFunctionName != "" {
+		callInfo := map[string]any{
+			"function": currentFunctionName,
+			"args":     currentCallArgs,
+		}
+
+		// For stdlib functions with enhanced errors, store arguments as ordered array
+		if len(currentCallArgs) == 0 && currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
+			// Store arguments as a simple ordered array with indexed keys
+			orderedArgs := make([]string, 0)
+			for i, arg := range currentErrorContext.EnhancedError.Args {
+				orderedArgs = append(orderedArgs, sf("arg%d:%#v", i+1, arg))
+			}
+			callInfo["args"] = orderedArgs
+		}
+
+		globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
+		globalErrorContext.CallStack = append(globalErrorContext.CallStack, currentFunctionName)
+	}
+
+	// Add error chain with enhanced argument information
+	for i := len(errorChain) - 1; i >= 0; i-- {
+		chainEntry := errorChain[i]
+
+		// Get function name - prefer the captured name over the registrant lookup
+		functionName := chainEntry.name
+		if functionName == "" {
+			functionName = lookupChainName(chainEntry.registrant)
+		}
+
+		globalErrorContext.CallStack = append(globalErrorContext.CallStack, functionName)
+
+		// Build enhanced call info with arguments if available
+		callInfo := map[string]any{
+			"function": functionName,
+			"type":     chainEntry.registrant,
+		}
+
+		// Add arguments if they were captured (when enhancedErrorsEnabled was true)
+		if len(chainEntry.argNames) > 0 && len(chainEntry.argValues) > 0 {
+			argsMap := make(map[string]any)
+			for j, argName := range chainEntry.argNames {
+				if j < len(chainEntry.argValues) {
+					argsMap[argName] = chainEntry.argValues[j]
+				}
+			}
+			callInfo["args"] = argsMap
+		}
+
+		globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
+	}
+
+	// Collect local variables
+	globalErrorContext.LocalVars = make(map[string]any)
+	if parser.ident != nil {
+		for i := 0; i < len(*parser.ident); i++ {
+			v := (*parser.ident)[i]
+			if v.declared && v.IName != "" {
+				globalErrorContext.LocalVars[v.IName] = v.IValue
+			}
+		}
+	}
+
+	// Collect user-defined global variables (filter out system variables starting with @)
+	globalErrorContext.GlobalVars = make(map[string]any)
+	for i := 0; i < len(gident); i++ {
+		v := gident[i]
+		if v.declared && v.IName != "" && !str.HasPrefix(v.IName, "@") {
+			globalErrorContext.GlobalVars[v.IName] = v.IValue
+		}
+	}
+}
+
+// clearErrorContext resets the error context when exiting error handling
+func clearErrorContext() {
+	globalErrorContext = ErrorContext{InErrorHandler: false}
+}
+
+// callCustomErrorHandler calls the user-defined error handler function
+func callCustomErrorHandler(handlerName string, namespace string, evalfs uint32) {
+	// Ensure we have a complete handler name with namespace
+	if !str.Contains(handlerName, "::") {
+		if found := uc_match_func(handlerName); found != "" {
+			handlerName = found + "::" + handlerName
+		} else {
+			handlerName = namespace + "::" + handlerName
+		}
+	}
+
+	// Remove any argument parentheses for now (simple implementation)
+	if brackPos := str.IndexByte(handlerName, '('); brackPos != -1 {
+		handlerName = handlerName[:brackPos]
+	}
+
+	// Look up the function
+	lmv, found := fnlookup.lmget(handlerName)
+	if !found {
+		// Fallback to standard error display if handler not found
+		pf("[#1]Error: Custom error handler '%s' not found[#-]\n", handlerName)
+		if currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
+			showEnhancedExpectArgsError(currentErrorContext.Parser, int16(currentErrorContext.SourceLocation.Line), currentErrorContext.EnhancedError, currentErrorContext.EvalFS)
+		}
+		return
+	}
+
+	// Populate globalErrorContext with current error information for library functions
+	if currentErrorContext != nil {
+		globalErrorContext.Message = currentErrorContext.Message
+		globalErrorContext.SourceLine = int16(currentErrorContext.SourceLocation.Line)
+		globalErrorContext.FunctionName = currentErrorContext.SourceLocation.Function
+		globalErrorContext.ModuleName = currentErrorContext.SourceLocation.Module
+		globalErrorContext.InErrorHandler = true
+
+		// Populate source lines, call chain, and variables
+		populateErrorContext(currentErrorContext.Parser, globalErrorContext.SourceLine,
+			globalErrorContext.Message, currentErrorContext.EvalFS, nil, globalErrorContext.FunctionName)
+	}
+
+	// Allocate function space for the error handler
+	loc, _ := GetNextFnSpace(true, handlerName+"@", call_s{prepared: true, base: lmv, caller: evalfs})
+
+	calllock.Lock()
+	basemodmap[lmv] = namespace
+	calllock.Unlock()
+
+	// Create a new variable space for the handler
+	var handlerIdent = make([]Variable, identInitialSize)
+
+	// Call the error handler (no arguments for now)
+	ctx := context.Background()
+	_, _, _, callErr := Call(ctx, MODE_NEW, &handlerIdent, loc, ciTrap, false, nil, "", []string{})
+
+	// Clean up after the call
+	calllock.Lock()
+	calltable[loc].gcShyness = 0
+	calltable[loc].gc = true
+	calllock.Unlock()
+
+	// Clear the error context after handling
+	clearErrorContext()
+	currentErrorContext = nil
+
+	if callErr != nil {
+		pf("[#1]Error in custom error handler: %s[#-]\n", callErr)
+	}
 }

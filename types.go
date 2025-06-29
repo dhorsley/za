@@ -114,7 +114,11 @@ type chainInfo struct {
 	loc        uint32
 	name       string
 	line       int16
+	filename   string
 	registrant uint8
+	// Enhanced error handling: argument capture (only populated when enhancedErrorsEnabled)
+	argNames  []string
+	argValues []any
 }
 
 // holds mappings for feature->category in the standard library.
@@ -230,6 +234,35 @@ func (e *EnhancedExpectArgsError) Unwrap() error {
 	return e.OriginalError
 }
 
+// ErrorLocation represents the source location of an error
+type ErrorLocation struct {
+	File     string
+	Line     int
+	Function string
+	Module   string
+}
+
+// ErrorContext holds all error information for custom error handlers
+type ErrorContext struct {
+	Message        string
+	SourceLocation ErrorLocation
+	EnhancedError  *EnhancedExpectArgsError
+	Parser         *leparser
+	EvalFS         uint32
+	// Additional fields for compatibility with existing code
+	SourceLine     int16
+	FunctionName   string
+	ModuleName     string
+	SourceLines    []string
+	CallChain      []map[string]any
+	CallStack      []string
+	LocalVars      map[string]any
+	GlobalVars     map[string]any
+	InErrorHandler bool
+}
+
 // Global variables for enhanced error handling
-var emergencyMemoryReserve []byte
-var enhancedErrorsEnabled bool = true
+var emergencyMemoryReserve *[]byte
+var enhancedErrorsEnabled bool = false
+
+var globalErrorContext ErrorContext

@@ -675,7 +675,40 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	}
 
 	if calltable[csloc].caller != 0 {
-		errorChain = append(errorChain, chainInfo{loc: calltable[csloc].caller, name: caller_str, registrant: registrant})
+		// Get filename for the caller
+		var callerFilename string
+		if fileMapValue, exists := fileMap.Load(calltable[csloc].caller); exists {
+			callerFilename = fileMapValue.(string)
+		}
+
+		if enhancedErrorsEnabled {
+			// If arg_names is empty (positional call), get parameter names from function definition
+			paramNames := arg_names
+			if len(paramNames) == 0 && len(va) > 0 {
+				farglock.RLock()
+				callerBase := calltable[csloc].base
+				if callerBase < uint32(len(functionArgs)) {
+					paramNames = functionArgs[callerBase].args
+				}
+				farglock.RUnlock()
+			}
+
+			errorChain = append(errorChain, chainInfo{
+				loc:        calltable[csloc].caller,
+				name:       caller_str,
+				filename:   callerFilename,
+				registrant: registrant,
+				argNames:   paramNames,
+				argValues:  va,
+			})
+		} else {
+			errorChain = append(errorChain, chainInfo{
+				loc:        calltable[csloc].caller,
+				name:       caller_str,
+				filename:   callerFilename,
+				registrant: registrant,
+			})
+		}
 	}
 
 	// profile setup
@@ -772,21 +805,42 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
 				if enhancedErrorsEnabled {
 					// Capture current call arguments only when error occurs
-					currentCallArgs := make(map[string]any)
-					for i, argName := range arg_names {
-						if i < len(va) {
-							currentCallArgs[argName] = va[i]
+					// If arg_names is empty (positional call), get parameter names from function definition
+					paramNames := arg_names
+					if len(paramNames) == 0 && len(va) > 0 {
+						farglock.RLock()
+						if source_base < uint32(len(functionArgs)) {
+							paramNames = functionArgs[source_base].args
 						}
+						farglock.RUnlock()
 					}
+
+					// Get current function name
 					currentFunctionName := calltable[csloc].fs
+
+					// Add current call to error chain with ordered arguments
+					filename := ""
+					if fileMapValue, exists := fileMap.Load(parser.fs); exists {
+						filename = fileMapValue.(string)
+					}
+
+					errorChain = append(errorChain, chainInfo{
+						loc:        csloc,
+						name:       currentFunctionName,
+						line:       inbound.SourceLine,
+						filename:   filename,
+						registrant: registrant,
+						argNames:   paramNames,
+						argValues:  va,
+					})
 
 					// Check if this is an enhanced expect_args error for additional context
 					if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok {
 						// Show enhanced error context with stdlib function details
-						showEnhancedExpectArgsErrorWithCallArgs(parser, inbound.SourceLine, enhancedErr, parser.fs, currentCallArgs, currentFunctionName)
+						showEnhancedExpectArgsErrorWithCallArgs(parser, inbound.SourceLine, enhancedErr, parser.fs, nil, currentFunctionName)
 					} else {
 						// Show enhanced error context for any other error type
-						showEnhancedErrorWithCallArgs(parser, inbound.SourceLine, err, parser.fs, currentCallArgs, currentFunctionName)
+						showEnhancedErrorWithCallArgs(parser, inbound.SourceLine, err, parser.fs, nil, currentFunctionName)
 					}
 				} else {
 					// Standard error reporting (unchanged)
@@ -832,8 +886,9 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	calllock.Unlock()
 
 	// fake a filename to ifs relationship, for debugger use.
-	// fileMap.Store(ifs,source_base)
-	fileMap.Store(ifs, currentModule)
+	fname, _ := fileMap.Load(calltable[source_base].base)
+	moduleloc := fname.(string)
+	fileMap.Store(ifs, moduleloc)
 
 	// pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 
@@ -3517,7 +3572,8 @@ tco_reentry:
 
 				// pf("[#4]Now defining %s[#-]\n",definitionName)
 
-				loc, _ := GetNextFnSpace(true, definitionName, call_s{prepared: false})
+				// loc, _ := GetNextFnSpace(true, definitionName, call_s{prepared: false})
+				loc, _ := GetNextFnSpace(true, definitionName, call_s{prepared: true, base: source_base, caller: ifs, gc: false, gcShyness: 100})
 				var dargs []string
 				var hasDefault []bool
 				var defaults []any
@@ -3931,7 +3987,7 @@ tco_reentry:
 
 			//.. set file location
 
-			var moduleloc string = ""
+			moduleloc = ""
 
 			if str.IndexByte(modGivenPath, '/') > -1 {
 				if filepath.IsAbs(modGivenPath) {

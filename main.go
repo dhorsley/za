@@ -430,7 +430,9 @@ func main() {
 
 	// Initialize emergency memory reserve for error handling
 	if enhancedErrorsEnabled {
-		emergencyMemoryReserve = make([]byte, 1024*1024) // 1MB reserve
+		// Allocate emergency memory reserve dynamically to avoid global layout disruption
+		reserve := make([]byte, 1024*1024) // 1MB reserve
+		emergencyMemoryReserve = &reserve
 	}
 
 	// setup empty symbol tables for main
@@ -847,6 +849,8 @@ func main() {
 
 	// - name of Za function that handles ctrl-c.
 	gvset("@trapInt", "")
+	// - name of Za function that handles errors.
+	gvset("@trapError", "")
 
 	go func() {
 		for {
