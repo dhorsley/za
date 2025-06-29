@@ -1,0 +1,81 @@
+#!/usr/bin/env za
+
+# Test script for comprehensive log levels implementation
+# Tests: log levels, environment filtering, JSON output, and statistics
+
+println "[#fgreen]Testing Za Log Levels Implementation[#-]"
+println "========================================="
+
+# Enable logging with log file and JSON format
+logging on "test_log_levels.log"
+logging json on
+
+println "\n1. Testing all log levels:"
+println "-------------------------"
+
+log emerg : "System emergency - immediate action required"
+log alert : "Alert condition - action must be taken immediately"  
+log crit : "Critical condition detected"
+log err : "Error occurred during processing"
+log warn : "Warning - attention needed"
+log notice : "Normal but significant condition"
+log info : "Information message - normal operation"
+log debug : "Debug information for troubleshooting"
+
+# Test default level (should be info)
+log "Default level message (should be info)"
+
+println "\n2. Testing statistics function:"
+println "-------------------------------"
+
+stats = logging_stats()
+println "Queue used:", stats["queue_used"]
+println "Queue total:", stats["queue_total"]  
+println "Queue running:", stats["queue_running"]
+println "Main processed:", stats["main_processed"]
+println "Web processed:", stats["web_processed"]
+
+println "\n3. Testing with different log subjects:"  
+println "--------------------------------------"
+
+logging subject "TestApp"
+log info : "Message with TestApp subject"
+
+logging subject "WebService"
+log warn : "Warning from web service"
+
+# Reset subject
+logging subject ""
+
+println "\n4. Testing mixed format output:"
+println "------------------------------"
+
+# Switch to plain text
+logging json off
+log info : "Plain text info message"
+log err : "Plain text error message"
+
+# Back to JSON
+logging json on  
+log info : "JSON info message"
+log err : "JSON error message"
+
+println "\n5. Testing console vs file behavior:"
+println "-----------------------------------"
+
+# Test quiet mode
+logging quiet
+log info : "This should only go to file (quiet mode)"
+
+logging loud  
+log info : "This should appear on console and file (loud mode)"
+
+println "\n6. Final statistics:"
+println "-------------------"
+
+final_stats = logging_stats()
+println "Final main processed:", final_stats["main_processed"]
+println "Final web processed:", final_stats["web_processed"]
+
+println "\n[#fgreen]Test completed![#-]"
+println "Check your log file 'test_log_levels.log' to see all entries with proper level fields." 

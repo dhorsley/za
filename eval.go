@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"crypto/md5"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -8,12 +10,10 @@ import (
 	"net/http"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	str "strings"
 	"sync"
-	"context"
-	"crypto/md5"
-	"regexp"
 )
 
 func (p *leparser) reserved(token Token) any {
@@ -73,16 +73,15 @@ type leparser struct {
 	in_range bool // currently in an eval calculating array ranges
 	rangelen int  // length of array referenced in accessArray
 
-    interpolating   bool
-    softfail        bool    // during evaluation, ignore failed states when this is false
-	hard_fault      bool    // stop error bypass in fallback mode
-	kind_override   string  // when self has been created, this bears the struct type.
+	interpolating bool
+	softfail      bool   // during evaluation, ignore failed states when this is false
+	hard_fault    bool   // stop error bypass in fallback mode
+	kind_override string // when self has been created, this bears the struct type.
 
 	inside_with_struct bool
 	inside_with_enum   bool
 	with_struct_name   string
 	with_enum_name     string
-
 }
 
 func (p *leparser) next() Token {
@@ -347,22 +346,26 @@ binloop1:
 		switch token.tokType {
 
 		case O_Plus:
-            leftInt,lok:=left.(int)
-            rightInt,rok:=right.(int)
-            if lok && rok { left=leftInt+rightInt } else { left=ev_add(left,right) }
-            /*
-			switch left.(type) {
-			case int:
-				switch right.(type) {
+			leftInt, lok := left.(int)
+			rightInt, rok := right.(int)
+			if lok && rok {
+				left = leftInt + rightInt
+			} else {
+				left = ev_add(left, right)
+			}
+			/*
+				switch left.(type) {
 				case int:
-					left = left.(int) + right.(int)
+					switch right.(type) {
+					case int:
+						left = left.(int) + right.(int)
+					default:
+						left = ev_add(left, right)
+					}
 				default:
 					left = ev_add(left, right)
 				}
-			default:
-				left = ev_add(left, right)
-			}
-            */
+			*/
 		case O_Minus:
 			left = ev_sub(left, right)
 		case O_Multiply:
@@ -1830,6 +1833,17 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
 		lmv, isfunc := fnlookup.lmget(name)
 
 		if isfunc {
+			// Register new function space with caller's filename
+			// Use the source base of p.fs, not p.fs directly
+			calllock.RLock()
+			sourceBase := calltable[p.fs].base
+			// We need to register the base that Call() will actually look up
+			targetBase := calltable[lmv].base
+			calllock.RUnlock()
+			if callerFile, exists := fileMap.Load(sourceBase); exists {
+				fileMap.Store(targetBase, callerFile)
+			}
+
 			// call
 			h, id := task(p.fs, lmv, false, csumName+"@", nil)
 			// destroy fn def before leaving
@@ -1877,12 +1891,12 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
 	// pf("(identifier) got token -> %#v)\n",token)
 
-    /*
-	if token.tokType != Identifier {
-		// fmt.Printf("error in identifier name: existing token type %s", tokNames[token.tokType])
-		return nil, fmt.Errorf("error in identifier name: existing token type %s", tokNames[token.tokType])
-	}
-    */
+	/*
+		if token.tokType != Identifier {
+			// fmt.Printf("error in identifier name: existing token type %s", tokNames[token.tokType])
+			return nil, fmt.Errorf("error in identifier name: existing token type %s", tokNames[token.tokType])
+		}
+	*/
 
 	switch token.subtype {
 	case subtypeConst:
@@ -1998,11 +2012,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
 		return sname, nil
 	}
 
-    if p.interpolating && !p.softfail {
-        return sname,nil
-    }
+	if p.interpolating && !p.softfail {
+		return sname, nil
+	}
 
-    panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
+	panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 
 }
 
@@ -2306,7 +2320,7 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
 		var key string
 		switch el.(type) {
 		case int:
-            key = intToString(el.(int))
+			key = intToString(el.(int))
 			// key = strconv.FormatInt(int64(el.(int)), 10)
 		case float64:
 			key = strconv.FormatFloat(el.(float64), 'f', -1, 64)
@@ -2621,8 +2635,8 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 	interparse.ident = ident
 	interparse.namespace = ns
 	interparse.ctx = withProfilerContext(context.Background())
-    interparse.softfail=true
-    interparse.interpolating=true
+	interparse.softfail = true
+	interparse.interpolating = true
 	if interactive {
 		interparse.mident = 1
 	} else {
@@ -2695,11 +2709,11 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 					s = s[:p] + sf("%v", aval) + s[close_index+1:]
 					modified = true
 					break
-                } else {
-                    if !parser.softfail {
-                        // maybe an error should go here later
-                    }
-                }
+				} else {
+					if !parser.softfail {
+						// maybe an error should go here later
+					}
+				}
 				p = close_index + 1
 			}
 		}
@@ -2911,10 +2925,10 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
 		}
 	}
 
-    if toks[len(toks)-1].tokType == SYM_Not {
-        parser.softfail=false
-        toks=toks[:len(toks)-1]
-    }
+	if toks[len(toks)-1].tokType == SYM_Not {
+		parser.softfail = false
+		toks = toks[:len(toks)-1]
+	}
 
 	// evaluate token list
 	if len(toks) != 0 {
@@ -2965,7 +2979,7 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 	// compound the terms beyond the assignment symbol and eval them.
 
 	eqPos := -1
-    hasComma := false
+	hasComma := false
 	var newEval []Token
 	var err error
 
@@ -2986,7 +3000,9 @@ func (p *leparser) wrappedEval(lfs uint32, lident *[]Variable, fs uint32, rident
 
 floop1:
 	for k, _ := range tks {
-        if tks[k].tokType==O_Comma { hasComma=true }
+		if tks[k].tokType == O_Comma {
+			hasComma = true
+		}
 		switch tks[k].tokType {
 		// use whichever is encountered first
 		case O_Assign:
@@ -3093,5 +3109,3 @@ floop1:
 	return expr
 
 }
-
-

@@ -14,8 +14,6 @@
 
 count=0
 
-logging on "/tmp/dh"
-
 define clear(lstart,lend,column)
     for f=lstart to lend
         clear_line(f,column)

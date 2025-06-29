@@ -1,5 +1,4 @@
 
-debug 0
 
 c1=false; c2=false
 input ic1 optarg 1
