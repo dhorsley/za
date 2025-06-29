@@ -94,6 +94,7 @@ foreach c in func_categories()
     sfuncs=sfuncs.sort
 
     func_count=0
+    eg_count=0
     foreach i in sfuncs
 
         totfunc++
@@ -124,8 +125,9 @@ foreach c in func_categories()
             f=f.html_escape.replace("{","&#123;").replace("}","&#125;")
             interpol(true)
             body+=wp("<i>Example:</i><br><pre>"+f+"</pre>")
-            func_count++
+            eg_count++
         endif
+        func_count++
 
         body+="<br>\n"
 
@@ -162,7 +164,7 @@ foreach c in func_categories()
       `lang="en"`
     )
 
-    println "Generating {key_c}.html page ({func_count} functions)."
+    println "Generating {key_c}.html page ({func_count} functions, {eg_count} examples)."
     page $out [execpath(),docpath,key_c+".html"].join("/")
 
 endfor
