@@ -1,0 +1,151 @@
+#!/usr/bin/env za
+
+# Comprehensive Logging System Test Script
+# Tests all main logging features except web server functionality
+
+println "[#bold][#fblue]========================================[#-]"
+println "[#bold][#fblue]Za Logging System Comprehensive Test[#-]"
+println "[#bold][#fblue]========================================[#-]"
+
+# Setup test paths (avoid working directory restriction)
+home_dir = get_env("HOME")
+test_log_path = home_dir + "/test_logging.log"
+test_output_path = home_dir + "/test_logging_output.log"
+
+# Test 1: Initial Status Check
+println "\n[#bold][#fgreen]Test 1: Initial Status Check[#-]"
+logging status
+
+# Test 2: Basic Logging On/Off
+println "\n[#bold][#fgreen]Test 2: Basic Logging On/Off[#-]"
+println "Enabling logging to {test_log_path}..."
+logging on test_log_path
+logging status
+
+println "\nDisabling logging..."
+logging off
+logging status
+
+# Test 3: Console Output Modes (Quiet/Loud)
+println "\n[#bold][#fgreen]Test 3: Console Output Modes[#-]"
+println "Setting console output to QUIET..."
+logging quiet
+logging status
+
+println "\nSetting console output to LOUD..."
+logging loud
+logging status
+
+# Test 4: Log Subject Prefix
+println "\n[#bold][#fgreen]Test 4: Log Subject Prefix[#-]"
+println "Setting log subject prefix..."
+logging subject "TEST_PREFIX"
+logging status
+
+println "\nClearing log subject prefix..."
+logging subject
+logging status
+
+# Test 5: JSON Logging Mode
+println "\n[#bold][#fgreen]Test 5: JSON Logging Mode[#-]"
+println "Enabling JSON logging..."
+logging json on
+logging status
+
+println "\nAdding JSON fields..."
+logging json fields +app "logging_test" +version "1.0" +environment "test"
+logging status
+
+println "\nRemoving specific JSON field..."
+logging json fields -version
+logging status
+
+println "\nClearing all JSON fields..."
+logging json fields -
+logging status
+
+println "\nDisabling JSON logging..."
+logging json off
+logging status
+
+# Test 6: Log Rotation Settings
+println "\n[#bold][#fgreen]Test 6: Log Rotation Settings[#-]"
+println "Setting log rotation by size (1MB)..."
+logging rotate size 1048576
+logging status
+
+println "\nSetting log rotation file count..."
+logging rotate count 5
+logging status
+
+println "\nDisabling log rotation..."
+logging rotate off
+logging status
+
+# Test 7: Error Logging
+println "\n[#bold][#fgreen]Test 7: Error Logging[#-]"
+println "Current error logging status shown in status above"
+# Note: Error logging is controlled by internal flags, not user commands
+
+# Test 8: Actual Logging Output Test
+println "\n[#bold][#fgreen]Test 8: Actual Logging Output Test[#-]"
+println "Enabling logging with test output to {test_output_path}..."
+logging on test_output_path
+logging loud
+
+println "\nTesting plain text logging..."
+logging json off
+log "This is a plain text log message"
+log "Another plain text message with data: %v".format(42)
+
+println "\nTesting JSON logging..."
+logging json on
+logging json fields +test_id "8" +test_type "json_logging"
+log "This is a JSON log message"
+log "JSON message with formatting: %v".format("formatted_data")
+
+# Test 9: Log with Subject Prefix
+println "\n[#bold][#fgreen]Test 9: Log with Subject Prefix[#-]"
+logging subject "TEST_RUN"
+log "Message with subject prefix"
+
+# Test 10: Queue and Worker Status
+println "\n[#bold][#fgreen]Test 10: Queue and Worker Status[#-]"
+println "Current queue and worker status:"
+logging status
+
+# Test 11: Memory Reserve Status
+println "\n[#bold][#fgreen]Test 11: Memory Reserve Status[#-]"
+println "Memory reserve status shown in status above"
+
+# Test 12: Comprehensive Final Status
+println "\n[#bold][#fgreen]Test 12: Final Comprehensive Status[#-]"
+logging status
+
+# Cleanup
+println "\n[#bold][#fyellow]Cleanup[#-]"
+logging off
+logging json off
+logging json fields -
+logging subject
+logging quiet
+logging rotate off
+
+println "\nFinal status after cleanup:"
+logging status
+
+# Test file cleanup
+println "\nCleaning up test files..."
+if is_file(test_log_path)
+    delete(test_log_path)
+    println "Removed {test_log_path}"
+endif
+
+if is_file(test_output_path)
+    delete(test_output_path)
+    println "Removed {test_output_path}"
+endif
+
+println "\n[#bold][#fgreen]========================================[#-]"
+println "[#bold][#fgreen]Logging System Test Complete![#-]"
+println "[#bold][#fgreen]========================================[#-]" 

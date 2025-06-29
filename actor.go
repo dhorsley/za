@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	str "strings"
 	"sync"
 	"sync/atomic"
@@ -885,8 +887,8 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	ifs, _ := fnlookup.lmget(fs)
 	calllock.Unlock()
 
-	// fake a filename to ifs relationship, for debugger use.
 	fname, _ := fileMap.Load(calltable[source_base].base)
+
 	moduleloc := fname.(string)
 	fileMap.Store(ifs, moduleloc)
 
@@ -4532,23 +4534,141 @@ tco_reentry:
 			parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, interactive, true, false)
 
 		case C_Log:
-			if jsonLoggingEnabled {
-				// Extract message from tokens
-				if len(inbound.Tokens) > 1 {
-					// Evaluate the expression to get the message
-					expr, err := parser.Eval(ifs, inbound.Tokens[1:])
-					if err != nil {
-						parser.report(inbound.SourceLine, sf("Could not evaluate LOG expression: %s", err))
-						break
+			// Check for level prefix (e.g., "debug:", "info:", etc.)
+			var logLevel int = LOG_INFO // Default level
+			var startToken int = 1
+
+			if inbound.TokenCount > 2 {
+				// Check for pattern: identifier + colon + message
+				levelToken := inbound.Tokens[1].tokText
+				if inbound.Tokens[2].tokType == SYM_COLON {
+					switch strings.ToLower(levelToken) {
+					case "emerg", "emergency":
+						logLevel = LOG_EMERG
+						startToken = 3
+					case "alert":
+						logLevel = LOG_ALERT
+						startToken = 3
+					case "crit", "critical":
+						logLevel = LOG_CRIT
+						startToken = 3
+					case "err", "error":
+						logLevel = LOG_ERR
+						startToken = 3
+					case "warn", "warning":
+						logLevel = LOG_WARNING
+						startToken = 3
+					case "notice":
+						logLevel = LOG_NOTICE
+						startToken = 3
+					case "info":
+						logLevel = LOG_INFO
+						startToken = 3
+					case "debug":
+						logLevel = LOG_DEBUG
+						startToken = 3
 					}
-					message := sf("%v", expr)
-					plog_json(message, logFields)
-				} else {
-					plog_json("", logFields)
 				}
-			} else {
-				parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, false, false, true)
 			}
+
+			// Extract message from remaining tokens
+			var message string
+			if startToken < int(inbound.TokenCount) {
+				// Build message from tokens (handle comma-separated expressions)
+				var messageParts []string
+				evnest := 0
+				newstart := startToken
+				for term := startToken; term < int(inbound.TokenCount); term++ {
+					nt := inbound.Tokens[term]
+					if nt.tokType == LParen || nt.tokType == LeftSBrace {
+						evnest += 1
+					}
+					if nt.tokType == RParen || nt.tokType == RightSBrace {
+						evnest -= 1
+					}
+					if evnest == 0 && (term == int(inbound.TokenCount)-1 || nt.tokType == O_Comma) {
+						expr, err := parser.Eval(ifs, inbound.Tokens[newstart:term+1])
+						if err != nil {
+							parser.report(inbound.SourceLine, sf("Error in LOG expression evaluation: %s", err))
+							finish(false, ERR_EVAL)
+							break
+						}
+						newstart = term + 1
+						// Handle string interpolation
+						switch expr.(type) {
+						case string:
+							expr = interpolate(parser.namespace, ifs, ident, expr.(string))
+						}
+						messageParts = append(messageParts, sf("%v", sparkle(expr)))
+					}
+				}
+				message = strings.Join(messageParts, "")
+			} else {
+				message = ""
+			}
+
+			// Create log request with level
+			request := LogRequest{
+				Message:     message,
+				Fields:      make(map[string]any),
+				IsJSON:      jsonLoggingEnabled,
+				IsError:     false,
+				IsWebAccess: false,
+				SourceLine:  0,
+				DestFile:    "",
+				HTTPStatus:  0,
+				Level:       logLevel,
+				Timestamp:   time.Now(),
+			}
+
+			// Copy current log fields
+			for k, v := range logFields {
+				request.Fields[k] = v
+			}
+
+			// Handle console output (respects @silentlog setting)
+			shouldPrint := true
+			if v, exists := gvget("@silentlog"); exists && v != nil {
+				if silent, ok := v.(bool); ok && silent {
+					shouldPrint = false
+				}
+			}
+			if shouldPrint && logLevel <= logMinLevel {
+				if jsonLoggingEnabled {
+					// Build JSON for console display
+					logEntry := make(map[string]any)
+					logEntry["message"] = message
+					logEntry["timestamp"] = time.Now().Format(time.RFC3339)
+					logEntry["level"] = logLevelToString(logLevel)
+
+					// Add subject if set
+					if subj, exists := gvget("@logsubject"); exists && subj != nil {
+						if subjStr, ok := subj.(string); ok && subjStr != "" {
+							logEntry["subject"] = subjStr
+						}
+					}
+
+					// Add custom fields
+					for k, v := range request.Fields {
+						logEntry[k] = v
+					}
+
+					jsonBytes, err := json.Marshal(logEntry)
+					if err == nil {
+						pf("%s\n", string(jsonBytes))
+					} else {
+						pf("%s\n", message) // Fallback to plain text
+					}
+				} else {
+					// Format plain text with timestamp and level
+					timestamp := time.Now().Format(time.RFC3339)
+					levelStr := strings.ToUpper(logLevelToString(logLevel))
+					pf("%s [%s] %s\n", timestamp, levelStr, message)
+				}
+			}
+
+			// Queue for file logging
+			queueLogRequest(request)
 
 		case C_Hist:
 
@@ -4744,6 +4864,70 @@ tco_reentry:
 
 			case "off":
 				loggingEnabled = false
+				stopLogWorker() // Stop the background logging worker
+
+			case "status":
+				// Show comprehensive logging status
+				pf("[#bold]Logging Configuration:[#-]\n")
+				pf("  State: %s\n", getLoggingStateString())
+				if loggingEnabled {
+					pf("  Log file: %s\n", logFile)
+				}
+				pf("  Format: %s\n", getLoggingFormatString())
+				pf("  Console output: %s\n", func() string {
+					if v, exists := gvget("@silentlog"); exists && v != nil {
+						if silent, ok := v.(bool); ok && silent {
+							return sparkle("[#6]QUIET[#-]")
+						}
+					}
+					return sparkle("[#4]LOUD[#-]")
+				}())
+
+				if subj, exists := gvget("@logsubject"); exists && subj != nil {
+					if subjStr, ok := subj.(string); ok && subjStr != "" {
+						pf("  Subject prefix: %s\n", subjStr)
+					}
+				}
+
+				pf("  Error logging: %s\n", getErrorLoggingStateString())
+
+				// Enhanced queue statistics
+				used, total, running, webRequests, mainRequests := getLogQueueStats()
+				pf("  Queue: %d/%d requests (%s)\n", used, total, func() string {
+					if running {
+						return sparkle("[#4]RUNNING[#-]")
+					}
+					return sparkle("[#2]STOPPED[#-]")
+				}())
+				pf("  Queue processed: %d main, %d web access\n", mainRequests, webRequests)
+
+				// Web access logging status
+				if log_web {
+					pf("  Web access logging: [#4]ENABLED[#-] -> %s\n", web_log_file)
+				} else {
+					pf("  Web access logging: [#2]DISABLED[#-]\n")
+				}
+
+				pf("  Memory reserve: %d bytes (%s)\n", emergencyReserveSize, getMemoryReserveStateString())
+
+				if logRotateSize > 0 {
+					pf("  Log rotation: %d bytes, keep %d files\n", logRotateSize, logRotateCount)
+				} else {
+					pf("  Log rotation: [#2]DISABLED[#-]\n")
+				}
+
+				if jsonLoggingEnabled && len(logFields) > 0 {
+					pf("  JSON fields: ")
+					first := true
+					for k, v := range logFields {
+						if !first {
+							pf(", ")
+						}
+						pf("%s=%v", k, v)
+						first = false
+					}
+					pf("\n")
+				}
 
 			case "on":
 				loggingEnabled = true
@@ -4754,9 +4938,18 @@ tco_reentry:
 						finish(false, ERR_EVAL)
 						break
 					}
-					logFile = we.result.(string)
+					proposedLogFile := we.result.(string)
+					// Validate log file path and get expanded path
+					expandedLogFile, err := validateLogFilePath(proposedLogFile)
+					if err != nil {
+						parser.report(inbound.SourceLine, sf("Invalid log file path: %v", err))
+						finish(false, ERR_EVAL)
+						break
+					}
+					logFile = expandedLogFile
 					gvset("@logsubject", "")
 				}
+				startLogWorker() // Start the background logging worker
 
 			case "quiet":
 				gvset("@silentlog", true)
@@ -4798,7 +4991,15 @@ tco_reentry:
 						finish(false, ERR_EVAL)
 						break
 					}
-					web_log_file = we.result.(string)
+					proposedAccessFile := we.result.(string)
+					// Validate access file path and get expanded path
+					expandedAccessFile, validateErr := validateLogFilePath(proposedAccessFile)
+					if validateErr != nil {
+						parser.report(inbound.SourceLine, sf("Invalid access file path: %v", validateErr))
+						finish(false, ERR_EVAL)
+						break
+					}
+					web_log_file = expandedAccessFile
 					// pf("accessfile changed to %v\n",web_log_file)
 					web_log_handle.Close()
 					var err error
@@ -4806,7 +5007,6 @@ tco_reentry:
 					if err != nil {
 						log.Println(err)
 					}
-					web_logger = log.New(web_log_handle, "", log.LstdFlags) // no prepended text
 				} else {
 					parser.report(inbound.SourceLine, "No access file provided for LOGGING ACCESSFILE command.")
 					finish(false, ERR_SYNTAX)
@@ -4905,6 +5105,147 @@ tco_reentry:
 					}
 				} else {
 					parser.report(inbound.SourceLine, "LOGGING JSON requires an option (on/off/fields).")
+					finish(false, ERR_SYNTAX)
+				}
+
+			case "error":
+				if inbound.TokenCount > 2 {
+					switch str.ToLower(inbound.Tokens[2].tokText) {
+					case "on", "1", "enable":
+						errorLoggingEnabled = true
+					case "off", "0", "disable":
+						errorLoggingEnabled = false
+					default:
+						parser.report(inbound.SourceLine, "Invalid state for LOGGING ERROR.")
+						finish(false, ERR_SYNTAX)
+					}
+				} else {
+					parser.report(inbound.SourceLine, "LOGGING ERROR requires an option (on/off).")
+					finish(false, ERR_SYNTAX)
+				}
+
+			case "reserve":
+				if inbound.TokenCount > 2 {
+					switch str.ToLower(inbound.Tokens[2].tokText) {
+					case "off", "0", "disable":
+						emergencyReserveSize = 0
+						if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+							*emergencyMemoryReserve = nil
+							emergencyMemoryReserve = nil
+						}
+					default:
+						// Parse as size value
+						we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[2:])
+						if we.evalError {
+							parser.report(inbound.SourceLine, "Invalid size for LOGGING RESERVE")
+							finish(false, ERR_EVAL)
+							break
+						}
+						size, faulted := GetAsInt(we.result)
+						if faulted || size < 0 {
+							parser.report(inbound.SourceLine, "LOGGING RESERVE size must be a positive integer")
+							finish(false, ERR_EVAL)
+							break
+						}
+						emergencyReserveSize = size
+						// Reallocate reserve with new size
+						if enhancedErrorsEnabled && size > 0 {
+							reserve := make([]byte, emergencyReserveSize)
+							emergencyMemoryReserve = &reserve
+						}
+					}
+				} else {
+					// No arguments - show status
+					status := "disabled"
+					if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+						status = "enabled"
+					}
+					pf("Memory reserve: %d bytes (%s)\n", emergencyReserveSize, status)
+				}
+
+			case "queue":
+				if inbound.TokenCount > 2 {
+					switch str.ToLower(inbound.Tokens[2].tokText) {
+					case "size":
+						if inbound.TokenCount > 3 {
+							we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[3:])
+							if we.evalError {
+								parser.report(inbound.SourceLine, "Invalid size for LOGGING QUEUE SIZE")
+								finish(false, ERR_EVAL)
+								break
+							}
+							size, faulted := GetAsInt(we.result)
+							if faulted || size < 1 {
+								parser.report(inbound.SourceLine, "LOGGING QUEUE SIZE must be a positive integer (minimum 1)")
+								finish(false, ERR_EVAL)
+								break
+							}
+							logQueueSize = size
+							// Note: Queue resize would require restarting the log worker
+							// For now, just update the setting for next time logging starts
+						} else {
+							parser.report(inbound.SourceLine, "LOGGING QUEUE SIZE requires a size value")
+							finish(false, ERR_SYNTAX)
+						}
+					default:
+						parser.report(inbound.SourceLine, "Invalid LOGGING QUEUE option (size)")
+						finish(false, ERR_SYNTAX)
+					}
+				} else {
+					// No arguments - show current queue size
+					pf("Logging queue size: %d requests\n", logQueueSize)
+				}
+
+			case "rotate":
+				if inbound.TokenCount > 2 {
+					switch str.ToLower(inbound.Tokens[2].tokText) {
+					case "size":
+						if inbound.TokenCount > 3 {
+							we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[3:])
+							if we.evalError {
+								parser.report(inbound.SourceLine, "Invalid size for LOGGING ROTATE SIZE")
+								finish(false, ERR_EVAL)
+								break
+							}
+							size, faulted := GetAsInt64(we.result)
+							if faulted || size < 0 {
+								parser.report(inbound.SourceLine, "LOGGING ROTATE SIZE must be a positive integer")
+								finish(false, ERR_EVAL)
+								break
+							}
+							logRotateSize = size
+						} else {
+							parser.report(inbound.SourceLine, "LOGGING ROTATE SIZE requires a size value")
+							finish(false, ERR_SYNTAX)
+						}
+					case "count":
+						if inbound.TokenCount > 3 {
+							we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[3:])
+							if we.evalError {
+								parser.report(inbound.SourceLine, "Invalid count for LOGGING ROTATE COUNT")
+								finish(false, ERR_EVAL)
+								break
+							}
+							count, faulted := GetAsInt(we.result)
+							if faulted || count < 0 {
+								parser.report(inbound.SourceLine, "LOGGING ROTATE COUNT must be a positive integer")
+								finish(false, ERR_EVAL)
+								break
+							}
+							logRotateCount = count
+						} else {
+							parser.report(inbound.SourceLine, "LOGGING ROTATE COUNT requires a count value")
+							finish(false, ERR_SYNTAX)
+						}
+					case "off", "0", "disable":
+						logRotateSize = 0
+						logRotateCount = 0
+					default:
+						parser.report(inbound.SourceLine, "Invalid LOGGING ROTATE option (size/count/off)")
+						finish(false, ERR_SYNTAX)
+					}
+				} else {
+					parser.report(inbound.SourceLine, "LOGGING ROTATE requires an option (size/count/off)")
 					finish(false, ERR_SYNTAX)
 				}
 

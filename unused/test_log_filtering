@@ -1,0 +1,23 @@
+#!/usr/bin/env za
+
+# Test log level filtering with environment variables
+println "[#fgreen]Testing Log Level Filtering[#-]"
+println "================================="
+
+logging on "test_filtering.log"
+logging json on
+
+println "\nTesting all levels (should show all with default settings):"
+println "-----------------------------------------------------------"
+
+log debug : "Debug message"
+log info : "Info message"  
+log warn : "Warning message"
+log err : "Error message"
+log crit : "Critical message"
+
+println "\nTry running with: ZA_LOG_LEVEL=warn za test_log_filtering.za"
+println "That should only show warn, err, crit, alert, emerg messages"
+
+println "\nOr try: ZA_LOG_LEVEL=info za test_log_filtering.za"  
+println "That should show info, warn, err, crit, alert, emerg (no debug)" 
