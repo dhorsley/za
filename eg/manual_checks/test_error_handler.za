@@ -1,0 +1,111 @@
+#!/usr/bin/env za
+
+# Test script for Za enhanced error handling system
+# Tests custom error handlers and error library functions
+error_extend(true)
+
+def custom_error_handler()
+    println
+    println "[#6]=== Custom Error Handler Called ===[#-]"
+    
+    # Test error_message() function
+    msg = error_message()
+    println "Error Message: {msg}"
+    
+    # Test error_source_location() function
+    location = error_source_location()
+    println `Location: {=location["file"]} line {=location["line"]} in function {=location["function"]} (module: {=location["module"]})`
+    
+    # Test error_source_context() function
+    context = error_source_context(2, 2)  # 2 lines before, 2 lines after
+    println "\nSource Context:"
+    foreach line in context
+        println "  {=key_line+1} | {line}"
+    endfor
+    
+    # Test error_call_stack() function
+    stack = error_call_stack()
+    println "\nCall Stack:"
+    foreach func in stack
+        println "  -> {func}"
+    endfor
+    
+    # Test error_call_chain() function
+    chain = error_call_chain()
+    println "\nCall Chain Details:"
+    foreach call in chain
+        println `  {=key_call+1}. Function: {=call["function"]}`
+        if key(ref call, "args")
+            print "     Args: "
+            foreach arg in call["args"]
+                print "{arg} "
+            endfor
+            println
+        endif
+    endfor
+    
+    # Test error_local_variables() function
+    locals = error_local_variables()
+    println "\nLocal Variables:"
+    foreach value in locals
+        println "  {key_value} = {value} ({=kind(value)})"
+    endfor
+    
+    # Test error_global_variables() function
+    globals = error_global_variables()
+    println "\nGlobal Variables:"
+    count = 0
+    foreach value in globals
+        if count < 3  # Limit output
+            println "  {key_value} = {value} ({=kind(value)})"
+            count = count + 1
+        endif
+    endfor
+    if len(globals) > 3
+        println "  ... and {=len(globals) - 3} more global variables"
+    endif
+    
+    println "\n[#2]Custom handler will now call error_emergency_exit(99)[#-]"
+    error_emergency_exit(99)
+end
+
+def test_function_with_error()
+    local_var = "test value"
+    another_var = 42
+    
+    println "About to trigger an error in test_function_with_error()"
+    
+    # This should trigger an error
+    result = stripansi(local_var, "too", "many", "args")
+    
+    println "This line should not be reached"
+end
+
+def nested_function()
+    x = 10
+    y = "hello"
+    
+    println "Calling test_function_with_error() from nested_function()"
+    test_function_with_error()
+end
+
+# Main test
+println "[#6]Za Enhanced Error Handler Test[#-]"
+println "Setting up custom error handler..."
+
+# Set up custom error handler
+trap("error", "custom_error_handler")
+
+# Enable enhanced errors
+error_extend(true)
+
+# Set up some global variables for testing
+global_test_var = "global value"
+global_number = 123
+
+println "Triggering error through nested function calls..."
+
+# This will trigger the error handler
+nested_function()
+
+println "This line should not be reached due to error_emergency_exit()" 

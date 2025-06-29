@@ -1,4 +1,5 @@
 #!/usr/bin/za
+error_extend(true)
 
 var z int
 

@@ -1,5 +1,7 @@
 #!/usr/bin/za -S
 
+error_extend(true)
+
 define clear_pane(p)
     pane select p
     pane redraw

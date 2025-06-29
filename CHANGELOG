@@ -119,9 +119,36 @@ CHANGE LOG
             ...
         - others to be added
 
+    * error handling library calls
+        - trap("error","func_name(args)") # sets a custom error handler
+        - error_extend(bool)        # enables the enhanced error output
+        the following calls are only permitted from within a custom error handler:
+        - error_call_chain          # Returns full call chain with function names and arguments.
+        - error_call_stack          # Returns function names in call chain.
+        - error_default_handler     # Calls the default Za error handler.
+        - error_emergency_exit      # Emergency exit with specified code.
+        - error_filename            # Returns the filename where the error occurred.
+        - error_global_variables    # Returns user-defined global variables.
+        - error_local_variables     # Returns variables in the error frame.
+        - error_message             # Returns the original error message text.
+        - error_source_context      # Returns source lines (before, after) around error.
+        - error_source_location     # Returns error location as {file, line, function, module}.
 
     other
     -----
+
+    * Enhanced Error Handling
+        - Added comprehensive error context display with error_extend(true)
+        - Shows function arguments of calls
+        - Displays source code context with line markers around error location
+        - Includes variable state inspection showing relevant local variables
+        - Provides complete call chain with absolute file paths
+        - Maintains extremely low performance overhead on success path
+        - Preserves backward compatibility with existing error handling
+        - Includes recursion protection to prevent excessive output
+        - allows for a custom error handler using trap("error","func")
+        - some new error-related library calls included, listed above.
+        - later version will allow for the errors to chain into interactive debugger use
 
     * added JSON logging option to LOG/LOGGING statements.
         - See unused/test_json_logging.za for example. 
@@ -133,9 +160,9 @@ CHANGE LOG
             - the output should be hierarchical, following the stored call chain.
         - this option replaces a previously undocumented -P call that generated Go trace output.
 
-        - Separated error reporting stack (`errorChain`) from profiler stack, ensuring clarity in tracebacks and no mixing with performance data.
+        - Separated error reporting stack (`errorChain`) from profiler stack, ensuring no mixing with performance data.
         - Removed global `callChainList` and replace with goroutine-local tracking (`getCallChain` and helpers).
-        - Updated all `recordPhase`, `recordExclusiveExecutionTime`, and profiler-related calls to use the new goroutine-aware stack.
+        - Updated all `recordPhase`, `recordExclusiveExecutionTime`, and profiler-related calls to use goroutine-aware stack.
         - Validated correct profiler behavior in normal, recursive, and async test cases.
         - Preserved error call chain reporting (`errorChain`) as before.
         - some further changes made to track calls using a context instead of the current horror show that was slowing things down.
@@ -145,7 +172,7 @@ CHANGE LOG
             - DEBUG ON | OFF | BREAK
             - these enable/disable the debugger at run-time (ON/OFF) or (BREAK) force entry to the debugger.
         - you may also submit a SIGUSR1 signal from outside of the interpreter to force into the debugger REPL.
-            - use SIGBREAK on Windows.
+            - use SIGBREAK on Windows. (if supported)
             - see the script in tools/debug for an example.
         - breakpoint management and variable watching can be done from with the debugger.
         - you can also inspect functions and structs.

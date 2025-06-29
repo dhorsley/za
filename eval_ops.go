@@ -1907,12 +1907,56 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 			if err != nil {
 				p.std_faulted = true
 
-				// Check if this is an enhanced expect_args error
-				if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok && enhancedErrorsEnabled {
-					// Show enhanced error context
-					showEnhancedExpectArgsError(p, p.pc, enhancedErr, evalfs)
+				// Check if enhanced error handling is enabled first (fast path)
+				if enhancedErrorsEnabled {
+					// Only do the type assertion if enhanced errors are enabled
+					if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok {
+						// Check for custom error handler first
+						if userErrorHandler, found := gvget("@trapError"); found && userErrorHandler.(string) != "" {
+							// Set current error context for library functions
+							// Get the base ID for source lookup
+							baseId := evalfs
+							if evalfs == 2 {
+								baseId = 1
+							} else {
+								funcName := getReportFunctionName(evalfs, false)
+								baseId, _ = fnlookup.lmget(funcName)
+							}
+
+							// Get source line and actual line number
+							sourceLine := "Interactive Mode"
+							actualLineNumber := 0
+							if len(functionspaces[baseId]) > 0 && baseId != 0 && int(p.pc) < len(basecode[baseId]) {
+								sourceLine = basecode[baseId][p.pc].Original
+								if int(p.pc) < len(functionspaces[baseId]) {
+									actualLineNumber = int(functionspaces[baseId][p.pc].SourceLine) + 1
+								}
+							}
+
+							currentErrorContext = &ErrorContext{
+								Message: enhancedErr.OriginalError.Error(),
+								SourceLocation: ErrorLocation{
+									File:     sourceLine,
+									Line:     actualLineNumber,
+									Function: name,
+									Module:   p.namespace,
+								},
+								EnhancedError: enhancedErr,
+								Parser:        p,
+								EvalFS:        evalfs,
+							}
+							// Call custom error handler
+							callCustomErrorHandler(userErrorHandler.(string), p.namespace, evalfs)
+						} else {
+							// Show enhanced error context (fallback)
+							showEnhancedExpectArgsError(p, p.pc, enhancedErr, evalfs)
+						}
+					} else {
+						// Enhanced errors enabled but this isn't an enhanced error
+						pf("%s\n", err)
+					}
 				} else {
-					// Standard error reporting (unchanged)
+					// Enhanced errors disabled - standard error reporting
 					pf("%s\n", err)
 				}
 			}

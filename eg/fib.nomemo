@@ -1,5 +1,5 @@
 #!/usr/bin/za
-
+error_extend(true)
 define fib(n)
     on n<=1 do return n
     return fib(n-1)+fib(n-2)
