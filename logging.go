@@ -104,12 +104,16 @@ func getMemoryReserveStateString() string {
 
 // startLogWorker starts the background logging worker
 func startLogWorker() {
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker called - logWorkerRunning=%v\n", logWorkerRunning)
 	if logWorkerRunning {
+		fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker EARLY_RETURN - worker already running\n")
 		return
 	}
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker creating queue with size %d\n", logQueueSize)
 	logQueue = make(chan LogRequest, logQueueSize) // Use configurable size
 	logWorkerRunning = true
 	queueFullWarned = false
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker about to launch goroutine\n")
 
 	go func() {
 		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started\n")
@@ -121,6 +125,7 @@ func startLogWorker() {
 		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine exiting\n")
 		logWorkerRunning = false
 	}()
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker goroutine launched, returning\n")
 }
 
 // stopLogWorker stops the background logging worker
