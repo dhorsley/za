@@ -129,6 +129,11 @@ func stopLogWorker() {
 
 // queueLogRequest sends a log request to the queue with full detection
 func queueLogRequest(request LogRequest) {
+	// Skip queuing if logging is disabled (unless it's web access or error logging)
+	if !loggingEnabled && !request.IsWebAccess && !request.IsError {
+		return
+	}
+
 	if !logWorkerRunning {
 		startLogWorker()
 	}
