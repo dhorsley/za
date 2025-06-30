@@ -151,6 +151,7 @@ CHANGE LOG
         - Added memory management integration - web access logs are dropped gracefully under memory pressure
         - RFC 5424 Log Levels (8-level system)
         - Environment Variable Filtering (ZA_LOG_LEVEL) to set maximum verbosity level of logging.
+- Environment Variable Configuration (ZA_LOG_QUEUE_SIZE) to set logging queue buffer size.
         - Enhanced Statistics Function (logging_stats()) for more metrics gathering functionality.
         - Atomic File Writes with locking - on linux/bsd anyway. Windows is shit-of-out-flock.
 
@@ -190,7 +191,7 @@ CHANGE LOG
             Advanced Features:
             logging subject <text>              - Set prefix for all log entries
             logging error on/off                - Enable/disable automatic error logging
-            logging queue size <number>         - Set background processing queue size (default: 20)
+            logging queue size <number>         - Set background processing queue size (default: 60)
             logging rotate size <bytes>         - Set log rotation file size threshold
             logging rotate count <number>       - Set number of rotated files to keep
             logging reserve <bytes>             - Set emergency memory reserve for logging under pressure
@@ -207,7 +208,7 @@ CHANGE LOG
 
                 Background Queue Processing
                 Non-blocking logging operations
-                Configurable queue size (default: 20 requests)
+                Configurable queue size (default: 60 requests, increased for modern systems)
                 Automatic queue overflow handling with warnings
                 Dual Destination System
 

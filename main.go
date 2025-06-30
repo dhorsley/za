@@ -189,7 +189,7 @@ var errorLoggingEnabled bool
 var emergencyReserveSize int = 1024 * 1024 // Default 1MB
 var logRotateSize int64
 var logRotateCount int
-var logQueueSize int = 20     // Default queue size
+var logQueueSize int = 60     // Default queue size (increased for modern systems)
 var webLogRequestCount int64  // Total web access log requests processed
 var mainLogRequestCount int64 // Total main log requests processed
 
@@ -636,6 +636,13 @@ func main() {
 			if level, err := strconv.Atoi(envLogLevel); err == nil && level >= 0 && level <= 7 {
 				logMinLevel = level
 			}
+		}
+	}
+
+	// Process ZA_LOG_QUEUE_SIZE environment variable
+	if envQueueSize := os.Getenv("ZA_LOG_QUEUE_SIZE"); envQueueSize != "" {
+		if size, err := strconv.Atoi(envQueueSize); err == nil && size >= 1 {
+			logQueueSize = size
 		}
 	}
 
@@ -1154,7 +1161,7 @@ func main() {
 	logFile = ""
 	loggingEnabled = false
 
-	// reset JSON logging
+	// Initialize JSON logging (for both interactive and non-interactive modes)
 	jsonLoggingEnabled = false
 	logFields = make(map[string]any)
 	logFieldsStack = make([]map[string]any, 0)
