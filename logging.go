@@ -116,8 +116,14 @@ func startLogWorker() {
 	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker about to launch goroutine\n")
 
 	go func() {
-		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started\n")
-		for request := range logQueue {
+		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started, waiting for requests\n")
+		for {
+			fmt.Fprintf(os.Stderr, "DEBUG: Log worker about to wait for next request\n")
+			request, ok := <-logQueue
+			if !ok {
+				fmt.Fprintf(os.Stderr, "DEBUG: Log worker channel closed, exiting\n")
+				break
+			}
 			fmt.Fprintf(os.Stderr, "DEBUG: Log worker received request from queue: msg='%s'\n", request.Message)
 			processLogRequest(request)
 			fmt.Fprintf(os.Stderr, "DEBUG: Log worker completed processing request\n")
@@ -139,6 +145,7 @@ func stopLogWorker() {
 // queueLogRequest sends a log request to the queue with full detection
 func queueLogRequest(request LogRequest) {
 	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest START - msg='%s' IsError=%v IsWebAccess=%v\n", request.Message, request.IsError, request.IsWebAccess)
+	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest worker status check - logWorkerRunning=%v logQueue!=nil=%v\n", logWorkerRunning, logQueue != nil)
 
 	// Skip queuing if logging is disabled (unless it's web access or error logging)
 	if !loggingEnabled && !request.IsWebAccess && !request.IsError {
