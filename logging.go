@@ -31,6 +31,11 @@ type LogRequest struct {
 // Global logging queue system
 var logQueue chan LogRequest
 var logWorkerRunning bool
+
+func init() {
+	fmt.Fprintf(os.Stderr, "DEBUG: logging.go init() - logWorkerRunning=%v logQueue=%p\n", logWorkerRunning, logQueue)
+}
+
 var queueFullWarned bool
 
 // logLevelToString converts log level number to string name
