@@ -111,7 +111,9 @@ func startLogWorker() {
 	}
 	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker creating queue with size %d\n", logQueueSize)
 	logQueue = make(chan LogRequest, logQueueSize) // Use configurable size
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker logQueue created at %p\n", logQueue)
 	logWorkerRunning = true
+	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker set logWorkerRunning=true\n")
 	queueFullWarned = false
 	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker about to launch goroutine\n")
 
@@ -130,16 +132,20 @@ func startLogWorker() {
 		}
 		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine exiting\n")
 		logWorkerRunning = false
+		fmt.Fprintf(os.Stderr, "DEBUG: Log worker set logWorkerRunning=false\n")
 	}()
 	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker goroutine launched, returning\n")
 }
 
 // stopLogWorker stops the background logging worker
 func stopLogWorker() {
+	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker called - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
 	if logQueue != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker closing and nil'ing logQueue\n")
 		close(logQueue)
 		logQueue = nil
 	}
+	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker complete - logQueue=%p\n", logQueue)
 }
 
 // queueLogRequest sends a log request to the queue with full detection
@@ -169,7 +175,7 @@ func queueLogRequest(request LogRequest) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest about to try select - queue len=%d size=%d\n", len(logQueue), logQueueSize)
+	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest about to try select - queue len=%d size=%d logQueue=%p\n", len(logQueue), logQueueSize, logQueue)
 
 	select {
 	case logQueue <- request:
