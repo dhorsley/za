@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -31,6 +32,7 @@ type LogRequest struct {
 // Global logging queue system
 var logQueue chan LogRequest
 var logWorkerRunning bool
+var workerMutex sync.Mutex
 
 func init() {
 	fmt.Fprintf(os.Stderr, "DEBUG: logging.go init() - logWorkerRunning=%v logQueue=%p\n", logWorkerRunning, logQueue)
@@ -109,6 +111,9 @@ func getMemoryReserveStateString() string {
 
 // startLogWorker starts the background logging worker
 func startLogWorker() {
+	workerMutex.Lock()
+	defer workerMutex.Unlock()
+
 	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker called - logWorkerRunning=%v\n", logWorkerRunning)
 	if logWorkerRunning {
 		fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker EARLY_RETURN - worker already running\n")
@@ -144,13 +149,17 @@ func startLogWorker() {
 
 // stopLogWorker stops the background logging worker
 func stopLogWorker() {
+	workerMutex.Lock()
+	defer workerMutex.Unlock()
+
 	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker called - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
 	if logQueue != nil {
 		fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker closing and nil'ing logQueue\n")
 		close(logQueue)
 		logQueue = nil
 	}
-	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker complete - logQueue=%p\n", logQueue)
+	logWorkerRunning = false // Reset flag when stopping
+	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker complete - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
 }
 
 // queueLogRequest sends a log request to the queue with full detection
@@ -164,10 +173,18 @@ func queueLogRequest(request LogRequest) {
 		return
 	}
 
-	if !logWorkerRunning {
-		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest starting log worker\n")
-		startLogWorker()
+	workerMutex.Lock()
+	if !logWorkerRunning || logQueue == nil {
+		if logWorkerRunning && logQueue == nil {
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest INCONSISTENT STATE - logWorkerRunning=true but logQueue=nil, restarting\n")
+			logWorkerRunning = false
+		}
+		if !logWorkerRunning {
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest starting log worker\n")
+			startLogWorker()
+		}
 	}
+	workerMutex.Unlock()
 
 	// Check memory reserve status for critical operations
 	memoryConstrained := false
