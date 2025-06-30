@@ -112,9 +112,13 @@ func startLogWorker() {
 	queueFullWarned = false
 
 	go func() {
+		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started\n")
 		for request := range logQueue {
+			fmt.Fprintf(os.Stderr, "DEBUG: Log worker received request from queue: msg='%s'\n", request.Message)
 			processLogRequest(request)
+			fmt.Fprintf(os.Stderr, "DEBUG: Log worker completed processing request\n")
 		}
+		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine exiting\n")
 		logWorkerRunning = false
 	}()
 }
@@ -129,12 +133,16 @@ func stopLogWorker() {
 
 // queueLogRequest sends a log request to the queue with full detection
 func queueLogRequest(request LogRequest) {
+	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest START - msg='%s' IsError=%v IsWebAccess=%v\n", request.Message, request.IsError, request.IsWebAccess)
+
 	// Skip queuing if logging is disabled (unless it's web access or error logging)
 	if !loggingEnabled && !request.IsWebAccess && !request.IsError {
+		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest EARLY_RETURN - logging disabled\n")
 		return
 	}
 
 	if !logWorkerRunning {
+		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest starting log worker\n")
 		startLogWorker()
 	}
 
@@ -149,15 +157,20 @@ func queueLogRequest(request LogRequest) {
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest about to try select - queue len=%d size=%d\n", len(logQueue), logQueueSize)
+
 	select {
 	case logQueue <- request:
 		// Sent successfully
+		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest SUCCESS - request sent to queue\n")
 		queueFullWarned = false // Reset warning flag when queue flows again
 
 	case <-time.After(100 * time.Millisecond):
+		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest TIMEOUT - queue is full\n")
 		// Queue is full - apply memory-aware handling
 		if memoryConstrained && request.IsWebAccess {
 			// Drop this web access log request to preserve memory
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access request due to memory constraint\n")
 			return
 		}
 
@@ -175,19 +188,25 @@ func queueLogRequest(request LogRequest) {
 		// For critical logs (errors, main logs), still try to queue
 		// For non-critical web access logs, try once more then drop
 		if request.IsError || !request.IsWebAccess {
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest blocking on queue for critical log - IsError=%v IsWebAccess=%v\n", request.IsError, request.IsWebAccess)
 			logQueue <- request // Block until space available for critical logs
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest critical log successfully queued after blocking\n")
 		} else {
 			// For web access logs, try once more without blocking
+			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest trying non-blocking retry for web access log\n")
 			select {
 			case logQueue <- request:
 				// Sent successfully
+				fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest web access log sent on retry\n")
 				return
 			default:
 				// Drop the web access request to prevent blocking
+				fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access log\n")
 				return
 			}
 		}
 	}
+	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest COMPLETE\n")
 }
 
 // processLogRequest handles a single log request
