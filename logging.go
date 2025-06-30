@@ -35,7 +35,7 @@ var logWorkerRunning bool
 var workerMutex sync.Mutex
 
 func init() {
-	fmt.Fprintf(os.Stderr, "DEBUG: logging.go init() - logWorkerRunning=%v logQueue=%p\n", logWorkerRunning, logQueue)
+	// fmt.Fprintf(os.Stderr, "DEBUG: logging.go init() - logWorkerRunning=%v logQueue=%p\n", logWorkerRunning, logQueue)
 }
 
 var queueFullWarned bool
@@ -114,37 +114,37 @@ func startLogWorker() {
 	workerMutex.Lock()
 	defer workerMutex.Unlock()
 
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker called - logWorkerRunning=%v\n", logWorkerRunning)
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker called - logWorkerRunning=%v\n", logWorkerRunning)
 	if logWorkerRunning {
-		fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker EARLY_RETURN - worker already running\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker EARLY_RETURN - worker already running\n")
 		return
 	}
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker creating queue with size %d\n", logQueueSize)
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker creating queue with size %d\n", logQueueSize)
 	logQueue = make(chan LogRequest, logQueueSize) // Use configurable size
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker logQueue created at %p\n", logQueue)
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker logQueue created at %p\n", logQueue)
 	logWorkerRunning = true
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker set logWorkerRunning=true\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker set logWorkerRunning=true\n")
 	queueFullWarned = false
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker about to launch goroutine\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker about to launch goroutine\n")
 
 	go func() {
-		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started, waiting for requests\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine started, waiting for requests\n")
 		for {
-			fmt.Fprintf(os.Stderr, "DEBUG: Log worker about to wait for next request\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: Log worker about to wait for next request\n")
 			request, ok := <-logQueue
 			if !ok {
-				fmt.Fprintf(os.Stderr, "DEBUG: Log worker channel closed, exiting\n")
+				// fmt.Fprintf(os.Stderr, "DEBUG: Log worker channel closed, exiting\n")
 				break
 			}
-			fmt.Fprintf(os.Stderr, "DEBUG: Log worker received request from queue: msg='%s'\n", request.Message)
+			// fmt.Fprintf(os.Stderr, "DEBUG: Log worker received request from queue: msg='%s'\n", request.Message)
 			processLogRequest(request)
-			fmt.Fprintf(os.Stderr, "DEBUG: Log worker completed processing request\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: Log worker completed processing request\n")
 		}
-		fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine exiting\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: Log worker goroutine exiting\n")
 		logWorkerRunning = false
-		fmt.Fprintf(os.Stderr, "DEBUG: Log worker set logWorkerRunning=false\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: Log worker set logWorkerRunning=false\n")
 	}()
-	fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker goroutine launched, returning\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: startLogWorker goroutine launched, returning\n")
 }
 
 // stopLogWorker stops the background logging worker
@@ -152,35 +152,35 @@ func stopLogWorker() {
 	workerMutex.Lock()
 	defer workerMutex.Unlock()
 
-	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker called - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
+	// fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker called - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
 	if logQueue != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker closing and nil'ing logQueue\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker closing and nil'ing logQueue\n")
 		close(logQueue)
 		logQueue = nil
 	}
 	logWorkerRunning = false // Reset flag when stopping
-	fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker complete - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
+	// fmt.Fprintf(os.Stderr, "DEBUG: stopLogWorker complete - logQueue=%p logWorkerRunning=%v\n", logQueue, logWorkerRunning)
 }
 
 // queueLogRequest sends a log request to the queue with full detection
 func queueLogRequest(request LogRequest) {
-	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest START - msg='%s' IsError=%v IsWebAccess=%v\n", request.Message, request.IsError, request.IsWebAccess)
-	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest worker status check - logWorkerRunning=%v logQueue!=nil=%v\n", logWorkerRunning, logQueue != nil)
+	// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest START - msg='%s' IsError=%v IsWebAccess=%v\n", request.Message, request.IsError, request.IsWebAccess)
+	// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest worker status check - logWorkerRunning=%v logQueue!=nil=%v\n", logWorkerRunning, logQueue != nil)
 
 	// Skip queuing if logging is disabled (unless it's web access or error logging)
 	if !loggingEnabled && !request.IsWebAccess && !request.IsError {
-		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest EARLY_RETURN - logging disabled\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest EARLY_RETURN - logging disabled\n")
 		return
 	}
 
 	workerMutex.Lock()
 	if !logWorkerRunning || logQueue == nil {
 		if logWorkerRunning && logQueue == nil {
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest INCONSISTENT STATE - logWorkerRunning=true but logQueue=nil, restarting\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest INCONSISTENT STATE - logWorkerRunning=true but logQueue=nil, restarting\n")
 			logWorkerRunning = false
 		}
 		if !logWorkerRunning {
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest starting log worker\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest starting log worker\n")
 			startLogWorker()
 		}
 	}
@@ -197,20 +197,20 @@ func queueLogRequest(request LogRequest) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest about to try select - queue len=%d size=%d logQueue=%p\n", len(logQueue), logQueueSize, logQueue)
+	// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest about to try select - queue len=%d size=%d logQueue=%p\n", len(logQueue), logQueueSize, logQueue)
 
 	select {
 	case logQueue <- request:
 		// Sent successfully
-		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest SUCCESS - request sent to queue\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest SUCCESS - request sent to queue\n")
 		queueFullWarned = false // Reset warning flag when queue flows again
 
 	case <-time.After(100 * time.Millisecond):
-		fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest TIMEOUT - queue is full\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest TIMEOUT - queue is full\n")
 		// Queue is full - apply memory-aware handling
 		if memoryConstrained && request.IsWebAccess {
 			// Drop this web access log request to preserve memory
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access request due to memory constraint\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access request due to memory constraint\n")
 			return
 		}
 
@@ -220,51 +220,51 @@ func queueLogRequest(request LogRequest) {
 
 			// Send warning directly to log file (bypass queue to avoid recursion)
 			warningMessage := fmt.Sprintf("WARNING: Logging queue full (size: %d). Consider increasing queue size with LOGGING QUEUE SIZE if this persists.", logQueueSize)
-			fmt.Fprintf(os.Stderr, "DEBUG: Writing queue full warning directly via plog_direct: %s\n", warningMessage)
+			// fmt.Fprintf(os.Stderr, "DEBUG: Writing queue full warning directly via plog_direct: %s\n", warningMessage)
 			plog_direct(warningMessage) // Write directly to file
-			fmt.Fprintf(os.Stderr, "DEBUG: plog_direct call completed\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: plog_direct call completed\n")
 		}
 
 		// For critical logs (errors, main logs), still try to queue
 		// For non-critical web access logs, try once more then drop
 		if request.IsError || !request.IsWebAccess {
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest blocking on queue for critical log - IsError=%v IsWebAccess=%v\n", request.IsError, request.IsWebAccess)
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest blocking on queue for critical log - IsError=%v IsWebAccess=%v\n", request.IsError, request.IsWebAccess)
 			logQueue <- request // Block until space available for critical logs
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest critical log successfully queued after blocking\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest critical log successfully queued after blocking\n")
 		} else {
 			// For web access logs, try once more without blocking
-			fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest trying non-blocking retry for web access log\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest trying non-blocking retry for web access log\n")
 			select {
 			case logQueue <- request:
 				// Sent successfully
-				fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest web access log sent on retry\n")
+				// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest web access log sent on retry\n")
 				return
 			default:
 				// Drop the web access request to prevent blocking
-				fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access log\n")
+				// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest dropping web access log\n")
 				return
 			}
 		}
 	}
-	fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest COMPLETE\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: queueLogRequest COMPLETE\n")
 }
 
 // processLogRequest handles a single log request
 func processLogRequest(request LogRequest) {
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest START - msg='%s' level=%d\n", request.Message, request.Level)
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest START - msg='%s' level=%d\n", request.Message, request.Level)
 
 	if !loggingEnabled && !request.IsWebAccess {
-		fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - logging disabled\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - logging disabled\n")
 		return
 	}
 
 	// Apply log level filtering (lower numbers = higher priority)
 	if request.Level > logMinLevel {
-		fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - level filtered\n")
+		// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - level filtered\n")
 		return // Skip this log entry - level too low
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_FILTERING\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_FILTERING\n")
 
 	// Update statistics
 	if request.IsWebAccess {
@@ -281,7 +281,7 @@ func processLogRequest(request LogRequest) {
 		destFile = request.DestFile
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_DEST_FILE - destFile='%s'\n", destFile)
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_DEST_FILE - destFile='%s'\n", destFile)
 
 	// Check rotation for the appropriate file
 	if request.IsWebAccess && request.DestFile != "" {
@@ -290,7 +290,7 @@ func processLogRequest(request LogRequest) {
 		checkAndRotateLog()
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_ROTATION\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_ROTATION\n")
 
 	// Handle enhanced error logging for HTTP errors (3xx/4xx/5xx)
 	if request.IsWebAccess && request.HTTPStatus >= 300 {
@@ -306,7 +306,7 @@ func processLogRequest(request LogRequest) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest BEFORE_WRITE - isJSON=%v\n", request.IsJSON)
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest BEFORE_WRITE - isJSON=%v\n", request.IsJSON)
 
 	if request.IsJSON {
 		// Always include level field in JSON output
@@ -324,10 +324,10 @@ func processLogRequest(request LogRequest) {
 
 		// Write to appropriate destination
 		if request.IsWebAccess && destFile != "" {
-			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct_to_file\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct_to_file\n")
 			plog_json_direct_to_file(destFile, request.Message, request.Fields)
 		} else {
-			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct\n")
 			plog_json_direct(request.Message, request.Fields)
 		}
 	} else {
@@ -343,15 +343,15 @@ func processLogRequest(request LogRequest) {
 
 		// Write to appropriate destination
 		if request.IsWebAccess && destFile != "" {
-			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct_to_file\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct_to_file\n")
 			plog_direct_to_file(destFile, message)
 		} else {
-			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct\n")
+			// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct\n")
 			plog_direct(message)
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest END\n")
+	// fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest END\n")
 }
 
 // validateLogFilePath checks if a log file path is safe and writable
