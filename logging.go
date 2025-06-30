@@ -166,13 +166,10 @@ func queueLogRequest(request LogRequest) {
 			queueFullWarned = true
 
 			// Send warning directly to log file (bypass queue to avoid recursion)
-			warningRequest := LogRequest{
-				Message:   fmt.Sprintf("WARNING: Logging queue full (size: %d). Consider increasing queue size with LOGGING QUEUE SIZE if this persists.", logQueueSize),
-				IsJSON:    false,
-				IsError:   false,
-				Timestamp: time.Now(),
-			}
-			processLogRequest(warningRequest) // Write directly
+			warningMessage := fmt.Sprintf("WARNING: Logging queue full (size: %d). Consider increasing queue size with LOGGING QUEUE SIZE if this persists.", logQueueSize)
+			fmt.Fprintf(os.Stderr, "DEBUG: Writing queue full warning directly via plog_direct: %s\n", warningMessage)
+			plog_direct(warningMessage) // Write directly to file
+			fmt.Fprintf(os.Stderr, "DEBUG: plog_direct call completed\n")
 		}
 
 		// For critical logs (errors, main logs), still try to queue
