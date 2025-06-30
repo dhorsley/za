@@ -195,14 +195,20 @@ func queueLogRequest(request LogRequest) {
 
 // processLogRequest handles a single log request
 func processLogRequest(request LogRequest) {
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest START - msg='%s' level=%d\n", request.Message, request.Level)
+
 	if !loggingEnabled && !request.IsWebAccess {
+		fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - logging disabled\n")
 		return
 	}
 
 	// Apply log level filtering (lower numbers = higher priority)
 	if request.Level > logMinLevel {
+		fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest EARLY_RETURN - level filtered\n")
 		return // Skip this log entry - level too low
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_FILTERING\n")
 
 	// Update statistics
 	if request.IsWebAccess {
@@ -219,12 +225,16 @@ func processLogRequest(request LogRequest) {
 		destFile = request.DestFile
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_DEST_FILE - destFile='%s'\n", destFile)
+
 	// Check rotation for the appropriate file
 	if request.IsWebAccess && request.DestFile != "" {
 		checkAndRotateWebLog(request.DestFile)
 	} else {
 		checkAndRotateLog()
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest AFTER_ROTATION\n")
 
 	// Handle enhanced error logging for HTTP errors (3xx/4xx/5xx)
 	if request.IsWebAccess && request.HTTPStatus >= 300 {
@@ -239,6 +249,8 @@ func processLogRequest(request LogRequest) {
 			request.Fields["level"] = "WARNING" // 3xx redirects
 		}
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest BEFORE_WRITE - isJSON=%v\n", request.IsJSON)
 
 	if request.IsJSON {
 		// Always include level field in JSON output
@@ -256,8 +268,10 @@ func processLogRequest(request LogRequest) {
 
 		// Write to appropriate destination
 		if request.IsWebAccess && destFile != "" {
+			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct_to_file\n")
 			plog_json_direct_to_file(destFile, request.Message, request.Fields)
 		} else {
+			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_json_direct\n")
 			plog_json_direct(request.Message, request.Fields)
 		}
 	} else {
@@ -273,11 +287,15 @@ func processLogRequest(request LogRequest) {
 
 		// Write to appropriate destination
 		if request.IsWebAccess && destFile != "" {
+			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct_to_file\n")
 			plog_direct_to_file(destFile, message)
 		} else {
+			fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest CALLING plog_direct\n")
 			plog_direct(message)
 		}
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: processLogRequest END\n")
 }
 
 // validateLogFilePath checks if a log file path is safe and writable
