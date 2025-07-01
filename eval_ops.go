@@ -1557,9 +1557,9 @@ func asObjectKey(key any) string {
 
 func accessArray(ident *[]Variable, obj any, field any) any {
 
-	// pf("aa-typ : (%T)\n",obj)
-	// pf("aa-obj : (%T) %+v\n",obj,obj)
-	// pf("aa-fld : (%T) %+v\n",field,field)
+	// pf("aa-typ : (%T)\\n",obj)
+	// pf("aa-obj : (%T) %+v\\n",obj,obj)
+	// pf("aa-fld : (%T) %+v\\n",field,field)
 
 	switch obj := obj.(type) {
 	case string: // string[n] access
@@ -1654,6 +1654,13 @@ func accessArray(ident *[]Variable, obj any, field any) any {
 						return obj[ifield]
 					}
 				default:
+					// Handle kdynamic types using reflection
+					rval := reflect.ValueOf(obj)
+					if rval.Kind() == reflect.Slice || rval.Kind() == reflect.Array {
+						if ifield < rval.Len() {
+							return rval.Index(ifield).Interface()
+						}
+					}
 					panic(fmt.Errorf("unhandled type %T in array access.", obj))
 				}
 				panic(fmt.Errorf("out-of-bounds access to sub-script %d in %T", ifield, obj))

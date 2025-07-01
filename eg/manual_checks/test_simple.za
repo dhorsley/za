@@ -1,0 +1,21 @@
+#!/usr/bin/za
+
+# Simple test for multi-dimensional assignment
+println "--> Testing multi-dimensional assignment"
+
+var matrix [][]int
+matrix = [ [1, 2, 3].list_int , [4, 5, 6].list_int ].to_typed("[][]int")
+
+println "matrix created successfully"
+println "matrix = " , matrix
+
+# Try to access matrix[0] first
+var row []int
+row = matrix[0]
+println "matrix[0] = " , row
+
+# Now try the assignment that's failing
+println "About to try: matrix[0][1] = 99"
+matrix[0][1] = 99
+println "Assignment successful!"
+println "matrix[0][1] = " , matrix[0][1] 

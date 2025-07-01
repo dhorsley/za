@@ -68,16 +68,31 @@ CHANGE LOG
 
         - split into two paths for current functionality and future use.
             - current active path retains compatibility with existing test cases
-            - future path will allow for deeply nested LHS access and auto-vivification.
-                - this will not be worked on further until data type handling has been improved:
-                    - move struct implementation away from reflection-based Go-compatible structs
-                        towards a map based offering.
+	    - multi-dimensional array/map support added
+	    	- missing containers in LHS path should auto-vivify.
+            - this will not be worked on further until data type handling has been improved:
+                - move struct implementation away from reflection-based Go-compatible structs
+                    towards a map based offering.
 
-        - the new compatible path is quite a bit faster than the old method already in most use cases.
+    * updated VAR statement to handle multi-dimension declarations:
+    	- e.g.
+	    - var ary [][]...[] primitive_type / any
+	    - var ary [10][20][4] primitive_type / any
+	    - var m map   # already worked
+	    - var m map[] # multi-dimensional maps
 
 
     library
     -------
+
+    * added to_typed("type_string") conversion function to take an untyped value and convert it
+        to the required type (useful for assigning to VAR type variables / sub elements.
+	- e.g.
+	> a=[1,2,3]
+	> a.kind
+	[]any
+	> a.to_typed("[]int").kind
+	[]int
 
     * (breaking) moved glob_key() functionality into key()
         - removed glob_key() call
@@ -151,7 +166,7 @@ CHANGE LOG
         - Added memory management integration - web access logs are dropped gracefully under memory pressure
         - RFC 5424 Log Levels (8-level system)
         - Environment Variable Filtering (ZA_LOG_LEVEL) to set maximum verbosity level of logging.
-- Environment Variable Configuration (ZA_LOG_QUEUE_SIZE) to set logging queue buffer size.
+        - Environment Variable Configuration (ZA_LOG_QUEUE_SIZE) to set logging queue buffer size.
         - Enhanced Statistics Function (logging_stats()) for more metrics gathering functionality.
         - Atomic File Writes with locking - on linux/bsd anyway. Windows is shit-of-out-flock.
 

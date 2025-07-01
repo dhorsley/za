@@ -18,5 +18,5 @@ a = a ?> "#>8"
 
 println "final len {=a.len} , loop-count {f}"
 
-timing::report(ts,te,max_count)
+timing::report(ts,te,max_count,opcount=nil)
 

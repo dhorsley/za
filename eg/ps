@@ -101,7 +101,7 @@ define ps(filter)
 
     endfor
 
-    var keys []pid_lookup
+    var keys []
     var l pid_lookup
     foreach v in proc_list
         l.pid=v.pid
