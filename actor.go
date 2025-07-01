@@ -1323,37 +1323,78 @@ tco_reentry:
 					}
 				}
 
-				if inbound.Tokens[c].tokType == LeftSBrace {
-
-					// find RightSBrace
-					var d int16
-					for d = eqPos - 1; d > c; d -= 1 {
-						if inbound.Tokens[d].tokType == RightSBrace {
-							hasAry = true
+				// Validate bracket sequence before processing
+				bracketDepth := 0
+				for i := c; i < eqPos; i++ {
+					if inbound.Tokens[i].tokType == LeftSBrace {
+						bracketDepth++
+					} else if inbound.Tokens[i].tokType == RightSBrace {
+						bracketDepth--
+						if bracketDepth < 0 {
+							parser.report(inbound.SourceLine, "malformed bracket sequence: ']' found before matching '['")
+							finish(false, ERR_SYNTAX)
 							break
 						}
 					}
-					if hasAry && d > (c+1) {
-						// not an empty [] term, but includes a size expression
-						se := parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[c+1:d])
-						if se.evalError {
-							parser.report(inbound.SourceLine, "could not evaluate size expression in VAR")
-							finish(false, ERR_EVAL)
-							break
-						}
-						switch se.result.(type) {
-						case int:
-							size = se.result.(int)
-						case int64:
-							size = int(se.result.(int64))
-						case uint:
-							size = int(se.result.(uint))
-						case uint64:
-							size = int(se.result.(uint64))
-						default:
-							parser.report(inbound.SourceLine, "size expression must evaluate to an integer")
-							finish(false, ERR_EVAL)
-							break
+				}
+				if bracketDepth > 0 {
+					parser.report(inbound.SourceLine, "malformed bracket sequence: unclosed '[' brackets")
+					finish(false, ERR_SYNTAX)
+				}
+
+				if inbound.Tokens[c].tokType == LeftSBrace {
+
+					// find RightSBrace - handle multiple [] pairs for multi-dimensional arrays
+					var d int16
+					bracketPairs := 0
+					for i := c; i < eqPos; i++ {
+						if inbound.Tokens[i].tokType == LeftSBrace {
+							// Find matching RightSBrace
+							bracketCount := 1
+							j := i + 1
+							for j < eqPos && bracketCount > 0 {
+								if inbound.Tokens[j].tokType == LeftSBrace {
+									bracketCount++
+								} else if inbound.Tokens[j].tokType == RightSBrace {
+									bracketCount--
+								}
+								j++
+							}
+							if bracketCount == 0 {
+								// Found a complete [] pair
+								bracketPairs++
+								if bracketPairs == 1 {
+									// Handle size for the first [] pair only
+									d = j - 1 // j-1 is the RightSBrace position
+									hasAry = true
+									if d > (i + 1) {
+										// not an empty [] term, but includes a size expression
+										se := parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[i+1:d])
+										if se.evalError {
+											parser.report(inbound.SourceLine, "could not evaluate size expression in VAR")
+											finish(false, ERR_EVAL)
+											break
+										}
+										switch se.result.(type) {
+										case int:
+											size = se.result.(int)
+										case int64:
+											size = int(se.result.(int64))
+										case uint:
+											size = int(se.result.(uint))
+										case uint64:
+											size = int(se.result.(uint64))
+										default:
+											parser.report(inbound.SourceLine, "size expression must evaluate to an integer")
+											finish(false, ERR_EVAL)
+											break
+										}
+									}
+								}
+								i = j - 1 // Continue after this bracket pair
+							} else {
+								break // Incomplete bracket pair
+							}
 						}
 					}
 				}
@@ -1397,95 +1438,175 @@ tco_reentry:
 					*ident = newIdent
 				}
 
-				// get the required type
-				var new_type_token_string string
-				type_token_string := inbound.Tokens[eqPos-1].tokText
-
-				if type_token_string != "[]" {
-					new_type_token_string = type_token_string
+				// Check for variable redeclaration
+				if sid < uint64(len(*ident)) && (*ident)[sid].declared {
+					parser.report(inbound.SourceLine, sf("variable '%s' is already declared", vname))
+					finish(false, ERR_SYNTAX)
+					break
 				}
-				if hasAry {
-					if type_token_string != "[]" {
-						new_type_token_string = "[]" + type_token_string
-					} else {
-						new_type_token_string = "[]"
+
+				// Build the complete type string from all tokens
+				var new_type_token_string string
+
+				// Find the base type - need to look backwards from eqPos to find the type token
+				var baseType string
+				for i := eqPos - 1; i >= c; i-- {
+					tokType := inbound.Tokens[i].tokType
+					if tokType == T_Map || tokType == T_Int || tokType == T_String || tokType == T_Float ||
+						tokType == T_Bool || tokType == T_Uint || tokType == T_Bigi || tokType == T_Bigf ||
+						tokType == T_Any || tokType == T_Array {
+						baseType = inbound.Tokens[i].tokText
+						break
+					}
+					// Also look for identifier tokens that could be struct names
+					if tokType == Identifier {
+						baseType = inbound.Tokens[i].tokText
+						break
 					}
 				}
 
+				// Count all bracket pairs from the parsing phase and build the type string
+				var bracketSuffix string
+				var bracketCount int
+
+				// The bracket detection already counted all [] pairs, so build the bracket notation
+				if hasAry {
+					// Count how many [] pairs were detected by looking at the tokens
+					for i := c; i < eqPos; i++ {
+						if inbound.Tokens[i].tokType == LeftSBrace {
+							// Find matching RightSBrace to count complete pairs
+							depth := 1
+							j := i + 1
+							for j < eqPos && depth > 0 {
+								if inbound.Tokens[j].tokType == LeftSBrace {
+									depth++
+								} else if inbound.Tokens[j].tokType == RightSBrace {
+									depth--
+								}
+								j++
+							}
+							if depth == 0 {
+								bracketCount++
+								i = j - 1 // Skip past this bracket pair
+							}
+						}
+					}
+
+					// Build the brackets - for maps they go after, for others they go before
+					for i := 0; i < bracketCount; i++ {
+						bracketSuffix += "[]"
+					}
+				}
+
+				// Handle maps specially - brackets go after "map"
+				if baseType == "map" {
+					new_type_token_string = baseType + bracketSuffix
+				} else {
+					// For arrays/slices, brackets go before the type
+					new_type_token_string = bracketSuffix + baseType
+				}
+
 				// declaration and initialisation
-				if _, found := Typemap[new_type_token_string]; found {
+				reflectType, found := Typemap[new_type_token_string]
+				if !found {
+					// Try dynamic type construction for multi-dimensional arrays/slices/maps
+					reflectType = parseAndConstructType(new_type_token_string)
+					if reflectType != nil {
+						Typemap[new_type_token_string] = reflectType // Cache for future use
+						found = true
+					}
+				}
+
+				if found {
 
 					t := Variable{}
 
 					if new_type_token_string != "map" {
-						t.IValue = reflect.New(Typemap[new_type_token_string]).Elem().Interface()
+						t.IValue = reflect.New(reflectType).Elem().Interface()
 					}
 
 					t.IName = vname
 					t.ITyped = true
 					t.declared = true
 
-					switch new_type_token_string {
-					case "nil":
-						t.IKind = knil
-					case "bool":
-						t.IKind = kbool
-					case "int":
-						t.IKind = kint
-					case "uint":
-						t.IKind = kuint
-					case "float":
-						t.IKind = kfloat
-					case "string":
-						t.IKind = kstring
-					case "uint8", "byte":
-						t.IKind = kbyte
-					case "uint64", "uxlong":
-						t.IKind = kuint64
-					case "mixed":
-						t.IKind = kany
-					case "any":
-						t.IKind = kany
-					case "[]bool":
-						t.IKind = ksbool
-						t.IValue = make([]bool, size, size)
-					case "[]int":
-						t.IKind = ksint
-						t.IValue = make([]int, size, size)
-					case "[]uint":
-						t.IKind = ksuint
-						t.IValue = make([]uint, size, size)
-					case "[]uint64", "[]uxlong":
-						t.IKind = ksuint64
-						t.IValue = make([]uint64, size, size)
-					case "[]float":
-						t.IKind = ksfloat
-						t.IValue = make([]float64, size, size)
-					case "[]string":
-						t.IKind = ksstring
-						t.IValue = make([]string, size, size)
-					case "[]byte", "[]uint8":
-						t.IKind = ksbyte
-						t.IValue = make([]uint8, size, size)
-					case "[]", "[]mixed", "[]any", "[]interface {}":
-						t.IKind = ksany
-						t.IValue = make([]any, size, size)
-					case "map":
+					// Check if this is a dynamically constructed type (multi-dimensional)
+					// Use the bracketCount from token parsing instead of fragile string matching
+					isDynamic := bracketCount > 1
+
+					// Handle multi-dimensional maps specially - they're still kmap
+					isMultiDimMap := str.HasPrefix(new_type_token_string, "map[") && str.HasSuffix(new_type_token_string, "]")
+
+					// Handle multi-dimensional maps (they're all kmap at runtime)
+					if isMultiDimMap {
 						t.IKind = kmap
 						t.IValue = make(map[string]any, size)
 						gob.Register(t.IValue)
-					case "bigi":
-						t.IKind = kbigi
-						t.IValue = big.NewInt(0)
-					case "bigf":
-						t.IKind = kbigf
-						t.IValue = big.NewFloat(0)
-					case "[]bigi":
-						t.IKind = ksbigi
-						t.IValue = make([]*big.Int, size, size)
-					case "[]bigf":
-						t.IKind = ksbigf
-						t.IValue = make([]*big.Float, size, size)
+					} else if !isDynamic {
+						switch new_type_token_string {
+						case "nil":
+							t.IKind = knil
+						case "bool":
+							t.IKind = kbool
+						case "int":
+							t.IKind = kint
+						case "uint":
+							t.IKind = kuint
+						case "float":
+							t.IKind = kfloat
+						case "string":
+							t.IKind = kstring
+						case "uint8", "byte":
+							t.IKind = kbyte
+						case "uint64", "uxlong":
+							t.IKind = kuint64
+						case "mixed":
+							t.IKind = kany
+						case "any":
+							t.IKind = kany
+						case "[]bool":
+							t.IKind = ksbool
+							t.IValue = make([]bool, size, size)
+						case "[]int":
+							t.IKind = ksint
+							t.IValue = make([]int, size, size)
+						case "[]uint":
+							t.IKind = ksuint
+							t.IValue = make([]uint, size, size)
+						case "[]uint64", "[]uxlong":
+							t.IKind = ksuint64
+							t.IValue = make([]uint64, size, size)
+						case "[]float":
+							t.IKind = ksfloat
+							t.IValue = make([]float64, size, size)
+						case "[]string":
+							t.IKind = ksstring
+							t.IValue = make([]string, size, size)
+						case "[]byte", "[]uint8":
+							t.IKind = ksbyte
+							t.IValue = make([]uint8, size, size)
+						case "[]", "[]mixed", "[]any", "[]interface {}":
+							t.IKind = ksany
+							t.IValue = make([]any, size, size)
+						case "map":
+							t.IKind = kmap
+							t.IValue = make(map[string]any, size)
+							gob.Register(t.IValue)
+						case "bigi":
+							t.IKind = kbigi
+							t.IValue = big.NewInt(0)
+						case "bigf":
+							t.IKind = kbigf
+							t.IValue = big.NewFloat(0)
+						case "[]bigi":
+							t.IKind = ksbigi
+							t.IValue = make([]*big.Int, size, size)
+						case "[]bigf":
+							t.IKind = ksbigf
+							t.IValue = make([]*big.Float, size, size)
+						}
+					} else {
+						// Dynamic multi-dimensional types use kdynamic
+						t.IKind = kdynamic
 					}
 
 					// if we had a default value, stuff it in here...
@@ -1523,6 +1644,11 @@ tco_reentry:
 						}
 					}
 
+					// Register dynamically constructed types with gob for serialization
+					if reflectType != nil && (str.Contains(new_type_token_string, "[][]") || str.Contains(new_type_token_string, "[") && str.Contains(new_type_token_string, "]")) {
+						gob.Register(t.IValue)
+					}
+
 					// write temp to ident
 					(*ident)[sid] = t
 					// pf("wrote var: %#v\n... with sid of #%d\n",t,sid)
@@ -1534,7 +1660,7 @@ tco_reentry:
 					structvalues := []any{}
 
 					// handle namespace presence
-					checkstr := type_token_string
+					checkstr := new_type_token_string
 					sname := found_namespace + "::" + checkstr
 					cpos := str.IndexByte(checkstr, ':')
 					if cpos != -1 {
@@ -1547,7 +1673,7 @@ tco_reentry:
 
 					/*
 					   pf("(struct check) found_namespace is %s\n",found_namespace)
-					   pf("(struct check) type_token_string is %s\n",type_token_string)
+					   pf("(struct check) new_type_token_string is %s\n",new_type_token_string)
 					   pf("(struct check) sname is %s\n",sname)
 					   pf("(struct check) structmaps:\n%#v\n",structmaps)
 					*/
@@ -5887,4 +6013,63 @@ func isTruthy(val any) bool {
 	default:
 		return val != nil
 	}
+}
+
+// parseAndConstructType dynamically constructs reflect.Type for multi-dimensional arrays, slices, and maps
+func parseAndConstructType(typeStr string) reflect.Type {
+	// Handle multi-dimensional slices: "[][]int", "[][][]string"
+	if str.HasPrefix(typeStr, "[]") {
+		innerType := parseAndConstructType(typeStr[2:])
+		if innerType != nil {
+			return reflect.SliceOf(innerType)
+		}
+	}
+
+	// Handle fixed arrays: "[5]int", "[3][2]string"
+	if str.HasPrefix(typeStr, "[") {
+		rbPos := str.Index(typeStr, "]")
+		if rbPos > 1 {
+			sizeStr := typeStr[1:rbPos]
+			if size, err := strconv.Atoi(sizeStr); err == nil && size >= 0 {
+				innerType := parseAndConstructType(typeStr[rbPos+1:])
+				if innerType != nil {
+					return reflect.ArrayOf(size, innerType)
+				}
+			}
+		}
+	}
+
+	// Handle multi-dimensional maps: map[], map[][], etc.
+	if str.HasPrefix(typeStr, "map[") && str.HasSuffix(typeStr, "]") {
+		// Count the dimension brackets - map[], map[][], map[][][], etc.
+		remaining := typeStr[4:] // Skip "map["
+		bracketCount := 0
+		for i := 0; i < len(remaining); i += 2 {
+			if i+1 < len(remaining) && remaining[i] == '[' && remaining[i+1] == ']' {
+				bracketCount++
+			} else {
+				break
+			}
+		}
+		// If we parsed the entire string as bracket pairs, it's valid
+		if bracketCount > 0 && remaining == str.Repeat("[]", bracketCount) {
+			// All maps in Za are map[string]any regardless of nesting depth
+			return reflect.TypeOf(map[string]any{})
+		}
+	}
+
+	// Handle Za type aliases
+	if typeStr == "mixed" {
+		typeStr = "any"
+	}
+	if typeStr == "interface{}" {
+		typeStr = "any"
+	}
+
+	// Base case: lookup in existing Typemap
+	if baseType, exists := Typemap[typeStr]; exists {
+		return baseType
+	}
+
+	return nil // Unknown type
 }

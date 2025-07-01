@@ -1,0 +1,77 @@
+#!/usr/bin/za
+
+# Test script for dynamic multi-dimensional type construction
+
+println "--> Multi-Dimensional Type Declaration Test"
+
+# Test 2D slice with proper conversion
+var matrix [][]int
+matrix = [ [1, 2, 3].list_int , [4, 5, 6].list_int ].to_typed("[][]int")
+matrix[0][1] = 99
+assert matrix[0][1] == 99
+println "✓ 2D slice test passed: matrix[0][1] = " , matrix[0][1]
+
+# Test 3D slice  
+var cube [][][]string
+cube = [ [ ["a", "b"].list_string , ["c", "d"].list_string ] , [ ["e", "f"].list_string , ["g", "h"].list_string ] ].to_typed("[][][]string")
+cube[1][0][1] = "test"
+assert cube[1][0][1] == "test"
+println "✓ 3D slice test passed: cube[1][0][1] = " , cube[1][0][1]
+
+# Test fixed-size arrays
+var grid [2][3]int
+grid[0][0] = 10
+grid[1][2] = 20
+assert grid[0][0] == 10
+assert grid[1][2] == 20
+println "✓ Fixed-size 2D array test passed: grid[0][0] = " , grid[0][0] , " grid[1][2] = " , grid[1][2]
+
+# Test 4D slice (stress test)
+var hypercube [][][][]int
+hypercube = [ [ [ [1, 2].list_int ] , [ [3, 4].list_int ] ] ].to_typed("[][][][]int")
+hypercube[0][1][0][1] = 999
+assert hypercube[0][1][0][1] == 999
+println "✓ 4D slice test passed: hypercube[0][1][0][1] = " , hypercube[0][1][0][1]
+
+# Test type reuse (should use cached type)
+var matrix2 [][]int
+matrix2 = [ [7, 8].list_int , [9, 10].list_int ].to_typed("[][]int")
+assert matrix2[1][0] == 9
+println "✓ Type reuse test passed: matrix2[1][0] = " , matrix2[1][0]
+
+# Test mixed types
+var mixed_slice [][]any
+mixed_slice = [["hello", 42], [true, 3.14]].to_typed("[][]any")
+assert mixed_slice[0][0] == "hello"
+assert mixed_slice[1][1] == 3.14
+println "✓ Mixed type slice test passed: mixed_slice[0][0] = " , mixed_slice[0][0]
+
+# Test basic map (1D)
+var data map
+data["key1"] = "value1"
+data["key2"] = [10, 20, 30]
+assert data["key1"] == "value1"
+assert data["key2"][1] == 20
+println "✓ Basic map test passed: data[key1] = " , data["key1"]
+
+# Test 2D map declaration (map[])
+var nested_map map[]
+nested_map["level1"]["key1"] = "value1"  # Auto-vivification should work
+nested_map["level1"]["key2"] = "value2"
+assert nested_map["level1"]["key1"] == "value1"
+println "✓ 2D map test passed: nested_map[level1][key1] = " , nested_map["level1"]["key1"]
+
+# Test 3D map declaration (map[][])
+var deep_map map[][]
+deep_map["l1"]["l2"]["l3"] = "deep_value"  # Auto-vivification should work for nested maps
+assert deep_map["l1"]["l2"]["l3"] == "deep_value"
+println "✓ 3D map test passed: deep_map[l1][l2][l3] = " , deep_map["l1"]["l2"]["l3"]
+
+println "\n--> All Multi-Dimensional Type Tests Passed!"
+
+# Test basic operations that should work
+println "\n--> Testing Basic Operations"
+println "matrix length: " , len(matrix)
+println "✓ Basic operations work as expected"
+
+println "\n--> Test Complete" 

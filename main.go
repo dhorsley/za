@@ -33,7 +33,7 @@ import (
 // F_EnableComplexAssignments provides a feature flag to disable deeply nested
 // assignments, which are currently being hardened. When false, only assignments
 // up to two levels of depth (e.g., `a.b.c` or `a[i].b`) are permitted.
-var F_EnableComplexAssignments = false
+var F_EnableComplexAssignments = true
 
 //
 // ALIASES
