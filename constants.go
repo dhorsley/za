@@ -12,17 +12,17 @@ const gnfsModulus = 48000        // used by calltable to set max size, mainly im
 const globseq_disposal_freq = 64 // sets the number of call allocations per calltable cleanup operation
 const MAX_CLIENTS = 800          // maximum lib-net concurrent listener clients for http server
 
-const SPACE_CAP = gnfsModulus    // initial instance and source functions cap
-const CALL_CAP = 200             // calltable (open calls) start capacity. scales up.
-const FUNC_CAP = 300             // stdlib functions storage space, starting point.
-const FAIRY_CAP = 64             // max ansi mappings
-const LIST_SIZE_CAP = 16         // initial list size on construction
-const CASE_CAP = 8               // how many placeholders to create for CASE...ENDCASE meta info per func
-                                 // ... this is currently only bounds checked in actor.go
+const SPACE_CAP = gnfsModulus // initial instance and source functions cap
+const CALL_CAP = 200          // calltable (open calls) start capacity. scales up.
+const FUNC_CAP = 300          // stdlib functions storage space, starting point.
+const FAIRY_CAP = 64          // max ansi mappings
+const LIST_SIZE_CAP = 16      // initial list size on construction
+const CASE_CAP = 8            // how many placeholders to create for CASE...ENDCASE meta info per func
+// ... this is currently only bounds checked in actor.go
 const appGrowthFactor float64 = 1.5 // new slice capacity growth factor in lib-list:append()
 
 const promptStringStartup = "[#b4][#0]>>[#-][##] "
-const promptContinuation  = "[#b6][#0]--[#-][##] "
+const promptContinuation = "[#b6][#0]--[#-][##] "
 const promptBashlike = "[#3]{@user}@{@hostname}[#-]:[#6]{@cwd}[#-] > "
 const promptStringShort = "[#1]{@user}[#-] : [#invert]{@cwd}[#-] : "
 const defaultPromptColour = "[#6]"
@@ -31,57 +31,56 @@ const recolour = "[#5][#i1]"
 const default_WriteMode = 0644
 
 const (
-    WEB_PROXY int = iota
-    WEB_REWRITE
-    WEB_FUNCTION
-    WEB_ERROR
-    WEB_REDIRECT
+	WEB_PROXY int = iota
+	WEB_REWRITE
+	WEB_FUNCTION
+	WEB_ERROR
+	WEB_REDIRECT
 )
 
 const (
-    HELP_UNKNOWN int=iota
-    HELP_FUNC
-    HELP_KEYWORD
-    HELP_DIRENT
+	HELP_UNKNOWN int = iota
+	HELP_FUNC
+	HELP_KEYWORD
+	HELP_DIRENT
 )
 
 const (
-    S3_PT_NONE uint=iota
-    S3_PT_SINGLE
-    S3_PT_MULTI
+	S3_PT_NONE uint = iota
+	S3_PT_SINGLE
+	S3_PT_MULTI
 )
 
 const (
-    LT_FOR uint8=iota
-    LT_FOREACH
-    LT_WHILE
+	LT_FOR uint8 = iota
+	LT_FOREACH
+	LT_WHILE
 )
 
-    //  chainInfoRegistrants:
-    //               0: Trap Handler
-    //               1: Call Function
-    //               2: User Defined Eval
-    //               3: Module Definition
-    //               4: Async Task
-    //               5: Interactive Mode
-    //               6: RHS Builder
-    //               7: lib-net
-    //               8: Main Routine
-    //               9: Error Routines
+//  chainInfoRegistrants:
+//               0: Trap Handler
+//               1: Call Function
+//               2: User Defined Eval
+//               3: Module Definition
+//               4: Async Task
+//               5: Interactive Mode
+//               6: RHS Builder
+//               7: lib-net
+//               8: Main Routine
+//               9: Error Routines
 
 const (
-    ciTrap      uint8 = iota
-    ciCall
-    ciEval
-    ciMod
-    ciAsyn
-    ciRepl
-    ciRhsb
-    ciLnet
-    ciMain
-    ciErr
+	ciTrap uint8 = iota
+	ciCall
+	ciEval
+	ciMod
+	ciAsyn
+	ciRepl
+	ciRhsb
+	ciLnet
+	ciMain
+	ciErr
 )
-
 
 // used by C_Endfor statement:
 const (
@@ -92,9 +91,9 @@ const (
 
 // used by Call() function. MODE_STATIC currently used by interactive mode.
 const (
-	MODE_CALL uint8 = iota
-	MODE_NEW                // instantiate and execute named function
-    MODE_STATIC             // execute named function, from start, without reinit'ing local variable storage
+	MODE_CALL   uint8 = iota
+	MODE_NEW          // instantiate and execute named function
+	MODE_STATIC       // execute named function, from start, without reinit'ing local variable storage
 )
 
 // FOR loop counter direction:
@@ -106,19 +105,18 @@ const (
 
 // FOREACH string loop type. by-char deprecated.
 const (
-	IT_LINE uint8 = iota    // by line 
+	IT_LINE uint8 = iota // by line
 )
-
 
 // identifier subtypes
 const (
-    subtypeNone = iota
-    subtypeConst
-    subtypeStandard
-    subtypeUser
+	subtypeNone = iota
+	subtypeConst
+	subtypeStandard
+	subtypeUser
 )
 
-var subtypeNames = [...]string{"None","Constant","StdLib","UserFunc"}
+var subtypeNames = [...]string{"None", "Constant", "StdLib", "UserFunc"}
 
 // fatal error exit codes
 const (
@@ -134,44 +132,45 @@ const (
 	ERR_REQUIRE
 	ERR_UNSUPPORTED
 	ERR_ASSERT
-    ERR_FILE
-    ERR_LEX int = 127
+	ERR_FILE
+	ERR_LEX int = 127
 )
 
 // IKind, used by VAR
 const (
-    knil uint8 = iota
-    kbool
-    kbyte
-    kint
-    kint64
-    kuint
-    kuint64
-    kfloat
-    kbigi
-    kbigf
-    kstring
-    kany
-    ksbool
-    ksint
-    ksint64
-    ksuint
-    ksuint64
-    ksfloat
-    ksbigi
-    ksbigf
-    ksstring
-    kmap
-    ksany
-    ksbyte
+	knil uint8 = iota
+	kbool
+	kbyte
+	kint
+	kint64
+	kuint
+	kuint64
+	kfloat
+	kbigi
+	kbigf
+	kstring
+	kany
+	ksbool
+	ksint
+	ksint64
+	ksuint
+	ksuint64
+	ksfloat
+	ksbigi
+	ksbigf
+	ksstring
+	kmap
+	ksany
+	ksbyte
+	kdynamic // for dynamically constructed multi-dimensional types
 )
-
 
 type TokenType = int64
 
 // Lexeme values
-//  a few of these are unused now and some should probably be renamed.
-//  they should be checked and tidied next time there is any change to be done here.
+//
+//	a few of these are unused now and some should probably be renamed.
+//	they should be checked and tidied next time there is any change to be done here.
 const (
 	Error int64 = iota
 	EOL
@@ -191,67 +190,67 @@ const (
 	SYM_Semicolon
 	O_Assign
 	O_AssCommand
-    O_AssOutCommand
+	O_AssOutCommand
 	LeftSBrace
 	RightSBrace
 	LeftCBrace
 	RightCBrace
-    SYM_PLE
-    SYM_MIE
-    SYM_MUE
-    SYM_DIE
-    SYM_MOE
-    LParen
-    RParen
+	SYM_PLE
+	SYM_MIE
+	SYM_MUE
+	SYM_DIE
+	SYM_MOE
+	LParen
+	RParen
 	SYM_EQ
 	SYM_LT
 	SYM_LE
 	SYM_GT
 	SYM_GE
 	SYM_NE
-    SYM_LAND
-    SYM_LOR
-    SYM_BAND
-    SYM_BOR
-    SYM_BSLASH
-    SYM_DOT
-    SYM_PP
-    SYM_MM
-    SYM_POW
-    SYM_RANGE
-    SYM_LSHIFT
-    SYM_RSHIFT
-    SYM_COLON
-    SYM_DoubleColon
-    O_Comma
-    O_Try
+	SYM_LAND
+	SYM_LOR
+	SYM_BAND
+	SYM_BOR
+	SYM_BSLASH
+	SYM_DOT
+	SYM_PP
+	SYM_MM
+	SYM_POW
+	SYM_RANGE
+	SYM_LSHIFT
+	SYM_RSHIFT
+	SYM_COLON
+	SYM_DoubleColon
+	O_Comma
+	O_Try
 	SYM_Tilde
 	SYM_ITilde
 	SYM_FTilde
-    O_Sqr
-    O_Sqrt
-    O_Query
-    O_Filter
-    O_Map
-    O_InFile
-    O_OutFile
-    O_Ref
-    O_Mut
-    O_Slc
-    O_Suc
-    O_Sst
-    O_Slt
-    O_Srt
-    O_Pb
-    O_Pa
-    O_Pn
-    O_Pe
-    O_Pp
-    START_STATEMENTS
-    C_Var
+	O_Sqr
+	O_Sqrt
+	O_Query
+	O_Filter
+	O_Map
+	O_InFile
+	O_OutFile
+	O_Ref
+	O_Mut
+	O_Slc
+	O_Suc
+	O_Sst
+	O_Slt
+	O_Srt
+	O_Pb
+	O_Pa
+	O_Pn
+	O_Pe
+	O_Pp
+	START_STATEMENTS
+	C_Var
 	C_SetGlob
 	C_Init
-    C_In
+	C_In
 	C_Pause
 	C_Help
 	C_Nop
@@ -272,10 +271,10 @@ const (
 	C_Cls
 	C_At
 	C_Define
-    C_Showdef
+	C_Showdef
 	C_Enddef
-    C_Return
-    C_Async
+	C_Return
+	C_Async
 	C_Lib
 	C_Module
 	C_Namespace
@@ -293,41 +292,39 @@ const (
 	C_Case
 	C_Is
 	C_Contains
-    C_Has
+	C_Has
 	C_Or
 	C_Endcase
-    C_With
-    C_Endwith
-    C_Struct
-    C_Endstruct
-    C_Showstruct
-    C_Pane
+	C_With
+	C_Endwith
+	C_Struct
+	C_Endstruct
+	C_Showstruct
+	C_Pane
 	C_Doc
 	C_Test
 	C_Endtest
 	C_Assert
 	C_On
-    C_To
-    C_Step
-    C_As
-    C_Do
-    C_Enum
-    Block
-    AsyncBlock
-    ResultBlock
-    T_Number
-    T_Nil
-    T_Bool
-    T_Int
-    T_Uint
-    T_Float
-    T_Bigi
-    T_Bigf
-    T_String
-    T_Map
-    T_Array
-    T_Any
-    END_STATEMENTS
+	C_To
+	C_Step
+	C_As
+	C_Do
+	C_Enum
+	Block
+	AsyncBlock
+	ResultBlock
+	T_Number
+	T_Nil
+	T_Bool
+	T_Int
+	T_Uint
+	T_Float
+	T_Bigi
+	T_Bigf
+	T_String
+	T_Map
+	T_Array
+	T_Any
+	END_STATEMENTS
 )
-
-

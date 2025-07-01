@@ -1115,7 +1115,13 @@ func (p *leparser) accessArray(left any, right Token) any {
 		// but do flag to allow missing start/end
 		hasRange = true
 	default:
-		sendNil = true
+		// Handle kdynamic types using reflection
+		rval := reflect.ValueOf(left)
+		if rval.Kind() == reflect.Slice || rval.Kind() == reflect.Array {
+			p.rangelen = rval.Len()
+		} else {
+			sendNil = true
+		}
 	}
 
 	if p.peek().tokType != RightSBrace {
@@ -2136,6 +2142,16 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
 	if (*ident)[bin].ITyped {
 		var ok bool
 		switch (*ident)[bin].IKind {
+		case kdynamic:
+			// Dynamic multi-dimensional type - use reflection for type checking
+			if (*ident)[bin].IValue != nil {
+				targetType := reflect.TypeOf((*ident)[bin].IValue)
+				valueType := reflect.TypeOf(value)
+				if valueType != nil && valueType.AssignableTo(targetType) {
+					(*ident)[bin].IValue = value
+					ok = true
+				}
+			}
 		case kbool:
 			_, ok = value.(bool)
 			if ok {
@@ -2314,6 +2330,7 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
 	bin := bind_int(fs, name)
 
 	// pf("(vse) fs %v name %v bin %v listtype %T inbound value %+v\n",fs,name,bin,list,value)
+
 	switch list.(type) {
 
 	case map[string]string:
@@ -2337,7 +2354,7 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
 		var key string
 		switch el.(type) {
 		case int:
-			key = strconv.FormatInt(int64(el.(int)), 10)
+			key = intToString(el.(int))
 		case float64:
 			key = strconv.FormatFloat(el.(float64), 'f', -1, 64)
 		case uint:
@@ -2347,6 +2364,58 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
 		}
 		(*ident)[bin].IValue.(map[string]any)[key] = value
 		// pf("(vse-a) set %v[%v] (key:%v) to %+v\n",name,el,key,(*ident)[bin].IValue.(map[string]any)[key])
+		return
+	}
+
+	// Handle kdynamic types using reflection (after map cases for performance)
+	if (*ident)[bin].IKind == kdynamic {
+		vt := reflect.TypeOf((*ident)[bin].IValue)
+		val := reflect.ValueOf((*ident)[bin].IValue)
+
+		// Ensure we have a slice or array
+		if vt.Kind() != reflect.Slice && vt.Kind() != reflect.Array {
+			panic(fmt.Errorf("Cannot index non-slice/array type %T", (*ident)[bin].IValue))
+		}
+
+		idx := el.(int)
+		if idx < 0 || idx >= val.Len() {
+			// For slices, extend if needed
+			if vt.Kind() == reflect.Slice {
+				newLen := idx + 1
+				if newLen > val.Cap() {
+					newCap := val.Cap() * 2
+					if newCap == 0 {
+						newCap = 1
+					}
+					if newLen > newCap {
+						newCap = newLen
+					}
+					newSlice := reflect.MakeSlice(vt, newLen, newCap)
+					reflect.Copy(newSlice, val)
+					val = newSlice
+					(*ident)[bin].IValue = val.Interface()
+				} else {
+					val.SetLen(newLen)
+				}
+			} else {
+				panic(fmt.Errorf("Out of bounds access [element %d] on array of length %d", idx, val.Len()))
+			}
+		}
+
+		// Set the value using reflection
+		elemVal := reflect.ValueOf(value)
+		targetElem := val.Index(idx)
+
+		// Convert value to target type if needed
+		if elemVal.Type() != targetElem.Type() {
+			if elemVal.Type().ConvertibleTo(targetElem.Type()) {
+				elemVal = elemVal.Convert(targetElem.Type())
+			} else {
+				panic(fmt.Errorf("Cannot convert value of type %T to element type %v", value, targetElem.Type()))
+			}
+		}
+
+		targetElem.Set(elemVal)
 		return
 	}
 
@@ -2580,7 +2649,6 @@ func gvget(name string) (any, bool) {
 }
 
 func vget(token *Token, fs uint32, ident *[]Variable, name string) (any, bool) {
-
 	var bin uint64
 	if token == nil {
 		bin = bind_int(fs, name)

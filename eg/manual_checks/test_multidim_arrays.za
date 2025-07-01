@@ -1,0 +1,65 @@
+#!/usr/bin/za
+
+# Multi-dimensional array and slice examples
+
+# 2D matrix example
+var matrix [][]int
+matrix = [
+    [1, 2, 3].list_int,
+    [4, 5, 6].list_int,
+    [7, 8, 9].list_int
+].to_typed("[][]int")
+
+println "2D Matrix:"
+for i = 0 to matrix.len-1
+    for j = 0 to matrix[i].len-1
+        print matrix[i][j] , " "
+    endfor
+    println ""
+endfor
+
+# 3D cube example
+var cube [][][]string  
+cube = [
+    [["A1", "A2"].list_string, ["B1", "B2"].list_string],
+    [["C1", "C2"].list_string, ["D1", "D2"].list_string]
+].to_typed("[][][]string")
+
+# Debug the cube structure
+println ""
+println "Debug cube structure:"
+println "cube length: " , len(cube)
+if len(cube) > 0
+    println "cube[0] length: " , len(cube[0])
+    if len(cube[0]) > 1
+        println "cube[0][1] length: " , len(cube[0][1])
+        println "cube[0][1] = " , cube[0][1]
+        if len(cube[0][1]) > 0
+            println "cube[0][1][0] type: " , kind(cube[0][1][0])
+        endif
+    endif
+endif
+
+println ""
+println "3D Cube access:"
+println "cube[0][1][0] = " , cube[0][1][0]  # Should be: B1
+println "cube[1][0][1] = " , cube[1][0][1]  # Should be: C2
+
+# Test simpler 3D conversion
+println ""
+println "Simple 3D test:"
+var simple_cube [][][]string
+simple_cube = [[["test"].list_string]].to_typed("[][][]string") 
+println "simple_cube[0][0][0] = " , simple_cube[0][0][0]
+
+# Fixed-size array example
+var grid [3][3]int
+grid[1][1] = 42
+println ""
+println "Fixed grid[1][1] = " , grid[1][1]
+
+# Simple map example
+var scores []int = [95, 87, 92].list_int
+println ""
+println "Simple slice access:"
+println "scores[0] = " , scores[0] 

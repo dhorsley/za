@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http" // for key()
 	"os"
+	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -77,6 +78,16 @@ func ulen(args any) (int, error) {
 	case []any:
 		return len(args), nil
 	}
+
+	// Reflection-based fallback for dynamically constructed types
+	v := reflect.ValueOf(args)
+	if v.IsValid() {
+		switch v.Kind() {
+		case reflect.Slice, reflect.Array, reflect.Map, reflect.Chan, reflect.String:
+			return v.Len(), nil
+		}
+	}
+
 	return -1, errors.New(sf("Cannot determine length of unknown type '%T' in len()", args))
 }
 
