@@ -146,6 +146,7 @@ CHANGE LOG
         - error_local_variables     # Returns variables in the error frame.
         - error_message             # Returns the original error message text.
         - error_source_context      # Returns source lines (before, after) around error.
+	- error_source_line_numbers # lines that error_source_context() refer to.
         - error_source_location     # Returns error location as {file, line, function, module}.
 
     other
