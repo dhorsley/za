@@ -13,33 +13,64 @@ import (
 )
 
 // calculateLevenshteinDistance computes the edit distance between two strings
-// Port of Za's eg/manual_checks/levdist implementation
+// Memory-efficient implementation using only O(min(len(s), len(t))) space
 func calculateLevenshteinDistance(s, t string) int {
-	if s == "" {
-		return len(t)
+	sLen := len(s)
+	tLen := len(t)
+
+	if sLen == 0 {
+		return tLen
 	}
-	if t == "" {
-		return len(s)
+	if tLen == 0 {
+		return sLen
 	}
 
-	if s[0] == t[0] {
-		return calculateLevenshteinDistance(s[1:], t[1:])
+	// Ensure s is the shorter string to minimize memory usage
+	if sLen > tLen {
+		s, t = t, s
+		sLen, tLen = tLen, sLen
 	}
 
-	// Calculate minimum of three operations: insert, delete, substitute
-	insert := calculateLevenshteinDistance(s, t[1:])
-	delete := calculateLevenshteinDistance(s[1:], t)
-	substitute := calculateLevenshteinDistance(s[1:], t[1:])
+	// Use single row of length sLen+1 (the shorter string)
+	row := make([]int, sLen+1)
 
-	minOps := insert
-	if delete < minOps {
-		minOps = delete
-	}
-	if substitute < minOps {
-		minOps = substitute
+	// Initialize row
+	for i := 0; i <= sLen; i++ {
+		row[i] = i
 	}
 
-	return 1 + minOps
+	// Process each character of the longer string
+	for j := 1; j <= tLen; j++ {
+		prev := row[0]
+		row[0] = j
+
+		for i := 1; i <= sLen; i++ {
+			temp := row[i]
+			cost := 1
+			if s[i-1] == t[j-1] {
+				cost = 0
+			}
+
+			row[i] = minThree(
+				row[i]+1,   // deletion
+				row[i-1]+1, // insertion
+				prev+cost,  // substitution
+			)
+			prev = temp
+		}
+	}
+
+	return row[sLen]
+}
+
+func minThree(a, b, c int) int {
+	if a <= b && a <= c {
+		return a
+	}
+	if b <= c {
+		return b
+	}
+	return c
 }
 
 const ( // tr_actions

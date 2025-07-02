@@ -774,7 +774,7 @@ func buildInternalLib() {
 		ctx := withProfilerContext(context.Background())
 
 		// allocate function space for source
-		sloc, sfn := GetNextFnSpace(true, "exec@", call_s{prepared: true, caller: evalfs})
+		sloc, sfn := GetNextFnSpace(true, "exec_@", call_s{prepared: true, caller: evalfs})
 
 		// parse
 		badword, _ := phraseParse(ctx, sfn, code, 0)
@@ -793,8 +793,8 @@ func buildInternalLib() {
 		calltable[eloc] = cs
 		var instance_ident = make([]Variable, identInitialSize)
 
-		// pf("[#5](debug-exec) : sloc -> %d eloc -> %d[#-]\n",sloc,eloc)
-		// pf("[#5](debug-exec) : executing -> [%+v][#-]\n",code)
+		// pf("[#5](debug-exec) : sloc -> %d eloc -> %d[#-]\n", sloc, eloc)
+		// pf("[#5](debug-exec) : executing -> [%+v][#-]\n", code)
 
 		// execute code
 		atomic.AddInt32(&concurrent_funcs, 1)
@@ -980,6 +980,14 @@ func buildInternalLib() {
 				return nil, nil
 			default:
 				return nil, errors.New("permit(permit) accepts a boolean value only.")
+			}
+		case "error_exit":
+			switch args[1].(type) {
+			case bool:
+				permit_error_exit = args[1].(bool)
+				return nil, nil
+			default:
+				return nil, errors.New("permit(error_exit) accepts a boolean value only.")
 			}
 		}
 

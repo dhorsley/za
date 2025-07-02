@@ -259,6 +259,7 @@ type ErrorContext struct {
 	LocalVars      map[string]any
 	GlobalVars     map[string]any
 	InErrorHandler bool
+	CurrentErrorID string
 }
 
 // Global variables for enhanced error handling

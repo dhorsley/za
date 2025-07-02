@@ -220,11 +220,12 @@ var permit_uninit bool // default:false, will evaluation cause a run-time failur
 // this can be altered with the permit("uninit",bool) call
 var permit_dupmod bool // default:false, ignore (true) or error (false) when a duplicate
 // module import occurs.
-var permit_exitquiet bool    // default:false, squash (true) or display (false) err msg on exit
-var permit_shell bool        // default: true, when false, exit script if shell command encountered
-var permit_eval bool         // default: true, when false, exit script if eval call encountered
-var permit_permit bool       // default: true, when false, permit function is disabled
-var permit_cmd_fallback bool // default: false, when true and in interactive mode, exec in shell as fallback
+var permit_exitquiet bool         // default:false, squash (true) or display (false) err msg on exit
+var permit_shell bool             // default: true, when false, exit script if shell command encountered
+var permit_eval bool              // default: true, when false, exit script if eval call encountered
+var permit_permit bool            // default: true, when false, permit function is disabled
+var permit_cmd_fallback bool      // default: false, when true and in interactive mode, exec in shell as fallback
+var permit_error_exit bool = true // default: true, when false, error handler won't exit program
 
 // Global: test related
 // test related setup, completely non thread safe
