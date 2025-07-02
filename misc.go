@@ -151,6 +151,63 @@ func lookupChainName(n uint8) string {
 		"6-UDF Builder", "7-Net Library", "8-Main Function", "9-Error Handling"}[n]
 }
 
+// extractUnknownWordFromError parses error messages to find the unknown word
+func extractUnknownWordFromError(errorMsg string) string {
+	// Pattern 1: "Unknown statement 'word'" or similar
+	if str.Contains(errorMsg, "Unknown statement") {
+		start := str.Index(errorMsg, "'")
+		if start != -1 {
+			end := str.Index(errorMsg[start+1:], "'")
+			if end != -1 {
+				return errorMsg[start+1 : start+1+end]
+			}
+		}
+	}
+
+	// Pattern 2: "'word' is uninitialised." - potential keyword typos
+	if str.Contains(errorMsg, "is uninitialised") {
+		start := str.Index(errorMsg, "'")
+		if start != -1 {
+			end := str.Index(errorMsg[start+1:], "'")
+			if end != -1 {
+				return errorMsg[start+1 : start+1+end]
+			}
+		}
+	}
+
+	// Add more patterns as needed for different error types
+	return ""
+}
+
+// suggestKeyword provides typo suggestions for misspelled keywords
+func suggestKeyword(unknownWord string) string {
+	if len(unknownWord) < 4 {
+		return "" // Skip short user inputs
+	}
+
+	// Find best match from completions array
+	bestMatch := ""
+	minDistance := 3 // Maximum useful distance
+
+	for _, keyword := range completions {
+		// Don't filter out short keywords - they might be valid suggestions
+		distance := calculateLevenshteinDistance(
+			str.ToLower(unknownWord),
+			str.ToLower(keyword))
+
+		if distance <= 2 && distance < minDistance {
+			minDistance = distance
+			bestMatch = keyword
+		}
+	}
+
+	if bestMatch != "" {
+		return fmt.Sprintf(" [#6]Did you mean '%s'?[#-]", str.ToLower(bestMatch))
+	}
+
+	return ""
+}
+
 func (parser *leparser) report(line int16, s string) {
 
 	// Log error to file if error logging is enabled
@@ -209,15 +266,24 @@ func (parser *leparser) report(line int16, s string) {
 		submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
 	}
 
+	// Apply typo suggestions if conditions are met (interactive mode with enhanced errors)
+	enhancedS := s
+	if interactive && enhancedErrorsEnabled {
+		unknownWord := extractUnknownWordFromError(s)
+		if suggestion := suggestKeyword(unknownWord); suggestion != "" {
+			enhancedS = s + suggestion
+		}
+	}
+
 	var msg string
 	if !permit_exitquiet {
 		msg = sparkle("[#bred]\n[#CTE]"+submsg) +
 			line_content + "\n" +
 			sparkle("[##][#-][#CTE]") +
-			sparkle(sf("%s\n", s)) +
+			sparkle(sf("%s\n", enhancedS)) +
 			sparkle("[#CTE]")
 	} else {
-		msg = sparkle(sf("%s\n", s)) + sparkle("[#CTE]")
+		msg = sparkle(sf("%s\n", enhancedS)) + sparkle("[#CTE]")
 	}
 
 	fmt.Print(msg)
