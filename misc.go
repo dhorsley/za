@@ -179,18 +179,93 @@ func extractUnknownWordFromError(errorMsg string) string {
 	return ""
 }
 
-// suggestKeyword provides typo suggestions for misspelled keywords
+// Global flag to prevent recursion in suggestion system
+var inSuggestionProcessing = false
+
+func suggestFunction(unknownWord string) string {
+	if len(unknownWord) < 4 {
+		return "" // Skip short user inputs
+	}
+
+	// Safety check to prevent recursion in suggestion processing
+	if inSuggestionProcessing {
+		return "" // Don't suggest while already processing suggestions
+	}
+	inSuggestionProcessing = true
+	defer func() { inSuggestionProcessing = false }()
+
+	bestMatch := ""
+	minDistance := 3 // Maximum useful distance
+
+	// Check stdlib functions first
+	for funcName := range slhelp {
+		distance := calculateLevenshteinDistance(
+			str.ToLower(unknownWord),
+			str.ToLower(funcName))
+
+		if distance <= 2 && distance < minDistance {
+			minDistance = distance
+			bestMatch = funcName
+		}
+	}
+
+	// Check user-defined functions from numlookup
+	// These are stored as "namespace::function_name", we want just the function name
+
+	numlookup.m.Range(func(key, value interface{}) bool {
+		// Check if the value is a usable string type
+		fullName, ok := value.(string)
+		if !ok {
+			return true // continue iteration if not a string
+		}
+
+		// Skip if it doesn't contain namespace separator
+		if !str.Contains(fullName, "::") {
+			return true // continue iteration
+		}
+
+		// Extract function name part (after "::")
+		parts := str.Split(fullName, "::")
+		if len(parts) < 2 {
+			return true // continue iteration
+		}
+
+		funcName := parts[len(parts)-1] // Get the last part (function name)
+
+		// Skip if it's a generated function (contains "@")
+		if str.Contains(funcName, "@") {
+			return true // continue iteration
+		}
+
+		distance := calculateLevenshteinDistance(
+			str.ToLower(unknownWord),
+			str.ToLower(funcName))
+
+		if distance <= 2 && distance < minDistance {
+			minDistance = distance
+			bestMatch = funcName
+		}
+
+		return true // continue iteration
+	})
+
+	if bestMatch != "" {
+		return fmt.Sprintf(" [#6]Did you mean '%s()'?[#-]", bestMatch)
+	}
+
+	return ""
+}
+
 func suggestKeyword(unknownWord string) string {
 	if len(unknownWord) < 4 {
 		return "" // Skip short user inputs
 	}
 
-	// Find best match from completions array
+	// First try keywords
 	bestMatch := ""
 	minDistance := 3 // Maximum useful distance
 
 	for _, keyword := range completions {
-		// Don't filter out short keywords - they might be valid suggestions
 		distance := calculateLevenshteinDistance(
 			str.ToLower(unknownWord),
 			str.ToLower(keyword))
@@ -205,7 +280,8 @@ func suggestKeyword(unknownWord string) string {
 		return fmt.Sprintf(" [#6]Did you mean '%s'?[#-]", str.ToLower(bestMatch))
 	}
 
-	return ""
+	// If no keyword match found, try functions
+	return "" // suggestFunction(unknownWord)
 }
 
 func (parser *leparser) report(line int16, s string) {
@@ -216,8 +292,24 @@ func (parser *leparser) report(line int16, s string) {
 		// Continue with console output if not in quiet mode
 	}
 
+	// Simple error ID tracking to allow re-entry from error handler itself
+	currentErrorID := fmt.Sprintf("%p-%d", parser, line) // Unique ID based on parser + line
+
+	// Check for attempted re-entry to error handler
+	if enhancedErrorsEnabled && globalErrorContext.InErrorHandler {
+		if globalErrorContext.CurrentErrorID != currentErrorID {
+			return
+		} else {
+			// Allow re-entry from same error handler (recursive call)
+			globalErrorContext.InErrorHandler = false // Temporarily allow processing
+		}
+	}
+
 	// Check if enhanced error handling is enabled and we're not already in an error handler
 	if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
+		globalErrorContext.CurrentErrorID = currentErrorID
+		globalErrorContext.InErrorHandler = true
+
 		// Create a synthetic error and use enhanced error handling
 		err := errors.New(strings.TrimSpace(s))
 		currentCallArgs := make(map[string]any)
@@ -266,24 +358,15 @@ func (parser *leparser) report(line int16, s string) {
 		submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
 	}
 
-	// Apply typo suggestions if conditions are met (interactive mode with enhanced errors)
-	enhancedS := s
-	if interactive && enhancedErrorsEnabled {
-		unknownWord := extractUnknownWordFromError(s)
-		if suggestion := suggestKeyword(unknownWord); suggestion != "" {
-			enhancedS = s + suggestion
-		}
-	}
-
 	var msg string
 	if !permit_exitquiet {
 		msg = sparkle("[#bred]\n[#CTE]"+submsg) +
 			line_content + "\n" +
 			sparkle("[##][#-][#CTE]") +
-			sparkle(sf("%s\n", enhancedS)) +
+			sparkle(sf("%s\n", s)) +
 			sparkle("[#CTE]")
 	} else {
-		msg = sparkle(sf("%s\n", enhancedS)) + sparkle("[#CTE]")
+		msg = sparkle(sf("%s\n", s)) + sparkle("[#CTE]")
 	}
 
 	fmt.Print(msg)
@@ -834,11 +917,22 @@ func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs 
 		runtime.GC()
 	}
 
+	// Add typo suggestions to error message if enabled (before setting InErrorHandler)
+	errorMessage := err.Error()
+	if enhancedErrorsEnabled {
+		unknownWord := extractUnknownWordFromError(errorMessage)
+		if suggestion := suggestKeyword(unknownWord); suggestion != "" {
+			errorMessage = errorMessage + suggestion
+		} else if suggestion := suggestFunction(unknownWord); suggestion != "" {
+			errorMessage = errorMessage + suggestion
+		}
+	}
+
 	// Populate global error context for library functions
-	populateErrorContext(parser, line, err.Error(), ifs, currentCallArgs, currentFunctionName)
+	populateErrorContext(parser, line, errorMessage, ifs, currentCallArgs, currentFunctionName)
 
 	// First show the standard error (maintain compatibility)
-	parser.report(line, sf("\n%v\n", err))
+	parser.report(line, sf("\n%v\n", errorMessage))
 
 	// Then show enhanced context
 	pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
@@ -861,7 +955,7 @@ func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs 
 	setEcho(true)
 
 	// Check if we're in a deep recursive call chain - if so, exit immediately
-	// to prevent corrupted state propagation
+	// to prevent corrupted state propagation (this overrides permit_error_exit)
 	if evalChainCount > 3 {
 		os.Exit(ERR_EVAL)
 	}
