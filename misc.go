@@ -1068,12 +1068,12 @@ func showCallChainContextWithOrderedArgs(args []any, functionName string) {
 		// Show filename:line if available
 		if filename != "" {
 			if chainInfo.line > 0 {
-				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line)
+				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
 			} else {
 				pf(" ([#7]%s[#-])", filename)
 			}
 		} else if chainInfo.line > 0 {
-			pf(" (line %d)", chainInfo.line)
+			pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
 		}
 
 		// Show arguments if they were captured in the error chain
@@ -1182,12 +1182,12 @@ func showCallChainContextWithCurrentCall(currentCallArgs map[string]any, current
 		// Show filename:line if available
 		if filename != "" {
 			if chainInfo.line > 0 {
-				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line)
+				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
 			} else {
 				pf(" ([#7]%s[#-])", filename)
 			}
 		} else if chainInfo.line > 0 {
-			pf(" (line %d)", chainInfo.line)
+			pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
 		}
 
 		// Show arguments if they were captured in the error chain

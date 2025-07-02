@@ -85,6 +85,44 @@ func buildErrorLib() {
 		return result, nil
 	}
 
+	slhelp["error_source_line_numbers"] = LibHelp{in: "int,int", out: "[]int", action: "Returns source line numbers (before, after) around error."}
+	stdlib["error_source_line_numbers"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if !globalErrorContext.InErrorHandler {
+			return []int{}, errors.New("error_source_line_numbers() can only be called from within an error handler")
+		}
+		if ok, err := expect_args("error_source_line_numbers", args, 1, "2", "int", "int"); !ok {
+			return nil, err
+		}
+
+		before := args[0].(int)
+		after := args[1].(int)
+
+		// Use the same logic as error_source_context to ensure matching arrays
+		lines := globalErrorContext.SourceLines
+		if len(lines) == 0 {
+			return []int{}, nil
+		}
+
+		// Find current line in context (usually middle of the array)
+		currentIndex := len(lines) / 2
+		startIndex := max(0, currentIndex-before)
+		endIndex := min(len(lines)-1, currentIndex+after)
+
+		// Calculate the corresponding line numbers
+		// The source lines were collected in a ±2 range around the error line
+		errorLine := int(globalErrorContext.SourceLine)
+
+		// The middle of the source lines array corresponds to the error line
+		result := make([]int, 0)
+		for i := startIndex; i <= endIndex; i++ {
+			// Calculate line number: error line + (index - middle index)
+			lineNumber := errorLine + (i - currentIndex)
+			result = append(result, lineNumber)
+		}
+
+		return result, nil
+	}
+
 	slhelp["error_call_chain"] = LibHelp{in: "", out: "[]map", action: "Returns full call chain with function names and arguments."}
 	stdlib["error_call_chain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if !globalErrorContext.InErrorHandler {
