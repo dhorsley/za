@@ -252,17 +252,20 @@ var atlock = &sync.Mutex{}
 // finish : flag the machine state as okay or in error and
 // optionally terminates execution.
 func finish(hard bool, i int) {
-	if hard {
-		os.Exit(i)
-	}
 
-	if !interactive {
-		os.Exit(i)
-	}
+	if permit_error_exit {
+		if hard {
+			os.Exit(i)
+		}
 
-	lastlock.Lock()
-	sig_int = true
-	lastlock.Unlock()
+		if !interactive {
+			os.Exit(i)
+		}
+
+		lastlock.Lock()
+		sig_int = true
+		lastlock.Unlock()
+	}
 
 }
 
@@ -797,7 +800,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 					}
 					finish(false, ERR_EVAL)
 				}
-				// err:=r.(error)
+
 				var err error
 				if errVal, ok := r.(error); ok {
 					err = errVal
@@ -3811,7 +3814,7 @@ tco_reentry:
 				/*
 				   for oq := range fnlookup.smap {
 				       if fnlookup.smap[oq] < 2 {
-				           continue
+				       continue
 				       } // don't show global or main
 				       ShowDef(oq)
 				   }

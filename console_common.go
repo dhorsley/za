@@ -2388,8 +2388,8 @@ func Copper(line string, squashErr bool) struct {
 
 		// get output
 		ns, commandErr = NextCopper(line, read_out)
-		// pf("[copper] line -> <%s>\n",line)
-		// pf("[copper] ns   -> <%s>\n",ns)
+		// pf("[copper] line -> <%s>\n", line)
+		// pf("[copper] ns   -> <%s>\n", ns)
 
 		// get status code - cmd is not important for this, NextCopper just reads
 		//  the output until the next cmdsep
