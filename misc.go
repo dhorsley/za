@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -284,6 +283,102 @@ func suggestKeyword(unknownWord string) string {
 	return "" // suggestFunction(unknownWord)
 }
 
+func suggestVariable(unknownWord string, parser *leparser) string {
+	if len(unknownWord) < 3 {
+		return "" // Allow shorter names for variables than functions
+	}
+
+	// Safety check to prevent recursion in suggestion processing
+	if inSuggestionProcessing {
+		return ""
+	}
+	inSuggestionProcessing = true
+	defer func() { inSuggestionProcessing = false }()
+
+	var localMatches []string
+	var globalMatches []string
+	minDistance := 3
+
+	// Check local variables
+	if parser.ident != nil {
+		for _, v := range *parser.ident {
+			if v.declared && v.IName != "" {
+				distance := calculateLevenshteinDistance(
+					str.ToLower(unknownWord),
+					str.ToLower(v.IName))
+
+				if distance <= 2 && distance < minDistance {
+					minDistance = distance
+					localMatches = []string{v.IName}
+				} else if distance <= 2 && distance == minDistance {
+					localMatches = append(localMatches, v.IName)
+				}
+			}
+		}
+	}
+
+	// Check global variables
+	if mident != nil {
+		for _, v := range mident {
+			if v.declared && v.IName != "" {
+				distance := calculateLevenshteinDistance(
+					str.ToLower(unknownWord),
+					str.ToLower(v.IName))
+
+				if distance <= 2 && distance < minDistance {
+					minDistance = distance
+					globalMatches = []string{v.IName}
+					// Don't reset localMatches - we want both if same distance
+				} else if distance <= 2 && distance == minDistance {
+					globalMatches = append(globalMatches, v.IName)
+				}
+			}
+		}
+	}
+
+	return formatVariableSuggestions(localMatches, globalMatches)
+}
+
+func formatVariableSuggestions(localMatches, globalMatches []string) string {
+	totalLocal := len(localMatches)
+	totalGlobal := len(globalMatches)
+
+	if totalLocal == 0 && totalGlobal == 0 {
+		return ""
+	}
+
+	var suggestions []string
+
+	// Add local suggestions (prioritized)
+	if totalLocal > 0 {
+		if totalLocal == 1 {
+			suggestions = append(suggestions, fmt.Sprintf("'%s' (local)", localMatches[0]))
+		} else if totalLocal == 2 {
+			suggestions = append(suggestions, fmt.Sprintf("'%s' or '%s' (local)", localMatches[0], localMatches[1]))
+		} else {
+			suggestions = append(suggestions, fmt.Sprintf("'%s', '%s', or %d other local variables", localMatches[0], localMatches[1], totalLocal-2))
+		}
+	}
+
+	// Add global suggestions
+	if totalGlobal > 0 {
+		if totalGlobal == 1 {
+			suggestions = append(suggestions, fmt.Sprintf("'@%s' (global)", globalMatches[0]))
+		} else if totalGlobal == 2 {
+			suggestions = append(suggestions, fmt.Sprintf("'@%s' or '@%s' (global)", globalMatches[0], globalMatches[1]))
+		} else {
+			suggestions = append(suggestions, fmt.Sprintf("'@%s', '@%s', or %d other global variables", globalMatches[0], globalMatches[1], totalGlobal-2))
+		}
+	}
+
+	// Combine suggestions
+	if len(suggestions) == 1 {
+		return fmt.Sprintf(" [#6]Did you mean %s?[#-]", suggestions[0])
+	} else {
+		return fmt.Sprintf(" [#6]Did you mean %s or %s?[#-]", suggestions[0], suggestions[1])
+	}
+}
+
 func (parser *leparser) report(line int16, s string) {
 
 	// Log error to file if error logging is enabled
@@ -293,32 +388,36 @@ func (parser *leparser) report(line int16, s string) {
 	}
 
 	// Simple error ID tracking to allow re-entry from error handler itself
-	currentErrorID := fmt.Sprintf("%p-%d", parser, line) // Unique ID based on parser + line
+	//currentErrorID := fmt.Sprintf("%p-%d", parser, line) // Unique ID based on parser + line
 
-	// Check for attempted re-entry to error handler
-	if enhancedErrorsEnabled && globalErrorContext.InErrorHandler {
-		if globalErrorContext.CurrentErrorID != currentErrorID {
-			return
-		} else {
-			// Allow re-entry from same error handler (recursive call)
-			globalErrorContext.InErrorHandler = false // Temporarily allow processing
+	/*
+		// Check for attempted re-entry to error handler
+		if enhancedErrorsEnabled && globalErrorContext.InErrorHandler {
+			if globalErrorContext.CurrentErrorID != currentErrorID {
+				return
+			} else {
+				// Allow re-entry from same error handler (recursive call)
+				globalErrorContext.InErrorHandler = false // Temporarily allow processing
+			}
 		}
-	}
+	*/
 
-	// Check if enhanced error handling is enabled and we're not already in an error handler
-	if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
-		globalErrorContext.CurrentErrorID = currentErrorID
-		globalErrorContext.InErrorHandler = true
+	/*
+		// Check if enhanced error handling is enabled and we're not already in an error handler
+		if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
+			globalErrorContext.CurrentErrorID = currentErrorID
+			globalErrorContext.InErrorHandler = true
 
-		// Create a synthetic error and use enhanced error handling
-		err := errors.New(strings.TrimSpace(s))
-		currentCallArgs := make(map[string]any)
-		currentFunctionName := "main"
+			// Create a synthetic error and use enhanced error handling
+			err := errors.New(strings.TrimSpace(s))
+			currentCallArgs := make(map[string]any)
+			currentFunctionName := "main"
 
-		// Use enhanced error handler
-		showEnhancedErrorWithCallArgs(parser, line, err, parser.fs, currentCallArgs, currentFunctionName)
-		return
-	}
+			// Use enhanced error handler
+			showEnhancedErrorWithCallArgs(parser, line, err, parser.fs, currentCallArgs, currentFunctionName)
+			return
+		}
+	*/
 
 	// Original report() logic for standard error handling
 	baseId := parser.fs
@@ -329,7 +428,7 @@ func (parser *leparser) report(line int16, s string) {
 		baseId, _ = fnlookup.lmget(funcName)
 	}
 	if execMode {
-		pf("\nexecMode : switched fs from %d to %d\n", baseId, execFs)
+		// pf("\nexecMode : switched fs from %d to %d\n", baseId, execFs)
 		baseId = execFs
 	}
 	baseName, _ := numlookup.lmget(baseId) //      -> name of base func
@@ -924,6 +1023,8 @@ func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs 
 		if suggestion := suggestKeyword(unknownWord); suggestion != "" {
 			errorMessage = errorMessage + suggestion
 		} else if suggestion := suggestFunction(unknownWord); suggestion != "" {
+			errorMessage = errorMessage + suggestion
+		} else if suggestion := suggestVariable(unknownWord, parser); suggestion != "" {
 			errorMessage = errorMessage + suggestion
 		}
 	}
