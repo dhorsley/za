@@ -686,6 +686,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 			callerFilename = fileMapValue.(string)
 		}
 
+        if len(errorChain)==0 {
+            errorChain=make([]chainInfo,0,3)
+        }
+
 		if enhancedErrorsEnabled {
 			// If arg_names is empty (positional call), get parameter names from function definition
 			paramNames := arg_names
@@ -823,6 +827,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 					// Get current function name
 					currentFunctionName := calltable[csloc].fs
 
+                    /*
 					// Add current call to error chain with ordered arguments
 					filename := ""
 					if fileMapValue, exists := fileMap.Load(parser.fs); exists {
@@ -838,6 +843,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 						argNames:   paramNames,
 						argValues:  va,
 					})
+                    */
 
 					// Check if this is an enhanced expect_args error for additional context
 					if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok {
@@ -5629,12 +5635,14 @@ tco_reentry:
 
 	calllock.Lock()
 	// fmt.Printf("Releasing fs %d (%s). Call table :\n%#v\n",ifs,fs,calltable[ifs])
-	if calltable[csloc].caller != 0 {
+	// if calltable[csloc].caller != 0 {
+    if len(errorChain)>0 {
 		errorChain = errorChain[:len(errorChain)-1]
 		if enableProfiling {
 			popCallChain(ctx)
 		}
-	}
+    }
+	// }
 	calllock.Unlock()
 
 	return retval_count, endFunc, method_result, callErr
