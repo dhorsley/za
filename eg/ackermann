@@ -3,7 +3,6 @@
 # this will break on ackermann(4,2) or higher due to stack limits
 #  in go when recursing.
 
-
 define ackermann(m,n)
     on key("memoA",`{m},{n}`) do return memoA[`{m},{n}`]
     on m==0 do return n+1
