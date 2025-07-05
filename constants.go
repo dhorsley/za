@@ -133,6 +133,7 @@ const (
 	ERR_UNSUPPORTED
 	ERR_ASSERT
 	ERR_FILE
+	ERR_EXCEPTION
 	ERR_LEX int = 127
 )
 
@@ -223,7 +224,6 @@ const (
 	SYM_COLON
 	SYM_DoubleColon
 	O_Comma
-	O_Try
 	SYM_Tilde
 	SYM_ITilde
 	SYM_FTilde
@@ -311,6 +311,12 @@ const (
 	C_As
 	C_Do
 	C_Enum
+	C_Try
+	C_Catch
+	C_Then
+	C_Throws
+	C_Throw
+	C_Endtry
 	Block
 	AsyncBlock
 	ResultBlock
@@ -327,4 +333,11 @@ const (
 	T_Array
 	T_Any
 	END_STATEMENTS
+)
+
+// Exception control flow return values
+const (
+	EXCEPTION_HANDLED = iota // Exception was caught and handled
+	EXCEPTION_THROWN         // Exception occurred and needs to bubble up
+	EXCEPTION_RETURN         // Exception handling caused a return statement
 )

@@ -95,6 +95,7 @@ type call_s struct {
 	gc         bool   // marked by Call() when disposable
 	disposable bool
 	filename   string // source file name
+	isTryBlock bool   // true if this function space is a try block
 }
 
 func (cs call_s) String() string {
@@ -262,8 +263,56 @@ type ErrorContext struct {
 	CurrentErrorID string
 }
 
+// Try block metadata for exception handling
+type tryBlockInfo struct {
+	functionSpace uint32  // function space ID where try block code is stored
+	startLine     int16   // source line where try block starts (for error reporting)
+	endLine       int16   // source line where try block ends (for error reporting)
+	category      string  // the "category" from throws "category"
+	parentFS      uint32  // the function space that contains this try block
+	nestLevel     int     // nesting level for nested try blocks
+	tryArguments  []Token // arguments from try statement (e.g., throws "category")
+	catchBlocks   []catchBlockInfo
+	finallyBlock  *finallyBlockInfo
+
+	// Enhanced nested context fields
+	parentTryBlockID int      // ID of parent try block (-1 if none)
+	tryBlockID       int      // Unique ID for this try block
+	executionPath    []uint32 // Call chain when this try block was created
+	relativePC       int16    // PC position relative to parent function
+	childTryBlocks   []int    // IDs of nested try blocks
+
+}
+
+type catchBlockInfo struct {
+	pattern string // "category", "contains:text", or "" for catch-all
+	varName string // variable name for caught exception
+}
+
+type finallyBlockInfo struct {
+	// Finally block info - execution handled by try block function space
+}
+
 // Global variables for enhanced error handling
 var emergencyMemoryReserve *[]byte
 var enhancedErrorsEnabled bool = false
 
 var globalErrorContext ErrorContext
+
+// Exception state variables for exception flow control
+type exceptionInfo struct {
+	category any // Can be string or integer (for enum values)
+	message  string
+	line     int16
+	function string
+	fs       uint32
+}
+
+var (
+	// Active exception state
+	activeException *exceptionInfo
+	exceptionActive bool
+
+	// Exception flow control
+	currentCatchMatched bool
+)

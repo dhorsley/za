@@ -1,0 +1,14 @@
+println "=== Testing Exception Enum Access ==="
+
+# Register exceptions
+println "Registering exceptions..."
+result1 = exreg("file_error", 10)
+result2 = exreg("network_error", 20)
+println "exreg results:", result1, result2
+
+# Test enum access
+println "Testing enum access..."
+println "ex.file_error = ", ex.file_error
+println "ex.network_error = ", ex.network_error
+
+println "Test completed" 
