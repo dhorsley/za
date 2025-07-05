@@ -143,6 +143,69 @@ func enum_all(ns string, e string) []any {
 	return l
 }
 
+// eregister - internal function for registering exceptions in the ex enum
+// Used by both system initialization and the exreg() stdlib function
+func eregister(name string, priority int) bool {
+	globlock.Lock()
+	defer globlock.Unlock()
+
+	enumName := "main::ex"
+
+	// Check if enum exists, create if not
+	if enum[enumName] == nil {
+		enum[enumName] = &enum_s{
+			members:   make(map[string]any),
+			ordered:   []string{},
+			namespace: "main",
+		}
+	}
+
+	// Check if member already exists
+	if _, exists := enum[enumName].members[name]; exists {
+		return false // Silent failure - member already exists
+	}
+
+	// Add new exception with priority
+	enum[enumName].members[name] = priority
+	enum[enumName].ordered = append(enum[enumName].ordered, name)
+
+	return true
+}
+
+// initializeExceptionEnum - sets up the ex enum at startup
+func initializeExceptionEnum() {
+	// Create the ex enum first
+	globlock.Lock()
+    enumName := "main::ex"
+	enum[enumName] = &enum_s{
+		members:   make(map[string]any),
+		ordered:   []string{},
+		namespace: "main",
+	}
+	globlock.Unlock()
+
+	// Add all categories[] keys with default priorities
+	// Higher numbers = lower priority (catch later)
+	for categoryKey := range categories {
+		eregister(categoryKey, 100) // Default priority for categories
+	}
+
+	// Add common runtime exceptions with higher priorities
+	eregister("divide_by_zero", 5)
+	eregister("null_pointer", 10)
+	eregister("index_out_of_bounds", 15)
+	eregister("stack_overflow", 20)
+	eregister("memory_exhausted", 25)
+	eregister("invalid_operation", 30)
+	eregister("not_implemented", 35)
+	eregister("timeout", 40)
+	eregister("cancelled", 45)
+	eregister("access_denied", 50)
+	eregister("configuration_error", 55)
+	eregister("validation_failed", 60)
+	eregister("unknown", 1000) // Lowest priority - catch-all
+}
+
 // GetAst(): returns a representation of the tokenised
 // phrases in a function. this is not an ast, but serves
 // the same purpose for us.
@@ -274,7 +337,7 @@ func buildInternalLib() {
 		"enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
 		"ast", "varbind", "sizeof", "dup", "log_queue_status",
 		"set_depth",
-		"logging_stats",
+		"logging_stats", "exreg",
 		// "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
 	}
 
@@ -777,7 +840,7 @@ func buildInternalLib() {
 		sloc, sfn := GetNextFnSpace(true, "exec_@", call_s{prepared: true, caller: evalfs})
 
 		// parse
-		badword, _ := phraseParse(ctx, sfn, code, 0)
+		badword, _ := phraseParse(ctx, sfn, code, 0, 0)
 		if badword {
 			return nil, errors.New("exec could not lex input.")
 		}
@@ -897,7 +960,7 @@ func buildInternalLib() {
 		return v, nil
 	}
 
-	slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit: determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod: ignore duplicate module imports.\nexitquiet: shorter error message.\nshell: permit shell commands,  eval: permit eval() calls,  interpol: permit string interpolation.\ncmdfallback: make shell call on eval failure in interactive mode,  permit: enable/disable permit() function call."}
+	slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit: determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod: ignore duplicate module imports.\nexitquiet: shorter error message.\nshell: permit shell commands,  eval: permit eval() calls,  interpol: permit string interpolation.\ncmdfallback: make shell call on eval failure in interactive mode,  permit: enable/disable permit() function call.\nexception_strictness: enable/disable exception_strictness() function call."}
 	stdlib["permit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("permit", args, 4,
 			"2", "string", "bool",
@@ -988,6 +1051,14 @@ func buildInternalLib() {
 				return nil, nil
 			default:
 				return nil, errors.New("permit(error_exit) accepts a boolean value only.")
+			}
+		case "exception_strictness":
+			switch args[1].(type) {
+			case bool:
+				permit_exception_strictness = args[1].(bool)
+				return nil, nil
+			default:
+				return nil, errors.New("permit(exception_strictness) accepts a boolean value only.")
 			}
 		}
 
@@ -1761,6 +1832,49 @@ func buildInternalLib() {
 			"main_processed": mainRequests,
 			"web_processed":  webRequests,
 		}, nil
+	}
+
+	slhelp["exception_strictness"] = LibHelp{in: "mode_string", out: "", action: "Set exception handling strictness mode.\nstrict: fatal termination on unhandled exceptions (default)\npermissive: converts unhandled exceptions to normal panics\nwarn: prints warning but continues execution\ndisabled: completely disable try..catch processing"}
+	stdlib["exception_strictness"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("exception_strictness", args, 1, "1", "string"); !ok {
+			return nil, err
+		}
+
+		// Security check - must be explicitly permitted
+		if !permit_exception_strictness {
+			return nil, fmt.Errorf("exception_strictness() not permitted!")
+		}
+
+		mode := args[0].(string)
+		switch mode {
+		case "strict", "permissive", "warn", "disabled":
+			exceptionStrictness = mode
+			if mode == "disabled" {
+				fmt.Println("Warning: Exception handling disabled - try..catch blocks will be ignored")
+			}
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("Invalid exception strictness mode: %s (use: strict, permissive, warn, disabled)", mode)
+		}
+	}
+
+	slhelp["exreg"] = LibHelp{in: "name_string,priority_int", out: "bool", action: "Register a new exception type in the ex enum. Returns true if successful, false if exception already exists. Higher priority numbers are caught later (lower priority)."}
+	stdlib["exreg"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("exreg", args, 1, "2", "string", "int"); !ok {
+			return nil, err
+		}
+
+		name := args[0].(string)
+		priority := args[1].(int)
+
+		// Validate exception name
+		if name == "" {
+			return nil, fmt.Errorf("Exception name cannot be empty")
+		}
+
+		// Register the exception using internal function
+		success := eregister(name, priority)
+		return success, nil
 	}
 
 }

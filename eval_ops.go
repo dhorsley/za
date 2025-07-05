@@ -1828,6 +1828,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
 			loc, _ := GetNextFnSpace(do_lock, name+"@", call_s{prepared: true, base: lmv, caller: evalfs})
 
+			// Try blocks are now handled directly during phraseParse()
+
 			var ident = make([]Variable, identInitialSize)
 
 			var rcount uint8
@@ -1851,6 +1853,35 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 			calltable[loc].gcShyness = 100
 			calltable[loc].gc = true
 			calllock.Unlock()
+
+			// Check if function returned with exception
+			if res != nil {
+				if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
+					if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
+						// Function returned with unhandled exception - propagate it up
+						// Set exception state in current context
+						var category any = "unknown"
+						var message string = "unknown error"
+
+						if len(retArray) >= 3 {
+							category = retArray[1]
+							message = GetAsString(retArray[2])
+						}
+
+						activeException = &exceptionInfo{
+							category: category,
+							message:  message,
+							line:     0, // We don't have line info in eval context
+							function: name,
+							fs:       evalfs,
+						}
+						exceptionActive = true
+
+						// Return the exception information so the calling statement can handle it
+						return retArray, false, method_result, nil
+					}
+				}
+			}
 
 			switch rcount {
 			case 0:
@@ -2093,28 +2124,58 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 	// Perform enum lookup next:
 	globlock.RLock()
 	var ename string
-	if found := uc_match_enum(pre_name); found != "" {
-		ename = found + "::" + pre_name
-	} else {
-		ename = p.namespace + "::" + pre_name
-	}
 
-	switch obj.(type) {
-	case string:
-		ename = p.namespace + "::" + obj.(string)
-		checkstr := obj.(string)
-		if str.Contains(checkstr, "::") {
-			cpos := str.IndexByte(checkstr, ':')
-			if cpos != -1 {
-				if len(checkstr) > cpos+1 {
-					if checkstr[cpos+1] == ':' {
-						ename = checkstr
+	ename = pre_name
+	if !str.Contains(pre_name, "::") {
+		if found := uc_match_enum(pre_name); found != "" {
+			ename = found + "::" + pre_name
+		} else {
+			ename = p.namespace + "::" + pre_name
+			// Special case: if enum not found in current namespace and pre_name is "ex", try main namespace
+			if pre_name == "ex" {
+				if _, exists := enum[ename]; !exists {
+					if _, mainExists := enum["main::ex"]; mainExists {
+						ename = "main::ex"
 					}
 				}
 			}
 		}
-	case pfile:
 	}
+
+	/*
+		    pf("starting uc_match_enum with pre_name : %s\n",pre_name)
+			if found := uc_match_enum(pre_name); found != "" {
+		        pf("enum found : %s -> %s\n",ename,found)
+				ename = found + "::" + pre_name
+			} else {
+		        if found:=uc_match_enum("main::"+pre_name); found != "" {
+		            pf("enum found in main : %s\n",ename)
+		            ename = "main::"+pre_name
+		        } else {
+		            pf("enum not found : %s\n",ename)
+		            ename = p.namespace + "::" + pre_name
+		        }
+			}
+	*/
+
+	/*
+		switch obj.(type) {
+		case string:
+			ename = p.namespace + "::" + obj.(string)
+			checkstr := obj.(string)
+			if str.Contains(checkstr, "::") {
+				cpos := str.IndexByte(checkstr, ':')
+				if cpos != -1 {
+					if len(checkstr) > cpos+1 {
+						if checkstr[cpos+1] == ':' {
+							ename = checkstr
+						}
+					}
+				}
+			}
+		case pfile:
+		}
+	*/
 
 	en := enum[ename]
 	globlock.RUnlock()
@@ -2126,9 +2187,11 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 		}
 	}
 
-	if en != nil {
-		return en.members[name], false
-	}
+	/*
+		if en != nil {
+			return en.members[name], false
+		}
+	*/
 
 	// ── At this point, either:
 	//    • obj was not a struct (nil pointer/map/slice/etc. → skip struct code), or

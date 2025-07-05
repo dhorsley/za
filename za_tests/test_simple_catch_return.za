@@ -1,0 +1,19 @@
+#!/usr/bin/env za
+
+println "Testing return from catch block"
+
+def test_catch_return()
+    println "Function starting"
+    try
+        println "Throwing error"
+        throw "test_error"
+    catch err is "test_error"
+        println "In catch block"
+        return "catch_value"
+    endtry
+    println "Should not reach here"
+end
+
+result = test_catch_return()
+println "Result:", result
+println "Type of result:", typeof(result) 

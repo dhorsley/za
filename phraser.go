@@ -15,6 +15,15 @@ var fileMap sync.Map
 var bindings = make([]map[string]uint64, SPACE_CAP)
 var bindlock = &sync.RWMutex{}
 
+// try block metadata storage - maps parent function space to try block info
+var tryBlocks = make(map[uint32][]tryBlockInfo)
+var tryBlockLock = &sync.RWMutex{}
+
+// global try block registry for enhanced nested context tracking
+var tryBlockRegistry = make(map[int]*tryBlockInfo)
+var tryBlockCounter int = 0
+var tryBlockRegistryLock = &sync.RWMutex{}
+
 func bindResize() {
 	newar := make([]map[string]uint64, cap(bindings)*2)
 	copy(newar, bindings)
@@ -86,6 +95,8 @@ func getIFSFromFile(f string) uint32 {
 	return found
 }
 
+// Try block processing is now handled completely inline in the main parsing loop
+
 // phraseParse():
 //
 //   process an input string into separate lines of commands (Phrases). Each phrase is
@@ -98,9 +109,11 @@ func getIFSFromFile(f string) uint32 {
 //   functionspaces[] is a global.
 //
 
-func phraseParse(ctx context.Context, fs string, input string, start int) (badword bool, eof bool) {
+func phraseParse(ctx context.Context, fs string, input string, start int, lineOffset int) (badword bool, eof bool) {
 
 	startTime := time.Now()
+
+	input += "\n"
 
 	pos := start
 	lstart := start
@@ -112,12 +125,18 @@ func phraseParse(ctx context.Context, fs string, input string, start int) (badwo
 	var base = BaseCode{}
 
 	tokenType := Error
-	curLine := int16(0)
+	curLine := int16(lineOffset)
 
 	// simple handler for parens nesting
-	var braceNestLevel int  // round braces
-	var sbraceNestLevel int // square braces
-	var defNest int         // C_Define nesting
+	var braceNestLevel int       // round braces
+	var sbraceNestLevel int      // square braces
+	var defNest int              // C_Define nesting
+	var tryNest int              // C_Try nesting
+	var tryStartOffset int       // character offset in input string where try block started
+	var tryContentStart int = -1 // character offset where try block content starts (after first EOL)
+	var tryStartLine int16       // line number where try block started
+	var tryEndLine int16         // line number where try block ended
+	var tryBlockCounter int = 0  // counter for unique try block naming
 
 	lmv, _ := fnlookup.lmget(fs)
 	isSource[lmv] = true
@@ -204,6 +223,108 @@ func phraseParse(ctx context.Context, fs string, input string, start int) (badwo
 			defNest += 1
 		case C_Enddef:
 			defNest -= 1
+		case C_Try:
+			tryNest += 1
+			if tryNest == 1 {
+				tryStartOffset = lstart
+				tryStartLine = curLine + 1
+				tryContentStart = -1 // Will be set when we encounter first content
+
+			}
+		case C_Endtry:
+			// Process try block when exiting outermost try
+			if tryNest == 1 {
+				tryEndLine = curLine + 1
+
+				// Extract and process try block content
+				if tryStartOffset > 0 && tryContentStart >= 0 {
+					if tryContentStart < pos {
+						tryBlockContent := input[tryContentStart:pos]
+						// pf("DEBUG: phraseParse try block - content length=%d\n", len(tryBlockContent))
+						// pf("DEBUG: try block content:\n'%s'\n", tryBlockContent)
+
+						// Create new function space for try block
+						tryBlockCounter++
+
+						// Temporarily ensure globseq is at least 4 to avoid interfering with main execution IDs
+						originalGlobseq := globseq
+						if globseq < 4 {
+							globseq = 4
+						}
+
+						tryFS, tryFSName := GetNextFnSpace(true, sf("try_block_%d_%d@", lmv, tryBlockCounter), call_s{
+							prepared:   true,
+							base:       lmv, // Temporarily set to main, will be updated after parsing
+							caller:     lmv,
+							gc:         false,
+							gcShyness:  100,
+							isTryBlock: true, // Mark this function space as a try block
+						})
+
+						// Restore original globseq if it was modified
+						if originalGlobseq < 4 {
+							globseq = originalGlobseq
+						}
+
+						// Set base to tryFS so try block executes its own code
+						calllock.Lock()
+						calltable[tryFS].base = tryFS
+						// fmt.Printf("[DEBUG] Set calltable[%d].base = %d (so it executes its own code)\n", tryFS, tryFS)
+						calllock.Unlock()
+
+						// Set up fileMap entry for try block function space
+						if parentFileMap, exists := fileMap.Load(lmv); exists {
+							fileMap.Store(tryFS, parentFileMap)
+						}
+
+						// Recursively parse try block content
+						ctx := context.Background()
+						badword_try, _ := phraseParse(ctx, tryFSName, tryBlockContent, 0, int(tryStartLine))
+						if badword_try {
+							fmt.Printf("Error parsing try block content\n")
+							badword = true
+						} else {
+							// Determine where to store try block metadata
+							// Store in immediate parent function space, but not in try block function spaces
+							storageFS := lmv
+							currentFSName, _ := numlookup.lmget(lmv)
+							if str.Contains(currentFSName, "try_block_") {
+								calllock.RLock()
+								storageFS = calltable[lmv].caller
+								calllock.RUnlock()
+							}
+
+							// For user-defined functions, we need to store the try block in the function space
+							// where the function is defined, not where it's called from
+							if defNest > 0 {
+								storageFS = lmv
+							}
+
+							// Create execution path for context tracking
+							executionPath := make([]uint32, 0)
+							executionPath = append(executionPath, lmv)
+
+							// Determine parent try block ID (for nested try blocks)
+							parentTryBlockID := -1
+
+							// Line numbers are already correct from lineOffset parameter
+							relativePC := tryStartLine
+							adjustedStartLine := tryStartLine
+							adjustedEndLine := tryEndLine
+
+							registerTryBlock(tryFS, adjustedStartLine, adjustedEndLine, storageFS, tryNest, parentTryBlockID, executionPath, relativePC)
+						}
+					}
+				}
+
+				// Reset try block tracking
+				tryStartOffset = 0
+				tryContentStart = -1
+				tryStartLine = 0
+				tryEndLine = 0
+			}
+			tryNest -= 1
+
 		case LParen:
 			braceNestLevel += 1
 		case RParen:
@@ -225,7 +346,6 @@ func phraseParse(ctx context.Context, fs string, input string, start int) (badwo
 		// we check borpos to ensure we are not inside a | statement also.
 		// this is just meant to catch using . operator in Za multi-line expressions:
 		if borpos == -1 && !permit_cmd_fallback && tempToken.eol && lastTokenType == SYM_DOT {
-			// pf("eol-dot @ line %d\n",curLine+1)
 			curLine += 1
 			continue
 		}
@@ -288,13 +408,22 @@ func phraseParse(ctx context.Context, fs string, input string, start int) (badwo
 			// -- discard empty lines, add phrase to func store
 			if phrase.TokenCount != 0 {
 				if !discard_phrase {
-					// -- add phrase to function
-					// pf("\n[#4]for phrase text : %v\n",phrase.Tokens)
-					// pf("\n[#6]adding phrase (in #%d): %#v[#-]\n",lmv,phrase)
-					fspacelock.Lock()
-					functionspaces[lmv] = append(functionspaces[lmv], phrase)
-					basecode[lmv] = append(basecode[lmv], base)
-					fspacelock.Unlock()
+					// Record content start position if we're inside a try block
+					if tryNest > 0 && tryContentStart == -1 {
+						tryContentStart = lstart // Start of first phrase inside try block
+
+					}
+
+					// Only add phrases to function space if not inside try block
+					// but DO include try/endtry statements themselves for execution
+					// Include endtry in both parent and try block function spaces
+					if tryNest == 0 || phrase.Tokens[0].tokType == C_Try || phrase.Tokens[0].tokType == C_Endtry {
+						fspacelock.Lock()
+						functionspaces[lmv] = append(functionspaces[lmv], phrase)
+						basecode[lmv] = append(basecode[lmv], base)
+						fspacelock.Unlock()
+					}
+
 				}
 			}
 
@@ -315,8 +444,69 @@ func phraseParse(ctx context.Context, fs string, input string, start int) (badwo
 
 	}
 
+	// Try block extraction happens during phrasing, not after
+
 	recordPhase(ctx, "parse", time.Since(startTime))
 
 	return badword, eof
 
+}
+
+// Note: Try blocks are now handled directly during phraseParse(), not as a separate post-processing step
+
+// Helper function to register a try block with enhanced metadata
+func registerTryBlock(functionSpace uint32, startLine int16, endLine int16, parentFS uint32, nestLevel int, parentTryBlockID int, executionPath []uint32, relativePC int16) *tryBlockInfo {
+	// Generate unique try block ID
+	tryBlockRegistryLock.Lock()
+	tryBlockCounter++
+	tryBlockID := tryBlockCounter
+	tryBlockRegistryLock.Unlock()
+
+	// Create try block info with enhanced metadata
+	tryInfo := &tryBlockInfo{
+		functionSpace: functionSpace,
+		startLine:     startLine,
+		endLine:       endLine,
+		category:      "", // Will be extracted from try statement during execution
+		parentFS:      parentFS,
+		nestLevel:     nestLevel,
+		catchBlocks:   nil, // Parsed during execution
+		finallyBlock:  nil, // Parsed during execution
+
+		// Enhanced nested context fields
+		parentTryBlockID: parentTryBlockID,
+		tryBlockID:       tryBlockID,
+		executionPath:    executionPath,
+		relativePC:       relativePC,
+		childTryBlocks:   make([]int, 0),
+	}
+
+	// Register in global registry
+	tryBlockRegistryLock.Lock()
+	tryBlockRegistry[tryBlockID] = tryInfo
+	tryBlockRegistryLock.Unlock()
+
+	// Add to legacy storage for backward compatibility
+	tryBlockLock.Lock()
+	if tryBlocks[parentFS] == nil {
+		tryBlocks[parentFS] = make([]tryBlockInfo, 0)
+	}
+	tryBlocks[parentFS] = append(tryBlocks[parentFS], *tryInfo)
+	tryBlockLock.Unlock()
+
+	// Update parent try block's child list if there is a parent
+	if parentTryBlockID != -1 {
+		tryBlockRegistryLock.Lock()
+		if parentTryInfo, exists := tryBlockRegistry[parentTryBlockID]; exists {
+			parentTryInfo.childTryBlocks = append(parentTryInfo.childTryBlocks, tryBlockID)
+		}
+		tryBlockRegistryLock.Unlock()
+	}
+
+	return tryInfo
+}
+
+// Helper function to check if a character is alphanumeric
+func isAlphaNumeric(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }

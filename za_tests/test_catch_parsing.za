@@ -1,0 +1,34 @@
+println "=== Testing Enhanced Throw Syntax ==="
+
+# Register some test exceptions first
+exreg("file_error", 10)
+exreg("network_error", 20)
+
+filename = "test.txt"
+error_code = 404
+
+try throws "test_error"
+    println "Inside try block"
+    x = 42
+    
+    println "Testing different throw syntaxes:"
+    
+    # Simple string exception
+    throw "test_error"
+    
+    # String exception with message
+    throw "file_error" with "Could not open file: " + filename
+    
+    # Enum exception with expression message
+    throw ex.network_error with "HTTP Error " + error_code.as_string
+    
+    println "This should not execute after throw"
+catch err is "test_error"
+    println "Caught test_error"
+catch err contains "error"
+    println "Caught error containing 'error'"
+catch err is ex.file_error
+    println "Caught file_error enum"
+endtry
+
+println "Test completed" 

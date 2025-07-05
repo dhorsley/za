@@ -1,0 +1,21 @@
+#!/usr/bin/za
+
+# Debug test for try..catch exception handling
+
+println "=== Debug Test Start ==="
+println "Before try block"
+
+println "Checking if try blocks are parsed..."
+# This should work since parsing works
+try throws "test_error"
+    println "Inside try block - this should print"
+    println "About to assign a variable"
+    x = 42
+    println "x =", x
+    println "Now about to divide by zero..."
+    result = 10 / 0
+    println "This line should NOT execute after division by zero"
+endtry
+
+println "After try block - if you see this, the exception was handled!"
+println "=== Debug Test End ===" 

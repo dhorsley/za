@@ -1,0 +1,140 @@
+#!/usr/bin/za
+
+# Test script for try..catch block parsing
+# This will test nested try blocks and show debug output
+
+println "=== Testing Try Block Parsing ==="
+println
+
+# Test 1: Simple try block
+println "Test 1: Simple try block"
+try throws "test_error"
+    println "Inside simple try block"
+    x = 42
+    println "x =", x
+endtry
+
+println
+
+# Test 2: Try block with arguments
+println "Test 2: Try block with throws category"
+try throws "database_error"
+    println "Inside database try block"
+    db_connect = true
+    println "Database connection:", db_connect
+endtry
+
+println
+
+# Test 3: Nested try blocks
+println "Test 3: Nested try blocks"
+try throws "outer_error"
+    println "Outer try block start"
+    y = 100
+    
+    try throws "inner_error"
+        println "Inner try block"
+        z = 200
+        println "z =", z
+    endtry
+    
+    println "Back in outer try block"
+    println "y =", y
+endtry
+
+println
+
+# Test 4: Multiple try blocks in sequence
+println "Test 4: Multiple sequential try blocks"
+try throws "first_error"
+    println "First try block"
+    a = 1
+endtry
+
+try throws "second_error"
+    println "Second try block"
+    b = 2
+endtry
+
+println
+
+# Test 5: Try block without arguments
+println "Test 5: Try block without arguments"
+try
+    println "Try block with no arguments"
+    c = 3
+    println "c =", c
+endtry
+
+println
+
+# Test 6: Nested try blocks from user-defined function
+println "Test 6: Nested try blocks from user-defined function"
+
+define test_nested_from_function
+    println "Inside user-defined function"
+    func_var = "function_scope"
+    
+    try throws "function_outer_error"
+        println "Function outer try block start"
+        outer_var = 500
+        
+        try throws "function_inner_error"
+            println "Function inner try block"
+            inner_var = 600
+            println "inner_var =", inner_var
+        endtry
+        
+        println "Back in function outer try block"
+        println "outer_var =", outer_var
+    endtry
+    
+    println "Function completed, func_var =", func_var
+enddef
+
+test_nested_from_function()
+
+println
+
+# Test 7: Deeply nested function calls with try blocks
+println "Test 7: Deeply nested function calls with try blocks"
+
+define level3_function
+    println "Level 3 function"
+    try throws "level3_error"
+        println "Level 3 try block"
+        level3_var = 300
+        println "level3_var =", level3_var
+    endtry
+enddef
+
+define level2_function
+    println "Level 2 function"
+    try throws "level2_error"
+        println "Level 2 try block start"
+        level2_var = 200
+        
+        level3_function()
+        
+        println "Back in level 2 try block"
+        println "level2_var =", level2_var
+    endtry
+enddef
+
+define level1_function
+    println "Level 1 function"
+    try throws "level1_error"
+        println "Level 1 try block start"
+        level1_var = 100
+        
+        level2_function()
+        
+        println "Back in level 1 try block"
+        println "level1_var =", level1_var
+    endtry
+enddef
+
+level1_function()
+
+println
+println "=== All tests completed ===" 

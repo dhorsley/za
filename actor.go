@@ -686,9 +686,9 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 			callerFilename = fileMapValue.(string)
 		}
 
-        if len(errorChain)==0 {
-            errorChain=make([]chainInfo,0,3)
-        }
+		if len(errorChain) == 0 {
+			errorChain = make([]chainInfo, 0, 3)
+		}
 
 		if enhancedErrorsEnabled {
 			// If arg_names is empty (positional call), get parameter names from function definition
@@ -733,6 +733,9 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	parser.ident = ident
 	parser.kind_override = kind_override
 	parser.ctx = ctx
+
+	// Read isTryBlock flag while we already have the lock to avoid extra locking
+	isTryBlock := calltable[csloc].isTryBlock
 
 	calllock.Unlock()
 
@@ -795,6 +798,42 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 					return
 				}
 
+				// Check for try blocks using enhanced registry before standard error handling
+
+				// Build execution path for context tracking
+				executionPath := make([]uint32, 0)
+				executionPath = append(executionPath, source_base)
+
+				// Add call chain to execution path
+				for _, chainEntry := range errorChain {
+					executionPath = append(executionPath, chainEntry.loc)
+				}
+
+				// @note: tidy this up:
+
+				/*
+				   // Find applicable try blocks using the registry
+				   applicableTryBlocks := findApplicableTryBlocks(ctx, source_base, executionPath)
+				   if len(applicableTryBlocks) > 0 {
+				       // Convert panic to error for try block handling
+				       var err error
+				       if errVal, ok := r.(error); ok {
+				           err = errVal
+				       } else {
+				           err = errors.New(sf("%v", r))
+				       }
+				   }
+				   // DISABLED: Try block execution in panic handler to prevent infinite loops
+				   // Try blocks should only be executed by the C_Try case, not the panic han dler
+				   // The panic handler should only handle actual runtime panics
+				   // Execute try blocks in proper order (innermost first)
+				   handled := executeApplicableTryBlocks(ctx,applicableTryBlocks,err,ident,inbound)
+				   if handled {
+				       return
+				   }
+				   // If not handled, fall through to standard error handling
+				*/
+
 				parser.hard_fault = false
 				if _, ok := r.(runtime.Error); ok {
 					parser.report(inbound.SourceLine, sf("\n%v\n", r))
@@ -827,24 +866,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 					// Get current function name
 					currentFunctionName := calltable[csloc].fs
 
-                    /*
-					// Add current call to error chain with ordered arguments
-					filename := ""
-					if fileMapValue, exists := fileMap.Load(parser.fs); exists {
-						filename = fileMapValue.(string)
-					}
-
-					errorChain = append(errorChain, chainInfo{
-						loc:        csloc,
-						name:       currentFunctionName,
-						line:       inbound.SourceLine,
-						filename:   filename,
-						registrant: registrant,
-						argNames:   paramNames,
-						argValues:  va,
-					})
-                    */
-
 					// Check if this is an enhanced expect_args error for additional context
 					if enhancedErr, ok := err.(*EnhancedExpectArgsError); ok {
 						// Show enhanced error context with stdlib function details
@@ -854,7 +875,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 						showEnhancedErrorWithCallArgs(parser, inbound.SourceLine, err, parser.fs, nil, currentFunctionName)
 					}
 				} else {
-					// Standard error reporting (unchanged)
+					// Standard error reporting
 					parser.report(inbound.SourceLine, sf("\n%v\n", err))
 					if debugMode {
 						panic(r)
@@ -867,11 +888,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	}()
 
 	// some tracking variables for this function call
-	var break_count int // usually 0. when >0 stops breakIn from resetting
-	//  used for multi-level breaks.
-	var breakIn int64 // true during transition from break to outer.
-	var forceEnd bool // used by BREAK for skipping context checks when
-	//  bailing from nested constructs.
+	var break_count int // usually 0. when >0 stops breakIn from resetting, used for multi-level breaks.
+	var breakIn int64   // true during transition from break to outer.
+
+	var forceEnd bool    // used by BREAK for skipping context checks when bailing from nested constructs.
 	var retvalues []any  // return values to be passed back
 	var finalline int16  // tracks end of tokens in the function
 	var fs string        // current function space name
@@ -896,12 +916,13 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	ifs, _ := fnlookup.lmget(fs)
 	calllock.Unlock()
 
-	fname, _ := fileMap.Load(calltable[source_base].base)
+	fname, exists := fileMap.Load(calltable[source_base].base)
+	if !exists {
+		panic(errors.New(sf("fileMap entry not found for base=%d", calltable[source_base].base)))
+	}
 
 	moduleloc := fname.(string)
 	fileMap.Store(ifs, moduleloc)
-
-	// pf("Inside Call() : pre-statement-loop : current ifs=%d\n",ifs)
 
 	// -- generate bindings
 
@@ -1040,7 +1061,7 @@ tco_reentry:
 	// debug mode stuff:
 
 	activeDebugContext = parser
-
+	// fmt.Printf("[DEBUG] debugMode=%v, ifs=%d\n", debugMode, ifs)
 	if debugMode && ifs < 3 {
 		pf("[#fgreen]Debugger is active. Pausing before startup.[#-]\n")
 		debugger.enterDebugger(0, functionspaces[source_base], ident, &mident, &gident)
@@ -3922,6 +3943,19 @@ tco_reentry:
 			}
 			// pf("call() #%d : rv -> [%+v]\n",ifs,retvalues)
 
+			// If we're in a try block and executing a return, pack the return values
+			// with EXCEPTION_RETURN status for the parent function to handle
+			if isTryBlock {
+				// Pack return values: [EXCEPTION_RETURN, retval1, retval2, ...]
+				packedRetvals := make([]any, 1+int(retval_count))
+				packedRetvals[0] = EXCEPTION_RETURN
+				for i := 0; i < int(retval_count); i++ {
+					packedRetvals[i+1] = retvalues[i]
+				}
+				retvalues = packedRetvals
+				retval_count = uint8(len(packedRetvals))
+			}
+
 			endFunc = true
 			break
 
@@ -4221,11 +4255,11 @@ tco_reentry:
 
 				if debugMode {
 					start := time.Now()
-					phraseParse(parser.ctx, modRealAlias, string(mod), 0)
+					phraseParse(parser.ctx, modRealAlias, string(mod), 0, 0)
 					elapsed := time.Since(start)
 					pf("(timings-module) elapsed in mod translation for '%s' : %v\n", modRealAlias, elapsed)
 				} else {
-					phraseParse(parser.ctx, modRealAlias, string(mod), 0)
+					phraseParse(parser.ctx, modRealAlias, string(mod), 0, 0)
 				}
 				modcs := call_s{}
 				modcs.base = loc
@@ -5499,6 +5533,556 @@ tco_reentry:
 			}
 			continue
 
+		case C_Try:
+			// Execute try block using enhanced registry-based approach
+			// pf("DEBUG: C_Try case - inbound.SourceLine=%d, parser.pc=%d\n", inbound.SourceLine, parser.pc)
+
+			// Build execution path for context tracking
+			executionPath := make([]uint32, 0)
+			executionPath = append(executionPath, source_base)
+
+			// Add call chain to execution path for nested scenarios
+			for _, chainEntry := range errorChain {
+				executionPath = append(executionPath, chainEntry.loc)
+			}
+
+			// Find applicable try blocks using the registry
+			// pf("DEBUG: Searching for try blocks - currentFS=%d, executionPath=%v\n", source_base, executionPath)
+			applicableTryBlocks := findApplicableTryBlocks(ctx, source_base, executionPath)
+			// pf("DEBUG: Found %d applicable try blocks\n", len(applicableTryBlocks))
+			// for i, tryInfo := range applicableTryBlocks {
+			// 	pf("DEBUG: Try block %d - startLine=%d, endLine=%d, functionSpace=%d\n", i, tryInfo.startLine, tryInfo.endLine, tryInfo.functionSpace)
+			// }
+
+			/*
+				// Find the try block that starts at this try statement
+				// Both inbound.SourceLine and tryInfo.startLine are absolute line numbers, so compare directly
+				var functionStartLine int16
+				if len(functionspaces[source_base]) > 0 {
+					functionStartLine = functionspaces[source_base][0].SourceLine
+				}
+				relativeLine := inbound.SourceLine - functionStartLine
+									// pf("DEBUG: functionStartLine=%d, relativeLine=%d\n", functionStartLine, relativeLine)
+			*/
+
+			var matchingTryBlock *tryBlockInfo
+			// pf("DEBUG: Looking for try block with startLine=%d (inbound.SourceLine+1)\n", inbound.SourceLine+1)
+			for _, tryInfo := range applicableTryBlocks {
+				// pf("DEBUG: Checking try block startLine=%d vs inbound.SourceLine+1=%d\n", tryInfo.startLine, inbound.SourceLine+1)
+				if tryInfo.startLine == inbound.SourceLine+1 {
+					matchingTryBlock = &tryInfo
+					break
+				}
+			}
+
+			if matchingTryBlock != nil {
+				// pf("DEBUG: Found matching try block!\n")
+				// Execute the matching try block directly using its function space ID
+				if matchingTryBlock.functionSpace != 0 {
+					// pf("DEBUG: Executing try block - functionSpace=%d, startLine=%d, endLine=%d\n", matchingTryBlock.functionSpace, matchingTryBlock.startLine, matchingTryBlock.endLine)
+
+					// Use the same ident table so try blocks share variable scope with parent
+					var callErr error
+					_, _, _, callErr = Call(ctx, MODE_NEW, ident, matchingTryBlock.functionSpace, ciEval, false, nil, "", []string{})
+					if callErr != nil {
+						// Handle try block execution error
+						pf("Error executing try block: %v\n", callErr)
+					}
+
+					// Check return values from try block execution and mark for cleanup
+					calllock.Lock()
+					tryRetvals := calltable[matchingTryBlock.functionSpace].retvals
+					calltable[matchingTryBlock.functionSpace].gcShyness = 100
+					calltable[matchingTryBlock.functionSpace].gc = true
+					calllock.Unlock()
+
+					if tryRetvals != nil {
+						// Try block returned with values - check what happened
+						if retArray, ok := tryRetvals.([]any); ok && len(retArray) >= 1 {
+							if status, ok := retArray[0].(int); ok {
+								switch status {
+								case EXCEPTION_THROWN:
+									// Exception was thrown - set up exception state and jump to catch blocks
+									// pf("DEBUG: Try block returned with exception - setting up exception state (fs=%d, ifs=%d)\n", source_base, ifs)
+
+									if len(retArray) >= 3 {
+										activeException = &exceptionInfo{
+											category: retArray[1],
+											message:  GetAsString(retArray[2]),
+											line:     inbound.SourceLine,
+											function: fs,
+											fs:       ifs,
+										}
+										exceptionActive = true
+										currentCatchMatched = false
+
+										// Jump to first catch block - look in the current function space, not the try block function space
+										// Start looking from after the inner try block (pc+2 to skip the inner endtry)
+										// pf("DEBUG: Looking for catch in fs=%d from pc=%d\n", ifs, parser.pc+2)
+										catchFound, catchDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+										// pf("DEBUG: Catch result: found=%t, distance=%d, err=%t\n", catchFound, catchDistance, err)
+										if err || !catchFound {
+											// No catch blocks found - look for endtry
+											// pf("DEBUG: No catch found, looking for endtry in fs=%d from pc=%d\n", ifs, parser.pc+2)
+											endtryFound, endtryDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+											// pf("DEBUG: Endtry result: found=%t, distance=%d, err=%t\n", endtryFound, endtryDistance, err)
+											if err || !endtryFound {
+												// No endtry found in current function space - bubble exception up to parent
+												// pf("DEBUG: No endtry found in current function space - bubbling exception up to parent\n")
+												retvalues = []any{EXCEPTION_THROWN, activeException.category, activeException.message}
+												retval_count = 3
+												endFunc = true
+												// Don't clear exception state - let it bubble up
+												break
+											}
+											parser.pc += endtryDistance + 1 // Jump to endtry (+1 because we looked from pc+2)
+										} else {
+											parser.pc += catchDistance + 1 // Jump to first catch block (+1 because we looked from pc+2)
+										}
+									} else {
+										parser.report(inbound.SourceLine, "Invalid exception return format")
+										finish(false, ERR_SYNTAX)
+										break
+									}
+								case EXCEPTION_HANDLED:
+									// Exception was handled within try block - skip endtry and continue
+									// pf("DEBUG: Try block handled exception internally - skipping endtry and continuing\n")
+									parser.pc++ // Skip the endtry statement since we already dealt with it
+								case EXCEPTION_RETURN:
+									// Try block executed a return statement - unpack return arguments and propagate
+									// pf("DEBUG: Try block executed return statement - unpacking return arguments\n")
+									if len(retArray) > 1 {
+										// Extract user return arguments (skip the EXCEPTION_RETURN status)
+										userRetvals := retArray[1:]
+										retvalues = userRetvals
+										retval_count = uint8(len(userRetvals))
+									} else {
+										// Return with no arguments
+										retvalues = nil
+										retval_count = 0
+									}
+									endFunc = true
+									// The main execution loop will check endFunc and exit properly
+								default:
+									// Other status codes - handle as needed
+									// pf("DEBUG: Try block returned with unknown status %d - skipping endtry and continuing\n", status)
+									parser.pc++ // Skip the endtry statement since we already dealt with it
+								}
+							} else {
+								// Invalid return format - treat as normal completion
+								// pf("DEBUG: Try block returned with invalid status type - jumping to endtry\n")
+								foundEndtry := false
+								for searchPC := parser.pc + 1; searchPC < finalline; searchPC++ {
+									nextStatement := functionspaces[source_base][searchPC].Tokens[0].tokType
+									if nextStatement == C_Endtry {
+										parser.pc = searchPC - 1 // -1 because loop will increment
+										foundEndtry = true
+										break
+									}
+								}
+								if !foundEndtry {
+									// No endtry found in current function space - treat as normal completion and continue
+									// This can happen in nested try blocks where the endtry is in the parent function space
+									// pf("DEBUG: No endtry found in current function space during fallback search - continuing normally\n")
+								}
+							}
+						} else {
+							// Invalid return format - treat as normal completion
+							// pf("DEBUG: Try block returned with invalid format - jumping to endtry\n")
+							foundEndtry := false
+							for searchPC := parser.pc + 1; searchPC < finalline; searchPC++ {
+								nextStatement := functionspaces[source_base][searchPC].Tokens[0].tokType
+								if nextStatement == C_Endtry {
+									parser.pc = searchPC - 1 // -1 because loop will increment
+									foundEndtry = true
+									break
+								}
+							}
+							if !foundEndtry {
+								// No endtry found in current function space - treat as normal completion and continue
+								// This can happen in nested try blocks where the endtry is in the parent function space
+								// pf("DEBUG: No endtry found in current function space during fallback search - continuing normally\n")
+							}
+						}
+					} else {
+						// Try block completed normally - skip endtry and continue
+						// pf("DEBUG: Try block completed normally - skipping endtry and continuing\n")
+						parser.pc++ // Skip the endtry statement since we already dealt with it
+					}
+				} else {
+					// pf("DEBUG: Try block found but functionSpace is 0\n")
+				}
+			} else {
+				// pf("DEBUG: No matching try block found for line %d\n", inbound.SourceLine)
+			}
+
+		case C_Catch:
+			// Cache lookahead results if not already done
+			if !inbound.Tokens[0].la_done {
+				// pf("DEBUG: Calculating lookahead for catch at pc=%d, source_base=%d\n", parser.pc, source_base)
+				// Always find next catch (we're inside try block, so indent=1)
+				nextFound, nextDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+				// pf("DEBUG: Next catch lookahead result: found=%t, distance=%d, err=%t\n", nextFound, nextDistance, err)
+				if err {
+					// Lookahead failed - likely hit endtry first, which is normal
+					nextFound = false
+					nextDistance = 0
+					// pf("DEBUG: Next catch lookahead failed (normal if endtry is closer)\n")
+				}
+
+				// Always find endtry (we're inside try block at indent=1, looking for endtry at endlevel=0)
+				endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+				// pf("DEBUG: Endtry lookahead result: found=%t, distance=%d, err=%t\n", endtryFound, endtryDistance, err)
+				if err || !endtryFound {
+					// No endtry found in current function space - this means we're in a nested try block
+					// and the endtry is in the parent function space. This is not a syntax error.
+					// Set reasonable defaults for the lookahead cache and let normal processing continue.
+					inbound.Tokens[0].la_has_else = nextFound
+					inbound.Tokens[0].la_else_distance = nextDistance + 1
+					inbound.Tokens[0].la_end_distance = 1 // Default to next statement
+					inbound.Tokens[0].la_done = true
+				} else {
+					// Cache both
+					inbound.Tokens[0].la_has_else = nextFound
+					inbound.Tokens[0].la_else_distance = nextDistance + 1  // +1 because we started from pc+1
+					inbound.Tokens[0].la_end_distance = endtryDistance + 1 // +1 because we started from pc+1
+					inbound.Tokens[0].la_done = true
+				}
+			}
+
+			// Only process if there's an active exception
+			if !exceptionActive || activeException == nil || currentCatchMatched {
+				// No active exception or already handled - skip this catch
+				// pf("DEBUG: Skipping catch block - no active exception or already handled\n")
+
+				// Use cached lookahead results to jump
+				if currentCatchMatched {
+					// Exception was already caught - always jump to endtry
+					parser.pc += inbound.Tokens[0].la_end_distance - 1 // Jump to endtry
+					// pf("DEBUG: Exception already caught - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
+				} else if inbound.Tokens[0].la_has_else {
+					// No active exception but there are more catch blocks - jump to next catch
+					parser.pc += inbound.Tokens[0].la_else_distance - 1 // Jump to next catch
+					// pf("DEBUG: No active exception - jumping to next catch - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_else_distance, oldPC, parser.pc)
+				} else {
+					// No active exception and no more catch blocks - jump to endtry
+					parser.pc += inbound.Tokens[0].la_end_distance - 1 // Jump to endtry
+					// pf("DEBUG: No active exception - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
+				}
+				break
+			}
+
+			// Parse catch statement: catch err is|contains|in <expression>
+			if inbound.TokenCount >= 4 {
+				// Expected format: catch err operator expression
+				errVarName := inbound.Tokens[1].tokText
+				operatorToken := inbound.Tokens[2].tokType
+
+				// Extract expression tokens (everything after the operator)
+				exprTokens := inbound.Tokens[3:]
+
+				// Evaluate the expression to get the condition value
+				if we = parser.wrappedEval(ifs, ident, ifs, ident, exprTokens); !we.evalError {
+					conditionValue := we.result
+
+					// pf("DEBUG: Catch block parsed - err=%s, operator=%s, condition=%v\n", errVarName, tokNames[operatorToken], conditionValue)
+
+					matched := false
+
+					switch operatorToken {
+					case C_Is:
+						// Exact type and value match
+						if reflect.TypeOf(activeException.category) == reflect.TypeOf(conditionValue) {
+							if activeException.category == conditionValue {
+								matched = true
+							}
+						} else {
+							// Type mismatch error
+							parser.report(inbound.SourceLine, sf("Type mismatch in catch clause: exception type %T, condition type %T", activeException.category, conditionValue))
+							finish(false, ERR_EVAL)
+							break
+						}
+					case C_Contains:
+						// Both must be strings for regex matching
+						if reflect.TypeOf(activeException.category).Kind() == reflect.String && reflect.TypeOf(conditionValue).Kind() == reflect.String {
+							regexPattern := conditionValue.(string)
+							categoryStr := activeException.category.(string)
+							if matched_regex, _ := regexp.MatchString(regexPattern, categoryStr); matched_regex {
+								matched = true
+							}
+						} else {
+							// Type mismatch error
+							parser.report(inbound.SourceLine, sf("Type mismatch in catch contains clause: both operands must be strings, got exception type %T, condition type %T", activeException.category, conditionValue))
+							finish(false, ERR_EVAL)
+							break
+						}
+					case C_In:
+						// Check if exception category is in the condition collection
+						switch conditionValue.(type) {
+						case []any:
+							conditionArray := conditionValue.([]any)
+							for _, item := range conditionArray {
+								if reflect.TypeOf(activeException.category) == reflect.TypeOf(item) {
+									if activeException.category == item {
+										matched = true
+										break
+									}
+								}
+							}
+						case []string:
+							if reflect.TypeOf(activeException.category).Kind() == reflect.String {
+								conditionArray := conditionValue.([]string)
+								categoryStr := activeException.category.(string)
+								for _, item := range conditionArray {
+									if categoryStr == item {
+										matched = true
+										break
+									}
+								}
+							}
+						case []int:
+							if reflect.TypeOf(activeException.category).Kind() == reflect.Int {
+								conditionArray := conditionValue.([]int)
+								categoryInt := activeException.category.(int)
+								for _, item := range conditionArray {
+									if categoryInt == item {
+										matched = true
+										break
+									}
+								}
+							}
+						default:
+							// For non-collections, exact type and value match
+							if reflect.TypeOf(activeException.category) == reflect.TypeOf(conditionValue) {
+								if activeException.category == conditionValue {
+									matched = true
+								}
+							}
+						}
+					}
+
+					if matched {
+						// This catch block matches - set the err variable and continue executing catch body
+						currentCatchMatched = true
+
+						// Create err variable with exception information
+						errVar := map[string]any{
+							"category": activeException.category,
+							"message":  activeException.message,
+							"line":     activeException.line,
+							"function": activeException.function,
+						}
+
+						// Set the err variable in the current scope
+						vset(nil, ifs, ident, errVarName, errVar)
+
+						// pf("DEBUG: Exception caught by catch block - continuing to execute catch body\n")
+						// Don't jump anywhere - continue normal execution to execute the catch block body
+					} else {
+						// This catch block doesn't match - use cached lookahead results
+						// pf("DEBUG: Catch block doesn't match - jumping to next catch or endtry\n")
+
+						// Use cached lookahead results to jump
+						if inbound.Tokens[0].la_has_else {
+							parser.pc += inbound.Tokens[0].la_else_distance - 1 // Jump to next catch
+						} else {
+							parser.pc += inbound.Tokens[0].la_end_distance - 1 // Jump to endtry
+						}
+					}
+				} else {
+					parser.report(inbound.SourceLine, "Error evaluating catch condition")
+				}
+			} else {
+				parser.report(inbound.SourceLine, "Invalid catch syntax")
+			}
+
+		case C_Throw:
+			// Parse throw statement: throw exception [with message_expression]
+			if inbound.TokenCount >= 2 {
+				var exceptionTokens []Token
+				var messageTokens []Token
+
+				// Look for 'with' keyword to separate exception from message
+				withIndex := -1
+				for i := 2; i < len(inbound.Tokens); i++ {
+					if inbound.Tokens[i].tokType == C_With {
+						withIndex = i
+						break
+					}
+				}
+
+				if withIndex != -1 {
+					// Format: throw exception with message_expression
+					exceptionTokens = inbound.Tokens[1:withIndex]
+					messageTokens = inbound.Tokens[withIndex+1:]
+				} else {
+					// Format: throw exception (no message)
+					exceptionTokens = inbound.Tokens[1:]
+					messageTokens = nil
+				}
+
+				// Evaluate the exception expression
+				if we = parser.wrappedEval(ifs, ident, ifs, ident, exceptionTokens); !we.evalError {
+					// Store the actual value (string or integer) without conversion
+					category := we.result
+
+					// Evaluate message expression if present
+					message := ""
+					if messageTokens != nil && len(messageTokens) > 0 {
+						if we = parser.wrappedEval(ifs, ident, ifs, ident, messageTokens); !we.evalError {
+							message = GetAsString(we.result)
+						} else {
+							parser.report(inbound.SourceLine, "Error evaluating throw message expression")
+							break
+						}
+					}
+
+					// Set up exception state
+					activeException = &exceptionInfo{
+						category: category,
+						message:  message,
+						line:     inbound.SourceLine,
+						function: fs,
+						fs:       ifs,
+					}
+					exceptionActive = true
+					currentCatchMatched = false
+
+					// pf("DEBUG: Throwing exception - category=%v, message=%s\n", category, message)
+
+					// Check if we're inside a try block by looking for endtry
+					endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+					// pf("DEBUG: Checking if inside try block - endtry found=%t, distance=%d, err=%t\n", endtryFound, endtryDistance, err)
+
+					if !endtryFound || err {
+						// We're not inside a try block - exception should bubble up to parent function
+						// pf("DEBUG: Throw outside try block - setting return values and terminating function\n")
+
+						// Set return values to indicate exception bubbling
+						retvalues = []any{EXCEPTION_THROWN, category, message}
+						retval_count = 3
+						endFunc = true
+						// pf("DEBUG: Set endFunc=true, breaking out of switch statement\n")
+
+						// Don't clear exception state - let it bubble up
+						break
+					}
+
+					// We're inside a try block - cache lookahead results if not already done
+					if !inbound.Tokens[0].la_done {
+						// pf("DEBUG: Calculating lookahead for throw at pc=%d, source_base=%d\n", parser.pc, source_base)
+
+						// If we're already inside a catch block (currentCatchMatched is true),
+						// we should jump directly to endtry, not look for more catch blocks
+						if currentCatchMatched {
+							// pf("DEBUG: Throw from inside catch block - jumping directly to endtry\n")
+							// Cache endtry only
+							inbound.Tokens[0].la_has_else = false
+							inbound.Tokens[0].la_else_distance = 0
+							inbound.Tokens[0].la_end_distance = endtryDistance + 1 // +1 because we started from pc+1
+							// pf("DEBUG: Found endtry at distance %d from pc=%d\n", endtryDistance+1, parser.pc)
+						} else {
+							// Normal throw - look for catch blocks first
+							// Always find catch (we're inside try block, so indent=1)
+							catchFound, catchDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+							// pf("DEBUG: Catch lookahead result: found=%t, distance=%d, err=%t\n", catchFound, catchDistance, err)
+							if err {
+								// Lookahead failed - likely hit endtry first, which is normal
+								catchFound = false
+								catchDistance = 0
+								// pf("DEBUG: Catch lookahead failed (normal if endtry is closer)\n")
+							}
+
+							// Cache both
+							inbound.Tokens[0].la_has_else = catchFound
+							inbound.Tokens[0].la_else_distance = catchDistance + 1 // +1 because we started from pc+1
+							inbound.Tokens[0].la_end_distance = endtryDistance + 1 // +1 because we started from pc+1
+							// pf("DEBUG: Found catch=%t at distance %d, endtry at distance %d from pc=%d\n", catchFound, catchDistance+1, endtryDistance+1, parser.pc)
+						}
+						inbound.Tokens[0].la_done = true
+					}
+
+					// Use cached lookahead results
+					if inbound.Tokens[0].la_has_else {
+						// Jump to first catch block
+						parser.pc += inbound.Tokens[0].la_else_distance - 1 // -1 because loop will increment
+						// pf("DEBUG: Jumping to catch block - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_else_distance, oldPC, parser.pc)
+					} else {
+						// Jump to endtry
+						parser.pc += inbound.Tokens[0].la_end_distance - 1 // -1 because loop will increment
+						// pf("DEBUG: No catch blocks found - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
+					}
+
+				} else {
+					parser.report(inbound.SourceLine, "Error evaluating throw exception expression")
+				}
+			} else {
+				parser.report(inbound.SourceLine, "throw requires an exception argument")
+			}
+
+		case C_Endtry:
+			// Endtry - handle exception state based on whether it was caught
+			if exceptionActive {
+				if currentCatchMatched {
+					// Exception was caught and handled - set return values and clear state
+					retvalues = []any{EXCEPTION_HANDLED}
+					retval_count = 1
+					exceptionActive = false
+					activeException = nil
+					currentCatchMatched = false
+					// pf("DEBUG: Reached endtry - exception was handled, setting return values and clearing state\n")
+				} else {
+					// Exception was not handled - need to bubble up or apply strictness policy
+					// pf("DEBUG: Reached endtry - exception was not handled, checking if we should bubble up\n")
+
+					// Check if we're in a nested try block (would bubble up)
+					// Try blocks execute in separate function spaces, so check if this is a try block function space
+					if str.Contains(fs, "try_block_") {
+						// We're in a try block function space - bubble the exception up to the parent
+						// pf("DEBUG: In nested try block - bubbling exception up to parent\n")
+						retvalues = []any{EXCEPTION_THROWN, activeException.category, activeException.message}
+						retval_count = 1
+						endFunc = false
+						// Don't clear exception state - let parent handle it
+						break
+					}
+
+					// We're at top level - apply strictness policy
+					switch exceptionStrictness {
+					case "strict":
+						// Fatal termination with helpful message (default)
+						pf("[#fred]FATAL: Unhandled exception '%v': %s[#-]\n", activeException.category, activeException.message)
+						pf("[#fred]  at line %d in function %s[#-]\n", activeException.line, activeException.function)
+						finish(false, ERR_EXCEPTION)
+						break
+					case "permissive":
+						// Convert to normal panic
+						pf("[#fyellow]Converting unhandled exception to panic: %v - %s[#-]\n", activeException.category, activeException.message)
+						panic(sf("Unhandled exception: %v - %s", activeException.category, activeException.message))
+					case "warn":
+						// Print warning but continue
+						pf("[#fyellow]WARNING: Unhandled exception '%v': %s[#-]\n", activeException.category, activeException.message)
+						pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", activeException.line, activeException.function)
+						// Clear state and continue
+						exceptionActive = false
+						activeException = nil
+						currentCatchMatched = false
+					case "disabled":
+						// Completely ignore - just clear state
+						// pf("DEBUG: Exception handling disabled - ignoring unhandled exception\n")
+						exceptionActive = false
+						activeException = nil
+						currentCatchMatched = false
+					default:
+						// Unknown strictness - default to strict
+						pf("[#fred]FATAL: Unhandled exception '%v': %s (unknown strictness '%s', defaulting to strict)[#-]\n", activeException.category, activeException.message, exceptionStrictness)
+						pf("[#fred]  at line %d in function %s[#-]\n", activeException.line, activeException.function)
+						finish(false, ERR_EXCEPTION)
+						break
+					}
+				}
+			}
+
 		default:
 
 			// local command assignment (child/parent process call)
@@ -5556,6 +6140,62 @@ tco_reentry:
 			}
 			// pf("[statement-loop] received this valid response from wrappedEval(): %#v\n",we)
 
+			// Check if evaluation result contains exception information
+			if we.result != nil {
+				if retArray, ok := we.result.([]any); ok && len(retArray) >= 1 {
+					if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
+						// Evaluation contained a function call that returned with unhandled exception
+						// Set up exception state and bubble up or handle based on try block context
+						var category any = "unknown"
+						var message string = "unknown error"
+
+						if len(retArray) >= 3 {
+							category = retArray[1]
+							message = GetAsString(retArray[2])
+						}
+
+						// Check if we're inside a try block
+						endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+						if !endtryFound || err {
+							// We're not inside a try block - bubble exception up to parent function
+							// pf("DEBUG: Statement evaluation returned exception outside try block - bubbling up\n")
+							retvalues = []any{EXCEPTION_THROWN, category, message}
+							retval_count = 3
+							endFunc = true
+							break
+						} else {
+							// We're inside a try block - set exception state and jump to catch/endtry
+							// pf("DEBUG: Statement evaluation returned exception inside try block - setting state and jumping\n")
+							activeException = &exceptionInfo{
+								category: category,
+								message:  message,
+								line:     inbound.SourceLine,
+								function: fs,
+								fs:       ifs,
+							}
+							exceptionActive = true
+							currentCatchMatched = false
+
+							// Look for catch blocks
+							catchFound, catchDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+							if err {
+								catchFound = false
+								catchDistance = 0
+							}
+
+							if catchFound {
+								// Jump to first catch block
+								parser.pc += catchDistance
+							} else {
+								// Jump to endtry
+								parser.pc += endtryDistance
+							}
+						}
+						continue // Skip the rest of this iteration
+					}
+				}
+			}
+
 			if interactive && !we.assign && we.result != nil {
 				pf("%+v\n", we.result)
 			}
@@ -5580,6 +6220,20 @@ tco_reentry:
 		debugger.enterDebugger(key, functionspaces[source_base], ident, &mident, &gident)
 		activeDebugContext = nil
 	}
+
+	/*
+		// Automatically set return values based on exception state
+		if exceptionActive && activeException != nil {
+			// Exception occurred and is unhandled
+			retvalues = []any{EXCEPTION_THROWN, activeException.category, activeException.message}
+			retval_count = 1
+		} else if currentCatchMatched {
+			// Exception occurred but was handled
+			retvalues = []any{EXCEPTION_HANDLED}
+			retval_count = 1
+		}
+		// Normal completion - no special return values needed
+	*/
 
 	if !si {
 
@@ -5634,15 +6288,12 @@ tco_reentry:
 	}
 
 	calllock.Lock()
-	// fmt.Printf("Releasing fs %d (%s). Call table :\n%#v\n",ifs,fs,calltable[ifs])
-	// if calltable[csloc].caller != 0 {
-    if len(errorChain)>0 {
+	if len(errorChain) > 0 {
 		errorChain = errorChain[:len(errorChain)-1]
 		if enableProfiling {
 			popCallChain(ctx)
 		}
-    }
-	// }
+	}
 	calllock.Unlock()
 
 	return retval_count, endFunc, method_result, callErr
@@ -6083,4 +6734,204 @@ func parseAndConstructType(typeStr string) reflect.Type {
 	}
 
 	return nil // Unknown type
+}
+
+// executeTryBlocks handles try block execution when a panic occurs
+// Returns true if the exception was handled, false if it should continue to standard error handling
+func executeTryBlocks(ctx context.Context, tryBlocks []tryBlockInfo, err error, ident *[]Variable, inbound *Phrase) bool {
+	// For basic implementation, we'll execute all try blocks in order
+	// More sophisticated logic for catch/finally blocks will be added later
+
+	for _, tryBlock := range tryBlocks {
+		// Execute the try block as a separate function call
+		// The try block shares the same *ident (variable scope) as the parent function
+
+		// Get the try block function space name
+		tryFSName, exists := numlookup.lmget(tryBlock.functionSpace)
+		if !exists {
+			continue // Skip if function space not found
+		}
+
+		// Create a new call location for the try block execution
+		// Note: @ symbol is followed by auto-generated ID, avoid conflict with exec_@
+		loc, _ := GetNextFnSpace(true, tryFSName+"_handler@", call_s{
+			prepared:  true,
+			base:      tryBlock.functionSpace,
+			caller:    tryBlock.parentFS,
+			gc:        false,
+			gcShyness: 100,
+		})
+
+		// Set up fileMap entry for handler function space
+		// Handler function spaces should have the same file mapping as the try block function space
+		if tryBlockFileMap, exists := fileMap.Load(tryBlock.functionSpace); exists {
+			fileMap.Store(loc, tryBlockFileMap)
+		}
+
+		// Execute the try block
+		// For now, we'll just execute it and assume it handles the exception
+		// TODO: Add proper catch/finally logic and control flow handling
+		_, _, _, callErr := Call(ctx, MODE_NEW, ident, loc, ciTrap, false, nil, "", []string{}, err)
+
+		if callErr == nil {
+			// Try block executed successfully, consider the exception handled
+			return true
+		}
+
+		// If try block also failed, continue to next try block or fall through
+		// TODO: Implement proper exception bubbling logic
+	}
+
+	// No try block handled the exception
+	return false
+}
+
+// findApplicableTryBlocks uses the registry to find try blocks that can handle the current exception
+// Returns try blocks in the correct order (innermost first) for nested scenarios
+func findApplicableTryBlocks(ctx context.Context, currentFS uint32, executionPath []uint32) []tryBlockInfo {
+	var applicableTryBlocks []tryBlockInfo
+
+	tryBlockRegistryLock.RLock()
+	defer tryBlockRegistryLock.RUnlock()
+
+	// Find all try blocks that are applicable to the current execution context
+	for _, tryInfo := range tryBlockRegistry {
+		// Check if this try block is in the execution path
+		if isTryBlockApplicable(tryInfo, currentFS, executionPath) {
+			applicableTryBlocks = append(applicableTryBlocks, *tryInfo)
+		}
+	}
+
+	// Sort try blocks by nesting level (innermost first)
+	// Higher nest level means more deeply nested, should be handled first
+	for i := 0; i < len(applicableTryBlocks); i++ {
+		for j := i + 1; j < len(applicableTryBlocks); j++ {
+			if applicableTryBlocks[i].nestLevel < applicableTryBlocks[j].nestLevel {
+				// Swap to put higher nest level first
+				applicableTryBlocks[i], applicableTryBlocks[j] = applicableTryBlocks[j], applicableTryBlocks[i]
+			}
+		}
+	}
+
+	return applicableTryBlocks
+}
+
+// isTryBlockApplicable determines if a try block can handle an exception in the current context
+func isTryBlockApplicable(tryInfo *tryBlockInfo, currentFS uint32, executionPath []uint32) bool {
+
+	// pf("DEBUG: Checking try block applicability - tryInfo.parentFS=%d, currentFS=%d, executionPath=%v\n", tryInfo.parentFS, currentFS, executionPath)
+
+	// Check if the try block's parent function space is in the execution path
+	for _, pathFS := range executionPath {
+		if pathFS == tryInfo.parentFS {
+			// pf("DEBUG: Try block applicable via executionPath match\n")
+			return true
+		}
+	}
+
+	// Check if the current function space matches the try block's parent
+	if currentFS == tryInfo.parentFS {
+		// pf("DEBUG: Try block applicable via currentFS match\n")
+		return true
+	}
+
+	// For user-defined functions: check if the current function's base matches the try block's parent
+	calllock.RLock()
+	currentBase := calltable[currentFS].base
+	calllock.RUnlock()
+	if currentBase == tryInfo.parentFS {
+		// pf("DEBUG: Try block applicable via currentFS.base match (user-defined function)\n")
+		return true
+	}
+
+	// Enhanced logic for nested try blocks:
+	// If we're executing inside a try block function space, trace back to find the original parent
+
+	calllock.RLock()
+	defer calllock.RUnlock()
+
+	// Build a complete call chain from current execution context
+	var fullCallChain []uint32
+	fullCallChain = append(fullCallChain, currentFS)
+
+	// Add execution path
+	fullCallChain = append(fullCallChain, executionPath...)
+
+	// Trace back through the call table to find all parent function spaces
+	for _, fs := range fullCallChain {
+		if fs < uint32(len(calltable)) {
+			// Check if this function space has a caller
+			caller := calltable[fs].caller
+			if caller != 0 {
+				// Get the caller's function space name to check if it's a try block
+				callerName, exists := numlookup.lmget(caller)
+				if exists {
+					// If the caller is not a try block function space, check if it matches our try block's parent
+					if !str.Contains(callerName, "try_block_") && caller == tryInfo.parentFS {
+						return true
+					}
+
+					// If the caller is a try block, continue tracing back
+					if str.Contains(callerName, "try_block_") {
+						// Recursively check the caller's caller
+						grandCaller := calltable[caller].caller
+						if grandCaller != 0 && grandCaller == tryInfo.parentFS {
+							return true
+						}
+					}
+				}
+			}
+
+			// Direct match with try block's parent
+			if fs == tryInfo.parentFS {
+				return true
+			}
+		}
+	}
+
+	// pf("DEBUG: Try block NOT applicable - no match found\n")
+	return false
+}
+
+// executeApplicableTryBlocks executes try blocks found by the registry in proper order
+func executeApplicableTryBlocks(ctx context.Context, applicableTryBlocks []tryBlockInfo, err error, ident *[]Variable, inbound *Phrase) bool {
+	for _, tryBlock := range applicableTryBlocks {
+		// Execute the try block as a separate function call
+		// The try block shares the same *ident (variable scope) as the parent function
+
+		// Get the try block function space name
+		tryFSName, exists := numlookup.lmget(tryBlock.functionSpace)
+		if !exists {
+			continue // Skip if function space not found
+		}
+
+		// Create a new call location for the try block execution
+		loc, _ := GetNextFnSpace(true, tryFSName+"_handler@", call_s{
+			prepared:  true,
+			base:      tryBlock.functionSpace,
+			caller:    tryBlock.parentFS,
+			gc:        false,
+			gcShyness: 100,
+		})
+
+		// Set up fileMap entry for handler function space
+		// Handler function spaces should have the same file mapping as the try block function space
+		if tryBlockFileMap, exists := fileMap.Load(tryBlock.functionSpace); exists {
+			fileMap.Store(loc, tryBlockFileMap)
+		}
+
+		// Execute the try block
+		_, _, _, callErr := Call(ctx, MODE_NEW, ident, loc, ciTrap, false, nil, "", []string{}, err)
+
+		if callErr == nil {
+			// Try block executed successfully, consider the exception handled
+			return true
+		}
+
+		// If try block also failed, continue to next try block or fall through
+		// TODO: Implement proper exception bubbling logic
+	}
+
+	// No try block handled the exception
+	return false
 }

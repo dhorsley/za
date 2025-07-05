@@ -1,0 +1,13 @@
+#!/usr/bin/env za
+
+println "Testing normal return"
+
+def test_normal_return()
+    println "Function starting"
+    return "normal_value"
+    println "Should not reach here"
+end
+
+result = test_normal_return()
+println "Result:", result
+println "Type of result:", typeof(result) 

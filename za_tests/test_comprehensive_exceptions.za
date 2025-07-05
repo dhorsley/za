@@ -1,0 +1,221 @@
+#!/usr/bin/env za
+
+# case "strict", "permissive", "warn", "disabled"
+exception_strictness("warn")
+
+println "=== Comprehensive Exception Handling Tests ==="
+
+# Test 1: Basic throw and catch
+println "\nTest 1: Basic throw and catch"
+try
+    println "Before throw"
+    throw "test_error"
+    println "This should not print"
+catch err is "test_error"
+    println "Caught test_error:", err
+catch err is "other_error"
+    println "This should not print"
+endtry
+println "After try block"
+
+# Test 2: Multiple catch blocks with different conditions
+println "\nTest 2: Multiple catch blocks"
+try
+    println "Throwing database_error"
+    throw "database_error"
+catch err is "network_error"
+    println "Network error handler (should not execute)"
+catch err is "database_error"
+    println "Database error handler executed:", err
+catch err is "file_error"
+    println "File error handler (should not execute)"
+endtry
+
+# Test 3: Exception with enum values
+println "\nTest 3: Exception with enum values"
+exreg("network_timeout", 1001)
+exreg("database_connection", 1002)
+exreg("file_not_found", 1003)
+
+try
+    println "Throwing enum exception"
+    throw ex.network_timeout
+catch err is ex.network_timeout
+    println "Caught network timeout:", err
+catch err is ex.database_connection
+    println "Database connection error (should not execute)"
+endtry
+
+# Test 4: Exception bubbling (unhandled in inner, caught in outer)
+println "\nTest 4: Exception bubbling"
+try
+    println "Outer try block"
+    try
+        println "Inner try block"
+        throw "bubbling_error"
+        println "This should not print"
+    catch err is "different_error"
+        println "Inner catch (should not match)"
+    endtry
+    println "This should not print either"
+catch err is "bubbling_error"
+    println "Outer catch handled bubbled exception:", err
+endtry
+
+# Test 5: Exception with contains matching
+println "\nTest 5: Exception with contains matching"
+try
+    println "Throwing detailed error message"
+    throw "Database connection failed: timeout after 30 seconds"
+catch err contains "connection"
+    println "Caught error containing 'connection':", err
+catch err contains "timeout"
+    println "This should not execute (already caught)"
+endtry
+
+# Test 6: Exception in user-defined function
+println "\nTest 6: Exception in user-defined function"
+def test_function_exception()
+    println "Inside function"
+    try
+        println "Function try block"
+        throw "function_error"
+        println "Should not print"
+    catch err is "function_error"
+        println "Function caught error:", err
+    endtry
+    println "Function completed normally"
+end
+
+test_function_exception()
+
+# Test 7: Unhandled exception bubbling to function caller
+println "\nTest 7: Unhandled exception bubbling to caller"
+def throw_unhandled()
+    println "Function will throw unhandled exception"
+    try
+        throw "unhandled_error"
+    catch err is "different_error"
+        println "This won't match"
+    endtry
+    println "This should not print"
+end
+
+try
+    println "Calling function that throws unhandled exception"
+    throw_unhandled()
+    println "This should not print"
+catch err is "unhandled_error"
+    println "Caller caught unhandled exception:", err
+endtry
+
+# Test 8: Exception with return statement in try block
+println "\nTest 8: Exception with return in try block"
+def test_return_in_try()
+    println "Function with return in try"
+    try
+        println "Before return"
+        return "returned_value"
+        println "Should not print"
+    catch err is "any_error"
+        println "Should not execute"
+    endtry
+    println "Should not print"
+end
+
+result = test_return_in_try()
+println "Function returned:", result
+
+# Test 9: Exception with return statement in catch block
+println "\nTest 9: Exception with return in catch block"
+def test_return_in_catch()
+    println "Function with return in catch"
+    try
+        println "Throwing error"
+        throw "catch_return_error"
+    catch err is "catch_return_error"
+        println "In catch block, about to return"
+        return "catch_returned_value"
+    endtry
+    println "Should not print"
+end
+
+result2 = test_return_in_catch()
+println "Function returned from catch:", result2
+
+# Test 10: Complex nested exceptions with multiple levels
+println "\nTest 10: Complex nested exceptions"
+def level3_function()
+    println "Level 3 function"
+    try
+        println "Level 3 try"
+        throw "level3_error"
+    catch err is "level3_error"
+        println "Level 3 caught:", err
+        throw "level3_rethrow"  # Re-throw different error
+    endtry
+end
+
+def level2_function()
+    println "Level 2 function"
+    try
+        println "Level 2 try"
+        level3_function()
+        println "Level 2 after level3 call"
+    catch err is "level3_rethrow"
+        println "Level 2 caught rethrown error:", err
+        throw "level2_final"  # Transform and re-throw
+    endtry
+end
+
+try
+    println "Level 1 try"
+    level2_function()
+    println "Level 1 after level2 call"
+catch err is "level2_final"
+    println "Level 1 caught final error:", err
+endtry
+
+# Test 11: Exception with different data types
+println "\nTest 11: Exception with different data types"
+try
+    println "Throwing integer exception"
+    throw 42
+catch err is 42
+    println "Caught integer exception:", err
+endtry
+
+try
+    println "Throwing string exception with number"
+    throw "3.14"
+catch err is "3.14"
+    println "Caught string exception:", err
+endtry
+
+# Test 12: Exception stress test with many nested levels
+println "\nTest 12: Exception stress test"
+level=0
+def deeply_nested()
+    @level += 1
+    println "Nested level:", level
+    if level > 5
+        throw "deep_error"
+    endif
+    
+    try
+        deeply_nested()  # Remove the argument
+    catch err is "deep_error"
+        println "Caught at level", level, ":", err
+        if level > 3
+            throw "bubbling_up"  # Re-throw to test bubbling
+        endif
+    endtry
+end
+
+try
+    deeply_nested()
+catch err is "bubbling_up"
+    println "Final catch of bubbled exception:", err
+endtry
+
+println "\n=== All comprehensive tests completed ===" 

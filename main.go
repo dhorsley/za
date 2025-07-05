@@ -220,12 +220,23 @@ var permit_uninit bool // default:false, will evaluation cause a run-time failur
 // this can be altered with the permit("uninit",bool) call
 var permit_dupmod bool // default:false, ignore (true) or error (false) when a duplicate
 // module import occurs.
-var permit_exitquiet bool         // default:false, squash (true) or display (false) err msg on exit
-var permit_shell bool             // default: true, when false, exit script if shell command encountered
-var permit_eval bool              // default: true, when false, exit script if eval call encountered
-var permit_permit bool            // default: true, when false, permit function is disabled
-var permit_cmd_fallback bool      // default: false, when true and in interactive mode, exec in shell as fallback
-var permit_error_exit bool = true // default: true, when false, error handler won't exit program
+var permit_exitquiet bool                   // default:false, squash (true) or display (false) err msg on exit
+var permit_shell bool                       // default: true, when false, exit script if shell command encountered
+var permit_eval bool                        // default: true, when false, exit script if eval call encountered
+var permit_permit bool                      // default: true, when false, permit function is disabled
+var permit_cmd_fallback bool                // default: false, when true and in interactive mode, exec in shell as fallback
+var permit_error_exit bool = true           // default: true, when false, error handler won't exit program
+var permit_exception_strictness bool = true // default: true, when false, exception_strictness() function is disabled
+
+// Global: exception handling
+var exceptionStrictness string = "strict" // default: strict, options: strict, permissive, warn, disabled
+var unhandledAtSource bool                // tracks if exception originated from unhandled try block
+var unhandledExceptionInfo struct {
+	category     string
+	message      string
+	location     string
+	functionName string
+}
 
 // Global: test related
 // test related setup, completely non thread safe
@@ -494,6 +505,10 @@ func main() {
 	// setup the functions in the standard library.
 	// - this must come before any use of vset()
 	buildStandardLib()
+
+	// initialize the exception enum system
+	// - this must come after buildStandardLib() so categories[] is populated
+	initializeExceptionEnum()
 
 	// create lookup list for keywords
 	// - this must come before any use of vset()
@@ -1275,7 +1290,7 @@ func main() {
 			// startup script processing:
 			var errVal error
 			if !started && hasScript {
-				phraseParse(ctx, "main", startScript, 0)
+				phraseParse(ctx, "main", startScript, 0, 0)
 				basemodmap[1] = "main"
 				_, endFunc, _, errVal = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
 				if errVal != nil {
@@ -1420,7 +1435,7 @@ func main() {
 
 			if nestAccept == 0 {
 				fileMap.Store(uint32(0), exec_file_name)
-				phraseParse(ctx, "main", totalInput, 0)
+				phraseParse(ctx, "main", totalInput, 0, 0)
 				currentModule = "main"
 				parser.namespace = "main"
 
@@ -1521,11 +1536,11 @@ func main() {
 		fileMap.Store(uint32(1), exec_file_name)
 		if debugMode {
 			start := time.Now()
-			phraseParse(ctx, "main", input, 0)
+			phraseParse(ctx, "main", input, 0, 0)
 			elapsed := time.Since(start)
 			pf("(timings-main) elapsed in parse translation for main : %v\n", elapsed)
 		} else {
-			phraseParse(ctx, "main", input, 0)
+			phraseParse(ctx, "main", input, 0, 0)
 		}
 
 		// initialise the main program
@@ -1544,6 +1559,51 @@ func main() {
 		}
 
 		Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{})
+
+		// Check if main function returned with unhandled exception
+		calllock.Lock()
+		mainRetvals := calltable[mainloc].retvals
+		calllock.Unlock()
+
+		if mainRetvals != nil {
+			if retArray, ok := mainRetvals.([]any); ok && len(retArray) >= 1 {
+				if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
+					// Main function returned with unhandled exception - apply strictness policy
+					var category any = "unknown"
+					var message string = "unknown error"
+
+					if len(retArray) >= 3 {
+						category = retArray[1]
+						message = GetAsString(retArray[2])
+					}
+
+					// Apply exception strictness policy
+					switch exceptionStrictness {
+					case "strict":
+						// Fatal termination with helpful message (default)
+						pf("[#fred]FATAL: Unhandled exception '%v': %s[#-]\n", category, message)
+						pf("[#fred]  Program terminated due to unhandled exception[#-]\n")
+						finish(false, ERR_EXCEPTION) // Use finish() to handle interactive vs non-interactive
+					case "permissive":
+						// Convert to normal panic
+						pf("[#fyellow]Converting unhandled exception to panic: %v - %s[#-]\n", category, message)
+						panic(sf("Unhandled exception: %v - %s", category, message))
+					case "warn":
+						// Print warning but continue
+						pf("[#fyellow]WARNING: Unhandled exception '%v': %s[#-]\n", category, message)
+						pf("[#fyellow]  Program completed with unhandled exception[#-]\n")
+					case "disabled":
+						// Completely ignore - just continue
+						// pf("DEBUG: Exception handling disabled - ignoring unhandled exception\n")
+					default:
+						// Unknown strictness - default to strict
+						pf("[#fred]FATAL: Unhandled exception '%v': %s (unknown strictness '%s', defaulting to strict)[#-]\n", category, message, exceptionStrictness)
+						pf("[#fred]  Program terminated due to unhandled exception[#-]\n")
+						finish(false, ERR_EXCEPTION) // Use finish() to handle interactive vs non-interactive
+					}
+				}
+			}
+		}
 
 		calltable[mainloc].gcShyness = 0
 		calltable[mainloc].gc = false

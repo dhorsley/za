@@ -1,0 +1,20 @@
+#!/usr/bin/env za
+
+exception_strictness("warn")
+
+println "Testing simple exception bubbling"
+
+try
+    println "Outer try block"
+    try
+        println "Inner try block"
+        throw "bubble_test"
+    catch err is "wrong_error"
+        println "Inner catch (should not match)"
+    endtry
+    println "After inner try (should not print)"
+catch err is "bubble_test"
+    println "Outer catch handled:", err
+endtry
+
+println "After outer try block" 
