@@ -1,0 +1,15 @@
+# Test to debug stack trace truncation
+println "=== Stack Trace Debug Test ==="
+
+def simple_function()
+    println "In simple_function"
+    throw "test_error"
+end
+
+def outer_function()
+    println "In outer_function"
+    simple_function()
+end
+
+println "Calling outer_function..."
+outer_function() 

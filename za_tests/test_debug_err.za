@@ -1,0 +1,15 @@
+#!/usr/bin/za
+
+println "=== Debug Err Object ==="
+
+try
+    throw "test_error" with "test message"
+catch err
+    println "Full err object:", err
+    println "Keys in err object:"
+    foreach value in err
+        println "  ", key_value, ":", value
+    endfor
+endtry
+
+println "=== Debug completed ===" 
