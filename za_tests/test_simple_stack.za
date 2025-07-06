@@ -1,0 +1,13 @@
+#!/usr/bin/za
+
+println "=== Simple Stack Trace Test ==="
+
+# Simple test
+try
+    throw "test_error"
+catch err
+    println "✓ Caught exception:", err["category"]
+    println "Stack trace:", err["stack_trace"]
+endtry
+
+println "=== Test completed ===" 
