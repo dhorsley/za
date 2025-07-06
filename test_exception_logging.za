@@ -1,0 +1,28 @@
+# Test exception logging integration
+
+# Enable logging
+logging on
+logging json on
+logging error on
+set_env("ZA_LOG_LEVEL","info")
+logging status
+
+# Test basic exception logging
+println "Testing basic exception logging..."
+log_exception("test_category", "This is a test exception message")
+
+# Test exception logging with stack trace
+println "Testing exception logging with stack trace..."
+stack_data = [
+    {"function": "test_func", "line": 10, "caller": "main"},
+    {"function": "helper_func", "line": 25, "caller": "test_func"}
+]
+log_exception_with_stack("test_category", "Exception with custom stack trace", stack_data)
+
+# Test that unhandled exceptions are automatically logged
+println "Testing automatic logging of unhandled exceptions..."
+println "This will throw an unhandled exception that should be logged:"
+
+throw "test_exception" with "This is an unhandled exception that should be logged automatically"
+
+println "This line should not be reached"
