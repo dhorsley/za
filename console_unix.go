@@ -33,23 +33,23 @@ func isatty() bool {
 
 func disableEcho() {
     termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
-	if err == nil {
+    if err == nil {
         newState := *termios
         newState.Lflag |= unix.ICANON | unix.ISIG
         newState.Iflag |= unix.ICRNL
         newState.Lflag &^= unix.ECHO
-	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+        unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
     }
 }
 
 func enableEcho() {
     termios, err := unix.IoctlGetTermios(0, ioctlReadTermios)
-	if err == nil {
+    if err == nil {
         newState := *termios
         newState.Lflag |= unix.ICANON | unix.ISIG
         newState.Iflag |= unix.ICRNL
         newState.Lflag |= unix.ECHO
-	    unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
+        unix.IoctlSetTermios(0, ioctlWriteTermios, &newState)
     }
 }
 

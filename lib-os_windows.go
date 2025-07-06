@@ -3,8 +3,8 @@
 package main
 
 import (
-	"errors"
-	"os"
+    "errors"
+    "os"
     "path/filepath"
     "fmt"
     "io"
@@ -45,7 +45,7 @@ func fcopy(s, d string) (int64, error) {
 
 func buildOsLib() {
 
-	// os level
+    // os level
 
     /* linux has these extras:
 
@@ -57,8 +57,8 @@ func buildOsLib() {
 
     */
 
-	features["os"] = Feature{version: 1, category: "os"}
-	categories["os"] = []string{"env", "get_env", "set_env",
+    features["os"] = Feature{version: 1, category: "os"}
+    categories["os"] = []string{"env", "get_env", "set_env",
         "cwd", "cd", "dir",
         "parent", 
         "delete", "rename", "copy",
@@ -106,18 +106,18 @@ func buildOsLib() {
         return dl,nil
     }
 
-	slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
-	stdlib["cwd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
+    stdlib["cwd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cwd",args,0); !ok { return nil,err }
-		return syscall.Getwd()
-	}
+        return syscall.Getwd()
+    }
 
-	slhelp["cd"] = LibHelp{in: "string", out: "", action: "Changes directory to a given path."}
-	stdlib["cd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["cd"] = LibHelp{in: "string", out: "", action: "Changes directory to a given path."}
+    stdlib["cd"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("cd",args,1,"1","string"); !ok { return nil,err }
         err=syscall.Chdir(args[0].(string))
-		return nil, err
-	}
+        return nil, err
+    }
 
     slhelp["delete"] = LibHelp{in: "string", out: "", action: "Delete a file."}
     stdlib["delete"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
@@ -168,26 +168,26 @@ func buildOsLib() {
     }
     */
 
-	slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
-	stdlib["env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
+    stdlib["env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("env",args,0); !ok { return nil,err }
-		return os.Environ(), err
-	}
+        return os.Environ(), err
+    }
 
-	// get environmental variable. arg should *usually* be in upper-case.
-	slhelp["get_env"] = LibHelp{in: "key_name", out: "string", action: "Return the value of the environmental variable [#i1]key_name[#i0]."}
-	stdlib["get_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    // get environmental variable. arg should *usually* be in upper-case.
+    slhelp["get_env"] = LibHelp{in: "key_name", out: "string", action: "Return the value of the environmental variable [#i1]key_name[#i0]."}
+    stdlib["get_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("get_env",args,1,"1","string"); !ok { return nil,err }
         return os.Getenv(args[0].(string)), err
-	}
+    }
 
-	// set environmental variable.
-	slhelp["set_env"] = LibHelp{in: "key_name,value_string", out: "", action: "Set the value of the environmental variable [#i1]key_name[#i0]."}
-	stdlib["set_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+    // set environmental variable.
+    slhelp["set_env"] = LibHelp{in: "key_name,value_string", out: "", action: "Set the value of the environmental variable [#i1]key_name[#i0]."}
+    stdlib["set_env"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
         if ok,err:=expect_args("set_env",args,1,"2","string","string"); !ok { return nil,err }
-		key := args[0].(string)
-		val := args[1].(string)
-		return os.Setenv(key, val), err
-	}
+        key := args[0].(string)
+        val := args[1].(string)
+        return os.Setenv(key, val), err
+    }
 
 }
