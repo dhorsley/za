@@ -707,6 +707,54 @@ func formatStackTrace(stackTrace []stackFrame) string {
 	return result.String()
 }
 
+// logException logs an exception to the current logging target
+func logException(category any, message string, line int16, function string, stackTrace []stackFrame) {
+	if !loggingEnabled {
+		return
+	}
+
+	// Create snapshot of current fields for JSON logging
+	var fieldsCopy map[string]any
+	if jsonLoggingEnabled {
+		fieldsCopy = make(map[string]any)
+		for k, v := range logFields {
+			fieldsCopy[k] = v
+		}
+		fieldsCopy["source_line"] = line
+		fieldsCopy["function"] = function
+		fieldsCopy["category"] = category
+
+		// Add stack trace as structured data
+		if len(stackTrace) > 0 {
+			stackTraceData := make([]map[string]any, len(stackTrace))
+			for i, frame := range stackTrace {
+				stackTraceData[i] = map[string]any{
+					"function": frame.function,
+					"line":     frame.line,
+					"caller":   frame.caller,
+				}
+			}
+			fieldsCopy["stack_trace"] = stackTraceData
+		}
+	}
+
+	// Create the log message
+	logMessage := sf("Exception '%v': %s", category, message)
+
+	// Queue the exception log request
+	request := LogRequest{
+		Message:    logMessage,
+		Fields:     fieldsCopy,
+		IsJSON:     jsonLoggingEnabled,
+		IsError:    true,
+		SourceLine: line,
+		Level:      LOG_ERR, // Exception logs use ERROR level
+		Timestamp:  time.Now(),
+	}
+
+	queueLogRequest(request)
+}
+
 // captureStackTraceAtThrow captures the current call stack at the moment of throwing
 // and stores it directly in the exception struct
 func captureStackTraceAtThrow(throwLine int16, throwFunction string) []stackFrame {
@@ -727,6 +775,25 @@ func captureStackTraceAtThrow(throwLine int16, throwFunction string) []stackFram
 
 // handleUnhandledExceptionCore applies the exception strictness policy with optional parameters
 func handleUnhandledExceptionCore(category any, message string, ifs uint32, excInfo *exceptionInfo) {
+	// Log the exception first (regardless of strictness policy)
+	var line int16
+	var function string
+	var stackTrace []stackFrame
+
+	if excInfo != nil {
+		line = excInfo.line
+		function = excInfo.function
+		stackTrace = excInfo.stackTrace
+	} else {
+		// Default values for simple exceptions
+		line = 0
+		function = "unknown"
+		stackTrace = nil
+	}
+
+	// Log the exception
+	logException(category, message, line, function, stackTrace)
+
 	switch exceptionStrictness {
 	case "strict":
 		// Fatal termination with helpful message (default)
