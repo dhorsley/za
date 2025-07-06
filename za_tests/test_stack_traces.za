@@ -1,0 +1,100 @@
+#!/usr/bin/za
+
+println "=== Testing Automated Stack Traces ==="
+
+# Test 1: Simple stack trace
+println "\nTest 1: Simple stack trace"
+def inner_function()
+    throw "test_error"
+enddef
+
+def middle_function()
+    inner_function()
+enddef
+
+def outer_function()
+    middle_function()
+enddef
+
+try
+    outer_function()
+catch err
+    println "✓ Caught exception:", err["category"]
+    println "Stack trace:", err["stack_trace"].format_stack_trace
+endtry
+
+# Test 2: Stack trace in unhandled exception
+println "\nTest 2: Unhandled exception with stack trace"
+def deep_function()
+    throw "unhandled_error"
+enddef
+
+def call_deep()
+    deep_function()
+enddef
+
+# This should show the stack trace in the FATAL error
+call_deep()
+
+# Test 3: Stack trace with nested try blocks
+println "\nTest 3: Stack trace with nested try blocks"
+def nested_inner()
+    throw "nested_error"
+enddef
+
+def nested_middle()
+    try
+        nested_inner()
+    catch err
+        throw "wrapped_error"  # Re-throw with new stack trace
+    endtry
+enddef
+
+def nested_outer()
+    nested_middle()
+enddef
+
+try
+    nested_outer()
+catch err
+    println "✓ Caught wrapped error:", err["category"]
+    println "Stack trace:", format_stack_trace(err["stack_trace"])
+endtry
+
+# Test 4: Stack trace with function arguments
+println "\nTest 4: Stack trace with function arguments"
+def function_with_args(arg1, arg2)
+    throw "arg_error"
+enddef
+
+def call_with_args()
+    function_with_args("test", 42)
+enddef
+
+try
+    call_with_args()
+catch err
+    println "✓ Caught argument error:", err["category"]
+    println "Stack trace:", format_stack_trace(err["stack_trace"])
+endtry
+
+# Test 5: Stack trace with enum exceptions
+println "\nTest 5: Stack trace with enum exceptions"
+exreg("ENUM_ERROR", 1001)
+
+def enum_function()
+    throw ex.ENUM_ERROR
+enddef
+
+def call_enum()
+    enum_function()
+enddef
+
+try
+    call_enum()
+catch err
+    println "✓ Caught enum error:", err["category"]
+    println "Stack trace:", format_stack_trace(err["stack_trace"])
+endtry
+
+println "\n=== All stack trace tests completed ===" 
