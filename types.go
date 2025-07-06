@@ -98,8 +98,9 @@ type call_s struct {
 	filename   string // source file name
 	isTryBlock bool   // true if this function space is a try block
 	// Exception state - async-safe per-call exception context
-	activeException     unsafe.Pointer // atomic pointer to exceptionInfo - current exception in this call context
-	currentCatchMatched bool           // true if current exception was caught
+	activeException          unsafe.Pointer // atomic pointer to exceptionInfo - current exception in this call context
+	currentCatchMatched      bool           // true if current exception was caught
+	defaultExceptionCategory any            // default exception category from try throws clause (can be string or enum value)
 }
 
 func (cs call_s) String() string {
