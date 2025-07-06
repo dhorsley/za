@@ -1,0 +1,48 @@
+println "=== Finally Block Tests ==="
+
+println ""
+println "Test 1: Normal execution with finally"
+try
+    println "In try block"
+    println "Try block completed normally"
+then
+    println "In finally block - should always execute"
+endtry
+println "After try block"
+
+println ""
+println "Test 2: Exception caught with finally"
+try
+    println "In try block"
+    throw "test_error"
+    println "This should not print"
+catch err is "test_error"
+    println "Caught exception in catch block"
+then
+    println "In finally block - should execute after catch"
+endtry
+println "After try block"
+
+println ""
+println "Test 3: Exception not caught with finally"
+def test_unhandled_finally()
+    try
+        println "In try block"
+        throw "unhandled_error"
+        println "This should not print"
+    catch err is "different_error"
+        println "This catch should not match"
+    then
+        println "In finally block - should execute before bubbling"
+    endtry
+    println "This should not print - function should terminate"
+end
+
+println "Calling function with unhandled exception and finally"
+try
+    test_unhandled_finally()
+    println "This should not print either"
+catch err is "unhandled_error"
+    println "Caller caught the bubbled exception:", err
+endtry
+println "After handling bubbled exception" 
