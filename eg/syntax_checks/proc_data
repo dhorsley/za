@@ -3,45 +3,44 @@
 llen = 100000
 sz=9999
 
-define then()
+define now()
     return epoch_nano_time()
 end
 
-define now(then)
-    print ": Took ",numcomma(time_diff(epoch_nano_time(),then),0)," us\n\n"
+define diff(prev)
+    print ": Took ",numcomma(time_diff(epoch_nano_time(),prev),0)," us\n\n"
 end
 
 # build list
 
 print "Building list.\n"
-t=then()
+t=now()
 list=[]
 for e=0 to llen-1
     list=append(list,rand(sz))
 endfor
-now(t)
+diff(t)
 
-t=then(); print "List Length : ",numcomma(len(list),0),"\n"; now(t)
+t=now(); print "List Length : ",numcomma(len(list),0),"\n"; diff(t)
 println "First 100   : ",list[:100]
-t=then(); print "[#4]Min         : [#-]",min(list),"\n"; now(t)
-t=then(); print "[#4]Max         : [#-]",max(list),"\n"; now(t)
-t=then(); print "[#4]Sum         : [#-]",sum(list),"\n"; now(t)
-t=then(); print "[#4]Avg         : [#-]",avg(list),"\n"; now(t)
-
+t=now(); print "[#4]Min         : [#-]",min(list),"\n"; diff(t)
+t=now(); print "[#4]Max         : [#-]",max(list),"\n"; diff(t)
+t=now(); print "[#4]Sum         : [#-]",sum(list),"\n"; diff(t)
+t=now(); print "[#4]Avg         : [#-]",avg(list),"\n"; diff(t)
 
 println "[#4]Op (x/2)    : [#-]"
 println `: generated with nl = list -> "#/2"`
-t=then()
+t=now()
  nl=list -> "#/2"
-now(t)
+diff(t)
 println "list len nl -> ",len(nl)
 println "First 100   : ",nl[:100]
 
 println "\n[#4]Filter, all >9899 :[#-]"
 println `: generated with newlist=(list ?> "#>9899").uniq`
-t=then()
+t=now()
  newlist=(list.list_int ?> "#>9899").uniq
-now(t)
+diff(t)
 println "New list,unique numbers :\n",newlist
 
 print
