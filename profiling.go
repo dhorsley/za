@@ -2,12 +2,12 @@ package main
 
 import (
     "runtime"
-	"sort"
+    "sort"
     "context"
     "regexp"
-	"sync"
-	"sync/atomic"
-	"time"
+    "sync"
+    "sync/atomic"
+    "time"
     str "strings"
     "strconv"
     "bufio"
@@ -18,15 +18,15 @@ import (
 type profilerKeyType struct{}
 
 var (
-	profileMu       sync.Mutex
-	profiles        = make(map[string]*ProfileContext)
-	enableProfiling bool // set via flag
+    profileMu       sync.Mutex
+    profiles        = make(map[string]*ProfileContext)
+    enableProfiling bool // set via flag
     profilerKey     = profilerKeyType{}
     profileCallChains sync.Map
 )
 
 type ProfileContext struct {
-	Times map[string]time.Duration
+    Times map[string]time.Duration
 }
 
 var nextProfileID uint64 = 1
@@ -153,14 +153,14 @@ func collapseCallPath(callChain []string) string {
 
 // Called at start of a function or script
 func startProfile(caller string) {
-	if !enableProfiling {
-		return
-	}
-	profileMu.Lock()
-	if _, exists := profiles[caller]; !exists {
-		profiles[caller] = &ProfileContext{Times: make(map[string]time.Duration)}
-	}
-	profileMu.Unlock()
+    if !enableProfiling {
+        return
+    }
+    profileMu.Lock()
+    if _, exists := profiles[caller]; !exists {
+        profiles[caller] = &ProfileContext{Times: make(map[string]time.Duration)}
+    }
+    profileMu.Unlock()
 }
 
 func stopProfile(name string, startTime time.Time) {

@@ -512,7 +512,7 @@ func buildMathLib() {
             r = args[0].(int64)
         }
         if r==-1 {
-		    r=time.Now().UnixNano()
+            r=time.Now().UnixNano()
         }
         rand.Seed(r)
         return nil, err
