@@ -47,14 +47,16 @@ CHANGE LOG
         - Reworked getInput() and multilineEditor() for full UTF-8 support.
         - Replaced all internal string handling with rune-based logic for safe cursor movement and editing.
             - this still isn't perfect, but its much better.
-            - there's a plan to deal with cursor movement more cleanly over variable width utf-8/unicode, just not done yet.
+            - there's a plan to deal with cursor movement more cleanly over variable-
+                width utf-8/unicode, just not done yet.
         - Paste handling supports stripping ANSI codes and truncating multiline pastes to single-line input.
 
         - Added multi line editor extension to REPL. (ctrl-o)
             - opens on alternate screen
             - ctrl-d to accept input, escape to abandon, ctrl-r to return top-line only.
             - Added dynamic height adjustment in multi line editor.
-            - Line numbering in multi line editor with colored 5-digit width and truncation indicator (…) for long lines.
+            - Line numbering in multi line editor with coloured 5-digit width 
+                and truncation indicator (…) for long lines.
             - tab key generates 4 spaces. not changing this.
             - basic fuzzy search mode (ctrl-f)
             - some tweaks to filter out undesirable stuff from pastes.
@@ -146,11 +148,64 @@ CHANGE LOG
         - error_local_variables     # Returns variables in the error frame.
         - error_message             # Returns the original error message text.
         - error_source_context      # Returns source lines (before, after) around error.
-	- error_source_line_numbers # lines that error_source_context() refer to.
+	    - error_source_line_numbers # lines that error_source_context() refer to.
         - error_source_location     # Returns error location as {file, line, function, module}.
+
+    * added a couple of calls for gathering exception state info, see the section below.
 
     other
     -----
+
+    * added try..catch..then..endtry syntax
+        - very low overhead system, that executes try blocks in their own subfunction spaces
+        - tracing done through metadata capture.
+        - see the za_tests/ directory for examples
+
+        - new keywords:
+            try: Start a try block for exception handling
+            catch: Handle exceptions with pattern matching
+            then: equivalent to finally is other languages.
+            endtry: End a try block
+            throw: Throw an exception with category and message
+            throws: Declare exceptions that a try block may throw
+
+        - new library functions:
+            exception_strictness(policy): Configure exception handling behavior
+                - policy="strict|permissive|warn|disabled"
+            log_exception(category, message)
+                - Log an exception to the current logging target
+            log_exception_with_stack(category, message, stack_data)
+                - Log an exception with custom stack trace data
+            format_stack_trace()
+                - Format and display a stack trace with colours
+            exreg("name",priority):
+                - register a custom exception enum 
+                - priority is for setting the order of exception type processing
+
+         - new syntax patterns:
+            try...catch...then...endtry: Basic exception handling blocks
+                - catch and then are optional.
+            try throws "category"...catch...endtry
+                - Declare expected exceptions
+            catch err is "category"
+                - Match exception by exact category
+            catch err contains "regex"
+                - Match exception by string pattern
+            catch err is "cat1", "cat2"
+                - Multiple categories with OR logic
+            throw "category" with "message"
+                - Throw exception with category and message
+            throw ex.enum_value
+                - Throw exception using enum value
+
+         - new features:
+            exception enum system with exreg() function for priority-based handling
+            nested try blocks with exception bubbling
+            finally (THEN) blocks for cleanup code
+            automated stack traces with line numbers and function names
+            exception logging integration with JSON and plain text formats
+            coloured stack trace formatting
+            exception strictness policies for different handling behaviors
 
     * (experimental) Enhanced logging features:
 
