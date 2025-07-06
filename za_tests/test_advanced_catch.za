@@ -1,0 +1,103 @@
+#!/usr/bin/za
+
+println "=== Testing Advanced Catch Patterns ==="
+
+# Register some test exceptions
+exreg("NETWORK_ERROR", 1001)
+exreg("TIMEOUT_ERROR", 1002)
+exreg("DATABASE_ERROR", 1003)
+
+# Test 1: Multiple string patterns
+println "\nTest 1: Multiple string patterns"
+try throws "default_error"
+    println "Throwing network timeout"
+    throw "network_timeout"
+catch err is "network_error", "timeout_error", "network_timeout"
+    println "✓ Caught network-related error:", err
+endtry
+
+# Test 2: Mixed string and enum patterns
+println "\nTest 2: Mixed string and enum patterns"
+try throws "default_error"
+    println "Throwing network error"
+    throw "network_error"
+catch err is "network_error", ex.NETWORK_ERROR, "connection_error"
+    println "✓ Caught network error (string):", err
+endtry
+
+# Test 3: Enum values only
+println "\nTest 3: Enum values only"
+try throws "default_error"
+    println "Throwing timeout error"
+    throw ex.TIMEOUT_ERROR
+catch err is ex.NETWORK_ERROR, ex.TIMEOUT_ERROR, ex.DATABASE_ERROR
+    println "✓ Caught timeout error (enum):", err
+endtry
+
+# Test 4: Mixed integers and strings
+println "\nTest 4: Mixed integers and strings"
+try throws "default_error"
+    println "Throwing integer error"
+    throw 42
+catch err is 42, "forty_two", 1001
+    println "✓ Caught integer error:", err
+endtry
+
+# Test 5: Variables in patterns
+println "\nTest 5: Variables in patterns"
+error1 = "custom_error_1"
+error2 = "custom_error_2"
+error3 = ex.NETWORK_ERROR
+
+try throws "default_error"
+    println "Throwing custom error"
+    throw "custom_error_1"
+catch err is error1, error2, error3
+    println "✓ Caught custom error:", err
+endtry
+
+# Test 6: No match (should continue to next catch)
+println "\nTest 6: No match - should continue to next catch"
+try throws "default_error"
+    println "Throwing unmatched error"
+    throw "unmatched_error"
+catch err is "network_error", "timeout_error"
+    println "✗ Should not catch this"
+catch err contains "unmatched"
+    println "✓ Caught with contains:", err
+endtry
+
+# Test 7: Multiple catch blocks with different patterns
+println "\nTest 7: Multiple catch blocks"
+try throws "default_error"
+    println "Throwing database error"
+    throw "database_error"
+catch err is "network_error", "timeout_error"
+    println "✗ Should not catch network errors"
+catch err is "database_error", "sql_error", ex.DATABASE_ERROR
+    println "✓ Caught database error:", err
+catch err contains "error"
+    println "✗ Should not reach this (already caught)"
+endtry
+
+# Test 8: Single pattern (backward compatibility)
+println "\nTest 8: Single pattern (backward compatibility)"
+try throws "default_error"
+    println "Throwing simple error"
+    throw "simple_error"
+catch err is "simple_error"
+    println "✓ Caught single pattern:", err
+endtry
+
+# Test 9: Error handling - invalid pattern
+println "\nTest 9: Error handling"
+try throws "default_error"
+    println "Throwing error"
+    throw "test_error"
+catch err is "valid_error", invalid_variable
+    println "✗ Should not reach this due to error"
+catch err is "test_error"
+    println "✓ Caught after error:", err
+endtry
+
+println "\n=== All advanced catch pattern tests completed ===" 
