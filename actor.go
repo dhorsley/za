@@ -5592,7 +5592,7 @@ tco_reentry:
                 // Execute the matching try block directly using its function space ID
                 if matchingTryBlock.functionSpace != 0 {
                     // pf("DEBUG: Executing try block - functionSpace=%d, startLine=%d, endLine=%d\n", matchingTryBlock.functionSpace, matchingTryBlock.startLine, matchingTryBlock.endLine)
-                    
+
                     // Store the default category in the call context
                     calllock.Lock()
                     calltable[matchingTryBlock.functionSpace].defaultExceptionCategory = defaultCategory
@@ -5849,16 +5849,61 @@ tco_reentry:
 
                     switch operatorToken {
                     case C_Is:
-                        // Exact type and value match
-                        if reflect.TypeOf(catchExcPtr.category) == reflect.TypeOf(conditionValue) {
-                            if catchExcPtr.category == conditionValue {
-                                matched = true
+                        // Check for comma-separated patterns (OR logic)
+                        // Check if there are commas in the expression tokens
+                        hasCommas := false
+                        for _, token := range exprTokens {
+                            if token.tokType == O_Comma {
+                                hasCommas = true
+                                break
+                            }
+                        }
+
+                        if hasCommas {
+                            // Multiple patterns - evaluate each one and check if any match
+                            patterns, errs := parser.evalCommaArray(ifs, exprTokens)
+
+                            // Check if there are any non-nil errors
+                            hasErrors := false
+                            for _, err := range errs {
+                                if err != nil {
+                                    hasErrors = true
+                                    parser.report(inbound.SourceLine, sf("Error evaluating catch pattern: %v", err))
+                                    break
+                                }
+                            }
+                            if hasErrors {
+                                // Don't finish the program - just skip this catch block
+                                // The exception will continue to the next catch block
+                                break
+                            }
+
+                            // Check if any pattern matches (OR logic)
+                            for _, pattern := range patterns {
+                                if reflect.TypeOf(catchExcPtr.category) == reflect.TypeOf(pattern) {
+                                    if catchExcPtr.category == pattern {
+                                        matched = true
+                                        break
+                                    }
+                                } else {
+                                    // Type mismatch error
+                                    parser.report(inbound.SourceLine, sf("Type mismatch in catch clause: exception type %T, condition type %T", catchExcPtr.category, pattern))
+                                    finish(false, ERR_EVAL)
+                                    break
+                                }
                             }
                         } else {
-                            // Type mismatch error
-                            parser.report(inbound.SourceLine, sf("Type mismatch in catch clause: exception type %T, condition type %T", catchExcPtr.category, conditionValue))
-                            finish(false, ERR_EVAL)
-                            break
+                            // Single pattern - existing logic
+                            if reflect.TypeOf(catchExcPtr.category) == reflect.TypeOf(conditionValue) {
+                                if catchExcPtr.category == conditionValue {
+                                    matched = true
+                                }
+                            } else {
+                                // Type mismatch error
+                                parser.report(inbound.SourceLine, sf("Type mismatch in catch clause: exception type %T, condition type %T", catchExcPtr.category, conditionValue))
+                                finish(false, ERR_EVAL)
+                                break
+                            }
                         }
                     case C_Contains:
                         // Both must be strings for regex matching
@@ -5978,7 +6023,7 @@ tco_reentry:
                     messageTokens = nil
                 } else if withIndex != -1 {
                     // Format: throw exception with message_expression
-                    if withIndex==1 {
+                    if withIndex == 1 {
                         exceptionTokens = nil
                     } else {
                         exceptionTokens = inbound.Tokens[1:withIndex]
