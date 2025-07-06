@@ -1,0 +1,91 @@
+#!/usr/bin/za
+
+println "=== Testing Standalone Throws Statement ==="
+
+# Register some test exceptions first
+exreg("network_error", 20)
+exreg("file_error", 10)
+
+# Test 1: Basic throws with string literal
+println "\nTest 1: Basic throws with string literal"
+try
+    throws "default_error"
+    println "About to throw with default category"
+    throw  # No category specified - should use default
+catch err is "default_error"
+    println "✓ Caught default_error:", err
+endtry
+
+# Test 2: throws with enum value
+println "\nTest 2: throws with enum value"
+try
+    throws ex.network_error
+    println "About to throw with enum default"
+    throw  # Should use ex.network_error
+catch err is ex.network_error
+    println "✓ Caught network_error enum:", err
+endtry
+
+# Test 3: throws with variable expression
+println "\nTest 3: throws with variable expression"
+try
+    category = "variable_error"
+    throws category
+    println "About to throw with variable default"
+    throw
+catch err is "variable_error"
+    println "✓ Caught variable_error:", err
+endtry
+
+# Test 4: throws with integer literal
+println "\nTest 4: throws with integer literal"
+try
+    throws 42
+    println "About to throw with integer default"
+    throw
+catch err is 42
+    println "✓ Caught integer error:", err
+endtry
+
+# Test 5: Override default with explicit throw
+println "\nTest 5: Override default with explicit throw"
+try
+    throws "default_category"
+    println "About to throw with explicit override"
+    throw "override_category"  # Should override default
+catch err is "default_category"
+    println "✗ Should not catch default_category"
+catch err is "override_category"
+    println "✓ Caught override_category:", err
+endtry
+
+# Test 6: Multiple throws statements (last one wins)
+println "\nTest 6: Multiple throws statements"
+try
+    throws "first_error"
+    throws "second_error"
+    throws "final_error"
+    throw
+catch err is "first_error"
+    println "✗ Should not catch first_error"
+catch err is "second_error"
+    println "✗ Should not catch second_error"
+catch err is "final_error"
+    println "✓ Caught final_error (last throws wins):", err
+endtry
+
+# Test 7: throws with message still works
+println "\nTest 7: throws with message"
+try
+    throws "message_test"
+    throw with "Custom message here"
+catch err is "message_test"
+    println "✓ Caught with message:", err
+endtry
+
+# Test 8: Error cases (commented out - would cause parse errors)
+println "\nTest 8: Error cases (would cause parse errors if uncommented)"
+# throws  # No argument - should error
+# throws [1,2,3]  # Invalid type - should error
+
+println "\n=== All throws statement tests completed ===" 

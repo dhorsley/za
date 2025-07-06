@@ -5537,6 +5537,30 @@ tco_reentry:
             continue
 
         case C_Try:
+            // Parse optional throws clause: try throws "category"
+            // This sets the default exception category for throw statements in this block
+            var defaultCategory any
+            if inbound.TokenCount >= 3 && inbound.Tokens[1].tokType == C_Throws {
+                // Parse the exception category
+                // Evaluate the expression to get the category (preserve original type for enums)
+                categoryTokens := inbound.Tokens[2:]
+                we := parser.wrappedEval(ifs, ident, ifs, ident, categoryTokens)
+                if we.evalError {
+                    parser.report(inbound.SourceLine, "Could not evaluate throws expression")
+                    finish(false, ERR_EVAL)
+                    break
+                }
+                // Validate that the result is a string or integer (for enum values)
+                switch we.result.(type) {
+                case string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+                    defaultCategory = we.result // Valid type
+                default:
+                    parser.report(inbound.SourceLine, "throws clause must be a string or integer (enum value)")
+                    finish(false, ERR_EVAL)
+                    break
+                }
+            }
+
             // Execute try block using enhanced registry-based approach
             // pf("DEBUG: C_Try case - inbound.SourceLine=%d, parser.pc=%d\n", inbound.SourceLine, parser.pc)
 
@@ -5550,23 +5574,7 @@ tco_reentry:
             }
 
             // Find applicable try blocks using the registry
-            // pf("DEBUG: Searching for try blocks - currentFS=%d, executionPath=%v\n", source_base, executionPath)
             applicableTryBlocks := findApplicableTryBlocks(ctx, source_base, executionPath)
-            // pf("DEBUG: Found %d applicable try blocks\n", len(applicableTryBlocks))
-            // for i, tryInfo := range applicableTryBlocks {
-            //  pf("DEBUG: Try block %d - startLine=%d, endLine=%d, functionSpace=%d\n", i, tryInfo.startLine, tryInfo.endLine, tryInfo.functionSpace)
-            // }
-
-            /*
-               // Find the try block that starts at this try statement
-               // Both inbound.SourceLine and tryInfo.startLine are absolute line numbers, so compare directly
-               var functionStartLine int16
-               if len(functionspaces[source_base]) > 0 {
-                   functionStartLine = functionspaces[source_base][0].SourceLine
-               }
-               relativeLine := inbound.SourceLine - functionStartLine
-                                   // pf("DEBUG: functionStartLine=%d, relativeLine=%d\n", functionStartLine, relativeLine)
-            */
 
             var matchingTryBlock *tryBlockInfo
             // pf("DEBUG: Looking for try block with startLine=%d (inbound.SourceLine+1)\n", inbound.SourceLine+1)
@@ -5579,10 +5587,16 @@ tco_reentry:
             }
 
             if matchingTryBlock != nil {
+
                 // pf("DEBUG: Found matching try block!\n")
                 // Execute the matching try block directly using its function space ID
                 if matchingTryBlock.functionSpace != 0 {
                     // pf("DEBUG: Executing try block - functionSpace=%d, startLine=%d, endLine=%d\n", matchingTryBlock.functionSpace, matchingTryBlock.startLine, matchingTryBlock.endLine)
+                    
+                    // Store the default category in the call context
+                    calllock.Lock()
+                    calltable[matchingTryBlock.functionSpace].defaultExceptionCategory = defaultCategory
+                    calllock.Unlock()
 
                     // Use the same ident table so try blocks share variable scope with parent
                     var callErr error
@@ -5943,23 +5957,32 @@ tco_reentry:
             }
 
         case C_Throw:
-            // Parse throw statement: throw exception [with message_expression]
-            if inbound.TokenCount >= 2 {
+            // Parse throw statement: throw [exception] [with message_expression]
+            // If no exception specified, use default category from try throws clause
+            if inbound.TokenCount >= 1 {
                 var exceptionTokens []Token
                 var messageTokens []Token
 
                 // Look for 'with' keyword to separate exception from message
                 withIndex := -1
-                for i := 2; i < len(inbound.Tokens); i++ {
+                for i := 1; i < len(inbound.Tokens); i++ {
                     if inbound.Tokens[i].tokType == C_With {
                         withIndex = i
                         break
                     }
                 }
 
-                if withIndex != -1 {
+                if inbound.TokenCount == 1 {
+                    // Format: throw (no exception or message - use default category)
+                    exceptionTokens = nil
+                    messageTokens = nil
+                } else if withIndex != -1 {
                     // Format: throw exception with message_expression
-                    exceptionTokens = inbound.Tokens[1:withIndex]
+                    if withIndex==1 {
+                        exceptionTokens = nil
+                    } else {
+                        exceptionTokens = inbound.Tokens[1:withIndex]
+                    }
                     messageTokens = inbound.Tokens[withIndex+1:]
                 } else {
                     // Format: throw exception (no message)
@@ -5967,135 +5990,186 @@ tco_reentry:
                     messageTokens = nil
                 }
 
-                // Evaluate the exception expression
-                if we = parser.wrappedEval(ifs, ident, ifs, ident, exceptionTokens); !we.evalError {
-                    // Store the actual value (string or integer) without conversion
-                    category := we.result
+                // Evaluate the exception expression or use default category
+                var category any
+                if exceptionTokens == nil {
+                    // No exception specified - use default category from try throws clause
+                    calllock.RLock()
+                    defaultCategory := calltable[ifs].defaultExceptionCategory
+                    calllock.RUnlock()
+                    if defaultCategory == nil {
+                        parser.report(inbound.SourceLine, "throw requires an exception category or try throws clause")
+                        finish(false, ERR_EXCEPTION)
+                        break
+                    }
+                    category = defaultCategory
+                } else {
+                    // Evaluate the exception expression
+                    if we = parser.wrappedEval(ifs, ident, ifs, ident, exceptionTokens); !we.evalError {
+                        // Store the actual value (string or integer) without conversion
+                        category = we.result
+                    } else {
+                        parser.report(inbound.SourceLine, "Error evaluating throw exception expression")
+                        finish(false, ERR_EXCEPTION)
+                        break
+                    }
+                }
 
-                    // Evaluate message expression if present
-                    message := ""
-                    if messageTokens != nil && len(messageTokens) > 0 {
-                        if we = parser.wrappedEval(ifs, ident, ifs, ident, messageTokens); !we.evalError {
-                            message = GetAsString(we.result)
+                // Evaluate message expression if present
+                message := ""
+                if messageTokens != nil && len(messageTokens) > 0 {
+                    if we = parser.wrappedEval(ifs, ident, ifs, ident, messageTokens); !we.evalError {
+                        message = GetAsString(we.result)
+                    } else {
+                        parser.report(inbound.SourceLine, "Error evaluating throw message expression")
+                        finish(false, ERR_EXCEPTION)
+                        break
+                    }
+                }
+
+                // Set up exception state atomically
+                excInfo := &exceptionInfo{
+                    category: category,
+                    message:  message,
+                    line:     inbound.SourceLine,
+                    function: fs,
+                    fs:       ifs,
+                }
+                atomic.StorePointer(&calltable[ifs].activeException, unsafe.Pointer(excInfo))
+                calllock.Lock()
+                calltable[ifs].currentCatchMatched = false
+                calllock.Unlock()
+
+                // pf("DEBUG: Throwing exception - category=%v, message=%s\n", category, message)
+
+                // Check if we're inside a try block by looking for C_Endtry
+                endtryFound, endtryDistance, endtryErr := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+
+                if !endtryFound || endtryErr {
+                    // We're not inside a try block - exception should bubble up to parent function
+                    // pf("DEBUG: Throw outside try block - setting return values and terminating function\n")
+
+                    // Set return values to indicate exception bubbling
+                    retvalues = []any{EXCEPTION_THROWN, category, message}
+                    retval_count = 3
+                    endFunc = true
+                    // pf("DEBUG: Set endFunc=true, breaking out of switch statement\n")
+
+                    // Don't clear exception state - let it bubble up
+                    break
+                }
+
+                // We're inside a try block - cache lookahead results if not already done
+                if !inbound.Tokens[0].la_done {
+                    // pf("DEBUG: Calculating lookahead for throw at pc=%d, source_base=%d\n", parser.pc, source_base)
+
+                    // If we're already inside a catch block (currentCatchMatched is true),
+                    // we should jump directly to endtry, not look for more catch blocks
+                    calllock.RLock()
+                    isCurrentCatchMatched := calltable[ifs].currentCatchMatched
+                    calllock.RUnlock()
+                    if isCurrentCatchMatched {
+                        // pf("DEBUG: Throw from inside catch block - jumping directly to finally or endtry\n")
+                        // Look for finally block first
+                        thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
+                        if thenFound && !thenErr {
+                            // Jump to finally block
+                            inbound.Tokens[0].la_has_else = false
+                            inbound.Tokens[0].la_else_distance = 0
+                            inbound.Tokens[0].la_end_distance = thenDistance + 1 // +1 because we started from pc+1
                         } else {
-                            parser.report(inbound.SourceLine, "Error evaluating throw message expression")
-                            break
+                            // No finally block, jump to endtry
+                            inbound.Tokens[0].la_has_else = false
+                            inbound.Tokens[0].la_else_distance = 0
+                            inbound.Tokens[0].la_end_distance = endtryDistance + 1 // +1 because we started from pc+1
                         }
+                    } else {
+                        // Normal throw - look for catch blocks first
+                        // Always find catch (we're inside try block, so indent=1)
+                        catchFound, catchDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+                        // pf("DEBUG: Catch lookahead result: found=%t, distance=%d, err=%t\n", catchFound, catchDistance, err)
+                        if err {
+                            // Lookahead failed - likely hit endtry first, which is normal
+                            catchFound = false
+                            catchDistance = 0
+                            // pf("DEBUG: Catch lookahead failed (normal if endtry is closer)\n")
+                        }
+
+                        // Determine where to jump if no catch blocks match
+                        var finalTarget int16
+                        if catchFound {
+                            // Look for finally block after catch blocks
+                            thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
+                            if thenFound && !thenErr {
+                                finalTarget = thenDistance + 1 // +1 because we started from pc+1
+                            } else {
+                                finalTarget = endtryDistance + 1 // +1 because we started from pc+1
+                            }
+                        } else {
+                            // No catch blocks, look for finally block
+                            thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
+                            if thenFound && !thenErr {
+                                finalTarget = thenDistance + 1 // +1 because we started from pc+1
+                            } else {
+                                finalTarget = endtryDistance + 1 // +1 because we started from pc+1
+                            }
+                        }
+
+                        // Cache both
+                        inbound.Tokens[0].la_has_else = catchFound
+                        inbound.Tokens[0].la_else_distance = catchDistance + 1 // +1 because we started from pc+1
+                        inbound.Tokens[0].la_end_distance = finalTarget
+                        // pf("DEBUG: Found catch=%t at distance %d, final target at distance %d from pc=%d\n", catchFound, catchDistance+1, finalTarget, parser.pc)
                     }
+                    inbound.Tokens[0].la_done = true
+                }
 
-                    // Set up exception state atomically
-                    excInfo := &exceptionInfo{
-                        category: category,
-                        message:  message,
-                        line:     inbound.SourceLine,
-                        function: fs,
-                        fs:       ifs,
-                    }
-                    atomic.StorePointer(&calltable[ifs].activeException, unsafe.Pointer(excInfo))
-                    calllock.Lock()
-                    calltable[ifs].currentCatchMatched = false
-                    calllock.Unlock()
+                // Use cached lookahead results
+                if inbound.Tokens[0].la_has_else {
+                    // Jump to first catch block
+                    parser.pc += inbound.Tokens[0].la_else_distance - 1 // -1 because loop will increment
+                    // pf("DEBUG: Jumping to catch block - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_else_distance, oldPC, parser.pc)
+                } else {
+                    // Jump to endtry
+                    parser.pc += inbound.Tokens[0].la_end_distance - 1 // -1 because loop will increment
+                    // pf("DEBUG: No catch blocks found - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
+                }
 
-                    // pf("DEBUG: Throwing exception - category=%v, message=%s\n", category, message)
+            } else {
+                parser.report(inbound.SourceLine, "throw requires an exception argument")
+            }
 
-                    // Check if we're inside a try block by looking for C_Endtry
-                    endtryFound, endtryDistance, endtryErr := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
-
-                    if !endtryFound || endtryErr {
-                        // We're not inside a try block - exception should bubble up to parent function
-                        // pf("DEBUG: Throw outside try block - setting return values and terminating function\n")
-
-                        // Set return values to indicate exception bubbling
-                        retvalues = []any{EXCEPTION_THROWN, category, message}
-                        retval_count = 3
-                        endFunc = true
-                        // pf("DEBUG: Set endFunc=true, breaking out of switch statement\n")
-
-                        // Don't clear exception state - let it bubble up
+        case C_Throws:
+            // Parse throws statement: throws expression
+            // Sets the default exception category for subsequent throw statements
+            if inbound.TokenCount >= 2 {
+                // Evaluate the exception expression
+                exceptionTokens := inbound.Tokens[1:]
+                if we = parser.wrappedEval(ifs, ident, ifs, ident, exceptionTokens); !we.evalError {
+                    // Validate that the result is a valid exception category type
+                    var defaultCategory any
+                    switch we.result.(type) {
+                    case string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+                        defaultCategory = we.result // Valid type
+                    default:
+                        parser.report(inbound.SourceLine, "throws statement requires a string or integer (enum value)")
+                        finish(false, ERR_EXCEPTION)
                         break
                     }
 
-                    // We're inside a try block - cache lookahead results if not already done
-                    if !inbound.Tokens[0].la_done {
-                        // pf("DEBUG: Calculating lookahead for throw at pc=%d, source_base=%d\n", parser.pc, source_base)
+                    // Set the default exception category for this function space
+                    calllock.Lock()
+                    calltable[ifs].defaultExceptionCategory = defaultCategory
+                    calllock.Unlock()
 
-                        // If we're already inside a catch block (currentCatchMatched is true),
-                        // we should jump directly to endtry, not look for more catch blocks
-                        calllock.RLock()
-                        isCurrentCatchMatched := calltable[ifs].currentCatchMatched
-                        calllock.RUnlock()
-                        if isCurrentCatchMatched {
-                            // pf("DEBUG: Throw from inside catch block - jumping directly to finally or endtry\n")
-                            // Look for finally block first
-                            thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
-                            if thenFound && !thenErr {
-                                // Jump to finally block
-                                inbound.Tokens[0].la_has_else = false
-                                inbound.Tokens[0].la_else_distance = 0
-                                inbound.Tokens[0].la_end_distance = thenDistance + 1 // +1 because we started from pc+1
-                            } else {
-                                // No finally block, jump to endtry
-                                inbound.Tokens[0].la_has_else = false
-                                inbound.Tokens[0].la_else_distance = 0
-                                inbound.Tokens[0].la_end_distance = endtryDistance + 1 // +1 because we started from pc+1
-                            }
-                        } else {
-                            // Normal throw - look for catch blocks first
-                            // Always find catch (we're inside try block, so indent=1)
-                            catchFound, catchDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
-                            // pf("DEBUG: Catch lookahead result: found=%t, distance=%d, err=%t\n", catchFound, catchDistance, err)
-                            if err {
-                                // Lookahead failed - likely hit endtry first, which is normal
-                                catchFound = false
-                                catchDistance = 0
-                                // pf("DEBUG: Catch lookahead failed (normal if endtry is closer)\n")
-                            }
-
-                            // Determine where to jump if no catch blocks match
-                            var finalTarget int16
-                            if catchFound {
-                                // Look for finally block after catch blocks
-                                thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
-                                if thenFound && !thenErr {
-                                    finalTarget = thenDistance + 1 // +1 because we started from pc+1
-                                } else {
-                                    finalTarget = endtryDistance + 1 // +1 because we started from pc+1
-                                }
-                            } else {
-                                // No catch blocks, look for finally block
-                                thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
-                                if thenFound && !thenErr {
-                                    finalTarget = thenDistance + 1 // +1 because we started from pc+1
-                                } else {
-                                    finalTarget = endtryDistance + 1 // +1 because we started from pc+1
-                                }
-                            }
-
-                            // Cache both
-                            inbound.Tokens[0].la_has_else = catchFound
-                            inbound.Tokens[0].la_else_distance = catchDistance + 1 // +1 because we started from pc+1
-                            inbound.Tokens[0].la_end_distance = finalTarget
-                            // pf("DEBUG: Found catch=%t at distance %d, final target at distance %d from pc=%d\n", catchFound, catchDistance+1, finalTarget, parser.pc)
-                        }
-                        inbound.Tokens[0].la_done = true
-                    }
-
-                    // Use cached lookahead results
-                    if inbound.Tokens[0].la_has_else {
-                        // Jump to first catch block
-                        parser.pc += inbound.Tokens[0].la_else_distance - 1 // -1 because loop will increment
-                        // pf("DEBUG: Jumping to catch block - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_else_distance, oldPC, parser.pc)
-                    } else {
-                        // Jump to endtry
-                        parser.pc += inbound.Tokens[0].la_end_distance - 1 // -1 because loop will increment
-                        // pf("DEBUG: No catch blocks found - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
-                    }
-
+                    // pf("DEBUG: Set default exception category to %v (type %T)\n", defaultCategory, defaultCategory)
                 } else {
-                    parser.report(inbound.SourceLine, "Error evaluating throw exception expression")
+                    parser.report(inbound.SourceLine, "Error evaluating throws expression")
+                    finish(false, ERR_EXCEPTION)
                 }
             } else {
-                parser.report(inbound.SourceLine, "throw requires an exception argument")
+                parser.report(inbound.SourceLine, "throws requires an exception category")
+                finish(false, ERR_EXCEPTION)
             }
 
         case C_Then:
