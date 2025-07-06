@@ -1,0 +1,59 @@
+#!/usr/bin/za
+
+# Test try throws syntax sugar
+
+println "=== Try Throws Syntax Tests ==="
+
+println "Test 1: try throws with explicit category"
+try throws "default_error"
+    println "In try block"
+    throw  # Should use default category "default_error"
+catch err is "default_error"
+    println "Caught default error:", err
+endtry
+
+println "Test 2: try throws with override"
+try throws "default_error"
+    println "In try block"
+    throw "specific_error"  # Should override default category
+catch err is "specific_error"
+    println "Caught specific error:", err
+catch err is "default_error"
+    println "This should not print"
+endtry
+
+println "Test 3: try throws with expression"
+category = "dynamic_error"
+try throws category
+    println "In try block"
+    throw  # Should use dynamic category
+catch err is "dynamic_error"
+    println "Caught dynamic error:", err
+endtry
+
+println "Test 4: try throws with enum value"
+exreg("NETWORK_ERROR", 1001)
+exreg("DATABASE_ERROR", 1002)
+
+try throws ex.NETWORK_ERROR
+    println "In try block with enum default"
+    throw  # Should use default enum value 1001
+catch err is 1001
+    println "Caught enum error:", err
+endtry
+
+println "Test 5: try throws with integer literal"
+try throws 42
+    println "In try block with integer default"
+    throw  # Should use default integer 42
+catch err is 42
+    println "Caught integer error:", err
+endtry
+
+# Test 6: Invalid type (should cause error during parsing)
+# Uncomment to test error handling:
+# try throws [1,2,3]
+#     println "This should not work"
+# endtry
+
+println "=== All tests completed ===" 
