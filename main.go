@@ -402,6 +402,7 @@ func main() {
 	default_prectable[O_Assign] = 5 // L09
 	default_prectable[O_Map] = 7
 	default_prectable[O_Filter] = 9
+	default_prectable[O_Try] = 10 // ?? operator - higher than assignment, lower than logical operators
 
 	// booleans @note: and/or + &&/|| tokenisation needs tidying
 	default_prectable[SYM_LOR] = 15  // L13

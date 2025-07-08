@@ -1,0 +1,177 @@
+#!/usr/bin/env za
+
+# Test script for deeply nested exceptions triggered by ?? operator
+# Shows both handled and unhandled cases with stack traces
+
+permit("error_exit", false)
+exception_strictness("warn")
+
+# Set error style to exception for ?? operator to throw exceptions
+error_style("exception")
+
+println "Testing Deeply Nested Exceptions with ?? Operator"
+println
+
+# Test 1: Handled exception with deep nesting
+println "Test 1: Handled Exception with Deep Nesting"
+println "============================================="
+
+def level_4_function
+    # This will trigger ?? operator failure
+    result = nil ?? "deep_nested_error"
+    return result
+enddef
+
+def level_3_function
+    result = level_4_function()
+    return result
+enddef
+
+def level_2_function
+    result = level_3_function()
+    return result
+enddef
+
+def level_1_function
+    result = level_2_function()
+    return result
+enddef
+
+try
+    println "Calling deeply nested function that will throw..."
+    result = level_1_function()
+    println "This should not be reached"
+catch err
+    println "Caught exception in level_1_function:"
+    println "Category: " + err["category"]
+    println "Message: "  + err["message"]
+    println "Source: "   + err["source"]
+    println "Line: "     + err["line"]
+    println "Function: " + err["function"]
+    println
+    println err["stack_trace"].format_stack_trace
+endtry
+
+println
+println
+
+# Test 2: Unhandled exception with deep nesting
+println "Test 2: Unhandled Exception with Deep Nesting"
+println "=============================================="
+
+def unhandled_level_4
+    # This will trigger ?? operator failure
+    result = "" ?? "unhandled_deep_error"
+    return result
+enddef
+
+def unhandled_level_3
+    result = unhandled_level_4()
+    return result
+enddef
+
+def unhandled_level_2
+    result = unhandled_level_3()
+    return result
+enddef
+
+def unhandled_level_1
+    result = unhandled_level_2()
+    return result
+enddef
+
+println "Calling deeply nested function that will throw unhandled exception..."
+println "(This should show a warning and continue execution)"
+result = unhandled_level_1()
+println "This should not be reached"
+
+println
+println
+
+# Test 3: Mixed nesting with some handled, some unhandled
+println "Test 3: Mixed Nesting - Some Handled, Some Unhandled"
+println "====================================================="
+
+def mixed_level_4
+    result = 0 ?? "mixed_deep_error"
+    return result
+enddef
+
+def mixed_level_3
+    result = mixed_level_4()
+    return result
+enddef
+
+def mixed_level_2
+    try
+        result = mixed_level_3()
+        return result
+    catch err
+        println "Caught in level_2:"
+        println "Category: " + err["category"]
+        println "Message: " + err["message"]
+        println "Function: " + err["function"]
+        println "Line: " + err["line"]
+        println
+        println "Stack trace from level_2:"
+        formatted_trace = format_stack_trace(err["stack_trace"])
+        println formatted_trace
+        return "handled_in_level_2"
+    endtry
+enddef
+
+def mixed_level_1
+    result = mixed_level_2()
+    return result
+enddef
+
+println "Calling mixed nesting function..."
+result = mixed_level_1()
+println "Final result: " + result
+
+println
+println
+
+# Test 4: Exception bubbling through multiple levels
+println "Test 4: Exception Bubbling Through Multiple Levels"
+println "=================================================="
+
+def bubble_level_4
+    result = false ?? "bubble_deep_error"
+    return result
+enddef
+
+def bubble_level_3
+    result = bubble_level_4()
+    return result
+enddef
+
+def bubble_level_2
+    result = bubble_level_3()
+    return result
+enddef
+
+def bubble_level_1
+    try
+        result = bubble_level_2()
+        return result
+    catch err
+        println "Caught exception in level_1:"
+        println "Category: " + err["category"]
+        println "Message: " + err["message"]
+        println "Function: " + err["function"]
+        println "Line: " + err["line"]
+        println
+        println "Stack trace:"
+        formatted_trace = format_stack_trace(err["stack_trace"])
+        println formatted_trace
+        return "handled_in_level_1"
+    endtry
+enddef
+
+println "Calling bubbling function..."
+result = bubble_level_1()
+println "Final result: " + result
+
+println
+println "Test completed successfully!" 
