@@ -184,7 +184,7 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
-        "rvalid", "levdist",
+        "rvalid", "levdist","keys",
     }
 
     replaceCompileCache := make(map[string]regexp.Regexp)
@@ -339,6 +339,18 @@ func buildStringLib() {
             return sparkle(args[0].(string)), nil
         }
         return sparkle(sf(args[0].(string), args[1:]...)), nil
+    }
+
+    slhelp["keys"] = LibHelp{in: "map", out: "[]string", action: "Returns a list of map keys"}
+    stdlib["keys"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("keys", args, 1, "1", "map"); !ok {
+            return nil, err
+        }
+        var keys []string
+        for k,_:=range args[0].(map[string]any) {
+            keys=append(keys,k)
+        }
+        return keys,nil
     }
 
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}

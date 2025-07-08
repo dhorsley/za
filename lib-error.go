@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -226,6 +227,49 @@ func buildErrorLib() {
 		}
 
 		return filename, nil
+	}
+
+	slhelp["error_style"] = LibHelp{in: "mode_string", out: "string", action: "Set error handling style mode and return previous mode.\npanic: standard Go panic/recover (default)\nexception: convert panics to exceptions\nmixed: both panic and exception handling"}
+	stdlib["error_style"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+		if ok, err := expect_args("error_style", args, 2, "1", "string", "0"); !ok {
+			return nil, err
+		}
+
+		errorStyleLock.Lock()
+		defer errorStyleLock.Unlock()
+
+		// Return current mode as string
+		var currentMode string
+		switch errorStyleMode {
+		case ERROR_STYLE_PANIC:
+			currentMode = "panic"
+		case ERROR_STYLE_EXCEPTION:
+			currentMode = "exception"
+		case ERROR_STYLE_MIXED:
+			currentMode = "mixed"
+		default:
+			currentMode = "panic"
+		}
+
+		// If no arguments, just return current mode
+		if len(args) == 0 {
+			return currentMode, nil
+		}
+
+		// Set new mode
+		newMode := args[0].(string)
+		switch newMode {
+		case "panic":
+			errorStyleMode = ERROR_STYLE_PANIC
+		case "exception":
+			errorStyleMode = ERROR_STYLE_EXCEPTION
+		case "mixed":
+			errorStyleMode = ERROR_STYLE_MIXED
+		default:
+			return currentMode, fmt.Errorf("Invalid error style mode: %s (use: panic, exception, mixed)", newMode)
+		}
+
+		return currentMode, nil
 	}
 
 	// Exception logging functions
