@@ -1100,10 +1100,8 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         message := err.Error()
 
                         // Check if exceptionInfo is already present (set by dparse or other handler)
-                        calllock.RLock()
                         currentExceptionPtr := atomic.LoadPointer(&calltable[csloc].activeException)
                         currentException := (*exceptionInfo)(currentExceptionPtr)
-                        calllock.RUnlock()
 
                         if currentException != nil {
                             // Use the category and message from the existing exceptionInfo
@@ -6164,12 +6162,9 @@ tco_reentry:
 
                         matched := false
 
-                        // Get current exception info
-                        calllock.RLock()
                         // Get current exception atomically
                         exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
                         catchExcPtr := (*exceptionInfo)(exceptionPtr)
-                        calllock.RUnlock()
 
                         switch operatorToken {
                         case C_Is:
@@ -6323,10 +6318,8 @@ tco_reentry:
                 } else {
                     // Catch-all block: catch err (no operator/expression)
                     // Get current exception info
-                    calllock.RLock()
                     exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
                     catchExcPtr := (*exceptionInfo)(exceptionPtr)
-                    calllock.RUnlock()
 
                     if catchExcPtr != nil {
                         // This catch-all block matches any exception
