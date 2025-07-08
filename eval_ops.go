@@ -1,17 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
-	"math"
-	"math/big"
-	"net/http"
-	"reflect"
-	"strconv"
-	str "strings"
-	"sync/atomic"
-	"time"
-	"unsafe"
+    "fmt"
+    "io/ioutil"
+    "math"
+    "math/big"
+    "net/http"
+    "reflect"
+    "strconv"
+    str "strings"
+    "sync/atomic"
+    "time"
+    "unsafe"
 )
 
 func ev_slice_get_type(arr interface{}) reflect.Type {
@@ -1578,6 +1578,8 @@ func accessArray(ident *[]Variable, obj any, field any) any {
         return obj[field.(string)]
     case map[string]alloc_info:
         return obj[field.(string)]
+    case map[string]stackFrame:
+        return obj[field.(string)]
     case map[string]dirent:
         return obj[field.(string)]
     case map[string]string:
@@ -1639,6 +1641,10 @@ func accessArray(ident *[]Variable, obj any, field any) any {
                         return obj[ifield]
                     }
                 case []tui:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []stackFrame:
                     if len(obj) > ifield {
                         return obj[ifield]
                     }
@@ -1853,13 +1859,13 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             res = calltable[loc].retvals
             calltable[loc].gcShyness = 100
             calltable[loc].gc = true
+            calllock.Unlock()
             // Check if function returned with exception - only if the called function has exception state
             var hasExceptionState bool
             if loc < uint32(len(calltable)) {
                 exceptionPtr := atomic.LoadPointer(&calltable[loc].activeException)
                 hasExceptionState = exceptionPtr != nil
             }
-            calllock.Unlock()
 
             if res != nil && hasExceptionState {
                 if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
@@ -1900,10 +1906,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                                 // Set exception state in the calling function's context (async-safe)
                                 if evalfs < uint32(len(calltable)) {
                                     // Check if there's already an active exception with a stack trace
-                                    calllock.RLock()
                                     currentExceptionPtr := atomic.LoadPointer(&calltable[evalfs].activeException)
                                     currentException := (*exceptionInfo)(currentExceptionPtr)
-                                    calllock.RUnlock()
 
                                     var stackTraceCopy []stackFrame
                                     if currentException != nil && len(currentException.stackTrace) > 0 {
@@ -1912,7 +1916,18 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                                         copy(stackTraceCopy, currentException.stackTrace)
                                     } else {
                                         // Generate new stack trace if none exists
-                                        stackTrace := captureStackTraceAtThrow(0, name) // Use 0 for line since we don't have it in eval context
+                                        stackTrace := generateStackTrace()
+
+                                        // Add the current function to the stack trace if it's not already there
+                                        // (generateStackTrace() builds from errorChain, which includes callers but not current function)
+                                        currentFrame := stackFrame{
+                                            function:  name,
+                                            line:      0, // We don't have line info in eval context
+                                            caller:    "",
+                                            filename:  "", // Will be populated from current context if available
+                                            namespace: "", // Will be populated from current context if available
+                                        }
+                                        stackTrace = append(stackTrace, currentFrame)
                                         stackTraceCopy = make([]stackFrame, len(stackTrace))
                                         copy(stackTraceCopy, stackTrace)
                                     }
@@ -2207,41 +2222,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
         }
     }
 
-    /*
-       pf("starting uc_match_enum with pre_name : %s\n",pre_name)
-       if found := uc_match_enum(pre_name); found != "" {
-           pf("enum found : %s -> %s\n",ename,found)
-           ename = found + "::" + pre_name
-       } else {
-           if found:=uc_match_enum("main::"+pre_name); found != "" {
-               pf("enum found in main : %s\n",ename)
-               ename = "main::"+pre_name
-           } else {
-               pf("enum not found : %s\n",ename)
-               ename = p.namespace + "::" + pre_name
-           }
-       }
-    */
-
-    /*
-       switch obj.(type) {
-       case string:
-           ename = p.namespace + "::" + obj.(string)
-           checkstr := obj.(string)
-           if str.Contains(checkstr, "::") {
-               cpos := str.IndexByte(checkstr, ':')
-               if cpos != -1 {
-                   if len(checkstr) > cpos+1 {
-                       if checkstr[cpos+1] == ':' {
-                           ename = checkstr
-                       }
-                   }
-               }
-           }
-       case pfile:
-       }
-    */
-
     en := enum[ename]
     globlock.RUnlock()
 
@@ -2251,12 +2231,6 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             return val, false
         }
     }
-
-    /*
-       if en != nil {
-           return en.members[name], false
-       }
-    */
 
     // ── At this point, either:
     //    • obj was not a struct (nil pointer/map/slice/etc. → skip struct code), or

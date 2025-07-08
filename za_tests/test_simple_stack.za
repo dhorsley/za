@@ -5,7 +5,7 @@ println "=== Simple Stack Trace Test ==="
 # Simple test
 try
     throw "test_error"
-catch err
+catch err is "test_error"
     println "✓ Caught exception:", err["category"]
     println "Stack trace:", err["stack_trace"]
 endtry
