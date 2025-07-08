@@ -16,4 +16,4 @@ end
 
 result = test_catch_return()
 println "Result:", result
-println "Type of result:", typeof(result) 
+println "Type of result:", result.kind

@@ -1,0 +1,32 @@
+#!/usr/bin/za
+
+println "=== Debug Exception Bubbling ==="
+
+def inner_function()
+    println "inner_function: about to throw"
+    throw "test_error"
+    println "inner_function: after throw (should not reach here)"
+enddef
+
+def middle_function()
+    println "middle_function: calling inner_function"
+    inner_function()
+    println "middle_function: after inner_function (should not reach here)"
+enddef
+
+def outer_function()
+    println "outer_function: calling middle_function"
+    middle_function()
+    println "outer_function: after middle_function (should not reach here)"
+enddef
+
+println "main: about to call outer_function"
+try
+    outer_function()
+    println "main: after outer_function (should not reach here)"
+catch err
+    println "main: ✓ Caught exception:", err["category"]
+    println "main: Stack trace:", err["stack_trace"]
+endtry
+
+println "main: after try/catch block" 

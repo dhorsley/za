@@ -294,7 +294,7 @@ func buildErrorLib() {
 		}
 
 		// Log the exception
-		logException(category, message, lineNumber, functionName, nil)
+		logException(category, message, int(lineNumber), functionName, nil)
 		return nil, nil
 	}
 
