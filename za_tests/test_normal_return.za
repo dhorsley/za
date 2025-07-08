@@ -10,4 +10,4 @@ end
 
 result = test_normal_return()
 println "Result:", result
-println "Type of result:", typeof(result) 
+println "Type of result:", result.kind

@@ -1,5 +1,9 @@
 #!/usr/bin/za
 
+# Configure exception handling to allow continuation after unhandled exceptions
+exception_strictness("warn")
+permit("error_exit", false)
+
 println "=== Testing Automated Stack Traces ==="
 
 # Test 1: Simple stack trace
