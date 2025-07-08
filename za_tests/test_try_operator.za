@@ -1,0 +1,163 @@
+#!/usr/bin/env za
+
+# Test script for ?? operator and error_style() functionality
+
+permit("error_exit", false)
+error_extend(true)
+exception_strictness("warn")
+
+println "[#6]Testing ?? Operator and Error Style System[#-]"
+println
+
+# Test 1: Basic ?? operator with nil values
+println "[#3]Test 1: Basic ?? operator with nil values[#-]"
+result = nil ?? "nil_error"
+println `nil ?? "nil_error" = {result}`
+assert result == "nil_error"
+
+# Test 2: ?? operator with empty strings
+println "[#3]Test 2: ?? operator with empty strings[#-]"
+result = "" ?? "empty_error"
+println `"" ?? "empty_error" = {result}`
+assert result == "empty_error"
+
+# Test 3: ?? operator with zero numbers
+println "[#3]Test 3: ?? operator with zero numbers[#-]"
+result = 0 ?? "zero_error"
+println `0 ?? "zero_error" = {result}`
+assert result == "zero_error"
+
+result = 0.0 ?? "zero_float_error"
+println `0.0 ?? "zero_float_error" = {result}`
+assert result == "zero_float_error"
+
+# Test 4: ?? operator with false boolean
+println "[#3]Test 4: ?? operator with false boolean[#-]"
+result = false ?? "false_error"
+println `false ?? "false_error" = {result}`
+assert result == "false_error"
+
+# Test 5: ?? operator with successful values (should not throw)
+println "[#3]Test 5: ?? operator with successful values[#-]"
+result = "hello" ?? "should_not_throw"
+println `"hello" ?? "should_not_throw" = {result}`
+assert result == "hello"
+
+result = 42 ?? "should_not_throw"
+println `42 ?? "should_not_throw" = {result}`
+assert result == 42
+
+result = true ?? "should_not_throw"
+println `true ?? "should_not_throw" = {result}`
+assert result == true
+
+# Test 6: ?? operator with shell commands
+println "[#3]Test 6: ?? operator with shell commands[#-]"
+success_cmd = {echo "success"}
+result = success_cmd ?? "command_failed"
+println `success command ?? "command_failed" = {result}`
+assert result.out == "success\n"
+
+# Test 7: Error style configuration
+println "[#3]Test 7: Error style configuration[#-]"
+old_mode = error_style()
+println "Current error style: {old_mode}"
+
+new_mode = error_style("exception")
+println "Set error style to exception, previous was: {new_mode}"
+
+current_mode = error_style()
+println "Current error style: {current_mode}"
+assert current_mode == "exception"
+
+# Test 8: Panic-to-exception conversion
+println "[#3]Test 8: Panic-to-exception conversion[#-]"
+println "Testing panic-to-exception conversion..."
+
+def test_panic_function()
+    panic("test panic message")
+end
+
+try
+    test_panic_function()
+catch err
+    println "Exception fields: {=join(keys(err), `, `)}"
+    println "Exception details: {err}"
+    assert err.category == "panic"
+    assert match(err.message, "test panic message")
+endtry
+
+# Test 9: Mixed error style
+println "[#3]Test 9: Mixed error style[#-]"
+error_style("mixed")
+current_mode = error_style()
+println "Current error style: {current_mode}"
+assert current_mode == "mixed"
+
+# Test 10: Back to panic mode
+println "[#3]Test 10: Back to panic mode[#-]"
+error_style("panic")
+current_mode = error_style()
+println "Current error style: {current_mode}"
+assert current_mode == "panic"
+
+# Test 11: ?? operator in expressions
+println "[#3]Test 11: ?? operator in expressions[#-]"
+x = 10
+y = 0
+result = (x / y) ?? "division_error"
+println `(x / y) ?? "division_error" = {result}`
+assert result == "division_error"
+
+# Test 12: ?? operator precedence
+println "[#3]Test 12: ?? operator precedence[#-]"
+result = 5 + 3 ?? "math_error"
+println `5 + 3 ?? "math_error" = {result}`
+assert result == 8  # Should not throw, 8 is not a failure condition
+
+# Test 13: ?? operator with function calls
+println "[#3]Test 13: ?? operator with function calls[#-]"
+def return_nil()
+    return nil
+end
+
+def return_value()
+    return "success"
+end
+
+result = return_nil() ?? "function_returned_nil"
+println `return_nil() ?? "function_returned_nil" = {result}`
+assert result == "function_returned_nil"
+
+result = return_value() ?? "function_failed"
+println `return_value() ?? "function_failed" = {result}`
+assert result == "success"
+
+# Test 14: Error style validation
+println "[#3]Test 14: Error style validation[#-]"
+try
+    error_style("invalid_mode")
+    assert false  # Should have thrown error for invalid mode
+catch err
+    println "Correctly caught error for invalid mode: {err}"
+endtry
+error_style("exception")
+
+# Test 15: ?? operator with complex expressions
+println "[#3]Test 15: ?? operator with complex expressions[#-]"
+a = 10
+b = 0
+c = "test"
+result = (a / b) ?? (c ?? "fallback")
+println "Complex expression result: {result}"
+assert result == "fallback"
+
+# Test 16: Unhandled exception
+println "[#3]Test 16: Unhandled exception[#-]"
+
+try
+    test_panic_function()
+endtry
+
+println
+println "[#2]All ?? operator tests passed![#-]" 

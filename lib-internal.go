@@ -323,19 +323,6 @@ func sttyFlag(flags string,state bool) (okay bool) {
 }
 */
 
-// format_stack_trace formats a stack trace array into a readable string
-func format_stack_trace(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
-    if len(args) < 1 {
-        return nil, fmt.Errorf("format_stack_trace requires a stack trace array")
-    }
-
-    stackTrace, ok := args[0].([]stackFrame)
-    if !ok {
-        return nil, fmt.Errorf("format_stack_trace requires a stack trace array, got %T", args[0])
-    }
-
-    return formatStackTrace(stackTrace), nil
-}
 
 func buildInternalLib() {
 
@@ -351,7 +338,7 @@ func buildInternalLib() {
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
         "ast", "varbind", "sizeof", "dup", "log_queue_status",
         "set_depth",
-        "logging_stats", "exreg", "format_stack_trace",
+        "logging_stats", "exreg", "format_stack_trace", "panic",
         // "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -420,10 +407,18 @@ func buildInternalLib() {
         return nil, nil
     }
 
-    slhelp["format_stack_trace"] = LibHelp{in: "stack_trace_array", out: "string", action: "formats a stack trace array into a readable string with numbered frames."}
-    stdlib["format_stack_trace"] = format_stack_trace
 
-    slhelp["dup"] = LibHelp{in: "map", out: "copy_of_map", action: "returns a duplicate copy of [#i1]map[#i0]."}
+    slhelp["format_stack_trace"] = LibHelp{in: "[]stackFrame", out: "string", action: "formats a stack trace array into a readable string with numbered frames."}
+    stdlib["format_stack_trace"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("format_stack_trace", args, 1, "1", "[]stackFrame"); !ok {
+            return nil, err
+        }
+        stackTrace := args[0].([]stackFrame)
+        return formatStackTrace(stackTrace), nil
+    }
+
+
+    slhelp["dup"] = LibHelp{in: "map/array", out: "copy", action: "returns a duplicate copy of [#i1]argument 1[#i0]."}
     stdlib["dup"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("dup", args, 17,
             "1", "map[string]string",
@@ -1892,6 +1887,18 @@ func buildInternalLib() {
         // Register the exception using internal function
         success := eregister(name, priority)
         return success, nil
+    }
+
+    slhelp["panic"] = LibHelp{in: "message_string", out: "", action: "Calls Go's built-in panic() with the specified message. This tests the panic-to-exception conversion system when error_style() is set to 'exception' or 'mixed'."}
+    stdlib["panic"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("panic", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        message := args[0].(string)
+
+        // Call Go's built-in panic() with an error type for proper conversion
+        panic(fmt.Errorf("%s", message))
     }
 
 }

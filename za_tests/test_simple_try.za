@@ -1,0 +1,29 @@
+#!/usr/bin/env za
+
+# Simple test for ?? operator parsing
+
+permit("error_exit", false)
+exception_strictness("warn")
+error_style("exception")
+
+println "Testing ?? operator parsing..."
+
+# Test 1: Basic ?? operator with right-hand side
+println "Test 1: nil ?? 'error'"
+try
+    result = nil ?? "error"
+    println "This should not be reached"
+catch err
+    println "Caught: " + err["message"]
+endtry
+
+# Test 2: ?? operator without right-hand side (this should work)
+println "Test 2: nil ??"
+try
+    result = nil ??
+    println "This should not be reached"
+catch err
+    println "Caught: " + err["message"]
+endtry
+
+println "Done" 

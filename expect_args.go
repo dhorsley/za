@@ -60,6 +60,11 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     n += 1
                     continue
                 }
+            case map[string]any:
+                if types[p] == "map" {
+                    n += 1
+                    continue
+                }
             case bool:
                 if types[p] == "bool" {
                     n += 1
@@ -102,6 +107,11 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                 }
             case []bool:
                 if types[p] == "[]bool" {
+                    n += 1
+                    continue
+                }
+            case []stackFrame:
+                if types[p] == "[]stackFrame" {
                     n += 1
                     continue
                 }
