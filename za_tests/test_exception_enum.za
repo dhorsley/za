@@ -11,17 +11,17 @@ println "ex.internal =", ex.internal
 
 # Test 2: Register new exceptions
 println "\n=== Test 2: Register new exceptions ==="
-result1 = exreg("my_custom_error", 25)
+result1 = exreg("my_custom_error", "error")
 println "Registered my_custom_error:", result1
 println "ex.my_custom_error =", ex.my_custom_error
 
-result2 = exreg("payment_failed", 30)
+result2 = exreg("payment_failed", "error")
 println "Registered payment_failed:", result2
 println "ex.payment_failed =", ex.payment_failed
 
 # Test 3: Try to register duplicate (should fail silently)
 println "\n=== Test 3: Duplicate registration ==="
-result3 = exreg("my_custom_error", 50)
+result3 = exreg("my_custom_error", "warn")
 println "Duplicate registration result:", result3
 println "ex.my_custom_error still =", ex.my_custom_error
 

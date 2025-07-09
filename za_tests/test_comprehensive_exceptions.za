@@ -33,9 +33,9 @@ endtry
 
 # Test 3: Exception with enum values
 println "\nTest 3: Exception with enum values"
-exreg("network_timeout", 1001)
-exreg("database_connection", 1002)
-exreg("file_not_found", 1003)
+exreg("network_timeout", "warn")
+exreg("database_connection", "error")
+exreg("file_not_found", "error")
 
 try
     println "Throwing enum exception"

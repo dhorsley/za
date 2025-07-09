@@ -1,0 +1,55 @@
+# Test severity-based logging during exception handling
+println "[#5][#bold]Testing Severity-Based Logging[#boff][#-]"
+
+# Register exceptions with different severity levels
+exreg("critical_error", "error")
+exreg("warning_condition", "warn")
+exreg("info_message", "info")
+exreg("debug_info", "debug")
+
+println "\n[#6]Test 1: log during exception handling (no explicit level)[#-]"
+try
+    throw "critical_error", "This is a critical error"
+catch err is "critical_error"
+    log "Handling critical error"  # Should use ERROR level from exreg()
+    println "Exception caught and logged"
+endtry
+
+println "\n[#6]Test 2: log with explicit level (should override exception severity)[#-]"
+try
+    throw "warning_condition", "This is a warning"
+catch err is "warning_condition"
+    log debug: "Handling warning with explicit debug level"  # Should use DEBUG (explicit wins)
+    log "Handling warning without explicit level"  # Should use WARN from exreg()
+    println "Warning caught and logged"
+endtry
+
+println "\n[#6]Test 3: log with info exception severity[#-]"
+try
+    throw "info_message", "This is an info message"
+catch err is "info_message"
+    log "Handling info message"  # Should use INFO level from exreg()
+    println "Info message caught and logged"
+endtry
+
+println "\n[#6]Test 4: log with debug exception severity[#-]"
+try
+    throw "debug_info", "This is debug info"
+catch err is "debug_info"
+    log "Handling debug info"  # Should use DEBUG level from exreg()
+    println "Debug info caught and logged"
+endtry
+
+println "\n[#6]Test 5: Normal log (not in exception - should use default level)[#-]"
+log "This is a normal log message"  # Should use default level
+
+println "\n[#6]Test 6: Exception without registered severity (should use default level)[#-]"
+try
+    throw "unregistered_error", "This error is not registered"
+catch err is "unregistered_error"
+    log "Handling unregistered error"  # Should use default level
+    println "Unregistered error caught and logged"
+endtry
+
+println "\nSeverity-based logging test completed!\n" 
+

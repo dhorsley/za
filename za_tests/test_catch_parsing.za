@@ -1,8 +1,8 @@
 println "=== Testing Enhanced Throw Syntax ==="
 
 # Register some test exceptions first
-exreg("file_error", 10)
-exreg("network_error", 20)
+exreg("file_error", "error")
+exreg("network_error", "warn")
 
 filename = "test.txt"
 error_code = 404
