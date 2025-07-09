@@ -1,0 +1,23 @@
+// Test atomic callLine operations
+println "Testing atomic callLine operations..."
+
+// Test basic function call with line number capture
+def test_function()
+    println "This is line 5 in test_function"
+    return "success"
+enddef
+
+// Call the function - this should capture the call line number
+result = test_function()
+println "Function result:", result
+
+// Test exception with line number capture
+try
+    println "This is line 13 in try block"
+    throw "test" "This exception should show correct line numbers"
+catch err is "test"
+    println "Caught exception:", err
+    println "Exception should show line 14 in stack trace"
+endtry
+
+println "Test completed successfully!" 
