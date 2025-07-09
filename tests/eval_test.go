@@ -2,8 +2,8 @@
 package main
 
 import (
-	"math/big"
-	"testing"
+    "math/big"
+    "testing"
 )
 
 // var default_prectable [END_STATEMENTS] int8
@@ -47,85 +47,85 @@ func initDefaultPrecedence() {
 // Test evaluating a bare numeric literal ("42") via ev(p, 1, ...),
 // allowing for return types int, int64, or *big.Int.
 func TestEvalLiteralViaEv(t *testing.T) {
-	// 1) Register function‐space "main" → 1 so ev can resolve evalfs=1.
-	fnlookup.lmset("main", 2)
+    // 1) Register function‐space "main" → 1 so ev can resolve evalfs=1.
+    fnlookup.lmset("main", 2)
     numlookup.lmset(2,"main")
 
-	// 2) Initialize a parser with ident pointing to an empty []Variable slice,
-	//    fs = 1, and namespace = "main".
-	var locals []Variable
-	p := &leparser{
-		ident:     &locals,
-		fs:        2,
-		namespace: "main",
-	}
+    // 2) Initialize a parser with ident pointing to an empty []Variable slice,
+    //    fs = 1, and namespace = "main".
+    var locals []Variable
+    p := &leparser{
+        ident:     &locals,
+        fs:        2,
+        namespace: "main",
+    }
     p.prectable=default_prectable
 
-	// 3) Call ev(p, 2, "42") to evaluate the literal "42".
-	res, err := ev(p, 2, "42")
-	if err != nil {
-		t.Fatalf(`ev(p, 2, "42") returned unexpected error: %v`, err)
-	}
+    // 3) Call ev(p, 2, "42") to evaluate the literal "42".
+    res, err := ev(p, 2, "42")
+    if err != nil {
+        t.Fatalf(`ev(p, 2, "42") returned unexpected error: %v`, err)
+    }
 
-	// 4) ZA may return int, int64, or *big.Int for a numeric literal.
-	switch v := res.(type) {
-	case int:
-		if v != 42 {
-			t.Fatalf(`ev(p,2,"42") expected int(42), got int(%d)`, v)
-		}
-	case int64:
-		if v != 42 {
-			t.Fatalf(`ev(p,2,"42") expected int64(42), got int64(%d)`, v)
-		}
-	case *big.Int:
-		if v.Cmp(big.NewInt(42)) != 0 {
-			t.Fatalf(`ev(p,2,"42") expected *big.Int(42), got *big.Int(%v)`, v)
-		}
-	default:
-		t.Fatalf(`ev(p,2,"42") returned unexpected type %T, value %v`, res, res)
-	}
+    // 4) ZA may return int, int64, or *big.Int for a numeric literal.
+    switch v := res.(type) {
+    case int:
+        if v != 42 {
+            t.Fatalf(`ev(p,2,"42") expected int(42), got int(%d)`, v)
+        }
+    case int64:
+        if v != 42 {
+            t.Fatalf(`ev(p,2,"42") expected int64(42), got int64(%d)`, v)
+        }
+    case *big.Int:
+        if v.Cmp(big.NewInt(42)) != 0 {
+            t.Fatalf(`ev(p,2,"42") expected *big.Int(42), got *big.Int(%v)`, v)
+        }
+    default:
+        t.Fatalf(`ev(p,2,"42") returned unexpected type %T, value %v`, res, res)
+    }
 }
 
 // Test evaluating a simple addition expression ("1 + 2") via ev(p, 1, ...),
 // allowing for return types int, int64, or *big.Int.
 func TestEvalAdditionViaEv(t *testing.T) {
-	// 1) Ensure "main" → 2 exists in fnlookup (idempotent if already set).
+    // 1) Ensure "main" → 2 exists in fnlookup (idempotent if already set).
 
     initDefaultPrecedence()
-	fnlookup.lmset("main", 2)
+    fnlookup.lmset("main", 2)
     numlookup.lmset(2,"main")
 
-	// 2) New parser instance with ident pointing to an empty []Variable slice.
-	var locals []Variable
-	p := &leparser{
-		ident:     &locals,
-		fs:        2,
-		namespace: "main",
-	}
+    // 2) New parser instance with ident pointing to an empty []Variable slice.
+    var locals []Variable
+    p := &leparser{
+        ident:     &locals,
+        fs:        2,
+        namespace: "main",
+    }
     p.prectable=default_prectable
 
-	// 3) Call ev(p, 2, "1 + 2").
-	res, err := ev(p, 2, "1 + 2")
-	if err != nil {
-		t.Fatalf(`ev(p, 2, "1 + 2") returned unexpected error: %v`, err)
-	}
+    // 3) Call ev(p, 2, "1 + 2").
+    res, err := ev(p, 2, "1 + 2")
+    if err != nil {
+        t.Fatalf(`ev(p, 2, "1 + 2") returned unexpected error: %v`, err)
+    }
 
-	// 4) Assert that the result is int, int64, or *big.Int equal to 3.
-	switch v := res.(type) {
-	case int:
-		if v != 3 {
-			t.Fatalf(`ev(p,2,"1 + 2") expected int(3), got int(%d)`, v)
-		}
-	case int64:
-		if v != 3 {
-			t.Fatalf(`ev(p,2,"1 + 2") expected int64(3), got int64(%d)`, v)
-		}
-	case *big.Int:
-		if v.Cmp(big.NewInt(3)) != 0 {
-			t.Fatalf(`ev(p,2,"1 + 2") expected *big.Int(3), got *big.Int(%v)`, v)
-		}
-	default:
-		t.Fatalf(`ev(p,2,"1 + 2") returned unexpected type %T, value %v`, res, res)
-	}
+    // 4) Assert that the result is int, int64, or *big.Int equal to 3.
+    switch v := res.(type) {
+    case int:
+        if v != 3 {
+            t.Fatalf(`ev(p,2,"1 + 2") expected int(3), got int(%d)`, v)
+        }
+    case int64:
+        if v != 3 {
+            t.Fatalf(`ev(p,2,"1 + 2") expected int64(3), got int64(%d)`, v)
+        }
+    case *big.Int:
+        if v.Cmp(big.NewInt(3)) != 0 {
+            t.Fatalf(`ev(p,2,"1 + 2") expected *big.Int(3), got *big.Int(%v)`, v)
+        }
+    default:
+        t.Fatalf(`ev(p,2,"1 + 2") returned unexpected type %T, value %v`, res, res)
+    }
 }
 

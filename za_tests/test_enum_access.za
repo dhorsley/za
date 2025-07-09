@@ -2,8 +2,8 @@ println "=== Testing Exception Enum Access ==="
 
 # Register exceptions
 println "Registering exceptions..."
-result1 = exreg("file_error", 10)
-result2 = exreg("network_error", 20)
+result1 = exreg("file_error", "error")
+result2 = exreg("network_error", "warn")
 println "exreg results:", result1, result2
 
 # Test enum access

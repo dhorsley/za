@@ -151,8 +151,8 @@ CHANGE LOG
     other
     -----
 
-    * added try..catch..then..endtry syntax
-        - very low overhead system, that executes try blocks in their own subfunction spaces
+    * (experimental) added try..catch..then..endtry syntax
+        - low overhead system, that executes try blocks in their own subfunction spaces
         - tracing done through metadata capture.
         - see the za_tests/ directory for examples
 
@@ -164,6 +164,16 @@ CHANGE LOG
             throw: Throw an exception with category and message
             throws: Declare exceptions that a try block may throw
 
+        - new operator:
+            - Added ?? operator for safe expression evaluation with fallback values.
+                - expr ?? 
+                - expr ?? fallback_value     # usually might be an ex.* exception enum value
+            - Returns fallback_value if expression throws an exception or error
+            - Returns expression result if evaluation succeeds
+            - Supports a variety of data types and nested expressions
+            - Useful for safe property access, division by zero protection, and error handling
+            - Integrates with exception system - failed expressions are converted to exceptions when exception_strictness is enabled
+
         - new library functions:
             exception_strictness(policy): Configure exception handling behavior
                 - policy="strict|permissive|warn|disabled"
@@ -173,9 +183,9 @@ CHANGE LOG
                 - Log an exception with custom stack trace data
             format_stack_trace()
                 - Format and display a stack trace with colours
-            exreg("name",priority):
+            exreg("name",level):
                 - register a custom exception enum 
-                - priority is for setting the order of exception type processing
+                - level is for setting the logging level default during the catch processing.
 
          - new syntax patterns:
             try...catch...then...endtry: Basic exception handling blocks
@@ -194,7 +204,7 @@ CHANGE LOG
                 - Throw exception using enum value
 
          - new features:
-            exception enum system with exreg() function for priority-based handling
+            exception enum system with exreg() function for logging level default behaviour configuration.
             nested try blocks with exception bubbling
             finally (THEN) blocks for cleanup code
             automated stack traces with line numbers and function names

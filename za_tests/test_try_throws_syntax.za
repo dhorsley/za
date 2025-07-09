@@ -32,8 +32,8 @@ catch err is "dynamic_error"
 endtry
 
 println "Test 4: try throws with enum value"
-exreg("NETWORK_ERROR", 1001)
-exreg("DATABASE_ERROR", 1002)
+exreg("NETWORK_ERROR", "error")
+exreg("DATABASE_ERROR", "error")
 
 try throws ex.NETWORK_ERROR
     println "In try block with enum default"

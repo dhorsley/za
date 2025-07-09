@@ -3,9 +3,9 @@
 println "=== Testing Advanced Catch Patterns ==="
 
 # Register some test exceptions
-exreg("NETWORK_ERROR", 1001)
-exreg("TIMEOUT_ERROR", 1002)
-exreg("DATABASE_ERROR", 1003)
+exreg("NETWORK_ERROR", "error")
+exreg("TIMEOUT_ERROR", "warn")
+exreg("DATABASE_ERROR", "error")
 
 # Test 1: Multiple string patterns
 println "\nTest 1: Multiple string patterns"
