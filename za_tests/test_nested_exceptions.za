@@ -10,10 +10,9 @@ exception_strictness("warn")
 error_style("exception")
 
 println "Testing Deeply Nested Exceptions with ?? Operator"
-println
 
 # Test 1: Handled exception with deep nesting
-println "Test 1: Handled Exception with Deep Nesting"
+println "\nTest 1: Handled Exception with Deep Nesting"
 println "============================================="
 
 def level_4_function
@@ -48,12 +47,9 @@ catch err
     println "Source: "   + err["source"]
     println "Line: "     + err["line"]
     println "Function: " + err["function"]
-    println
     println err["stack_trace"].format_stack_trace
 endtry
 
-println
-println
 
 # Test 2: Unhandled exception with deep nesting
 println "Test 2: Unhandled Exception with Deep Nesting"
@@ -84,9 +80,6 @@ println "Calling deeply nested function that will throw unhandled exception..."
 println "(This should show a warning and continue execution)"
 result = unhandled_level_1()
 println "This should not be reached"
-
-println
-println
 
 # Test 3: Mixed nesting with some handled, some unhandled
 println "Test 3: Mixed Nesting - Some Handled, Some Unhandled"
@@ -128,9 +121,6 @@ enddef
 println "Calling mixed nesting function..."
 result = mixed_level_1()
 println "Final result: " + result
-
-println
-println
 
 # Test 4: Exception bubbling through multiple levels
 println "Test 4: Exception Bubbling Through Multiple Levels"
