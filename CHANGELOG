@@ -35,11 +35,6 @@ CHANGE LOG
 
     * added a few of the missing file and console handling routines for windows.
 
-    * (experimental) added a ! flag for end-of-interpolated-expression
-        - default behaviour, interpolated expression will soft fail, as prior behaviour
-        - when set, e.g. {=...!} the expression must resolve in a valid manner.
-            - we now error in these conditions rather than ignoring the interpolation.
-
     * some minor speed increases in places.
 
     * some improvements to REPL line editor:

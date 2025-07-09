@@ -1499,9 +1499,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
             // Handle array/map access with [] notation
             // Find the matching right bracket
             rbPos := -1
-            // This is a complex path and brace counting is required here.
-            // The user's instruction was specific to doAssign, where the end is known.
-            // Here, we must search.
             braceCount := 1
             for j := i + 1; j < len(tokens); j++ {
                 if tokens[j].tokType == LeftSBrace {
