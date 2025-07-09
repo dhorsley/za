@@ -394,6 +394,8 @@ const nbsp = 26 // ascii substitute char
 
 func wrapString(s string, lim uint) string {
     // Initialize a buffer with a slightly larger size to account for breaks
+    if len(s)==0 { return s }
+
     init := make([]byte, 0, len(s))
     buf := bytes.NewBuffer(init)
 
@@ -691,14 +693,19 @@ func tui_pager(t tui,s tui_style) {
     
     var w uint
     var rs string
-    w=uint(t.Width-3)
-    if s.wrap {
-        rs=wrapString(t.Content,w)
-    } else {
-        rs=t.Content
+    var ra []string
+    if len(t.Content)>0 {
+        w=uint(t.Width-3)
+        if s.wrap {
+            rs=wrapString(t.Content,w)
+        } else {
+            rs=t.Content
+        }
+        if len(rs)>0 {
+            rs=str.Replace(rs,"%","%%",-1)
+            ra=str.Split(rs,"\n")
+        }
     }
-    rs=str.Replace(rs,"%","%%",-1)
-    ra:=str.Split(rs,"\n")
     if !s.wrap {
         // do something much cleverer than this to clip long lines here:
         // (it doesn't check for ansi code breakage.)
@@ -710,41 +717,42 @@ func tui_pager(t tui,s tui_style) {
         }
         */
     }
-
-    t.Cancel=false
-    omax:=t.Height-1
-    for ;!t.Cancel; {
-        max:=omax
-        if cpos+t.Height-1>len(ra) { max=len(ra)-cpos }
-        for k,v:=range ra[cpos:cpos+max] {
-            absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
-            absat(t.Row+k+1,t.Col+1)
-            pf(addbg+addfg+v)
-            absClearChars(t.Row+k+1,t.Col+1+len(v),t.Width-2-len(v))
-        }
-        for k:=max-1;k<omax;k++ {
-            absClearChars(t.Row+k+1,t.Col+1,t.Width-1)
-        }
-        pf("[##][#-]")
-        // scroll position
-        scroll_pos:=int(float64(cpos)*float64(t.Height-1)/float64(len(ra)))
-        absat(t.Row+1+scroll_pos,t.Col+t.Width-2)
-        pf("[#invert]*[##][#-]")
-        // process keypresses
-        k:=wrappedGetCh(0,false)
-        switch k {
-        case 10: //down
-            if cpos<len(ra)-t.Height { cpos++ }
-        case 11: //up
-            if cpos>0 { cpos-- }
-        case 'q','Q',27:
-            t.Cancel=true
-        case 'b',15:
-            cpos-=t.Height-1
-            if cpos<0 { cpos=0 }
-        case ' ',14:
-            if cpos+max<len(ra)-1 {
-                cpos+=t.Height-1
+    if len(ra)>0 {
+        t.Cancel=false
+        omax:=t.Height-1
+        for ;!t.Cancel; {
+            max:=omax
+            if cpos+t.Height-1>len(ra) { max=len(ra)-cpos }
+            for k,v:=range ra[cpos:cpos+max] {
+                absClearChars(t.Row+k+1,t.Col+1,t.Width-2)
+                absat(t.Row+k+1,t.Col+1)
+                pf(addbg+addfg+v)
+                absClearChars(t.Row+k+1,t.Col+1+len(v),t.Width-2-len(v))
+            }
+            for k:=max-1;k<omax;k++ {
+                absClearChars(t.Row+k+1,t.Col+1,t.Width-1)
+            }
+            pf("[##][#-]")
+            // scroll position
+            scroll_pos:=int(float64(cpos)*float64(t.Height-1)/float64(len(ra)))
+            absat(t.Row+1+scroll_pos,t.Col+t.Width-2)
+            pf("[#invert]*[##][#-]")
+            // process keypresses
+            k:=wrappedGetCh(0,false)
+            switch k {
+            case 10: //down
+                if cpos<len(ra)-t.Height { cpos++ }
+            case 11: //up
+                if cpos>0 { cpos-- }
+            case 'q','Q',27:
+                t.Cancel=true
+            case 'b',15:
+                cpos-=t.Height-1
+                if cpos<0 { cpos=0 }
+            case ' ',14:
+                if cpos+max<len(ra)-1 {
+                    cpos+=t.Height-1
+                }
             }
         }
     }

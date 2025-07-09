@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+error_extend(true)
+
 seed(-1)
 
 trap("int","cleanup()")
@@ -131,7 +133,8 @@ while not quit
         s.border=border
         p.Height,p.Width,p.Title=[30,term_w()-35,"pager box"]
         p.tui_box(s)
-        p.Content=$in "CHANGELOG"
+        p.Content=""
+        on is_file("CHANGELOG") do p.Content=$in "CHANGELOG"
         p.tui_pager(s)
         p.tui_clear
     is 6
