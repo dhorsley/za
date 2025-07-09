@@ -21,6 +21,7 @@ import (
 	"strings"
 	str "strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	term "github.com/pkg/term"
@@ -1029,6 +1030,9 @@ func main() {
 
 				var trident = make([]Variable, identInitialSize)
 
+				// Set the callLine field in the calltable entry before calling the function
+				// For trap calls, we don't have parser context, so use 0
+				atomic.StoreInt32(&calltable[loc].callLine, 0) // Trap calls don't have parser context
 				Call(ctx, MODE_NEW, &trident, loc, ciTrap, false, nil, "", []string{}, iargs...)
 				if calltable[loc].retvals != nil {
 					sigintreturn := calltable[loc].retvals.([]any)
@@ -1293,6 +1297,9 @@ func main() {
 			if !started && hasScript {
 				phraseParse(ctx, "main", startScript, 0, 0)
 				basemodmap[1] = "main"
+				// Set the callLine field in the calltable entry before calling the function
+				// For REPL calls, we use line 1 as the main entry point
+				atomic.StoreInt32(&calltable[mainloc].callLine, 1)
 				_, endFunc, _, errVal = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
 				if errVal != nil {
 					pf("error in startup script processing:%s\n", errVal)
@@ -1442,6 +1449,9 @@ func main() {
 
 				// throw away break and continue positions in interactive mode
 				// pf("[main] loc -> %d\n",mainloc)
+				// Set the callLine field in the calltable entry before calling the function
+				// For REPL calls, we use line 1 as the main entry point
+				atomic.StoreInt32(&calltable[mainloc].callLine, 1)
 				_, endFunc, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{})
 
 				if row >= MH-BMARGIN {
@@ -1552,6 +1562,7 @@ func main() {
 		cs.caller = 0
 		cs.base = 1
 		cs.fs = "main"
+		atomic.StoreInt32(&cs.callLine, 1) // Main program entry point
 		calltable[mainloc] = cs
 		calllock.Unlock()
 		currentModule = "main"

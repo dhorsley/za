@@ -1,0 +1,9 @@
+# Test line numbers in stack traces
+
+def test_function()
+    # This should show line 5 in the stack trace
+    throw "test_error"
+enddef
+
+# Call the function - this should show line 9 in the stack trace
+test_function() 
