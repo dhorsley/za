@@ -84,7 +84,7 @@ endtry
 
 # Test 5: Stack trace with enum exceptions
 println "\nTest 5: Stack trace with enum exceptions"
-exreg("ENUM_ERROR", 1001)
+exreg("ENUM_ERROR", "error")
 
 def enum_function()
     throw ex.ENUM_ERROR

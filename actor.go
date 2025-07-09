@@ -16,6 +16,7 @@ import (
     "reflect"
     "regexp"
     "runtime"
+    "sort"
     "strconv"
     "strings"
     str "strings"
@@ -723,6 +724,68 @@ func stripNamespacePrefix(functionName string) string {
     return functionName
 }
 
+// getExceptionSeverity checks if there's an active exception and returns its registered severity level
+func getExceptionSeverity(ifs uint32) (int, bool) {
+    // Check if there's an active exception in this function space
+    exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
+    if exceptionPtr == nil {
+        return 0, false
+    }
+
+    // Cast to exceptionInfo
+    excInfo := (*exceptionInfo)(exceptionPtr)
+    if excInfo == nil {
+        return 0, false
+    }
+
+    // Get the exception category
+    var category string
+    switch cat := excInfo.category.(type) {
+    case string:
+        category = cat
+    case int:
+        // For enum values, we'd need to look up the name
+        // For now, just return false for enum values
+        return 0, false
+    default:
+        return 0, false
+    }
+
+    // Check if this exception has a registered severity in the ex enum
+    globlock.RLock()
+    defer globlock.RUnlock()
+
+    enumName := "main::ex"
+    if exEnum, exists := enum[enumName]; exists {
+        if severity, exists := exEnum.members[category]; exists {
+            // Convert severity string to log level
+            switch strings.ToLower(severity.(string)) {
+            case "emerg", "emergency":
+                return LOG_EMERG, true
+            case "alert":
+                return LOG_ALERT, true
+            case "crit", "critical":
+                return LOG_CRIT, true
+            case "err", "error":
+                return LOG_ERR, true
+            case "warn", "warning":
+                return LOG_WARNING, true
+            case "notice":
+                return LOG_NOTICE, true
+            case "info":
+                return LOG_INFO, true
+            case "debug":
+                return LOG_DEBUG, true
+            default:
+                // Unknown severity, fall back to error
+                return LOG_ERR, true
+            }
+        }
+    }
+
+    return 0, false
+}
+
 // formatStackTrace formats a stack trace into a readable string with colors
 func formatStackTrace(stackTrace []stackFrame) string {
     if len(stackTrace) == 0 {
@@ -803,23 +866,41 @@ func logException(category any, message string, line int, function string, stack
     queueLogRequest(request)
 }
 
-func showUnhandled(header string,category map[string]any) {
-    pf("%s\n",sparkle(header))
-    for k,v:=range category {
-        if k=="line" { continue }
-        if k=="stack_trace" { continue }
-        switch v:=v.(type) {
+func showUnhandled(header string, category map[string]any) {
+
+    keys := make([]string, 0, len(category))
+    for k := range category {
+        if k == "line" {
+            continue
+        }
+        if k == "stack_trace" {
+            continue
+        }
+        keys = append(keys, k)
+    }
+    sort.Strings(keys)
+
+    pf("%s\n", sparkle(header))
+    for _, k := range keys {
+        v := category[k]
+        switch v := v.(type) {
         case int:
-            if v==0 { continue }
+            if v == 0 {
+                continue
+            }
         case string:
-            if v=="" { continue }
+            if v == "" {
+                continue
+            }
         default:
-            if v==nil { continue }
+            if v == nil {
+                continue
+            }
         }
-        if k=="function" {
-            v = stripNamespacePrefix(stripInstanceNumber(v.(string),0))
+        if k == "function" {
+            v = stripNamespacePrefix(stripInstanceNumber(v.(string), 0))
         }
-        pf("  - %9v : %+v\n",k,v)
+        pf("  - %9v : %+v\n", k, v)
     }
 }
 
@@ -831,7 +912,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
     var stackTrace []stackFrame
     var message string
     var category map[string]any
-    function="unknown"
+    function = "unknown"
 
     if excInfo != nil {
         line = excInfo.line
@@ -847,8 +928,8 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
     switch exceptionStrictness {
     case "strict":
         // Fatal termination with helpful message (default)
-        header:="[#2]FATAL: Unhandled exception:"
-        showUnhandled(header,category)
+        header := "[#2]FATAL: Unhandled exception:"
+        showUnhandled(header, category)
         // Show location info if available
         if excInfo != nil {
             pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line+1, excInfo.function)
@@ -865,13 +946,13 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         finish(false, ERR_EXCEPTION)
     case "permissive":
         // Convert to normal panic
-        header:="[#6]Converting unhandled exception to panic:"
-        showUnhandled(header,category)
+        header := "[#6]Converting unhandled exception to panic:"
+        showUnhandled(header, category)
         panic(sf("Unhandled exception: %v - %s", category, message))
     case "warn":
         // Print warning but continue
-        header:="[#6]WARNING: Unhandled exception:"
-        showUnhandled(header,category)
+        header := "[#6]WARNING: Unhandled exception:"
+        showUnhandled(header, category)
         if excInfo != nil {
             pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", excInfo.line+1, excInfo.function)
 
@@ -897,8 +978,8 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         }
     default:
         // Unknown strictness - default to strict
-        header:=sf("[#2]FATAL: Unhandled exception (unknown strictness '%s', defaulting to strict)", exceptionStrictness)
-        showUnhandled(header,category)
+        header := sf("[#2]FATAL: Unhandled exception (unknown strictness '%s', defaulting to strict)", exceptionStrictness)
+        showUnhandled(header, category)
 
         // Show location info if available
         if excInfo != nil {
@@ -916,7 +997,6 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         finish(false, ERR_EXCEPTION)
     }
 }
-
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
@@ -5068,11 +5148,13 @@ tco_reentry:
             // Check for level prefix (e.g., "debug:", "info:", etc.)
             var logLevel int = LOG_INFO // Default level
             var startToken int = 1
+            var hasExplicitLevel bool = false
 
             if inbound.TokenCount > 2 {
                 // Check for pattern: identifier + colon + message
                 levelToken := inbound.Tokens[1].tokText
                 if inbound.Tokens[2].tokType == SYM_COLON {
+                    hasExplicitLevel = true
                     switch strings.ToLower(levelToken) {
                     case "emerg", "emergency":
                         logLevel = LOG_EMERG
@@ -5099,6 +5181,13 @@ tco_reentry:
                         logLevel = LOG_DEBUG
                         startToken = 3
                     }
+                }
+            }
+
+            // Check for exception severity override if no explicit level provided
+            if !hasExplicitLevel {
+                if severity, exists := getExceptionSeverity(ifs); exists {
+                    logLevel = severity
                 }
             }
 

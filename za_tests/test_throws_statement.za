@@ -3,8 +3,8 @@
 println "=== Testing Standalone Throws Statement ==="
 
 # Register some test exceptions first
-exreg("network_error", 20)
-exreg("file_error", 10)
+exreg("network_error", "warn")
+exreg("file_error", "error")
 
 # Test 1: Basic throws with string literal
 println "\nTest 1: Basic throws with string literal"
