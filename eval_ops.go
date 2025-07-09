@@ -2320,10 +2320,13 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             name = field
         }
     }
+
+    /*
     if !isFunc {
         pf("no function, enum or record field found for %v\n", field)
         return nil, true
     }
+    */
 
     // user-defined or stdlib call, exception here for file handles
     var iargs []any
@@ -2371,10 +2374,12 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
         }
     }
 
+    /*
     if p.interpolating {
         pf("no function, enum or record field found for %v\n", field)
         return nil, true
     }
+    */
 
     return res, err
 }
