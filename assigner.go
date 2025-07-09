@@ -1566,6 +1566,7 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
     return chain, nil
 }
 
+/*
 func (p *leparser) validateChain(chain Chain, value any) error {
     // Get initial variable
     if len(chain.Accesses) == 0 {
@@ -1611,7 +1612,9 @@ func (p *leparser) validateChain(chain Chain, value any) error {
 
     return nil
 }
+*/
 
+/*
 // boxValueIfNecessary handles the case where a concrete value (like an int) needs
 // to be placed into a container that holds interfaces (like []any or a struct field
 // of type any). It "boxes" the concrete value into an interface value.
@@ -1642,6 +1645,7 @@ func boxValueIfNecessary(targetType reflect.Type, valueToSet reflect.Value) (ref
         valueToSet.Type(),
     )
 }
+*/
 
 // deepCopyValue creates a clean, mutable copy of a potentially tainted, unaddressable reflect.Value.
 func deepCopyValue(v reflect.Value) reflect.Value {

@@ -803,42 +803,42 @@ func logException(category any, message string, line int, function string, stack
     queueLogRequest(request)
 }
 
-// captureStackTraceAtThrow captures the current call stack at the moment of throwing
-// and stores it directly in the exception struct
-func captureStackTraceAtThrow(throwLine int16, throwFunction string) []stackFrame {
-    var trace []stackFrame
-
-    // Just capture the current function where the exception is thrown
-    // Strip instance numbers from function name at source
-    cleanFunctionName := stripNamespacePrefix(stripInstanceNumber(throwFunction, 0)) // Assume sync for current function
-    currentFrame := stackFrame{
-        function:  cleanFunctionName,
-        line:      throwLine,
-        caller:    "",
-        filename:  "", // Will be populated from current context if available
-        namespace: "", // Will be populated from current context if available
+func showUnhandled(header string,category map[string]any) {
+    pf("%s\n",sparkle(header))
+    for k,v:=range category {
+        if k=="line" { continue }
+        if k=="stack_trace" { continue }
+        switch v:=v.(type) {
+        case int:
+            if v==0 { continue }
+        case string:
+            if v=="" { continue }
+        default:
+            if v==nil { continue }
+        }
+        if k=="function" {
+            v = stripNamespacePrefix(stripInstanceNumber(v.(string),0))
+        }
+        pf("  - %9v : %+v\n",k,v)
     }
-    trace = append(trace, currentFrame)
-
-    return trace
 }
 
 // handleUnhandledExceptionCore applies the exception strictness policy with optional parameters
-func handleUnhandledExceptionCore(category any, message string, ifs uint32, excInfo *exceptionInfo) {
+func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
     // Log the exception first (regardless of strictness policy)
     var line int
     var function string
     var stackTrace []stackFrame
+    var message string
+    var category map[string]any
+    function="unknown"
 
     if excInfo != nil {
         line = excInfo.line
         function = excInfo.function
         stackTrace = excInfo.stackTrace
-    } else {
-        // Default values for simple exceptions
-        line = 0
-        function = "unknown"
-        stackTrace = nil
+        category = (excInfo.category).(map[string]any)
+        message = excInfo.message
     }
 
     // Log the exception
@@ -847,8 +847,8 @@ func handleUnhandledExceptionCore(category any, message string, ifs uint32, excI
     switch exceptionStrictness {
     case "strict":
         // Fatal termination with helpful message (default)
-        pf("[#fred]FATAL: Unhandled exception '%v': %s[#-]\n", category, message)
-
+        header:="[#2]FATAL: Unhandled exception:"
+        showUnhandled(header,category)
         // Show location info if available
         if excInfo != nil {
             pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line+1, excInfo.function)
@@ -865,11 +865,13 @@ func handleUnhandledExceptionCore(category any, message string, ifs uint32, excI
         finish(false, ERR_EXCEPTION)
     case "permissive":
         // Convert to normal panic
-        pf("[#fyellow]Converting unhandled exception to panic: %v - %s[#-]\n", category, message)
+        header:="[#6]Converting unhandled exception to panic:"
+        showUnhandled(header,category)
         panic(sf("Unhandled exception: %v - %s", category, message))
     case "warn":
         // Print warning but continue
-        pf("[#fyellow]WARNING: Unhandled exception '%v': %s[#-]\n", category, message)
+        header:="[#6]WARNING: Unhandled exception:"
+        showUnhandled(header,category)
         if excInfo != nil {
             pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", excInfo.line+1, excInfo.function)
 
@@ -895,7 +897,8 @@ func handleUnhandledExceptionCore(category any, message string, ifs uint32, excI
         }
     default:
         // Unknown strictness - default to strict
-        pf("[#fred]FATAL: Unhandled exception '%v': %s (unknown strictness '%s', defaulting to strict)[#-]\n", category, message, exceptionStrictness)
+        header:=sf("[#2]FATAL: Unhandled exception (unknown strictness '%s', defaulting to strict)", exceptionStrictness)
+        showUnhandled(header,category)
 
         // Show location info if available
         if excInfo != nil {
@@ -914,13 +917,6 @@ func handleUnhandledExceptionCore(category any, message string, ifs uint32, excI
     }
 }
 
-func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
-    handleUnhandledExceptionCore(excInfo.category, excInfo.message, ifs, excInfo)
-}
-
-func handleUnhandledExceptionSimple(category any, message string) {
-    handleUnhandledExceptionCore(category, message, 0, nil)
-}
 
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]

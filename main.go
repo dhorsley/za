@@ -1581,28 +1581,21 @@ func main() {
             if retArray, ok := mainRetvals.([]any); ok && len(retArray) >= 1 {
                 if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
                     // Main function returned with unhandled exception - apply strictness policy
-                    var category any = "unknown"
-                    var message string = "unknown error"
+                    // var category any = "unknown"
+                    // var message string = "unknown error"
                     var excInfo *exceptionInfo = nil
-
                     if len(retArray) >= 4 {
-                        category = retArray[1]
-                        message = GetAsString(retArray[2])
+                        // category = retArray[1]
+                        // message = GetAsString(retArray[2])
                         if excPtr, ok := retArray[3].(*exceptionInfo); ok {
                             excInfo = excPtr
                         }
                     } else if len(retArray) >= 3 {
                         // Fallback for old format
-                        category = retArray[1]
-                        message = GetAsString(retArray[2])
+                        // category = retArray[1]
+                        // message = GetAsString(retArray[2])
                     }
-
-                    // Apply exception strictness policy using full handler with stack traces
-                    if excInfo != nil {
-                        handleUnhandledException(excInfo, 0) // Use function space 0 for main
-                    } else {
-                        handleUnhandledExceptionSimple(category, message)
-                    }
+                    handleUnhandledException(excInfo, 0) // Use function space 0 for main
                 } else {
                     // DEBUG: Not an exception return - let normal error handling proceed
                     pf("[#fyellow]DEBUG: Main returned non-exception values: %+v[#-]\n", retArray)
