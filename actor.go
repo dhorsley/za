@@ -912,13 +912,22 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
     var stackTrace []stackFrame
     var message string
     var category map[string]any
+    var catString string
     function = "unknown"
 
     if excInfo != nil {
         line = excInfo.line
         function = excInfo.function
         stackTrace = excInfo.stackTrace
-        category = (excInfo.category).(map[string]any)
+        switch excInfo.category.(type) {
+        case string:
+            catString = (excInfo.category).(string)
+        case map[string]any:
+            category = (excInfo.category).(map[string]any)
+        default:
+            catString = sf("%+v",category)
+        }
+
         message = excInfo.message
     }
 
@@ -929,7 +938,11 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
     case "strict":
         // Fatal termination with helpful message (default)
         header := "[#2]FATAL: Unhandled exception:"
-        showUnhandled(header, category)
+        if catString == "" {
+            showUnhandled(header, category)
+        } else {
+            pf("  - %9v : %v\n","category",catString)
+        }
         // Show location info if available
         if excInfo != nil {
             pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line+1, excInfo.function)
