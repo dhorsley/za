@@ -2059,10 +2059,12 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     } else {
                         // Enhanced errors enabled but this isn't an enhanced error
                         pf("%s\n", err)
+                        finish(false, ERR_EVAL)
                     }
                 } else {
                     // Enhanced errors disabled - standard error reporting
                     pf("%s\n", err)
+                    finish(false, ERR_EVAL)
                 }
             }
             return res, err != nil, method_result, nil
@@ -2322,10 +2324,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
     }
 
     /*
-    if !isFunc {
-        pf("no function, enum or record field found for %v\n", field)
-        return nil, true
-    }
+       if !isFunc {
+           pf("no function, enum or record field found for %v\n", field)
+           return nil, true
+       }
     */
 
     // user-defined or stdlib call, exception here for file handles
@@ -2375,10 +2377,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
     }
 
     /*
-    if p.interpolating {
-        pf("no function, enum or record field found for %v\n", field)
-        return nil, true
-    }
+       if p.interpolating {
+           pf("no function, enum or record field found for %v\n", field)
+           return nil, true
+       }
     */
 
     return res, err

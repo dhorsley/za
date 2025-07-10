@@ -32,13 +32,13 @@ catch err is "dynamic_error"
 endtry
 
 println "Test 4: try throws with enum value"
-exreg("NETWORK_ERROR", "error")
+exreg("NETWORK_ERROR", "info")
 exreg("DATABASE_ERROR", "error")
 
 try throws ex.NETWORK_ERROR
     println "In try block with enum default"
-    throw  # Should use default enum value 1001
-catch err is 1001
+    throw
+catch err is ex.NETWORK_ERROR
     println "Caught enum error:", err
 endtry
 

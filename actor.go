@@ -925,7 +925,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         case map[string]any:
             category = (excInfo.category).(map[string]any)
         default:
-            catString = sf("%+v",category)
+            catString = sf("%+v", category)
         }
 
         message = excInfo.message
@@ -941,7 +941,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         if catString == "" {
             showUnhandled(header, category)
         } else {
-            pf("  - %9v : %v\n","category",catString)
+            pf("  - %9v : %v\n", "category", catString)
         }
         // Show location info if available
         if excInfo != nil {
@@ -1490,7 +1490,6 @@ tco_reentry:
     // debug mode stuff:
 
     activeDebugContext = parser
-    // fmt.Printf("[DEBUG] debugMode=%v, ifs=%d\n", debugMode, ifs)
     if debugMode && ifs < 3 {
         pf("[#fgreen]Debugger is active. Pausing before startup.[#-]\n")
         debugger.enterDebugger(0, functionspaces[source_base], ident, &mident, &gident)
@@ -6023,7 +6022,6 @@ tco_reentry:
             }
 
             // Execute try block using enhanced registry-based approach
-            // pf("DEBUG: C_Try case - inbound.SourceLine=%d, parser.pc=%d\n", inbound.SourceLine, parser.pc)
 
             // Build execution path for context tracking
             executionPath := make([]uint32, 0)
@@ -6038,9 +6036,7 @@ tco_reentry:
             applicableTryBlocks := findApplicableTryBlocks(ctx, source_base, executionPath)
 
             var matchingTryBlock *tryBlockInfo
-            // pf("DEBUG: Looking for try block with startLine=%d (inbound.SourceLine+1)\n", inbound.SourceLine+1)
             for _, tryInfo := range applicableTryBlocks {
-                // pf("DEBUG: Checking try block startLine=%d vs inbound.SourceLine+1=%d\n", tryInfo.startLine, inbound.SourceLine+1)
                 if tryInfo.startLine == inbound.SourceLine+1 {
                     matchingTryBlock = &tryInfo
                     break
@@ -6049,10 +6045,9 @@ tco_reentry:
 
             if matchingTryBlock != nil {
 
-                // pf("DEBUG: Found matching try block!\n")
                 // Execute the matching try block directly using its function space ID
-                if matchingTryBlock.functionSpace != 0 {
-                    // pf("DEBUG: Executing try block - functionSpace=%d, startLine=%d, endLine=%d\n", matchingTryBlock.functionSpace, matchingTryBlock.startLine, matchingTryBlock.endLine)
+                // Only execute during actual execution, not during function definition
+                if matchingTryBlock.functionSpace != 0 && !defining {
 
                     // Store the default category in the call context
                     calllock.Lock()
@@ -6084,7 +6079,6 @@ tco_reentry:
                                 switch status {
                                 case EXCEPTION_THROWN:
                                     // Exception was thrown - set up exception state and jump to catch blocks
-                                    // pf("DEBUG: Try block returned with exception - setting up exception state (fs=%d, ifs=%d)\n", source_base, ifs)
 
                                     if len(retArray) >= 4 {
                                         // Check if we have the full exception info preserved
@@ -6103,34 +6097,19 @@ tco_reentry:
                                             }
                                             atomic.StorePointer(&calltable[ifs].activeException, unsafe.Pointer(excInfo))
                                         }
-                                    } else if len(retArray) >= 3 {
-                                        // Legacy format - recreate exception info
-                                        excInfo := &exceptionInfo{
-                                            category:   retArray[1],
-                                            message:    GetAsString(retArray[2]),
-                                            line:       int(inbound.SourceLine),
-                                            function:   fs,
-                                            fs:         ifs,
-                                            stackTrace: nil, // No stack trace in legacy format
-                                        }
-
-                                        // Stack trace is already correct - no need to modify
-                                        atomic.StorePointer(&calltable[ifs].activeException, unsafe.Pointer(excInfo))
-                                        atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 0)
 
                                         // Jump to first catch block - look in the current function space, not the try block function space
                                         // Start looking from after the inner try block (pc+2 to skip the inner endtry)
-                                        // pf("DEBUG: Looking for catch in fs=%d from pc=%d\n", ifs, parser.pc+2)
                                         catchFound, catchDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
-                                        // pf("DEBUG: Catch result: found=%t, distance=%d, err=%t\n", catchFound, catchDistance, err)
+                                        if catchFound {
+                                        }
                                         if err || !catchFound {
                                             // No catch blocks found - look for endtry
-                                            // pf("DEBUG: No catch found, looking for endtry in fs=%d from pc=%d\n", ifs, parser.pc+2)
                                             endtryFound, endtryDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
-                                            // pf("DEBUG: Endtry result: found=%t, distance=%d, err=%t\n", endtryFound, endtryDistance, err)
+                                            if endtryFound {
+                                            }
                                             if err || !endtryFound {
                                                 // No endtry found in current function space - bubble exception up to parent
-                                                // pf("DEBUG: No endtry found in current function space - bubbling exception up to parent\n")
                                                 // Get exception info atomically for bubbling
                                                 if ifs < uint32(len(calltable)) {
                                                     exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
@@ -6160,11 +6139,9 @@ tco_reentry:
                                     }
                                 case EXCEPTION_HANDLED:
                                     // Exception was handled within try block - skip endtry and continue
-                                    // pf("DEBUG: Try block handled exception internally - skipping endtry and continuing\n")
                                     parser.pc++ // Skip the endtry statement since we already dealt with it
                                 case EXCEPTION_RETURN:
                                     // Try block executed a return statement - unpack return arguments and propagate
-                                    // pf("DEBUG: Try block executed return statement - unpacking return arguments\n")
                                     if len(retArray) > 1 {
                                         // Extract user return arguments (skip the EXCEPTION_RETURN status)
                                         userRetvals := retArray[1:]
@@ -6179,74 +6156,85 @@ tco_reentry:
                                     // The main execution loop will check endFunc and exit properly
                                 default:
                                     // Other status codes - handle as needed
-                                    // pf("DEBUG: Try block returned with unknown status %d - skipping endtry and continuing\n", status)
                                     parser.pc++ // Skip the endtry statement since we already dealt with it
                                 }
                             } else {
                                 // Invalid return format - treat as normal completion
-                                // pf("DEBUG: Try block returned with invalid status type - jumping to endtry\n")
-                                foundEndtry := false
-                                for searchPC := parser.pc + 1; searchPC < finalline; searchPC++ {
-                                    nextStatement := functionspaces[source_base][searchPC].Tokens[0].tokType
-                                    if nextStatement == C_Endtry {
-                                        parser.pc = searchPC - 1 // -1 because loop will increment
-                                        foundEndtry = true
-                                        break
-                                    }
-                                }
-                                if !foundEndtry {
+                                // Use lookahead to find the correct endtry that belongs to this try block
+                                endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+                                if endtryFound && !err {
+                                    parser.pc += endtryDistance // Jump to the correct endtry
+                                } else {
                                     // No endtry found in current function space - treat as normal completion and continue
                                     // This can happen in nested try blocks where the endtry is in the parent function space
-                                    // pf("DEBUG: No endtry found in current function space during fallback search - continuing normally\n")
                                 }
                             }
                         } else {
                             // Invalid return format - treat as normal completion
-                            // pf("DEBUG: Try block returned with invalid format - jumping to endtry\n")
-                            foundEndtry := false
-                            for searchPC := parser.pc + 1; searchPC < finalline; searchPC++ {
-                                nextStatement := functionspaces[source_base][searchPC].Tokens[0].tokType
-                                if nextStatement == C_Endtry {
-                                    parser.pc = searchPC - 1 // -1 because loop will increment
-                                    foundEndtry = true
-                                    break
-                                }
-                            }
-                            if !foundEndtry {
+                            // Use lookahead to find the correct endtry that belongs to this try block
+                            endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+                            if endtryFound && !err {
+                                parser.pc += endtryDistance // Jump to the correct endtry
+                            } else {
                                 // No endtry found in current function space - treat as normal completion and continue
                                 // This can happen in nested try blocks where the endtry is in the parent function space
-                                // pf("DEBUG: No endtry found in current function space during fallback search - continuing normally\n")
                             }
                         }
                     } else {
                         // Try block completed normally - skip endtry and continue
-                        // pf("DEBUG: Try block completed normally - skipping endtry and continuing\n")
                         parser.pc++ // Skip the endtry statement since we already dealt with it
                     }
                 } else {
-                    // pf("DEBUG: Try block found but functionSpace is 0\n")
                 }
             } else {
-                // pf("DEBUG: No matching try block found for line %d\n", inbound.SourceLine)
+            }
+
+            // Skip the try block content in the parent function space to prevent double execution
+            // Only do this during execution, not during function definition, and only when we're at a C_Try token
+            // AND there's an unhandled exception AND we're in an enclosing try block
+            if !defining && functionspaces[source_base][parser.pc].Tokens[0].tokType == C_Try {
+                // Check if there's an unhandled exception in the current function space
+                var hasUnhandledException bool
+                if ifs < uint32(len(calltable)) {
+                    exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
+                    hasUnhandledException = exceptionPtr != nil
+                }
+
+                // Check if we're in an enclosing try block by looking for a try block in the parent function space
+                // that starts before the current position
+                var hasEnclosingTryBlock bool
+                for i := int16(0); i < parser.pc; i++ {
+                    if i < int16(len(functionspaces[source_base])) && len(functionspaces[source_base][i].Tokens) > 0 {
+                        if functionspaces[source_base][i].Tokens[0].tokType == C_Try {
+                            hasEnclosingTryBlock = true
+                            break
+                        }
+                    }
+                }
+
+                if hasUnhandledException && hasEnclosingTryBlock {
+                    // Find the corresponding endtry and jump to it (fresh lookahead for parent function space)
+                    // We're at indent=0, looking for endtry at endlevel=0 (same level, since we're in the parent function space)
+                    endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+                    if endtryFound && !err {
+                        parser.pc += endtryDistance // Jump to endtry to skip try block content
+                    }
+                }
             }
 
         case C_Catch:
             // Cache lookahead results if not already done
             if !inbound.Tokens[0].la_done {
-                // pf("DEBUG: Calculating lookahead for catch at pc=%d, source_base=%d\n", parser.pc, source_base)
                 // Always find next catch (we're inside try block, so indent=1)
                 nextFound, nextDistance, err := lookahead(source_base, parser.pc+1, 1, 1, C_Catch, []int64{C_Try}, []int64{C_Endtry})
-                // pf("DEBUG: Next catch lookahead result: found=%t, distance=%d, err=%t\n", nextFound, nextDistance, err)
                 if err {
                     // Lookahead failed - likely hit endtry first, which is normal
                     nextFound = false
                     nextDistance = 0
-                    // pf("DEBUG: Next catch lookahead failed (normal if endtry is closer)\n")
                 }
 
                 // Always find endtry (we're inside try block at indent=1, looking for endtry at endlevel=0)
                 endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
-                // pf("DEBUG: Endtry lookahead result: found=%t, distance=%d, err=%t\n", endtryFound, endtryDistance, err)
                 if err || !endtryFound {
                     // No endtry found in current function space - this means we're in a nested try block
                     // and the endtry is in the parent function space. This is not a syntax error.
@@ -6313,8 +6301,6 @@ tco_reentry:
                     // Evaluate the expression to get the condition value
                     if we = parser.wrappedEval(ifs, ident, ifs, ident, exprTokens); !we.evalError {
                         conditionValue := we.result
-
-                        // pf("DEBUG: Catch block parsed - err=%s, operator=%s, condition=%v\n", errVarName, tokNames[operatorToken], conditionValue)
 
                         matched := false
 
@@ -6618,12 +6604,10 @@ tco_reentry:
 
                 // We're inside a try block - cache lookahead results if not already done
                 if !inbound.Tokens[0].la_done {
-                    // pf("DEBUG: Calculating lookahead for throw at pc=%d, source_base=%d\n", parser.pc, source_base)
 
                     // If we're already inside a catch block (currentCatchMatched is true),
                     // we should jump directly to endtry, not look for more catch blocks
                     if atomic.LoadInt32(&calltable[ifs].currentCatchMatched) == 1 {
-                        // pf("DEBUG: Throw from inside catch block - jumping directly to finally or endtry\n")
                         // Look for finally block first
                         thenFound, thenDistance, thenErr := lookahead(source_base, parser.pc+1, 1, 1, C_Then, []int64{C_Try}, []int64{C_Endtry})
                         if thenFound && !thenErr {
@@ -6671,7 +6655,6 @@ tco_reentry:
                         inbound.Tokens[0].la_has_else = catchFound
                         inbound.Tokens[0].la_else_distance = catchDistance + 1 // +1 because we started from pc+1
                         inbound.Tokens[0].la_end_distance = finalTarget
-                        // pf("DEBUG: Found catch=%t at distance %d, final target at distance %d from pc=%d\n", catchFound, catchDistance+1, finalTarget, parser.pc)
                     }
                     inbound.Tokens[0].la_done = true
                 }
@@ -6680,11 +6663,9 @@ tco_reentry:
                 if inbound.Tokens[0].la_has_else {
                     // Jump to first catch block
                     parser.pc += inbound.Tokens[0].la_else_distance - 1 // -1 because loop will increment
-                    // pf("DEBUG: Jumping to catch block - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_else_distance, oldPC, parser.pc)
                 } else {
                     // Jump to endtry
                     parser.pc += inbound.Tokens[0].la_end_distance - 1 // -1 because loop will increment
-                    // pf("DEBUG: No catch blocks found - jumping to endtry - distance=%d, old_pc=%d, new_pc=%d\n", inbound.Tokens[0].la_end_distance, oldPC, parser.pc)
                 }
 
             } else {
@@ -6714,7 +6695,6 @@ tco_reentry:
                     calltable[ifs].defaultExceptionCategory = defaultCategory
                     calllock.Unlock()
 
-                    // pf("DEBUG: Set default exception category to %v (type %T)\n", defaultCategory, defaultCategory)
                 } else {
                     parser.report(inbound.SourceLine, "Error evaluating throws expression")
                     finish(false, ERR_EXCEPTION)
@@ -6728,7 +6708,6 @@ tco_reentry:
             // Finally block - always executes regardless of exception state
             // Just continue normal execution - the finally code will run
             // Exception state is preserved and will be handled at endtry
-            // pf("DEBUG: Entering finally block\n")
 
         case C_Endtry:
             // Endtry - handle exception state based on whether it was caught
@@ -6749,16 +6728,13 @@ tco_reentry:
                     // Clear exception state atomically
                     atomic.StorePointer(&calltable[ifs].activeException, nil)
                     atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 0)
-                    // pf("DEBUG: Reached endtry - exception was handled, setting return values and clearing state\n")
                 } else {
                     // Exception was not handled - need to bubble up or apply strictness policy
-                    // pf("DEBUG: Reached endtry - exception was not handled, checking if we should bubble up\n")
 
                     // Check if we're in a nested try block (would bubble up)
                     // Try blocks execute in separate function spaces, so check if this is a try block function space
                     if str.Contains(fs, "try_block_") {
                         // We're in a try block function space - bubble the exception up to the parent
-                        // pf("DEBUG: In nested try block - bubbling exception up to parent\n")
                         retvalues = []any{EXCEPTION_THROWN, currentExceptionInfo.category, currentExceptionInfo.message, currentExceptionInfo}
                         retval_count = 4
                         endFunc = true
@@ -6857,7 +6833,7 @@ tco_reentry:
                if we.result != nil {
                    if retArray, ok := we.result.([]any); ok && len(retArray) >= 1 {
                        if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
-                           pf("DEBUG: [MAIN_LOOP] DETECTED EXCEPTION_THROWN in wrappedEval result!\n")
+
                        }
                    }
                }
@@ -7519,19 +7495,16 @@ func findApplicableTryBlocks(ctx context.Context, currentFS uint32, executionPat
 // isTryBlockApplicable determines if a try block can handle an exception in the current context
 func isTryBlockApplicable(tryInfo *tryBlockInfo, currentFS uint32, executionPath []uint32) bool {
 
-    // pf("DEBUG: Checking try block applicability - tryInfo.parentFS=%d, currentFS=%d, executionPath=%v\n", tryInfo.parentFS, currentFS, executionPath)
 
     // Check if the try block's parent function space is in the execution path
     for _, pathFS := range executionPath {
         if pathFS == tryInfo.parentFS {
-            // pf("DEBUG: Try block applicable via executionPath match\n")
             return true
         }
     }
 
     // Check if the current function space matches the try block's parent
     if currentFS == tryInfo.parentFS {
-        // pf("DEBUG: Try block applicable via currentFS match\n")
         return true
     }
 
@@ -7540,7 +7513,6 @@ func isTryBlockApplicable(tryInfo *tryBlockInfo, currentFS uint32, executionPath
     currentBase := calltable[currentFS].base
     calllock.RUnlock()
     if currentBase == tryInfo.parentFS {
-        // pf("DEBUG: Try block applicable via currentFS.base match (user-defined function)\n")
         return true
     }
 
@@ -7589,7 +7561,6 @@ func isTryBlockApplicable(tryInfo *tryBlockInfo, currentFS uint32, executionPath
         }
     }
 
-    // pf("DEBUG: Try block NOT applicable - no match found\n")
     return false
 }
 
