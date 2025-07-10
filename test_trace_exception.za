@@ -1,0 +1,14 @@
+try
+    echo "Outer try block"
+    try
+        echo "Inner try block"
+        throw "test"
+        echo "This should not print"
+    catch err is "test"
+        echo "Inner catch: caught" err
+    endtry
+    echo "Outer try block after inner"
+catch err is "test"
+    echo "Outer catch: caught" err
+endtry
+echo "After all try blocks" 
