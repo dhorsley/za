@@ -700,14 +700,14 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 var weblock = &sync.RWMutex{}
 var webrulelock = &sync.RWMutex{}
 
-func buildNetLib() {
+func buildWebLib() {
 
     // persistent http client
     web_tr = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: false}}
     web_client = &http.Client{Transport: web_tr}
 
-    features["net"] = Feature{version: 1, category: "net"}
-    categories["net"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download"}
+    features["web"] = Feature{version: 1, category: "web"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.
