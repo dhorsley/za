@@ -2,6 +2,48 @@
 CHANGE LOG
 =============================================================================================
 
+1.2.0
+=====
+
+    fixes
+    -----
+
+    library changes
+    ---------------
+
+    * added pp() function for pretty printing some common types
+        pp(map|slice, [indent], [max_depth])
+
+    * renamed net lib to web
+
+    * (experimental) added network library, new calls:
+        tcp_client(host, port, [timeout])
+        tcp_server(port, mode)
+        tcp_send(handle, data)
+        tcp_receive(handle)
+        tcp_close(handle)
+        tcp_available(handle)
+        tcp_server_accept(handle)
+        tcp_server_stop(handle)
+        icmp_ping(host, [count], [timeout])
+        tcp_ping(host, port, [count], [timeout])
+        icmp_traceroute(host, [max_hops], [timeout])
+        tcp_traceroute(host, port, [max_hops], [timeout])
+        traceroute(host, protocol, [port], [max_hops], [timeout])
+        dns_resolve(host)
+        port_scan(host, [ports], [timeout])
+        net_interfaces_detailed()
+        network_stats()
+        ssl_cert_validate(host, [port])
+        ssl_cert_install_help(host, [port])
+        http_headers(url, [headers])
+        http_benchmark(url, requests, [concurrent], [keep_alive], [skip_verify])
+
+
+    other
+    -----
+
+
 1.1.9
 =====
 

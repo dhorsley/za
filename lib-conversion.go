@@ -10,11 +10,13 @@ import (
     "encoding/gob"
     "encoding/json"
     "errors"
+    "fmt"
     "math"
     "math/big"
     "os"
     "reflect"
     "strconv"
+    "strings"
     str "strings"
     "unsafe"
 
@@ -207,7 +209,7 @@ func buildConversionLib() {
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "char", "asc", "as_uint",
-        "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query",
+        "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed",
     }
@@ -509,6 +511,163 @@ func buildConversionLib() {
         }
         return newstring.String(), nil
 
+    }
+
+    slhelp["pp"] = LibHelp{in: "map|slice, [indent], [max_depth]", out: "string", action: "Pretty print a map or slice with optional indentation, depth limit, and color-coded section headings."}
+    stdlib["pp"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("pp", args, 3,
+            "1", "any",
+            "2", "any", "int",
+            "3", "any", "int", "string"); !ok {
+            return nil, err
+        }
+
+        input := args[0]
+        maxDepth := 10
+        indent := "  "
+
+        if len(args) >= 2 {
+            maxDepth = args[1].(int)
+        }
+        if len(args) >= 3 {
+            indent = args[2].(string)
+        }
+
+        // Define color codes using ZA's sparkle system
+        colors := map[string]string{
+            "key":         "[#5]", // map keys
+            "string":      "[#4]", // string values
+            "number":      "[#6]", // numeric values
+            "boolean":     "[#3]", // boolean values
+            "null":        "[#2]", // null values and errors
+            "map_start":   "[#1]", // map braces
+            "slice_start": "[#1]", // slice brackets
+            "reset":       "[#-]",
+        }
+
+        var prettyPrint func(map[string]any, string, int) string
+        var prettyPrintSlice func([]any, string, int) string
+
+        prettyPrint = func(m map[string]any, currentIndent string, depth int) string {
+            if depth > maxDepth {
+                return colors["null"] + "... (max depth reached)" + colors["reset"]
+            }
+
+            var result strings.Builder
+            result.WriteString(colors["map_start"] + "{" + colors["reset"] + "\n")
+
+            // Get keys
+            var keys []string
+            for k := range m {
+                keys = append(keys, k)
+            }
+
+            for i, key := range keys {
+                value := m[key]
+                result.WriteString(currentIndent + indent + colors["key"] + "\"" + key + "\"" + colors["reset"] + ": ")
+
+                switch v := value.(type) {
+                case map[string]any:
+                    result.WriteString(prettyPrint(v, currentIndent+indent, depth+1))
+                case []any:
+                    result.WriteString(prettyPrintSlice(v, currentIndent+indent, depth+1))
+                case string:
+                    result.WriteString(colors["string"] + "\"" + v + "\"" + colors["reset"])
+                case nil:
+                    result.WriteString(colors["null"] + "null" + colors["reset"])
+                case bool:
+                    result.WriteString(colors["boolean"] + fmt.Sprintf("%v", v) + colors["reset"])
+                case int, int64, float64:
+                    result.WriteString(colors["number"] + fmt.Sprintf("%v", v) + colors["reset"])
+                default:
+                    result.WriteString(colors["string"] + fmt.Sprintf("%v", v) + colors["reset"])
+                }
+
+                if i < len(keys)-1 {
+                    result.WriteString(",")
+                }
+                result.WriteString("\n")
+            }
+
+            result.WriteString(currentIndent + colors["map_start"] + "}" + colors["reset"])
+            return result.String()
+        }
+
+        prettyPrintSlice = func(slice []any, currentIndent string, depth int) string {
+            if depth > maxDepth {
+                return colors["null"] + "... (max depth reached)" + colors["reset"]
+            }
+
+            var result strings.Builder
+            result.WriteString(colors["slice_start"] + "[" + colors["reset"] + "\n")
+
+            for i, value := range slice {
+                result.WriteString(currentIndent + indent)
+
+                switch v := value.(type) {
+                case map[string]any:
+                    result.WriteString(prettyPrint(v, currentIndent+indent, depth+1))
+                case []any:
+                    result.WriteString(prettyPrintSlice(v, currentIndent+indent, depth+1))
+                case string:
+                    result.WriteString(colors["string"] + "\"" + v + "\"" + colors["reset"])
+                case nil:
+                    result.WriteString(colors["null"] + "null" + colors["reset"])
+                case bool:
+                    result.WriteString(colors["boolean"] + fmt.Sprintf("%v", v) + colors["reset"])
+                case int, int64, float64:
+                    result.WriteString(colors["number"] + fmt.Sprintf("%v", v) + colors["reset"])
+                default:
+                    result.WriteString(colors["string"] + fmt.Sprintf("%v", v) + colors["reset"])
+                }
+
+                if i < len(slice)-1 {
+                    result.WriteString(",")
+                }
+                result.WriteString("\n")
+            }
+
+            result.WriteString(currentIndent + colors["slice_start"] + "]" + colors["reset"])
+            return result.String()
+        }
+
+        // Apply sparkle to the final result to convert color codes to ANSI
+        switch v := input.(type) {
+        case map[string]any:
+            return sparkle(prettyPrint(v, "", 0)), nil
+        case []any:
+            return sparkle(prettyPrintSlice(v, "", 0)), nil
+        case []map[string]any:
+            // Convert []map[string]any to []any for pretty printing
+            slice := make([]any, len(v))
+            for i, item := range v {
+                slice[i] = item
+            }
+            return sparkle(prettyPrintSlice(slice, "", 0)), nil
+        case []string:
+            // Convert []string to []any for pretty printing
+            slice := make([]any, len(v))
+            for i, item := range v {
+                slice[i] = item
+            }
+            return sparkle(prettyPrintSlice(slice, "", 0)), nil
+        case []int:
+            // Convert []int to []any for pretty printing
+            slice := make([]any, len(v))
+            for i, item := range v {
+                slice[i] = item
+            }
+            return sparkle(prettyPrintSlice(slice, "", 0)), nil
+        case []float64:
+            // Convert []float64 to []any for pretty printing
+            slice := make([]any, len(v))
+            for i, item := range v {
+                slice[i] = item
+            }
+            return sparkle(prettyPrintSlice(slice, "", 0)), nil
+        default:
+            return nil, fmt.Errorf("pp() expects map or slice, got %T", input)
+        }
     }
 
     slhelp["as_bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer. Also ensures this is a copy."}
