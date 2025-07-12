@@ -6926,14 +6926,22 @@ tco_reentry:
                 }
             }
             if we.evalError {
-                errmsg := ""
-                // pf("[statement-loop] received this error response from wrappedEval(): %#v\n",we)
-                if we.errVal != nil {
-                    errmsg = sf("%+v\n", we.errVal)
+                if enhancedErrorsEnabled {
+                    // Use enhanced error handling with typo suggestions
+                    showEnhancedErrorWithCallArgs(parser, inbound.SourceLine, we.errVal, ifs, nil, "")
+                    finish(false, ERR_EVAL)
+                    break
+                } else {
+                    // Standard error reporting (no typo suggestions)
+                    errmsg := ""
+                    // pf("[statement-loop] received this error response from wrappedEval(): %#v\n",we)
+                    if we.errVal != nil {
+                        errmsg = sf("%+v\n", we.errVal)
+                    }
+                    parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
+                    finish(false, ERR_EVAL)
+                    break
                 }
-                parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
-                finish(false, ERR_EVAL)
-                break
             }
 
             /*
