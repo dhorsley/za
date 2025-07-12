@@ -1,514 +1,514 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"io/fs"
-	"log"
-	"os"
-	"path/filepath"
-	"reflect"
-	"regexp"
-	"runtime"
-	"strings"
-	str "strings"
-	"sync/atomic"
+    "context"
+    "fmt"
+    "io/fs"
+    "log"
+    "os"
+    "path/filepath"
+    "reflect"
+    "regexp"
+    "runtime"
+    "strings"
+    str "strings"
+    "sync/atomic"
 )
 
 // Global variable to hold current error context for library functions
 var currentErrorContext *ErrorContext
 
 func startupOptions() {
-	shelltype, _ := gvget("@shelltype")
-	if shelltype == "bash" {
-		Copper("shopt -s expand_aliases", true)
-		Copper("set -o pipefail", true)
-	}
-	if shelltype == "bash" || shelltype == "ash" {
-		if MW != -1 {
-			if runtime.GOOS == "freebsd" {
-				Copper(sf(`alias ls="COLUMNS=%d ls -C"`, MW), true)
-			} else {
-				Copper(sf(`alias ls="ls -x -w %d"`, MW), true)
-			}
-		}
-	}
+    shelltype, _ := gvget("@shelltype")
+    if shelltype == "bash" {
+        Copper("shopt -s expand_aliases", true)
+        Copper("set -o pipefail", true)
+    }
+    if shelltype == "bash" || shelltype == "ash" {
+        if MW != -1 {
+            if runtime.GOOS == "freebsd" {
+                Copper(sf(`alias ls="COLUMNS=%d ls -C"`, MW), true)
+            } else {
+                Copper(sf(`alias ls="ls -x -w %d"`, MW), true)
+            }
+        }
+    }
 
 }
 
 type parent_and_file struct {
-	Parent   string
-	Depth    int
-	DirEntry fs.DirEntry
+    Parent   string
+    Depth    int
+    DirEntry fs.DirEntry
 }
 
 func dirplus(path string, depth int) (flist []parent_and_file) {
-	if depth < 0 {
-		return
-	}
-	sep := "/"
-	if runtime.GOOS == "windows" {
-		sep = "\\"
-	}
-	files, err := os.ReadDir(path)
-	if err != nil {
-		return
-	}
-	for _, v := range files {
-		// pf("  on path %v : cf -> %v\n",path,v.Name())
-		f, err := os.Stat(path + sep + v.Name())
-		if err == nil {
-			flist = append(flist, parent_and_file{Parent: path, Depth: depth, DirEntry: v})
-			if f.IsDir() {
-				flist = append(flist, dirplus(path+sep+v.Name(), depth-1)...)
-			}
-		}
-	}
-	// pf("dp->returning list of %+v\n",flist)
-	return flist
+    if depth < 0 {
+        return
+    }
+    sep := "/"
+    if runtime.GOOS == "windows" {
+        sep = "\\"
+    }
+    files, err := os.ReadDir(path)
+    if err != nil {
+        return
+    }
+    for _, v := range files {
+        // pf("  on path %v : cf -> %v\n",path,v.Name())
+        f, err := os.Stat(path + sep + v.Name())
+        if err == nil {
+            flist = append(flist, parent_and_file{Parent: path, Depth: depth, DirEntry: v})
+            if f.IsDir() {
+                flist = append(flist, dirplus(path+sep+v.Name(), depth-1)...)
+            }
+        }
+    }
+    // pf("dp->returning list of %+v\n",flist)
+    return flist
 }
 
 func dir(filter string) []dirent {
 
-	cdir, _ := gvget("@cwd")
-	f, err := os.Open(cdir.(string))
-	if err != nil {
-		return []dirent{}
-	}
-	files, err := f.Readdir(-1)
-	f.Close()
-	if err != nil {
-		return []dirent{}
-	}
+    cdir, _ := gvget("@cwd")
+    f, err := os.Open(cdir.(string))
+    if err != nil {
+        return []dirent{}
+    }
+    files, err := f.Readdir(-1)
+    f.Close()
+    if err != nil {
+        return []dirent{}
+    }
 
-	re := regexp.MustCompile(filter)
+    re := regexp.MustCompile(filter)
 
-	var dl []dirent
-	for _, file := range files {
-		// if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
-		if !re.MatchString(file.Name()) {
-			continue
-		}
-		var fs dirent
-		fs.name = file.Name()
-		fs.size = file.Size()
-		fs.mode = int(file.Mode())
-		fs.mtime = file.ModTime().Unix()
-		fs.is_dir = file.IsDir()
-		dl = append(dl, fs)
-	}
-	return dl
+    var dl []dirent
+    for _, file := range files {
+        // if match, _ := regexp.MatchString(filter, file.Name()); !match { continue }
+        if !re.MatchString(file.Name()) {
+            continue
+        }
+        var fs dirent
+        fs.name = file.Name()
+        fs.size = file.Size()
+        fs.mode = int(file.Mode())
+        fs.mtime = file.ModTime().Unix()
+        fs.is_dir = file.IsDir()
+        dl = append(dl, fs)
+    }
+    return dl
 
 }
 
 // does file exist?
 func fexists(fp string) bool {
-	f, err := os.Stat(fp)
-	if err == nil {
-		return f.Mode().IsRegular()
-	}
-	return false
+    f, err := os.Stat(fp)
+    if err == nil {
+        return f.Mode().IsRegular()
+    }
+    return false
 }
 
 func getReportFunctionName(ifs uint32, full bool) string {
-	nl, _ := numlookup.lmget(ifs)
-	if !full && str.IndexByte(nl, '@') > -1 {
-		nl = nl[:str.IndexByte(nl, '@')]
-	}
-	return nl
+    nl, _ := numlookup.lmget(ifs)
+    if !full && str.IndexByte(nl, '@') > -1 {
+        nl = nl[:str.IndexByte(nl, '@')]
+    }
+    return nl
 }
 
 func showCallChain(base string) {
 
-	// show chain
-	evalChainTotal := 0
-	pf("[#CTE][#5]")
-	calllock.RLock()
-	for k, v := range errorChain {
-		if k == 0 {
-			continue
-		}
-		if v.registrant == ciEval {
-			evalChainTotal++
-		}
-		if evalChainTotal > 5 {
-			pf("-> ABORTED EVALUATION CHAIN (>5) ")
-			break
-		}
-		v.name = getReportFunctionName(v.loc, false)
-		// pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
-		pf("-> %s(#%d) ", v.name, v.line)
-	}
-	calllock.RUnlock()
-	pf("-> [#6]" + base + "[#-]\n[#CTE]")
+    // show chain
+    evalChainTotal := 0
+    pf("[#CTE][#5]")
+    calllock.RLock()
+    for k, v := range errorChain {
+        if k == 0 {
+            continue
+        }
+        if v.registrant == ciEval {
+            evalChainTotal++
+        }
+        if evalChainTotal > 5 {
+            pf("-> ABORTED EVALUATION CHAIN (>5) ")
+            break
+        }
+        v.name = getReportFunctionName(v.loc, false)
+        // pf("-> %s (%d) (%s) ",v.name,v.line,lookupChainName(v.registrant))
+        pf("-> %s(#%d) ", v.name, v.line)
+    }
+    calllock.RUnlock()
+    pf("-> [#6]" + base + "[#-]\n[#CTE]")
 
 }
 
 func lookupChainName(n uint8) string {
-	//  ciTrap ciCall ciEval ciMod ciAsyn ciRepl ciRhsb ciLnet ciMain ciErr
-	return [10]string{"0-Trap Handler", "1-Call", "2-Evaluator",
-		"3-Module Definition", "4-Async Handler", "5-Interactive Mode",
-		"6-UDF Builder", "7-Net Library", "8-Main Function", "9-Error Handling"}[n]
+    //  ciTrap ciCall ciEval ciMod ciAsyn ciRepl ciRhsb ciLnet ciMain ciErr
+    return [10]string{"0-Trap Handler", "1-Call", "2-Evaluator",
+        "3-Module Definition", "4-Async Handler", "5-Interactive Mode",
+        "6-UDF Builder", "7-Net Library", "8-Main Function", "9-Error Handling"}[n]
 }
 
 // extractUnknownWordFromError parses error messages to find the unknown word
 func extractUnknownWordFromError(errorMsg string) string {
-	// Pattern 1: "Unknown statement 'word'" or similar
-	if str.Contains(errorMsg, "Unknown statement") {
-		start := str.Index(errorMsg, "'")
-		if start != -1 {
-			end := str.Index(errorMsg[start+1:], "'")
-			if end != -1 {
-				return errorMsg[start+1 : start+1+end]
-			}
-		}
-	}
+    // Pattern 1: "Unknown statement 'word'" or similar
+    if str.Contains(errorMsg, "Unknown statement") {
+        start := str.Index(errorMsg, "'")
+        if start != -1 {
+            end := str.Index(errorMsg[start+1:], "'")
+            if end != -1 {
+                return errorMsg[start+1 : start+1+end]
+            }
+        }
+    }
 
-	// Pattern 2: "'word' is uninitialised." - potential keyword typos
-	if str.Contains(errorMsg, "is uninitialised") {
-		start := str.Index(errorMsg, "'")
-		if start != -1 {
-			end := str.Index(errorMsg[start+1:], "'")
-			if end != -1 {
-				return errorMsg[start+1 : start+1+end]
-			}
-		}
-	}
+    // Pattern 2: "'word' is uninitialised." - potential keyword typos
+    if str.Contains(errorMsg, "is uninitialised") {
+        start := str.Index(errorMsg, "'")
+        if start != -1 {
+            end := str.Index(errorMsg[start+1:], "'")
+            if end != -1 {
+                return errorMsg[start+1 : start+1+end]
+            }
+        }
+    }
 
-	// Add more patterns as needed for different error types
-	return ""
+    // Add more patterns as needed for different error types
+    return ""
 }
 
 // Global flag to prevent recursion in suggestion system
 var inSuggestionProcessing = false
 
 func suggestFunction(unknownWord string) string {
-	if len(unknownWord) < 4 {
-		return "" // Skip short user inputs
-	}
+    if len(unknownWord) < 4 {
+        return "" // Skip short user inputs
+    }
 
-	// Safety check to prevent recursion in suggestion processing
-	if inSuggestionProcessing {
-		return "" // Don't suggest while already processing suggestions
-	}
-	inSuggestionProcessing = true
-	defer func() { inSuggestionProcessing = false }()
+    // Safety check to prevent recursion in suggestion processing
+    if inSuggestionProcessing {
+        return "" // Don't suggest while already processing suggestions
+    }
+    inSuggestionProcessing = true
+    defer func() { inSuggestionProcessing = false }()
 
-	bestMatch := ""
-	minDistance := 3 // Maximum useful distance
+    bestMatch := ""
+    minDistance := 3 // Maximum useful distance
 
-	// Check stdlib functions first
-	for funcName := range slhelp {
-		distance := calculateLevenshteinDistance(
-			str.ToLower(unknownWord),
-			str.ToLower(funcName))
+    // Check stdlib functions first
+    for funcName := range slhelp {
+        distance := calculateLevenshteinDistance(
+            str.ToLower(unknownWord),
+            str.ToLower(funcName))
 
-		if distance <= 2 && distance < minDistance {
-			minDistance = distance
-			bestMatch = funcName
-		}
-	}
+        if distance <= 2 && distance < minDistance {
+            minDistance = distance
+            bestMatch = funcName
+        }
+    }
 
-	// Check user-defined functions from numlookup
-	// These are stored as "namespace::function_name", we want just the function name
+    // Check user-defined functions from numlookup
+    // These are stored as "namespace::function_name", we want just the function name
 
-	numlookup.m.Range(func(key, value interface{}) bool {
-		// Check if the value is a usable string type
-		fullName, ok := value.(string)
-		if !ok {
-			return true // continue iteration if not a string
-		}
+    numlookup.m.Range(func(key, value interface{}) bool {
+        // Check if the value is a usable string type
+        fullName, ok := value.(string)
+        if !ok {
+            return true // continue iteration if not a string
+        }
 
-		// Skip if it doesn't contain namespace separator
-		if !str.Contains(fullName, "::") {
-			return true // continue iteration
-		}
+        // Skip if it doesn't contain namespace separator
+        if !str.Contains(fullName, "::") {
+            return true // continue iteration
+        }
 
-		// Extract function name part (after "::")
-		parts := str.Split(fullName, "::")
-		if len(parts) < 2 {
-			return true // continue iteration
-		}
+        // Extract function name part (after "::")
+        parts := str.Split(fullName, "::")
+        if len(parts) < 2 {
+            return true // continue iteration
+        }
 
-		funcName := parts[len(parts)-1] // Get the last part (function name)
+        funcName := parts[len(parts)-1] // Get the last part (function name)
 
-		// Skip if it's a generated function (contains "@")
-		if str.Contains(funcName, "@") {
-			return true // continue iteration
-		}
+        // Skip if it's a generated function (contains "@")
+        if str.Contains(funcName, "@") {
+            return true // continue iteration
+        }
 
-		distance := calculateLevenshteinDistance(
-			str.ToLower(unknownWord),
-			str.ToLower(funcName))
+        distance := calculateLevenshteinDistance(
+            str.ToLower(unknownWord),
+            str.ToLower(funcName))
 
-		if distance <= 2 && distance < minDistance {
-			minDistance = distance
-			bestMatch = funcName
-		}
+        if distance <= 2 && distance < minDistance {
+            minDistance = distance
+            bestMatch = funcName
+        }
 
-		return true // continue iteration
-	})
+        return true // continue iteration
+    })
 
-	if bestMatch != "" {
-		return fmt.Sprintf(" [#6]Did you mean '%s()'?[#-]", bestMatch)
-	}
+    if bestMatch != "" {
+        return fmt.Sprintf(" [#6]Did you mean '%s()'?[#-]", bestMatch)
+    }
 
-	return ""
+    return ""
 }
 
 func suggestKeyword(unknownWord string) string {
-	if len(unknownWord) < 4 {
-		return "" // Skip short user inputs
-	}
+    if len(unknownWord) < 4 {
+        return "" // Skip short user inputs
+    }
 
-	// First try keywords
-	bestMatch := ""
-	minDistance := 3 // Maximum useful distance
+    // First try keywords
+    bestMatch := ""
+    minDistance := 3 // Maximum useful distance
 
-	for _, keyword := range completions {
-		distance := calculateLevenshteinDistance(
-			str.ToLower(unknownWord),
-			str.ToLower(keyword))
+    for _, keyword := range completions {
+        distance := calculateLevenshteinDistance(
+            str.ToLower(unknownWord),
+            str.ToLower(keyword))
 
-		if distance <= 2 && distance < minDistance {
-			minDistance = distance
-			bestMatch = keyword
-		}
-	}
+        if distance <= 2 && distance < minDistance {
+            minDistance = distance
+            bestMatch = keyword
+        }
+    }
 
-	if bestMatch != "" {
-		return fmt.Sprintf(" [#6]Did you mean '%s'?[#-]", str.ToLower(bestMatch))
-	}
+    if bestMatch != "" {
+        return fmt.Sprintf(" [#6]Did you mean '%s'?[#-]", str.ToLower(bestMatch))
+    }
 
-	// If no keyword match found, try functions
-	return "" // suggestFunction(unknownWord)
+    // If no keyword match found, try functions
+    return "" // suggestFunction(unknownWord)
 }
 
 func suggestVariable(unknownWord string, parser *leparser) string {
-	if len(unknownWord) < 3 {
-		return "" // Allow shorter names for variables than functions
-	}
+    if len(unknownWord) < 3 {
+        return "" // Allow shorter names for variables than functions
+    }
 
-	// Safety check to prevent recursion in suggestion processing
-	if inSuggestionProcessing {
-		return ""
-	}
-	inSuggestionProcessing = true
-	defer func() { inSuggestionProcessing = false }()
+    // Safety check to prevent recursion in suggestion processing
+    if inSuggestionProcessing {
+        return ""
+    }
+    inSuggestionProcessing = true
+    defer func() { inSuggestionProcessing = false }()
 
-	var localMatches []string
-	var globalMatches []string
-	minDistance := 3
+    var localMatches []string
+    var globalMatches []string
+    minDistance := 3
 
-	// Check local variables
-	if parser.ident != nil {
-		for _, v := range *parser.ident {
-			if v.declared && v.IName != "" {
-				distance := calculateLevenshteinDistance(
-					str.ToLower(unknownWord),
-					str.ToLower(v.IName))
+    // Check local variables
+    if parser.ident != nil {
+        for _, v := range *parser.ident {
+            if v.declared && v.IName != "" {
+                distance := calculateLevenshteinDistance(
+                    str.ToLower(unknownWord),
+                    str.ToLower(v.IName))
 
-				if distance <= 2 && distance < minDistance {
-					minDistance = distance
-					localMatches = []string{v.IName}
-				} else if distance <= 2 && distance == minDistance {
-					localMatches = append(localMatches, v.IName)
-				}
-			}
-		}
-	}
+                if distance <= 2 && distance < minDistance {
+                    minDistance = distance
+                    localMatches = []string{v.IName}
+                } else if distance <= 2 && distance == minDistance {
+                    localMatches = append(localMatches, v.IName)
+                }
+            }
+        }
+    }
 
-	// Check global variables
-	if mident != nil {
-		for _, v := range mident {
-			if v.declared && v.IName != "" {
-				distance := calculateLevenshteinDistance(
-					str.ToLower(unknownWord),
-					str.ToLower(v.IName))
+    // Check global variables
+    if mident != nil {
+        for _, v := range mident {
+            if v.declared && v.IName != "" {
+                distance := calculateLevenshteinDistance(
+                    str.ToLower(unknownWord),
+                    str.ToLower(v.IName))
 
-				if distance <= 2 && distance < minDistance {
-					minDistance = distance
-					globalMatches = []string{v.IName}
-					// Don't reset localMatches - we want both if same distance
-				} else if distance <= 2 && distance == minDistance {
-					globalMatches = append(globalMatches, v.IName)
-				}
-			}
-		}
-	}
+                if distance <= 2 && distance < minDistance {
+                    minDistance = distance
+                    globalMatches = []string{v.IName}
+                    // Don't reset localMatches - we want both if same distance
+                } else if distance <= 2 && distance == minDistance {
+                    globalMatches = append(globalMatches, v.IName)
+                }
+            }
+        }
+    }
 
-	return formatVariableSuggestions(localMatches, globalMatches)
+    return formatVariableSuggestions(localMatches, globalMatches)
 }
 
 func formatVariableSuggestions(localMatches, globalMatches []string) string {
-	totalLocal := len(localMatches)
-	totalGlobal := len(globalMatches)
+    totalLocal := len(localMatches)
+    totalGlobal := len(globalMatches)
 
-	if totalLocal == 0 && totalGlobal == 0 {
-		return ""
-	}
+    if totalLocal == 0 && totalGlobal == 0 {
+        return ""
+    }
 
-	var suggestions []string
+    var suggestions []string
 
-	// Add local suggestions (prioritized)
-	if totalLocal > 0 {
-		if totalLocal == 1 {
-			suggestions = append(suggestions, fmt.Sprintf("'%s' (local)", localMatches[0]))
-		} else if totalLocal == 2 {
-			suggestions = append(suggestions, fmt.Sprintf("'%s' or '%s' (local)", localMatches[0], localMatches[1]))
-		} else {
-			suggestions = append(suggestions, fmt.Sprintf("'%s', '%s', or %d other local variables", localMatches[0], localMatches[1], totalLocal-2))
-		}
-	}
+    // Add local suggestions (prioritized)
+    if totalLocal > 0 {
+        if totalLocal == 1 {
+            suggestions = append(suggestions, fmt.Sprintf("'%s' (local)", localMatches[0]))
+        } else if totalLocal == 2 {
+            suggestions = append(suggestions, fmt.Sprintf("'%s' or '%s' (local)", localMatches[0], localMatches[1]))
+        } else {
+            suggestions = append(suggestions, fmt.Sprintf("'%s', '%s', or %d other local variables", localMatches[0], localMatches[1], totalLocal-2))
+        }
+    }
 
-	// Add global suggestions
-	if totalGlobal > 0 {
-		if totalGlobal == 1 {
-			suggestions = append(suggestions, fmt.Sprintf("'@%s' (global)", globalMatches[0]))
-		} else if totalGlobal == 2 {
-			suggestions = append(suggestions, fmt.Sprintf("'@%s' or '@%s' (global)", globalMatches[0], globalMatches[1]))
-		} else {
-			suggestions = append(suggestions, fmt.Sprintf("'@%s', '@%s', or %d other global variables", globalMatches[0], globalMatches[1], totalGlobal-2))
-		}
-	}
+    // Add global suggestions
+    if totalGlobal > 0 {
+        if totalGlobal == 1 {
+            suggestions = append(suggestions, fmt.Sprintf("'@%s' (global)", globalMatches[0]))
+        } else if totalGlobal == 2 {
+            suggestions = append(suggestions, fmt.Sprintf("'@%s' or '@%s' (global)", globalMatches[0], globalMatches[1]))
+        } else {
+            suggestions = append(suggestions, fmt.Sprintf("'@%s', '@%s', or %d other global variables", globalMatches[0], globalMatches[1], totalGlobal-2))
+        }
+    }
 
-	// Combine suggestions
-	if len(suggestions) == 1 {
-		return fmt.Sprintf(" [#6]Did you mean %s?[#-]", suggestions[0])
-	} else {
-		return fmt.Sprintf(" [#6]Did you mean %s or %s?[#-]", suggestions[0], suggestions[1])
-	}
+    // Combine suggestions
+    if len(suggestions) == 1 {
+        return fmt.Sprintf(" [#6]Did you mean %s?[#-]", suggestions[0])
+    } else {
+        return fmt.Sprintf(" [#6]Did you mean %s or %s?[#-]", suggestions[0], suggestions[1])
+    }
 }
 
 func (parser *leparser) report(line int16, s string) {
 
-	// Log error to file if error logging is enabled
-	if errorLoggingEnabled {
-		logError(line, s, parser)
-		// Continue with console output if not in quiet mode
-	}
+    // Log error to file if error logging is enabled
+    if errorLoggingEnabled {
+        logError(line, s, parser)
+        // Continue with console output if not in quiet mode
+    }
 
-	// Simple error ID tracking to allow re-entry from error handler itself
-	//currentErrorID := fmt.Sprintf("%p-%d", parser, line) // Unique ID based on parser + line
+    // Simple error ID tracking to allow re-entry from error handler itself
+    //currentErrorID := fmt.Sprintf("%p-%d", parser, line) // Unique ID based on parser + line
 
-	/*
-	   // Check for attempted re-entry to error handler
-	   if enhancedErrorsEnabled && globalErrorContext.InErrorHandler {
-	       if globalErrorContext.CurrentErrorID != currentErrorID {
-	           return
-	       } else {
-	           // Allow re-entry from same error handler (recursive call)
-	           globalErrorContext.InErrorHandler = false // Temporarily allow processing
-	       }
-	   }
-	*/
+    /*
+       // Check for attempted re-entry to error handler
+       if enhancedErrorsEnabled && globalErrorContext.InErrorHandler {
+           if globalErrorContext.CurrentErrorID != currentErrorID {
+               return
+           } else {
+               // Allow re-entry from same error handler (recursive call)
+               globalErrorContext.InErrorHandler = false // Temporarily allow processing
+           }
+       }
+    */
 
-	/*
-	   // Check if enhanced error handling is enabled and we're not already in an error handler
-	   if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
-	       globalErrorContext.CurrentErrorID = currentErrorID
-	       globalErrorContext.InErrorHandler = true
+    /*
+       // Check if enhanced error handling is enabled and we're not already in an error handler
+       if enhancedErrorsEnabled && !globalErrorContext.InErrorHandler {
+           globalErrorContext.CurrentErrorID = currentErrorID
+           globalErrorContext.InErrorHandler = true
 
-	       // Create a synthetic error and use enhanced error handling
-	       err := errors.New(strings.TrimSpace(s))
-	       currentCallArgs := make(map[string]any)
-	       currentFunctionName := "main"
+           // Create a synthetic error and use enhanced error handling
+           err := errors.New(strings.TrimSpace(s))
+           currentCallArgs := make(map[string]any)
+           currentFunctionName := "main"
 
-	       // Use enhanced error handler
-	       showEnhancedErrorWithCallArgs(parser, line, err, parser.fs, currentCallArgs, currentFunctionName)
-	       return
-	   }
-	*/
+           // Use enhanced error handler
+           showEnhancedErrorWithCallArgs(parser, line, err, parser.fs, currentCallArgs, currentFunctionName)
+           return
+       }
+    */
 
-	// Original report() logic for standard error handling
-	baseId := parser.fs
-	if parser.fs == 2 {
-		baseId = 1
-	} else {
-		funcName := getReportFunctionName(parser.fs, false)
-		baseId, _ = fnlookup.lmget(funcName)
-	}
-	if execMode {
-		// pf("\nexecMode : switched fs from %d to %d\n", baseId, execFs)
-		baseId = execFs
-	}
-	baseName, _ := numlookup.lmget(baseId) //      -> name of base func
+    // Original report() logic for standard error handling
+    baseId := parser.fs
+    if parser.fs == 2 {
+        baseId = 1
+    } else {
+        funcName := getReportFunctionName(parser.fs, false)
+        baseId, _ = fnlookup.lmget(funcName)
+    }
+    if execMode {
+        // pf("\nexecMode : switched fs from %d to %d\n", baseId, execFs)
+        baseId = execFs
+    }
+    baseName, _ := numlookup.lmget(baseId) //      -> name of base func
 
-	var line_content string
-	if len(functionspaces[baseId]) > 0 {
-		if baseId != 0 {
-			line_content = basecode[baseId][parser.pc].Original
-		} else {
-			line_content = "Interactive Mode"
-		}
-	}
+    var line_content string
+    if len(functionspaces[baseId]) > 0 {
+        if baseId != 0 {
+            line_content = basecode[baseId][parser.pc].Original
+        } else {
+            line_content = "Interactive Mode"
+        }
+    }
 
-	moduleName := "main"
-	for _, fun := range funcmap {
-		if fun.fs == baseId && fun.name == baseName {
-			moduleName = fun.module
-			break
-		}
-	}
+    moduleName := "main"
+    for _, fun := range funcmap {
+        if fun.fs == baseId && fun.name == baseName {
+            moduleName = fun.module
+            break
+        }
+    }
 
-	var submsg string
-	if interactive {
-		submsg = "[#7]Error (interactive) : "
-	} else {
-		submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
-	}
+    var submsg string
+    if interactive {
+        submsg = "[#7]Error (interactive) : "
+    } else {
+        submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
+    }
 
-	var msg string
-	if !permit_exitquiet {
-		msg = sparkle("[#bred]\n[#CTE]"+submsg) +
-			line_content + "\n" +
-			sparkle("[##][#-][#CTE]") +
-			sparkle(sf("%s\n", s)) +
-			sparkle("[#CTE]")
-	} else {
-		msg = sparkle(sf("%s\n", s)) + sparkle("[#CTE]")
-	}
+    var msg string
+    if !permit_exitquiet {
+        msg = sparkle("[#bred]\n[#CTE]"+submsg) +
+            line_content + "\n" +
+            sparkle("[##][#-][#CTE]") +
+            sparkle(sf("%s\n", s)) +
+            sparkle("[#CTE]")
+    } else {
+        msg = sparkle(sf("%s\n", s)) + sparkle("[#CTE]")
+    }
 
-	fmt.Print(msg)
+    fmt.Print(msg)
 
-	msgna := Strip(msg)
-	if interactive {
-		chpos := 0
-		c := col
-		for ; chpos < len(msgna); c++ {
-			if c%MW == 0 {
-				row++
-				c = 0
-			}
-			if msgna[chpos] == '\n' {
-				row++
-				c = 0
-			}
-			chpos++
-		}
-	}
+    msgna := Strip(msg)
+    if interactive {
+        chpos := 0
+        c := col
+        for ; chpos < len(msgna); c++ {
+            if c%MW == 0 {
+                row++
+                c = 0
+            }
+            if msgna[chpos] == '\n' {
+                row++
+                c = 0
+            }
+            chpos++
+        }
+    }
 
-	if !interactive && !permit_exitquiet {
-		showCallChain(baseName)
-		pf("\n[#CTE]")
-	}
+    if !interactive && !permit_exitquiet {
+        showCallChain(baseName)
+        pf("\n[#CTE]")
+    }
 
 }
 
 func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string) {
 
-	s = sparkle(s) + "\n"
+    s = sparkle(s) + "\n"
 
-	f, err := os.OpenFile(test_output_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := f.Write([]byte(s)); err != nil {
-		log.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		log.Fatal(err)
-	}
+    f, err := os.OpenFile(test_output_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if _, err := f.Write([]byte(s)); err != nil {
+        log.Fatal(err)
+    }
+    if err := f.Close(); err != nil {
+        log.Fatal(err)
+    }
 
 }
 
@@ -516,122 +516,122 @@ func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string
 // DmitriyVTitov @ https://github.com/DmitriyVTitov/size/blob/master/size.go
 
 func Of(v any) int {
-	cache := make(map[uintptr]bool) // cache with every visited Pointer for recursion detection
-	return sizeOf(reflect.Indirect(reflect.ValueOf(v)), cache)
+    cache := make(map[uintptr]bool) // cache with every visited Pointer for recursion detection
+    return sizeOf(reflect.Indirect(reflect.ValueOf(v)), cache)
 }
 
 func sizeOf(v reflect.Value, cache map[uintptr]bool) int {
 
-	switch v.Kind() {
+    switch v.Kind() {
 
-	case reflect.Array:
-		fallthrough
-	case reflect.Slice:
-		// return 0 if this node has been visited already (infinite recursion)
-		if v.Kind() != reflect.Array && cache[v.Pointer()] {
-			return 0
-		}
-		if v.Kind() != reflect.Array {
-			cache[v.Pointer()] = true
-		}
-		sum := 0
-		for i := 0; i < v.Len(); i++ {
-			s := sizeOf(v.Index(i), cache)
-			if s < 0 {
-				return -1
-			}
-			sum += s
-		}
-		return sum + int(v.Type().Size())
+    case reflect.Array:
+        fallthrough
+    case reflect.Slice:
+        // return 0 if this node has been visited already (infinite recursion)
+        if v.Kind() != reflect.Array && cache[v.Pointer()] {
+            return 0
+        }
+        if v.Kind() != reflect.Array {
+            cache[v.Pointer()] = true
+        }
+        sum := 0
+        for i := 0; i < v.Len(); i++ {
+            s := sizeOf(v.Index(i), cache)
+            if s < 0 {
+                return -1
+            }
+            sum += s
+        }
+        return sum + int(v.Type().Size())
 
-	case reflect.Struct:
-		sum := 0
-		for i, n := 0, v.NumField(); i < n; i++ {
-			s := sizeOf(v.Field(i), cache)
-			if s < 0 {
-				return -1
-			}
-			sum += s
-		}
-		return sum
+    case reflect.Struct:
+        sum := 0
+        for i, n := 0, v.NumField(); i < n; i++ {
+            s := sizeOf(v.Field(i), cache)
+            if s < 0 {
+                return -1
+            }
+            sum += s
+        }
+        return sum
 
-	case reflect.String:
-		return len(v.String()) + int(v.Type().Size())
+    case reflect.String:
+        return len(v.String()) + int(v.Type().Size())
 
-	case reflect.Ptr:
-		// return Ptr size if this node has been visited already (infinite recursion)
-		if cache[v.Pointer()] {
-			return int(v.Type().Size())
-		}
-		cache[v.Pointer()] = true
-		if v.IsNil() {
-			return int(reflect.New(v.Type()).Type().Size())
-		}
-		s := sizeOf(reflect.Indirect(v), cache)
-		if s < 0 {
-			return -1
-		}
-		return s + int(v.Type().Size())
+    case reflect.Ptr:
+        // return Ptr size if this node has been visited already (infinite recursion)
+        if cache[v.Pointer()] {
+            return int(v.Type().Size())
+        }
+        cache[v.Pointer()] = true
+        if v.IsNil() {
+            return int(reflect.New(v.Type()).Type().Size())
+        }
+        s := sizeOf(reflect.Indirect(v), cache)
+        if s < 0 {
+            return -1
+        }
+        return s + int(v.Type().Size())
 
-	case reflect.Bool,
-		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Int,
-		reflect.Chan,
-		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
-		return int(v.Type().Size())
+    case reflect.Bool,
+        reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+        reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+        reflect.Int,
+        reflect.Chan,
+        reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
+        return int(v.Type().Size())
 
-	case reflect.Map:
-		// return 0 if this node has been visited already (infinite recursion)
-		if cache[v.Pointer()] {
-			return 0
-		}
-		cache[v.Pointer()] = true
-		sum := 0
-		keys := v.MapKeys()
-		for i := range keys {
-			val := v.MapIndex(keys[i])
-			// calculate size of key and value separately
-			sv := sizeOf(val, cache)
-			if sv < 0 {
-				return -1
-			}
-			sum += sv
-			sk := sizeOf(keys[i], cache)
-			if sk < 0 {
-				return -1
-			}
-			sum += sk
-		}
-		return sum + int(v.Type().Size())
+    case reflect.Map:
+        // return 0 if this node has been visited already (infinite recursion)
+        if cache[v.Pointer()] {
+            return 0
+        }
+        cache[v.Pointer()] = true
+        sum := 0
+        keys := v.MapKeys()
+        for i := range keys {
+            val := v.MapIndex(keys[i])
+            // calculate size of key and value separately
+            sv := sizeOf(val, cache)
+            if sv < 0 {
+                return -1
+            }
+            sum += sv
+            sk := sizeOf(keys[i], cache)
+            if sk < 0 {
+                return -1
+            }
+            sum += sk
+        }
+        return sum + int(v.Type().Size())
 
-	case reflect.Interface:
-		return sizeOf(v.Elem(), cache) + int(v.Type().Size())
-	}
+    case reflect.Interface:
+        return sizeOf(v.Elem(), cache) + int(v.Type().Size())
+    }
 
-	return -1
+    return -1
 }
 
 func version() {
-	v, _ := gvget("@ct_info")
-	add := ""
-	if v.(string) != "glibc" {
-		add = v.(string) + ", "
-	}
-	la, _ := gvget("@language")
-	ve, _ := gvget("@version")
-	cd, _ := gvget("@creation_date")
-	pf("[#6][#bold]%s version %s[#boff][#-]\n", la, ve)
-	pf("[#1]Last build:[#-] %s%s\n", add, cd)
+    v, _ := gvget("@ct_info")
+    add := ""
+    if v.(string) != "glibc" {
+        add = v.(string) + ", "
+    }
+    la, _ := gvget("@language")
+    ve, _ := gvget("@version")
+    cd, _ := gvget("@creation_date")
+    pf("[#6][#bold]%s version %s[#boff][#-]\n", la, ve)
+    pf("[#1]Last build:[#-] %s%s\n", add, cd)
 }
 
 func help_commands(ns string) {
-	commands(ns)
+    commands(ns)
 }
 
 func help_colour(ns string) {
 
-	colourpage := `
+    colourpage := `
 Some of the codes are demonstrated below. They can be activated by placing the
 code inside [# and ] in output strings.
 
@@ -686,12 +686,12 @@ hidden          Enable hidden text. (where supported.)
 [#framed]framed[#-]          Enable framed text. (where supported.)
 `
 
-	gpf(ns, colourpage)
+    gpf(ns, colourpage)
 }
 
 func help_ops(ns string) {
 
-	opspage := `
+    opspage := `
 [#1][#bold]Supported Operators[#boff][#-]
 
 [#1]Prefix Operators[#-]
@@ -749,13 +749,13 @@ func help_ops(ns string) {
 [#4]n--[#-]         post-decrement (local scope only, command not expression)
 [#4]n++[#-]         post-increment (local scope only, command not expression)
 `
-	gpf(ns, opspage)
+    gpf(ns, opspage)
 }
 
 // cli help
 func help(ns string, hargs string) {
 
-	helppage := `
+    helppage := `
 [#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W] [-P] [-d] [-a] [-D]  \
     [-s [#i1]path[#i0]] [-V [#i1]varname[#i0]]                                      \
     [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]                             \
@@ -793,17 +793,17 @@ func help(ns string, hargs string) {
     
 
 `
-	gpf(ns, helppage)
+    gpf(ns, helppage)
 
 }
 
 // interactive mode help
 func ihelp(ns string, hargs string) {
 
-	switch len(hargs) {
-	case 0:
+    switch len(hargs) {
+    case 0:
 
-		helppage := `
+        helppage := `
 [#4]help command    [#-]: available statements
 [#4]help op         [#-]: show operator info
 [#4]help colour     [#-]: show colour codes
@@ -811,78 +811,78 @@ func ihelp(ns string, hargs string) {
 [#4]funcs()         [#-]: all functions
 [#4]funcs(<string>) [#-]: finds matching categories or functions
 `
-		gpf(ns, helppage)
+        gpf(ns, helppage)
 
-	default:
+    default:
 
-		foundCommand := false
-		foundFunction := false
+        foundCommand := false
+        foundFunction := false
 
-		cmd := str.ToLower(hargs)
-		var cmdMatchList []string
-		funcMatchList := ""
+        cmd := str.ToLower(hargs)
+        var cmdMatchList []string
+        funcMatchList := ""
 
-		switch cmd {
+        switch cmd {
 
-		case "command":
-			fallthrough
-		case "commands":
-			commands(ns)
+        case "command":
+            fallthrough
+        case "commands":
+            commands(ns)
 
-		case "op":
-			fallthrough
-		case "ops":
-			help_ops(ns)
+        case "op":
+            fallthrough
+        case "ops":
+            help_ops(ns)
 
-		case "colour":
-			fallthrough
-		case "colours":
-			help_colour(ns)
+        case "colour":
+            fallthrough
+        case "colours":
+            help_colour(ns)
 
-		default:
+        default:
 
-			// check for keyword first:
-			re, err := regexp.Compile(`(?m)^{1}\[#[0-9]\]` + cmd + `.*?$`)
+            // check for keyword first:
+            re, err := regexp.Compile(`(?m)^{1}\[#[0-9]\]` + cmd + `.*?$`)
 
-			if err == nil {
-				cmdMatchList = re.FindAllString(str.ToLower(cmdpage), -1)
-				if len(cmdMatchList) > 0 {
-					foundCommand = true
-				}
-			}
+            if err == nil {
+                cmdMatchList = re.FindAllString(str.ToLower(cmdpage), -1)
+                if len(cmdMatchList) > 0 {
+                    foundCommand = true
+                }
+            }
 
-			// check for stdlib if not a keyword.
-			if _, exists := slhelp[cmd]; exists {
-				lhs := slhelp[cmd].out
-				colour := "2"
-				if slhelp[cmd].out != "" {
-					lhs += " = "
-					colour = "3"
-				}
-				params := slhelp[cmd].in
-				funcMatchList += sf(sparkle("[#"+colour+"]%s%s(%s)[#-]\n"), lhs, cmd, params)
-				funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
-				foundFunction = true
-			} else {
-				// pf("(no match):%s\n",cmd)
-			}
+            // check for stdlib if not a keyword.
+            if _, exists := slhelp[cmd]; exists {
+                lhs := slhelp[cmd].out
+                colour := "2"
+                if slhelp[cmd].out != "" {
+                    lhs += " = "
+                    colour = "3"
+                }
+                params := slhelp[cmd].in
+                funcMatchList += sf(sparkle("[#"+colour+"]%s%s(%s)[#-]\n"), lhs, cmd, params)
+                funcMatchList += sparkle(sf("[#4]%s[#-]", slhelp[cmd].action))
+                foundFunction = true
+            } else {
+                // pf("(no match):%s\n",cmd)
+            }
 
-			if foundFunction || foundCommand {
-				if foundCommand {
-					remspace := regexp.MustCompile(`[ ]+`)
-					for _, nextCmd := range cmdMatchList {
-						nextCmd = sparkle(str.TrimSpace(remspace.ReplaceAllString(nextCmd, " ")))
-						pf("keyword  : %v\n", nextCmd)
-					}
-				}
-				if foundFunction {
-					pf("function : %v\n", funcMatchList)
-				}
-			}
+            if foundFunction || foundCommand {
+                if foundCommand {
+                    remspace := regexp.MustCompile(`[ ]+`)
+                    for _, nextCmd := range cmdMatchList {
+                        nextCmd = sparkle(str.TrimSpace(remspace.ReplaceAllString(nextCmd, " ")))
+                        pf("keyword  : %v\n", nextCmd)
+                    }
+                }
+                if foundFunction {
+                    pf("function : %v\n", funcMatchList)
+                }
+            }
 
-		}
+        }
 
-	}
+    }
 }
 
 /* bit verbose with these ones listed too:
@@ -949,711 +949,711 @@ Available commands:
 `
 
 func commands(ns string) {
-	gpf(ns, cmdpage)
+    gpf(ns, cmdpage)
 }
 
 func showEnhancedExpectArgsError(parser *leparser, line int16, enhancedErr *EnhancedExpectArgsError, ifs uint32) {
-	showEnhancedExpectArgsErrorWithCallArgs(parser, line, enhancedErr, ifs, nil, "")
+    showEnhancedExpectArgsErrorWithCallArgs(parser, line, enhancedErr, ifs, nil, "")
 }
 
 func showEnhancedExpectArgsErrorWithCallArgs(parser *leparser, line int16, enhancedErr *EnhancedExpectArgsError, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
-	// Free emergency memory reserve immediately
-	if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
-		*emergencyMemoryReserve = nil
-		emergencyMemoryReserve = nil
-		runtime.GC()
-	}
+    // Free emergency memory reserve immediately
+    if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+        *emergencyMemoryReserve = nil
+        emergencyMemoryReserve = nil
+        runtime.GC()
+    }
 
-	// Populate global error context for library functions
-	populateErrorContext(parser, line, enhancedErr.OriginalError.Error(), ifs, currentCallArgs, currentFunctionName)
+    // Populate global error context for library functions
+    populateErrorContext(parser, line, enhancedErr.OriginalError.Error(), ifs, currentCallArgs, currentFunctionName)
 
-	// First show the standard error (maintain compatibility)
-	parser.report(line, sf("\n%v\n", enhancedErr.OriginalError))
+    // First show the standard error (maintain compatibility)
+    parser.report(line, sf("\n%v\n", enhancedErr.OriginalError))
 
-	// Then show enhanced context
-	pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
+    // Then show enhanced context
+    pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
 
-	// For stdlib functions, use the original Args array to preserve order
-	if len(enhancedErr.Args) > 0 {
-		showCallChainContextWithOrderedArgs(enhancedErr.Args, enhancedErr.FunctionName)
-	} else {
-		// Show call chain context with current call arguments (fallback)
-		showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
-	}
+    // For stdlib functions, use the original Args array to preserve order
+    if len(enhancedErr.Args) > 0 {
+        showCallChainContextWithOrderedArgs(enhancedErr.Args, enhancedErr.FunctionName)
+    } else {
+        // Show call chain context with current call arguments (fallback)
+        showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
+    }
 
-	// Show source context
-	showSourceContext(parser, line, ifs)
+    // Show source context
+    showSourceContext(parser, line, ifs)
 
-	// Show function information
-	showFunctionInfo(enhancedErr.FunctionName)
+    // Show function information
+    showFunctionInfo(enhancedErr.FunctionName)
 
-	// Show variable state
-	showVariableState(parser, ifs)
+    // Show variable state
+    showVariableState(parser, ifs)
 
-	pf("[#CTE]")
+    pf("[#CTE]")
 
-	// Reset CLI cursor and handle debug mode (same as original error handler)
-	if debugMode {
-		panic(enhancedErr.OriginalError)
-	}
-	setEcho(true)
+    // Reset CLI cursor and handle debug mode (same as original error handler)
+    if debugMode {
+        panic(enhancedErr.OriginalError)
+    }
+    setEcho(true)
 
-	// Check if we're in a deep recursive call chain - if so, exit immediately
-	// to prevent corrupted state propagation
-	evalChainCount := len(errorChain)
-	if evalChainCount > 3 {
-		os.Exit(ERR_EVAL)
-	}
+    // Check if we're in a deep recursive call chain - if so, exit immediately
+    // to prevent corrupted state propagation
+    evalChainCount := len(errorChain)
+    if evalChainCount > 3 {
+        os.Exit(ERR_EVAL)
+    }
 
-	// Clear error context when exiting error handler
-	clearErrorContext()
+    // Clear error context when exiting error handler
+    clearErrorContext()
 }
 
 func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
-	// Free emergency memory reserve immediately
-	if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
-		*emergencyMemoryReserve = nil
-		emergencyMemoryReserve = nil
-		runtime.GC()
-	}
+    // Free emergency memory reserve immediately
+    if enhancedErrorsEnabled && emergencyMemoryReserve != nil {
+        *emergencyMemoryReserve = nil
+        emergencyMemoryReserve = nil
+        runtime.GC()
+    }
 
-	// Add typo suggestions to error message if enabled (before setting InErrorHandler)
-	errorMessage := err.Error()
-	if enhancedErrorsEnabled {
-		unknownWord := extractUnknownWordFromError(errorMessage)
-		if suggestion := suggestKeyword(unknownWord); suggestion != "" {
-			errorMessage = errorMessage + suggestion
-		} else if suggestion := suggestFunction(unknownWord); suggestion != "" {
-			errorMessage = errorMessage + suggestion
-		} else if suggestion := suggestVariable(unknownWord, parser); suggestion != "" {
-			errorMessage = errorMessage + suggestion
-		}
-	}
+    // Add typo suggestions to error message if enabled (before setting InErrorHandler)
+    errorMessage := err.Error()
+    if enhancedErrorsEnabled {
+        unknownWord := extractUnknownWordFromError(errorMessage)
+        if suggestion := suggestKeyword(unknownWord); suggestion != "" {
+            errorMessage = errorMessage + suggestion
+        } else if suggestion := suggestFunction(unknownWord); suggestion != "" {
+            errorMessage = errorMessage + suggestion
+        } else if suggestion := suggestVariable(unknownWord, parser); suggestion != "" {
+            errorMessage = errorMessage + suggestion
+        }
+    }
 
-	// Populate global error context for library functions
-	populateErrorContext(parser, line, errorMessage, ifs, currentCallArgs, currentFunctionName)
+    // Populate global error context for library functions
+    populateErrorContext(parser, line, errorMessage, ifs, currentCallArgs, currentFunctionName)
 
-	// First show the standard error (maintain compatibility)
-	parser.report(line, sf("\n%v\n", errorMessage))
+    // First show the standard error (maintain compatibility)
+    parser.report(line, sf("\n%v\n", errorMessage))
 
-	// Then show enhanced context
-	pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
+    // Then show enhanced context
+    pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
 
-	// Show call chain context with current call arguments
-	evalChainCount := showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
+    // Show call chain context with current call arguments
+    evalChainCount := showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
 
-	// Show source context
-	showSourceContext(parser, line, ifs)
+    // Show source context
+    showSourceContext(parser, line, ifs)
 
-	// Show variable state
-	showVariableState(parser, ifs)
+    // Show variable state
+    showVariableState(parser, ifs)
 
-	pf("[#CTE]")
+    pf("[#CTE]")
 
-	// Reset CLI cursor and handle debug mode (same as original error handler)
-	if debugMode {
-		panic(err)
-	}
-	setEcho(true)
+    // Reset CLI cursor and handle debug mode (same as original error handler)
+    if debugMode {
+        panic(err)
+    }
+    setEcho(true)
 
-	// Check if we're in a deep recursive call chain - if so, exit immediately
-	// to prevent corrupted state propagation (this overrides permit_error_exit)
-	if evalChainCount > 3 {
-		os.Exit(ERR_EVAL)
-	}
+    // Check if we're in a deep recursive call chain - if so, exit immediately
+    // to prevent corrupted state propagation (this overrides permit_error_exit)
+    if evalChainCount > 3 {
+        os.Exit(ERR_EVAL)
+    }
 
-	// Clear error context when exiting error handler
-	clearErrorContext()
+    // Clear error context when exiting error handler
+    clearErrorContext()
 }
 
 func showSourceContext(parser *leparser, line int16, ifs uint32) {
-	// Get base function space for source code (same logic as report())
-	baseId := parser.fs
-	if parser.fs == 2 {
-		baseId = 1
-	} else {
-		funcName := getReportFunctionName(parser.fs, false)
-		baseId, _ = fnlookup.lmget(funcName)
-	}
+    // Get base function space for source code (same logic as report())
+    baseId := parser.fs
+    if parser.fs == 2 {
+        baseId = 1
+    } else {
+        funcName := getReportFunctionName(parser.fs, false)
+        baseId, _ = fnlookup.lmget(funcName)
+    }
 
-	// Get filename from fileMap using parser.fs (the current function space)
-	filename := ""
-	if fileMapValue, exists := fileMap.Load(parser.fs); exists {
-		storedPath := fileMapValue.(string)
+    // Get filename from fileMap using parser.fs (the current function space)
+    filename := ""
+    if fileMapValue, exists := fileMap.Load(parser.fs); exists {
+        storedPath := fileMapValue.(string)
 
-		// Convert to absolute path if it's relative
-		if filepath.IsAbs(storedPath) {
-			filename = storedPath
-		} else {
-			// Get current working directory and make absolute path
-			if cwd, err := os.Getwd(); err == nil {
-				filename = filepath.Join(cwd, storedPath)
-			} else {
-				// Fallback to stored path if we can't get cwd
-				filename = storedPath
-			}
-		}
-	}
+        // Convert to absolute path if it's relative
+        if filepath.IsAbs(storedPath) {
+            filename = storedPath
+        } else {
+            // Get current working directory and make absolute path
+            if cwd, err := os.Getwd(); err == nil {
+                filename = filepath.Join(cwd, storedPath)
+            } else {
+                // Fallback to stored path if we can't get cwd
+                filename = storedPath
+            }
+        }
+    }
 
-	// Show header with filename if available
-	if filename != "" {
-		pf("[#7]Source Context (%s):[#-]\n", filename)
-	} else {
-		pf("[#7]Source Context:[#-]\n")
-	}
+    // Show header with filename if available
+    if filename != "" {
+        pf("[#7]Source Context (%s):[#-]\n", filename)
+    } else {
+        pf("[#7]Source Context:[#-]\n")
+    }
 
-	// Show source lines using existing basecode[] and functionspaces[]
-	if len(functionspaces[baseId]) > 0 && baseId != 0 {
-		// Use parser.pc to index into the statement arrays, but get actual source line numbers from SourceLine
-		startStmt := max(0, int(parser.pc)-2)
-		endStmt := min(len(basecode[baseId])-1, int(parser.pc)+2)
+    // Show source lines using existing basecode[] and functionspaces[]
+    if len(functionspaces[baseId]) > 0 && baseId != 0 {
+        // Use parser.pc to index into the statement arrays, but get actual source line numbers from SourceLine
+        startStmt := max(0, int(parser.pc)-2)
+        endStmt := min(len(basecode[baseId])-1, int(parser.pc)+2)
 
-		for i := startStmt; i <= endStmt; i++ {
-			marker := "  "
-			if i == int(parser.pc) {
-				marker = "→ "
-			}
-			// Get the actual source line number from the phrase
-			actualLineNum := functionspaces[baseId][i].SourceLine + 1 // Convert 0-based to 1-based
-			pf("  %s[#b5][#7]%5d[#-] | %s\n", marker, actualLineNum, basecode[baseId][i].Original)
-		}
-	}
+        for i := startStmt; i <= endStmt; i++ {
+            marker := "  "
+            if i == int(parser.pc) {
+                marker = "→ "
+            }
+            // Get the actual source line number from the phrase
+            actualLineNum := functionspaces[baseId][i].SourceLine + 1 // Convert 0-based to 1-based
+            pf("  %s[#b5][#7]%5d[#-] | %s\n", marker, actualLineNum, basecode[baseId][i].Original)
+        }
+    }
 }
 
 func showFunctionInfo(functionName string) {
-	pf("\n[#7]Function Information:[#-]\n")
+    pf("\n[#7]Function Information:[#-]\n")
 
-	// Look up function info using existing slhelp[]
-	if helpInfo, exists := slhelp[functionName]; exists {
-		pf("  %s(%s) -> %s\n", functionName, helpInfo.in, helpInfo.out)
-		pf("  Description: %s\n", helpInfo.action)
-	} else {
-		pf("  %s (user-defined function)\n", functionName)
-	}
+    // Look up function info using existing slhelp[]
+    if helpInfo, exists := slhelp[functionName]; exists {
+        pf("  %s(%s) -> %s\n", functionName, helpInfo.in, helpInfo.out)
+        pf("  Description: %s\n", helpInfo.action)
+    } else {
+        pf("  %s (user-defined function)\n", functionName)
+    }
 }
 
 func showVariableState(parser *leparser, ifs uint32) {
-	pf("\n[#7]Variable State:[#-]\n")
+    pf("\n[#7]Variable State:[#-]\n")
 
-	// Get the source line that failed
-	var sourceLine string
-	if len(functionspaces[ifs]) > 0 && ifs != 0 && int(parser.pc) < len(basecode[ifs]) {
-		sourceLine = basecode[ifs][parser.pc].Original
-	}
+    // Get the source line that failed
+    var sourceLine string
+    if len(functionspaces[ifs]) > 0 && ifs != 0 && int(parser.pc) < len(basecode[ifs]) {
+        sourceLine = basecode[ifs][parser.pc].Original
+    }
 
-	// In interactive mode, only show variables referenced in the failing expression
-	if interactive && sourceLine != "" {
-		referencedVars := extractVariableNames(sourceLine)
-		shown := 0
+    // In interactive mode, only show variables referenced in the failing expression
+    if interactive && sourceLine != "" {
+        referencedVars := extractVariableNames(sourceLine)
+        shown := 0
 
-		for _, varName := range referencedVars {
-			if parser.ident != nil {
-				for i := 0; i < len(*parser.ident); i++ {
-					v := (*parser.ident)[i]
-					if v.declared && v.IName == varName {
-						valueStr := formatVariableValue(v.IValue)
-						pf("  • %s = %s (%T)\n", v.IName, valueStr, v.IValue)
-						shown++
-						break
-					}
-				}
-			}
-		}
+        for _, varName := range referencedVars {
+            if parser.ident != nil {
+                for i := 0; i < len(*parser.ident); i++ {
+                    v := (*parser.ident)[i]
+                    if v.declared && v.IName == varName {
+                        valueStr := formatVariableValue(v.IValue)
+                        pf("  • %s = %s (%T)\n", v.IName, valueStr, v.IValue)
+                        shown++
+                        break
+                    }
+                }
+            }
+        }
 
-		if shown == 0 {
-			pf("  (no variables referenced in failing expression)\n")
-		}
-	} else {
-		// Non-interactive mode: show up to 3 declared variables
-		if parser.ident != nil {
-			shown := 0
-			maxVars := 3
+        if shown == 0 {
+            pf("  (no variables referenced in failing expression)\n")
+        }
+    } else {
+        // Non-interactive mode: show up to 3 declared variables
+        if parser.ident != nil {
+            shown := 0
+            maxVars := 3
 
-			// Show declared variables
-			for i := 0; i < len(*parser.ident) && shown < maxVars; i++ {
-				v := (*parser.ident)[i]
-				if v.declared && v.IName != "" {
-					valueStr := formatVariableValue(v.IValue)
-					pf("  • %s = %s (%T)\n", v.IName, valueStr, v.IValue)
-					shown++
-				}
-			}
+            // Show declared variables
+            for i := 0; i < len(*parser.ident) && shown < maxVars; i++ {
+                v := (*parser.ident)[i]
+                if v.declared && v.IName != "" {
+                    valueStr := formatVariableValue(v.IValue)
+                    pf("  • %s = %s (%T)\n", v.IName, valueStr, v.IValue)
+                    shown++
+                }
+            }
 
-			if shown == 0 {
-				pf("  (no declared variables in scope)\n")
-			}
-		}
-	}
+            if shown == 0 {
+                pf("  (no declared variables in scope)\n")
+            }
+        }
+    }
 }
 
 func formatVariableValue(value any) string {
-	if value == nil {
-		return "nil"
-	}
+    if value == nil {
+        return "nil"
+    }
 
-	valueStr := sf("%v", value)
+    valueStr := sf("%v", value)
 
-	// Truncate very long values
-	if len(valueStr) > 50 {
-		return valueStr[:47] + "..."
-	}
+    // Truncate very long values
+    if len(valueStr) > 50 {
+        return valueStr[:47] + "..."
+    }
 
-	return valueStr
+    return valueStr
 }
 
 // extractVariableNames extracts variable names from a source line using Za's tokens stdlib function
 func extractVariableNames(sourceLine string) []string {
-	var variables []string
-	seen := make(map[string]bool)
+    var variables []string
+    seen := make(map[string]bool)
 
-	// Call the stdlib tokens function to get parsed tokens
-	if tokensFunc, exists := stdlib["tokens"]; exists {
-		result, err := tokensFunc("main", 0, nil, sourceLine)
-		if err == nil {
-			if tokenResult, ok := result.(token_result); ok {
-				// Filter for IDENTIFIER token types
-				for i, tokenType := range tokenResult.types {
-					if tokenType == "IDENTIFIER" && i < len(tokenResult.tokens) {
-						varName := tokenResult.tokens[i]
-						if !seen[varName] {
-							variables = append(variables, varName)
-							seen[varName] = true
-						}
-					}
-				}
-			}
-		}
-	}
+    // Call the stdlib tokens function to get parsed tokens
+    if tokensFunc, exists := stdlib["tokens"]; exists {
+        result, err := tokensFunc("main", 0, nil, sourceLine)
+        if err == nil {
+            if tokenResult, ok := result.(token_result); ok {
+                // Filter for IDENTIFIER token types
+                for i, tokenType := range tokenResult.types {
+                    if tokenType == "IDENTIFIER" && i < len(tokenResult.tokens) {
+                        varName := tokenResult.tokens[i]
+                        if !seen[varName] {
+                            variables = append(variables, varName)
+                            seen[varName] = true
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-	return variables
+    return variables
 }
 
 // cleanFunctionName cleans manufactured function names while preserving namespace info
 // e.g., "main::main_func@5" -> "main_func" (strips main namespace)
 // e.g., "mymodule::helper@3" -> "mymodule::helper" (keeps other namespaces)
 func cleanFunctionName(manufacturedName string) string {
-	// Remove the instance suffix (@number)
-	if atPos := strings.LastIndex(manufacturedName, "@"); atPos != -1 {
-		manufacturedName = manufacturedName[:atPos]
-	}
+    // Remove the instance suffix (@number)
+    if atPos := strings.LastIndex(manufacturedName, "@"); atPos != -1 {
+        manufacturedName = manufacturedName[:atPos]
+    }
 
-	// Only remove "main::" prefix, keep other namespaces for clarity
-	if strings.HasPrefix(manufacturedName, "main::") {
-		return manufacturedName[6:] // Remove "main::" prefix
-	}
+    // Only remove "main::" prefix, keep other namespaces for clarity
+    if strings.HasPrefix(manufacturedName, "main::") {
+        return manufacturedName[6:] // Remove "main::" prefix
+    }
 
-	return manufacturedName
+    return manufacturedName
 }
 
 func showCallChainContext() {
-	showCallChainContextWithCurrentCall(nil, "")
+    showCallChainContextWithCurrentCall(nil, "")
 }
 
 // showCallChainContextWithOrderedArgs displays call chain using ordered argument arrays
 // This preserves the original argument order for stdlib functions
 func showCallChainContextWithOrderedArgs(args []any, functionName string) {
-	pf("\n[#7]Call Chain:[#-]\n")
+    pf("\n[#7]Call Chain:[#-]\n")
 
-	// Show current call with ordered arguments
-	if len(args) > 0 && functionName != "" {
-		cleanCurrentName := cleanFunctionName(functionName)
-		pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
-		pf("    [#7]Arguments:[#-] ")
+    // Show current call with ordered arguments
+    if len(args) > 0 && functionName != "" {
+        cleanCurrentName := cleanFunctionName(functionName)
+        pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
+        pf("    [#7]Arguments:[#-] ")
 
-		// Display arguments in their original order
-		for i, argValue := range args {
-			if i > 0 {
-				pf(", ")
-			}
-			valueStr := formatVariableValue(argValue)
-			pf("[#2]arg%d[#-]=[#4]%s[#-]", i+1, valueStr)
-		}
-		pf("\n")
-	}
+        // Display arguments in their original order
+        for i, argValue := range args {
+            if i > 0 {
+                pf(", ")
+            }
+            valueStr := formatVariableValue(argValue)
+            pf("[#2]arg%d[#-]=[#4]%s[#-]", i+1, valueStr)
+        }
+        pf("\n")
+    }
 
-	// Show parent calls from error chain (same as before)
-	if len(errorChain) == 0 {
-		if len(args) == 0 {
-			pf("  (no call chain available)\n")
-		}
-		return
-	}
+    // Show parent calls from error chain (same as before)
+    if len(errorChain) == 0 {
+        if len(args) == 0 {
+            pf("  (no call chain available)\n")
+        }
+        return
+    }
 
-	// Walk through the errorChain to show call context (with curtailment for deep recursion)
-	evalChainTotal := 0
-	for i, chainInfo := range errorChain {
-		// Count evaluation chains and abort if too many (prevent recursion spam)
-		if chainInfo.registrant == ciEval {
-			evalChainTotal++
-		}
-		if evalChainTotal > 5 {
-			indent := strings.Repeat("  ", i+1)
-			pf("%s[#3]...[#-] [#5]ABORTED CALL CHAIN (>5 evaluation levels)[#-]\n", indent)
-			break
-		}
+    // Walk through the errorChain to show call context (with curtailment for deep recursion)
+    evalChainTotal := 0
+    for i, chainInfo := range errorChain {
+        // Count evaluation chains and abort if too many (prevent recursion spam)
+        if chainInfo.registrant == ciEval {
+            evalChainTotal++
+        }
+        if evalChainTotal > 5 {
+            indent := strings.Repeat("  ", i+1)
+            pf("%s[#3]...[#-] [#5]ABORTED CALL CHAIN (>5 evaluation levels)[#-]\n", indent)
+            break
+        }
 
-		calllock.RLock()
+        calllock.RLock()
 
-		// Get the function space name from the chain info
-		caller_str, exists := numlookup.lmget(chainInfo.loc)
-		if !exists {
-			calllock.RUnlock()
-			continue
-		}
+        // Get the function space name from the chain info
+        caller_str, exists := numlookup.lmget(chainInfo.loc)
+        if !exists {
+            calllock.RUnlock()
+            continue
+        }
 
-		// Get the call table entry for this location
-		callEntry := calltable[chainInfo.loc]
+        // Get the call table entry for this location
+        callEntry := calltable[chainInfo.loc]
 
-		calllock.RUnlock()
+        calllock.RUnlock()
 
-		// Get module name
-		moduleName := "main"
-		if callEntry.base < uint32(len(basemodmap)) {
-			if mod, modExists := basemodmap[callEntry.base]; modExists {
-				moduleName = mod
-			}
-		}
+        // Get module name
+        moduleName := "main"
+        if callEntry.base < uint32(len(basemodmap)) {
+            if mod, modExists := basemodmap[callEntry.base]; modExists {
+                moduleName = mod
+            }
+        }
 
-		// Get filename for this call location - try chainInfo first, then fileMap
-		filename := chainInfo.filename
-		if filename == "" {
-			if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
-				filename = fileMapValue.(string)
-			}
-		}
+        // Get filename for this call location - try chainInfo first, then fileMap
+        filename := chainInfo.filename
+        if filename == "" {
+            if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
+                filename = fileMapValue.(string)
+            }
+        }
 
-		// Show the call information
-		indent := strings.Repeat("  ", i+1)
-		cleanCallerName := cleanFunctionName(caller_str)
-		pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
+        // Show the call information
+        indent := strings.Repeat("  ", i+1)
+        cleanCallerName := cleanFunctionName(caller_str)
+        pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
 
-		// Show filename:line if available
-		if filename != "" {
-			if chainInfo.line > 0 {
-				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
-			} else {
-				pf(" ([#7]%s[#-])", filename)
-			}
-		} else if chainInfo.line > 0 {
-			pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
-		}
+        // Show filename:line if available
+        if filename != "" {
+            if chainInfo.line > 0 {
+                pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
+            } else {
+                pf(" ([#7]%s[#-])", filename)
+            }
+        } else if chainInfo.line > 0 {
+            pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
+        }
 
-		// Show arguments if they were captured in the error chain
-		if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
-			pf("\n%s    [#7]Arguments:[#-] ", indent)
-			argCount := 0
+        // Show arguments if they were captured in the error chain
+        if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
+            pf("\n%s    [#7]Arguments:[#-] ", indent)
+            argCount := 0
 
-			// The error chain preserves argument order in the arrays, so just iterate through them
-			for j, argName := range chainInfo.argNames {
-				if j < len(chainInfo.argValues) {
-					if argCount > 0 {
-						pf(", ")
-					}
-					valueStr := formatVariableValue(chainInfo.argValues[j])
-					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
-					argCount++
-				}
-			}
-		}
+            // The error chain preserves argument order in the arrays, so just iterate through them
+            for j, argName := range chainInfo.argNames {
+                if j < len(chainInfo.argValues) {
+                    if argCount > 0 {
+                        pf(", ")
+                    }
+                    valueStr := formatVariableValue(chainInfo.argValues[j])
+                    pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+                    argCount++
+                }
+            }
+        }
 
-		pf("\n")
-	}
+        pf("\n")
+    }
 }
 
 func showCallChainContextWithCurrentCall(currentCallArgs map[string]any, currentFunctionName string) int {
-	pf("\n[#7]Call Chain:[#-]\n")
+    pf("\n[#7]Call Chain:[#-]\n")
 
-	// Show current call arguments from errorChain (last entry) if available
-	if len(errorChain) > 0 {
-		currentCall := errorChain[len(errorChain)-1]
-		if len(currentCall.argNames) > 0 && len(currentCall.argValues) > 0 {
-			cleanCurrentName := cleanFunctionName(currentCall.name)
-			pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
-			pf("    [#7]Arguments:[#-] ")
+    // Show current call arguments from errorChain (last entry) if available
+    if len(errorChain) > 0 {
+        currentCall := errorChain[len(errorChain)-1]
+        if len(currentCall.argNames) > 0 && len(currentCall.argValues) > 0 {
+            cleanCurrentName := cleanFunctionName(currentCall.name)
+            pf("  [#3]Current:[#-] [#5]%s[#-]\n", cleanCurrentName)
+            pf("    [#7]Arguments:[#-] ")
 
-			// Show arguments in their original order from argNames/argValues arrays
-			for i, argName := range currentCall.argNames {
-				if i < len(currentCall.argValues) {
-					if i > 0 {
-						pf(", ")
-					}
-					valueStr := formatVariableValue(currentCall.argValues[i])
-					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
-				}
-			}
-			pf("\n")
-		}
-	}
+            // Show arguments in their original order from argNames/argValues arrays
+            for i, argName := range currentCall.argNames {
+                if i < len(currentCall.argValues) {
+                    if i > 0 {
+                        pf(", ")
+                    }
+                    valueStr := formatVariableValue(currentCall.argValues[i])
+                    pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+                }
+            }
+            pf("\n")
+        }
+    }
 
-	// Show parent calls from error chain
-	if len(errorChain) == 0 {
-		if len(currentCallArgs) == 0 {
-			pf("  (no call chain available)\n")
-		}
-		return 0
-	}
+    // Show parent calls from error chain
+    if len(errorChain) == 0 {
+        if len(currentCallArgs) == 0 {
+            pf("  (no call chain available)\n")
+        }
+        return 0
+    }
 
-	// Walk through the errorChain to show call context (with curtailment for deep recursion)
-	evalChainTotal := 0
-	for i, chainInfo := range errorChain {
-		// Count evaluation chains and abort if too many (prevent recursion spam)
-		if chainInfo.registrant == ciEval {
-			evalChainTotal++
-		}
-		if evalChainTotal > 5 {
-			indent := strings.Repeat("  ", i+1)
-			pf("%s[#3]...[#-] [#5]ABORTED CALL CHAIN (>5 evaluation levels)[#-]\n", indent)
-			break
-		}
+    // Walk through the errorChain to show call context (with curtailment for deep recursion)
+    evalChainTotal := 0
+    for i, chainInfo := range errorChain {
+        // Count evaluation chains and abort if too many (prevent recursion spam)
+        if chainInfo.registrant == ciEval {
+            evalChainTotal++
+        }
+        if evalChainTotal > 5 {
+            indent := strings.Repeat("  ", i+1)
+            pf("%s[#3]...[#-] [#5]ABORTED CALL CHAIN (>5 evaluation levels)[#-]\n", indent)
+            break
+        }
 
-		calllock.RLock()
+        calllock.RLock()
 
-		// Get the function space name from the chain info
-		caller_str, exists := numlookup.lmget(chainInfo.loc)
-		if !exists {
-			calllock.RUnlock()
-			continue
-		}
+        // Get the function space name from the chain info
+        caller_str, exists := numlookup.lmget(chainInfo.loc)
+        if !exists {
+            calllock.RUnlock()
+            continue
+        }
 
-		// Get the call table entry for this location
-		callEntry := calltable[chainInfo.loc]
+        // Get the call table entry for this location
+        callEntry := calltable[chainInfo.loc]
 
-		calllock.RUnlock()
+        calllock.RUnlock()
 
-		// Get module name
-		moduleName := "main"
-		if callEntry.base < uint32(len(basemodmap)) {
-			if mod, modExists := basemodmap[callEntry.base]; modExists {
-				moduleName = mod
-			}
-		}
+        // Get module name
+        moduleName := "main"
+        if callEntry.base < uint32(len(basemodmap)) {
+            if mod, modExists := basemodmap[callEntry.base]; modExists {
+                moduleName = mod
+            }
+        }
 
-		// Get filename for this call location - try chainInfo first, then fileMap
-		filename := chainInfo.filename
-		if filename == "" {
-			if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
-				filename = fileMapValue.(string)
-			}
-		}
+        // Get filename for this call location - try chainInfo first, then fileMap
+        filename := chainInfo.filename
+        if filename == "" {
+            if fileMapValue, exists := fileMap.Load(chainInfo.loc); exists {
+                filename = fileMapValue.(string)
+            }
+        }
 
-		// Show the call information
-		indent := strings.Repeat("  ", i+1)
-		cleanCallerName := cleanFunctionName(caller_str)
-		pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
+        // Show the call information
+        indent := strings.Repeat("  ", i+1)
+        cleanCallerName := cleanFunctionName(caller_str)
+        pf("%s[#3]%d.[#-] [#5]%s[#-] in [#6]%s[#-]", indent, i+1, cleanCallerName, moduleName)
 
-		// Show filename:line if available
-		if filename != "" {
-			if chainInfo.line > 0 {
-				pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
-			} else {
-				pf(" ([#7]%s[#-])", filename)
-			}
-		} else if chainInfo.line > 0 {
-			pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
-		}
+        // Show filename:line if available
+        if filename != "" {
+            if chainInfo.line > 0 {
+                pf(" ([#7]%s:%d[#-])", filename, chainInfo.line+1) // Convert 0-based to 1-based
+            } else {
+                pf(" ([#7]%s[#-])", filename)
+            }
+        } else if chainInfo.line > 0 {
+            pf(" (line %d)", chainInfo.line+1) // Convert 0-based to 1-based
+        }
 
-		// Show arguments if they were captured in the error chain
-		if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
-			pf("\n%s    [#7]Arguments:[#-] ", indent)
-			argCount := 0
+        // Show arguments if they were captured in the error chain
+        if len(chainInfo.argNames) > 0 && len(chainInfo.argValues) > 0 {
+            pf("\n%s    [#7]Arguments:[#-] ", indent)
+            argCount := 0
 
-			// The error chain preserves argument order in the arrays, so just iterate through them
-			for j, argName := range chainInfo.argNames {
-				if j < len(chainInfo.argValues) {
-					if argCount > 0 {
-						pf(", ")
-					}
-					valueStr := formatVariableValue(chainInfo.argValues[j])
-					pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
-					argCount++
-				}
-			}
-		}
+            // The error chain preserves argument order in the arrays, so just iterate through them
+            for j, argName := range chainInfo.argNames {
+                if j < len(chainInfo.argValues) {
+                    if argCount > 0 {
+                        pf(", ")
+                    }
+                    valueStr := formatVariableValue(chainInfo.argValues[j])
+                    pf("[#2]%s[#-]=[#4]%s[#-]", argName, valueStr)
+                    argCount++
+                }
+            }
+        }
 
-		pf("\n")
-	}
+        pf("\n")
+    }
 
-	return evalChainTotal
+    return evalChainTotal
 }
 
 // populateErrorContext gathers error information and stores it in globalErrorContext
 func populateErrorContext(parser *leparser, line int16, errorMessage string, ifs uint32, currentCallArgs map[string]any, currentFunctionName string) {
-	globalErrorContext.Message = errorMessage
-	globalErrorContext.SourceLine = line
-	globalErrorContext.FunctionName = currentFunctionName
-	globalErrorContext.InErrorHandler = true
+    globalErrorContext.Message = errorMessage
+    globalErrorContext.SourceLine = line
+    globalErrorContext.FunctionName = currentFunctionName
+    globalErrorContext.InErrorHandler = true
 
-	// Get module name
-	baseId := ifs
-	if parser.fs == 2 {
-		baseId = 1
-	} else {
-		funcName := getReportFunctionName(ifs, false)
-		baseId, _ = fnlookup.lmget(funcName)
-	}
-	globalErrorContext.ModuleName = basemodmap[baseId]
+    // Get module name
+    baseId := ifs
+    if parser.fs == 2 {
+        baseId = 1
+    } else {
+        funcName := getReportFunctionName(ifs, false)
+        baseId, _ = fnlookup.lmget(funcName)
+    }
+    globalErrorContext.ModuleName = basemodmap[baseId]
 
-	// Collect source lines
-	globalErrorContext.SourceLines = []string{}
-	if len(functionspaces[baseId]) > 0 && baseId != 0 {
-		startLine := max(0, int(parser.pc)-2)
-		endLine := min(len(basecode[baseId])-1, int(parser.pc)+2)
-		for i := startLine; i <= endLine; i++ {
-			globalErrorContext.SourceLines = append(globalErrorContext.SourceLines, basecode[baseId][i].Original)
-		}
-	}
+    // Collect source lines
+    globalErrorContext.SourceLines = []string{}
+    if len(functionspaces[baseId]) > 0 && baseId != 0 {
+        startLine := max(0, int(parser.pc)-2)
+        endLine := min(len(basecode[baseId])-1, int(parser.pc)+2)
+        for i := startLine; i <= endLine; i++ {
+            globalErrorContext.SourceLines = append(globalErrorContext.SourceLines, basecode[baseId][i].Original)
+        }
+    }
 
-	// Build call chain
-	globalErrorContext.CallChain = []map[string]any{}
-	globalErrorContext.CallStack = []string{}
+    // Build call chain
+    globalErrorContext.CallChain = []map[string]any{}
+    globalErrorContext.CallStack = []string{}
 
-	// Add current call to chain
-	if currentFunctionName != "" {
-		callInfo := map[string]any{
-			"function": currentFunctionName,
-			"args":     currentCallArgs,
-		}
+    // Add current call to chain
+    if currentFunctionName != "" {
+        callInfo := map[string]any{
+            "function": currentFunctionName,
+            "args":     currentCallArgs,
+        }
 
-		// For stdlib functions with enhanced errors, store arguments as ordered array
-		if len(currentCallArgs) == 0 && currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
-			// Store arguments as a simple ordered array with indexed keys
-			orderedArgs := make([]string, 0)
-			for i, arg := range currentErrorContext.EnhancedError.Args {
-				orderedArgs = append(orderedArgs, sf("arg%d:%#v", i+1, arg))
-			}
-			callInfo["args"] = orderedArgs
-		}
+        // For stdlib functions with enhanced errors, store arguments as ordered array
+        if len(currentCallArgs) == 0 && currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
+            // Store arguments as a simple ordered array with indexed keys
+            orderedArgs := make([]string, 0)
+            for i, arg := range currentErrorContext.EnhancedError.Args {
+                orderedArgs = append(orderedArgs, sf("arg%d:%#v", i+1, arg))
+            }
+            callInfo["args"] = orderedArgs
+        }
 
-		globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
-		globalErrorContext.CallStack = append(globalErrorContext.CallStack, currentFunctionName)
-	}
+        globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
+        globalErrorContext.CallStack = append(globalErrorContext.CallStack, currentFunctionName)
+    }
 
-	// Add error chain with enhanced argument information
-	for i := len(errorChain) - 1; i >= 0; i-- {
-		chainEntry := errorChain[i]
+    // Add error chain with enhanced argument information
+    for i := len(errorChain) - 1; i >= 0; i-- {
+        chainEntry := errorChain[i]
 
-		// Get function name - prefer the captured name over the registrant lookup
-		functionName := chainEntry.name
-		if functionName == "" {
-			functionName = lookupChainName(chainEntry.registrant)
-		}
+        // Get function name - prefer the captured name over the registrant lookup
+        functionName := chainEntry.name
+        if functionName == "" {
+            functionName = lookupChainName(chainEntry.registrant)
+        }
 
-		globalErrorContext.CallStack = append(globalErrorContext.CallStack, functionName)
+        globalErrorContext.CallStack = append(globalErrorContext.CallStack, functionName)
 
-		// Build enhanced call info with arguments if available
-		callInfo := map[string]any{
-			"function": functionName,
-			"type":     chainEntry.registrant,
-		}
+        // Build enhanced call info with arguments if available
+        callInfo := map[string]any{
+            "function": functionName,
+            "type":     chainEntry.registrant,
+        }
 
-		// Add arguments if they were captured (when enhancedErrorsEnabled was true)
-		if len(chainEntry.argNames) > 0 && len(chainEntry.argValues) > 0 {
-			argsMap := make(map[string]any)
-			for j, argName := range chainEntry.argNames {
-				if j < len(chainEntry.argValues) {
-					argsMap[argName] = chainEntry.argValues[j]
-				}
-			}
-			callInfo["args"] = argsMap
-		}
+        // Add arguments if they were captured (when enhancedErrorsEnabled was true)
+        if len(chainEntry.argNames) > 0 && len(chainEntry.argValues) > 0 {
+            argsMap := make(map[string]any)
+            for j, argName := range chainEntry.argNames {
+                if j < len(chainEntry.argValues) {
+                    argsMap[argName] = chainEntry.argValues[j]
+                }
+            }
+            callInfo["args"] = argsMap
+        }
 
-		globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
-	}
+        globalErrorContext.CallChain = append(globalErrorContext.CallChain, callInfo)
+    }
 
-	// Collect local variables
-	globalErrorContext.LocalVars = make(map[string]any)
-	if parser.ident != nil {
-		for i := 0; i < len(*parser.ident); i++ {
-			v := (*parser.ident)[i]
-			if v.declared && v.IName != "" {
-				globalErrorContext.LocalVars[v.IName] = v.IValue
-			}
-		}
-	}
+    // Collect local variables
+    globalErrorContext.LocalVars = make(map[string]any)
+    if parser.ident != nil {
+        for i := 0; i < len(*parser.ident); i++ {
+            v := (*parser.ident)[i]
+            if v.declared && v.IName != "" {
+                globalErrorContext.LocalVars[v.IName] = v.IValue
+            }
+        }
+    }
 
-	// Collect user-defined global variables (filter out system variables starting with @)
-	globalErrorContext.GlobalVars = make(map[string]any)
-	for i := 0; i < len(gident); i++ {
-		v := gident[i]
-		if v.declared && v.IName != "" && !str.HasPrefix(v.IName, "@") {
-			globalErrorContext.GlobalVars[v.IName] = v.IValue
-		}
-	}
+    // Collect user-defined global variables (filter out system variables starting with @)
+    globalErrorContext.GlobalVars = make(map[string]any)
+    for i := 0; i < len(gident); i++ {
+        v := gident[i]
+        if v.declared && v.IName != "" && !str.HasPrefix(v.IName, "@") {
+            globalErrorContext.GlobalVars[v.IName] = v.IValue
+        }
+    }
 }
 
 // clearErrorContext resets the error context when exiting error handling
 func clearErrorContext() {
-	globalErrorContext = ErrorContext{InErrorHandler: false}
+    globalErrorContext = ErrorContext{InErrorHandler: false}
 }
 
 // callCustomErrorHandler calls the user-defined error handler function
 func callCustomErrorHandler(handlerName string, namespace string, evalfs uint32) {
-	// Ensure we have a complete handler name with namespace
-	if !str.Contains(handlerName, "::") {
-		if found := uc_match_func(handlerName); found != "" {
-			handlerName = found + "::" + handlerName
-		} else {
-			handlerName = namespace + "::" + handlerName
-		}
-	}
+    // Ensure we have a complete handler name with namespace
+    if !str.Contains(handlerName, "::") {
+        if found := uc_match_func(handlerName); found != "" {
+            handlerName = found + "::" + handlerName
+        } else {
+            handlerName = namespace + "::" + handlerName
+        }
+    }
 
-	// Remove any argument parentheses for now (simple implementation)
-	if brackPos := str.IndexByte(handlerName, '('); brackPos != -1 {
-		handlerName = handlerName[:brackPos]
-	}
+    // Remove any argument parentheses for now (simple implementation)
+    if brackPos := str.IndexByte(handlerName, '('); brackPos != -1 {
+        handlerName = handlerName[:brackPos]
+    }
 
-	// Look up the function
-	lmv, found := fnlookup.lmget(handlerName)
-	if !found {
-		// Fallback to standard error display if handler not found
-		pf("[#1]Error: Custom error handler '%s' not found[#-]\n", handlerName)
-		if currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
-			showEnhancedExpectArgsError(currentErrorContext.Parser, int16(currentErrorContext.SourceLocation.Line), currentErrorContext.EnhancedError, currentErrorContext.EvalFS)
-		}
-		return
-	}
+    // Look up the function
+    lmv, found := fnlookup.lmget(handlerName)
+    if !found {
+        // Fallback to standard error display if handler not found
+        pf("[#1]Error: Custom error handler '%s' not found[#-]\n", handlerName)
+        if currentErrorContext != nil && currentErrorContext.EnhancedError != nil {
+            showEnhancedExpectArgsError(currentErrorContext.Parser, int16(currentErrorContext.SourceLocation.Line), currentErrorContext.EnhancedError, currentErrorContext.EvalFS)
+        }
+        return
+    }
 
-	// Populate globalErrorContext with current error information for library functions
-	if currentErrorContext != nil {
-		globalErrorContext.Message = currentErrorContext.Message
-		globalErrorContext.SourceLine = int16(currentErrorContext.SourceLocation.Line)
-		globalErrorContext.FunctionName = currentErrorContext.SourceLocation.Function
-		globalErrorContext.ModuleName = currentErrorContext.SourceLocation.Module
-		globalErrorContext.InErrorHandler = true
+    // Populate globalErrorContext with current error information for library functions
+    if currentErrorContext != nil {
+        globalErrorContext.Message = currentErrorContext.Message
+        globalErrorContext.SourceLine = int16(currentErrorContext.SourceLocation.Line)
+        globalErrorContext.FunctionName = currentErrorContext.SourceLocation.Function
+        globalErrorContext.ModuleName = currentErrorContext.SourceLocation.Module
+        globalErrorContext.InErrorHandler = true
 
-		// Populate source lines, call chain, and variables
-		populateErrorContext(currentErrorContext.Parser, globalErrorContext.SourceLine,
-			globalErrorContext.Message, currentErrorContext.EvalFS, nil, globalErrorContext.FunctionName)
-	}
+        // Populate source lines, call chain, and variables
+        populateErrorContext(currentErrorContext.Parser, globalErrorContext.SourceLine,
+            globalErrorContext.Message, currentErrorContext.EvalFS, nil, globalErrorContext.FunctionName)
+    }
 
-	// Allocate function space for the error handler
-	loc, _ := GetNextFnSpace(true, handlerName+"@", call_s{prepared: true, base: lmv, caller: evalfs})
+    // Allocate function space for the error handler
+    loc, _ := GetNextFnSpace(true, handlerName+"@", call_s{prepared: true, base: lmv, caller: evalfs})
 
-	calllock.Lock()
-	basemodmap[lmv] = namespace
-	calllock.Unlock()
+    calllock.Lock()
+    basemodmap[lmv] = namespace
+    calllock.Unlock()
 
-	// Create a new variable space for the handler
-	var handlerIdent = make([]Variable, identInitialSize)
+    // Create a new variable space for the handler
+    var handlerIdent = make([]Variable, identInitialSize)
 
-	// Call the error handler (no arguments for now)
-	ctx := context.Background()
-	// Set the callLine field in the calltable entry before calling the function
-	// For error handlers, we use the source line from the error context
-	atomic.StoreInt32(&calltable[loc].callLine, int32(globalErrorContext.SourceLine))
-	_, _, _, _, callErr := Call(ctx, MODE_NEW, &handlerIdent, loc, ciTrap, false, nil, "", []string{}, nil)
+    // Call the error handler (no arguments for now)
+    ctx := context.Background()
+    // Set the callLine field in the calltable entry before calling the function
+    // For error handlers, we use the source line from the error context
+    atomic.StoreInt32(&calltable[loc].callLine, int32(globalErrorContext.SourceLine))
+    _, _, _, _, callErr := Call(ctx, MODE_NEW, &handlerIdent, loc, ciTrap, false, nil, "", []string{}, nil)
 
-	// Clean up after the call
-	calllock.Lock()
-	calltable[loc].gcShyness = 0
-	calltable[loc].gc = true
-	calllock.Unlock()
+    // Clean up after the call
+    calllock.Lock()
+    calltable[loc].gcShyness = 0
+    calltable[loc].gc = true
+    calllock.Unlock()
 
-	// Clear the error context after handling
-	clearErrorContext()
-	currentErrorContext = nil
+    // Clear the error context after handling
+    clearErrorContext()
+    currentErrorContext = nil
 
-	if callErr != nil {
-		pf("[#1]Error in custom error handler: %s[#-]\n", callErr)
-	}
+    if callErr != nil {
+        pf("[#1]Error in custom error handler: %s[#-]\n", callErr)
+    }
 }
