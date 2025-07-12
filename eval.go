@@ -107,7 +107,6 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
     // Add recover() for ?? operator error routing
     defer func() {
         if r := recover(); r != nil {
-            // Handle any error that occurs during ?? operator evaluation
             var errVal error
             var source string
 
@@ -124,12 +123,24 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                 source = "evaluator"
             }
 
-            // Check error style mode
+            // Check if this should be handled as an exception
+            shouldConvertToException := false
+
+            // Case 1: ?? operator failure (always convert to exception)
+            if strings.Contains(errVal.Error(), "?? operator failure") {
+                shouldConvertToException = true
+            }
+
+            // Case 2: Error style mode is set to convert panics to exceptions
             errorStyleLock.RLock()
             currentErrorStyle := errorStyleMode
             errorStyleLock.RUnlock()
 
             if currentErrorStyle == ERROR_STYLE_EXCEPTION || currentErrorStyle == ERROR_STYLE_MIXED {
+                shouldConvertToException = true
+            }
+
+            if shouldConvertToException {
                 // Convert to exception for try/catch handling
                 var category any
                 var message string
@@ -169,18 +180,12 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                 // and route it to try/catch blocks
                 return
             } else {
-                // Handle as regular error based on permit_error_exit
-                if !permit_error_exit {
-                    // Set error return and continue execution
-                    err = errVal
-                    left = nil // Set left to the error so it can be detected as a failure condition
-                    return
-                } else {
-                    // Route to error handler
-                    finish(false, ERR_EVAL)
-                }
+                // Let the error propagate normally through the return path
+                // This will go through the main execution loop's enhanced error handling
+                err = errVal
+                left = nil
+                return
             }
-            return
         }
     }()
 
