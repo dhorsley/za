@@ -43,6 +43,16 @@ CHANGE LOG
     other
     -----
 
+    * added USES clause for try statement.
+        - this is used to dictate 'captured' variables inside a try/catch block.
+        - only captured variables are modifiable from within the inner scope of the try/catch.
+        - they are written back to the outer scope at block end
+        - captured variables must already exist or an error will be thrown.
+            - example:
+                try uses a,b,c throws "test-error"
+
+
+
 
 1.1.9
 =====

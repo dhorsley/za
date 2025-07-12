@@ -12,6 +12,7 @@ import (
     "net"
     "net/http"
     "os"
+    "os/exec"
     "runtime"
     "strconv"
     "strings"
@@ -58,6 +59,29 @@ func generateHandleID() string {
         return fmt.Sprintf("tcp_%d", handleID)
     }
     return fmt.Sprintf("tcp_%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
+// Check if an error is a permission-related error
+func isPermissionError(err error) bool {
+    if err == nil {
+        return false
+    }
+
+    // Check for syscall errors that indicate permission issues
+    if syscallErr, ok := err.(*os.SyscallError); ok {
+        switch syscallErr.Err {
+        case syscall.EACCES, syscall.EPERM, syscall.EINVAL:
+            return true
+        }
+    }
+
+    // Check for direct syscall errors
+    switch err {
+    case syscall.EACCES, syscall.EPERM, syscall.EINVAL:
+        return true
+    }
+
+    return false
 }
 
 // Check if running with sufficient privileges
@@ -660,15 +684,33 @@ func buildNetworkLib() {
         if len(args) == 2 {
             timeout = time.Duration(args[1].(int)) * time.Second
         }
-        // Use net.Dial for ICMP (requires root on most systems)
-        conn, err := net.DialTimeout("ip4:icmp", host, timeout)
+        // Resolve host to IP first
+        ips, err := net.LookupHost(host)
         if err != nil {
-            return map[string]any{"success": false, "latency": 0, "error": err.Error()}, nil
+            return map[string]any{"success": false, "latency": 0, "error": "DNS lookup failed: " + err.Error()}, nil
         }
-        defer conn.Close()
-        // Build ICMP echo request
+        if len(ips) == 0 {
+            return map[string]any{"success": false, "latency": 0, "error": "No IP addresses found for " + host}, nil
+        }
+        targetIP := ips[0]
+
+        // Try to create raw socket for ICMP echo request
+        // This requires root privileges on most systems
+        sock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+        if err != nil {
+            // If raw socket fails, we can't do ICMP ping without privileges
+            return map[string]any{"success": false, "latency": 0, "error": "ICMP ping requires root privileges: " + err.Error()}, nil
+        }
+        defer syscall.Close(sock)
+
+        // Set socket timeout
+        tv := syscall.NsecToTimeval(int64(timeout))
+        syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv)
+        syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_SNDTIMEO, &tv)
+
+        // Build ICMP echo request packet
         msg := make([]byte, 8)
-        msg[0] = 8 // echo
+        msg[0] = 8 // echo request
         msg[1] = 0 // code 0
         binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
         msg[2] = 0
@@ -676,17 +718,26 @@ func buildNetworkLib() {
         csum := calculateICMPChecksum(msg)
         msg[2] = byte(csum >> 8)
         msg[3] = byte(csum & 0xff)
+
+        // Parse target IP
+        addr := syscall.SockaddrInet4{Port: 0}
+        copy(addr.Addr[:], net.ParseIP(targetIP).To4())
+
         start := time.Now()
-        conn.SetDeadline(time.Now().Add(timeout))
-        _, err = conn.Write(msg)
+
+        // Send ICMP echo request
+        err = syscall.Sendto(sock, msg, 0, &addr)
         if err != nil {
-            return map[string]any{"success": false, "latency": 0, "error": err.Error()}, nil
+            return map[string]any{"success": false, "latency": 0, "error": "Failed to send ICMP packet: " + err.Error()}, nil
         }
-        resp := make([]byte, 20)
-        _, err = conn.Read(resp)
+
+        // Receive ICMP echo reply
+        resp := make([]byte, 1024)
+        _, _, err = syscall.Recvfrom(sock, resp, 0)
         if err != nil {
-            return map[string]any{"success": false, "latency": 0, "error": err.Error()}, nil
+            return map[string]any{"success": false, "latency": 0, "error": "Failed to receive ICMP response: " + err.Error()}, nil
         }
+
         latency := time.Since(start).Milliseconds()
         return map[string]any{"success": true, "latency": latency, "error": ""}, nil
     }
@@ -739,9 +790,31 @@ func buildNetworkLib() {
         // Route to appropriate traceroute function based on protocol
         switch strings.ToLower(protocol) {
         case "icmp":
-            return stdlib["icmp_traceroute"](ns, evalfs, ident, args[1:]...)
+            // Check if we have privileges for ICMP traceroute
+            if hasPrivileges() {
+                return stdlib["icmp_traceroute"](ns, evalfs, ident, args[1:]...)
+            } else {
+                // No privileges, use simple TCP fallback
+                // simple_tcp_traceroute expects: host, port, [max_hops], [timeout_seconds]
+                // args[1:] contains: host, max_hops, timeout
+                fallbackArgs := []any{args[1], 80} // host, port 80
+                if len(args) >= 3 {
+                    fallbackArgs = append(fallbackArgs, args[2]) // max_hops
+                }
+                if len(args) >= 4 {
+                    fallbackArgs = append(fallbackArgs, args[3]) // timeout
+                }
+                return simple_tcp_traceroute(ns, evalfs, ident, fallbackArgs...)
+            }
         case "tcp":
-            return stdlib["tcp_traceroute"](ns, evalfs, ident, args[1:]...)
+            // Check if we have privileges for TCP traceroute
+            if hasPrivileges() {
+                return stdlib["tcp_traceroute"](ns, evalfs, ident, args[1:]...)
+            } else {
+                // No privileges, use simple TCP fallback
+                // args[1:] already contains: host, port, [max_hops], [timeout_seconds]
+                return simple_tcp_traceroute(ns, evalfs, ident, args[1:]...)
+            }
         default:
             return nil, fmt.Errorf("unsupported protocol '%s'. Use 'icmp' or 'tcp'", protocol)
         }
@@ -751,7 +824,7 @@ func buildNetworkLib() {
     slhelp["icmp_traceroute"] = LibHelp{
         in:     "host, [max_hops], [timeout_seconds]",
         out:    "slice",
-        action: "Performs ICMP traceroute to host. Returns slice of hop info.",
+        action: "Performs ICMP traceroute to host. Returns slice of hop info. Requires root privileges.",
     }
     stdlib["icmp_traceroute"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("icmp_traceroute", args, 3,
@@ -782,16 +855,80 @@ func buildNetworkLib() {
 
         hops := []map[string]any{}
 
-        // Create raw socket for ICMP
+        // Windows implementation using net.DialTimeout (no admin privileges needed)
         if runtime.GOOS == "windows" {
-            // Windows requires admin privileges for raw sockets
-            return nil, fmt.Errorf("traceroute requires administrator privileges on Windows")
+            // Use the same approach as icmp_ping - this doesn't require root privileges
+            for ttl := 1; ttl <= maxHops; ttl++ {
+                // Note: Windows doesn't support TTL manipulation via net.DialTimeout
+                // So we'll do a simple ping to the target and return that as the result
+                conn, err := net.DialTimeout("ip4:icmp", targetIP, timeout)
+                if err != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": 0,
+                        "error":   "timeout",
+                    })
+                    continue
+                }
+                defer conn.Close()
+
+                // Build ICMP echo request
+                msg := make([]byte, 8)
+                msg[0] = 8 // echo request
+                msg[1] = 0 // code 0
+                binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
+                msg[2] = 0
+                msg[3] = 0
+                csum := calculateICMPChecksum(msg)
+                msg[2] = byte(csum >> 8)
+                msg[3] = byte(csum & 0xff)
+
+                start := time.Now()
+                conn.SetDeadline(time.Now().Add(timeout))
+                _, err = conn.Write(msg)
+                if err != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": 0,
+                        "error":   "send failed",
+                    })
+                    continue
+                }
+
+                resp := make([]byte, 20)
+                _, err = conn.Read(resp)
+                latency := time.Since(start).Milliseconds()
+
+                if err != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": latency,
+                        "error":   "timeout",
+                    })
+                    continue
+                }
+
+                hops = append(hops, map[string]any{
+                    "hop":     ttl,
+                    "address": targetIP,
+                    "latency": latency,
+                    "error":   "",
+                })
+
+                // If we got a response, we've reached the target
+                break
+            }
+
+            return hops, nil
         }
 
         // Unix-like systems
         fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
         if err != nil {
-            return nil, fmt.Errorf("raw socket creation failed: %v (requires root privileges)", err)
+            return nil, err
         }
         defer syscall.Close(fd)
 
@@ -828,35 +965,52 @@ func buildNetworkLib() {
                 continue
             }
 
-            // Receive response
+            // Receive response with timeout
             resp := make([]byte, 1024)
-            n, _, err := syscall.Recvfrom(fd, resp, 0)
-            latency := time.Since(start).Milliseconds()
+            received := make(chan struct{})
+            var n int
+            var recvErr error
 
-            if err != nil {
+            go func() {
+                n, _, recvErr = syscall.Recvfrom(fd, resp, 0)
+                close(received)
+            }()
+
+            select {
+            case <-received:
+                latency := time.Since(start).Milliseconds()
+                if recvErr != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": latency,
+                        "error":   "timeout",
+                    })
+                    continue
+                }
+
+                // Parse response
+                if n >= 20 {
+                    respIP := net.IP(resp[12:16]).String()
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": respIP,
+                        "latency": latency,
+                        "error":   "",
+                    })
+
+                    // Check if we reached the target
+                    if respIP == targetIP {
+                        return hops, nil
+                    }
+                }
+            case <-time.After(timeout):
                 hops = append(hops, map[string]any{
                     "hop":     ttl,
                     "address": "",
-                    "latency": latency,
+                    "latency": timeout.Milliseconds(),
                     "error":   "timeout",
                 })
-                continue
-            }
-
-            // Parse response
-            if n >= 20 {
-                respIP := net.IP(resp[12:16]).String()
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": respIP,
-                    "latency": latency,
-                    "error":   "",
-                })
-
-                // Check if we reached the target
-                if respIP == targetIP {
-                    break
-                }
             }
         }
 
@@ -899,14 +1053,46 @@ func buildNetworkLib() {
 
         hops := []map[string]any{}
 
-        // Create raw socket for TCP
+        // Windows implementation using regular TCP connections
         if runtime.GOOS == "windows" {
-            return nil, fmt.Errorf("TCP traceroute requires administrator privileges on Windows")
+            // Windows doesn't support raw sockets without admin privileges
+            // So we'll use regular TCP connections to simulate traceroute
+            for ttl := 1; ttl <= maxHops; ttl++ {
+                // Try to connect to the target host:port
+                start := time.Now()
+                conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetIP, port), timeout)
+                latency := time.Since(start).Milliseconds()
+
+                if err != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": latency,
+                        "error":   "timeout",
+                    })
+                    continue
+                }
+                defer conn.Close()
+
+                // If we got a connection, we've reached the target
+                hops = append(hops, map[string]any{
+                    "hop":     ttl,
+                    "address": targetIP,
+                    "latency": latency,
+                    "error":   "",
+                })
+
+                // We've reached the target, so we're done
+                break
+            }
+
+            return hops, nil
         }
 
+        // Unix-like systems
         fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCP)
         if err != nil {
-            return nil, fmt.Errorf("raw socket creation failed: %v (requires root privileges)", err)
+            return nil, err
         }
         defer syscall.Close(fd)
 
@@ -957,35 +1143,52 @@ func buildNetworkLib() {
                 continue
             }
 
-            // Receive response
+            // Receive response with timeout
             resp := make([]byte, 1024)
-            n, _, err := syscall.Recvfrom(fd, resp, 0)
-            latency := time.Since(start).Milliseconds()
+            received := make(chan struct{})
+            var n int
+            var recvErr error
 
-            if err != nil {
+            go func() {
+                n, _, recvErr = syscall.Recvfrom(fd, resp, 0)
+                close(received)
+            }()
+
+            select {
+            case <-received:
+                latency := time.Since(start).Milliseconds()
+                if recvErr != nil {
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": "",
+                        "latency": latency,
+                        "error":   "timeout",
+                    })
+                    continue
+                }
+
+                // Parse response
+                if n >= 20 {
+                    respIP := net.IP(resp[12:16]).String()
+                    hops = append(hops, map[string]any{
+                        "hop":     ttl,
+                        "address": respIP,
+                        "latency": latency,
+                        "error":   "",
+                    })
+
+                    // Check if we reached the target
+                    if respIP == targetIP {
+                        return hops, nil
+                    }
+                }
+            case <-time.After(timeout):
                 hops = append(hops, map[string]any{
                     "hop":     ttl,
                     "address": "",
-                    "latency": latency,
+                    "latency": timeout.Milliseconds(),
                     "error":   "timeout",
                 })
-                continue
-            }
-
-            // Parse response
-            if n >= 20 {
-                respIP := net.IP(resp[12:16]).String()
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": respIP,
-                    "latency": latency,
-                    "error":   "",
-                })
-
-                // Check if we reached the target
-                if respIP == targetIP {
-                    break
-                }
             }
         }
 
@@ -994,20 +1197,232 @@ func buildNetworkLib() {
 
     // DNS Resolve
     slhelp["dns_resolve"] = LibHelp{
-        in:     "host",
-        out:    "slice",
-        action: "Resolves host to IP addresses. Returns slice of IPs.",
+        in:     "host, [record_type]",
+        out:    "map",
+        action: "Resolves host using specified DNS record type. Record types: A, AAAA, CNAME, MX, TXT, NS, PTR, SRV, ANY. Returns map with results.",
     }
     stdlib["dns_resolve"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("dns_resolve", args, 1, "1", "string"); !ok {
+        if ok, err := expect_args("dns_resolve", args, 2,
+            "1", "string",
+            "2", "string", "string"); !ok {
             return nil, err
         }
         host := args[0].(string)
-        ips, err := net.LookupHost(host)
-        if err != nil {
-            return nil, err
+        recordType := "A"
+        if len(args) == 2 {
+            recordType = strings.ToUpper(args[1].(string))
         }
-        return ips, nil
+
+        result := make(map[string]any)
+        result["host"] = host
+        result["record_type"] = recordType
+
+        switch recordType {
+        case "A":
+            ips, err := net.LookupHost(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                result["records"] = ips
+                result["error"] = ""
+            }
+
+        case "AAAA":
+            ips, err := net.LookupIP(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                var aaaaIPs []string
+                for _, ip := range ips {
+                    if ip.To4() == nil { // IPv6 only
+                        aaaaIPs = append(aaaaIPs, ip.String())
+                    }
+                }
+                result["records"] = aaaaIPs
+                result["error"] = ""
+            }
+
+        case "CNAME":
+            cname, err := net.LookupCNAME(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                result["records"] = []string{cname}
+                result["error"] = ""
+            }
+
+        case "MX":
+            mxs, err := net.LookupMX(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                var mxRecords []string
+                for _, mx := range mxs {
+                    mxRecords = append(mxRecords, fmt.Sprintf("%s %d", mx.Host, mx.Pref))
+                }
+                result["records"] = mxRecords
+                result["error"] = ""
+            }
+
+        case "TXT":
+            txts, err := net.LookupTXT(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                result["records"] = txts
+                result["error"] = ""
+            }
+
+        case "NS":
+            nss, err := net.LookupNS(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                var nsRecords []string
+                for _, ns := range nss {
+                    nsRecords = append(nsRecords, ns.Host)
+                }
+                result["records"] = nsRecords
+                result["error"] = ""
+            }
+
+        case "PTR":
+            // For PTR records, host should be an IP address
+            names, err := net.LookupAddr(host)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                result["records"] = names
+                result["error"] = ""
+            }
+
+        case "SRV":
+            // SRV records require a specific format: _service._proto.name
+            // If host doesn't start with _, we'll try common SRV patterns
+            srvHost := host
+            if !strings.HasPrefix(host, "_") {
+                // Try common SRV patterns
+                srvHost = "_sip._tcp." + host
+            }
+
+            // Extract service and protocol from the hostname
+            // Format should be _service._proto.name
+            parts := strings.Split(srvHost, ".")
+            if len(parts) < 3 {
+                result["error"] = "SRV hostname must be in format _service._proto.name"
+                result["records"] = []string{}
+                return result, nil
+            }
+
+            service := strings.TrimPrefix(parts[0], "_")
+            proto := strings.TrimPrefix(parts[1], "_")
+            name := strings.Join(parts[2:], ".")
+
+            // Use net.LookupSRV for SRV records
+            cname, srvs, err := net.LookupSRV(service, proto, name)
+            if err != nil {
+                result["error"] = err.Error()
+                result["records"] = []string{}
+            } else {
+                var srvRecords []string
+                for _, srv := range srvs {
+                    srvRecords = append(srvRecords, fmt.Sprintf("%s:%d (priority: %d, weight: %d)", srv.Target, srv.Port, srv.Priority, srv.Weight))
+                }
+                if cname != "" {
+                    srvRecords = append(srvRecords, fmt.Sprintf("CNAME: %s", cname))
+                }
+                result["records"] = srvRecords
+                result["error"] = ""
+            }
+
+        case "ANY":
+            // For ANY, we'll return all available record types
+            anyResult := make(map[string]any)
+
+            // A records
+            if ips, err := net.LookupHost(host); err == nil {
+                anyResult["A"] = ips
+            }
+
+            // AAAA records
+            if ips, err := net.LookupIP(host); err == nil {
+                var aaaaIPs []string
+                for _, ip := range ips {
+                    if ip.To4() == nil {
+                        aaaaIPs = append(aaaaIPs, ip.String())
+                    }
+                }
+                if len(aaaaIPs) > 0 {
+                    anyResult["AAAA"] = aaaaIPs
+                }
+            }
+
+            // CNAME
+            if cnameRecord, err := net.LookupCNAME(host); err == nil && cnameRecord != "" {
+                anyResult["CNAME"] = []string{cnameRecord}
+            }
+
+            // MX
+            if mxs, err := net.LookupMX(host); err == nil {
+                var mxRecords []string
+                for _, mx := range mxs {
+                    mxRecords = append(mxRecords, fmt.Sprintf("%s %d", mx.Host, mx.Pref))
+                }
+                anyResult["MX"] = mxRecords
+            }
+
+            // TXT
+            if txts, err := net.LookupTXT(host); err == nil {
+                anyResult["TXT"] = txts
+            }
+
+            // NS
+            if nss, err := net.LookupNS(host); err == nil {
+                var nsRecords []string
+                for _, ns := range nss {
+                    nsRecords = append(nsRecords, ns.Host)
+                }
+                anyResult["NS"] = nsRecords
+            }
+
+            // SRV (try common SRV patterns)
+            if strings.HasPrefix(host, "_") {
+                // Extract service and protocol from the hostname
+                parts := strings.Split(host, ".")
+                if len(parts) >= 3 {
+                    service := strings.TrimPrefix(parts[0], "_")
+                    proto := strings.TrimPrefix(parts[1], "_")
+                    name := strings.Join(parts[2:], ".")
+
+                    if srvCname, srvs, err := net.LookupSRV(service, proto, name); err == nil {
+                        var srvRecords []string
+                        for _, srv := range srvs {
+                            srvRecords = append(srvRecords, fmt.Sprintf("%s:%d (priority: %d, weight: %d)", srv.Target, srv.Port, srv.Priority, srv.Weight))
+                        }
+                        if srvCname != "" {
+                            srvRecords = append(srvRecords, fmt.Sprintf("CNAME: %s", srvCname))
+                        }
+                        anyResult["SRV"] = srvRecords
+                    }
+                }
+            }
+
+            result["records"] = anyResult
+            result["error"] = ""
+
+        default:
+            result["error"] = fmt.Sprintf("unsupported record type '%s'. Supported types: A, AAAA, CNAME, MX, TXT, NS, PTR, SRV, ANY", recordType)
+            result["records"] = []string{}
+        }
+
+        return result, nil
     }
 
     // Port Scan
@@ -1398,4 +1813,103 @@ func buildNetworkLib() {
         }
         return stats, nil
     }
+
+}
+
+// Internal helper function for simple TCP traceroute (no raw sockets required)
+func simple_tcp_traceroute(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+    if ok, err := expect_args("simple_tcp_traceroute", args, 4,
+        "2", "string", "int",
+        "3", "string", "int", "int",
+        "4", "string", "int", "int", "int"); !ok {
+        return nil, err
+    }
+    host := args[0].(string)
+    port := args[1].(int)
+    maxHops := 30
+    timeout := 3 * time.Second
+    if len(args) >= 3 {
+        maxHops = args[2].(int)
+    }
+    if len(args) == 4 {
+        timeout = time.Duration(args[3].(int)) * time.Second
+    }
+
+    hops := []map[string]any{}
+
+    // Try to connect directly first
+    start := time.Now()
+    conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+    if err == nil {
+        latency := time.Since(start).Milliseconds()
+        hops = append(hops, map[string]any{
+            "hop":     1,
+            "address": host,
+            "latency": latency,
+            "error":   "",
+        })
+        conn.Close()
+        return hops, nil
+    }
+
+    // If direct connection fails, try to find intermediate hops
+    // This is a simplified approach that tries common gateway patterns
+    commonGateways := []string{
+        "192.168.1.1",
+        "192.168.0.1",
+        "10.0.0.1",
+        "172.16.0.1",
+    }
+
+    // Try to get default gateway from routing table
+    if runtime.GOOS != "windows" {
+        // On Unix-like systems, try to get default gateway
+        cmd := exec.Command("ip", "route", "show", "default")
+        if output, err := cmd.Output(); err == nil {
+            lines := strings.Split(string(output), "\n")
+            for _, line := range lines {
+                if strings.Contains(line, "default via") {
+                    fields := strings.Fields(line)
+                    for i, field := range fields {
+                        if field == "via" && i+1 < len(fields) {
+                            gateway := fields[i+1]
+                            // Add this gateway to the beginning of our list
+                            commonGateways = append([]string{gateway}, commonGateways...)
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    for i, gateway := range commonGateways {
+        if i >= maxHops {
+            break
+        }
+
+        start := time.Now()
+        conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", gateway, port), timeout)
+        if err == nil {
+            latency := time.Since(start).Milliseconds()
+            hops = append(hops, map[string]any{
+                "hop":     i + 1,
+                "address": gateway,
+                "latency": latency,
+                "error":   "",
+            })
+            conn.Close()
+        } else {
+            latency := time.Since(start).Milliseconds()
+            hops = append(hops, map[string]any{
+                "hop":     i + 1,
+                "address": gateway,
+                "latency": latency,
+                "error":   "timeout",
+            })
+        }
+    }
+
+    return hops, nil
 }

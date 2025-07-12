@@ -27,10 +27,11 @@ var completions = []string{"VAR", "SETGLOB", "PAUSE",
     "HELP", "NOP", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
-    "MODULE", "USE", "WHILE", "ENDWHILE", "FOR", "FOREACH",
+    "MODULE", "USE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "CASE",
     "IS", "CONTAINS", "HAS", "IN", "OR", "ENDCASE", "WITH", "ENDWITH",
     "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
+    "TRY", "CATCH", "ENDTRY", "THEN", 
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "TO", "STEP", "AS", "ENUM", "HIST",
 }
 
@@ -1151,9 +1152,9 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
             c, _, _, _ := getch(0)
 
             /*
-                if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
-                    filterQuery += string(c)
-                }
+               if len(c) == 1 && c[0] >= 32 && c[0] <= 126 {
+                   filterQuery += string(c)
+               }
             */
 
             switch {

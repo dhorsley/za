@@ -1,0 +1,201 @@
+#!/usr/bin/env za
+
+# Network Library Test Script
+# Tests all new network functions from lib-network.go
+
+println "=== Network Library Test Script ==="
+println
+
+# Test 1: TCP Client/Server
+println "1. Testing TCP Client/Server..."
+    # Start TCP server
+    server = tcp_server(8080, "non_blocking")
+    if server == nil
+        throw "Failed to start TCP server"
+    endif
+    
+    # Wait a moment for server to start
+    pause 200
+    
+    # Connect TCP client
+    client = tcp_client("localhost", 8080, 5000)
+    if client == nil
+        throw "Failed to connect TCP client"
+    endif
+    
+    # Send data
+    result = tcp_send(client, "Hello from client")
+    println "TCP send result:", result
+    
+    # Test client availability
+    available = tcp_available(client)
+    println "TCP client available:", available
+    
+    # Close client connection
+    tcp_close(client)
+    
+    # Stop server
+    tcp_server_stop(server)
+
+    println "✓ TCP Client/Server test passed"
+
+println
+
+# Test 2: ICMP Ping
+println "2. Testing ICMP Ping..."
+    unset result
+    println "Calling icmp_ping..."
+    result = icmp_ping("8.8.8.8", 3)
+    println result.pp
+
+println
+
+# Test 3: TCP Ping
+println "3. Testing TCP Ping..."
+    unset result
+    result = tcp_ping("google.com", 80, 3)
+    println "TCP ping result:"
+    println result.pp
+
+println
+
+# Test 4: Traceroute
+println "4. Testing Traceroute..."
+    unset result
+    println "Calling traceroute..."
+    result = traceroute("icmp", "google.com", 16, 1)
+    println result.pp
+
+println
+
+# Test 5: DNS Resolution
+println "5. Testing DNS Resolution..."
+    # Test A records (default)
+    println "Calling dns_resolve..."
+    result = dns_resolve("google.com")
+    println "DNS A records:"
+    println result.pp
+    
+    # Test AAAA records
+    result2 = dns_resolve("google.com", "AAAA")
+    println "DNS AAAA records:"
+    println result2.pp
+    
+    # Test MX records
+    result3 = dns_resolve("google.com", "MX")
+    println "DNS MX records:"
+    println result3.pp
+    
+    # Test SRV records (for SIP)
+    result4 = dns_resolve("_sip._tcp.google.com", "SRV")
+    println "DNS SRV records:"
+    println result4.pp
+    
+    # Test ANY records
+    result5 = dns_resolve("google.com", "ANY")
+    println "DNS ANY records:"
+    println result5.pp
+println
+
+# Test 6: Port Scanning
+println "6. Testing Port Scanning..."
+    result = port_scan("localhost", [80, 443, 8080, 22], 1000)
+    println "Port scan result:"
+    println result.pp
+
+println
+
+# Test 7: Network Interfaces
+println "7. Testing Network Interfaces..."
+    result = net_interfaces_detailed()
+    println "Network interfaces:"
+    println result.pp
+
+println
+
+# Test 8: SSL Certificate Validation
+println "8. Testing SSL Certificate Validation..."
+    result = ssl_cert_validate("google.com", 443)
+    println "SSL certificate validation:"
+    println result.pp
+
+println
+
+# Test 9: HTTP Headers
+println "9. Testing HTTP Headers..."
+    # Test without filter
+    result = http_headers("https://httpbin.org/headers")
+    println "HTTP headers (all):"
+    println result.pp
+    
+    # Test with filter
+    result2 = http_headers("https://httpbin.org/headers", ["content-type", "server"])
+    println "HTTP headers (filtered):"
+    println result2.pp
+
+println
+
+# Test 10: HTTP Benchmark
+println "10. Testing HTTP Benchmark..."
+    result = http_benchmark("https://httpbin.org/delay/1", 5, 2, true, true)
+    println "HTTP benchmark result:"
+    println result.pp
+
+println
+
+# Test 11: Network Statistics
+println "11. Testing Network Statistics..."
+    result = network_stats()
+    println "Network statistics:"
+    println result.pp
+
+println
+
+# Test 12: SSL Certificate Install Help
+println "12. Testing SSL Certificate Install Help..."
+    result = ssl_cert_install_help("example.com", 443)
+    println "SSL certificate install help:"
+    println result.pp
+
+println
+
+# Test 13: Error Handling
+println "13. Testing Error Handling..."
+    # Test invalid URL
+    result = http_headers("invalid-url")
+    println "Invalid URL result:"
+    println result.pp
+
+println
+
+# Test 14: TCP Client Error Cases
+println "14. Testing TCP Client Error Cases..."
+    # Try to connect to non-existent server
+    result = tcp_ping("nonexistent.local", 80, 1)
+    println "Non-existent server result:"
+    println result.pp
+
+println
+
+# Test 15: DNS Resolution Error Cases
+println "15. Testing DNS Resolution Error Cases..."
+    result = dns_resolve("nonexistent-domain-12345.com", "A")
+    println "DNS resolution error result:"
+    println result.pp
+
+println
+
+# Test 16: Port Scan with Closed Ports
+println "16. Testing Port Scan with Closed Ports..."
+    result = port_scan("localhost", [9999, 9998, 9997], 1000)
+    println "Port scan (closed ports) result:"
+    println result.pp
+
+println
+
+println "=== Network Library Test Complete ==="
+println
+
+# Summary
+println "Tests completed. Check output above for any failures."
+println "Note: Some tests may fail depending on network conditions and system privileges." 

@@ -1,0 +1,84 @@
+# Test captured variable propagation in try blocks
+
+# Test 1: Basic variable capture and modification
+x = 10
+y = "hello"
+
+try USES x,y throws "test"
+    println "Inside try block: x = " + x + ", y = " + y
+    x = 20
+    y = "world"
+    println "Modified: x = " + x + ", y = " + y
+endtry
+
+println "After try block: x = " + x + ", y = " + y
+
+# Test 2: Variables should persist modifications
+if x == 20 && y == "world"
+    println "✓ Test 1 PASSED: Variables were properly captured and modified"
+else
+    println "✗ Test 1 FAILED: Variables were not properly captured"
+    println "Expected: x=20, y=world"
+    println "Got: x=" + x + ", y=" + y
+endif
+
+# Test 3: Variables not in USES clause should not be accessible in try block
+z = 30
+try USES x throws "test"
+    println "Inside try block: x = " + x
+    x = 25
+    # z should not be accessible here since it's not captured
+    # This should cause an error or undefined behavior
+    println "Modified: x = " + x
+endtry
+
+println "After try block: x = " + x + ", z = " + z
+
+if x == 25 && z == 30
+    println "✓ Test 2 PASSED: Only captured variables persist, others don't"
+else
+    println "✗ Test 2 FAILED: Variable capture behavior incorrect"
+    println "Expected: x=25, z=30"
+    println "Got: x=" + x + ", z=" + z
+endif
+
+# Test 4: Nested try blocks with separate ident tables
+a = 1
+b = 2
+
+try USES a throws "outer"
+    println "Outer try: a = " + a
+    a = 10
+    
+    try USES a throws "inner"
+        println "Inner try: a = " + a
+        a = 100
+        # b should not be accessible here since it's not captured
+        println "Inner modified: a = " + a
+    endtry
+    
+    println "After inner try: a = " + a
+endtry
+
+println "After outer try: a = " + a + ", b = " + b
+
+if a == 100 && b == 2
+    println "✓ Test 3 PASSED: Nested try blocks work correctly"
+else
+    println "✗ Test 3 FAILED: Nested try blocks not working"
+    println "Expected: a=100, b=2"
+    println "Got: a=" + a + ", b=" + b
+endif
+
+# Test 5: Local variables in try blocks should not affect parent scope
+parent_var = "parent"
+try USES parent_var throws "test"
+    local_var = "local"
+    parent_var = "modified"
+    println "Inside try: parent_var = " + parent_var + ", local_var = " + local_var
+endtry
+
+println "After try: parent_var = " + parent_var
+# local_var should not be accessible here
+
+println "All tests completed!" 
