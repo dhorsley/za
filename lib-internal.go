@@ -877,9 +877,9 @@ func buildInternalLib() {
         atomic.StoreInt32(&calltable[eloc].callLine, 0) // Eval calls don't have parser context
 
         if len(args) > 1 {
-            rcount, _, _, _, err = Call(ctx, MODE_STATIC, &instance_ident, eloc, ciEval, false, nil, "", []string{}, nil, args[1:]...)
+            rcount, _, _, _, err = Call(ctx, MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, nil, args[1:]...)
         } else {
-            rcount, _, _, _, err = Call(ctx, MODE_STATIC, &instance_ident, eloc, ciEval, false, nil, "", []string{}, nil)
+            rcount, _, _, _, err = Call(ctx, MODE_NEW, &instance_ident, eloc, ciEval, false, nil, "", []string{}, nil)
         }
 
         if err != nil {

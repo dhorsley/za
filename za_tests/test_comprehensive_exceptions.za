@@ -215,7 +215,7 @@ end
 try
     deeply_nested()
 catch err is "bubbling_up"
-    println "Final catch of bubbled exception:", err
+    println "Final catch of bubbled exception:", err.pp
 endtry
 
 println "\n=== All comprehensive tests completed ===" 
