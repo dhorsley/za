@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package main
@@ -7,17 +8,15 @@ import (
     "fmt"
     "os"
     "syscall"
-    "unsafe"
-    "unicode/utf16"
     "time"
+    "unicode/utf16"
+    "unsafe"
 )
-
 
 func procKill(pid int) {
     p, _ := os.FindProcess(pid)
     p.Signal(syscall.SIGTERM)
 }
-
 
 func setEcho(s bool) {
 
@@ -29,9 +28,9 @@ func setEcho(s bool) {
     echoMode = 4
 
     if s {
-        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode | echoMode))
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode|echoMode))
     } else {
-        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode &^ echoMode))
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode&^echoMode))
     }
 
 }
@@ -57,19 +56,17 @@ func enableEcho() {
     procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
 }
 
-
-func GetCursorPos() (int,int) {
-    tcol,trow,e:=GetRowCol(1)
-    if e==nil {
-        return trow,tcol
+func GetCursorPos() (int, int) {
+    tcol, trow, e := GetRowCol(1)
+    if e == nil {
+        return trow, tcol
     }
-    return -1,-1
+    return -1, -1
 }
 
 func term_complete() {
     // does nothing
 }
-
 
 // for reference:
 /*
@@ -84,19 +81,18 @@ ENABLE_EXTENDED_FLAGS           = 0x0080
 ENABLE_VIRTUAL_TERMINAL_INPUT   = 0x0200
 */
 
-
-func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
+func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string) {
 
     var mode uint32
     pMode := &mode
     procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
 
     var vtMode, echoMode uint32
-    echoMode        = 4
-    vtMode          = 0x0200
+    echoMode = 4
+    vtMode = 0x0200
 
-    waitInput      := vtMode
-    nowaitInput    := vtMode
+    waitInput := vtMode
+    nowaitInput := vtMode
 
     echo, _ := gvget("@echo")
     if echo.(bool) {
@@ -104,10 +100,10 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
         nowaitInput += echoMode
     }
 
-    if timeo==0 {
-        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr( waitInput ) )
+    if timeo == 0 {
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(waitInput))
     } else {
-        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr( nowaitInput ) )
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(nowaitInput))
     }
 
     line := make([]uint16, 3)
@@ -115,37 +111,39 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
     var n uint16
 
     c := make(chan []byte)
-    closed:=false
+    closed := false
     dur := time.Duration(timeo) * time.Millisecond
 
     go func() {
-        for ; ! closed ; {
-            if timeo==0 {
+        for !closed {
+            if timeo == 0 {
                 procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
-                if n>0 && !closed {
+                if n > 0 && !closed {
                     c <- []byte(string(utf16.Decode(line[:n])))
                     break
                 }
             } else {
-                n=0
-                procPeekConsoleInput.Call(uintptr(syscall.Stdin),uintptr(unsafe.Pointer(pLine)),uintptr(len(line)),uintptr(unsafe.Pointer(&n)))
-                if n>0 {
+                n = 0
+                procPeekConsoleInput.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                if n > 0 {
                     procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
-                    closed=true
+                    closed = true
                     c <- []byte(string(utf16.Decode(line[:n])))
                     break
                 }
-                if timeout { break }
+                if timeout {
+                    break
+                }
             }
         }
     }()
 
-    if timeo>0 {
+    if timeo > 0 {
         select {
         case b = <-c:
             procFlushConsoleInputBuffer.Call(uintptr(syscall.Stdin))
         case <-time.After(dur):
-            timeout=true
+            timeout = true
         }
     } else {
         select {
@@ -155,10 +153,88 @@ func getch(timeo int) (b []byte,timeout bool,pasted bool,paste_string string) {
 
     procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
 
-    // we push a "never pasted" result back (false,"") from windows
-    return b,timeout,false,""
+    // Check for VTE bracketed paste mode first
+    if bytes.HasPrefix(b, []byte{0x1B, 0x5B, 0x32, 0x30, 0x30, 0x7E}) {
+        // Start of bracketed paste - collect until end marker
+        return collectBracketedPasteWindows()
+    }
+
+    // Windows paste detection - check if we have multiple characters
+    if len(b) > 10 {
+        return b, timeout, true, string(b)
+    }
+    return b, timeout, false, ""
 }
 
+func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
+    var pasteBuffer []byte
+
+    for {
+        var mode uint32
+        pMode := &mode
+        procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
+
+        var vtMode, echoMode uint32
+        echoMode = 4
+        vtMode = 0x0200
+
+        waitInput := vtMode
+        nowaitInput := vtMode
+
+        echo, _ := gvget("@echo")
+        if echo.(bool) {
+            waitInput += echoMode
+            nowaitInput += echoMode
+        }
+
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(nowaitInput))
+
+        line := make([]uint16, 3)
+        pLine := &line[0]
+        var n uint16
+
+        c := make(chan []byte)
+        closed := false
+        dur := time.Duration(100) * time.Millisecond
+
+        go func() {
+            for !closed {
+                n = 0
+                procPeekConsoleInput.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                if n > 0 {
+                    procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
+                    closed = true
+                    c <- []byte(string(utf16.Decode(line[:n])))
+                    break
+                }
+                if timeout {
+                    break
+                }
+            }
+        }()
+
+        select {
+        case data := <-c:
+            pasteBuffer = append(pasteBuffer, data...)
+
+            // Check for end of bracketed paste
+            if bytes.HasSuffix(pasteBuffer, []byte{0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E}) {
+                // Remove the bracketing markers
+                pasteBuffer = pasteBuffer[6 : len(pasteBuffer)-6]
+                procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
+                return []byte{0}, false, true, string(pasteBuffer)
+            }
+        case <-time.After(dur):
+            timeout = true
+        }
+
+        procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
+    }
+
+    // If we get here, something went wrong with bracketed paste
+    procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
+    return []byte{0}, false, true, string(pasteBuffer)
+}
 
 var modkernel32 *syscall.LazyDLL
 var procSetConsoleMode *syscall.LazyProc
@@ -176,19 +252,18 @@ func setupDynamicCalls() {
     procGetConsoleMode = modkernel32.NewProc("GetConsoleMode")
 }
 
+// / get a keypress
+func wrappedGetCh(p int, disp bool) (k int) {
 
-/// get a keypress
-func wrappedGetCh(p int,disp bool) (k int) {
-
-    c,tout,_,_ := getch(p)
+    c, tout, _, _ := getch(p)
 
     if !tout {
 
         if c != nil {
             switch {
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x41}): // SHIFT-UP
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3b, 0x32, 0x41}): // SHIFT-UP
                 k = 211
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31,0x3b,0x32,0x42}): // SHIFT-DOWN
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3b, 0x32, 0x42}): // SHIFT-DOWN
                 k = 210
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
                 k = 10
@@ -206,16 +281,16 @@ func wrappedGetCh(p int,disp bool) (k int) {
                 k = 3 // ctrl-c
             case bytes.Equal(c, []byte{4}):
                 k = 4 // ctrl-d
-            case bytes.Equal(c, []byte{27,91,53,126}): // pgup
+            case bytes.Equal(c, []byte{27, 91, 53, 126}): // pgup
                 k = 15 // replaces Shift In (SI)
-            case bytes.Equal(c, []byte{27,91,54,126}): // pgdown
+            case bytes.Equal(c, []byte{27, 91, 54, 126}): // pgdown
                 k = 14 // replaces Shift Out (SO)
             case bytes.Equal(c, []byte{0x01}): // ESCAPE
                 k = 27
             case bytes.Equal(c, []byte{13}):
                 k = 13 // enter
             case bytes.Equal(c, []byte{0xc2, 0xa3}):
-                k = 163 // £ 
+                k = 163 // £
             case bytes.Equal(c, []byte{126}):
                 k = 126 // DEL
             case bytes.Equal(c, []byte{127}):
@@ -257,7 +332,6 @@ type (
         Window            SMALL_RECT
         MaximumWindowSize COORD
     }
-
 )
 
 func checkError(r1, r2 uintptr, err error) error {
@@ -303,7 +377,7 @@ func GetSize(fd int) (width, height int, err error) {
     var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
 
     if e != nil {
-            return 0, 0, e
+        return 0, 0, e
     }
 
     // we should be able to use Size.Y here, but get a nonsense
@@ -313,7 +387,7 @@ func GetSize(fd int) (width, height int, err error) {
     // so we calculate height based on the moving window size
     // in the history window instead.
 
-    y:=int(info.Window.Bottom)-int(info.Window.Top)
+    y := int(info.Window.Bottom) - int(info.Window.Top)
 
     // return int(info.Size.X), int(info.Size.Y), nil
     return int(info.Size.X), y, nil
@@ -325,9 +399,7 @@ func GetRowCol(fd int) (int, int, error) {
     var info, e = GetConsoleScreenBufferInfo(stdoutHandle)
 
     if e != nil {
-            return 0, 0, e
+        return 0, 0, e
     }
     return int(info.CursorPosition.X), int(info.CursorPosition.Y), nil
 }
-
-

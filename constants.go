@@ -280,6 +280,7 @@ const (
     C_Module
     C_Namespace
     C_Use
+    C_Uses
     C_While
     C_Endwhile
     C_For
