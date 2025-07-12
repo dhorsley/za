@@ -1,0 +1,160 @@
+#!/usr/bin/env za
+
+# Test script for Cron library functions
+# Tests all cron parsing and scheduling functions
+
+permit("error_exit", false)
+exception_strictness("warn")
+
+println "=== Cron Library Tests ==="
+
+# Test 1: Basic cron parsing
+println "\n1. Testing basic cron parsing..."
+cron1 = "0 12 * * *"
+result1 = cron_parse(cron1)
+println "Cron:", cron1
+println "Parsed:", result1.pp
+
+# Test 2: Cron with specific values
+println "\n2. Testing cron with specific values..."
+cron2 = "30 15 10 6 *"
+result2 = cron_parse(cron2)
+println "Cron:", cron2
+println "Parsed:", result2.pp
+
+# Test 3: Cron with ranges
+println "\n3. Testing cron with ranges..."
+cron3 = "0 9-17 * * 1-5"
+result3 = cron_parse(cron3)
+println "Cron:", cron3
+println "Parsed:", result3.pp
+
+# Test 4: Cron with steps
+println "\n4. Testing cron with steps..."
+cron4 = "0 */2 * * *"
+result4 = cron_parse(cron4)
+println "Cron:", cron4
+println "Parsed:", result4.pp
+
+# Test 5: Cron with lists
+println "\n5. Testing cron with lists..."
+cron5 = "0 12 1,15 * *"
+result5 = cron_parse(cron5)
+println "Cron:", cron5
+println "Parsed:", result5.pp
+
+# Test 6: Cron with mixed expressions
+println "\n6. Testing cron with mixed expressions..."
+cron6 = "0 9-17/2 * * 1,3,5"
+result6 = cron_parse(cron6)
+println "Cron:", cron6
+println "Parsed:", result6.pp
+
+# Test 7: Cron validation
+println "\n7. Testing cron validation..."
+valid_cron = "0 12 * * *"
+invalid_cron = "99 99 99 99 99"
+
+valid_result = cron_validate(valid_cron)
+invalid_result = cron_validate(invalid_cron)
+
+println "Valid cron validation:", valid_result.pp
+println "Invalid cron validation:", invalid_result.pp
+
+# Test 8: Next execution time
+println "\n8. Testing next execution time..."
+now_time = epoch_time()
+next_time = cron_next(cron1, now_time)
+println "Current time:", now_time
+println "Next execution:", next_time
+
+# Test 9: Quartz to standard cron conversion
+println "\n9. Testing Quartz to standard cron conversion..."
+quartz1 = "0 0 12 * * ?"
+quartz2 = "0 15 10 ? * MON-FRI"
+quartz3 = "0 0 12 1/1 * ?"
+
+standard1 = quartz_to_cron(quartz1)
+standard2 = quartz_to_cron(quartz2)
+standard3 = quartz_to_cron(quartz3)
+
+println "Quartz:", quartz1, "-> Standard:", standard1
+println "Quartz:", quartz2, "-> Standard:", standard2
+println "Quartz:", quartz3, "-> Standard:", standard3
+
+# Test 10: Complex Quartz expressions
+println "\n10. Testing complex Quartz expressions..."
+complex_quartz1 = "0 0 12 1/1 * ? *"
+complex_quartz2 = "0 15 10 ? * MON,WED,FRI *"
+complex_quartz3 = "0 0 12 1/1 * ? 2023"
+
+complex_standard1 = quartz_to_cron(complex_quartz1)
+complex_standard2 = quartz_to_cron(complex_quartz2)
+complex_standard3 = quartz_to_cron(complex_quartz3)
+
+println "Complex Quartz 1:", complex_quartz1, "-> Standard:", complex_standard1
+println "Complex Quartz 2:", complex_quartz2, "-> Standard:", complex_standard2
+println "Complex Quartz 3:", complex_quartz3, "-> Standard:", complex_standard3
+
+# Test 11: Error handling - invalid cron
+println "\n11. Testing error handling - invalid cron..."
+try
+    invalid_cron = "invalid cron expression"
+    result = cron_parse(invalid_cron)
+    on result is nil do throw "err-11"
+    println "Unexpected success:", result
+catch err is "err-11"
+    println "Expected error:", err.pp
+endtry
+
+# Test 12: Error handling - invalid Quartz
+println "\n12. Testing error handling - invalid Quartz..."
+try
+    invalid_quartz = "invalid quartz expression"
+    result = quartz_to_cron(invalid_quartz)
+    on result is nil do throw "err-12"
+    println "Unexpected success:", result
+catch err is "err-12"
+    println "Expected error:", err.pp
+endtry
+
+# Test 13: Multiple next executions
+println "\n13. Testing multiple next executions..."
+cron_expression = "0 */4 * * *"
+current_time = epoch_time()
+
+for i = 1 to 5
+    next_execution = cron_next(cron_expression, current_time)
+    println "Execution", i, ":", next_execution
+    current_time = next_execution
+endfor
+
+# Test 14: Different cron types
+println "\n14. Testing different cron types..."
+cron_types = [
+    "0 0 * * *",      # Daily at midnight
+    "0 12 * * 1",     # Weekly on Monday at noon
+    "0 0 1 * *",      # Monthly on 1st
+    "0 0 1 1 *",      # Yearly on Jan 1st
+    "*/15 * * * *",   # Every 15 minutes
+    "0 9-17 * * 1-5"  # Business hours on weekdays
+]
+
+foreach cron_type in cron_types
+    parsed = cron_parse(cron_type)
+    next_time = cron_next(cron_type, epoch_time())
+    println "Cron:", cron_type, "-> Next:", next_time
+endfor
+
+# Test 15: Performance test
+println "\n15. Testing performance..."
+start_time = epoch_time()
+for i = 1 to 1000
+    cron_parse("0 12 * * *")
+endfor
+end_time = epoch_time()
+duration = end_time - start_time
+println "1000 cron parses completed in ", duration, " seconds"
+
+println "\n=== Cron Library Tests Complete ===" 
+

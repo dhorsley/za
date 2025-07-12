@@ -12,6 +12,7 @@ require (
 	github.com/itchyny/gojq v0.12.17
 	github.com/pkg/term v0.0.0-20200520122047-c3ffed290a03
 	golang.org/x/sys v0.20.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require github.com/itchyny/timefmt-go v0.1.6 // indirect
