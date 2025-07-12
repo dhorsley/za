@@ -1,0 +1,307 @@
+#!/usr/bin/env za
+
+# Test script for ZIP library functions
+# Tests all ZIP archive functions
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== ZIP Library Tests ==="
+
+# Test 1: Create a simple ZIP archive
+println "\n1. Testing ZIP archive creation..."
+try
+    # Create test files first
+    write_file("test1.txt", "This is test file 1 content")
+    write_file("test2.txt", "This is test file 2 content")
+    
+    # Create ZIP archive
+    files = ["test1.txt", "test2.txt"]
+    result = zip_create("test_archive.zip", files)
+    println "ZIP creation result:", result
+    
+    # Check if archive was created
+    if is_file("test_archive.zip")
+        println "✓ ZIP archive created successfully"
+    else
+        println "✗ ZIP archive creation failed"
+    endif
+catch err
+    println "Error creating ZIP:", err
+endtry
+
+# Test 2: List ZIP archive contents
+println "\n2. Testing ZIP archive listing..."
+try
+    contents = zip_list("test_archive.zip")
+    println "ZIP contents:", contents
+catch err
+    println "Error listing ZIP:", err
+endtry
+
+# Test 3: Extract ZIP archive
+println "\n3. Testing ZIP archive extraction..."
+try
+    # Create extraction directory
+    extract_dir = "extracted_files"
+    | mkdir {extract_dir}
+ 
+    # Extract all files
+    result = zip_extract("test_archive.zip", extract_dir)
+    println "Extraction result:", result
+    
+    # Check if files were extracted
+    if is_file(extract_dir + "/test1.txt") && is_file(extract_dir + "/test2.txt")
+        println "✓ Files extracted successfully"
+    else
+        println "✗ File extraction failed"
+    endif
+catch err
+    println "Error extracting ZIP:", err
+endtry
+
+# Test 4: Extract specific files from ZIP
+println "\n4. Testing specific file extraction..."
+try
+    # Extract specific files to a directory
+    files_to_extract = ["test1.txt"]
+    result = zip_extract_file("test_archive.zip", files_to_extract, "single_extract_dir")
+    println "Specific file extraction result:", result
+    
+    if is_file("single_extract_dir/test1.txt")
+        content = read_file("single_extract_dir/test1.txt")
+        println "Extracted file content:", content
+    endif
+catch err
+    println "Error extracting specific files:", err
+endtry
+
+# Test 5: Add file to existing ZIP
+println "\n5. Testing adding file to ZIP..."
+try
+    # Create a new file to add
+    write_file("test3.txt", "This is test file 3 content")
+    
+    add_files = ["test3.txt"]
+    result = zip_add("test_archive.zip", add_files)
+    println "Add file result:", result
+    
+    # List contents to verify
+    contents = zip_list("test_archive.zip")
+    println "Updated ZIP contents:", contents
+catch err
+    println "Error adding file to ZIP:", err
+endtry
+
+# Test 6: Remove file from ZIP
+println "\n6. Testing removing file from ZIP..."
+try
+    result = zip_remove("test_archive.zip", ["test2.txt"])
+    println "Remove file result:", result
+    
+    # List contents to verify
+    contents = zip_list("test_archive.zip")
+    println "ZIP contents after removal:", contents
+catch err
+    println "Error removing file from ZIP:", err
+endtry
+
+# Test 7: Create ZIP with directory structure
+println "\n7. Testing ZIP with directory structure..."
+try
+    # Create nested directory structure
+    | mkdir -p dir1/dir2
+    dir1 = "dir1"
+    dir2 = "dir1/dir2"
+    write_file(dir1 + "/file1.txt", "File in directory 1")
+    write_file(dir2 + "/file2.txt", "File in nested directory")
+    write_file(dir2 + "/file3.txt", "Another file in nested directory")
+    
+    # Create ZIP with directory structure
+    files_with_dirs = [dir1 + "/file1.txt", dir2 + "/file2.txt", dir2 + "/file3.txt"]
+    result = zip_create("nested_archive.zip", files_with_dirs)
+    println "Nested ZIP creation result:", result
+    
+    # List contents
+    nested_contents = zip_list("nested_archive.zip")
+    println "Nested ZIP contents:", nested_contents
+catch err
+    println "Error creating nested ZIP:", err
+endtry
+
+# Test 8: Extract with directory preservation
+println "\n8. Testing extraction with directory preservation..."
+try
+    extract_nested_dir = "extracted_nested"
+    result = zip_extract("nested_archive.zip", extract_nested_dir)
+    println "Nested extraction result:", result
+    
+    # Check if directory structure was preserved
+    if is_file(extract_nested_dir + "/dir1/file1.txt")
+        println "✓ Directory structure preserved"
+    else
+        println "✗ Directory structure not preserved"
+    endif
+catch err
+    println "Error extracting nested ZIP:", err
+endtry
+
+# Test 9: ZIP with large files
+println "\n9. Testing ZIP with large files..."
+try
+    # Create a larger file
+    large_content = ""
+    for i = 1 to 1000
+        large_content = large_content + "This is line " + i + " of a large file.\n"
+    endfor
+    write_file("large_file.txt", large_content)
+    
+    # Create ZIP with large file
+    large_files = ["large_file.txt"]
+    result = zip_create("large_archive.zip", large_files)
+    println "Large file ZIP creation result:", result
+    
+    # Check file size
+    if is_file("large_archive.zip")
+        size = file_size("large_archive.zip")
+        println "Large ZIP file size:", size, "bytes"
+    endif
+catch err
+    println "Error creating large ZIP:", err
+endtry
+
+# Test 10: ZIP with binary files
+println "\n10. Testing ZIP with binary files..."
+try
+    # Create a binary file (simulate with some binary-like content)
+    binary_content = ""
+    for i = 0 to 255
+        binary_content = binary_content + format("%c",i))
+    endfor
+    write_file("binary_file.bin", binary_content)
+    
+    # Create ZIP with binary file
+    binary_files = ["binary_file.bin"]
+    result = zip_create("binary_archive.zip", binary_files)
+    println "Binary file ZIP creation result:", result
+    
+    # List contents
+    binary_contents = zip_list("binary_archive.zip")
+    println "Binary ZIP contents:", binary_contents
+catch err
+    println "Error creating binary ZIP:", err
+endtry
+
+# Test 11: Error handling - non-existent file
+println "\n11. Testing error handling - non-existent file..."
+try
+    error_files = ["non_existent_file.txt"]
+    result = zip_create("error_archive.zip", error_files)
+    println "Unexpected success:", result
+catch err
+    println "Expected error:", err
+endtry
+
+# Test 12: Error handling - non-existent ZIP
+println "\n12. Testing error handling - non-existent ZIP..."
+try
+    contents = zip_list("non_existent.zip")
+    println "Unexpected success:", contents
+catch err
+    println "Expected error:", err
+endtry
+
+# Test 13: Error handling - extract to non-existent directory
+println "\n13. Testing error handling - extract to non-existent directory..."
+try
+    result = zip_extract("test_archive.zip", "/non/existent/path")
+    println "Unexpected success:", result
+catch err
+    println "Expected error:", err
+endtry
+
+# Test 14: Performance test with multiple files
+println "\n14. Testing performance with multiple files..."
+try
+    # Create many small files
+    file_list = []
+    for i = 1 to 50
+        filename = "perf_file_" + i + ".txt"
+        write_file(filename, "Content for performance test file " + i)
+        file_list = append(file_list, filename)
+    endfor
+    
+    # Create ZIP with many files
+    start_time = epoch_time()
+    result = zip_create("performance_archive.zip", file_list)
+    end_time = epoch_time()
+    duration = end_time - start_time
+    
+    println "Performance test result:", result
+    println "Time to create ZIP with 50 files:", duration, "seconds"
+catch err
+    println "Error in performance test:", err
+endtry
+
+# Test 15: ZIP integrity check
+println "\n15. Testing ZIP integrity..."
+try
+    # Create a test ZIP
+    write_file("integrity_test.txt", "Test content for integrity check")
+    integrity_files = ["integrity_test.txt"]
+    zip_create("integrity_archive.zip", integrity_files)
+    
+    # Extract and verify
+    extract_dir = "integrity_extract"
+    extract_result = zip_extract("integrity_archive.zip", extract_dir)
+    
+    if extract_result
+        println "✓ Backup extracted successfully"
+        
+        # Verify file integrity
+        original = read_file("integrity_test.txt")
+        extracted = read_file(extract_dir + "/integrity_test.txt")
+        if original == extracted
+            println "✓ File integrity verified"
+        else
+            println "✗ File integrity failed"
+        endif
+    endif
+catch err
+    println "Error in integrity test:", err
+endtry
+
+# Cleanup test files
+println "\nCleaning up test files..."
+try
+    # Remove test files
+    foreach filename in ["test1.txt", "test2.txt", "test3.txt", "large_file.txt", "binary_file.bin", "integrity_test.txt"]
+        if is_file(filename)
+            delete(filename)
+        endif
+    endfor
+    
+    # Remove test directories
+    foreach dirname in ["extracted_files", "extracted_nested", "integrity_extract"]
+        if is_dir(dirname)
+            # Note: No built-in directory removal function, so we'll just note this
+            println "Note: Directory ", dirname, " should be removed manually"
+        endif
+    endfor
+    
+    # Remove performance test files
+    for i = 1 to 50
+        filename = "perf_file_" + i + ".txt"
+        if is_file(filename)
+            delete(filename)
+        endif
+    endfor
+    
+    println "✓ Cleanup completed"
+catch err
+    println "Error during cleanup:", err
+endtry
+
+| rm -fR *.zip extracted_nested integrity_extract single_extract_dir dir1 extracted_files
+
+println "\n=== ZIP Library Tests Complete ===" 

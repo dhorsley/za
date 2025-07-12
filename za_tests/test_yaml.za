@@ -1,0 +1,195 @@
+#!/usr/bin/env za
+
+# Test script for YAML library functions
+# Tests yaml_parse and yaml_marshal with various YAML structures
+
+permit("error_exit", false)
+exception_strictness("warn")
+
+println "=== YAML Library Tests ==="
+
+# Download real YAML test cases from online sources
+println "\nDownloading real YAML test cases..."
+k8s_yaml = web_get("https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/application/deployment.yaml")
+on k8s_yaml.code!=200 do exit 1,"could not download k8s yaml sample."
+
+try
+    parsed_k8s = yaml_parse(k8s_yaml.result)
+    println "Parsed K8s YAML:\n", parsed_k8s.pp
+catch err
+    println "Error parsing K8s YAML:", err
+endtry
+
+
+# Download Docker Compose example
+compose_yaml = web_get("https://raw.githubusercontent.com/docker/awesome-compose/master/nginx-flask-mysql/compose.yaml")
+on compose_yaml.code!=200 do exit 2,"could not download docker yaml sample."
+
+try
+    parsed_compose = yaml_parse(compose_yaml.result)
+    println "Parsed Compose YAML:\n", parsed_compose.pp
+catch err
+    println "Error parsing Compose YAML:", err
+endtry
+
+# Test 1: Basic map parsing
+println "\n1. Testing basic map parsing..."
+yaml1 = "name: John Doe\nage: 30\ncity: New York"
+result1 = yaml_parse(yaml1)
+println "Input:\n", yaml1
+println "Parsed:\n", result1.pp
+println "Type:", kind(result1)
+
+# Test 2: Basic list parsing
+println "\n2. Testing basic list parsing..."
+yaml2 = "- apple\n- banana\n- orange"
+result2 = yaml_parse(yaml2)
+println "Input:\n", yaml2
+println "Parsed:\n", result2.pp
+println "Type:", kind(result2)
+
+# Test 3: Nested structures
+println "\n3. Testing nested structures..."
+yaml3 = "person:\n  name: Jane\n  age: 25\n  hobbies:\n    - reading\n    - swimming"
+result3 = yaml_parse(yaml3)
+println "Input:\n", yaml3
+println "Parsed:\n", result3.pp
+
+# Test 4: Multi-line strings (literal)
+println "\n4. Testing multi-line strings (literal)..."
+yaml4 = "description: |\n  This is a multi-line\n  string that preserves\n  line breaks"
+result4 = yaml_parse(yaml4)
+println "Input:\n", yaml4
+println "Parsed:\n", result4.pp
+
+# Test 5: Multi-line strings (folded)
+println "\n5. Testing multi-line strings (folded)..."
+yaml5 = "summary: >\n  This folds newlines\n  into spaces"
+result5 = yaml_parse(yaml5)
+println "Input:\n", yaml5
+println "Parsed:\n", result5.pp
+
+# Test 6: Flow style lists
+println "\n6. Testing flow style lists..."
+yaml6 = "items: [apple, banana, orange]"
+result6 = yaml_parse(yaml6)
+println "Input:\n", yaml6
+println "Parsed:\n", result6.pp
+
+# Test 7: Flow style maps
+println "\n7. Testing flow style maps..."
+yaml7 = "config: {timeout: 30, retries: 3}"
+result7 = yaml_parse(yaml7)
+println "Input:\n", yaml7
+println "Parsed:\n", result7.pp
+
+# Test 8: Document separators
+println "\n8. Testing document separators..."
+yaml8 = "---\nconfig1: value1\n---\nconfig2: value2"
+result8 = yaml_parse(yaml8)
+println "Input:\n", yaml8
+println "Parsed:\n", result8.pp
+
+# Test 9: Inline comments
+println "\n9. Testing inline comments..."
+yaml9 = "config:\n  timeout: 30  # seconds\n  retries: 3   # attempts"
+result9 = yaml_parse(yaml9)
+println "Input:\n", yaml9
+println "Parsed:\n", result9.pp
+
+# Test 10: Complex nested structures
+println "\n10. Testing complex nested structures..."
+yaml10 = "matrix:\n  - name: test1\n    env: [prod, staging]\n  - name: test2\n    env: [dev]"
+result10 = yaml_parse(yaml10)
+println "Input:\n", yaml10
+println "Parsed:\n", result10.pp
+
+# Test 11: Mixed data types
+println "\n11. Testing mixed data types..."
+yaml11 = "data:\n  string: hello\n  number: 42\n  boolean: true\n  null: null\n  float: 3.14"
+result11 = yaml_parse(yaml11)
+println "Input:\n", yaml11
+println "Parsed:\n", result11.pp
+
+# Test 12: Quoted strings
+println "\n12. Testing quoted strings..."
+yaml12 = `paths:\n  windows: "C:\\\\Program Files\\\\App"\n  unix: '/usr/local/bin'`
+result12 = yaml_parse(yaml12)
+println "Input:\n", yaml12
+println "Parsed:\n", result12.pp
+
+# Test 13: YAML marshaling - basic map
+println "\n13. Testing YAML marshaling - basic map..."
+data13["name"] = "Alice"
+data13["age"]  = 28
+data13["city"] = "London"
+yaml13 = yaml_marshal(data13)
+println "Data:\n", data13.pp
+println "Marshaled:\n", yaml13
+
+# Test 14: YAML marshaling - list
+println "\n14. Testing YAML marshaling - list..."
+data14 = ["red", "green", "blue"]
+yaml14 = yaml_marshal(data14)
+println "Data:\n", data14.pp
+println "Marshaled:\n", yaml14
+
+# Test 15: YAML marshaling - nested structure
+println "\n15. Testing YAML marshaling - nested structure..."
+data15["server"]=nil
+data15["server"]["host"] = "localhost"
+data15["server"]["port"] = "8080"
+data15["server"]["ssl"]  = true
+yaml15 = yaml_marshal(data15)
+println "Data:\n", data15.pp
+println "Marshaled:\n", yaml15
+
+# Test 16: YAML marshaling - mixed types
+println "\n16. Testing YAML marshaling - mixed types..."
+data16["config"]=nil
+data16["config"]["enabled"] = true
+data16["config"]["timeout"] = 30.5
+data16["config"]["name"]  = "test"
+data16["config"]["tags"]  = nil
+yaml16 = yaml_marshal(data16)
+println "Data:\n", data16.pp
+println "Marshaled:\n", yaml16
+
+# Test 17: Round-trip test (parse then marshal)
+println "\n17. Testing round-trip (parse then marshal)..."
+original = "app:\n  name: myapp\n  version: 1.0.0\n  settings:\n    debug: true\n    log_level: info"
+parsed = yaml_parse(original)
+marshaled = yaml_marshal(parsed)
+println "Original:\n", original
+println "Parsed:\n", parsed.pp
+println "Marshaled:\n", marshaled
+
+# Test 18: Error handling - invalid YAML
+println "\n18. Testing error handling - invalid YAML..."
+var result any
+try uses result
+    invalid_yaml = "invalid yaml structure"
+    result = yaml_parse(invalid_yaml)??
+    on result == nil do throw "err-18"
+    println "Unexpected success:", result
+catch err is "err-18"
+    println "Expected error:", err.pp
+endtry
+
+# Test 19: Performance test with real YAML
+println "\n19. Testing performance with real YAML..."
+start_time = epoch_time()
+for i = 1 to 1000
+    parsed = yaml_parse(k8s_yaml.result)
+    marshaled = yaml_marshal(parsed)
+endfor
+end_time = epoch_time()
+duration = end_time - start_time
+
+println "original k8s:\n",k8s_yaml
+println "last parsed :\n",parsed.pp
+println "last marshall :\n",marshaled
+println "1000 parse/marshal cycles completed in ", duration, " seconds"
+
+println "\n=== YAML Library Tests Complete ===" 
+

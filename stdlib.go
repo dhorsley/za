@@ -34,5 +34,9 @@ func buildStandardLib() {
     buildImageLib()
     buildTuiLib()
     buildErrorLib()
+    buildYamlLib()
+    buildZipLib()
+    buildSmtpLib()
+    buildCronLib()
 
 }

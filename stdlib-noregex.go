@@ -1,3 +1,4 @@
+//go:build (!linux || !freebsd) && (windows || netgo)
 // +build !linux !freebsd
 // +build windows netgo
 
@@ -25,10 +26,15 @@ func buildStandardLib() {
     buildFileLib()
     buildNotifyLib()
     buildConversionLib()
-    buildNetLib()
+    buildWebLib()
+    buildNetworkLib()
     buildDbLib()
     buildHtmlLib()
     buildImageLib()
     buildTuiLib()
-
+    buildErrorLib()
+    buildYamlLib()
+    buildZipLib()
+    buildSmtpLib()
+    buildCronLib()
 }

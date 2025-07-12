@@ -726,7 +726,7 @@ func buildConversionLib() {
         }
 
         input := args[0]
-        maxDepth := 10
+        maxDepth := 50
         indent := "  "
 
         if len(args) > 1 {

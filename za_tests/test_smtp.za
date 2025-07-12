@@ -1,0 +1,222 @@
+#!/usr/bin/env za
+
+# Test script for SMTP library functions
+# Tests email parsing, header extraction, and SMTP functionality
+
+println "=== SMTP Library Tests ==="
+
+# Test 1: Email header parsing
+println "\n1. Testing email header parsing..."
+try
+    email_content = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test Email\r\nContent-Type: text/plain\r\n\r\nThis is the email body."
+    
+    headers = email_parse_headers(email_content)
+    body = email_get_body(email_content)
+    
+    println "Email content:" + email_content
+    println "Parsed headers:" + headers.pp
+    println "Extracted body:" + body.pp
+catch err
+    println "Error parsing email:", err
+endtry
+
+# Test 2: Email body extraction
+println "\n2. Testing email body extraction..."
+try
+    email_content = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test Email\r\nContent-Type: text/plain\r\n\r\nThis is the email body."
+    
+    body = email_get_body(email_content)
+    println "Extracted body:" + body
+catch err
+    println "Error extracting body:", err
+endtry
+
+# Test 3: Email with multi-line headers
+println "\n3. Testing email with multi-line headers..."
+try
+    multi_line_email = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: This is a very long subject line\r\n that continues on the next line\r\nContent-Type: text/plain\r\n\r\nBody content."
+    
+    headers = email_parse_headers(multi_line_email)
+    body = email_get_body(multi_line_email)
+    
+    println "Multi-line email:" + multi_line_email
+    println "Parsed headers:" + headers.pp
+    println "Extracted body:" + body.pp
+catch err
+    println "Error parsing multi-line email:", err
+endtry
+
+# Test 4: Email with attachments (MIME)
+println "\n4. Testing email with attachments..."
+try
+    mime_email = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Email with Attachment\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=boundary123\r\n\r\n--boundary123\r\nContent-Type: text/plain\r\n\r\nThis is the email body.\r\n\r\n--boundary123\r\nContent-Type: application/octet-stream\r\nContent-Disposition: attachment; filename=test.txt\r\n\r\nThis is attachment content.\r\n\r\n--boundary123--"
+    
+    headers = email_parse_headers(mime_email)
+    attachments = email_get_attachments(mime_email)
+    
+    println "MIME email:" + mime_email
+    println "Extracted attachments:" + attachments.pp
+catch err
+    println "Error parsing MIME email:", err
+endtry
+
+# Test 5: Email with multiple attachments
+println "\n5. Testing email with multiple attachments..."
+try
+    multi_attachment_email = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Email with Multiple Attachments\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=boundary123\r\n\r\n--boundary123\r\nContent-Type: text/plain\r\n\r\nThis is the email body.\r\n\r\n--boundary123\r\nContent-Type: application/octet-stream\r\nContent-Disposition: attachment; filename=file1.txt\r\n\r\nThis is attachment 1.\r\n\r\n--boundary123\r\nContent-Type: application/octet-stream\r\nContent-Disposition: attachment; filename=file2.txt\r\n\r\nThis is attachment 2.\r\n\r\n--boundary123\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename=document.pdf\r\n\r\nPDF content here.\r\n\r\n--boundary123--"
+    
+    attachments = email_get_attachments(multi_attachment_email)
+    
+    println "Multi-attachment email length:" + len(multi_attachment_email)
+    println "Extracted attachments count:" + len(attachments)
+catch err
+    println "Error parsing multi-attachment email:", err
+endtry
+
+# Test 6: Email with quoted headers
+println "\n6. Testing email with quoted headers..."
+try
+    quoted_email = `From: "John Doe" <john@example.com>\r\nTo: "Jane Smith" <jane@example.com>\r\nSubject: Quoted Headers\r\n\r\nBody.`
+    
+    headers = email_parse_headers(quoted_email)
+    
+    println "Quoted email:" + quoted_email
+    println "Parsed headers:" + headers.pp
+catch err
+    println "Error parsing quoted email:", err
+endtry
+
+# Test 7: Email with special characters
+println "\n7. Testing email with special characters..."
+try
+    special_email = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test with # special @ characters\r\nX-Custom-Header: value with spaces\r\n\r\nBody."
+    
+    headers = email_parse_headers(special_email)
+    
+    println "Special email:" + special_email
+    println "Parsed headers:" + headers.pp
+catch err
+    println "Error parsing special email:", err
+endtry
+
+# Test 8: Error handling - invalid email
+println "\n8. Testing error handling - invalid email..."
+try
+    invalid_email = "This is not a valid email format"
+    
+    headers = email_parse_headers(invalid_email)
+    println "Unexpected success:" + headers.pp
+catch err
+    println "Expected error:" + err
+endtry
+
+# Test 9: Error handling - no body separator
+println "\n9. Testing error handling - no body separator..."
+try
+    no_body_email = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: No Body\r\nContent-Type: text/plain"
+    
+    body = email_get_body(no_body_email)
+    println "Unexpected success:" + body
+catch err
+    println "Expected error:" + err
+endtry
+
+# Test 10: SMTP connection test (commented out - requires server)
+println "\n10. Testing SMTP connection..."
+try
+    # This would require a real SMTP server
+    # smtp_result = smtp_send("localhost:25", "test@example.com", ["recipient@example.com"], "Test Subject", "Test body")
+    # println "SMTP send result:", smtp_result
+    
+    println "SMTP test skipped (requires SMTP server)"
+catch err
+    println "SMTP error:", err
+endtry
+
+# Test 11: Email validation
+println "\n11. Testing email validation..."
+try
+    test_emails = [
+        "valid@example.com",
+        "user.name@domain.co.uk",
+        "user+tag@example.org",
+        "invalid-email",
+        "@example.com",
+        "user@",
+        "user@.com"
+    ]
+    
+    foreach email in test_emails
+        if email_validate(email)
+            println "✓ Valid email:" + email
+        else
+            println "✗ Invalid email:" + email
+        endif
+    endfor
+catch err
+    println "Error validating emails:", err
+endtry
+
+# Test 12: Email address extraction
+println "\n12. Testing email address extraction..."
+try
+    email_text = "Contact us at support@example.com or sales@example.org. Also try admin@test.com."
+    
+    addresses = email_extract_addresses(email_text)
+    println "Extracted addresses:" + addresses
+catch err
+    println "Error extracting addresses:", err
+endtry
+
+# Test 13: Email template processing
+println "\n13. Testing email template processing..."
+try
+    template = "From: {from}\r\nTo: {to}\r\nSubject: {subject}\r\n\r\nHello {name},\r\n\r\nThis is a test email.\r\n\r\nBest regards,\r\n{from_name}"
+    
+    variables = {
+        "from": "sender@example.com",
+        "to": "recipient@example.com",
+        "subject": "Test Template",
+        "name": "John Doe",
+        "from_name": "Test System"
+    }
+    
+    processed_email = email_process_template(template, variables)
+    println "Processed email:" + processed_email
+catch err
+    println "Error processing template:", err
+endtry
+
+# Test 14: Email header manipulation
+println "\n14. Testing email header manipulation..."
+try
+    original_email = "From: original@example.com\r\nTo: recipient@example.com\r\nSubject: Original Subject\r\n\r\nOriginal body."
+    
+    # Add header
+    modified_email = email_add_header(original_email, "X-Custom-Header", "Custom Value")
+    println "Modified email with new header:" + modified_email
+    
+    # Remove header
+    cleaned_email = email_remove_header(modified_email, "X-Custom-Header")
+    println "Cleaned email:" + cleaned_email
+catch err
+    println "Error manipulating headers:", err
+endtry
+
+# Test 15: Email encoding/decoding
+println "\n15. Testing email encoding/decoding..."
+try
+    # Test base64 encoding
+    original_text = "This is a test message with special characters: áéíóú ñ"
+    encoded = email_base64_encode(original_text)
+    decoded = email_base64_decode(encoded)
+    
+    println "Original text:" + original_text
+    println "Encoded:" + encoded
+    println "Decoded:" + decoded
+    println "Encoding/decoding successful:" + (original_text == decoded)
+catch err
+    println "Error with encoding/decoding:", err
+endtry
+
+println "\n=== SMTP Library Tests Complete ===" 

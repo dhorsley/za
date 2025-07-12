@@ -16,7 +16,7 @@ CHANGE LOG
 
     * renamed net lib to web
 
-    * (experimental) added network library, new calls:
+    * added network library, new calls:
         tcp_client(host, port, [timeout])
         tcp_server(port, mode)
         tcp_send(handle, data)
@@ -38,6 +38,21 @@ CHANGE LOG
         ssl_cert_install_help(host, [port])
         http_headers(url, [headers])
         http_benchmark(url, requests, [concurrent], [keep_alive], [skip_verify])
+
+    * added wrapper functions for go-yamlv3:
+        yaml_parse, yaml_marshal, yaml_get, yaml_set, yaml_delete
+
+    * added zip/unzip support functions:
+        zip_create, zip_create_from_dir, zip_extract, zip_list, zip_add, zip_remove
+
+    * added a couple more date functions:
+        format_date, format_time
+
+    * added cron-related functions:
+        cron_parse, quartz_to_cron, cron_next, cron_validate
+
+    * added some smtp-related functions:
+        smtp_send, smtp_send_with_auth, smtp_send_with_attachments, email_parse_headers, email_get_body, email_get_attachments
 
 
     other
