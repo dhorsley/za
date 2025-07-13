@@ -31,7 +31,7 @@ var completions = []string{"VAR", "SETGLOB", "PAUSE",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "CASE",
     "IS", "CONTAINS", "HAS", "IN", "OR", "ENDCASE", "WITH", "ENDWITH",
     "STRUCT", "ENDSTRUCT", "SHOWSTRUCT",
-    "TRY", "CATCH", "ENDTRY", "THEN", 
+    "TRY", "CATCH", "ENDTRY", "THEN",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "TO", "STEP", "AS", "ENUM", "HIST",
 }
 
@@ -415,6 +415,11 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 break
             case bytes.Equal(c, []byte{4}): // ctrl-d
                 eof = true
+                break
+            case bytes.Equal(c, []byte{26}): // ctrl-z
+                // Send SIGTSTP to the current process group to suspend Za
+                // Platform-specific implementation handles Unix vs Windows
+                handleCtrlZ()
                 break
 
             case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor

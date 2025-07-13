@@ -111,6 +111,7 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
     var n uint16
 
     c := make(chan []byte)
+    timeoutChan := make(chan bool)
     closed := false
     dur := time.Duration(timeo) * time.Millisecond
 
@@ -131,8 +132,12 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
                     c <- []byte(string(utf16.Decode(line[:n])))
                     break
                 }
-                if timeout {
+                select {
+                case <-timeoutChan:
+                    closed = true
                     break
+                default:
+                    // Continue checking
                 }
             }
         }
@@ -144,6 +149,7 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
             procFlushConsoleInputBuffer.Call(uintptr(syscall.Stdin))
         case <-time.After(dur):
             timeout = true
+            timeoutChan <- true
         }
     } else {
         select {
@@ -168,9 +174,8 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
 
 func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
     var pasteBuffer []byte
-
+    var mode uint32 // moved here
     for {
-        var mode uint32
         pMode := &mode
         procGetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pMode)))
 
@@ -194,6 +199,7 @@ func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
         var n uint16
 
         c := make(chan []byte)
+        timeoutChan := make(chan bool)
         closed := false
         dur := time.Duration(100) * time.Millisecond
 
@@ -207,8 +213,11 @@ func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
                     c <- []byte(string(utf16.Decode(line[:n])))
                     break
                 }
-                if timeout {
+                select {
+                case <-timeoutChan:
                     break
+                default:
+                    // Continue checking
                 }
             }
         }()
@@ -225,7 +234,7 @@ func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
                 return []byte{0}, false, true, string(pasteBuffer)
             }
         case <-time.After(dur):
-            timeout = true
+            timeoutChan <- true
         }
 
         procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))
@@ -402,4 +411,9 @@ func GetRowCol(fd int) (int, int, error) {
         return 0, 0, e
     }
     return int(info.CursorPosition.X), int(info.CursorPosition.Y), nil
+}
+
+// handleCtrlZ does nothing on Windows since SIGTSTP is not supported
+func handleCtrlZ() {
+    // Windows doesn't support SIGTSTP, so we do nothing
 }

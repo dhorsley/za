@@ -36,4 +36,3 @@ func setupSignalHandlers(signals chan os.Signal, breaksig chan os.Signal) {
         }
     }()
 }
-

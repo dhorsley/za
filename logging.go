@@ -11,7 +11,6 @@ import (
     "runtime"
     "strings"
     "sync"
-    "syscall"
     "time"
 )
 
@@ -771,24 +770,34 @@ func plog_json_direct_to_file(filename, message string, fields map[string]any) {
     writeFileAtomic(filename, jsonData, "")
 }
 
-// flock applies an exclusive file lock on Unix systems
+// flock applies an exclusive file lock using the stdlib flock function
 func flock(file *os.File, block bool) error {
-    if runtime.GOOS == "windows" {
-        return nil // No locking on Windows
-    }
-    flag := syscall.LOCK_EX
+    lockType := "w" // write lock (exclusive)
     if !block {
-        flag |= syscall.LOCK_NB
+        lockType = "w" // non-blocking write lock
     }
-    return syscall.Flock(int(file.Fd()), flag)
+    result, err := stdlib["flock"]("", 0, nil, file.Name(), lockType)
+    if err != nil {
+        return err
+    }
+    // Check if the result indicates an error
+    if result == false {
+        return fmt.Errorf("flock failed")
+    }
+    return nil
 }
 
-// funlock removes a file lock on Unix systems
+// funlock removes a file lock using the stdlib flock function
 func funlock(file *os.File) error {
-    if runtime.GOOS == "windows" {
-        return nil // No locking on Windows
+    result, err := stdlib["flock"]("", 0, nil, file.Name(), "u")
+    if err != nil {
+        return err
     }
-    return syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
+    // Check if the result indicates an error
+    if result == false {
+        return fmt.Errorf("funlock failed")
+    }
+    return nil
 }
 
 // writeFileAtomic performs atomic file writes with locking
