@@ -291,3 +291,8 @@ func GetSize(fd int) (int, int, error) {
     }
     return int(ws.Col), int(ws.Row), nil
 }
+
+// handleCtrlZ sends SIGTSTP to suspend the process on Unix systems
+func handleCtrlZ() {
+    syscall.Kill(0, syscall.SIGTSTP)
+}

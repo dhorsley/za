@@ -6,6 +6,7 @@ package main
 import (
     "errors"
     "fmt"
+    "reflect"
     "regexp"
     "runtime"
     "strconv"
@@ -184,7 +185,7 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail",
         "reverse", "tr", "lower", "upper", "format", "ccformat", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
-        "rvalid", "levdist","keys",
+        "rvalid", "levdist", "keys",
     }
 
     replaceCompileCache := make(map[string]regexp.Regexp)
@@ -347,10 +348,16 @@ func buildStringLib() {
             return nil, err
         }
         var keys []string
-        for k,_:=range args[0].(map[string]any) {
-            keys=append(keys,k)
+
+        // Use reflection to handle any map with string keys
+        v := reflect.ValueOf(args[0])
+
+        // Extract string keys
+        for _, key := range v.MapKeys() {
+            keys = append(keys, key.String())
         }
-        return keys,nil
+
+        return keys, nil
     }
 
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}

@@ -1,205 +1,161 @@
 
-
-BUGS
-----
-
-lots, i'm sure.
-
-    * issues with globals in expressions when setting start/end/step of normal for loops
-        - not convinced i will be fixing this. there are probably similar issues in a few places,
-            and although they can all be fixed, i still want use of globals to be more explicit.
-        - globals can currently be used freely in assignments (rhs) and on the lhs with the @(setglob) keyword.
-        - i'll make up my mind on this when i get around to adding better pass-by-reference support.
-        - for now, you should pre-compute start/end/step counts in FOR when using globals.
-
-
 TODO
 ----
 
-    * DONE: USE statement
-        USE -           # empties the use_chain internal array
-        USE + name      # adds name to the use_chain namespace list (if unique)
-        USE - name      # removes name from use_chain namespace list
-        USE ^ name      # places namespace name at the top of the use_chain namespace list (pushes rest down)
-                        # new name: inserts, existing name: moves
+SYSTEM RESOURCE MONITORING
+-------------------------
 
-        USE PUSH        # push current chain on chain stack
-        USE POP         # pop chain from top of chain stack
-                        # push and pop would be used to completely isolate namespacing in a module.
+* TODO: Top N resource consumers (pure library implementation - snapshots)
+    - top_cpu(n) - top N CPU consumers (processes) - procfs/syscalls/Windows API
+    - top_memory(n) - top N memory consumers (processes) - procfs/syscalls/Windows API
+    - top_network(n) - top N network consumers (processes) - our netstat libraries + procfs
+    - top_disk_io(n) - top N disk I/O consumers (processes) - procfs/syscalls/Windows API
+    - system_resources() - get overall system resource usage - Go runtime + procfs
+    - resource_usage(pid) - get resource usage for specific process - syscalls
+    - process_info(pid) - get detailed process information - procfs/syscalls/Windows API
+    - system_load() - get system load averages - procfs/syscalls
+    - memory_info() - get detailed memory information - procfs/syscalls/Windows API
+    - cpu_info() - get CPU information and statistics - procfs/syscalls/Windows API
+    - network_io_stats() - get network I/O statistics - our netstat libraries + procfs
+    - disk_io_stats() - get disk I/O statistics - procfs/syscalls/Windows API
+    - throughput_calculation(snapshot1, snapshot2, duration) - calculate rates between snapshots
 
-            - var uchain = make([]string,0,1)
-            - var ustack = make([][]string,0,8)
-            - new funcs: uc_add(), uc_remove(), uc_top(), uc_reset(), ucs_push(), ucs_pop(),
-                         uc_match_func(func_name), uc_match_enum(enum_name), uc_match_struct(struct_name)
+* TODO: Resource monitoring (requires external tools)
+    - No functions currently require external tools - all can be implemented with pure library calls
 
-                - the match functions will return either a "ns::name" string on match, or an empty string ""
-                    - if empty, then current namespace or main:: used
+USER AND GROUP ADMINISTRATION
+----------------------------
 
-        - The current namespace is always either main:: or the module name/alias.
+* TODO: User/group administration features
+    - user_add(username, options) - add system user
+    - user_remove(username) - remove system user
+    - user_modify(username, options) - modify user properties
+    - group_add(groupname) - add system group
+    - group_remove(groupname) - remove system group
+    - group_membership(username, groupname, action) - manage group membership
+    - user_list() - list system users
+    - group_list() - list system groups
 
-        - If you want to use a different namespace then you need to create a new file and import it with MODULE.
+KERNEL PARAMETER TUNING
+----------------------
 
-        - The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
-            matches ahead of the default behaviour, if no explicit name is supplied
+* TODO: Kernel parameter tuning support
+    - sysctl_get(parameter) - get kernel parameter value
+    - sysctl_set(parameter, value) - set kernel parameter value
+    - sysctl_list(category) - list parameters by category
+    - sysctl_persist(parameter, value) - set parameter persistently
+    - sysctl_validate(parameter, value) - validate parameter value
+    - sysctl_categories() - list available parameter categories
+    - sysctl_restore_defaults() - restore default kernel parameters
 
-                1. explicit namespace (name::)
-                2. use_chain match
-                3. current namespace (no :: ref), then
-                4. main:: (global namespace)
+CORE FIREWALL DETECTION & MANAGEMENT
+------------------------------------
 
-        - example:
+* TODO: Active firewall detection (not just available)
+    - nftables: kernel module check + active rules detection
+    - firewalld: D-Bus connection + active service detection  
+    - pf (BSD): CLI wrapper + active rules detection
+    - Windows Firewall: WMI connection + active profiles detection
 
-            # global ns / main program
-            MODULE "modpath/time" AS tm
+* TODO: Unified firewall API
+    - firewall_capable() - detect active firewall with capabilities
+    - firewall_guard() - safe guard for firewall operations
+    - firewall_enable(firewall_type) - enable specific firewall
+    - firewall_disable() - disable current active firewall
+    - firewall_add_rule(protocol, port, action) - add firewall rule
+    - firewall_remove_rule(protocol, port, action) - remove firewall rule
+    - firewall_list_rules() - list current firewall rules
+    - firewall_get_stats() - get firewall statistics
 
-            tm::string_date()       # call function string_date in module time with explicit alias 'tm'
-            string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
-                                    # which should error as undefined.
+* TODO: Platform-specific native library integration
+    - nftables: github.com/google/nftables (direct netlink)
+    - firewalld: D-Bus interface (direct service communication)
+    - Windows Firewall: WMI/COM interface (direct Windows API)
+    - pf: CLI wrapper (no native library available)
 
-            USE +tm
+* TODO: Privilege checking and security validation
+    - has_privileges() - check if user has firewall management permissions
+    - Platform-specific privilege validation (root, sudo, doas, Windows admin)
+    - Automatic privilege requirement detection and error reporting
 
-            string_date()           # check if string_date() exists in tm namespace and call it if found.
+* TODO: Cross-platform consistency
+    - Same API functions work across all supported platforms
+    - Automatic platform detection and appropriate firewall selection
+    - Unified error handling and status reporting
 
-                                    # if not found (even though this one would be) then try to call it in current namespace (main::)
-                                    #  which should error as undefined.
+PLUGIN ARCHITECTURE FOR CUSTOM FIREWALLS
+----------------------------------------
 
-                                    # whenever there are conflicting names then the first match takes precedence.
-                                    #  i.e.
-                                    # explicit name > use_chain > current namespace > main
+* TODO: Custom firewall plugin registration system
+    - firewall_register_plugin(firewall_type, handler_functions)
+    - firewall_unregister_plugin(firewall_type)
+    - Plugin detection integration with native firewall detection
+    - Plugin capability reporting and validation
 
-    * Changes for eg/tui_board:
+* TODO: Plugin interface specification
+    - detect() - detect if firewall is active
+    - enable() - enable the firewall
+    - disable() - disable the firewall  
+    - add_rule(protocol, port, action) - add firewall rule
+    - remove_rule(protocol, port, action) - remove firewall rule
+    - list_rules() - list current rules
+    - get_stats() - get firewall statistics
+    - capabilities - list of supported capabilities
 
-        * DONE: fix utc difference when touching stamps
-            - amended get_date_human() in tui_board example to read tz offset and sign before parsing.
-        * DONE: add a version string at head of save file
-            - use this to control which fields are ingested on load, defaulting others not present.
-        * DONE: end date/time field
-            - DONE: editing end_date
-            - DONE: touching end_date
-        * DONE: elapsed/remaining time display
-            - DONE: toggle menu option for off/elapsed/remaining
-            - DONE: this is to replace the start time on the overview screen
-        * TODO: changes to colour schemes in lapsed/near lapsed tasks.
-        * TODO: alerts: display and/or notifications on near limit tasks
-            - type: on screen, emails, nagios/checkmk output format, other?
-            - default remaining warning will be less than 1 day.
-        * TODO: startup arg just to poll for near limit tasks and notify
-                 so that the app can be scheduled non-interactively.
-        * TODO: fix: cursoroff() in lib-tui.go getInput() ddmode.
+* TODO: Example plugins for legacy firewalls
+    - iptables plugin (CLI wrapper)
+    - ufw plugin (Ubuntu firewall)
+    - Custom enterprise firewall plugins
+    - Plugin sharing and community ecosystem
 
-        * DONE: Assignee field
-        * DONE: (Ticket) link field?
-        * DONE: View action (for all fields)
-            - DONE: maybe move description field into the view action, and only show tags and name for task in overview screen.
-            - DONE: maybe put Assignee field on to overview screen instead of description field?
+ADVANCED FIREWALL FEATURES
+--------------------------
 
-        * Where does "pending review"/"pending release"/"released" fit in?
-            - DONE: will add "On Hold/Pending Review/Pending Release" as sub status for the On Hold column
-            - DONE: show sub-status on overview screen.
+* TODO: Real-time firewall monitoring
+    - firewall_monitor_events() - real-time event streams
+    - nftables_events() - netlink event monitoring
+    - firewalld_events() - D-Bus event monitoring
+    - Windows Firewall events - WMI event monitoring
+    - pf events - CLI-based event monitoring
 
-    * DONE: add drop down mode for getInput()
-        - change inbound params: add ddopts []string
-        - when not empty place getInput() in ddmode=true
-        - when ddmode==true, and down arrow pressed, override history mode (if enabled)
-            - display dd opts
-            - create highlight cursor at first opt
-            - start a new key loop:
-                - if input is not in (cursor down/up, enter, space, esc) then break
-                - move cursor, accept option or break, depending on input
-            - if escaped/broken then carry on as normal
-            - if accepted, then insert selection to input string and move cpos cursor to end of
-                the selection in the amended input string
-        - possibly add alternative sources of ddopts array later
+* TODO: Rate monitoring and statistics
+    - firewall_rate_monitor() - hits/second monitoring
+    - firewall_rate_alert(threshold) - rate threshold alerts
+    - Rate history tracking and anomaly detection
+    - Performance impact monitoring
 
-    * do something about interactive mode interfering with other tools such as vi, more, batcat...
-        - currently, if you wish to launch, for example, vi and have it behave correctly,
-          you have to turn off za shell command output capture, send commands to the parent process
-          and execute commands with an explicit pipe (|) statement, i.e.
-            capture_shell(false); coproc(false); | vi something
-        - we should:
-            1. DONE: ensure fallback behaves in the same way as the pipe statement
-            2. TODO: provide a function and startup arg for dis-/enabling the capture and child
-                process at the same time.
-            3. NOTE: disabling coproc also stops multi-instruction/piped commands from working
-                - due to calls going through the parent pid instead.
-        - that wouldn't be perfect, as a few env variables would then go astray and there would
-            no longer be any session state retained between shell calls.
-        - would rather have a better solution than above, but not thought of one yet.
-        - ideally, we would redirect stdin, stdout and stderr from the child shell whenever we
-            launch it (or relaunch it).
-        - this is probably not an easy fix, as it would mess with cursor tracking and some 
-            other things (such as cwd tracking and error code capture, which happen as a part
-            of the child shell ipc currently.)
+FIREWALL EVENT LOGGING AND AUDIT
+--------------------------------
 
-    * respect ctrl-z in REPL/elsewhere
+* TODO: Firewall event logging and audit
+    - firewall_log_events() - capture firewall events
+    - firewall_audit_trail() - comprehensive audit logging
+    - firewall_compliance_report() - compliance reporting
+    - firewall_security_analysis() - security analysis and recommendations
 
-    * IN PROGRESS: extra sort functions:
-        array of struct : forward and reverse, by named struct field. type based.
-        - added ssort to lib-list
-            - ary=ssort(ary,"field_name",ascending_bool)
-            - returns array of []any, sorted on named field in given direction.
-            - TODO: expand to multi key sort
-            - NOTE: modified version of this code:
-                - https://raw.githubusercontent.com/raunakjodhawat/multisort/master/multisort.go
-                - experimental!
-                - probably many issues with it currently.
-            - TODO: when out of experimental phase, add credits in docs/CREDITS file. (MIT License):
-                - https://github.com/raunakjodhawat/multisort/blob/master/LICENSE
-            - NOTE: the above is probably going to be pulled out. algorithm seems wrong for 
-                dealing with multiple sort fields.
-                this may have to wait until i have a better way of passing something lambda like
-                as arguments to user/system libraries.
+    NOTES
+    -----
 
-    * fix windows flock() call appropriately.
-
-    * add install note for windows w/wsl stating that sudoers file may need updating with : Defaults env_keep=WSL_DISTRO_NAME
-        and possibly other env vars, depending on user requirements.
-
-    * catch stack overflows and output better error (when recursing). for example, in eg/ackermann 4 2
-
+    * All firewall operations should respect the "only one active firewall" principle
+    * Native libraries should be used where possible (nftables, firewalld, Windows Firewall)
+    * CLI wrappers only when no native library is available (pf)
+    * Plugin architecture allows for custom firewall support without modifying core code
+    * Security and privilege validation is critical for all firewall operations
+    * Cross-platform consistency is a key design principle
+    * Performance and resource efficiency are important considerations
 
 LATER / UNDECIDED
 -----------------
 
+* add a test mode that *does not* test imported modules.
+    - i.e. only test the main file and assume the modules are already tested.
+    - currently, everything gets tested all the time.
+    - may also be worth establishing a cache of tested modules/checksums to save re-testing
 
-    * add a test mode that *does not* test imported modules.
-        - i.e. only test the main file and assume the modules are already tested.
-        - currently, everything gets tested all the time.
-        - may also be worth establishing a cache of tested modules/checksums to save re-testing
-
-
-    * user and group builtins for linux?
-        - i don't think this is necessary, especially as it would be so different between OS.
-        - however, it makes scripting the stuff easier for a user by far if we support with builtins.
-        - not doing this one yet, but still a possibility.
+* MAYBE: add install note for windows w/wsl stating that sudoers file may need 
+            updating with : Defaults env_keep=WSL_DISTRO_NAME
+            and possibly other env vars, depending on user requirements.
 
 
-    * handle multi-dimensional arrays better (as lvalues)
-
-      Status: need to rework doAssign function to reduce its bulk first and handle lvalues better, 
-                or push all of the work back into the evaluator for lvalues. that would probably be
-                for the best, but i just can't bring myself to rework it for the limited benefits.
-                this one is a maybe.
-
-
-    * add big.Rat?
-
-      Status: very little work actually needed to do this, it's just more of the same as was done
-                for big floats and ints. however, it is even more special casing without a driving
-                requirement. if i decide against proper types (see above) then maybe will add this
-                as already done for other bigs. not high on the priority list though.
-
-
-    * ultimately, change interactive mode to use readline or similar with better utf-8 support
-        (because I'm not likely to make many more changes to the in-built line editor):
-        
-        - some escaped chars (e.g. \") screw with the nesting check in interactive mode.
-        - plenty of utf-8/extended char set keys still not working in interactive mode.
-            - e.g. · µ n ”“ ¢ «» and similar.
-        - cursor movement over utf8 chars in input (and utf8 char deletes) problematic.
-        - update: this just hasn't proven to be much of an issue yet. it is certainly an inconvenience,
-            but it is staying at the bottom of the change list indefinitely.
-
-      Status: no plans to implement.
 
 

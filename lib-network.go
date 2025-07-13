@@ -5,7 +5,6 @@ package main
 
 import (
     "crypto/tls"
-    "encoding/binary"
     "fmt"
     "io"
     "math/rand"
@@ -374,6 +373,9 @@ func buildNetworkLib() {
         "icmp_ping", "tcp_ping", "traceroute", "tcp_traceroute", "icmp_traceroute", "dns_resolve", "port_scan",
         "net_interfaces_detailed", "ssl_cert_validate", "ssl_cert_install_help", "http_headers", "http_benchmark",
         "network_stats", "tcp_server_accept", "tcp_server_stop",
+        // Network monitoring functions
+        "netstat", "netstat_protocols", "netstat_protocol_info", "netstat_protocol",
+        "netstat_listen", "netstat_established", "netstat_process", "netstat_interface", "open_files",
     }
 
     // TCP Client functions
@@ -694,52 +696,57 @@ func buildNetworkLib() {
         }
         targetIP := ips[0]
 
-        // Try to create raw socket for ICMP echo request
-        // This requires root privileges on most systems
-        sock, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
-        if err != nil {
-            // If raw socket fails, we can't do ICMP ping without privileges
-            return map[string]any{"success": false, "latency": 0, "error": "ICMP ping requires root privileges: " + err.Error()}, nil
-        }
-        defer syscall.Close(sock)
+        return icmpPing(targetIP, timeout)
 
-        // Set socket timeout
-        tv := syscall.NsecToTimeval(int64(timeout))
-        syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv)
-        syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_SNDTIMEO, &tv)
+        /*
+           // Unix-like systems (primary implementation)
+           sock, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+           if err != nil {
+               // If raw socket fails, we can't do ICMP ping without privileges
+               return map[string]any{"success": false, "latency": 0, "error": "ICMP ping requires root privileges: " + err.Error()}, nil
+           }
+           defer syscall.Close(sock)
 
-        // Build ICMP echo request packet
-        msg := make([]byte, 8)
-        msg[0] = 8 // echo request
-        msg[1] = 0 // code 0
-        binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
-        msg[2] = 0
-        msg[3] = 0
-        csum := calculateICMPChecksum(msg)
-        msg[2] = byte(csum >> 8)
-        msg[3] = byte(csum & 0xff)
+           // Set socket timeout
+           tv := syscall.NsecToTimeval(int64(timeout))
+           syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, &tv)
+           syscall.SetsockoptTimeval(sock, syscall.SOL_SOCKET, syscall.SO_SNDTIMEO, &tv)
 
-        // Parse target IP
-        addr := syscall.SockaddrInet4{Port: 0}
-        copy(addr.Addr[:], net.ParseIP(targetIP).To4())
+           // Build ICMP echo request packet
+           msg := make([]byte, 8)
+           msg[0] = 8 // echo request
+           msg[1] = 0 // code 0
+           binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
+           msg[2] = 0
+           msg[3] = 0
+           csum := calculateICMPChecksum(msg)
+           msg[2] = byte(csum >> 8)
+           msg[3] = byte(csum & 0xff)
 
-        start := time.Now()
+           // Parse target IP
+           addr := syscall.SockaddrInet4{Port: 0}
+           copy(addr.Addr[:], net.ParseIP(targetIP).To4())
 
-        // Send ICMP echo request
-        err = syscall.Sendto(sock, msg, 0, &addr)
-        if err != nil {
-            return map[string]any{"success": false, "latency": 0, "error": "Failed to send ICMP packet: " + err.Error()}, nil
-        }
+           start := time.Now()
 
-        // Receive ICMP echo reply
-        resp := make([]byte, 1024)
-        _, _, err = syscall.Recvfrom(sock, resp, 0)
-        if err != nil {
-            return map[string]any{"success": false, "latency": 0, "error": "Failed to receive ICMP response: " + err.Error()}, nil
-        }
+           // Send ICMP echo request
+           err = syscall.Sendto(sock, msg, 0, &addr)
+           if err != nil {
+               return map[string]any{"success": false, "latency": 0, "error": "Failed to send ICMP packet: " + err.Error()}, nil
+           }
 
-        latency := time.Since(start).Milliseconds()
-        return map[string]any{"success": true, "latency": latency, "error": ""}, nil
+           // Receive ICMP echo reply
+           resp := make([]byte, 1024)
+           _, _, err = syscall.Recvfrom(sock, resp, 0)
+           if err != nil {
+               return map[string]any{"success": false, "latency": 0, "error": "Failed to receive ICMP response: " + err.Error()}, nil
+           }
+
+           latency := time.Since(start).Milliseconds()
+           return map[string]any{"success": true, "latency": latency, "error": ""}, nil
+
+        */
+
     }
 
     // TCP Ping
@@ -851,170 +858,11 @@ func buildNetworkLib() {
         if len(ips) == 0 {
             return nil, fmt.Errorf("no IP addresses found for %s", host)
         }
+
         targetIP := ips[0]
 
-        hops := []map[string]any{}
+        return icmpTraceroute(targetIP, timeout, maxHops)
 
-        // Windows implementation using net.DialTimeout (no admin privileges needed)
-        if runtime.GOOS == "windows" {
-            // Use the same approach as icmp_ping - this doesn't require root privileges
-            for ttl := 1; ttl <= maxHops; ttl++ {
-                // Note: Windows doesn't support TTL manipulation via net.DialTimeout
-                // So we'll do a simple ping to the target and return that as the result
-                conn, err := net.DialTimeout("ip4:icmp", targetIP, timeout)
-                if err != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": 0,
-                        "error":   "timeout",
-                    })
-                    continue
-                }
-                defer conn.Close()
-
-                // Build ICMP echo request
-                msg := make([]byte, 8)
-                msg[0] = 8 // echo request
-                msg[1] = 0 // code 0
-                binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
-                msg[2] = 0
-                msg[3] = 0
-                csum := calculateICMPChecksum(msg)
-                msg[2] = byte(csum >> 8)
-                msg[3] = byte(csum & 0xff)
-
-                start := time.Now()
-                conn.SetDeadline(time.Now().Add(timeout))
-                _, err = conn.Write(msg)
-                if err != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": 0,
-                        "error":   "send failed",
-                    })
-                    continue
-                }
-
-                resp := make([]byte, 20)
-                _, err = conn.Read(resp)
-                latency := time.Since(start).Milliseconds()
-
-                if err != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": latency,
-                        "error":   "timeout",
-                    })
-                    continue
-                }
-
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": targetIP,
-                    "latency": latency,
-                    "error":   "",
-                })
-
-                // If we got a response, we've reached the target
-                break
-            }
-
-            return hops, nil
-        }
-
-        // Unix-like systems
-        fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
-        if err != nil {
-            return nil, err
-        }
-        defer syscall.Close(fd)
-
-        // Set socket options
-        syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, 1)
-        syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, int(timeout.Milliseconds()))
-
-        for ttl := 1; ttl <= maxHops; ttl++ {
-            // Set TTL for this hop
-            syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, ttl)
-
-            // Create ICMP echo request
-            msg := make([]byte, 8)
-            msg[0] = 8 // echo request
-            msg[1] = 0 // code
-            binary.BigEndian.PutUint16(msg[6:], uint16(time.Now().UnixNano()))
-            csum := calculateICMPChecksum(msg)
-            msg[2] = byte(csum >> 8)
-            msg[3] = byte(csum & 0xff)
-
-            // Send packet
-            addr := &syscall.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}} // Will be overridden
-            copy(addr.Addr[:], net.ParseIP(targetIP).To4())
-
-            start := time.Now()
-            err = syscall.Sendto(fd, msg, 0, addr)
-            if err != nil {
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": "",
-                    "latency": 0,
-                    "error":   fmt.Sprintf("send error: %v", err),
-                })
-                continue
-            }
-
-            // Receive response with timeout
-            resp := make([]byte, 1024)
-            received := make(chan struct{})
-            var n int
-            var recvErr error
-
-            go func() {
-                n, _, recvErr = syscall.Recvfrom(fd, resp, 0)
-                close(received)
-            }()
-
-            select {
-            case <-received:
-                latency := time.Since(start).Milliseconds()
-                if recvErr != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": latency,
-                        "error":   "timeout",
-                    })
-                    continue
-                }
-
-                // Parse response
-                if n >= 20 {
-                    respIP := net.IP(resp[12:16]).String()
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": respIP,
-                        "latency": latency,
-                        "error":   "",
-                    })
-
-                    // Check if we reached the target
-                    if respIP == targetIP {
-                        return hops, nil
-                    }
-                }
-            case <-time.After(timeout):
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": "",
-                    "latency": timeout.Milliseconds(),
-                    "error":   "timeout",
-                })
-            }
-        }
-
-        return hops, nil
     }
 
     // TCP Traceroute (RFC compliant, working implementation)
@@ -1051,148 +899,8 @@ func buildNetworkLib() {
         }
         targetIP := ips[0]
 
-        hops := []map[string]any{}
+        return tcpTraceroute(targetIP, port, timeout, maxHops)
 
-        // Windows implementation using regular TCP connections
-        if runtime.GOOS == "windows" {
-            // Windows doesn't support raw sockets without admin privileges
-            // So we'll use regular TCP connections to simulate traceroute
-            for ttl := 1; ttl <= maxHops; ttl++ {
-                // Try to connect to the target host:port
-                start := time.Now()
-                conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetIP, port), timeout)
-                latency := time.Since(start).Milliseconds()
-
-                if err != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": latency,
-                        "error":   "timeout",
-                    })
-                    continue
-                }
-                defer conn.Close()
-
-                // If we got a connection, we've reached the target
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": targetIP,
-                    "latency": latency,
-                    "error":   "",
-                })
-
-                // We've reached the target, so we're done
-                break
-            }
-
-            return hops, nil
-        }
-
-        // Unix-like systems
-        fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCP)
-        if err != nil {
-            return nil, err
-        }
-        defer syscall.Close(fd)
-
-        // Set socket options
-        syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, 1)
-        syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVTIMEO, int(timeout.Milliseconds()))
-
-        for ttl := 1; ttl <= maxHops; ttl++ {
-            // Set TTL for this hop
-            syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_TTL, ttl)
-
-            // Create TCP SYN packet
-            tcpHeader := make([]byte, 20)
-            tcpHeader[0] = byte(port >> 8) // Source port
-            tcpHeader[1] = byte(port)
-            tcpHeader[2] = byte(port >> 8) // Dest port
-            tcpHeader[3] = byte(port)
-            tcpHeader[4] = 0 // Sequence number
-            tcpHeader[5] = 0
-            tcpHeader[6] = 0
-            tcpHeader[7] = 0
-            tcpHeader[8] = 0 // Ack number
-            tcpHeader[9] = 0
-            tcpHeader[10] = 0
-            tcpHeader[11] = 0
-            tcpHeader[12] = 0x50 // Data offset
-            tcpHeader[13] = 0x02 // SYN flag
-            tcpHeader[14] = 0x00 // Window size
-            tcpHeader[15] = 0x00
-            tcpHeader[16] = 0x00 // Checksum
-            tcpHeader[17] = 0x00
-            tcpHeader[18] = 0x00 // Urgent pointer
-            tcpHeader[19] = 0x00
-
-            // Send packet
-            addr := &syscall.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}}
-            copy(addr.Addr[:], net.ParseIP(targetIP).To4())
-
-            start := time.Now()
-            err = syscall.Sendto(fd, tcpHeader, 0, addr)
-            if err != nil {
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": "",
-                    "latency": 0,
-                    "error":   fmt.Sprintf("send error: %v", err),
-                })
-                continue
-            }
-
-            // Receive response with timeout
-            resp := make([]byte, 1024)
-            received := make(chan struct{})
-            var n int
-            var recvErr error
-
-            go func() {
-                n, _, recvErr = syscall.Recvfrom(fd, resp, 0)
-                close(received)
-            }()
-
-            select {
-            case <-received:
-                latency := time.Since(start).Milliseconds()
-                if recvErr != nil {
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": "",
-                        "latency": latency,
-                        "error":   "timeout",
-                    })
-                    continue
-                }
-
-                // Parse response
-                if n >= 20 {
-                    respIP := net.IP(resp[12:16]).String()
-                    hops = append(hops, map[string]any{
-                        "hop":     ttl,
-                        "address": respIP,
-                        "latency": latency,
-                        "error":   "",
-                    })
-
-                    // Check if we reached the target
-                    if respIP == targetIP {
-                        return hops, nil
-                    }
-                }
-            case <-time.After(timeout):
-                hops = append(hops, map[string]any{
-                    "hop":     ttl,
-                    "address": "",
-                    "latency": timeout.Milliseconds(),
-                    "error":   "timeout",
-                })
-            }
-        }
-
-        return hops, nil
     }
 
     // DNS Resolve
@@ -1814,6 +1522,148 @@ func buildNetworkLib() {
         return stats, nil
     }
 
+    // Network monitoring functions
+    slhelp["netstat"] = LibHelp{
+        in:     "",
+        out:    "[]map",
+        action: "Returns all network connections across all available protocols.",
+    }
+    stdlib["netstat"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        connections, err := getNetworkConnections()
+        if err != nil {
+            return nil, err
+        }
+
+        return connections, nil
+    }
+
+    slhelp["netstat_protocols"] = LibHelp{
+        in:     "",
+        out:    "[]string",
+        action: "Returns list of available protocols for network monitoring.",
+    }
+    stdlib["netstat_protocols"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_protocols", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        return getAvailableProtocols(), nil
+    }
+
+    slhelp["netstat_protocol_info"] = LibHelp{
+        in:     "",
+        out:    "map",
+        action: "Returns detailed information about available protocols and their capabilities.",
+    }
+    stdlib["netstat_protocol_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_protocol_info", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        return getProtocolInfo(), nil
+    }
+
+    slhelp["netstat_protocol"] = LibHelp{
+        in:     "protocol",
+        out:    "[]map",
+        action: "Returns network connections filtered by specific protocol.",
+    }
+    stdlib["netstat_protocol"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_protocol", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        protocol := args[0].(string)
+        connections, err := getNetworkConnections()
+        if err != nil {
+            return nil, err
+        }
+
+        var filtered []map[string]any
+        for _, conn := range connections {
+            if conn["protocol"] == strings.ToLower(protocol) {
+                filtered = append(filtered, conn)
+            }
+        }
+
+        return filtered, nil
+    }
+
+    slhelp["netstat_listen"] = LibHelp{
+        in:     "",
+        out:    "[]map",
+        action: "Returns network connections in LISTEN state.",
+    }
+    stdlib["netstat_listen"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_listen", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        return netstatFilter(map[string]any{"state": "LISTEN"})
+    }
+
+    slhelp["netstat_established"] = LibHelp{
+        in:     "",
+        out:    "[]map",
+        action: "Returns network connections in ESTABLISHED state.",
+    }
+    stdlib["netstat_established"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_established", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        return netstatFilter(map[string]any{"state": "ESTABLISHED"})
+    }
+
+    slhelp["netstat_process"] = LibHelp{
+        in:     "pid",
+        out:    "[]map",
+        action: "Returns network connections for specific process ID.",
+    }
+    stdlib["netstat_process"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_process", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+
+        pid := args[0].(int)
+        return netstatFilter(map[string]any{"pid": pid})
+    }
+
+    slhelp["netstat_interface"] = LibHelp{
+        in:     "interface",
+        out:    "[]map",
+        action: "Returns network connections on specific interface.",
+    }
+    stdlib["netstat_interface"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("netstat_interface", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        iface := args[0].(string)
+        return netstatFilter(map[string]any{"interface": iface})
+    }
+
+    slhelp["open_files"] = LibHelp{
+        in:     "",
+        out:    "[]map",
+        action: "Returns file descriptors and network connections (lsof equivalent).",
+    }
+    stdlib["open_files"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("open_files", args, 0, "0"); !ok {
+            return nil, err
+        }
+
+        files, err := getOpenFiles()
+        if err != nil {
+            return nil, err
+        }
+        return files, nil
+    }
+
 }
 
 // Internal helper function for simple TCP traceroute (no raw sockets required)
@@ -1912,4 +1762,33 @@ func simple_tcp_traceroute(ns string, evalfs uint32, ident *[]Variable, args ...
     }
 
     return hops, nil
+}
+
+// Network monitoring helper functions
+
+// Filter network connections
+func netstatFilter(filters map[string]any) ([]map[string]any, error) {
+    connections, err := getNetworkConnections()
+    if err != nil {
+        return nil, err
+    }
+
+    var filtered []map[string]any
+    for _, conn := range connections {
+        if matchesFilters(conn, filters) {
+            filtered = append(filtered, conn)
+        }
+    }
+
+    return filtered, nil
+}
+
+// Check if connection matches filters
+func matchesFilters(conn map[string]any, filters map[string]any) bool {
+    for key, value := range filters {
+        if connValue, exists := conn[key]; !exists || connValue != value {
+            return false
+        }
+    }
+    return true
 }
