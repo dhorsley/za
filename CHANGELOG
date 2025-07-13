@@ -8,6 +8,11 @@ CHANGE LOG
     fixes
     -----
 
+    lots of changes since last win64 build testing:
+        - should build again now.
+        - not much testing done yet with it though.
+
+
     library changes
     ---------------
 
@@ -17,6 +22,10 @@ CHANGE LOG
     * renamed net lib to web
 
     * added network library, new calls:
+
+        These should work across Linux/BSD/Windows, but behaviours will be platform dependent
+        (and possibly privilege level dependent):
+
         tcp_client(host, port, [timeout])
         tcp_server(port, mode)
         tcp_send(handle, data)
@@ -38,6 +47,15 @@ CHANGE LOG
         ssl_cert_install_help(host, [port])
         http_headers(url, [headers])
         http_benchmark(url, requests, [concurrent], [keep_alive], [skip_verify])
+        netstat() - Returns all network connections across all protocols
+        netstat_protocols() - Returns list of available protocols for monitoring
+        netstat_protocol_info() - Returns detailed protocol information and capabilities
+        netstat_protocol(protocol) - Returns connections filtered by specific protocol
+        netstat_listen() - Returns connections in LISTEN state
+        netstat_established() - Returns connections in ESTABLISHED state
+        netstat_process(pid) - Returns connections for specific process ID
+        netstat_interface(interface) - Returns connections on specific interface
+        open_files() - Returns file descriptors and network connections (lsof equivalent)
 
     * added wrapper functions for go-yamlv3:
         yaml_parse, yaml_marshal, yaml_get, yaml_set, yaml_delete
@@ -66,7 +84,7 @@ CHANGE LOG
             - example:
                 try uses a,b,c throws "test-error"
 
-
+    * added ctrl-z (suspend to background) handling for non-windows builds, while accepting keystrokes.
 
 
 1.1.9
@@ -89,6 +107,7 @@ CHANGE LOG
         - if default string present, and input string empty, then final input is
             the default string.
         - while typed text left matches the default string, the default remains visible.
+        - Implemented SIGTSTP signal handling for ctrl-z keyboard input
 
     * (experimental) reintroduced break <type> handling (i.e. BREAK [FOR|FOREACH|WHILE|CASE])
         - this was disabled in an earlier version due to some suspect test results.
