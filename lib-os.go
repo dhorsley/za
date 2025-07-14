@@ -1,5 +1,4 @@
-//go:build (!windows || linux || freebsd) && !test
-// +build !windows linux freebsd
+//go:build !test
 // +build !test
 
 package main
@@ -13,10 +12,7 @@ import (
     "os/user"
     "path/filepath"
     "regexp"
-    "runtime"
     "syscall"
-
-    "golang.org/x/sys/unix"
 )
 
 func fcopy(s, d string) (int64, error) {
@@ -54,7 +50,9 @@ func buildOsLib() {
     categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read",
         "can_write", "cd", "dir", "umask", "chroot", "delete", "rename", "copy",
         "parent", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky",
-        "is_setuid", "is_setgid", "username", "groupname"}
+        "is_setuid", "is_setgid", "username", "groupname", "user_list", "group_list",
+        "user_add", "user_del", "group_add", "group_del", "group_membership",
+        "user_info", "group_info"}
     // "fileabs", "filebase" - replaced by operator
 
     slhelp["dir"] = LibHelp{in: "[filepath[,filter]]",
@@ -290,16 +288,10 @@ func buildOsLib() {
             "0"); !ok {
             return nil, err
         }
-        if runtime.GOOS == "windows" {
-            return -1, errors.New("umask not supported on this OS")
-        }
         if len(args) == 0 {
-            // @note: maybe racey?
-            tmp := syscall.Umask(0)
-            syscall.Umask(tmp)
-            return tmp, nil
+            return umask(0), nil
         }
-        return syscall.Umask(args[0].(int)), nil
+        return umask(args[0].(int)), nil
     }
 
     slhelp["chroot"] = LibHelp{in: "string", out: "", action: "Performs a chroot to a given path."}
@@ -307,14 +299,10 @@ func buildOsLib() {
         if ok, err := expect_args("chroot", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        if runtime.GOOS == "windows" {
-            return nil, errors.New("chroot not supported on this OS")
-        }
         if interactive {
             return nil, errors.New("chroot not permitted in interactive mode.")
         }
-        err = syscall.Chroot(args[0].(string))
-        return nil, err
+        return nil, chroot(args[0].(string))
     }
 
     slhelp["cd"] = LibHelp{in: "string", out: "bool", action: "Changes directory to a given path."}
@@ -337,7 +325,7 @@ func buildOsLib() {
         if ok, err := expect_args("can_read", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        return unix.Access(args[0].(string), unix.R_OK) == nil, nil
+        return canRead(args[0].(string)), nil
     }
 
     slhelp["can_write"] = LibHelp{in: "string", out: "bool", action: "Check if path is writeable."}
@@ -345,7 +333,7 @@ func buildOsLib() {
         if ok, err := expect_args("can_write", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        return unix.Access(args[0].(string), unix.W_OK) == nil, nil
+        return canWrite(args[0].(string)), nil
     }
 
     slhelp["delete"] = LibHelp{in: "string", out: "bool", action: "Delete a file."}
@@ -403,4 +391,230 @@ func buildOsLib() {
         return os.Setenv(key, val), err
     }
 
+    // User and Group Management Functions
+    slhelp["user_list"] = LibHelp{in: "", out: "[]struct", action: "List all system users with details (uid, gid, home, shell)."}
+    stdlib["user_list"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("user_list", args, 0); !ok {
+            return nil, err
+        }
+        return getUserList()
+    }
+
+    slhelp["group_list"] = LibHelp{in: "", out: "[]struct", action: "List all system groups with details (gid, members)."}
+    stdlib["group_list"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_list", args, 0); !ok {
+            return nil, err
+        }
+        return getGroupList()
+    }
+
+    slhelp["user_add"] = LibHelp{in: "username[,options]", out: "bool", action: "Add a system user. Options: uid, gid, home, shell, groups, create_home."}
+    stdlib["user_add"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("user_add", args, 3,
+            "2", "string", "map",
+            "1", "string"); !ok {
+            return nil, err
+        }
+
+        username := args[0].(string)
+
+        // Set up defaults
+        defaults := map[string]interface{}{
+            "uid":         -1, // Auto-allocate
+            "gid":         -1, // Auto-allocate
+            "home":        "",
+            "shell":       "",
+            "groups":      "",
+            "create_home": false,
+        }
+
+        // Merge with provided options
+        var optionsMap map[string]interface{}
+        if len(args) > 1 {
+            // Handle map argument
+            if providedMap, ok := args[1].(map[string]interface{}); ok {
+                // Merge provided options with defaults
+                optionsMap = make(map[string]interface{})
+                for k, v := range defaults {
+                    optionsMap[k] = v
+                }
+                for k, v := range providedMap {
+                    optionsMap[k] = v
+                }
+            } else {
+                return false, fmt.Errorf("user_add: second argument must be a map, got %T", args[1])
+            }
+        } else {
+            optionsMap = defaults
+        }
+
+        err = addUser(username, optionsMap)
+        return err == nil, err
+    }
+
+    slhelp["user_del"] = LibHelp{in: "username[,options]", out: "bool", action: "Remove a system user. Options: remove_home."}
+    stdlib["user_del"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("user_del", args, 3,
+            "2", "string", "map",
+            "1", "string"); !ok {
+            return nil, err
+        }
+
+        username := args[0].(string)
+
+        // Set up defaults
+        defaults := map[string]interface{}{
+            "remove_home": false,
+        }
+
+        // Merge with provided options
+        var optionsMap map[string]interface{}
+        if len(args) > 1 {
+            // Handle map argument
+            if providedMap, ok := args[1].(map[string]interface{}); ok {
+                // Merge provided options with defaults
+                optionsMap = make(map[string]interface{})
+                for k, v := range defaults {
+                    optionsMap[k] = v
+                }
+                for k, v := range providedMap {
+                    optionsMap[k] = v
+                }
+            } else {
+                return false, fmt.Errorf("user_del: second argument must be a map, got %T", args[1])
+            }
+        } else {
+            optionsMap = defaults
+        }
+
+        err = removeUser(username, optionsMap)
+        return err == nil, err
+    }
+
+    slhelp["group_add"] = LibHelp{in: "groupname[,options]", out: "bool", action: "Add a system group. Options: gid (auto-allocated if not provided)."}
+    stdlib["group_add"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_add", args, 3,
+            "2", "string", "map",
+            "1", "string"); !ok {
+            return nil, err
+        }
+
+        groupname := args[0].(string)
+
+        // Set up defaults
+        defaults := map[string]interface{}{
+            "gid": -1, // Auto-allocate
+        }
+
+        // Merge with provided options
+        var optionsMap map[string]interface{}
+        if len(args) > 1 {
+            // Handle map argument
+            if providedMap, ok := args[1].(map[string]interface{}); ok {
+                // Merge provided options with defaults
+                optionsMap = make(map[string]interface{})
+                for k, v := range defaults {
+                    optionsMap[k] = v
+                }
+                for k, v := range providedMap {
+                    optionsMap[k] = v
+                }
+            } else {
+                return false, fmt.Errorf("group_add: second argument must be a map, got %T", args[1])
+            }
+        } else {
+            optionsMap = defaults
+        }
+
+        err = addGroup(groupname, optionsMap)
+        return err == nil, err
+    }
+
+    slhelp["group_del"] = LibHelp{in: "groupname", out: "bool", action: "Remove a system group."}
+    stdlib["group_del"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_del", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        groupname := args[0].(string)
+        err = removeGroup(groupname)
+        return err == nil, err
+    }
+
+    slhelp["group_membership"] = LibHelp{in: "username,groupname,action", out: "bool", action: "Manage group membership. Action: add, remove."}
+    stdlib["group_membership"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_membership", args, 1, "3", "string", "string", "string"); !ok {
+            return nil, err
+        }
+
+        username := args[0].(string)
+        groupname := args[1].(string)
+        action := args[2].(string)
+
+        err = manageGroupMembership(username, groupname, action)
+        return err == nil, err
+    }
+
+    slhelp["user_info"] = LibHelp{in: "username", out: "struct", action: "Get detailed information about a user."}
+    stdlib["user_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("user_info", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        username := args[0].(string)
+        return getUserInfo(username)
+    }
+
+    slhelp["group_info"] = LibHelp{in: "groupname", out: "struct", action: "Get detailed information about a group."}
+    stdlib["group_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_info", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        groupname := args[0].(string)
+        return getGroupInfo(groupname)
+    }
+
+    slhelp["user_mod"] = LibHelp{in: "username,options", out: "bool", action: "Modify an existing user. Options: uid, gid, home, shell, groups, create_home."}
+    stdlib["user_mod"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("user_mod", args, 1, "2", "string", "map"); !ok {
+            return nil, err
+        }
+
+        username := args[0].(string)
+        options := args[1].(map[string]interface{})
+
+        err = modifyUser(username, options)
+        return err == nil, err
+    }
+
+    slhelp["group_mod"] = LibHelp{in: "groupname,options", out: "bool", action: "Modify an existing group. Options: gid."}
+    stdlib["group_mod"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("group_mod", args, 1, "2", "string", "map"); !ok {
+            return nil, err
+        }
+
+        groupname := args[0].(string)
+        options := args[1].(map[string]interface{})
+
+        err = modifyGroup(groupname, options)
+        return err == nil, err
+    }
+}
+
+// User and Group Management Implementation
+
+type UserInfo struct {
+    Username string   `json:"username"`
+    UID      int      `json:"uid"`
+    GID      int      `json:"gid"`
+    Home     string   `json:"home"`
+    Shell    string   `json:"shell"`
+    Groups   []string `json:"groups"`
+}
+
+type GroupInfo struct {
+    Name    string   `json:"name"`
+    GID     int      `json:"gid"`
+    Members []string `json:"members"`
 }
