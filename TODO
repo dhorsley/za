@@ -26,15 +26,31 @@ SYSTEM RESOURCE MONITORING
 USER AND GROUP ADMINISTRATION
 ----------------------------
 
-* TODO: User/group administration features
-    - user_add(username, options) - add system user
-    - user_remove(username) - remove system user
+* COMPLETED: User/group administration features (FULLY IMPLEMENTED)
+    - user_add(username, options) - add system user ✅
+    - user_remove(username) - remove system user ✅
+    - group_add(groupname) - add system group ✅
+    - group_remove(groupname) - remove system group ✅
+    - group_membership(username, groupname, action) - manage group membership ✅
+    - user_list() - list system users ✅
+    - group_list() - list system groups ✅
+    - user_info(username) - get detailed user information ✅
+    - group_info(groupname) - get detailed group information ✅
+    - has_user_management() - check if user management is available ✅
+
+* IMPLEMENTATION DETAILS:
+    - Unix/Linux: CLI tools (useradd/userdel/groupadd/groupdel) + syscall fallbacks
+    - BSD: CLI tools (pw command) + syscall fallbacks with pwd_mkdb
+    - Windows: PowerShell cmdlets + Windows API (NetUserAdd/NetLocalGroupAdd)
+    - Cross-platform build tags for proper platform detection
+    - Comprehensive error handling and privilege checking
+    - File-based operations for syscall fallbacks (passwd/group/shadow files)
+
+* TODO: Additional user/group features (future)
     - user_modify(username, options) - modify user properties
-    - group_add(groupname) - add system group
-    - group_remove(groupname) - remove system group
-    - group_membership(username, groupname, action) - manage group membership
-    - user_list() - list system users
-    - group_list() - list system groups
+    - password management functions
+    - user/group quota management
+    - user/group expiration settings
 
 KERNEL PARAMETER TUNING
 ----------------------

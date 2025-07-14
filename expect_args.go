@@ -60,7 +60,7 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     n += 1
                     continue
                 }
-            case map[string]any,map[string]string,map[string]int,map[string]bool,map[string]float64,map[string]uint:
+            case map[string]any, map[string]string, map[string]int, map[string]bool, map[string]float64, map[string]uint:
                 if types[p] == "map" {
                     n += 1
                     continue
@@ -116,6 +116,13 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     continue
                 }
             }
+            // Check for struct types (including anonymous structs)
+            if types[p] == "struct" {
+                if reflect.TypeOf(args[n]).Kind() == reflect.Struct {
+                    n += 1
+                    continue
+                }
+            }
             if reflect.TypeOf(args[n]).String() != types[p] && types[p] != "any" {
                 type_errs += sf("\nargument %d - %s expected (got %s)", n+1, types[p], reflect.TypeOf(args[n]))
                 tryNext = true
@@ -150,3 +157,5 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
     return true, nil
 
 }
+
+

@@ -1,233 +1,389 @@
-//go:build windows
-// +build windows
+//go:build windows && !linux && !freebsd && !openbsd && !netbsd && !dragonfly && !test
+// +build windows,!linux,!freebsd,!openbsd,!netbsd,!dragonfly,!test
 
 package main
 
 import (
-    "errors"
+    "encoding/json"
     "fmt"
-    "io"
     "os"
-    "path/filepath"
-    "regexp"
-    "syscall"
-    "unsafe"
+    "os/exec"
+    "strconv"
 )
 
-func fileStatSys(fp string) *syscall.Win32FileAttributeData {
-    var data syscall.Win32FileAttributeData
-    err := syscall.GetFileAttributesEx(syscall.StringToUTF16Ptr(fp), syscall.GetFileExInfoStandard, (*byte)(unsafe.Pointer(&data)))
-    if err != nil {
-        return nil
+func addUser(username string, options map[string]interface{}) error {
+    if hasUserManagementCapability() {
+        return cliAddUser(username, options)
     }
-    return &data
+    return fmt.Errorf("Windows user management requires PowerShell and administrative privileges")
 }
 
-func fcopy(s, d string) (int64, error) {
-
-    sfs, err := os.Stat(s)
-    if err != nil {
-        return 0, err
+func removeUser(username string, options map[string]interface{}) error {
+    if hasUserManagementCapability() {
+        return cliRemoveUser(username, options)
     }
-    if !sfs.Mode().IsRegular() {
-        return 0, fmt.Errorf("%s is not a regular file", s)
-    }
-
-    src, err := os.Open(s)
-    if err != nil {
-        return 0, err
-    }
-    defer src.Close()
-
-    dst, err := os.Create(d)
-    if err != nil {
-        return 0, err
-    }
-    defer dst.Close()
-
-    n, err := io.Copy(dst, src)
-
-    return n, err
+    return fmt.Errorf("Windows user management requires PowerShell and administrative privileges")
 }
 
-func buildOsLib() {
-
-    // os level
-
-    /* linux has these extras:
-
-       categories["os"] = []string{
-           "can_read", "can_write", "umask", "chroot",
-           "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky", "is_setuid", "is_setgid", }
-
-           most of those don't really have an equivalent in the base FS type in windows
-
-    */
-
-    features["os"] = Feature{version: 1, category: "os"}
-    categories["os"] = []string{"env", "get_env", "set_env",
-        "cwd", "cd", "dir",
-        "parent",
-        "delete", "rename", "copy",
+func addGroup(groupname string, options map[string]interface{}) error {
+    if hasUserManagementCapability() {
+        return cliAddGroup(groupname, options)
     }
-    // replaced by operators: "filebase", "fileabs",
+    return fmt.Errorf("Windows group management requires PowerShell and administrative privileges")
+}
 
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]", out: "[]structs", action: "Returns an array containing file information on path [#i1]filepath[#i0]. [#i1]filter[#i0] can be specified, as a regex, to narrow results. Each array element contains name,mode,size,mtime and is_dir fields. These specify filename, file mode, file size, modification time and directory status respectively."}
-    stdlib["dir"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("dir", args, 3,
-            "2", "string", "string",
-            "1", "string",
-            "0"); !ok {
-            return nil, err
-        }
+func removeGroup(groupname string) error {
+    if hasUserManagementCapability() {
+        return cliRemoveGroup(groupname)
+    }
+    return fmt.Errorf("Windows group management requires PowerShell and administrative privileges")
+}
 
-        dir := "."
-        filter := "^.*$"
-        if len(args) > 0 {
-            dir = args[0].(string)
-        }
-        if len(args) > 1 {
-            filter = args[1].(string)
-        }
+func manageGroupMembership(username, groupname, action string) error {
+    if hasUserManagementCapability() {
+        return cliManageGroupMembership(username, groupname, action)
+    }
+    return fmt.Errorf("Windows group membership management requires PowerShell and administrative privileges")
+}
 
-        if !regexWillCompile(filter) {
-            return nil, fmt.Errorf("invalid regex in dir() : %s", filter)
-        }
+func modifyUser(username string, options map[string]interface{}) error {
+    if hasUserManagementCapability() {
+        return cliModifyUser(username, options)
+    }
+    return fmt.Errorf("Windows user modification requires PowerShell and administrative privileges")
+}
 
-        // get file list
-        f, err := os.Open(dir)
-        if err != nil {
-            return nil, errors.New("Path not found in dir()")
-        }
-        files, err := f.Readdir(-1)
-        f.Close()
-        if err != nil {
-            return nil, errors.New("Could not complete directory listing in dir()")
-        }
+func modifyGroup(groupname string, options map[string]interface{}) error {
+    if hasUserManagementCapability() {
+        return cliModifyGroup(groupname, options)
+    }
+    return fmt.Errorf("Windows group modification requires PowerShell and administrative privileges")
+}
 
-        var dl []dirent
-        for _, file := range files {
-            if match, _ := regexp.MatchString(filter, file.Name()); !match {
-                continue
+func getUserList() ([]UserInfo, error) {
+    cmd := "Get-LocalUser | ConvertTo-Json"
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return nil, fmt.Errorf("PowerShell Get-LocalUser failed: %v, output: %s", err, string(output))
+    }
+    var users []UserInfo
+    var userArray []map[string]interface{}
+    if err := json.Unmarshal(output, &userArray); err == nil {
+        for _, userMap := range userArray {
+            user := UserInfo{
+                Username: getStringValue(userMap, "Name"),
+                UID:      getIntValue(userMap, "SID"),
+                GID:      getIntValue(userMap, "SID"),
+                Home:     getStringValue(userMap, "HomeDirectory"),
+                Shell:    getStringValue(userMap, "ScriptPath"),
+                Groups:   []string{},
             }
-            var fs dirent
-            fs.name = file.Name()
-            fs.size = file.Size()
-            fs.mode = int(file.Mode())
-            fs.mtime = file.ModTime().Unix()
-            fs.is_dir = file.IsDir()
-            dl = append(dl, fs)
+            users = append(users, user)
         }
+    } else {
+        var userMap map[string]interface{}
+        if err := json.Unmarshal(output, &userMap); err == nil {
+            user := UserInfo{
+                Username: getStringValue(userMap, "Name"),
+                UID:      getIntValue(userMap, "SID"),
+                GID:      getIntValue(userMap, "SID"),
+                Home:     getStringValue(userMap, "HomeDirectory"),
+                Shell:    getStringValue(userMap, "ScriptPath"),
+                Groups:   []string{},
+            }
+            users = append(users, user)
+        }
+    }
+    return users, nil
+}
 
-        return dl, nil
+func getGroupList() ([]GroupInfo, error) {
+    cmd := "Get-LocalGroup | ConvertTo-Json"
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return nil, fmt.Errorf("PowerShell Get-LocalGroup failed: %v, output: %s", err, string(output))
+    }
+    var groups []GroupInfo
+    var groupArray []map[string]interface{}
+    if err := json.Unmarshal(output, &groupArray); err == nil {
+        for _, groupMap := range groupArray {
+            group := GroupInfo{
+                Name:    getStringValue(groupMap, "Name"),
+                GID:     getIntValue(groupMap, "SID"),
+                Members: []string{},
+            }
+            groups = append(groups, group)
+        }
+    } else {
+        var groupMap map[string]interface{}
+        if err := json.Unmarshal(output, &groupMap); err == nil {
+            group := GroupInfo{
+                Name:    getStringValue(groupMap, "Name"),
+                GID:     getIntValue(groupMap, "SID"),
+                Members: []string{},
+            }
+            groups = append(groups, group)
+        }
+    }
+    return groups, nil
+}
+
+func getUserInfo(username string) (UserInfo, error) {
+    users, err := getUserList()
+    if err != nil {
+        return UserInfo{}, err
+    }
+    for _, u := range users {
+        if u.Username == username {
+            return u, nil
+        }
+    }
+    return UserInfo{}, fmt.Errorf("user not found: %s", username)
+}
+
+func getGroupInfo(groupname string) (GroupInfo, error) {
+    groups, err := getGroupList()
+    if err != nil {
+        return GroupInfo{}, err
+    }
+    for _, g := range groups {
+        if g.Name == groupname {
+            return g, nil
+        }
+    }
+    return GroupInfo{}, fmt.Errorf("group not found: %s", groupname)
+}
+
+func hasUserManagementCapability() bool {
+    // Check if PowerShell is available and we have admin privileges
+    if _, err := exec.LookPath("powershell"); err != nil {
+        return false
     }
 
-    slhelp["cwd"] = LibHelp{in: "", out: "string", action: "Returns the current working directory."}
-    stdlib["cwd"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("cwd", args, 0); !ok {
-            return nil, err
-        }
-        return syscall.Getwd()
+    // Check if we can run PowerShell commands
+    cmd := exec.Command("powershell", "-Command", "Get-LocalUser")
+    if err := cmd.Run(); err != nil {
+        return false
     }
 
-    slhelp["cd"] = LibHelp{in: "string", out: "", action: "Changes directory to a given path."}
-    stdlib["cd"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("cd", args, 1, "1", "string"); !ok {
-            return nil, err
-        }
-        err = syscall.Chdir(args[0].(string))
-        return nil, err
+    return true
+}
+
+// --- CLI helpers (not exported) ---
+
+func cliAddUser(username string, options map[string]interface{}) error {
+    cmd := "New-LocalUser -Name '" + username + "' -NoPassword"
+
+    // Map Unix-style options to Windows PowerShell equivalents
+    if uid, ok := options["uid"].(int); ok && uid != -1 {
+        // Windows doesn't have numeric UIDs, but we can set a description
+        cmd += " -Description 'UID: " + strconv.Itoa(uid) + "'"
     }
 
-    slhelp["delete"] = LibHelp{in: "string", out: "", action: "Delete a file."}
-    stdlib["delete"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("delete", args, 1, "2", "string", "string"); !ok {
-            return nil, err
-        }
-        err = os.Remove(args[0].(string))
-        suc := true
-        if err != nil {
-            suc = false
-        }
-        return suc, err
+    if gid, ok := options["gid"].(int); ok && gid != -1 {
+        // Windows doesn't have numeric GIDs, but we can set a description
+        cmd += " -Description 'GID: " + strconv.Itoa(gid) + "'"
     }
 
-    slhelp["rename"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Rename a file."}
-    stdlib["rename"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("rename", args, 1, "2", "string", "string"); !ok {
-            return nil, err
-        }
-        err = os.Rename(args[0].(string), args[1].(string))
-        suc := true
-        if err != nil {
-            suc = false
-        }
-        return suc, err
+    if home, ok := options["home"].(string); ok && home != "" {
+        // Windows doesn't have direct home directory setting in New-LocalUser
+        // This would need to be set after user creation
+        cmd += " -Description 'Home: " + home + "'"
     }
 
-    slhelp["copy"] = LibHelp{in: "src_string,dest_string", out: "bool", action: "Copy a single file."}
-    stdlib["copy"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("copy", args, 1, "2", "string", "string"); !ok {
-            return nil, err
-        }
-        _, err = fcopy(args[0].(string), args[1].(string))
-        suc := true
-        if err != nil {
-            suc = false
-        }
-        return suc, err
+    if shell, ok := options["shell"].(string); ok && shell != "" {
+        // Windows doesn't have login shells, but we can set a description
+        cmd += " -Description 'Shell: " + shell + "'"
     }
 
-    slhelp["parent"] = LibHelp{in: "string", out: "string", action: "Returns the parent directory."}
-    stdlib["parent"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("parent", args, 1, "1", "string"); !ok {
-            return nil, err
-        }
-        return filepath.Dir(args[0].(string)), nil
+    if groups, ok := options["groups"].(string); ok && groups != "" {
+        // Groups are added after user creation, not during creation
+        cmd += " -Description 'Groups: " + groups + "'"
     }
 
-    /*
-       slhelp["filebase"] = LibHelp{in: "string", out: "string", action: "Returns the base name of filename string."}
-       stdlib["filebase"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-           if ok,err:=expect_args("filebase",args,1,"1","string"); !ok { return nil,err }
-           fp:=filepath.Base(args[0].(string))
-           return fp,nil
-       }
-
-       slhelp["fileabs"] = LibHelp{in: "string", out: "string", action: "Returns the absolute pathname of input string."}
-       stdlib["fileabs"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-           if ok,err:=expect_args("fileabs",args,1,"1","string"); !ok { return nil,err }
-           fp,err:=filepath.Abs(args[0].(string))
-           return fp,nil
-       }
-    */
-
-    slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
-    stdlib["env"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("env", args, 0); !ok {
-            return nil, err
-        }
-        return os.Environ(), err
+    if createHome, ok := options["create_home"].(bool); ok && createHome {
+        // Windows doesn't have direct home creation, but we can set a description
+        cmd += " -Description 'CreateHome: true'"
     }
 
-    // get environmental variable. arg should *usually* be in upper-case.
-    slhelp["get_env"] = LibHelp{in: "key_name", out: "string", action: "Return the value of the environmental variable [#i1]key_name[#i0]."}
-    stdlib["get_env"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("get_env", args, 1, "1", "string"); !ok {
-            return nil, err
-        }
-        return os.Getenv(args[0].(string)), err
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell New-LocalUser failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliRemoveUser(username string, options map[string]interface{}) error {
+    cmd := "Remove-LocalUser -Name '" + username + "'"
+
+    // Map Unix-style options to Windows PowerShell equivalents
+    if removeHome, ok := options["remove_home"].(bool); ok && removeHome {
+        // Windows doesn't have direct home removal, but we can set a description
+        cmd += " -Force"
     }
 
-    // set environmental variable.
-    slhelp["set_env"] = LibHelp{in: "key_name,value_string", out: "", action: "Set the value of the environmental variable [#i1]key_name[#i0]."}
-    stdlib["set_env"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("set_env", args, 1, "2", "string", "string"); !ok {
-            return nil, err
-        }
-        key := args[0].(string)
-        val := args[1].(string)
-        return os.Setenv(key, val), err
+    if removeFiles, ok := options["remove_files"].(bool); ok && removeFiles {
+        // Windows doesn't have direct file removal, but we can set a description
+        cmd += " -Force"
     }
 
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell Remove-LocalUser failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliAddGroup(groupname string, options map[string]interface{}) error {
+    cmd := "New-LocalGroup -Name '" + groupname + "'"
+
+    // Map Unix-style options to Windows PowerShell equivalents
+    if gid, ok := options["gid"].(int); ok && gid != -1 {
+        // Windows doesn't have numeric GIDs, but we can set a description
+        cmd += " -Description 'GID: " + strconv.Itoa(gid) + "'"
+    }
+
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell New-LocalGroup failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliRemoveGroup(groupname string) error {
+    cmd := "Remove-LocalGroup -Name '" + groupname + "'"
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell Remove-LocalGroup failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliManageGroupMembership(username, groupname, action string) error {
+    var cmd string
+    switch action {
+    case "add":
+        cmd = "Add-LocalGroupMember -Group '" + groupname + "' -Member '" + username + "'"
+    case "remove":
+        cmd = "Remove-LocalGroupMember -Group '" + groupname + "' -Member '" + username + "'"
+    default:
+        return fmt.Errorf("invalid action: %s (use 'add' or 'remove')", action)
+    }
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell group membership command failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliModifyUser(username string, options map[string]interface{}) error {
+    cmd := "Set-LocalUser -Name '" + username + "'"
+
+    // Map Unix-style options to Windows PowerShell equivalents
+    if uid, ok := options["uid"].(int); ok && uid != -1 {
+        // Windows doesn't have numeric UIDs, but we can set a description
+        cmd += " -Description 'UID: " + strconv.Itoa(uid) + "'"
+    }
+
+    if gid, ok := options["gid"].(int); ok && gid != -1 {
+        // Windows doesn't have numeric GIDs, but we can set a description
+        cmd += " -Description 'GID: " + strconv.Itoa(gid) + "'"
+    }
+
+    if home, ok := options["home"].(string); ok && home != "" {
+        // Windows doesn't have direct home directory setting, but we can set a description
+        cmd += " -Description 'Home: " + home + "'"
+    }
+
+    if shell, ok := options["shell"].(string); ok && shell != "" {
+        // Windows doesn't have login shells, but we can set a description
+        cmd += " -Description 'Shell: " + shell + "'"
+    }
+
+    if groups, ok := options["groups"].(string); ok && groups != "" {
+        // Groups are managed separately, but we can set a description
+        cmd += " -Description 'Groups: " + groups + "'"
+    }
+
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell Set-LocalUser failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+func cliModifyGroup(groupname string, options map[string]interface{}) error {
+    cmd := "Set-LocalGroup -Name '" + groupname + "'"
+
+    // Map Unix-style options to Windows PowerShell equivalents
+    if gid, ok := options["gid"].(int); ok && gid != -1 {
+        // Windows doesn't have numeric GIDs, but we can set a description
+        cmd += " -Description 'GID: " + strconv.Itoa(gid) + "'"
+    }
+
+    psCmd := exec.Command("powershell", "-Command", cmd)
+    output, err := psCmd.CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("PowerShell Set-LocalGroup failed: %v, output: %s", err, string(output))
+    }
+    return nil
+}
+
+// --- JSON helpers ---
+func getStringValue(m map[string]interface{}, key string) string {
+    if val, ok := m[key]; ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getIntValue(m map[string]interface{}, key string) int {
+    if val, ok := m[key]; ok {
+        if str, ok := val.(string); ok {
+            if i, err := strconv.Atoi(str); err == nil {
+                return i
+            }
+        }
+    }
+    return 0
+}
+
+func canWrite(path string) bool {
+    file, err := os.OpenFile(path, os.O_WRONLY, 0)
+    if err != nil {
+        return false
+    }
+    file.Close()
+    return true
+}
+
+// Windows-specific implementations for functions that use Unix syscalls
+
+func umask(mask int) int {
+    // Windows doesn't have umask, return 0
+    return 0
+}
+
+func chroot(path string) error {
+    // Windows doesn't have chroot, return error
+    return fmt.Errorf("chroot not supported on Windows")
+}
+
+func canRead(path string) bool {
+    file, err := os.OpenFile(path, os.O_RDONLY, 0)
+    if err != nil {
+        return false
+    }
+    file.Close()
+    return true
 }
