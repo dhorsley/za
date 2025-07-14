@@ -50,8 +50,18 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
             switch args[n].(type) {
             case nil:
                 return false, errors.New(sf("nil evaluation in stdlib arg #%d parsing", n))
-            case int, uint, float64, int64, uint64, uint8:
-                if types[p] == "number" {
+            case float64:
+                if types[p] == "float" || types[p] == "number" {
+                    n += 1
+                    continue
+                }
+            case uint, uint64, uint8:
+                if types[p] == "uint" || types[p] == "number" {
+                    n += 1
+                    continue
+                }
+            case int, int64:
+                if types[p] == "int" || types[p] == "number" {
                     n += 1
                     continue
                 }
@@ -157,5 +167,3 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
     return true, nil
 
 }
-
-

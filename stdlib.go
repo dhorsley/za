@@ -29,6 +29,7 @@ func buildStandardLib() {
     buildConversionLib()
     buildWebLib()
     buildNetworkLib()
+    buildSystemLib()
     buildDbLib()
     buildHtmlLib()
     buildImageLib()

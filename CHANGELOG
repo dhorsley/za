@@ -5,18 +5,50 @@ CHANGE LOG
 1.2.0
 =====
 
+    BSD build compiles:
+        - no testing done with it yet though.
+
     fixes
     -----
 
     lots of changes since last win64 build testing:
-        - should build again now.
-        - not much testing done yet with it though.
+        - Windows build compiles.
+        - limited testing done so far with it.
 
 
     library changes
     ---------------
 
-    * User/Group Management Functions
+    * resource usage functions:
+
+        These should work across Linux/BSD/Windows, but behaviours will be platform dependent
+        (and possibly privilege level dependent):
+
+        sys_resources()     : Returns overall system resource usage
+        sys_load()          : Returns system load averages (1, 5, 15 minute) with named keys
+        mem_info()          : Returns detailed memory information including pressure indicators, OOM scores, and slab allocation
+
+        ps_info()           : Returns detailed process information with options
+            ps_info(pid [,map(.include_cmdline bool,.include_environ bool)])
+        ps_tree()           : Returns process hierarchy (fixed expect_args usage)
+            ps_tree([pid])
+        ps_map()            : Returns process relationships (fixed expect_args usage)
+            ps_map([pid])
+
+        cpu_info()          : Returns CPU information with per-core data and named keys
+            cpu_info([core_number|map(.core core_number,.details bool)])
+
+        nio()               : Returns network I/O throughput statistics
+            nio([map(.interface "device_name", .include_errors bool)])
+        dio()               : Returns disk I/O throughput statistics
+            dio([map(.device "device_name")])
+
+        resource_usage()    : Returns resource usage for specific process
+            resource_usage(pid)
+        iodiff()            : Calculates throughput rates between two snapshots
+            iodiff(snapshot1, snapshot2, duration)
+
+    * user/group management functions
 
         These should work across Linux/BSD/Windows, but behaviours will be platform dependent
         (and possibly privilege level dependent):
@@ -103,6 +135,10 @@ CHANGE LOG
 
     * added some smtp-related functions:
         smtp_send, smtp_send_with_auth, smtp_send_with_attachments, email_parse_headers, email_get_body, email_get_attachments
+
+    * Added map utility functions:
+        keys(): Returns a list of map keys
+        values(): Returns a list of map values
 
 
     other
