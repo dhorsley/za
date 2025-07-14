@@ -16,6 +16,38 @@ CHANGE LOG
     library changes
     ---------------
 
+    * User/Group Management Functions
+
+        These should work across Linux/BSD/Windows, but behaviours will be platform dependent
+        (and possibly privilege level dependent):
+
+        user_add(username, options_map)
+        group_add(groupname, options_map)
+        user_mod(username, options_map)
+        group_mod(groupname, options_map)
+        user_del(username, options_map)
+        group_del(groupname, options_map)
+
+        group_membership(username, groupname, action)  # actions are add or remove
+        user_info(username)
+        group_info(groupname)
+        user_list()
+        group_list()
+
+        keys and their default values:
+
+          - in user/group add/mod functions:
+            uid: -1 (auto-allocate/current value)
+            gid: -1 (auto-allocate/current value)
+            home: "" (system default/current value)
+            shell: "" (system default/current value)
+            groups: "" (no additional groups)
+            create_home: false
+
+          - in user/group delete functions:
+            remove_home: false
+            remove_files: false
+
     * added pp() function for pretty printing some common types
         pp(map|slice, [indent], [max_depth])
 
@@ -75,6 +107,11 @@ CHANGE LOG
 
     other
     -----
+
+    * Map Literal Syntax
+        - Added map(.key value, .key2 value2, ...) syntax for maps literals
+        - Returns map[string]any with the specified key-value pairs
+        - Example: opts = map(.uid 2000, .gid 3000, .create_home true)
 
     * added USES clause for try statement.
         - this is used to dictate 'captured' variables inside a try/catch block.

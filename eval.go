@@ -286,6 +286,17 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
         left = p.preIncDec(ct)
     case LeftSBrace:
         left = p.array_concat(ct)
+    case T_Map:
+        // Save current position
+        originalPos := p.pos
+        result, handled := p.map_literal(ct)
+        if handled {
+            left = result
+        } else {
+            // Restore position and let normal parsing continue
+            p.pos = originalPos
+            // Continue with normal parsing (don't set left, let it be handled later)
+        }
     case O_Ref:
         left = p.reference(false)
     case SYM_BOR:
@@ -1355,7 +1366,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
             dp, err := p.dparse(0, false)
             // pf("in arg parse with result : %#v and err : %#v\n",dp,err)
             if err != nil {
-                panic(fmt.Errorf("error here -> %#v\n", err))
+                panic(fmt.Errorf("error here -> %+v\n", err))
                 return nil, err
             }
             iargs = append(iargs, dp)
@@ -1764,6 +1775,69 @@ func (p *leparser) array_concat(tok *Token) any {
     // pf("[[array loop, trailing peek is '%s']]\n",tokNames[p.peek().tokType])
     return ary
 
+}
+
+func (p *leparser) map_literal(tok *Token) (any, bool) {
+    // pf("(map_literal) called with token : %#v\n",tok)
+
+    // Check if next token is LParen (function call syntax)
+    if p.peek().tokType != LParen {
+        // Not a map literal, signal not handled
+        return nil, false
+    }
+
+    // Consume the left parenthesis
+    p.next()
+
+    // Parse arguments using the same logic as buildStructOrFunction
+    iargs := []any{}
+    arg_names := []string{}
+    argpos := 1
+
+    if p.peek().tokType != RParen {
+        for {
+            switch p.peek().tokType {
+            case SYM_DOT:
+                p.next()                                               // move-to-dot
+                p.next()                                               // skip-to-name-from-dot
+                arg_names = append(arg_names, p.tokens[p.pos].tokText) // add name field
+            case RParen, O_Comma:
+                // missing/blank arg in list
+                panic(fmt.Errorf("missing argument #%d", argpos))
+            }
+            dp, err := p.dparse(0, false)
+            if err != nil {
+                panic(fmt.Errorf("error parsing map argument -> %#v\n", err))
+            }
+            iargs = append(iargs, dp)
+            if p.peek().tokType != O_Comma {
+                break
+            }
+            p.next()
+            argpos += 1
+        }
+    }
+
+    if p.peek().tokType == RParen {
+        p.next() // consume rparen
+    } else {
+        panic(fmt.Errorf("expected closing parenthesis for map literal"))
+    }
+
+    // Build the map from the parsed arguments
+    result := make(map[string]any)
+
+    if len(arg_names) == len(iargs) {
+        // All arguments are named (using .name syntax)
+        for i := 0; i < len(arg_names); i++ {
+            result[arg_names[i]] = iargs[i]
+        }
+    } else {
+        // Error: mismatched argument names and values
+        panic(fmt.Errorf("length mismatch of argument names [%d] to values [%d]", len(arg_names), len(iargs)))
+    }
+
+    return result, true
 }
 
 func (p *leparser) preIncDec(token *Token) any {

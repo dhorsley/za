@@ -1,5 +1,8 @@
-//go:build linux && !freebsd && !openbsd && !netbsd && !dragonfly && !windows && !test
-// +build linux,!freebsd,!openbsd,!netbsd,!dragonfly,!windows,!test
+//go:build (freebsd || openbsd || netbsd || dragonfly) && !linux && !windows && !test
+// +build freebsd openbsd netbsd dragonfly
+// +build !linux
+// +build !windows
+// +build !test
 
 package main
 
@@ -20,49 +23,49 @@ func addUser(username string, options map[string]interface{}) error {
     if hasUserManagementCapability() {
         return cliAddUser(username, options)
     }
-    return fmt.Errorf("user management requires CLI tools (useradd) and root privileges")
+    return fmt.Errorf("BSD user management requires CLI tools (pw) and root privileges")
 }
 
 func removeUser(username string, options map[string]interface{}) error {
     if hasUserManagementCapability() {
         return cliRemoveUser(username, options)
     }
-    return fmt.Errorf("user management requires CLI tools (userdel) and root privileges")
+    return fmt.Errorf("BSD user management requires CLI tools (pw) and root privileges")
 }
 
 func addGroup(groupname string, options map[string]interface{}) error {
     if hasUserManagementCapability() {
         return cliAddGroup(groupname, options)
     }
-    return fmt.Errorf("group management requires CLI tools (groupadd) and root privileges")
+    return fmt.Errorf("BSD group management requires CLI tools (pw) and root privileges")
 }
 
 func removeGroup(groupname string) error {
     if hasUserManagementCapability() {
         return cliRemoveGroup(groupname)
     }
-    return fmt.Errorf("group management requires CLI tools (groupdel) and root privileges")
+    return fmt.Errorf("BSD group management requires CLI tools (pw) and root privileges")
 }
 
 func manageGroupMembership(username, groupname, action string) error {
     if hasUserManagementCapability() {
         return cliManageGroupMembership(username, groupname, action)
     }
-    return fmt.Errorf("group membership management requires CLI tools (usermod) and root privileges")
+    return fmt.Errorf("BSD group membership management requires CLI tools (pw) and root privileges")
 }
 
 func modifyUser(username string, options map[string]interface{}) error {
     if hasUserManagementCapability() {
         return cliModifyUser(username, options)
     }
-    return fmt.Errorf("user modification requires CLI tools (usermod) and root privileges")
+    return fmt.Errorf("BSD user modification requires CLI tools (pw) and root privileges")
 }
 
 func modifyGroup(groupname string, options map[string]interface{}) error {
     if hasUserManagementCapability() {
         return cliModifyGroup(groupname, options)
     }
-    return fmt.Errorf("group modification requires CLI tools (groupmod) and root privileges")
+    return fmt.Errorf("BSD group modification requires CLI tools (pw) and root privileges")
 }
 
 func getUserList() ([]UserInfo, error) {
@@ -156,7 +159,7 @@ func getGroupInfo(groupname string) (GroupInfo, error) {
 }
 
 func hasUserManagementCapability() bool {
-    tools := []string{"useradd", "userdel", "groupadd", "groupdel"}
+    tools := []string{"pw", "useradd", "userdel", "groupadd", "groupdel"}
     for _, tool := range tools {
         if _, err := exec.LookPath(tool); err != nil {
             return false
@@ -173,7 +176,7 @@ func hasUserManagementCapability() bool {
 // --- CLI helpers (not exported) ---
 
 func cliAddUser(username string, options map[string]interface{}) error {
-    cmd := exec.Command("useradd")
+    cmd := exec.Command("pw", "useradd", username)
 
     // Only pass UID if explicitly set (not -1)
     if uid, ok := options["uid"].(int); ok && uid != -1 {
@@ -199,51 +202,45 @@ func cliAddUser(username string, options map[string]interface{}) error {
     if createHome, ok := options["create_home"].(bool); ok && createHome {
         cmd.Args = append(cmd.Args, "-m")
     }
-    cmd.Args = append(cmd.Args, username)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("useradd failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw useradd failed: %v, output: %s", err, string(output))
     }
     return nil
 }
 
 func cliRemoveUser(username string, options map[string]interface{}) error {
-    cmd := exec.Command("userdel")
+    cmd := exec.Command("pw", "userdel", username)
     if removeHome, ok := options["remove_home"].(bool); ok && removeHome {
         cmd.Args = append(cmd.Args, "-r")
     }
-    if removeFiles, ok := options["remove_files"].(bool); ok && removeFiles {
-        cmd.Args = append(cmd.Args, "-f")
-    }
-    cmd.Args = append(cmd.Args, username)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("userdel failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw userdel failed: %v, output: %s", err, string(output))
     }
     return nil
 }
 
 func cliAddGroup(groupname string, options map[string]interface{}) error {
-    cmd := exec.Command("groupadd")
+    cmd := exec.Command("pw", "groupadd", groupname)
 
     // Only pass GID if explicitly set (not -1)
     if gid, ok := options["gid"].(int); ok && gid != -1 {
         cmd.Args = append(cmd.Args, "-g", strconv.Itoa(gid))
     }
 
-    cmd.Args = append(cmd.Args, groupname)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("groupadd failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw groupadd failed: %v, output: %s", err, string(output))
     }
     return nil
 }
 
 func cliRemoveGroup(groupname string) error {
-    cmd := exec.Command("groupdel", groupname)
+    cmd := exec.Command("pw", "groupdel", groupname)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("groupdel failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw groupdel failed: %v, output: %s", err, string(output))
     }
     return nil
 }
@@ -252,35 +249,21 @@ func cliManageGroupMembership(username, groupname, action string) error {
     var cmd *exec.Cmd
     switch action {
     case "add":
-        cmd = exec.Command("usermod", "-a", "-G", groupname, username)
+        cmd = exec.Command("pw", "groupmod", groupname, "-m", username)
     case "remove":
-        currentGroups, err := getUserGroups(username)
-        if err != nil {
-            return err
-        }
-        var newGroups []string
-        for _, group := range currentGroups {
-            if group != groupname {
-                newGroups = append(newGroups, group)
-            }
-        }
-        if len(newGroups) > 0 {
-            cmd = exec.Command("usermod", "-G", strings.Join(newGroups, ","), username)
-        } else {
-            cmd = exec.Command("usermod", "-G", "", username)
-        }
+        cmd = exec.Command("pw", "groupmod", groupname, "-d", username)
     default:
         return fmt.Errorf("invalid action: %s (use 'add' or 'remove')", action)
     }
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("usermod failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw groupmod failed: %v, output: %s", err, string(output))
     }
     return nil
 }
 
 func cliModifyUser(username string, options map[string]interface{}) error {
-    cmd := exec.Command("usermod")
+    cmd := exec.Command("pw", "usermod", username)
 
     // Only pass UID if explicitly set (not -1)
     if uid, ok := options["uid"].(int); ok && uid != -1 {
@@ -304,26 +287,24 @@ func cliModifyUser(username string, options map[string]interface{}) error {
         cmd.Args = append(cmd.Args, "-G", groups)
     }
 
-    cmd.Args = append(cmd.Args, username)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("usermod failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw usermod failed: %v, output: %s", err, string(output))
     }
     return nil
 }
 
 func cliModifyGroup(groupname string, options map[string]interface{}) error {
-    cmd := exec.Command("groupmod")
+    cmd := exec.Command("pw", "groupmod", groupname)
 
     // Only pass GID if explicitly set (not -1)
     if gid, ok := options["gid"].(int); ok && gid != -1 {
         cmd.Args = append(cmd.Args, "-g", strconv.Itoa(gid))
     }
 
-    cmd.Args = append(cmd.Args, groupname)
     output, err := cmd.CombinedOutput()
     if err != nil {
-        return fmt.Errorf("groupmod failed: %v, output: %s", err, string(output))
+        return fmt.Errorf("pw groupmod failed: %v, output: %s", err, string(output))
     }
     return nil
 }
@@ -365,7 +346,7 @@ func canWrite(path string) bool {
     return true
 }
 
-// Unix-specific implementations for functions that use Unix syscalls
+// BSD-specific implementations for functions that use Unix syscalls
 
 func umask(mask int) int {
     return syscall.Umask(mask)

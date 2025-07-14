@@ -380,3 +380,19 @@ func buildFileLib() {
     }
 
 }
+
+func fileStatSys(filename string) interface{} {
+    stat, err := os.Stat(filename)
+    if err != nil {
+        return nil
+    }
+
+    // Return a map with stat information
+    return map[string]interface{}{
+        "name":    stat.Name(),
+        "size":    stat.Size(),
+        "mode":    int(stat.Mode()),
+        "modtime": stat.ModTime().Unix(),
+        "is_dir":  stat.IsDir(),
+    }
+}
