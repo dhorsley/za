@@ -360,6 +360,24 @@ func buildStringLib() {
         return keys, nil
     }
 
+    slhelp["values"] = LibHelp{in: "map", out: "[]any", action: "Returns a list of map values"}
+    stdlib["values"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("values", args, 1, "1", "map"); !ok {
+            return nil, err
+        }
+        var values []any
+
+        // Use reflection to handle any map
+        v := reflect.ValueOf(args[0])
+
+        // Extract values
+        for _, key := range v.MapKeys() {
+            values = append(values, v.MapIndex(key).Interface())
+        }
+
+        return values, nil
+    }
+
     slhelp["format"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string in the manner of fprintf()."}
     stdlib["format"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if len(args) == 0 {

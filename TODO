@@ -2,56 +2,6 @@
 TODO
 ----
 
-SYSTEM RESOURCE MONITORING
--------------------------
-
-* TODO: Top N resource consumers (pure library implementation - snapshots)
-    - top_cpu(n) - top N CPU consumers (processes) - procfs/syscalls/Windows API
-    - top_memory(n) - top N memory consumers (processes) - procfs/syscalls/Windows API
-    - top_network(n) - top N network consumers (processes) - our netstat libraries + procfs
-    - top_disk_io(n) - top N disk I/O consumers (processes) - procfs/syscalls/Windows API
-    - system_resources() - get overall system resource usage - Go runtime + procfs
-    - resource_usage(pid) - get resource usage for specific process - syscalls
-    - process_info(pid) - get detailed process information - procfs/syscalls/Windows API
-    - system_load() - get system load averages - procfs/syscalls
-    - memory_info() - get detailed memory information - procfs/syscalls/Windows API
-    - cpu_info() - get CPU information and statistics - procfs/syscalls/Windows API
-    - network_io_stats() - get network I/O statistics - our netstat libraries + procfs
-    - disk_io_stats() - get disk I/O statistics - procfs/syscalls/Windows API
-    - throughput_calculation(snapshot1, snapshot2, duration) - calculate rates between snapshots
-
-* TODO: Resource monitoring (requires external tools)
-    - No functions currently require external tools - all can be implemented with pure library calls
-
-USER AND GROUP ADMINISTRATION
-----------------------------
-
-* COMPLETED: User/group administration features (FULLY IMPLEMENTED)
-    - user_add(username, options) - add system user ✅
-    - user_remove(username) - remove system user ✅
-    - group_add(groupname) - add system group ✅
-    - group_remove(groupname) - remove system group ✅
-    - group_membership(username, groupname, action) - manage group membership ✅
-    - user_list() - list system users ✅
-    - group_list() - list system groups ✅
-    - user_info(username) - get detailed user information ✅
-    - group_info(groupname) - get detailed group information ✅
-    - has_user_management() - check if user management is available ✅
-
-* IMPLEMENTATION DETAILS:
-    - Unix/Linux: CLI tools (useradd/userdel/groupadd/groupdel) + syscall fallbacks
-    - BSD: CLI tools (pw command) + syscall fallbacks with pwd_mkdb
-    - Windows: PowerShell cmdlets + Windows API (NetUserAdd/NetLocalGroupAdd)
-    - Cross-platform build tags for proper platform detection
-    - Comprehensive error handling and privilege checking
-    - File-based operations for syscall fallbacks (passwd/group/shadow files)
-
-* TODO: Additional user/group features (future)
-    - user_modify(username, options) - modify user properties
-    - password management functions
-    - user/group quota management
-    - user/group expiration settings
-
 KERNEL PARAMETER TUNING
 ----------------------
 
@@ -163,10 +113,10 @@ FIREWALL EVENT LOGGING AND AUDIT
 LATER / UNDECIDED
 -----------------
 
-* add a test mode that *does not* test imported modules.
-    - i.e. only test the main file and assume the modules are already tested.
-    - currently, everything gets tested all the time.
-    - may also be worth establishing a cache of tested modules/checksums to save re-testing
+    * add a test mode that *does not* test imported modules.
+        - i.e. only test the main file and assume the modules are already tested.
+        - currently, everything gets tested all the time.
+        - may also be worth establishing a cache of tested modules/checksums to save re-testing
 
 * MAYBE: add install note for windows w/wsl stating that sudoers file may need 
             updating with : Defaults env_keep=WSL_DISTRO_NAME
