@@ -17,6 +17,7 @@ for a = 1 to argc()
         is "upx"    ; upx_enable=true
         is "strip"  ; strip_enable=true
         is "alpine" ; tgt="alpine"
+        is "bsd"    ; tgt="bsd"
         is "libc"   ; tgt="libc"
         is "win"    ; tgt="win"
         is "beta"   ; gobin="gobe"
@@ -57,6 +58,8 @@ if ! os() ~ "^freebsd"
         on buildMusl(bvers,bdate)!=0 do exit e.build,"Failed to build musl version."
     is "libc"
         on buildLibc(bvers,bdate)!=0 do exit e.build,"Failed to build libc version."
+    is "bsd"
+    on buildFreeBSD(bvers,bdate) != 0 do exit e.build,"Failed to build bsd version."
     is "win"
         on strip_enable do "Windows build does not strip!".warning
         on buildWin(bvers,bdate) != 0 do exit e.build,"Failed to build windows version."
