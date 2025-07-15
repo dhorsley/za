@@ -13,7 +13,7 @@ end
 set_env("ZA_DB_HOST","127.0.0.1")
 set_env("ZA_DB_ENGINE","mysql")
 set_env("ZA_DB_PORT","3306")
-set_env("ZA_DB_USER","daniel")
+set_env("ZA_DB_USER","root")
 
 h=db_init("mysql")
 
