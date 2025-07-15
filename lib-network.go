@@ -1664,6 +1664,19 @@ func buildNetworkLib() {
         return files, nil
     }
 
+    slhelp["has_privileges"] = LibHelp{
+        in:     "",
+        out:    "bool",
+        action: "Returns true if the current process has elevated privileges (root/sudo/admin).",
+    }
+    stdlib["has_privileges"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("has_privileges", args, 0); !ok {
+            return nil, err
+        }
+
+        return hasPrivileges(), nil
+    }
+
 }
 
 // Internal helper function for simple TCP traceroute (no raw sockets required)

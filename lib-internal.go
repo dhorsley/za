@@ -78,6 +78,48 @@ func ulen(args any) (int, error) {
         return len(args), nil
     case []any:
         return len(args), nil
+    case []ProcessInfo:
+        return len(args), nil
+    case []SystemResources:
+        return len(args), nil
+    case []MemoryInfo:
+        return len(args), nil
+    case []CPUInfo:
+        return len(args), nil
+    case []NetworkIOStats:
+        return len(args), nil
+    case []DiskIOStats:
+        return len(args), nil
+    case []ProcessTree:
+        return len(args), nil
+    case []ProcessMap:
+        return len(args), nil
+    case []ResourceUsage:
+        return len(args), nil
+    case []ResourceSnapshot:
+        return len(args), nil
+    case map[string]ProcessInfo:
+        return len(args), nil
+    case map[string]SystemResources:
+        return len(args), nil
+    case map[string]MemoryInfo:
+        return len(args), nil
+    case map[string]CPUInfo:
+        return len(args), nil
+    case map[string]NetworkIOStats:
+        return len(args), nil
+    case map[string]DiskIOStats:
+        return len(args), nil
+    case map[string]ProcessTree:
+        return len(args), nil
+    case map[string]ProcessMap:
+        return len(args), nil
+    case map[string]ResourceUsage:
+        return len(args), nil
+    case map[string]ResourceSnapshot:
+        return len(args), nil
+    case ProcessMap:
+        return len(args.Relations), nil
     }
 
     // Reflection-based fallback for dynamically constructed types
