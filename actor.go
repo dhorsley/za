@@ -2491,6 +2491,26 @@ tco_reentry:
                     l = len(lv)
                 case []dirent:
                     l = len(lv)
+                case []ProcessInfo:
+                    l = len(lv)
+                case []SystemResources:
+                    l = len(lv)
+                case []MemoryInfo:
+                    l = len(lv)
+                case []CPUInfo:
+                    l = len(lv)
+                case []NetworkIOStats:
+                    l = len(lv)
+                case []DiskIOStats:
+                    l = len(lv)
+                case []ProcessTree:
+                    l = len(lv)
+                case []ProcessMap:
+                    l = len(lv)
+                case []ResourceUsage:
+                    l = len(lv)
+                case []ResourceSnapshot:
+                    l = len(lv)
                 case []alloc_info:
                     l = len(lv)
                 case map[string]alloc_info:
@@ -2520,6 +2540,26 @@ tco_reentry:
                 case map[string][]bool:
                     l = len(lv)
                 case map[string][]float64:
+                    l = len(lv)
+                case map[string]ProcessInfo:
+                    l = len(lv)
+                case map[string]SystemResources:
+                    l = len(lv)
+                case map[string]MemoryInfo:
+                    l = len(lv)
+                case map[string]CPUInfo:
+                    l = len(lv)
+                case map[string]NetworkIOStats:
+                    l = len(lv)
+                case map[string]DiskIOStats:
+                    l = len(lv)
+                case map[string]ProcessTree:
+                    l = len(lv)
+                case map[string]ProcessMap:
+                    l = len(lv)
+                case map[string]ResourceUsage:
+                    l = len(lv)
+                case map[string]ResourceSnapshot:
                     l = len(lv)
                 case []map[string]any:
                     l = len(lv)
@@ -2768,6 +2808,67 @@ tco_reentry:
                         condEndPos = len(we.result.([]stackFrame)) - 1
                     }
 
+                case []ProcessInfo:
+                    if len(we.result.([]ProcessInfo)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]ProcessInfo)[0])
+                        condEndPos = len(we.result.([]ProcessInfo)) - 1
+                    }
+                case []SystemResources:
+                    if len(we.result.([]SystemResources)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]SystemResources)[0])
+                        condEndPos = len(we.result.([]SystemResources)) - 1
+                    }
+                case []MemoryInfo:
+                    if len(we.result.([]MemoryInfo)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]MemoryInfo)[0])
+                        condEndPos = len(we.result.([]MemoryInfo)) - 1
+                    }
+                case []CPUInfo:
+                    if len(we.result.([]CPUInfo)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]CPUInfo)[0])
+                        condEndPos = len(we.result.([]CPUInfo)) - 1
+                    }
+                case []NetworkIOStats:
+                    if len(we.result.([]NetworkIOStats)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]NetworkIOStats)[0])
+                        condEndPos = len(we.result.([]NetworkIOStats)) - 1
+                    }
+                case []DiskIOStats:
+                    if len(we.result.([]DiskIOStats)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]DiskIOStats)[0])
+                        condEndPos = len(we.result.([]DiskIOStats)) - 1
+                    }
+                case []ProcessTree:
+                    if len(we.result.([]ProcessTree)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]ProcessTree)[0])
+                        condEndPos = len(we.result.([]ProcessTree)) - 1
+                    }
+                case []ProcessMap:
+                    if len(we.result.([]ProcessMap)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]ProcessMap)[0])
+                        condEndPos = len(we.result.([]ProcessMap)) - 1
+                    }
+                case []ResourceUsage:
+                    if len(we.result.([]ResourceUsage)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]ResourceUsage)[0])
+                        condEndPos = len(we.result.([]ResourceUsage)) - 1
+                    }
+                case []ResourceSnapshot:
+                    if len(we.result.([]ResourceSnapshot)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]ResourceSnapshot)[0])
+                        condEndPos = len(we.result.([]ResourceSnapshot)) - 1
+                    }
+
                 case []dirent:
                     if len(we.result.([]dirent)) > 0 {
                         vset(nil, ifs, ident, "key_"+fid, 0)
@@ -2810,6 +2911,97 @@ tco_reentry:
                             vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
                         }
                         condEndPos = len(we.result.(map[string]any)) - 1
+                    }
+
+                case map[string]ProcessInfo:
+                    if len(we.result.(map[string]ProcessInfo)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]ProcessInfo)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]ProcessInfo)) - 1
+                    }
+                case map[string]SystemResources:
+                    if len(we.result.(map[string]SystemResources)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]SystemResources)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]SystemResources)) - 1
+                    }
+                case map[string]MemoryInfo:
+                    if len(we.result.(map[string]MemoryInfo)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]MemoryInfo)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]MemoryInfo)) - 1
+                    }
+                case map[string]CPUInfo:
+                    if len(we.result.(map[string]CPUInfo)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]CPUInfo)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]CPUInfo)) - 1
+                    }
+                case map[string]NetworkIOStats:
+                    if len(we.result.(map[string]NetworkIOStats)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]NetworkIOStats)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]NetworkIOStats)) - 1
+                    }
+                case map[string]DiskIOStats:
+                    if len(we.result.(map[string]DiskIOStats)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]DiskIOStats)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]DiskIOStats)) - 1
+                    }
+                case map[string]ProcessTree:
+                    if len(we.result.(map[string]ProcessTree)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]ProcessTree)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]ProcessTree)) - 1
+                    }
+                case map[string]ProcessMap:
+                    if len(we.result.(map[string]ProcessMap)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]ProcessMap)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]ProcessMap)) - 1
+                    }
+                case map[string]ResourceUsage:
+                    if len(we.result.(map[string]ResourceUsage)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]ResourceUsage)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]ResourceUsage)) - 1
+                    }
+                case map[string]ResourceSnapshot:
+                    if len(we.result.(map[string]ResourceSnapshot)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]ResourceSnapshot)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]ResourceSnapshot)) - 1
                     }
 
                 case []any:
@@ -3096,7 +3288,32 @@ tco_reentry:
                         switch (*thisLoop).iterOverArray.(type) {
 
                         // map ranges are randomly ordered!!
-                        case map[string]any, map[string]alloc_info, map[string]stackFrame, map[string]tui, map[string]dirent, map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string, map[string][]string:
+
+                        case map[string]any,map[string]alloc_info,map[string]stackFrame,map[string]tui,map[string]dirent:
+                            if (*thisLoop).iterOverMap.Next() { // true means not exhausted
+                                vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
+                            }
+
+                        case map[string]int, map[string]uint, map[string]bool, map[string]float64, map[string]string:
+                            if (*thisLoop).iterOverMap.Next() { // true means not exhausted
+                                vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
+                            }
+
+                        case map[string]ProcessInfo,map[string]SystemResources,map[string]MemoryInfo,map[string]CPUInfo:
+                            if (*thisLoop).iterOverMap.Next() { // true means not exhausted
+                                vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
+                            }
+
+                        case map[string]NetworkIOStats,map[string]DiskIOStats,map[string]ProcessTree,map[string]ProcessMap:
+                            if (*thisLoop).iterOverMap.Next() { // true means not exhausted
+                                vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
+                                vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
+                            }
+
+                        case map[string]ResourceUsage,map[string]ResourceSnapshot,map[string][]string:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -3117,6 +3334,40 @@ tco_reentry:
                         case []string:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
+
+                        case []ProcessInfo:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ProcessInfo)[(*thisLoop).counter])
+                        case []SystemResources:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]SystemResources)[(*thisLoop).counter])
+                        case []MemoryInfo:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]MemoryInfo)[(*thisLoop).counter])
+                        case []CPUInfo:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]CPUInfo)[(*thisLoop).counter])
+
+                        case []NetworkIOStats:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]NetworkIOStats)[(*thisLoop).counter])
+                        case []DiskIOStats:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]DiskIOStats)[(*thisLoop).counter])
+                        case []ProcessTree:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ProcessTree)[(*thisLoop).counter])
+                        case []ProcessMap:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ProcessMap)[(*thisLoop).counter])
+
+                        case []ResourceUsage:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ResourceUsage)[(*thisLoop).counter])
+                        case []ResourceSnapshot:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ResourceSnapshot)[(*thisLoop).counter])
+
                         case []dirent:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]dirent)[(*thisLoop).counter])
