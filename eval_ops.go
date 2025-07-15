@@ -2170,12 +2170,8 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
                 f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
                 slc := f.Slice(0, f.Len())
 
-                switch f.Type().Elem().Kind() {
-                case reflect.Interface, reflect.String:
-                    return slc.Interface(), false
-                default:
-                    return []any{}, false
-                }
+                // Return the actual slice for all element types, not just Interface and String
+                return slc.Interface(), false
 
             case reflect.Interface:
                 return f.Interface(), false

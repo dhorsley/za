@@ -19,6 +19,8 @@ CHANGE LOG
     library changes
     ---------------
 
+    * added explain()       : currently, describes a struct type
+
     * resource usage functions:
 
         These should work across Linux/BSD/Windows, but behaviours will be platform dependent
