@@ -25,17 +25,18 @@ CHANGE LOG
         (and possibly privilege level dependent):
 
         sys_resources()     : Returns overall system resource usage
-        sys_load()          : Returns system load averages (1, 5, 15 minute) with named keys
-        mem_info()          : Returns detailed memory information including pressure indicators, OOM scores, and slab allocation
+        sys_load()          : Returns system load averages (1, 5, 15 minute)
+        mem_info()          : Returns detailed memory information
+                            : where available, includes pressure indicators, OOM scores, and slab allocation
 
-        ps_info()           : Returns detailed process information with options
+        ps_info()           : Returns detailed process information
             ps_info(pid [,map(.include_cmdline bool,.include_environ bool)])
-        ps_tree()           : Returns process hierarchy (fixed expect_args usage)
+        ps_tree()           : Returns process hierarchy
             ps_tree([pid])
-        ps_map()            : Returns process relationships (fixed expect_args usage)
+        ps_map()            : Returns process relationships
             ps_map([pid])
 
-        cpu_info()          : Returns CPU information with per-core data and named keys
+        cpu_info()          : Returns CPU information with per-core data 
             cpu_info([core_number|map(.core core_number,.details bool)])
 
         nio()               : Returns network I/O throughput statistics
