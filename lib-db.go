@@ -13,6 +13,7 @@ import (
     "strings"
 
     _ "github.com/go-sql-driver/mysql"
+    "gopkg.in/yaml.v3"
 )
 
 func buildDbLib() {
@@ -253,22 +254,27 @@ func formatJSON(rows *sql.Rows, columnNames []string, limit int) (any, error) {
         return nil, fmt.Errorf("error iterating rows: %v", err)
     }
 
-    return result, nil
+    // Convert to JSON string
+    jsonBytes, err := json.Marshal(result)
+    if err != nil {
+        return nil, fmt.Errorf("failed to marshal JSON: %v", err)
+    }
+
+    return string(jsonBytes), nil
 }
 
 func formatCSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
-    var result []string
+    var result strings.Builder
     rc := 0
 
     // Add header row
-    header := ""
     for i, col := range columnNames {
         if i > 0 {
-            header += ","
+            result.WriteString(",")
         }
-        header += fmt.Sprintf("%q", col)
+        result.WriteString(fmt.Sprintf("%q", col))
     }
-    result = append(result, header)
+    result.WriteString("\n")
 
     vals := make([]any, len(columnNames))
     for i := range columnNames {
@@ -281,10 +287,9 @@ func formatCSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
             return nil, fmt.Errorf("failed to scan row: %v", err)
         }
 
-        row := ""
         for i, val := range vals {
             if i > 0 {
-                row += ","
+                result.WriteString(",")
             }
             // Convert sql.RawBytes to string and escape for CSV
             if rawBytes, ok := val.(*sql.RawBytes); ok {
@@ -294,12 +299,12 @@ func formatCSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
                     cellValue = strings.ReplaceAll(cellValue, `"`, `""`)
                     cellValue = fmt.Sprintf("%q", cellValue)
                 }
-                row += cellValue
+                result.WriteString(cellValue)
             } else {
-                row += fmt.Sprintf("%v", val)
+                result.WriteString(fmt.Sprintf("%v", val))
             }
         }
-        result = append(result, row)
+        result.WriteString("\n")
         rc++
 
         if limit > 0 && rc >= limit {
@@ -311,7 +316,7 @@ func formatCSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
         return nil, fmt.Errorf("error iterating rows: %v", err)
     }
 
-    return result, nil
+    return result.String(), nil
 }
 
 func formatTable(rows *sql.Rows, columnNames []string, limit int) (any, error) {
@@ -486,18 +491,17 @@ func formatArray(rows *sql.Rows, columnNames []string, limit int) (any, error) {
 }
 
 func formatTSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
-    var result []string
+    var result strings.Builder
     rc := 0
 
     // Add header row
-    header := ""
     for i, col := range columnNames {
         if i > 0 {
-            header += "\t"
+            result.WriteString("\t")
         }
-        header += col
+        result.WriteString(col)
     }
-    result = append(result, header)
+    result.WriteString("\n")
 
     vals := make([]any, len(columnNames))
     for i := range columnNames {
@@ -510,18 +514,17 @@ func formatTSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
             return nil, fmt.Errorf("failed to scan row: %v", err)
         }
 
-        row := ""
         for i, val := range vals {
             if i > 0 {
-                row += "\t"
+                result.WriteString("\t")
             }
             if rawBytes, ok := val.(*sql.RawBytes); ok {
-                row += string(*rawBytes)
+                result.WriteString(string(*rawBytes))
             } else {
-                row += fmt.Sprintf("%v", val)
+                result.WriteString(fmt.Sprintf("%v", val))
             }
         }
-        result = append(result, row)
+        result.WriteString("\n")
         rc++
 
         if limit > 0 && rc >= limit {
@@ -533,7 +536,7 @@ func formatTSV(rows *sql.Rows, columnNames []string, limit int) (any, error) {
         return nil, fmt.Errorf("error iterating rows: %v", err)
     }
 
-    return result, nil
+    return result.String(), nil
 }
 
 func formatYAML(rows *sql.Rows, columnNames []string, limit int) (any, error) {
@@ -581,7 +584,13 @@ func formatYAML(rows *sql.Rows, columnNames []string, limit int) (any, error) {
         return nil, fmt.Errorf("error iterating rows: %v", err)
     }
 
-    return result, nil
+    // Convert to YAML string
+    yamlBytes, err := yaml.Marshal(result)
+    if err != nil {
+        return nil, fmt.Errorf("failed to marshal YAML: %v", err)
+    }
+
+    return string(yamlBytes), nil
 }
 
 func formatXML(rows *sql.Rows, columnNames []string, limit int) (any, error) {
