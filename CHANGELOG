@@ -40,8 +40,10 @@ CHANGE LOG
             cpu_info([core_number|map(.core core_number,.details bool)])
 
         nio()               : Returns network I/O throughput statistics
+            nio(interface_name)
             nio([map(.interface "device_name", .include_errors bool)])
         dio()               : Returns disk I/O throughput statistics
+            dio(device_name)
             dio([map(.device "device_name")])
 
         resource_usage()    : Returns resource usage for specific process
@@ -144,6 +146,17 @@ CHANGE LOG
 
     other
     -----
+
+    * Added permanent history file support for REPL:
+        - History automatically saved to ~/.za_history with 0600 permissions
+        - History loaded on REPL startup and saved on exit (including abnormal exits)
+        - Limited to 255 entries maximum with automatic trimming
+        - Prevents duplicate consecutive entries
+
+    * Enhanced db_query() function with options map and output formats:
+        - Added prepared statement support via .params option
+        - Added query options: .limit, .separator
+        - Added multiple output formats: string, json, csv, tsv, table, map, array, yaml, xml, jsonl
 
     * Map Literal Syntax
         - Added map(.key value, .key2 value2, ...) syntax for maps literals

@@ -451,11 +451,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 endLine = true
 
                 if len(s) != 0 {
-                    if len(hist) == 0 || (len(hist) > 0 && string(s) != hist[len(hist)-1]) {
-                        hist = append(hist, string(s))
-                        lastHist++
-                        histEmpty = false
-                    }
+                    addToHistory(string(s))
                 }
 
                 break
