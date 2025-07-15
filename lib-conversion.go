@@ -405,6 +405,44 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
     }
 }
 
+// describeType provides a plain English description of a Go type
+func describeType(t reflect.Type) string {
+    switch t.Kind() {
+    case reflect.String:
+        return "text string"
+    case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+        return "integer number"
+    case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+        return "positive integer number"
+    case reflect.Float32, reflect.Float64:
+        return "decimal number"
+    case reflect.Bool:
+        return "true/false value"
+    case reflect.Slice:
+        elemDesc := describeType(t.Elem())
+        return sf("list of %s", elemDesc)
+    case reflect.Map:
+        keyDesc := describeType(t.Key())
+        valueDesc := describeType(t.Elem())
+        return sf("dictionary mapping %s to %s", keyDesc, valueDesc)
+    case reflect.Struct:
+        return sf("struct with %d fields", t.NumField())
+    case reflect.Ptr:
+        return sf("pointer to %s", describeType(t.Elem()))
+    case reflect.Interface:
+        return "any type of value"
+    case reflect.Array:
+        elemDesc := describeType(t.Elem())
+        return sf("fixed-size array of %d %s", t.Len(), elemDesc)
+    case reflect.Chan:
+        return sf("channel of %s", describeType(t.Elem()))
+    case reflect.Func:
+        return "function"
+    default:
+        return t.String()
+    }
+}
+
 func buildConversionLib() {
 
     // conversion
@@ -413,7 +451,7 @@ func buildConversionLib() {
     categories["conversion"] = []string{
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
-        "write_struct", "read_struct",
+        "write_struct", "read_struct", "explain",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed",
     }
 
@@ -449,6 +487,65 @@ func buildConversionLib() {
         }
         m := m2s(args[0].(map[string]any), args[1])
         return m, nil
+    }
+
+    slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
+    stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
+            return nil, err
+        }
+
+        obj := args[0]
+        if reflect.TypeOf(obj).Kind() != reflect.Struct {
+            return nil, errors.New("explain: expected struct argument")
+        }
+
+        val := reflect.ValueOf(obj)
+        typ := val.Type()
+
+        var result strings.Builder
+
+        // Get struct name
+        structName := "Unknown"
+        if name, count := struct_match(obj); count == 1 {
+            structName = name
+        } else {
+            structName = typ.String()
+        }
+
+        result.WriteString(sf("Struct '%s' contains %d fields:\n\n", structName, val.NumField()))
+
+        // Describe each field
+        for i := 0; i < val.NumField(); i++ {
+            field := val.Field(i)
+            fieldType := typ.Field(i)
+
+            // Field name
+            result.WriteString(sf("  %d. %s: ", i+1, fieldType.Name))
+
+            // Field type description
+            typeDesc := describeType(field.Type())
+            result.WriteString(typeDesc)
+
+            // Current value (if simple)
+            if field.Kind() == reflect.String || field.Kind() == reflect.Int || field.Kind() == reflect.Float64 || field.Kind() == reflect.Bool {
+                var fieldValue any
+                if field.CanInterface() {
+                    fieldValue = field.Interface()
+                } else {
+                    ptr := unsafe.Pointer(field.UnsafeAddr())
+                    rv := reflect.NewAt(field.Type(), ptr).Elem()
+                    fieldValue = rv.Interface()
+                }
+                result.WriteString(sf(" (current value: %v)", fieldValue))
+            } else if field.Kind() == reflect.Slice {
+                result.WriteString(sf(" (length: %d)", field.Len()))
+            }
+
+            result.WriteString("\n")
+        }
+
+        return result.String(), nil
     }
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
