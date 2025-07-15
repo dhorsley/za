@@ -20,6 +20,7 @@ CHANGE LOG
     ---------------
 
     * added explain()       : currently, describes a struct type
+    * added has_privileges(): checks for root/sudo level active user
 
     * resource usage functions:
 
@@ -31,12 +32,10 @@ CHANGE LOG
         mem_info()          : Returns detailed memory information
                             : where available, includes pressure indicators, OOM scores, and slab allocation
 
-        ps_info()           : Returns detailed process information
-            ps_info(pid [,map(.include_cmdline bool,.include_environ bool)])
-        ps_tree()           : Returns process hierarchy
-            ps_tree([pid])
-        ps_map()            : Returns process relationships
-            ps_map([pid])
+        ps_info(pid,options): Returns detailed process information. options .include_cmdline bool, .include_environ bool
+        ps_tree([pid])      : Returns process hierarchy
+        ps_map([pid])       : Returns process relationships
+        ps_list(options)    : Returns all processes. options map: .include_cmdline bool, .include_environ bool
 
         cpu_info()          : Returns CPU information with per-core data 
             cpu_info([core_number|map(.core core_number,.details bool)])
@@ -47,6 +46,9 @@ CHANGE LOG
         dio()               : Returns disk I/O throughput statistics
             dio(device_name)
             dio([map(.device "device_name")])
+
+        mount_info(options) : options map: .filesystem type_string
+        disk_usage(options) : options map: .exclude_patterns [string_list]
 
         resource_usage()    : Returns resource usage for specific process
             resource_usage(pid)
@@ -116,15 +118,19 @@ CHANGE LOG
         ssl_cert_install_help(host, [port])
         http_headers(url, [headers])
         http_benchmark(url, requests, [concurrent], [keep_alive], [skip_verify])
-        netstat() - Returns all network connections across all protocols
-        netstat_protocols() - Returns list of available protocols for monitoring
-        netstat_protocol_info() - Returns detailed protocol information and capabilities
-        netstat_protocol(protocol) - Returns connections filtered by specific protocol
-        netstat_listen() - Returns connections in LISTEN state
-        netstat_established() - Returns connections in ESTABLISHED state
-        netstat_process(pid) - Returns connections for specific process ID
-        netstat_interface(interface) - Returns connections on specific interface
-        open_files() - Returns file descriptors and network connections (lsof equivalent)
+        netstat()                       - Returns all network connections across all protocols
+        netstat_protocols()             - Returns list of available protocols for monitoring
+        netstat_protocol_info()         - Returns detailed protocol information and capabilities
+        netstat_protocol(protocol)      - Returns connections filtered by specific protocol
+        netstat_listen()                - Returns connections in LISTEN state
+        netstat_established()           - Returns connections in ESTABLISHED state
+        netstat_process(pid)            - Returns connections for specific process ID
+        netstat_interface(interface)    - Returns connections on specific interface
+        open_files()                    - Returns file descriptors and network connections (lsof equivalent)
+        net_devices(options)            - options: .all bool
+        gw_interface()
+        gw_address()
+        gw_info()
 
     * added wrapper functions for go-yamlv3:
         yaml_parse, yaml_marshal, yaml_get, yaml_set, yaml_delete

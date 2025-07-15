@@ -6,6 +6,7 @@ package main
 
 import (
     "fmt"
+    "net"
     "os"
     "runtime"
     "sort"
@@ -19,7 +20,7 @@ import (
 
 // getTopCPU returns top N CPU consumers
 func getTopCPU(n int) ([]ProcessInfo, error) {
-    processes, err := getProcessList()
+    processes, err := getProcessList(nil)
     if err != nil {
         return nil, err
     }
@@ -40,7 +41,7 @@ func getTopCPU(n int) ([]ProcessInfo, error) {
 
 // getTopMemory returns top N memory consumers
 func getTopMemory(n int) ([]ProcessInfo, error) {
-    processes, err := getProcessList()
+    processes, err := getProcessList(nil)
     if err != nil {
         return nil, err
     }
@@ -112,13 +113,16 @@ func getSystemResources() (SystemResources, error) {
     // Get CPU count
     resources.CPUCount = runtime.NumCPU()
 
-    // Get load average
+    // Get load average - handle gracefully if unavailable
     load, err := getSystemLoad()
     if err == nil {
         resources.LoadAverage = load
+    } else {
+        // Return clearly invalid sentinel values for load average
+        resources.LoadAverage = []float64{-1, -1, -1}
     }
 
-    // Get memory info
+    // Get memory info - handle gracefully if unavailable
     mem, err := getMemoryInfo()
     if err == nil {
         resources.MemoryTotal = mem.Total
@@ -128,6 +132,15 @@ func getSystemResources() (SystemResources, error) {
         resources.SwapTotal = mem.SwapTotal
         resources.SwapUsed = mem.SwapUsed
         resources.SwapFree = mem.SwapFree
+    } else {
+        // Return clearly invalid sentinel values for memory info
+        resources.MemoryTotal = 0xFFFFFFFFFFFFFFFF // -1 as uint64
+        resources.MemoryUsed = 0xFFFFFFFFFFFFFFFF
+        resources.MemoryFree = 0xFFFFFFFFFFFFFFFF
+        resources.MemoryCached = 0xFFFFFFFFFFFFFFFF
+        resources.SwapTotal = 0xFFFFFFFFFFFFFFFF
+        resources.SwapUsed = 0xFFFFFFFFFFFFFFFF
+        resources.SwapFree = 0xFFFFFFFFFFFFFFFF
     }
 
     // Get uptime
@@ -336,18 +349,20 @@ func getSlabInfo() map[string]SlabInfo {
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 4 {
+        if len(fields) < 6 {
             continue
         }
 
         name := fields[0]
-        objects, _ := strconv.Atoi(fields[2])
-        size, _ := strconv.ParseUint(fields[3], 10, 64)
+        // Parse according to /proc/slabinfo format:
+        // slab-name <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab>
+        objects, _ := strconv.Atoi(fields[2])           // num_objs
+        size, _ := strconv.ParseUint(fields[3], 10, 64) // objsize
 
         if objects > 0 && size > 0 {
             slab[name] = SlabInfo{
                 Objects: objects,
-                Size:    size * 1024, // Convert to bytes
+                Size:    size, // Already in bytes
             }
         }
     }
@@ -356,7 +371,7 @@ func getSlabInfo() map[string]SlabInfo {
 }
 
 // getProcessList returns list of all processes
-func getProcessList() ([]ProcessInfo, error) {
+func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     var processes []ProcessInfo
 
     if runtime.GOOS != "linux" {
@@ -378,7 +393,7 @@ func getProcessList() ([]ProcessInfo, error) {
             continue
         }
 
-        proc, err := getProcessInfo(pid, nil)
+        proc, err := getProcessInfo(pid, options)
         if err != nil {
             continue
         }
@@ -415,8 +430,17 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
     proc.State = fields[2]
     proc.PPID, _ = strconv.Atoi(fields[3])
     proc.Priority, _ = strconv.Atoi(fields[17])
+    proc.Nice, _ = strconv.Atoi(fields[18])
     proc.StartTime, _ = strconv.ParseInt(fields[21], 10, 64)
     proc.Threads, _ = strconv.Atoi(fields[19])
+
+    // Parse CPU timing information
+    if len(fields) >= 22 {
+        proc.UserTime, _ = strconv.ParseFloat(fields[13], 64)
+        proc.SystemTime, _ = strconv.ParseFloat(fields[14], 64)
+        proc.ChildrenUserTime, _ = strconv.ParseFloat(fields[15], 64)
+        proc.ChildrenSystemTime, _ = strconv.ParseFloat(fields[16], 64)
+    }
 
     // Read command line if requested
     if options != nil && options["include_cmdline"] == true {
@@ -467,7 +491,7 @@ func getProcessTree(startPID int) (ProcessTree, error) {
     tree.Name = proc.Name
 
     // Find children
-    processes, err := getProcessList()
+    processes, err := getProcessList(nil)
     if err != nil {
         return tree, err
     }
@@ -503,7 +527,7 @@ func getProcessMap(startPID int) (ProcessMap, error) {
     pmap.Relations = make(map[string][]ProcessMap)
 
     // Find relationships
-    processes, err := getProcessList()
+    processes, err := getProcessList(nil)
     if err != nil {
         return pmap, err
     }
@@ -803,7 +827,7 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
                     }
 
                     if !freqFound {
-                        frequencies[fmt.Sprintf("core_%d", core)] = 0.0
+                        frequencies[fmt.Sprintf("core_%d", core)] = -999.0 // Clearly invalid sentinel value
                     }
                 }
 
@@ -1194,8 +1218,12 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     // Parse CPU times
     utime, _ := strconv.ParseUint(fields[13], 10, 64)
     stime, _ := strconv.ParseUint(fields[14], 10, 64)
-    usage.CPUUser = float64(utime) / 100.0   // Convert to seconds
-    usage.CPUSystem = float64(stime) / 100.0 // Convert to seconds
+    cutime, _ := strconv.ParseUint(fields[15], 10, 64)
+    cstime, _ := strconv.ParseUint(fields[16], 10, 64)
+    usage.CPUUser = float64(utime) / 100.0            // Convert to seconds
+    usage.CPUSystem = float64(stime) / 100.0          // Convert to seconds
+    usage.CPUChildrenUser = float64(cutime) / 100.0   // Convert to seconds
+    usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
 
     // Read memory info from /proc/{pid}/status
     statusPath := fmt.Sprintf("/proc/%d/status", pid)
@@ -1294,4 +1322,406 @@ func calculateIODiff(snapshot1, snapshot2 ResourceSnapshot, duration time.Durati
     }
 
     return result
+}
+
+// getDiskUsage returns filesystem usage information
+func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
+    var result []map[string]interface{}
+
+    if runtime.GOOS != "linux" {
+        return result, nil
+    }
+
+    // Read /proc/mounts to get mount points
+    data, err := os.ReadFile("/proc/mounts")
+    if err != nil {
+        return result, err
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 6 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
+
+        // Apply filters if specified
+        if options != nil {
+            if excludePatterns, exists := options["exclude_patterns"]; exists {
+                if patterns, ok := excludePatterns.([]string); ok {
+                    for _, pattern := range patterns {
+                        if strings.Contains(filesystem, pattern) || strings.Contains(mountPoint, pattern) {
+                            continue
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get filesystem stats
+        var stat syscall.Statfs_t
+        if err := syscall.Statfs(mountPoint, &stat); err != nil {
+            continue
+        }
+
+        // Calculate usage
+        total := stat.Blocks * uint64(stat.Bsize)
+        free := stat.Bfree * uint64(stat.Bsize)
+        used := total - free
+        usagePercent := 0.0
+        if total > 0 {
+            usagePercent = float64(used) / float64(total) * 100.0
+        }
+
+        diskInfo := map[string]interface{}{
+            "path":          device,
+            "size":          total,
+            "used":          used,
+            "available":     free,
+            "usage_percent": usagePercent,
+            "mounted_path":  mountPoint,
+        }
+
+        result = append(result, diskInfo)
+    }
+
+    return result, nil
+}
+
+// getMountInfo returns mount point information
+func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
+    var result []map[string]interface{}
+
+    if runtime.GOOS != "linux" {
+        return result, nil
+    }
+
+    // Read /proc/mounts
+    data, err := os.ReadFile("/proc/mounts")
+    if err != nil {
+        return result, err
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 6 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
+        mountOptions := fields[3]
+
+        // Apply filters if specified
+        if options != nil {
+            if filesystemFilter, exists := options["filesystem"]; exists {
+                if fs, ok := filesystemFilter.(string); ok {
+                    if filesystem != fs {
+                        continue
+                    }
+                }
+            }
+        }
+
+        mountInfo := map[string]interface{}{
+            "device":        device,
+            "mounted":       true,
+            "mounted_path":  mountPoint,
+            "filesystem":    filesystem,
+            "mount_options": mountOptions,
+        }
+
+        result = append(result, mountInfo)
+    }
+
+    return result, nil
+}
+
+// getNetworkDevices returns network device information
+func getNetworkDevices(options map[string]interface{}) ([]map[string]interface{}, error) {
+    var result []map[string]interface{}
+
+    if runtime.GOOS != "linux" {
+        return result, nil
+    }
+
+    // Read /sys/class/net to get network interfaces
+    netDir := "/sys/class/net"
+    entries, err := os.ReadDir(netDir)
+    if err != nil {
+        return result, err
+    }
+
+    includeAll := false
+    if options != nil {
+        if all, exists := options["all"]; exists {
+            if include, ok := all.(bool); ok {
+                includeAll = include
+            }
+        }
+    }
+
+    for _, entry := range entries {
+        if !entry.IsDir() {
+            continue
+        }
+
+        deviceName := entry.Name()
+
+        // Check if device is up
+        operstatePath := fmt.Sprintf("%s/%s/operstate", netDir, deviceName)
+        operstateData, err := os.ReadFile(operstatePath)
+        if err != nil {
+            continue
+        }
+        operstate := strings.TrimSpace(string(operstateData))
+
+        // Skip down interfaces unless include_all is true
+        if operstate != "up" && !includeAll {
+            continue
+        }
+
+        // Get MAC address
+        addressPath := fmt.Sprintf("%s/%s/address", netDir, deviceName)
+        macAddress := ""
+        if addressData, err := os.ReadFile(addressPath); err == nil {
+            macAddress = strings.TrimSpace(string(addressData))
+        }
+
+        // Get device type
+        typePath := fmt.Sprintf("%s/%s/type", netDir, deviceName)
+        deviceType := ""
+        if typeData, err := os.ReadFile(typePath); err == nil {
+            deviceType = strings.TrimSpace(string(typeData))
+        }
+
+        // Get speed
+        speedPath := fmt.Sprintf("%s/%s/speed", netDir, deviceName)
+        speed := ""
+        if speedData, err := os.ReadFile(speedPath); err == nil {
+            speed = strings.TrimSpace(string(speedData))
+        }
+
+        // Get duplex
+        duplexPath := fmt.Sprintf("%s/%s/duplex", netDir, deviceName)
+        duplex := ""
+        if duplexData, err := os.ReadFile(duplexPath); err == nil {
+            duplex = strings.TrimSpace(string(duplexData))
+        }
+
+        // Get IP addresses using netlink or /proc/net/dev
+        ipAddresses := []string{}
+
+        // Get IP addresses from the interface
+        if operstate == "up" {
+            // Use net.Interfaces to get actual IP addresses
+            if netIface, err := net.InterfaceByName(deviceName); err == nil {
+                if addrs, err := netIface.Addrs(); err == nil {
+                    for _, addr := range addrs {
+                        if ipnet, ok := addr.(*net.IPNet); ok {
+                            // Only include non-loopback addresses
+                            if !ipnet.IP.IsLoopback() {
+                                ipAddresses = append(ipAddresses, ipnet.IP.String())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get gateway by parsing routing table
+        gateway := ""
+        if operstate == "up" {
+            // Try to get default gateway from /proc/net/route
+            if routeData, err := os.ReadFile("/proc/net/route"); err == nil {
+                lines := strings.Split(string(routeData), "\n")
+                for _, line := range lines {
+                    if strings.HasPrefix(line, deviceName) {
+                        fields := strings.Fields(line)
+                        if len(fields) >= 4 {
+                            // Check if this is the default route (destination 00000000)
+                            if fields[1] == "00000000" {
+                                // Gateway is in field 2 (hex format)
+                                if gatewayHex := fields[2]; gatewayHex != "00000000" {
+                                    // Convert hex gateway to IP
+                                    if len(gatewayHex) == 8 {
+                                        // Parse hex IP (little endian)
+                                        ipBytes := make([]byte, 4)
+                                        for i := 0; i < 4; i++ {
+                                            hexByte := gatewayHex[i*2 : i*2+2]
+                                            if val, err := strconv.ParseUint(hexByte, 16, 8); err == nil {
+                                                ipBytes[3-i] = byte(val) // Reverse byte order
+                                            }
+                                        }
+                                        gateway = fmt.Sprintf("%d.%d.%d.%d", ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3])
+                                    }
+                                }
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        deviceInfo := map[string]interface{}{
+            "name":         deviceName,
+            "enabled":      operstate == "up",
+            "mac_address":  macAddress,
+            "ip_addresses": ipAddresses,
+            "gateway":      gateway,
+            "link_speed":   speed,
+            "duplex":       duplex,
+            "device_type":  deviceType,
+            "operstate":    operstate,
+        }
+
+        result = append(result, deviceInfo)
+    }
+
+    return result, nil
+}
+
+// getDefaultGatewayInterface returns the name of the default gateway interface
+func getDefaultGatewayInterface() (string, error) {
+    if runtime.GOOS != "linux" {
+        return "", fmt.Errorf("getDefaultGatewayInterface not implemented for %s", runtime.GOOS)
+    }
+
+    // Read /proc/net/route to find the default route
+    data, err := os.ReadFile("/proc/net/route")
+    if err != nil {
+        return "", err
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 8 {
+            continue
+        }
+
+        // Check if this is the default route (destination 00000000)
+        if fields[1] == "00000000" {
+            // Interface name is in the first field
+            return fields[0], nil
+        }
+    }
+
+    return "", fmt.Errorf("no default route found")
+}
+
+// getDefaultGatewayAddress returns the IP address of the default gateway
+func getDefaultGatewayAddress() (string, error) {
+    if runtime.GOOS != "linux" {
+        return "", fmt.Errorf("getDefaultGatewayAddress not implemented for %s", runtime.GOOS)
+    }
+
+    // Read /proc/net/route to find the default route
+    data, err := os.ReadFile("/proc/net/route")
+    if err != nil {
+        return "", err
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 8 {
+            continue
+        }
+
+        // Check if this is the default route (destination 00000000)
+        if fields[1] == "00000000" {
+            // Gateway is in field 2 (hex format)
+            if gatewayHex := fields[2]; gatewayHex != "00000000" {
+                // Convert hex gateway to IP
+                if len(gatewayHex) == 8 {
+                    var ipBytes [4]byte
+                    for i := 0; i < 4; i++ {
+                        hexByte := gatewayHex[i*2 : i*2+2]
+                        if val, err := strconv.ParseUint(hexByte, 16, 8); err == nil {
+                            ipBytes[i] = byte(val)
+                        }
+                    }
+                    gateway := fmt.Sprintf("%d.%d.%d.%d", ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3])
+                    return gateway, nil
+                }
+            }
+        }
+    }
+
+    return "", fmt.Errorf("no default gateway found")
+}
+
+// getDefaultGatewayInfo returns complete default gateway information
+func getDefaultGatewayInfo() (map[string]interface{}, error) {
+    if runtime.GOOS != "linux" {
+        return nil, fmt.Errorf("getDefaultGatewayInfo not implemented for %s", runtime.GOOS)
+    }
+
+    // Read /proc/net/route to find the default route
+    data, err := os.ReadFile("/proc/net/route")
+    if err != nil {
+        return nil, err
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.TrimSpace(line) == "" {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 8 {
+            continue
+        }
+
+        // Check if this is the default route (destination 00000000)
+        if fields[1] == "00000000" {
+            interfaceName := fields[0]
+            gatewayHex := fields[2]
+
+            // Convert hex gateway to IP
+            var gateway string
+            if gatewayHex != "00000000" && len(gatewayHex) == 8 {
+                var ipBytes [4]byte
+                for i := 0; i < 4; i++ {
+                    hexByte := gatewayHex[i*2 : i*2+2]
+                    if val, err := strconv.ParseUint(hexByte, 16, 8); err == nil {
+                        ipBytes[i] = byte(val)
+                    }
+                }
+                gateway = fmt.Sprintf("%d.%d.%d.%d", ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3])
+            }
+
+            return map[string]interface{}{
+                "interface": interfaceName,
+                "gateway":   gateway,
+            }, nil
+        }
+    }
+
+    return nil, fmt.Errorf("no default gateway found")
 }

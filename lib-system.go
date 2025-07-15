@@ -12,19 +12,24 @@ import (
 
 // ProcessInfo represents detailed process information
 type ProcessInfo struct {
-    PID         int
-    Name        string
-    State       string
-    PPID        int
-    Priority    int
-    StartTime   int64
-    UID         string
-    GID         string
-    CPUPercent  float64
-    MemoryUsage uint64
-    MemoryRSS   uint64
-    Threads     int
-    Command     string
+    PID                int
+    Name               string
+    State              string
+    PPID               int
+    Priority           int
+    Nice               int
+    StartTime          int64
+    UID                string
+    GID                string
+    CPUPercent         float64
+    UserTime           float64 // CPU time spent in user mode
+    SystemTime         float64 // CPU time spent in system mode
+    ChildrenUserTime   float64 // CPU time spent by children in user mode
+    ChildrenSystemTime float64 // CPU time spent by children in system mode
+    MemoryUsage        uint64
+    MemoryRSS          uint64
+    Threads            int
+    Command            string
 }
 
 // SystemResources represents overall system resource usage
@@ -119,17 +124,19 @@ type ProcessMap struct {
 
 // ResourceUsage represents resource usage for a specific process
 type ResourceUsage struct {
-    PID             int
-    CPUUser         float64
-    CPUSystem       float64
-    MemoryCurrent   uint64
-    MemoryPeak      uint64
-    IOReadBytes     uint64
-    IOWriteBytes    uint64
-    IOReadOps       uint64
-    IOWriteOps      uint64
-    ContextSwitches uint64
-    PageFaults      uint64
+    PID               int
+    CPUUser           float64
+    CPUSystem         float64
+    CPUChildrenUser   float64 // Children CPU time in user mode
+    CPUChildrenSystem float64 // Children CPU time in system mode
+    MemoryCurrent     uint64
+    MemoryPeak        uint64
+    IOReadBytes       uint64
+    IOWriteBytes      uint64
+    IOReadOps         uint64
+    IOWriteOps        uint64
+    ContextSwitches   uint64
+    PageFaults        uint64
 }
 
 // ResourceSnapshot represents a point-in-time snapshot of system resources
@@ -153,6 +160,7 @@ func buildSystemLib() {
         "cpu_info",
         "nio", "dio",
         "resource_usage", "iodiff",
+        "disk_usage", "mount_info", "net_devices",
     }
 
     // Top N resource consumers (with ALL option where n=-1)
@@ -273,6 +281,18 @@ func buildSystemLib() {
         return getProcessMap(pid)
     }
 
+    slhelp["ps_list"] = LibHelp{in: "[options]", out: "[]ProcessInfo", action: "Returns list of all processes. Options: map(.include_cmdline true, .include_environ false)"}
+    stdlib["ps_list"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        var options map[string]interface{}
+        if ok, err := expect_args("ps_list", args, 2, "1", "map", "0"); !ok {
+            return nil, err
+        }
+        if len(args) > 0 {
+            options = args[0].(map[string]interface{})
+        }
+        return getProcessList(options)
+    }
+
     // CPU information functions
     slhelp["cpu_info"] = LibHelp{in: "[core_number|options]", out: "CPUInfo", action: "Returns CPU information. Optional core number or options map(.core 0, .details true)"}
     stdlib["cpu_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -357,6 +377,44 @@ func buildSystemLib() {
         return getDiskIO(options)
     }
 
+    // Disk usage and mount information functions
+    slhelp["disk_usage"] = LibHelp{in: "[options]", out: "[]map", action: "Returns filesystem usage information. Options: map(.exclude_patterns [\"tmpfs\", \"proc\"])"}
+    stdlib["disk_usage"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        var options map[string]interface{}
+        if ok, err := expect_args("disk_usage", args, 2, "1", "map", "0"); !ok {
+            return nil, err
+        }
+        if len(args) > 0 {
+            options = args[0].(map[string]interface{})
+        }
+        return getDiskUsage(options)
+    }
+
+    slhelp["mount_info"] = LibHelp{in: "[options]", out: "[]map", action: "Returns mount point information. Options: map(.filesystem \"ext4\")"}
+    stdlib["mount_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        var options map[string]interface{}
+        if ok, err := expect_args("mount_info", args, 2, "1", "map", "0"); !ok {
+            return nil, err
+        }
+        if len(args) > 0 {
+            options = args[0].(map[string]interface{})
+        }
+        return getMountInfo(options)
+    }
+
+    // Network device information function
+    slhelp["net_devices"] = LibHelp{in: "[options]", out: "[]map", action: "Returns network device information. Options: map(.all true)"}
+    stdlib["net_devices"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        var options map[string]interface{}
+        if ok, err := expect_args("net_devices", args, 2, "1", "map", "0"); !ok {
+            return nil, err
+        }
+        if len(args) > 0 {
+            options = args[0].(map[string]interface{})
+        }
+        return getNetworkDevices(options)
+    }
+
     // Resource usage and throughput calculation
     slhelp["resource_usage"] = LibHelp{in: "pid", out: "ResourceUsage", action: "Returns resource usage for specific process."}
     stdlib["resource_usage"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -387,5 +445,32 @@ func buildSystemLib() {
         }
         result := debugCPUFiles()
         return result, nil
+    }
+
+    // Gateway interface function
+    slhelp["gw_interface"] = LibHelp{in: "", out: "string", action: "Returns the name of the default gateway interface."}
+    stdlib["gw_interface"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("gw_interface", args, 0); !ok {
+            return nil, err
+        }
+        return getDefaultGatewayInterface()
+    }
+
+    // Gateway address function
+    slhelp["gw_address"] = LibHelp{in: "", out: "string", action: "Returns the IP address of the default gateway."}
+    stdlib["gw_address"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("gw_address", args, 0); !ok {
+            return nil, err
+        }
+        return getDefaultGatewayAddress()
+    }
+
+    // Gateway info function
+    slhelp["gw_info"] = LibHelp{in: "", out: "map", action: "Returns complete default gateway information including interface name and IP address."}
+    stdlib["gw_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("gw_info", args, 0); !ok {
+            return nil, err
+        }
+        return getDefaultGatewayInfo()
     }
 }

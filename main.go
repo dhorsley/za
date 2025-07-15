@@ -853,6 +853,8 @@ func main() {
        }
     */
 
+    gvset("@winterm", false)
+
     // pprof - not advertised.
     if *a_profile {
         go func() {
