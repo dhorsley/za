@@ -6212,7 +6212,7 @@ tco_reentry:
             // eval
             expr, err = parser.Eval(ifs, inbound.Tokens[1:])
             if err != nil {
-                parser.report(inbound.SourceLine, "Could not evaluate expression.")
+                parser.report(inbound.SourceLine, sf("Could not evaluate expression.\n%#v\n%+v",expr,err))
                 finish(false, ERR_SYNTAX)
                 break
             }
