@@ -174,6 +174,83 @@ var lastHist int
 var hist []string
 var histEmpty bool
 
+// History file management
+const MAX_HISTORY_ENTRIES = 255
+
+var historyFile string
+
+// loadHistory loads history from the user's history file
+func loadHistory() {
+    home, err := os.UserHomeDir()
+    if err != nil {
+        return // Can't get home dir, skip history loading
+    }
+
+    historyFile = home + "/.za_history"
+
+    // Try to read existing history file
+    if data, err := os.ReadFile(historyFile); err == nil {
+        lines := strings.Split(string(data), "\n")
+        hist = make([]string, 0, len(lines))
+
+        // Load non-empty lines, trimming whitespace
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line != "" {
+                hist = append(hist, line)
+            }
+        }
+
+        // Limit to MAX_HISTORY_ENTRIES
+        if len(hist) > MAX_HISTORY_ENTRIES {
+            hist = hist[len(hist)-MAX_HISTORY_ENTRIES:]
+        }
+
+        lastHist = len(hist)
+        histEmpty = len(hist) == 0
+    }
+}
+
+// saveHistory saves the current history to the user's history file
+func saveHistory() {
+    if historyFile == "" {
+        return // No history file set, skip saving
+    }
+
+    // Create history content
+    var content strings.Builder
+    for _, entry := range hist {
+        content.WriteString(entry)
+        content.WriteString("\n")
+    }
+
+    // Write to file (ignore errors for now)
+    os.WriteFile(historyFile, []byte(content.String()), 0600)
+}
+
+// addToHistory adds a new entry to history, maintaining the 255 entry limit
+func addToHistory(entry string) {
+    if entry == "" {
+        return
+    }
+
+    // Don't add if it's the same as the last entry
+    if len(hist) > 0 && hist[len(hist)-1] == entry {
+        return
+    }
+
+    // Add new entry
+    hist = append(hist, entry)
+    lastHist++
+    histEmpty = false
+
+    // Trim to MAX_HISTORY_ENTRIES if needed
+    if len(hist) > MAX_HISTORY_ENTRIES {
+        hist = hist[len(hist)-MAX_HISTORY_ENTRIES:]
+        lastHist = len(hist)
+    }
+}
+
 // Global: logging related
 var logFile string
 var loggingEnabled bool
@@ -1248,6 +1325,16 @@ func main() {
         lastHist = 0
         histEmpty = true
 
+        // Load permanent history file
+        loadHistory()
+
+        // Ensure history is saved on any exit (normal or abnormal)
+        defer func() {
+            if interactive {
+                saveHistory()
+            }
+        }()
+
         mainloc, _ := GetNextFnSpace(true, "main", call_s{prepared: false})
         fnlookup.lmset("main", 1)
         numlookup.lmset(1, "main")
@@ -1472,6 +1559,9 @@ func main() {
 
         }
         pln("")
+
+        // Save history before exiting
+        saveHistory()
 
         finish(true, 0)
     }

@@ -303,14 +303,17 @@ func buildSystemLib() {
     }
 
     // I/O functions
-    slhelp["nio"] = LibHelp{in: "[options]", out: "[]NetworkIOStats", action: "Returns network I/O throughput statistics. Options: map(.interface \"eth0\", .include_errors true)"}
+    slhelp["nio"] = LibHelp{in: "[interface_name|options]", out: "[]NetworkIOStats", action: "Returns network I/O throughput statistics. Options: map(.interface \"eth0\", .include_errors true) or simple string for interface name."}
     stdlib["nio"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if len(args) > 1 {
-            return nil, errors.New("nio expects 0 or 1 argument (options map)")
+            return nil, errors.New("nio expects 0 or 1 argument (interface name string or options map)")
         }
         var options map[string]interface{}
         if len(args) > 0 {
             switch v := args[0].(type) {
+            case string:
+                // Simple string argument - treat as interface name
+                options = map[string]interface{}{"interface": v}
             case map[string]interface{}:
                 options = v
             case map[any]any:
@@ -321,20 +324,23 @@ func buildSystemLib() {
                     }
                 }
             default:
-                return nil, errors.New("nio options must be a map")
+                return nil, errors.New("nio argument must be string (interface name) or map (options)")
             }
         }
         return getNetworkIO(options)
     }
 
-    slhelp["dio"] = LibHelp{in: "[options]", out: "[]DiskIOStats", action: "Returns disk I/O throughput statistics. Options: map(.device \"sda\")"}
+    slhelp["dio"] = LibHelp{in: "[device_name|options]", out: "[]DiskIOStats", action: "Returns disk I/O throughput statistics. Options: map(.device \"sda\") or simple string for device name."}
     stdlib["dio"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if len(args) > 1 {
-            return nil, errors.New("dio expects 0 or 1 argument (options map)")
+            return nil, errors.New("dio expects 0 or 1 argument (device name string or options map)")
         }
         var options map[string]interface{}
         if len(args) > 0 {
             switch v := args[0].(type) {
+            case string:
+                // Simple string argument - treat as device name
+                options = map[string]interface{}{"device": v}
             case map[string]interface{}:
                 options = v
             case map[any]any:
@@ -345,7 +351,7 @@ func buildSystemLib() {
                     }
                 }
             default:
-                return nil, errors.New("dio options must be a map")
+                return nil, errors.New("dio argument must be string (device name) or map (options)")
             }
         }
         return getDiskIO(options)
