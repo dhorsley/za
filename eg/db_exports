@@ -39,7 +39,7 @@ println "Debug result: {res_debug}\n"
 
 # Test 2: Basic query without separator (defaults to "|")
 println "[#2]Test 2: Basic query without separator[#-]"
-println "Debug: h type = {=h.kind}"
+println "Debug: h type = {typeof(h)}"
 println "Debug: h value = {h}"
 res2=h.db_query("SELECT 2 as num, 'world' as str")
 println "Result: {res2}\n"
@@ -52,52 +52,52 @@ println "Result: {res3}\n"
 # Test 4: JSON output format
 println "[#2]Test 4: JSON output format[#-]"
 res4=h.db_query("SELECT 4 as id, 'json_test' as name", map(.format "json"))
-println "Result: ",res4.pp,"\n"
+println "Result: {res4}\n"
 
 # Test 5: CSV output format
 println "[#2]Test 5: CSV output format[#-]"
 res5=h.db_query("SELECT 5 as id, 'csv_test' as name", map(.format "csv"))
-println "Result: ",res5.pp,"\n"
+println "Result: {res5}\n"
 
 # Test 6: TSV output format
 println "[#2]Test 6: TSV output format[#-]"
 res6=h.db_query("SELECT 6 as id, 'tsv_test' as name", map(.format "tsv"))
-println "Result: ",format("%q",res6),"\n"
+println "Result: {res6}\n"
 
 # Test 7: Table output format
 println "[#2]Test 7: Table output format[#-]"
 res7=h.db_query("SELECT 7 as id, 'table_test' as name", map(.format "table"))
-println "Result: ",res7,"\n"
+println "Result: {res7}\n"
 
 # Test 8: Map output format (with type conversion)
 println "[#2]Test 8: Map output format[#-]"
 res8=h.db_query("SELECT 8 as id, 'map_test' as name, 42 as number", map(.format "map"))
-println "Result: ",res8,"\n"
+println "Result: {res8}\n"
 
 # Test 9: Array output format
 println "[#2]Test 9: Array output format[#-]"
 res9=h.db_query("SELECT 9 as id, 'array_test' as name", map(.format "array"))
-println "Result: ",res9.pp,"\n"
+println "Result: {res9}\n"
 
 # Test 10: YAML output format
 println "[#2]Test 10: YAML output format[#-]"
 res10=h.db_query("SELECT 10 as id, 'yaml_test' as name, true as flag", map(.format "yaml"))
-println "Result: ",res10.pp,"\n"
+println "Result: {res10}\n"
 
 # Test 11: XML output format
 println "[#2]Test 11: XML output format[#-]"
 res11=h.db_query("SELECT 11 as id, 'xml_test' as name", map(.format "xml"))
-println "Result: ",res11.pp,"\n"
+println "Result: {res11}\n"
 
 # Test 12: JSONL output format
 println "[#2]Test 12: JSONL output format[#-]"
 res12=h.db_query("SELECT 12 as id, 'jsonl_test' as name", map(.format "jsonl"))
-println "Result: ",res12.pp,"\n"
+println "Result: {res12}\n"
 
 # Test 13: Prepared statement with parameters
 println "[#2]Test 13: Prepared statement with parameters[#-]"
 res13=h.db_query("SELECT ? as id, ? as name", map(.params [13, "prepared_test"]))
-println "Result: ",res13.pp,"\n"
+println "Result: {res13}\n"
 
 # Test 14: Limit functionality
 println "[#2]Test 14: Limit functionality[#-]"
@@ -147,7 +147,7 @@ println "Result: {res20}\n"
 
 # Test 21: Different data types
 println "[#2]Test 21: Different data types[#-]"
-res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text", map(.format "yaml"))
+res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text, 1 as boolean", map(.format "yaml"))
 println "Result: {res21}\n"
 
 # Test 22: Empty result set
