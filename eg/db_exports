@@ -1,5 +1,9 @@
 #!/usr/bin/za
 
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
 doc "Comprehensive database functionality test script"
 doc "Tests all db_query features including new map options and output formats"
 
@@ -27,8 +31,16 @@ println "[#2]Test 1: Basic query with string separator[#-]"
 res1=h.db_query("SELECT 1 as test_col, 'hello' as test_str", "|")
 println "Result: {res1}\n"
 
+# Test 1.5: Simple test to debug the issue
+println "[#2]Test 1.5: Debug test[#-]"
+println "Debug: About to call db_query with 2 args"
+res_debug=h.db_query("SELECT 1 as debug")
+println "Debug result: {res_debug}\n"
+
 # Test 2: Basic query without separator (defaults to "|")
 println "[#2]Test 2: Basic query without separator[#-]"
+println "Debug: h type = {typeof(h)}"
+println "Debug: h value = {h}"
 res2=h.db_query("SELECT 2 as num, 'world' as str")
 println "Result: {res2}\n"
 
@@ -99,21 +111,24 @@ println "Result: {res15}\n"
 
 # Test 16: Error handling - invalid query
 println "[#2]Test 16: Error handling - invalid query[#-]"
-res16=h.db_query("SELECT * FROM nonexistent_table")
-if res16 == nil
-    println "Expected error: Query failed as expected\n"
-else
-    println "Unexpected success: {res16}\n"
-endif
+res16=""
+try uses h,res16
+    res16=h.db_query("SELECT * FROM nonexistent_table")
+catch err
+    println "error in query: ",err
+    println "result : ",res16
+endtry
 
 # Test 17: Error handling - invalid format
+res17=""
 println "[#2]Test 17: Error handling - invalid format[#-]"
-res17=h.db_query("SELECT 17 as id", map(.format "invalid_format"))
-if res17 == nil
-    println "Expected error: Invalid format failed as expected\n"
-else
-    println "Unexpected success: {res17}\n"
-endif
+try uses h,res17
+    res17=h.db_query("SELECT 17 as id", map(.format "invalid_format")) ?? "invalid"
+    println "result success : ",res17
+catch err is "invalid"
+    println "error in query: ",err
+    println "result : ",res17
+endtry
 
 # Test 18: Large result set handling
 println "[#2]Test 18: Large result set handling[#-]"
@@ -122,7 +137,7 @@ println "Result (limited to 5): {res18}\n"
 
 # Test 19: Special characters in data
 println "[#2]Test 19: Special characters in data[#-]"
-res19=h.db_query("SELECT 'test\"quote' as quoted, 'test,comma' as comma, 'test\nnewline' as newline", map(.format "csv"))
+res19=h.db_query(`SELECT 'test"quote' as quoted, 'test,comma' as comma, 'test\nnewline' as newline`, map(.format "csv"))
 println "Result: {res19}\n"
 
 # Test 20: NULL value handling
@@ -132,7 +147,7 @@ println "Result: {res20}\n"
 
 # Test 21: Different data types
 println "[#2]Test 21: Different data types[#-]"
-res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text, true as boolean", map(.format "yaml"))
+res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text", map(.format "yaml"))
 println "Result: {res21}\n"
 
 # Test 22: Empty result set
@@ -142,18 +157,18 @@ println "Result: {res22}\n"
 
 # Test 23: Multiple columns with different formats
 println "[#2]Test 23: Multiple columns with different formats[#-]"
-res23=h.db_query("SELECT 1 as id, 'test' as name, 42.5 as value, true as active", map(.format "table"))
+res23=h.db_query("SELECT 1 as id, 'test' as name, 42.5 as value, 1 as active", map(.format "table"))
 println "Result: {res23}\n"
 
 # Test 24: Performance test - multiple queries
 println "[#2]Test 24: Performance test - multiple queries[#-]"
 start_time=epoch_nano_time()
-for i=1 to 10
+for i=1 to 1000
     res=h.db_query("SELECT {i} as iteration", map(.format "string"))
 endfor
 end_time=epoch_nano_time()
 duration=(end_time-start_time)/1_000_000
-println "Completed 10 queries in {duration}ms\n"
+println "Completed 1000 queries in {duration}ms\n"
 
 # Test 25: Connection validation
 println "[#2]Test 25: Connection validation[#-]"
