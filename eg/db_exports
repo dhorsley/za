@@ -1,0 +1,171 @@
+#!/usr/bin/za
+
+doc "Comprehensive database functionality test script"
+doc "Tests all db_query features including new map options and output formats"
+
+# Set up database environment variables
+set_env("ZA_DB_HOST","127.0.0.1")
+set_env("ZA_DB_ENGINE","mysql")
+set_env("ZA_DB_PORT","3306")
+set_env("ZA_DB_USER","root")
+
+# Initialize database connection
+h=db_init("mysql")
+if h == nil
+    println "Failed to connect to database. Please ensure:"
+    println "1. MySQL server is running"
+    println "2. Test database exists"
+    println "3. Test user has appropriate permissions"
+    println "4. Environment variables are set correctly"
+    exit 1
+endif
+
+println "[#1]Database connection established[#-]\n"
+
+# Test 1: Basic query with string separator (backward compatibility)
+println "[#2]Test 1: Basic query with string separator[#-]"
+res1=h.db_query("SELECT 1 as test_col, 'hello' as test_str", "|")
+println "Result: {res1}\n"
+
+# Test 2: Basic query without separator (defaults to "|")
+println "[#2]Test 2: Basic query without separator[#-]"
+res2=h.db_query("SELECT 2 as num, 'world' as str")
+println "Result: {res2}\n"
+
+# Test 3: Map options with custom separator
+println "[#2]Test 3: Map options with custom separator[#-]"
+res3=h.db_query("SELECT 3 as id, 'test' as name", map(.separator ":"))
+println "Result: {res3}\n"
+
+# Test 4: JSON output format
+println "[#2]Test 4: JSON output format[#-]"
+res4=h.db_query("SELECT 4 as id, 'json_test' as name", map(.format "json"))
+println "Result: {res4}\n"
+
+# Test 5: CSV output format
+println "[#2]Test 5: CSV output format[#-]"
+res5=h.db_query("SELECT 5 as id, 'csv_test' as name", map(.format "csv"))
+println "Result: {res5}\n"
+
+# Test 6: TSV output format
+println "[#2]Test 6: TSV output format[#-]"
+res6=h.db_query("SELECT 6 as id, 'tsv_test' as name", map(.format "tsv"))
+println "Result: {res6}\n"
+
+# Test 7: Table output format
+println "[#2]Test 7: Table output format[#-]"
+res7=h.db_query("SELECT 7 as id, 'table_test' as name", map(.format "table"))
+println "Result: {res7}\n"
+
+# Test 8: Map output format (with type conversion)
+println "[#2]Test 8: Map output format[#-]"
+res8=h.db_query("SELECT 8 as id, 'map_test' as name, 42 as number", map(.format "map"))
+println "Result: {res8}\n"
+
+# Test 9: Array output format
+println "[#2]Test 9: Array output format[#-]"
+res9=h.db_query("SELECT 9 as id, 'array_test' as name", map(.format "array"))
+println "Result: {res9}\n"
+
+# Test 10: YAML output format
+println "[#2]Test 10: YAML output format[#-]"
+res10=h.db_query("SELECT 10 as id, 'yaml_test' as name, true as flag", map(.format "yaml"))
+println "Result: {res10}\n"
+
+# Test 11: XML output format
+println "[#2]Test 11: XML output format[#-]"
+res11=h.db_query("SELECT 11 as id, 'xml_test' as name", map(.format "xml"))
+println "Result: {res11}\n"
+
+# Test 12: JSONL output format
+println "[#2]Test 12: JSONL output format[#-]"
+res12=h.db_query("SELECT 12 as id, 'jsonl_test' as name", map(.format "jsonl"))
+println "Result: {res12}\n"
+
+# Test 13: Prepared statement with parameters
+println "[#2]Test 13: Prepared statement with parameters[#-]"
+res13=h.db_query("SELECT ? as id, ? as name", map(.params [13, "prepared_test"]))
+println "Result: {res13}\n"
+
+# Test 14: Limit functionality
+println "[#2]Test 14: Limit functionality[#-]"
+res14=h.db_query("SELECT 1 as num UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5", map(.limit 3))
+println "Result: {res14}\n"
+
+# Test 15: Multiple options combined
+println "[#2]Test 15: Multiple options combined[#-]"
+res15=h.db_query("SELECT 15 as id, 'combined_test' as name", map(.format "json", .limit 1, .separator "|"))
+println "Result: {res15}\n"
+
+# Test 16: Error handling - invalid query
+println "[#2]Test 16: Error handling - invalid query[#-]"
+res16=h.db_query("SELECT * FROM nonexistent_table")
+if res16 == nil
+    println "Expected error: Query failed as expected\n"
+else
+    println "Unexpected success: {res16}\n"
+endif
+
+# Test 17: Error handling - invalid format
+println "[#2]Test 17: Error handling - invalid format[#-]"
+res17=h.db_query("SELECT 17 as id", map(.format "invalid_format"))
+if res17 == nil
+    println "Expected error: Invalid format failed as expected\n"
+else
+    println "Unexpected success: {res17}\n"
+endif
+
+# Test 18: Large result set handling
+println "[#2]Test 18: Large result set handling[#-]"
+res18=h.db_query("SELECT 1 as num UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10", map(.format "array", .limit 5))
+println "Result (limited to 5): {res18}\n"
+
+# Test 19: Special characters in data
+println "[#2]Test 19: Special characters in data[#-]"
+res19=h.db_query("SELECT 'test\"quote' as quoted, 'test,comma' as comma, 'test\nnewline' as newline", map(.format "csv"))
+println "Result: {res19}\n"
+
+# Test 20: NULL value handling
+println "[#2]Test 20: NULL value handling[#-]"
+res20=h.db_query("SELECT NULL as null_col, 'not_null' as not_null_col", map(.format "map"))
+println "Result: {res20}\n"
+
+# Test 21: Different data types
+println "[#2]Test 21: Different data types[#-]"
+res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text, true as boolean", map(.format "yaml"))
+println "Result: {res21}\n"
+
+# Test 22: Empty result set
+println "[#2]Test 22: Empty result set[#-]"
+res22=h.db_query("SELECT 1 WHERE 1=0", map(.format "json"))
+println "Result: {res22}\n"
+
+# Test 23: Multiple columns with different formats
+println "[#2]Test 23: Multiple columns with different formats[#-]"
+res23=h.db_query("SELECT 1 as id, 'test' as name, 42.5 as value, true as active", map(.format "table"))
+println "Result: {res23}\n"
+
+# Test 24: Performance test - multiple queries
+println "[#2]Test 24: Performance test - multiple queries[#-]"
+start_time=epoch_nano_time()
+for i=1 to 10
+    res=h.db_query("SELECT {i} as iteration", map(.format "string"))
+endfor
+end_time=epoch_nano_time()
+duration=(end_time-start_time)/1_000_000
+println "Completed 10 queries in {duration}ms\n"
+
+# Test 25: Connection validation
+println "[#2]Test 25: Connection validation[#-]"
+res25=h.db_query("SELECT 1 as connection_test")
+if res25 != nil
+    println "Connection is working properly\n"
+else
+    println "Connection test failed\n"
+endif
+
+# Close database connection
+h.db_close()
+println "[#1]Database connection closed[#-]"
+println "\n[#3]All database tests completed![#-]" 
+
