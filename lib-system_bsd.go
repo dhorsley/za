@@ -796,111 +796,93 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
 
-        // Query interface stats using sysctl
+        // Query interface stats using ifconfig command
         var rxBytes, txBytes, rxPackets, txPackets uint64
         var rxErrors, txErrors, rxDropped, txDropped uint64
 
-        // Try to get interface statistics from sysctl
+        // Try to get interface statistics from ifconfig
         if iface.Flags&net.FlagUp != 0 {
-            // Use proper FreeBSD sysctl paths for network statistics
-            // These are the actual sysctl paths that exist on FreeBSD
-
-            // Get received bytes - try multiple possible paths
-            rxPaths := []string{
-                fmt.Sprintf("dev.%s.ibytes", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.ibytes", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.inbytes", iface.Name),
-            }
-
-            for _, path := range rxPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        rxBytes = val
-                        break
+            // Use ifconfig command for reliable network statistics on BSD
+            cmd := exec.Command("ifconfig", iface.Name)
+            output, err := cmd.Output()
+            if err == nil {
+                // Parse ifconfig output to extract statistics
+                lines := strings.Split(string(output), "\n")
+                for _, line := range lines {
+                    line = strings.TrimSpace(line)
+                    if strings.Contains(line, "bytes") {
+                        // Parse bytes from ifconfig output
+                        // Format: "bytes 1234567890 9876543210"
+                        fields := strings.Fields(line)
+                        for i, field := range fields {
+                            if field == "bytes" && i+2 < len(fields) {
+                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
+                                    rxBytes = val
+                                }
+                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
+                                    txBytes = val
+                                }
+                                break
+                            }
+                        }
+                    }
+                    if strings.Contains(line, "packets") {
+                        // Parse packets from ifconfig output
+                        // Format: "packets 123456 987654"
+                        fields := strings.Fields(line)
+                        for i, field := range fields {
+                            if field == "packets" && i+2 < len(fields) {
+                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
+                                    rxPackets = val
+                                }
+                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
+                                    txPackets = val
+                                }
+                                break
+                            }
+                        }
+                    }
+                    if strings.Contains(line, "errors") {
+                        // Parse errors from ifconfig output
+                        // Format: "errors 123 456"
+                        fields := strings.Fields(line)
+                        for i, field := range fields {
+                            if field == "errors" && i+2 < len(fields) {
+                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
+                                    rxErrors = val
+                                }
+                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
+                                    txErrors = val
+                                }
+                                break
+                            }
+                        }
                     }
                 }
             }
 
-            // Get transmitted bytes
-            txPaths := []string{
-                fmt.Sprintf("dev.%s.obytes", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.obytes", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.outbytes", iface.Name),
-            }
+            // If ifconfig didn't work, try sysctl with basic paths
+            if rxBytes == 0 && txBytes == 0 {
+                // Try basic sysctl paths that might exist
+                basicPaths := []string{
+                    fmt.Sprintf("dev.%s.ibytes", iface.Name),
+                    fmt.Sprintf("dev.%s.obytes", iface.Name),
+                }
 
-            for _, path := range txPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        txBytes = val
-                        break
+                for _, path := range basicPaths {
+                    if data, err := syscall.Sysctl(path); err == nil {
+                        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                            if strings.Contains(path, "ibytes") {
+                                rxBytes = val
+                            } else if strings.Contains(path, "obytes") {
+                                txBytes = val
+                            }
+                        }
                     }
                 }
             }
 
-            // Get received packets
-            rxPacketPaths := []string{
-                fmt.Sprintf("dev.%s.ipackets", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.ipackets", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.inpackets", iface.Name),
-            }
-
-            for _, path := range rxPacketPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        rxPackets = val
-                        break
-                    }
-                }
-            }
-
-            // Get transmitted packets
-            txPacketPaths := []string{
-                fmt.Sprintf("dev.%s.opackets", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.opackets", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.outpackets", iface.Name),
-            }
-
-            for _, path := range txPacketPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        txPackets = val
-                        break
-                    }
-                }
-            }
-
-            // Get errors
-            rxErrorPaths := []string{
-                fmt.Sprintf("dev.%s.ierrors", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.ierrors", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.inerrors", iface.Name),
-            }
-
-            for _, path := range rxErrorPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        rxErrors = val
-                        break
-                    }
-                }
-            }
-
-            txErrorPaths := []string{
-                fmt.Sprintf("dev.%s.oerrors", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.oerrors", iface.Name),
-                fmt.Sprintf("net.link.ether.inet.%s.outerrors", iface.Name),
-            }
-
-            for _, path := range txErrorPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        txErrors = val
-                        break
-                    }
-                }
-            }
-
-            // If sysctl didn't work, return error instead of fake data
+            // If still no data, return error instead of fake data
             if rxBytes == 0 && txBytes == 0 {
                 return nil, fmt.Errorf("network I/O statistics not available for interface %s - sysctl queries failed", iface.Name)
             }
@@ -942,8 +924,8 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
         var readBytes, writeBytes, readOps, writeOps uint64
         var readTime, writeTime uint64
 
-        // Try to get disk statistics using iostat
-        cmd := exec.Command("iostat", "-x", device)
+        // Try to get disk statistics using iostat - get all devices
+        cmd := exec.Command("iostat", "-x")
         output, err := cmd.Output()
         if err == nil {
             // Parse iostat output to extract statistics
