@@ -2493,6 +2493,8 @@ tco_reentry:
                     l = len(lv)
                 case []ProcessInfo:
                     l = len(lv)
+                case []SlabInfo:
+                    l = len(lv)
                 case []SystemResources:
                     l = len(lv)
                 case []MemoryInfo:
@@ -2542,6 +2544,8 @@ tco_reentry:
                 case map[string][]float64:
                     l = len(lv)
                 case map[string]ProcessInfo:
+                    l = len(lv)
+                case map[string]SlabInfo:
                     l = len(lv)
                 case map[string]SystemResources:
                     l = len(lv)
@@ -2808,6 +2812,12 @@ tco_reentry:
                         condEndPos = len(we.result.([]stackFrame)) - 1
                     }
 
+                case []SlabInfo:
+                    if len(we.result.([]SlabInfo)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]SlabInfo)[0])
+                        condEndPos = len(we.result.([]SlabInfo)) - 1
+                    }
                 case []ProcessInfo:
                     if len(we.result.([]ProcessInfo)) > 0 {
                         vset(nil, ifs, ident, "key_"+fid, 0)
@@ -2913,6 +2923,15 @@ tco_reentry:
                         condEndPos = len(we.result.(map[string]any)) - 1
                     }
 
+                case map[string]SlabInfo:
+                    if len(we.result.(map[string]SlabInfo)) > 0 {
+                        iter = reflect.ValueOf(we.result.(map[string]SlabInfo)).MapRange()
+                        if iter.Next() {
+                            vset(nil, ifs, ident, "key_"+fid, iter.Key().String())
+                            vset(&inbound.Tokens[1], ifs, ident, fid, iter.Value().Interface())
+                        }
+                        condEndPos = len(we.result.(map[string]SlabInfo)) - 1
+                    }
                 case map[string]ProcessInfo:
                     if len(we.result.(map[string]ProcessInfo)) > 0 {
                         iter = reflect.ValueOf(we.result.(map[string]ProcessInfo)).MapRange()
@@ -3313,7 +3332,7 @@ tco_reentry:
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
-                        case map[string]ResourceUsage,map[string]ResourceSnapshot,map[string][]string:
+                        case map[string]ResourceUsage,map[string]ResourceSnapshot,map[string][]string,map[string]SlabInfo:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -3335,6 +3354,9 @@ tco_reentry:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
 
+                        case []SlabInfo:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]SlabInfo)[(*thisLoop).counter])
                         case []ProcessInfo:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]ProcessInfo)[(*thisLoop).counter])
