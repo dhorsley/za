@@ -516,62 +516,67 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
 
     // Get detailed CPU information if requested
     if includeDetails {
+        // Initialize detailed info map if not already present
+        if info.Usage == nil {
+            info.Usage = make(map[string]interface{})
+        }
+
         // Get CPU architecture
         if arch, err := syscall.Sysctl("hw.machine"); err == nil {
-            info.Architecture = strings.TrimSpace(arch)
+            info.Usage["architecture"] = strings.TrimSpace(arch)
         }
 
         // Get CPU frequency
         if freq, err := syscall.Sysctl("dev.cpu.0.freq"); err == nil {
             if freqVal, err := strconv.ParseUint(freq, 10, 64); err == nil {
-                info.Frequency = freqVal
+                info.Usage["frequency"] = freqVal
             }
         }
 
         // Get CPU cache information
         if l1d, err := syscall.Sysctl("hw.cache.l1d.size"); err == nil {
             if l1dSize, err := strconv.ParseUint(l1d, 10, 64); err == nil {
-                info.L1DCache = l1dSize
+                info.Usage["l1d_cache"] = l1dSize
             }
         }
 
         if l1i, err := syscall.Sysctl("hw.cache.l1i.size"); err == nil {
             if l1iSize, err := strconv.ParseUint(l1i, 10, 64); err == nil {
-                info.L1ICache = l1iSize
+                info.Usage["l1i_cache"] = l1iSize
             }
         }
 
         if l2, err := syscall.Sysctl("hw.cache.l2.size"); err == nil {
             if l2Size, err := strconv.ParseUint(l2, 10, 64); err == nil {
-                info.L2Cache = l2Size
+                info.Usage["l2_cache"] = l2Size
             }
         }
 
         if l3, err := syscall.Sysctl("hw.cache.l3.size"); err == nil {
             if l3Size, err := strconv.ParseUint(l3, 10, 64); err == nil {
-                info.L3Cache = l3Size
+                info.Usage["l3_cache"] = l3Size
             }
         }
 
         // Get CPU temperature if available
         if temp, err := syscall.Sysctl("dev.cpu.0.temperature"); err == nil {
             if tempVal, err := strconv.ParseFloat(temp, 64); err == nil {
-                info.Temperature = tempVal
+                info.Usage["temperature"] = tempVal
             }
         }
 
         // Get CPU vendor
         if vendor, err := syscall.Sysctl("hw.vendor"); err == nil {
-            info.Vendor = strings.TrimSpace(vendor)
+            info.Usage["vendor"] = strings.TrimSpace(vendor)
         }
 
         // Get CPU stepping and revision
         if stepping, err := syscall.Sysctl("hw.cpu.stepping"); err == nil {
-            info.Stepping = strings.TrimSpace(stepping)
+            info.Usage["stepping"] = strings.TrimSpace(stepping)
         }
 
         if revision, err := syscall.Sysctl("hw.cpu.revision"); err == nil {
-            info.Revision = strings.TrimSpace(revision)
+            info.Usage["revision"] = strings.TrimSpace(revision)
         }
     }
 
