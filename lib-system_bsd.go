@@ -859,15 +859,16 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         // Only include interfaces with actual data
         if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
             stats = append(stats, NetworkIOStats{
-                Interface: interfaceName,
-                RxBytes:   rxBytes,
-                TxBytes:   txBytes,
-                RxPackets: rxPackets,
-                TxPackets: txPackets,
-                RxErrors:  rxErrors,
-                TxErrors:  txErrors,
-                RxDropped: rxDropped,
-                TxDropped: 0, // netstat doesn't provide tx_dropped, set to 0
+                Interface:  interfaceName,
+                RxBytes:    rxBytes,
+                TxBytes:    txBytes,
+                RxPackets:  rxPackets,
+                TxPackets:  txPackets,
+                RxErrors:   rxErrors,
+                TxErrors:   txErrors,
+                RxDropped:  rxDropped,
+                TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
+                Collisions: collisions, // set from parsed value
             })
         }
     }
