@@ -1,6 +1,5 @@
-//go:build (linux || freebsd) && !windows
-// +build linux freebsd
-// +build !windows
+//go:build linux
+// +build linux
 
 package main
 
@@ -144,12 +143,10 @@ func getSystemResources() (SystemResources, error) {
     }
 
     // Get uptime
-    if runtime.GOOS == "linux" {
-        if data, err := os.ReadFile("/proc/uptime"); err == nil {
-            fields := strings.Fields(string(data))
-            if len(fields) > 0 {
-                resources.Uptime, _ = strconv.ParseFloat(fields[0], 64)
-            }
+    if data, err := os.ReadFile("/proc/uptime"); err == nil {
+        fields := strings.Fields(string(data))
+        if len(fields) > 0 {
+            resources.Uptime, _ = strconv.ParseFloat(fields[0], 64)
         }
     }
 
@@ -158,10 +155,6 @@ func getSystemResources() (SystemResources, error) {
 
 // getSystemLoad returns system load averages
 func getSystemLoad() ([]float64, error) {
-    if runtime.GOOS != "linux" {
-        return []float64{0, 0, 0}, nil
-    }
-
     data, err := os.ReadFile("/proc/loadavg")
     if err != nil {
         return nil, fmt.Errorf("failed to read /proc/loadavg: %v", err)
@@ -187,65 +180,56 @@ func getSystemLoad() ([]float64, error) {
 func getMemoryInfo() (MemoryInfo, error) {
     var info MemoryInfo
 
-    if runtime.GOOS == "linux" {
-        // Read /proc/meminfo
-        data, err := os.ReadFile("/proc/meminfo")
-        if err != nil {
-            return info, fmt.Errorf("failed to read /proc/meminfo: %v", err)
-        }
-
-        lines := strings.Split(string(data), "\n")
-        for _, line := range lines {
-            fields := strings.Fields(line)
-            if len(fields) < 2 {
-                continue
-            }
-
-            value, err := strconv.ParseUint(fields[1], 10, 64)
-            if err != nil {
-                continue
-            }
-
-            // Convert from KB to bytes
-            value *= 1024
-
-            switch fields[0] {
-            case "MemTotal:":
-                info.Total = value
-            case "MemAvailable:":
-                info.Available = value
-            case "MemFree:":
-                info.Free = value
-            case "Cached:":
-                info.Cached = value
-            case "Buffers:":
-                info.Buffers = value
-            case "SwapTotal:":
-                info.SwapTotal = value
-            case "SwapFree:":
-                info.SwapFree = value
-            }
-        }
-
-        info.Used = info.Total - info.Free - info.Cached - info.Buffers
-        info.SwapUsed = info.SwapTotal - info.SwapFree
-
-        // Get memory pressure
-        info.Pressure = getMemoryPressure()
-
-        // Get OOM scores
-        info.OOMScores = getOOMScores()
-
-        // Get slab info
-        info.Slab = getSlabInfo()
-    } else {
-        // For non-Linux systems, return basic info
-        var m runtime.MemStats
-        runtime.ReadMemStats(&m)
-        info.Total = m.Sys
-        info.Used = m.Alloc
-        info.Free = m.Sys - m.Alloc
+    // Read /proc/meminfo
+    data, err := os.ReadFile("/proc/meminfo")
+    if err != nil {
+        return info, fmt.Errorf("failed to read /proc/meminfo: %v", err)
     }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        fields := strings.Fields(line)
+        if len(fields) < 2 {
+            continue
+        }
+
+        value, err := strconv.ParseUint(fields[1], 10, 64)
+        if err != nil {
+            continue
+        }
+
+        // Convert from KB to bytes
+        value *= 1024
+
+        switch fields[0] {
+        case "MemTotal:":
+            info.Total = value
+        case "MemAvailable:":
+            info.Available = value
+        case "MemFree:":
+            info.Free = value
+        case "Cached:":
+            info.Cached = value
+        case "Buffers:":
+            info.Buffers = value
+        case "SwapTotal:":
+            info.SwapTotal = value
+        case "SwapFree:":
+            info.SwapFree = value
+        }
+    }
+
+    info.Used = info.Total - info.Free - info.Cached - info.Buffers
+    info.SwapUsed = info.SwapTotal - info.SwapFree
+
+    // Get memory pressure
+    info.Pressure = getMemoryPressure()
+
+    // Get OOM scores
+    info.OOMScores = getOOMScores()
+
+    // Get slab info
+    info.Slab = getSlabInfo()
 
     return info, nil
 }
@@ -254,32 +238,27 @@ func getMemoryInfo() (MemoryInfo, error) {
 func getMemoryPressure() map[string]PressureStats {
     pressure := make(map[string]PressureStats)
 
-    if runtime.GOOS != "linux" {
-        return pressure
-    }
-
-    data, err := os.ReadFile("/proc/pressure/memory")
-    if err != nil {
-        return pressure
-    }
-
-    lines := strings.Split(string(data), "\n")
-    for _, line := range lines {
-        if strings.HasPrefix(line, "some") {
-            fields := strings.Fields(line)
-            if len(fields) >= 4 {
-                avg10, _ := strconv.ParseFloat(fields[1], 64)
-                avg60, _ := strconv.ParseFloat(fields[2], 64)
-                avg300, _ := strconv.ParseFloat(fields[3], 64)
-                pressure["some"] = PressureStats{Avg10: avg10, Avg60: avg60, Avg300: avg300}
+    // Read /proc/pressure/memory
+    if data, err := os.ReadFile("/proc/pressure/memory"); err == nil {
+        lines := strings.Split(string(data), "\n")
+        for _, line := range lines {
+            if strings.TrimSpace(line) == "" {
+                continue
             }
-        } else if strings.HasPrefix(line, "full") {
             fields := strings.Fields(line)
             if len(fields) >= 4 {
+                resource := fields[0]
                 avg10, _ := strconv.ParseFloat(fields[1], 64)
                 avg60, _ := strconv.ParseFloat(fields[2], 64)
                 avg300, _ := strconv.ParseFloat(fields[3], 64)
-                pressure["full"] = PressureStats{Avg10: avg10, Avg60: avg60, Avg300: avg300}
+                total, _ := strconv.ParseUint(fields[4], 10, 64)
+
+                pressure[resource] = PressureStats{
+                    Avg10:  avg10,
+                    Avg60:  avg60,
+                    Avg300: avg300,
+                    Total:  total,
+                }
             }
         }
     }
@@ -291,10 +270,7 @@ func getMemoryPressure() map[string]PressureStats {
 func getOOMScores() map[string]int {
     scores := make(map[string]int)
 
-    if runtime.GOOS != "linux" {
-        return scores
-    }
-
+    // Read /proc/*/oom_score for all processes
     entries, err := os.ReadDir("/proc")
     if err != nil {
         return scores
@@ -305,23 +281,16 @@ func getOOMScores() map[string]int {
             continue
         }
 
-        pid, err := strconv.Atoi(entry.Name())
-        if err != nil {
+        // Check if it's a process directory (numeric name)
+        if _, err := strconv.Atoi(entry.Name()); err != nil {
             continue
         }
 
-        // Read process name
-        commPath := fmt.Sprintf("/proc/%d/comm", pid)
-        if data, err := os.ReadFile(commPath); err == nil {
-            name := strings.TrimSpace(string(data))
-            if name != "" {
-                // Read OOM score
-                oomPath := fmt.Sprintf("/proc/%d/oom_score", pid)
-                if scoreData, err := os.ReadFile(oomPath); err == nil {
-                    if score, err := strconv.Atoi(strings.TrimSpace(string(scoreData))); err == nil {
-                        scores[name] = score
-                    }
-                }
+        // Read oom_score
+        oomScorePath := fmt.Sprintf("/proc/%s/oom_score", entry.Name())
+        if data, err := os.ReadFile(oomScorePath); err == nil {
+            if score, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
+                scores[entry.Name()] = score
             }
         }
     }
@@ -331,56 +300,56 @@ func getOOMScores() map[string]int {
 
 // getSlabInfo reads slab allocation info from /proc/slabinfo
 func getSlabInfo() map[string]SlabInfo {
-    slab := make(map[string]SlabInfo)
+    slabInfo := make(map[string]SlabInfo)
 
-    if runtime.GOOS != "linux" {
-        return slab
-    }
-
+    // Read /proc/slabinfo
     data, err := os.ReadFile("/proc/slabinfo")
     if err != nil {
-        return slab
+        return slabInfo
     }
 
     lines := strings.Split(string(data), "\n")
     for _, line := range lines {
-        if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "slabinfo") {
+        if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
             continue
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 6 {
+        if len(fields) < 7 {
             continue
         }
 
         name := fields[0]
-        // Parse according to /proc/slabinfo format:
-        // slab-name <active_objs> <num_objs> <objsize> <objperslab> <pagesperslab>
-        objects, _ := strconv.Atoi(fields[2])           // num_objs
-        size, _ := strconv.ParseUint(fields[3], 10, 64) // objsize
+        activeObjs, _ := strconv.ParseUint(fields[1], 10, 64)
+        numObjs, _ := strconv.ParseUint(fields[2], 10, 64)
+        objSize, _ := strconv.ParseUint(fields[3], 10, 64)
+        objPerSlab, _ := strconv.ParseUint(fields[4], 10, 64)
+        pagesPerSlab, _ := strconv.ParseUint(fields[5], 10, 64)
+        limit, _ := strconv.ParseUint(fields[6], 10, 64)
+        batchCount, _ := strconv.ParseUint(fields[7], 10, 64)
 
-        if objects > 0 && size > 0 {
-            slab[name] = SlabInfo{
-                Objects: objects,
-                Size:    size, // Already in bytes
-            }
+        slabInfo[name] = SlabInfo{
+            ActiveObjs:   activeObjs,
+            NumObjs:      numObjs,
+            ObjSize:      objSize,
+            ObjPerSlab:   objPerSlab,
+            PagesPerSlab: pagesPerSlab,
+            Limit:        limit,
+            BatchCount:   batchCount,
         }
     }
 
-    return slab
+    return slabInfo
 }
 
 // getProcessList returns list of all processes
 func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     var processes []ProcessInfo
 
-    if runtime.GOOS != "linux" {
-        return processes, nil
-    }
-
+    // Read /proc directory to get process list
     entries, err := os.ReadDir("/proc")
     if err != nil {
-        return nil, fmt.Errorf("failed to read /proc: %v", err)
+        return nil, err
     }
 
     for _, entry := range entries {
@@ -388,17 +357,17 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
             continue
         }
 
+        // Check if it's a process directory (numeric name)
         pid, err := strconv.Atoi(entry.Name())
         if err != nil {
             continue
         }
 
-        proc, err := getProcessInfo(pid, options)
-        if err != nil {
-            continue
+        // Get process info
+        process, err := getProcessInfo(pid, options)
+        if err == nil {
+            processes = append(processes, process)
         }
-
-        processes = append(processes, proc)
     }
 
     return processes, nil
@@ -408,10 +377,6 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
 func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error) {
     var proc ProcessInfo
     proc.PID = pid
-
-    if runtime.GOOS != "linux" {
-        return proc, fmt.Errorf("process info not available on this platform")
-    }
 
     // Read /proc/{pid}/stat
     statPath := fmt.Sprintf("/proc/%d/stat", pid)
@@ -581,76 +546,110 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
         }
     }
 
-    if runtime.GOOS == "linux" {
-        // Read CPU model from /proc/cpuinfo
-        data, err := os.ReadFile("/proc/cpuinfo")
-        if err == nil {
-            lines := strings.Split(string(data), "\n")
-            for _, line := range lines {
-                if strings.HasPrefix(line, "model name") {
-                    parts := strings.SplitN(line, ":", 2)
-                    if len(parts) == 2 {
-                        info.Model = strings.TrimSpace(parts[1])
-                        break
-                    }
+    // Read CPU model from /proc/cpuinfo
+    data, err := os.ReadFile("/proc/cpuinfo")
+    if err == nil {
+        lines := strings.Split(string(data), "\n")
+        for _, line := range lines {
+            if strings.HasPrefix(line, "model name") {
+                parts := strings.SplitN(line, ":", 2)
+                if len(parts) == 2 {
+                    info.Model = strings.TrimSpace(parts[1])
+                    break
                 }
             }
         }
+    }
 
-        // Read CPU usage from /proc/stat
-        data, err = os.ReadFile("/proc/stat")
-        if err == nil {
-            lines := strings.Split(string(data), "\n")
+    // Read CPU usage from /proc/stat
+    data, err = os.ReadFile("/proc/stat")
+    if err == nil {
+        lines := strings.Split(string(data), "\n")
 
-            if coreNumber >= 0 {
-                // Get specific core information
+        if coreNumber >= 0 {
+            // Get specific core information
+            coreFound := false
+            for _, line := range lines {
+                if strings.HasPrefix(line, fmt.Sprintf("cpu%d ", coreNumber)) {
+                    fields := strings.Fields(line)
+                    if len(fields) >= 5 {
+                        info.Usage = make(map[string]interface{})
+                        info.Usage["core"] = coreNumber
+                        info.Usage["user"] = parseUint64(fields[1])
+                        info.Usage["nice"] = parseUint64(fields[2])
+                        info.Usage["system"] = parseUint64(fields[3])
+                        info.Usage["idle"] = parseUint64(fields[4])
+                        if len(fields) > 5 {
+                            info.Usage["iowait"] = parseUint64(fields[5])
+                        }
+                        if len(fields) > 6 {
+                            info.Usage["irq"] = parseUint64(fields[6])
+                        }
+                        if len(fields) > 7 {
+                            info.Usage["softirq"] = parseUint64(fields[7])
+                        }
+                        if len(fields) > 8 {
+                            info.Usage["steal"] = parseUint64(fields[8])
+                        }
+                        if len(fields) > 9 {
+                            info.Usage["guest"] = parseUint64(fields[9])
+                        }
+                        if len(fields) > 10 {
+                            info.Usage["guest_nice"] = parseUint64(fields[10])
+                        }
+                        coreFound = true
+                    }
+                    break
+                }
+            }
+
+            if !coreFound {
+                return info, fmt.Errorf("core %d not found in /proc/stat", coreNumber)
+            }
+        } else {
+            // Get data for all individual cores
+            info.Usage = make(map[string]interface{})
+            cores := make(map[string]interface{})
+
+            for core := 0; core < info.Cores; core++ {
                 coreFound := false
                 for _, line := range lines {
-                    if strings.HasPrefix(line, fmt.Sprintf("cpu%d ", coreNumber)) {
+                    if strings.HasPrefix(line, fmt.Sprintf("cpu%d ", core)) {
                         fields := strings.Fields(line)
                         if len(fields) >= 5 {
-                            info.Usage = make(map[string]interface{})
-                            info.Usage["core"] = coreNumber
-                            info.Usage["user"] = parseUint64(fields[1])
-                            info.Usage["nice"] = parseUint64(fields[2])
-                            info.Usage["system"] = parseUint64(fields[3])
-                            info.Usage["idle"] = parseUint64(fields[4])
+                            coreData := make(map[string]interface{})
+                            coreData["user"] = parseUint64(fields[1])
+                            coreData["nice"] = parseUint64(fields[2])
+                            coreData["system"] = parseUint64(fields[3])
+                            coreData["idle"] = parseUint64(fields[4])
                             if len(fields) > 5 {
-                                info.Usage["iowait"] = parseUint64(fields[5])
+                                coreData["iowait"] = parseUint64(fields[5])
                             }
                             if len(fields) > 6 {
-                                info.Usage["irq"] = parseUint64(fields[6])
+                                coreData["irq"] = parseUint64(fields[6])
                             }
                             if len(fields) > 7 {
-                                info.Usage["softirq"] = parseUint64(fields[7])
+                                coreData["softirq"] = parseUint64(fields[7])
                             }
                             if len(fields) > 8 {
-                                info.Usage["steal"] = parseUint64(fields[8])
+                                coreData["steal"] = parseUint64(fields[8])
                             }
                             if len(fields) > 9 {
-                                info.Usage["guest"] = parseUint64(fields[9])
+                                coreData["guest"] = parseUint64(fields[9])
                             }
                             if len(fields) > 10 {
-                                info.Usage["guest_nice"] = parseUint64(fields[10])
+                                coreData["guest_nice"] = parseUint64(fields[10])
                             }
+                            cores[fmt.Sprintf("core_%d", core)] = coreData
                             coreFound = true
                         }
                         break
                     }
                 }
-
                 if !coreFound {
-                    return info, fmt.Errorf("core %d not found in /proc/stat", coreNumber)
-                }
-            } else {
-                // Get data for all individual cores
-                info.Usage = make(map[string]interface{})
-                cores := make(map[string]interface{})
-
-                for core := 0; core < info.Cores; core++ {
-                    coreFound := false
+                    // If we can't find individual core data, fall back to overall stats
                     for _, line := range lines {
-                        if strings.HasPrefix(line, fmt.Sprintf("cpu%d ", core)) {
+                        if strings.HasPrefix(line, "cpu ") {
                             fields := strings.Fields(line)
                             if len(fields) >= 5 {
                                 coreData := make(map[string]interface{})
@@ -677,162 +676,53 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
                                     coreData["guest_nice"] = parseUint64(fields[10])
                                 }
                                 cores[fmt.Sprintf("core_%d", core)] = coreData
-                                coreFound = true
                             }
                             break
                         }
                     }
-                    if !coreFound {
-                        // If we can't find individual core data, fall back to overall stats
-                        for _, line := range lines {
-                            if strings.HasPrefix(line, "cpu ") {
-                                fields := strings.Fields(line)
-                                if len(fields) >= 5 {
-                                    coreData := make(map[string]interface{})
-                                    coreData["user"] = parseUint64(fields[1])
-                                    coreData["nice"] = parseUint64(fields[2])
-                                    coreData["system"] = parseUint64(fields[3])
-                                    coreData["idle"] = parseUint64(fields[4])
-                                    if len(fields) > 5 {
-                                        coreData["iowait"] = parseUint64(fields[5])
-                                    }
-                                    if len(fields) > 6 {
-                                        coreData["irq"] = parseUint64(fields[6])
-                                    }
-                                    if len(fields) > 7 {
-                                        coreData["softirq"] = parseUint64(fields[7])
-                                    }
-                                    if len(fields) > 8 {
-                                        coreData["steal"] = parseUint64(fields[8])
-                                    }
-                                    if len(fields) > 9 {
-                                        coreData["guest"] = parseUint64(fields[9])
-                                    }
-                                    if len(fields) > 10 {
-                                        coreData["guest_nice"] = parseUint64(fields[10])
-                                    }
-                                    cores[fmt.Sprintf("core_%d", core)] = coreData
+                }
+            }
+            info.Usage["cores"] = cores
+        }
+    }
+
+    // If details are requested, try to get additional information
+    if includeDetails {
+        if coreNumber >= 0 {
+            // Try to read CPU frequency information for specific core
+            freqPath := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", coreNumber)
+            if freqData, err := os.ReadFile(freqPath); err == nil {
+                if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
+                    info.Usage["frequency_mhz"] = float64(freq) / 1000.0
+                }
+            } else {
+                // Try alternative frequency paths
+                altFreqPaths := []string{
+                    fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", coreNumber),
+                    fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", coreNumber),
+                }
+                for _, altPath := range altFreqPaths {
+                    if freqData, err := os.ReadFile(altPath); err == nil {
+                        if strings.Contains(altPath, "scaling_available_frequencies") {
+                            // Parse the first frequency from the list
+                            freqs := strings.Fields(string(freqData))
+                            if len(freqs) > 0 {
+                                if freq, err := strconv.ParseUint(freqs[0], 10, 64); err == nil {
+                                    info.Usage["frequency_mhz"] = float64(freq) / 1000.0
+                                    break
                                 }
+                            }
+                        } else {
+                            if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
+                                info.Usage["frequency_mhz"] = float64(freq) / 1000.0
                                 break
                             }
                         }
                     }
                 }
-                info.Usage["cores"] = cores
-            }
-        }
 
-        // If details are requested, try to get additional information
-        if includeDetails {
-            if coreNumber >= 0 {
-                // Try to read CPU frequency information for specific core
-                freqPath := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", coreNumber)
-                if freqData, err := os.ReadFile(freqPath); err == nil {
-                    if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
-                        info.Usage["frequency_mhz"] = float64(freq) / 1000.0
-                    }
-                } else {
-                    // Try alternative frequency paths
-                    altFreqPaths := []string{
-                        fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", coreNumber),
-                        fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", coreNumber),
-                    }
-                    for _, altPath := range altFreqPaths {
-                        if freqData, err := os.ReadFile(altPath); err == nil {
-                            if strings.Contains(altPath, "scaling_available_frequencies") {
-                                // Parse the first frequency from the list
-                                freqs := strings.Fields(string(freqData))
-                                if len(freqs) > 0 {
-                                    if freq, err := strconv.ParseUint(freqs[0], 10, 64); err == nil {
-                                        info.Usage["frequency_mhz"] = float64(freq) / 1000.0
-                                        break
-                                    }
-                                }
-                            } else {
-                                if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
-                                    info.Usage["frequency_mhz"] = float64(freq) / 1000.0
-                                    break
-                                }
-                            }
-                        }
-                    }
-
-                    // If no cpufreq data available, try /proc/cpuinfo
-                    if _, exists := info.Usage["frequency_mhz"]; !exists {
-                        if data, err := os.ReadFile("/proc/cpuinfo"); err == nil {
-                            lines := strings.Split(string(data), "\n")
-                            currentProcessor := -1
-                            for _, line := range lines {
-                                if strings.HasPrefix(line, "processor") {
-                                    parts := strings.SplitN(line, ":", 2)
-                                    if len(parts) == 2 {
-                                        if proc, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
-                                            currentProcessor = proc
-                                        }
-                                    }
-                                } else if strings.HasPrefix(line, "cpu MHz") && currentProcessor == coreNumber {
-                                    parts := strings.SplitN(line, ":", 2)
-                                    if len(parts) == 2 {
-                                        if freq, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil {
-                                            info.Usage["frequency_mhz"] = freq
-                                            break
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Get frequency data for all cores
-                frequencies := make(map[string]interface{})
-                for core := 0; core < info.Cores; core++ {
-                    freqPath := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", core)
-                    freqFound := false
-
-                    if freqData, err := os.ReadFile(freqPath); err == nil {
-                        if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
-                            frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
-                            freqFound = true
-                        }
-                    }
-
-                    if !freqFound {
-                        // Try alternative frequency paths
-                        altFreqPaths := []string{
-                            fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", core),
-                            fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", core),
-                        }
-                        for _, altPath := range altFreqPaths {
-                            if freqData, err := os.ReadFile(altPath); err == nil {
-                                if strings.Contains(altPath, "scaling_available_frequencies") {
-                                    // Parse the first frequency from the list
-                                    freqs := strings.Fields(string(freqData))
-                                    if len(freqs) > 0 {
-                                        if freq, err := strconv.ParseUint(freqs[0], 10, 64); err == nil {
-                                            frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
-                                            freqFound = true
-                                            break
-                                        }
-                                    }
-                                } else {
-                                    if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
-                                        frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
-                                        freqFound = true
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if !freqFound {
-                        frequencies[fmt.Sprintf("core_%d", core)] = -999.0 // Clearly invalid sentinel value
-                    }
-                }
-
-                // If no cpufreq data available, try /proc/cpuinfo for overall frequency
-                if len(frequencies) == 0 || allZeroFrequencies(frequencies) {
+                // If no cpufreq data available, try /proc/cpuinfo
+                if _, exists := info.Usage["frequency_mhz"]; !exists {
                     if data, err := os.ReadFile("/proc/cpuinfo"); err == nil {
                         lines := strings.Split(string(data), "\n")
                         currentProcessor := -1
@@ -844,127 +734,200 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
                                         currentProcessor = proc
                                     }
                                 }
-                            } else if strings.HasPrefix(line, "cpu MHz") {
+                            } else if strings.HasPrefix(line, "cpu MHz") && currentProcessor == coreNumber {
                                 parts := strings.SplitN(line, ":", 2)
                                 if len(parts) == 2 {
                                     if freq, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil {
-                                        if currentProcessor >= 0 && currentProcessor < info.Cores {
-                                            frequencies[fmt.Sprintf("core_%d", currentProcessor)] = freq
-                                        }
+                                        info.Usage["frequency_mhz"] = freq
+                                        break
                                     }
                                 }
                             }
                         }
                     }
                 }
-                info.Usage["frequencies_mhz"] = frequencies
             }
+        } else {
+            // Get frequency data for all cores
+            frequencies := make(map[string]interface{})
+            for core := 0; core < info.Cores; core++ {
+                freqPath := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", core)
+                freqFound := false
 
-            // Try to read CPU temperature (if available)
-            tempPaths := []string{
-                "/sys/class/thermal/thermal_zone0/temp",
-                "/sys/devices/platform/coretemp.0/temp1_input",
-                "/sys/devices/platform/coretemp.0/temp2_input",
-                "/sys/devices/platform/coretemp.0/temp3_input",
-                "/sys/devices/platform/coretemp.0/temp4_input",
-                "/sys/devices/platform/coretemp.0/temp5_input",
-                "/sys/devices/platform/coretemp.0/temp6_input",
-                "/sys/devices/platform/coretemp.0/temp7_input",
-                "/sys/devices/platform/coretemp.0/temp8_input",
-                "/sys/class/hwmon/hwmon0/temp1_input",
-                "/sys/class/hwmon/hwmon1/temp1_input",
-                "/sys/class/hwmon/hwmon2/temp1_input",
-                "/sys/class/hwmon/hwmon3/temp1_input",
-                "/sys/class/hwmon/hwmon4/temp1_input",
-                "/sys/class/hwmon/hwmon5/temp1_input",
-                "/sys/class/hwmon/hwmon6/temp1_input",
-                "/sys/class/hwmon/hwmon7/temp1_input",
-                "/sys/class/hwmon/hwmon8/temp1_input",
-                // Additional paths that might work in WSL
-                "/sys/devices/virtual/thermal/thermal_zone0/temp",
-                "/sys/devices/virtual/thermal/thermal_zone1/temp",
-                "/sys/devices/virtual/thermal/thermal_zone2/temp",
-                "/sys/devices/virtual/thermal/thermal_zone3/temp",
-                "/sys/devices/virtual/thermal/thermal_zone4/temp",
-                "/sys/devices/virtual/thermal/thermal_zone5/temp",
-                "/sys/devices/virtual/thermal/thermal_zone6/temp",
-                "/sys/devices/virtual/thermal/thermal_zone7/temp",
-                "/sys/devices/virtual/thermal/thermal_zone8/temp",
-                "/sys/devices/virtual/thermal/thermal_zone9/temp",
-                "/sys/devices/virtual/thermal/thermal_zone10/temp",
-                "/sys/devices/virtual/thermal/thermal_zone11/temp",
-                "/sys/devices/virtual/thermal/thermal_zone12/temp",
-                "/sys/devices/virtual/thermal/thermal_zone13/temp",
-                "/sys/devices/virtual/thermal/thermal_zone14/temp",
-                "/sys/devices/virtual/thermal/thermal_zone15/temp",
-            }
-
-            tempFound := false
-            for _, tempPath := range tempPaths {
-                if tempData, err := os.ReadFile(tempPath); err == nil {
-                    if temp, err := strconv.ParseUint(strings.TrimSpace(string(tempData)), 10, 64); err == nil {
-                        info.Usage["temperature_celsius"] = float64(temp) / 1000.0 // Convert millidegrees to degrees
-                        tempFound = true
-                        break
+                if freqData, err := os.ReadFile(freqPath); err == nil {
+                    if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
+                        frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
+                        freqFound = true
                     }
+                }
+
+                if !freqFound {
+                    // Try alternative frequency paths
+                    altFreqPaths := []string{
+                        fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_cur_freq", core),
+                        fmt.Sprintf("/sys/devices/system/cpu/cpu%d/cpufreq/scaling_available_frequencies", core),
+                    }
+                    for _, altPath := range altFreqPaths {
+                        if freqData, err := os.ReadFile(altPath); err == nil {
+                            if strings.Contains(altPath, "scaling_available_frequencies") {
+                                // Parse the first frequency from the list
+                                freqs := strings.Fields(string(freqData))
+                                if len(freqs) > 0 {
+                                    if freq, err := strconv.ParseUint(freqs[0], 10, 64); err == nil {
+                                        frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
+                                        freqFound = true
+                                        break
+                                    }
+                                }
+                            } else {
+                                if freq, err := strconv.ParseUint(strings.TrimSpace(string(freqData)), 10, 64); err == nil {
+                                    frequencies[fmt.Sprintf("core_%d", core)] = float64(freq) / 1000.0
+                                    freqFound = true
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !freqFound {
+                    frequencies[fmt.Sprintf("core_%d", core)] = -999.0 // Clearly invalid sentinel value
                 }
             }
 
-            if !tempFound {
-                // Try to find temperature files dynamically
-                hwmonDirs, err := os.ReadDir("/sys/class/hwmon")
-                if err == nil {
-                    for _, hwmon := range hwmonDirs {
-                        if hwmon.IsDir() {
-                            hwmonPath := fmt.Sprintf("/sys/class/hwmon/%s", hwmon.Name())
-                            files, err := os.ReadDir(hwmonPath)
-                            if err == nil {
-                                for _, file := range files {
-                                    if strings.HasPrefix(file.Name(), "temp") && strings.HasSuffix(file.Name(), "_input") {
-                                        tempPath := fmt.Sprintf("%s/%s", hwmonPath, file.Name())
-                                        if tempData, err := os.ReadFile(tempPath); err == nil {
-                                            if temp, err := strconv.ParseUint(strings.TrimSpace(string(tempData)), 10, 64); err == nil {
-                                                info.Usage["temperature_celsius"] = float64(temp) / 1000.0
-                                                tempFound = true
-                                                break
-                                            }
-                                        }
-                                    }
+            // If no cpufreq data available, try /proc/cpuinfo for overall frequency
+            if len(frequencies) == 0 || allZeroFrequencies(frequencies) {
+                if data, err := os.ReadFile("/proc/cpuinfo"); err == nil {
+                    lines := strings.Split(string(data), "\n")
+                    currentProcessor := -1
+                    for _, line := range lines {
+                        if strings.HasPrefix(line, "processor") {
+                            parts := strings.SplitN(line, ":", 2)
+                            if len(parts) == 2 {
+                                if proc, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+                                    currentProcessor = proc
                                 }
                             }
-                            if tempFound {
-                                break
+                        } else if strings.HasPrefix(line, "cpu MHz") {
+                            parts := strings.SplitN(line, ":", 2)
+                            if len(parts) == 2 {
+                                if freq, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil {
+                                    if currentProcessor >= 0 && currentProcessor < info.Cores {
+                                        frequencies[fmt.Sprintf("core_%d", currentProcessor)] = freq
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+            info.Usage["frequencies_mhz"] = frequencies
+        }
 
-            // If still no temperature found, try reading from /proc/acpi/thermal_zone (if available)
-            if !tempFound {
-                if thermalEntries, err := os.ReadDir("/proc/acpi/thermal_zone"); err == nil {
-                    for _, entry := range thermalEntries {
-                        if entry.IsDir() {
-                            tempPath := fmt.Sprintf("/proc/acpi/thermal_zone/%s/temperature", entry.Name())
-                            if tempData, err := os.ReadFile(tempPath); err == nil {
-                                // Parse ACPI temperature format (e.g., "temperature:             45 C")
-                                lines := strings.Split(string(tempData), "\n")
-                                for _, line := range lines {
-                                    if strings.Contains(line, "temperature:") {
-                                        parts := strings.Fields(line)
-                                        if len(parts) >= 2 {
-                                            if temp, err := strconv.ParseFloat(parts[1], 64); err == nil {
-                                                info.Usage["temperature_celsius"] = temp
-                                                tempFound = true
-                                                break
-                                            }
+        // Try to read CPU temperature (if available)
+        tempPaths := []string{
+            "/sys/class/thermal/thermal_zone0/temp",
+            "/sys/devices/platform/coretemp.0/temp1_input",
+            "/sys/devices/platform/coretemp.0/temp2_input",
+            "/sys/devices/platform/coretemp.0/temp3_input",
+            "/sys/devices/platform/coretemp.0/temp4_input",
+            "/sys/devices/platform/coretemp.0/temp5_input",
+            "/sys/devices/platform/coretemp.0/temp6_input",
+            "/sys/devices/platform/coretemp.0/temp7_input",
+            "/sys/devices/platform/coretemp.0/temp8_input",
+            "/sys/class/hwmon/hwmon0/temp1_input",
+            "/sys/class/hwmon/hwmon1/temp1_input",
+            "/sys/class/hwmon/hwmon2/temp1_input",
+            "/sys/class/hwmon/hwmon3/temp1_input",
+            "/sys/class/hwmon/hwmon4/temp1_input",
+            "/sys/class/hwmon/hwmon5/temp1_input",
+            "/sys/class/hwmon/hwmon6/temp1_input",
+            "/sys/class/hwmon/hwmon7/temp1_input",
+            "/sys/class/hwmon/hwmon8/temp1_input",
+            // Additional paths that might work in WSL
+            "/sys/devices/virtual/thermal/thermal_zone0/temp",
+            "/sys/devices/virtual/thermal/thermal_zone1/temp",
+            "/sys/devices/virtual/thermal/thermal_zone2/temp",
+            "/sys/devices/virtual/thermal/thermal_zone3/temp",
+            "/sys/devices/virtual/thermal/thermal_zone4/temp",
+            "/sys/devices/virtual/thermal/thermal_zone5/temp",
+            "/sys/devices/virtual/thermal/thermal_zone6/temp",
+            "/sys/devices/virtual/thermal/thermal_zone7/temp",
+            "/sys/devices/virtual/thermal/thermal_zone8/temp",
+            "/sys/devices/virtual/thermal/thermal_zone9/temp",
+            "/sys/devices/virtual/thermal/thermal_zone10/temp",
+            "/sys/devices/virtual/thermal/thermal_zone11/temp",
+            "/sys/devices/virtual/thermal/thermal_zone12/temp",
+            "/sys/devices/virtual/thermal/thermal_zone13/temp",
+            "/sys/devices/virtual/thermal/thermal_zone14/temp",
+            "/sys/devices/virtual/thermal/thermal_zone15/temp",
+        }
+
+        tempFound := false
+        for _, tempPath := range tempPaths {
+            if tempData, err := os.ReadFile(tempPath); err == nil {
+                if temp, err := strconv.ParseUint(strings.TrimSpace(string(tempData)), 10, 64); err == nil {
+                    info.Usage["temperature_celsius"] = float64(temp) / 1000.0 // Convert millidegrees to degrees
+                    tempFound = true
+                    break
+                }
+            }
+        }
+
+        if !tempFound {
+            // Try to find temperature files dynamically
+            hwmonDirs, err := os.ReadDir("/sys/class/hwmon")
+            if err == nil {
+                for _, hwmon := range hwmonDirs {
+                    if hwmon.IsDir() {
+                        hwmonPath := fmt.Sprintf("/sys/class/hwmon/%s", hwmon.Name())
+                        files, err := os.ReadDir(hwmonPath)
+                        if err == nil {
+                            for _, file := range files {
+                                if strings.HasPrefix(file.Name(), "temp") && strings.HasSuffix(file.Name(), "_input") {
+                                    tempPath := fmt.Sprintf("%s/%s", hwmonPath, file.Name())
+                                    if tempData, err := os.ReadFile(tempPath); err == nil {
+                                        if temp, err := strconv.ParseUint(strings.TrimSpace(string(tempData)), 10, 64); err == nil {
+                                            info.Usage["temperature_celsius"] = float64(temp) / 1000.0
+                                            tempFound = true
+                                            break
                                         }
                                     }
                                 }
                             }
-                            if tempFound {
-                                break
+                        }
+                        if tempFound {
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        // If still no temperature found, try reading from /proc/acpi/thermal_zone (if available)
+        if !tempFound {
+            if thermalEntries, err := os.ReadDir("/proc/acpi/thermal_zone"); err == nil {
+                for _, entry := range thermalEntries {
+                    if entry.IsDir() {
+                        tempPath := fmt.Sprintf("/proc/acpi/thermal_zone/%s/temperature", entry.Name())
+                        if tempData, err := os.ReadFile(tempPath); err == nil {
+                            // Parse ACPI temperature format (e.g., "temperature:             45 C")
+                            lines := strings.Split(string(tempData), "\n")
+                            for _, line := range lines {
+                                if strings.Contains(line, "temperature:") {
+                                    parts := strings.Fields(line)
+                                    if len(parts) >= 2 {
+                                        if temp, err := strconv.ParseFloat(parts[1], 64); err == nil {
+                                            info.Usage["temperature_celsius"] = temp
+                                            tempFound = true
+                                            break
+                                        }
+                                    }
+                                }
                             }
+                        }
+                        if tempFound {
+                            break
                         }
                     }
                 }
@@ -1088,10 +1051,7 @@ func debugCPUFiles() map[string]interface{} {
 func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     var stats []NetworkIOStats
 
-    if runtime.GOOS != "linux" {
-        return stats, nil
-    }
-
+    // Read /proc/net/dev
     data, err := os.ReadFile("/proc/net/dev")
     if err != nil {
         return nil, fmt.Errorf("failed to read /proc/net/dev: %v", err)
@@ -1145,13 +1105,10 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
     var stats []DiskIOStats
 
-    if runtime.GOOS != "linux" {
-        return stats, nil
-    }
-
+    // Read /proc/diskstats
     data, err := os.ReadFile("/proc/diskstats")
     if err != nil {
-        return nil, fmt.Errorf("failed to read /proc/diskstats: %v", err)
+        return stats, err
     }
 
     lines := strings.Split(string(data), "\n")
@@ -1199,11 +1156,7 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     var usage ResourceUsage
     usage.PID = pid
 
-    if runtime.GOOS != "linux" {
-        return usage, fmt.Errorf("resource usage not available on this platform")
-    }
-
-    // Read /proc/{pid}/stat for basic info
+    // Read /proc/{pid}/stat
     statPath := fmt.Sprintf("/proc/%d/stat", pid)
     data, err := os.ReadFile(statPath)
     if err != nil {
@@ -1328,10 +1281,6 @@ func calculateIODiff(snapshot1, snapshot2 ResourceSnapshot, duration time.Durati
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    if runtime.GOOS != "linux" {
-        return result, nil
-    }
-
     // Read /proc/mounts to get mount points
     data, err := os.ReadFile("/proc/mounts")
     if err != nil {
@@ -1400,10 +1349,6 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
 func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    if runtime.GOOS != "linux" {
-        return result, nil
-    }
-
     // Read /proc/mounts
     data, err := os.ReadFile("/proc/mounts")
     if err != nil {
@@ -1455,10 +1400,6 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
 func getNetworkDevices(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    if runtime.GOOS != "linux" {
-        return result, nil
-    }
-
     // Read /sys/class/net to get network interfaces
     netDir := "/sys/class/net"
     entries, err := os.ReadDir(netDir)
@@ -1476,19 +1417,15 @@ func getNetworkDevices(options map[string]interface{}) ([]map[string]interface{}
     }
 
     for _, entry := range entries {
-        if !entry.IsDir() {
-            continue
-        }
-
         deviceName := entry.Name()
 
         // Check if device is up
         operstatePath := fmt.Sprintf("%s/%s/operstate", netDir, deviceName)
         operstateData, err := os.ReadFile(operstatePath)
-        if err != nil {
-            continue
+        operstate := "unknown"
+        if err == nil {
+            operstate = strings.TrimSpace(string(operstateData))
         }
-        operstate := strings.TrimSpace(string(operstateData))
 
         // Skip down interfaces unless include_all is true
         if operstate != "up" && !includeAll {
@@ -1598,10 +1535,6 @@ func getNetworkDevices(options map[string]interface{}) ([]map[string]interface{}
 
 // getDefaultGatewayInterface returns the name of the default gateway interface
 func getDefaultGatewayInterface() (string, error) {
-    if runtime.GOOS != "linux" {
-        return "", fmt.Errorf("getDefaultGatewayInterface not implemented for %s", runtime.GOOS)
-    }
-
     // Read /proc/net/route to find the default route
     data, err := os.ReadFile("/proc/net/route")
     if err != nil {
@@ -1631,10 +1564,6 @@ func getDefaultGatewayInterface() (string, error) {
 
 // getDefaultGatewayAddress returns the IP address of the default gateway
 func getDefaultGatewayAddress() (string, error) {
-    if runtime.GOOS != "linux" {
-        return "", fmt.Errorf("getDefaultGatewayAddress not implemented for %s", runtime.GOOS)
-    }
-
     // Read /proc/net/route to find the default route
     data, err := os.ReadFile("/proc/net/route")
     if err != nil {
@@ -1677,10 +1606,6 @@ func getDefaultGatewayAddress() (string, error) {
 
 // getDefaultGatewayInfo returns complete default gateway information
 func getDefaultGatewayInfo() (map[string]interface{}, error) {
-    if runtime.GOOS != "linux" {
-        return nil, fmt.Errorf("getDefaultGatewayInfo not implemented for %s", runtime.GOOS)
-    }
-
     // Read /proc/net/route to find the default route
     data, err := os.ReadFile("/proc/net/route")
     if err != nil {

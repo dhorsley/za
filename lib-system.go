@@ -67,12 +67,20 @@ type PressureStats struct {
     Avg10  float64
     Avg60  float64
     Avg300 float64
+    Total  uint64
 }
 
 // SlabInfo represents kernel slab allocation information
 type SlabInfo struct {
-    Objects int
-    Size    uint64
+    Objects      int
+    Size         uint64
+    ActiveObjs   uint64
+    NumObjs      uint64
+    ObjSize      uint64
+    ObjPerSlab   uint64
+    PagesPerSlab uint64
+    Limit        uint64
+    BatchCount   uint64
 }
 
 // CPUInfo represents CPU information and statistics
