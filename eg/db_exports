@@ -39,7 +39,7 @@ println "Debug result: {res_debug}\n"
 
 # Test 2: Basic query without separator (defaults to "|")
 println "[#2]Test 2: Basic query without separator[#-]"
-println "Debug: h type = {typeof(h)}"
+println "Debug: h type = ",kind(h)
 println "Debug: h value = {h}"
 res2=h.db_query("SELECT 2 as num, 'world' as str")
 println "Result: {res2}\n"
