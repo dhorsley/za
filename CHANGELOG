@@ -5,15 +5,17 @@ CHANGE LOG
 1.2.0
 =====
 
-    BSD build compiles:
-        - no testing done with it yet though.
-
     fixes
     -----
 
     lots of changes since last win64 build testing:
         - Windows build compiles.
         - limited testing done so far with it.
+
+    BSD build:
+        - partially tested now. build cross-compiles to BSD and compiles natively.
+        - some issues with kernel/proc/etc missing/unsupported values.
+        - had to supplement the bsd version with some fallback external exec support.
 
 
     library changes
@@ -154,6 +156,8 @@ CHANGE LOG
 
     other
     -----
+
+    * Added ctrl-r support to getInput() for reverse history searching
 
     * Added permanent history file support for REPL:
         - History automatically saved to ~/.za_history with 0600 permissions
