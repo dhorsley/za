@@ -16,6 +16,8 @@ import (
     "syscall"
     "time"
 
+    "os/exec"
+
     "golang.org/x/sys/unix"
 )
 
@@ -800,19 +802,20 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Try to get interface statistics from sysctl
         if iface.Flags&net.FlagUp != 0 {
-            // Try different sysctl paths for FreeBSD - use correct FreeBSD paths
-            sysctlPaths := []string{
-                fmt.Sprintf("dev.%s.stats.rx_bytes", iface.Name),
-                fmt.Sprintf("dev.%s.stats.ibytes", iface.Name),
+            // Use proper FreeBSD sysctl paths for network statistics
+            // These are the actual sysctl paths that exist on FreeBSD
+
+            // Get received bytes - try multiple possible paths
+            rxPaths := []string{
                 fmt.Sprintf("dev.%s.ibytes", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ibytes", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.inbytes", iface.Name),
             }
 
-            // Get received bytes
-            for _, path := range sysctlPaths {
-                if rxBytesStr, err := syscall.Sysctl(path); err == nil {
-                    if rxBytesVal, err := strconv.ParseUint(rxBytesStr, 10, 64); err == nil {
-                        rxBytes = rxBytesVal
+            for _, path := range rxPaths {
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        rxBytes = val
                         break
                     }
                 }
@@ -820,15 +823,15 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
             // Get transmitted bytes
             txPaths := []string{
-                fmt.Sprintf("dev.%s.stats.tx_bytes", iface.Name),
-                fmt.Sprintf("dev.%s.stats.obytes", iface.Name),
                 fmt.Sprintf("dev.%s.obytes", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.obytes", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.outbytes", iface.Name),
             }
+
             for _, path := range txPaths {
-                if txBytesStr, err := syscall.Sysctl(path); err == nil {
-                    if txBytesVal, err := strconv.ParseUint(txBytesStr, 10, 64); err == nil {
-                        txBytes = txBytesVal
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        txBytes = val
                         break
                     }
                 }
@@ -836,15 +839,15 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
             // Get received packets
             rxPacketPaths := []string{
-                fmt.Sprintf("dev.%s.stats.rx_packets", iface.Name),
-                fmt.Sprintf("dev.%s.stats.ipackets", iface.Name),
                 fmt.Sprintf("dev.%s.ipackets", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ipackets", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.inpackets", iface.Name),
             }
+
             for _, path := range rxPacketPaths {
-                if rxPacketsStr, err := syscall.Sysctl(path); err == nil {
-                    if rxPacketsVal, err := strconv.ParseUint(rxPacketsStr, 10, 64); err == nil {
-                        rxPackets = rxPacketsVal
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        rxPackets = val
                         break
                     }
                 }
@@ -852,15 +855,15 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
             // Get transmitted packets
             txPacketPaths := []string{
-                fmt.Sprintf("dev.%s.stats.tx_packets", iface.Name),
-                fmt.Sprintf("dev.%s.stats.opackets", iface.Name),
                 fmt.Sprintf("dev.%s.opackets", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.opackets", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.outpackets", iface.Name),
             }
+
             for _, path := range txPacketPaths {
-                if txPacketsStr, err := syscall.Sysctl(path); err == nil {
-                    if txPacketsVal, err := strconv.ParseUint(txPacketsStr, 10, 64); err == nil {
-                        txPackets = txPacketsVal
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        txPackets = val
                         break
                     }
                 }
@@ -868,30 +871,30 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
             // Get errors
             rxErrorPaths := []string{
-                fmt.Sprintf("dev.%s.stats.rx_errors", iface.Name),
-                fmt.Sprintf("dev.%s.stats.ierrors", iface.Name),
                 fmt.Sprintf("dev.%s.ierrors", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ierrors", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.inerrors", iface.Name),
             }
+
             for _, path := range rxErrorPaths {
-                if rxErrorsStr, err := syscall.Sysctl(path); err == nil {
-                    if rxErrorsVal, err := strconv.ParseUint(rxErrorsStr, 10, 64); err == nil {
-                        rxErrors = rxErrorsVal
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        rxErrors = val
                         break
                     }
                 }
             }
 
             txErrorPaths := []string{
-                fmt.Sprintf("dev.%s.stats.tx_errors", iface.Name),
-                fmt.Sprintf("dev.%s.stats.oerrors", iface.Name),
                 fmt.Sprintf("dev.%s.oerrors", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.oerrors", iface.Name),
+                fmt.Sprintf("net.link.ether.inet.%s.outerrors", iface.Name),
             }
+
             for _, path := range txErrorPaths {
-                if txErrorsStr, err := syscall.Sysctl(path); err == nil {
-                    if txErrorsVal, err := strconv.ParseUint(txErrorsStr, 10, 64); err == nil {
-                        txErrors = txErrorsVal
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        txErrors = val
                         break
                     }
                 }
@@ -923,8 +926,8 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
     var stats []DiskIOStats
 
-    // Get disk stats via sysctl
-    // This is a simplified implementation
+    // Get disk stats via iostat command
+    // This is a more reliable approach on FreeBSD
     devices := []string{"ada0", "ada1", "da0", "da1"} // Common BSD device names
 
     for _, device := range devices {
@@ -935,115 +938,66 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             }
         }
 
-        // Get disk I/O statistics using sysctl
+        // Get disk I/O statistics using iostat command
         var readBytes, writeBytes, readOps, writeOps uint64
         var readTime, writeTime uint64
 
-        // Try different sysctl paths for FreeBSD
-        sysctlPaths := []string{
-            fmt.Sprintf("dev.%s.stats.rbytes", device),
-            fmt.Sprintf("dev.%s.rbytes", device),
-            fmt.Sprintf("kern.dev.%s.rbytes", device),
-            fmt.Sprintf("hw.disk.%s.rbytes", device),
-            fmt.Sprintf("hw.diskstats.%s.rbytes", device),
-        }
-
-        // Get read bytes
-        for _, path := range sysctlPaths {
-            if readBytesStr, err := syscall.Sysctl(path); err == nil {
-                if readBytesVal, err := strconv.ParseUint(readBytesStr, 10, 64); err == nil {
-                    readBytes = readBytesVal
-                    break
+        // Try to get disk statistics using iostat
+        cmd := exec.Command("iostat", "-x", device)
+        output, err := cmd.Output()
+        if err == nil {
+            // Parse iostat output to extract statistics
+            lines := strings.Split(string(output), "\n")
+            for _, line := range lines {
+                line = strings.TrimSpace(line)
+                if strings.Contains(line, device) {
+                    fields := strings.Fields(line)
+                    if len(fields) >= 6 {
+                        // Parse read/write statistics from iostat output
+                        // Format varies, but typically: device r/s w/s rkB/s wkB/s
+                        if len(fields) >= 5 {
+                            if val, err := strconv.ParseFloat(fields[2], 64); err == nil {
+                                readOps = uint64(val)
+                            }
+                            if val, err := strconv.ParseFloat(fields[3], 64); err == nil {
+                                writeOps = uint64(val)
+                            }
+                            if val, err := strconv.ParseFloat(fields[4], 64); err == nil {
+                                readBytes = uint64(val * 1024) // Convert KB to bytes
+                            }
+                            if val, err := strconv.ParseFloat(fields[5], 64); err == nil {
+                                writeBytes = uint64(val * 1024) // Convert KB to bytes
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // Get write bytes
-        writePaths := []string{
-            fmt.Sprintf("dev.%s.stats.wbytes", device),
-            fmt.Sprintf("dev.%s.wbytes", device),
-            fmt.Sprintf("kern.dev.%s.wbytes", device),
-            fmt.Sprintf("hw.disk.%s.wbytes", device),
-            fmt.Sprintf("hw.diskstats.%s.wbytes", device),
-        }
-        for _, path := range writePaths {
-            if writeBytesStr, err := syscall.Sysctl(path); err == nil {
-                if writeBytesVal, err := strconv.ParseUint(writeBytesStr, 10, 64); err == nil {
-                    writeBytes = writeBytesVal
-                    break
+        // If iostat didn't work, try sysctl with basic paths
+        if readBytes == 0 && writeBytes == 0 {
+            // Try basic sysctl paths that might exist
+            basicPaths := []string{
+                fmt.Sprintf("dev.%s.rbytes", device),
+                fmt.Sprintf("dev.%s.wbytes", device),
+                fmt.Sprintf("kern.dev.%s.rbytes", device),
+                fmt.Sprintf("kern.dev.%s.wbytes", device),
+            }
+
+            for _, path := range basicPaths {
+                if data, err := syscall.Sysctl(path); err == nil {
+                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                        if strings.Contains(path, "rbytes") {
+                            readBytes = val
+                        } else if strings.Contains(path, "wbytes") {
+                            writeBytes = val
+                        }
+                    }
                 }
             }
         }
 
-        // Get read operations
-        readOpsPaths := []string{
-            fmt.Sprintf("dev.%s.stats.rops", device),
-            fmt.Sprintf("dev.%s.rops", device),
-            fmt.Sprintf("kern.dev.%s.rops", device),
-            fmt.Sprintf("hw.disk.%s.rops", device),
-            fmt.Sprintf("hw.diskstats.%s.rops", device),
-        }
-        for _, path := range readOpsPaths {
-            if readOpsStr, err := syscall.Sysctl(path); err == nil {
-                if readOpsVal, err := strconv.ParseUint(readOpsStr, 10, 64); err == nil {
-                    readOps = readOpsVal
-                    break
-                }
-            }
-        }
-
-        // Get write operations
-        writeOpsPaths := []string{
-            fmt.Sprintf("dev.%s.stats.wops", device),
-            fmt.Sprintf("dev.%s.wops", device),
-            fmt.Sprintf("kern.dev.%s.wops", device),
-            fmt.Sprintf("hw.disk.%s.wops", device),
-            fmt.Sprintf("hw.diskstats.%s.wops", device),
-        }
-        for _, path := range writeOpsPaths {
-            if writeOpsStr, err := syscall.Sysctl(path); err == nil {
-                if writeOpsVal, err := strconv.ParseUint(writeOpsStr, 10, 64); err == nil {
-                    writeOps = writeOpsVal
-                    break
-                }
-            }
-        }
-
-        // Get read time
-        readTimePaths := []string{
-            fmt.Sprintf("dev.%s.stats.rtime", device),
-            fmt.Sprintf("dev.%s.rtime", device),
-            fmt.Sprintf("kern.dev.%s.rtime", device),
-            fmt.Sprintf("hw.disk.%s.rtime", device),
-            fmt.Sprintf("hw.diskstats.%s.rtime", device),
-        }
-        for _, path := range readTimePaths {
-            if readTimeStr, err := syscall.Sysctl(path); err == nil {
-                if readTimeVal, err := strconv.ParseUint(readTimeStr, 10, 64); err == nil {
-                    readTime = readTimeVal
-                    break
-                }
-            }
-        }
-
-        // Get write time
-        writeTimePaths := []string{
-            fmt.Sprintf("dev.%s.stats.wtime", device),
-            fmt.Sprintf("dev.%s.wtime", device),
-            fmt.Sprintf("kern.dev.%s.wtime", device),
-            fmt.Sprintf("hw.disk.%s.wtime", device),
-            fmt.Sprintf("hw.diskstats.%s.wtime", device),
-        }
-        for _, path := range writeTimePaths {
-            if writeTimeStr, err := syscall.Sysctl(path); err == nil {
-                if writeTimeVal, err := strconv.ParseUint(writeTimeStr, 10, 64); err == nil {
-                    writeTime = writeTimeVal
-                    break
-                }
-            }
-        }
-
-        // If sysctl didn't work, return error instead of fake data
+        // If still no data, return error instead of fake data
         if readBytes == 0 && writeBytes == 0 {
             return nil, fmt.Errorf("disk I/O statistics not available for device %s - sysctl queries failed", device)
         }
@@ -1071,45 +1025,44 @@ func getSlabInfo() map[string]SlabInfo {
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Try reading /etc/mtab or /proc/mounts for mount information
-    var mountData []byte
-    var err error
-
-    mountData, err = os.ReadFile("/etc/mtab")
+    // Use df command for reliable disk usage information on BSD
+    cmd := exec.Command("df", "-k")
+    output, err := cmd.Output()
     if err != nil {
-        mountData, err = os.ReadFile("/proc/mounts")
-        if err != nil {
-            // Try sysctl as last resort
-            mountDataStr, err := syscall.Sysctl("vfs.mounts")
-            if err != nil {
-                return result, fmt.Errorf("no such file or directory")
-            }
-            mountData = []byte(mountDataStr)
-        }
+        return result, fmt.Errorf("no such file or directory")
     }
 
-    lines := strings.Split(string(mountData), "\n")
+    lines := strings.Split(string(output), "\n")
     for _, line := range lines {
         line = strings.TrimSpace(line)
-        if line == "" || strings.HasPrefix(line, "#") {
+        if line == "" || strings.HasPrefix(line, "Filesystem") {
             continue
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 4 {
+        if len(fields) < 6 {
             continue
         }
 
         device := fields[0]
-        mountPoint := fields[1]
-        filesystem := fields[2]
+        totalKB, _ := strconv.ParseUint(fields[1], 10, 64)
+        usedKB, _ := strconv.ParseUint(fields[2], 10, 64)
+        availableKB, _ := strconv.ParseUint(fields[3], 10, 64)
+        usagePercentStr := strings.TrimSuffix(fields[4], "%")
+        usagePercent, _ := strconv.ParseFloat(usagePercentStr, 64)
+        mountPoint := fields[5]
+
+        // Convert KB to bytes
+        total := totalKB * 1024
+        used := usedKB * 1024
+        available := availableKB * 1024
 
         // Apply filters if specified
         if options != nil {
             if excludePatterns, exists := options["exclude_patterns"]; exists {
                 if patterns, ok := excludePatterns.([]string); ok {
                     for _, pattern := range patterns {
-                        if strings.Contains(filesystem, pattern) || strings.Contains(mountPoint, pattern) {
+                        if strings.Contains(device, pattern) || strings.Contains(mountPoint, pattern) {
                             continue
                         }
                     }
@@ -1117,26 +1070,11 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             }
         }
 
-        // Get filesystem stats using statfs
-        var stat unix.Statfs_t
-        if err := unix.Statfs(mountPoint, &stat); err != nil {
-            continue
-        }
-
-        // Calculate usage
-        total := stat.Blocks * uint64(stat.Bsize)
-        free := stat.Bfree * uint64(stat.Bsize)
-        used := total - free
-        usagePercent := 0.0
-        if total > 0 {
-            usagePercent = float64(used) / float64(total) * 100.0
-        }
-
         diskInfo := map[string]interface{}{
             "path":          device,
             "size":          total,
             "used":          used,
-            "available":     free,
+            "available":     available,
             "usage_percent": usagePercent,
             "mounted_path":  mountPoint,
         }
@@ -1151,41 +1089,38 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
 func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Try reading /etc/mtab or /proc/mounts for mount information
-    var mountData []byte
-    var err error
-
-    mountData, err = os.ReadFile("/etc/mtab")
+    // Use mount command for reliable mount information on BSD
+    cmd := exec.Command("mount")
+    output, err := cmd.Output()
     if err != nil {
-        mountData, err = os.ReadFile("/proc/mounts")
-        if err != nil {
-            // Try sysctl as last resort
-            mountDataStr, err := syscall.Sysctl("vfs.mounts")
-            if err != nil {
-                return result, fmt.Errorf("no such file or directory")
-            }
-            mountData = []byte(mountDataStr)
-        }
+        return result, fmt.Errorf("no such file or directory")
     }
 
-    lines := strings.Split(string(mountData), "\n")
+    lines := strings.Split(string(output), "\n")
     for _, line := range lines {
         line = strings.TrimSpace(line)
-        if line == "" || strings.HasPrefix(line, "#") {
+        if line == "" {
             continue
         }
 
+        // Parse mount output format: device on mountpoint type filesystem (options)
+        // Example: /dev/ada0p2 on / (ufs, local, soft-updates)
         fields := strings.Fields(line)
         if len(fields) < 4 {
             continue
         }
 
         device := fields[0]
-        mountPoint := fields[1]
-        filesystem := fields[2]
+        mountPoint := fields[2]
+        filesystem := strings.TrimSuffix(fields[4], ",") // Remove trailing comma
         mountOptions := ""
-        if len(fields) > 3 {
-            mountOptions = fields[3]
+        if len(fields) > 5 {
+            // Extract options from parentheses
+            optionsStart := strings.Index(line, "(")
+            optionsEnd := strings.Index(line, ")")
+            if optionsStart > 0 && optionsEnd > optionsStart {
+                mountOptions = line[optionsStart+1 : optionsEnd]
+            }
         }
 
         // Apply filters if specified
