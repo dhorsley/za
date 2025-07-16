@@ -488,9 +488,9 @@ func getProcessMap(startPID int) (ProcessMap, error) {
 // getCPUInfo returns CPU information
 func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error) {
     var info CPUInfo
+    includeDetails := false
 
     // Check if we should include detailed information
-    includeDetails := false
     if options != nil && options["details"] != nil {
         if details, ok := options["details"].(bool); ok {
             includeDetails = details
@@ -512,6 +512,67 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
     data, err := syscall.Sysctl("hw.model")
     if err == nil {
         info.Model = strings.TrimSpace(data)
+    }
+
+    // Get detailed CPU information if requested
+    if includeDetails {
+        // Get CPU architecture
+        if arch, err := syscall.Sysctl("hw.machine"); err == nil {
+            info.Architecture = strings.TrimSpace(arch)
+        }
+
+        // Get CPU frequency
+        if freq, err := syscall.Sysctl("dev.cpu.0.freq"); err == nil {
+            if freqVal, err := strconv.ParseUint(freq, 10, 64); err == nil {
+                info.Frequency = freqVal
+            }
+        }
+
+        // Get CPU cache information
+        if l1d, err := syscall.Sysctl("hw.cache.l1d.size"); err == nil {
+            if l1dSize, err := strconv.ParseUint(l1d, 10, 64); err == nil {
+                info.L1DCache = l1dSize
+            }
+        }
+
+        if l1i, err := syscall.Sysctl("hw.cache.l1i.size"); err == nil {
+            if l1iSize, err := strconv.ParseUint(l1i, 10, 64); err == nil {
+                info.L1ICache = l1iSize
+            }
+        }
+
+        if l2, err := syscall.Sysctl("hw.cache.l2.size"); err == nil {
+            if l2Size, err := strconv.ParseUint(l2, 10, 64); err == nil {
+                info.L2Cache = l2Size
+            }
+        }
+
+        if l3, err := syscall.Sysctl("hw.cache.l3.size"); err == nil {
+            if l3Size, err := strconv.ParseUint(l3, 10, 64); err == nil {
+                info.L3Cache = l3Size
+            }
+        }
+
+        // Get CPU temperature if available
+        if temp, err := syscall.Sysctl("dev.cpu.0.temperature"); err == nil {
+            if tempVal, err := strconv.ParseFloat(temp, 64); err == nil {
+                info.Temperature = tempVal
+            }
+        }
+
+        // Get CPU vendor
+        if vendor, err := syscall.Sysctl("hw.vendor"); err == nil {
+            info.Vendor = strings.TrimSpace(vendor)
+        }
+
+        // Get CPU stepping and revision
+        if stepping, err := syscall.Sysctl("hw.cpu.stepping"); err == nil {
+            info.Stepping = strings.TrimSpace(stepping)
+        }
+
+        if revision, err := syscall.Sysctl("hw.cpu.revision"); err == nil {
+            info.Revision = strings.TrimSpace(revision)
+        }
     }
 
     // Get CPU usage
@@ -790,20 +851,26 @@ func getSlabInfo() map[string]SlabInfo {
     return make(map[string]SlabInfo)
 }
 
-// getDiskUsage returns filesystem usage information (BSD implementation)
+// getDiskUsage returns disk usage information (BSD implementation)
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Get mount information using getmntinfo
-    mounts, err := unix.Getmntinfo()
+    // Get mount information using sysctl
+    mountData, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         return result, err
     }
 
-    for _, mount := range mounts {
-        device := mount.Fstypename
-        mountPoint := mount.Mntonname
-        filesystem := mount.Fstypename
+    lines := strings.Split(mountData, "\n")
+    for _, line := range lines {
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
 
         // Apply filters if specified
         if options != nil {
@@ -852,17 +919,26 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
 func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Get mount information using getmntinfo
-    mounts, err := unix.Getmntinfo()
+    // Get mount information using sysctl
+    mountData, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         return result, err
     }
 
-    for _, mount := range mounts {
-        device := mount.Fstypename
-        mountPoint := mount.Mntonname
-        filesystem := mount.Fstypename
-        mountOptions := mount.Mntfromname
+    lines := strings.Split(mountData, "\n")
+    for _, line := range lines {
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
+        mountOptions := ""
+        if len(fields) > 3 {
+            mountOptions = fields[3]
+        }
 
         // Apply filters if specified
         if options != nil {
@@ -894,33 +970,42 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     var usage ResourceUsage
     usage.PID = pid
 
-    // Use kvm to get process resource usage
-    kvm, err := unix.KvmOpen(nil)
+    // Use sysctl to get process resource usage
+    procData, err := syscall.Sysctl(fmt.Sprintf("kern.proc.pid.%d", pid))
     if err != nil {
-        return usage, err
-    }
-    defer kvm.Close()
-
-    procs, err := kvm.GetProcs(unix.KERN_PROC_PID, uint32(pid))
-    if err != nil || len(procs) == 0 {
         return usage, fmt.Errorf("process not found")
     }
 
-    procInfo := procs[0]
+    // Parse process data
+    lines := strings.Split(procData, "\n")
+    if len(lines) == 0 {
+        return usage, fmt.Errorf("process not found")
+    }
 
-    // Get memory usage
-    usage.MemoryCurrent = uint64(procInfo.VmRSS)
-    usage.MemoryPeak = uint64(procInfo.VmSize)
+    // Parse the first line which contains process info
+    fields := strings.Fields(lines[0])
+    if len(fields) < 17 {
+        return usage, fmt.Errorf("invalid process data format")
+    }
 
-    // Parse CPU times
-    utime, _ := strconv.ParseUint(fields[13], 10, 64)
-    stime, _ := strconv.ParseUint(fields[14], 10, 64)
-    cutime, _ := strconv.ParseUint(fields[15], 10, 64)
-    cstime, _ := strconv.ParseUint(fields[16], 10, 64)
-    usage.CPUUser = float64(utime) / 100.0            // Convert to seconds
-    usage.CPUSystem = float64(stime) / 100.0          // Convert to seconds
-    usage.CPUChildrenUser = float64(cutime) / 100.0   // Convert to seconds
-    usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
+    // Get memory usage from process data
+    if len(fields) >= 6 {
+        if rss, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+            usage.MemoryCurrent = rss * 1024 // Convert from KB to bytes
+        }
+    }
+
+    // Parse CPU times if available
+    if len(fields) >= 17 {
+        utime, _ := strconv.ParseUint(fields[13], 10, 64)
+        stime, _ := strconv.ParseUint(fields[14], 10, 64)
+        cutime, _ := strconv.ParseUint(fields[15], 10, 64)
+        cstime, _ := strconv.ParseUint(fields[16], 10, 64)
+        usage.CPUUser = float64(utime) / 100.0            // Convert to seconds
+        usage.CPUSystem = float64(stime) / 100.0          // Convert to seconds
+        usage.CPUChildrenUser = float64(cutime) / 100.0   // Convert to seconds
+        usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
+    }
 
     // BSD doesn't easily provide I/O stats, context switches, or page faults
     // These would require additional sysctl queries
@@ -1263,17 +1348,55 @@ func getDefaultGatewayInfo() (map[string]interface{}, error) {
     return nil, fmt.Errorf("no default gateway interface found for gateway %s", gateway)
 }
 
-// debugCPUFiles returns debug information about available CPU files (BSD placeholder)
+// debugCPUFiles returns debug information about available CPU files (BSD implementation)
 func debugCPUFiles() map[string]interface{} {
-    return map[string]interface{}{
+    result := map[string]interface{}{
         "platform":    "BSD",
         "cpu_files":   []string{},
-        "available":   false,
-        "description": "CPU file debugging not implemented on BSD systems",
+        "available":   true,
+        "description": "CPU debugging using BSD sysctl",
         "sysctl_paths": []string{
             "hw.ncpu",
-            "hw.cpu_topology.topo_core_id",
-            "hw.cpu_topology.topo_socket_id",
+            "hw.model",
+            "hw.machine",
+            "hw.physmem",
+            "kern.cp_time",
         },
     }
+
+    // Try to get actual CPU information
+    cpuCount, err := syscall.Sysctl("hw.ncpu")
+    if err == nil {
+        if count, err := strconv.Atoi(cpuCount); err == nil {
+            result["cpu_count"] = count
+        }
+    }
+
+    // Get CPU model
+    cpuModel, err := syscall.Sysctl("hw.model")
+    if err == nil {
+        result["cpu_model"] = strings.TrimSpace(cpuModel)
+    }
+
+    // Get machine architecture
+    machine, err := syscall.Sysctl("hw.machine")
+    if err == nil {
+        result["machine"] = strings.TrimSpace(machine)
+    }
+
+    // Get physical memory
+    physmem, err := syscall.Sysctl("hw.physmem")
+    if err == nil {
+        if mem, err := strconv.ParseUint(physmem, 10, 64); err == nil {
+            result["physical_memory"] = mem
+        }
+    }
+
+    // Get CPU time
+    cpuTime, err := syscall.Sysctl("kern.cp_time")
+    if err == nil {
+        result["cpu_time"] = cpuTime
+    }
+
+    return result
 }
