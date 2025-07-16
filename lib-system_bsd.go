@@ -1071,83 +1071,38 @@ func getSlabInfo() map[string]SlabInfo {
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Use getmntinfo to get mount information on FreeBSD
-    mounts, err := unix.Getmntinfo(nil, unix.MNT_WAIT)
+    // Try reading /etc/mtab or /proc/mounts for mount information
+    var mountData []byte
+    var err error
+
+    mountData, err = os.ReadFile("/etc/mtab")
     if err != nil {
-        // Fallback: try reading /etc/mtab or /proc/mounts
-        var mountData []byte
-        mountData, err = os.ReadFile("/etc/mtab")
+        mountData, err = os.ReadFile("/proc/mounts")
         if err != nil {
-            mountData, err = os.ReadFile("/proc/mounts")
+            // Try sysctl as last resort
+            mountDataStr, err := syscall.Sysctl("vfs.mounts")
             if err != nil {
                 return result, fmt.Errorf("no such file or directory")
             }
+            mountData = []byte(mountDataStr)
         }
-
-        lines := strings.Split(string(mountData), "\n")
-        for _, line := range lines {
-            line = strings.TrimSpace(line)
-            if line == "" || strings.HasPrefix(line, "#") {
-                continue
-            }
-
-            fields := strings.Fields(line)
-            if len(fields) < 4 {
-                continue
-            }
-
-            device := fields[0]
-            mountPoint := fields[1]
-            filesystem := fields[2]
-
-            // Apply filters if specified
-            if options != nil {
-                if excludePatterns, exists := options["exclude_patterns"]; exists {
-                    if patterns, ok := excludePatterns.([]string); ok {
-                        for _, pattern := range patterns {
-                            if strings.Contains(filesystem, pattern) || strings.Contains(mountPoint, pattern) {
-                                continue
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Get filesystem stats using statfs
-            var stat unix.Statfs_t
-            if err := unix.Statfs(mountPoint, &stat); err != nil {
-                continue
-            }
-
-            // Calculate usage
-            total := stat.Blocks * uint64(stat.Bsize)
-            free := stat.Bfree * uint64(stat.Bsize)
-            used := total - free
-            usagePercent := 0.0
-            if total > 0 {
-                usagePercent = float64(used) / float64(total) * 100.0
-            }
-
-            diskInfo := map[string]interface{}{
-                "path":          device,
-                "size":          total,
-                "used":          used,
-                "available":     free,
-                "usage_percent": usagePercent,
-                "mounted_path":  mountPoint,
-            }
-
-            result = append(result, diskInfo)
-        }
-
-        return result, nil
     }
 
-    // Process mount information from getmntinfo
-    for _, mount := range mounts {
-        device := mount.Fstypename
-        mountPoint := mount.Mntonname
-        filesystem := mount.Fstypename
+    lines := strings.Split(string(mountData), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "#") {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
 
         // Apply filters if specified
         if options != nil {
@@ -1196,70 +1151,42 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
 func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Use getmntinfo to get mount information on FreeBSD
-    mounts, err := unix.Getmntinfo(nil, unix.MNT_WAIT)
+    // Try reading /etc/mtab or /proc/mounts for mount information
+    var mountData []byte
+    var err error
+
+    mountData, err = os.ReadFile("/etc/mtab")
     if err != nil {
-        // Fallback: try reading /etc/mtab or /proc/mounts
-        var mountData []byte
-        mountData, err = os.ReadFile("/etc/mtab")
+        mountData, err = os.ReadFile("/proc/mounts")
         if err != nil {
-            mountData, err = os.ReadFile("/proc/mounts")
+            // Try sysctl as last resort
+            mountDataStr, err := syscall.Sysctl("vfs.mounts")
             if err != nil {
                 return result, fmt.Errorf("no such file or directory")
             }
+            mountData = []byte(mountDataStr)
         }
-
-        lines := strings.Split(string(mountData), "\n")
-        for _, line := range lines {
-            line = strings.TrimSpace(line)
-            if line == "" || strings.HasPrefix(line, "#") {
-                continue
-            }
-
-            fields := strings.Fields(line)
-            if len(fields) < 4 {
-                continue
-            }
-
-            device := fields[0]
-            mountPoint := fields[1]
-            filesystem := fields[2]
-            mountOptions := ""
-            if len(fields) > 3 {
-                mountOptions = fields[3]
-            }
-
-            // Apply filters if specified
-            if options != nil {
-                if filesystemFilter, exists := options["filesystem"]; exists {
-                    if fs, ok := filesystemFilter.(string); ok {
-                        if filesystem != fs {
-                            continue
-                        }
-                    }
-                }
-            }
-
-            mountInfo := map[string]interface{}{
-                "device":        device,
-                "mounted":       true,
-                "mounted_path":  mountPoint,
-                "filesystem":    filesystem,
-                "mount_options": mountOptions,
-            }
-
-            result = append(result, mountInfo)
-        }
-
-        return result, nil
     }
 
-    // Process mount information from getmntinfo
-    for _, mount := range mounts {
-        device := mount.Fstypename
-        mountPoint := mount.Mntonname
-        filesystem := mount.Fstypename
+    lines := strings.Split(string(mountData), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "#") {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
+            continue
+        }
+
+        device := fields[0]
+        mountPoint := fields[1]
+        filesystem := fields[2]
         mountOptions := ""
+        if len(fields) > 3 {
+            mountOptions = fields[3]
+        }
 
         // Apply filters if specified
         if options != nil {
