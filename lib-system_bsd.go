@@ -782,122 +782,94 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
 func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     var stats []NetworkIOStats
 
-    // Get network interfaces via sysctl
-    interfaces, err := net.Interfaces()
+    // Use netstat -i -b -n for reliable network statistics on BSD
+    cmd := exec.Command("netstat", "-i", "-b", "-n")
+    output, err := cmd.Output()
     if err != nil {
-        return stats, nil
+        return nil, fmt.Errorf("netstat command failed: %v", err)
     }
 
-    for _, iface := range interfaces {
+    // Parse netstat output to extract statistics
+    // Format: Name Mtu Network Address Ipkts Ierrs Idrop Ibytes Opkts Oerrs Obytes Coll
+    lines := strings.Split(string(output), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "Name") {
+            continue // Skip header line
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 12 {
+            continue // Need at least 12 fields for complete stats
+        }
+
+        interfaceName := fields[0]
+
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
-            if iface.Name != options["interface"].(string) {
+            if interfaceName != options["interface"].(string) {
                 continue
             }
         }
 
-        // Query interface stats using ifconfig command
-        var rxBytes, txBytes, rxPackets, txPackets uint64
-        var rxErrors, txErrors, rxDropped, txDropped uint64
+        // Parse statistics from netstat output
+        var rxPackets, txPackets, rxBytes, txBytes uint64
+        var rxErrors, txErrors, rxDropped, collisions uint64
 
-        // Try to get interface statistics from ifconfig
-        if iface.Flags&net.FlagUp != 0 {
-            // Use ifconfig command for reliable network statistics on BSD
-            cmd := exec.Command("ifconfig", iface.Name)
-            output, err := cmd.Output()
-            if err == nil {
-                // Parse ifconfig output to extract statistics
-                lines := strings.Split(string(output), "\n")
-                for _, line := range lines {
-                    line = strings.TrimSpace(line)
-                    // Look for statistics in the ifconfig output
-                    // The format varies, but we can look for common patterns
-                    if strings.Contains(line, "RX packets") || strings.Contains(line, "TX packets") {
-                        // Parse packet statistics
-                        fields := strings.Fields(line)
-                        for i, field := range fields {
-                            if field == "packets" && i+1 < len(fields) {
-                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    if strings.Contains(line, "RX") {
-                                        rxPackets = val
-                                    } else if strings.Contains(line, "TX") {
-                                        txPackets = val
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if strings.Contains(line, "RX bytes") || strings.Contains(line, "TX bytes") {
-                        // Parse byte statistics
-                        fields := strings.Fields(line)
-                        for i, field := range fields {
-                            if field == "bytes" && i+1 < len(fields) {
-                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    if strings.Contains(line, "RX") {
-                                        rxBytes = val
-                                    } else if strings.Contains(line, "TX") {
-                                        txBytes = val
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if strings.Contains(line, "RX errors") || strings.Contains(line, "TX errors") {
-                        // Parse error statistics
-                        fields := strings.Fields(line)
-                        for i, field := range fields {
-                            if field == "errors" && i+1 < len(fields) {
-                                if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    if strings.Contains(line, "RX") {
-                                        rxErrors = val
-                                    } else if strings.Contains(line, "TX") {
-                                        txErrors = val
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // If ifconfig didn't work, try sysctl with basic paths
-            if rxBytes == 0 && txBytes == 0 {
-                // Try basic sysctl paths that might exist
-                basicPaths := []string{
-                    fmt.Sprintf("dev.%s.ibytes", iface.Name),
-                    fmt.Sprintf("dev.%s.obytes", iface.Name),
-                }
-
-                for _, path := range basicPaths {
-                    if data, err := syscall.Sysctl(path); err == nil {
-                        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                            if strings.Contains(path, "ibytes") {
-                                rxBytes = val
-                            } else if strings.Contains(path, "obytes") {
-                                txBytes = val
-                            }
-                        }
-                    }
-                }
-            }
-
-            // If still no data, return error instead of fake data
-            if rxBytes == 0 && txBytes == 0 {
-                return nil, fmt.Errorf("network I/O statistics not available for interface %s - sysctl queries failed", iface.Name)
-            }
+        // Parse input packets (Ipkts)
+        if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
+            rxPackets = val
         }
 
-        stats = append(stats, NetworkIOStats{
-            Interface: iface.Name,
-            RxBytes:   rxBytes,
-            TxBytes:   txBytes,
-            RxPackets: rxPackets,
-            TxPackets: txPackets,
-            RxErrors:  rxErrors,
-            TxErrors:  txErrors,
-            RxDropped: rxDropped,
-            TxDropped: txDropped,
-        })
+        // Parse input errors (Ierrs)
+        if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+            rxErrors = val
+        }
+
+        // Parse input drops (Idrop)
+        if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil {
+            rxDropped = val
+        }
+
+        // Parse input bytes (Ibytes)
+        if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil {
+            rxBytes = val
+        }
+
+        // Parse output packets (Opkts)
+        if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil {
+            txPackets = val
+        }
+
+        // Parse output errors (Oerrs)
+        if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil {
+            txErrors = val
+        }
+
+        // Parse output bytes (Obytes)
+        if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil {
+            txBytes = val
+        }
+
+        // Parse collisions (Coll)
+        if val, err := strconv.ParseUint(fields[11], 10, 64); err == nil {
+            collisions = val
+        }
+
+        // Only include interfaces with actual data
+        if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
+            stats = append(stats, NetworkIOStats{
+                Interface: interfaceName,
+                RxBytes:   rxBytes,
+                TxBytes:   txBytes,
+                RxPackets: rxPackets,
+                TxPackets: txPackets,
+                RxErrors:  rxErrors,
+                TxErrors:  txErrors,
+                RxDropped: rxDropped,
+                TxDropped: 0, // netstat doesn't provide tx_dropped, set to 0
+            })
+        }
     }
 
     return stats, nil
