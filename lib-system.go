@@ -94,15 +94,16 @@ type CPUInfo struct {
 
 // NetworkIOStats represents network I/O statistics
 type NetworkIOStats struct {
-    Interface string
-    RxBytes   uint64
-    TxBytes   uint64
-    RxPackets uint64
-    TxPackets uint64
-    RxErrors  uint64
-    TxErrors  uint64
-    RxDropped uint64
-    TxDropped uint64
+    Interface  string
+    RxBytes    uint64
+    TxBytes    uint64
+    RxPackets  uint64
+    TxPackets  uint64
+    RxErrors   uint64
+    TxErrors   uint64
+    RxDropped  uint64
+    TxDropped  uint64
+    Collisions uint64 // Added for BSD and any platform that provides it
 }
 
 // DiskIOStats represents disk I/O statistics
