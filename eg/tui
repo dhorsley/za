@@ -27,135 +27,84 @@ append_to(ref members, member(.forename "Stimpson J", .surname "Cat", .age 3, .t
 # switch to alt screen
 tui_screen(1)
 
-s=tui_new_style()
-s.fill=true
-border=s.border
-
-i=tui_new()
-rad=tui_new()
-rad.Selected=[false,false,false,false].list_bool
-pb=tui_new()
-menu=tui_new()
-tb=tui_new()
-p=tui_new()
-
+# Create default style with map literal
+s = map(.fill true, .bg "3", .fg "7", .hi_bg "2", .hi_fg "7", .border map(.bg "3", .fg "7"))
+rad=nil
 quit=false
-
-menu.Index=0
-menu.Row,menu.Col,menu.Title = [2,2,"test options menu"]
-menu.Height,menu.Width=[12,32]
-menu.Options=[
-    "input box","radio buttons","progress bar",
-    "text box","pager","templates",
-    "quit",
-].list_string
-menu.Prompt ="Please select an option:"
-menu.Cursor="[#b1][#6]*[##][#-]"
 
 while not quit
 
-    # menu
+    # menu with map literal
     cursoroff()
-    s.bg,s.fg       =["3","7"]
-    s.hi_bg,s.hi_fg =["2","7"]
-    border["bg"]="3"
-    border["fg"]="7"
-    s.border=border
-
-    menu.tui_box(s)
-    menu=menu.tui_menu(s)
+    menu_config = map(.row 2, .col 2, .title "test options menu", .height 12, .width 32, 
+                      .options [
+                        "input box", "radio buttons", "progress bar", 
+                        "text box", "pager", "templates", "quit"
+                        ], 
+                      .prompt "Please select an option:", .cursor "[#b1][#6]*[##][#-]", .index 0, .border true)
+    
+    menu = tui_menu(menu_config, s)
 
     on menu.Cancel do break
 
     case menu.Result
     is 1
-        # input box
-        i.Row=term_h()-4
-        i.Col=10
-        i.Content="blah"
-        i.Prompt="[#b1][#6]type away... "
-        i.Title="test input box"
-        i.Border=true
-        i.Height,i.Width=[1,80]
-        s.bg,s.fg=["1","6"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        s.border=border
-        i=i.tui_input(s)
-        ires=i.Result
+        # input box with map literal
+        input_config = map(.row term_h()-4, .col 10, .content "blah", .prompt "[#b1][#6]type away... ", 
+                          .title "test input box", .border true, .height 1, .width 80)
+        input_style = map(.fill true, .bg "1", .fg "6", .border map(.bg "1", .fg "6"))
+        i = tui_input(input_config, input_style)
+        ires = i.Result
     is 2
-        # radio buttons
-        rad.Row,rad.Col=[2,36]
-        rad.Height,rad.Width=[6,64]
-        rad.Prompt="Please select : "
-        rad.Options=["Red","Green","Blue","White"].list_string
-        rad.Vertical=true
-        rad.Multi=true
-        rad.Sep=" "
-        s.bg,s.fg=["0","5"]
-        rad=rad.tui_radio(s)
-        rad.tui_clear
-        # rad.Selected [] contains end state
+        # radio buttons with map literal
+        radio_config = map(.row 2, .col 36, .height 6, .width 64, .prompt "Please select : ", 
+                          .options ["Red", "Green", "Blue", "White"], .vertical true, .multi true, 
+                          .sep " ", .cursor " ", .selected rad,
+                          .border true)
+        radio_style = map(.fill true, .bg "0", .fg "5", .hi_bg "1", .hi_fg "6")
+        rad = tui_radio(radio_config, radio_style)
+        tui_clear(radio_config, radio_style)
     is 3
-        # example progress bar
-        pb.Row,pb.Col = [20,20]
-        pb.Width=80
-        pb.Cursor="▒"
-        pb.Border=true
-        s.bg,s.fg=[as_string(rand(5)),as_string(5+rand(2))]
+        # example progress bar with map literal
+        progress_config = map(.row 20, .col 20, .width 80, .cursor "▒", .border true)
+        progress_style = map(.bg as_string(rand(5)), .fg as_string(5+rand(2)))
         for e=1 to 100
-            pb.Value=e.as_float/100
-            pb=pb.tui_progress(s)
+            progress_config["value"] = e.as_float/100
+            pb = tui_progress(progress_config, progress_style)
             pause 10
         endfor
         # reset bar
-        pb=pb.tui_progress_reset
+        tui_progress_reset(progress_config)
     is 4
-        # text box
-        tb.Row,tb.Col=[2,36]
-        tb.Height,tb.Width,tb.Title=[15,40,"text display"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        s.wrap=true
-        s.bg,s.fg=["3","7"]
-        tb.Content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-        tb.tui_box(s)
-        tb.tui_text(s)
+        # text box with map literal
+        text_config = map(.row 2, .col 36, .height 15, .width 40, .title "text display", .border true,
+                         .content "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+        text_style = map(.wrap true, .bg "3", .fg "7", .fill true)
+        tui_text(text_config, text_style)
         keypress(0)
-        tb.tui_clear
+        tui_clear(text_config, text_style)
     is 5
-        # pager
-        p.Row,p.Col=[2,36]
-        s.bg,s.fg=["2","7"]
-        s.wrap=true
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        s.border=border
-        p.Height,p.Width,p.Title=[30,term_w()-35,"pager box"]
-        p.tui_box(s)
-        p.Content=""
-        on is_file("CHANGELOG") do p.Content=$in "CHANGELOG"
-        p.tui_pager(s)
-        p.tui_clear
+        # pager with map literal
+        pager_config = map(.row 2, .col 36, .height 30, .width term_w()-40, .title "pager box", .border true)
+        pager_style = map(.bg "2", .fg "7", .wrap true, .fill true, .border map(.bg "2", .fg "7"))
+        pager_config["content"] = ""
+        on is_file("CHANGELOG") do pager_config["content"] = $in "CHANGELOG"
+        tui_pager(pager_config, pager_style)
+        tui_clear(pager_config, pager_style)
     is 6
-        # templates
-        tb.Height,tb.Width,tb.Title=[4,40,"template display"]
-        s.wrap=true
-        s.bg,s.fg=["1","7"]
-        border["bg"]=s.bg
-        border["fg"]=s.fg
-        tb.Content="Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}"
+        # templates with map literal
+        template_style = map(.wrap true, .bg "1", .fg "7", .fill true, .border map(.bg "1", .fg "7"))
         foreach rec in members
-        tb.Title=" Record #{=key_rec+1} "
-            tb.Row,tb.Col=[2+6*key_rec,80]
-            tb.Data=rec
-            tb.tui_box(s)
-            tb.tui_template(s)
+            template_config = map(.row 2+8*key_rec, .col 80, .height 4, .width 40, .border true, .fill true,
+                                 .title " Record #{=key_rec+1} ", 
+                                 .content "Name     : {.surname}, {.forename}\nAge      : {.age}\nLocation : {.town}", 
+                                 .data rec)
+            tui_template(template_config, template_style)
         endfor
         keypress()
         foreach rec in members
-            tb.Row,tb.Col=[2+6*key_rec,80]
-            tb.tui_clear
+            clear_config = map(.row 2+8*key_rec, .col 80,.width 40, .height 4,.border true)
+            tui_clear(clear_config, template_style)
         endfor
     is 7
         quit=true

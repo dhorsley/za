@@ -1,41 +1,37 @@
 #!/usr/bin/za
 
-page="pager"
+page = "pager"
 input page optarg 1
 
-t=tui_new()
-t.TableSend=page
+t = map(.tablesend page)
+s = map(
+    .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+    .hi_bg "[#b1]",
+    .hi_fg "[#6]",
+    .list ["", "[#1]", "", "[#2]", "", "[#3]", "", "[#4]", "", "", ""]
+)
 
-s=tui_new_style()
-border=s.border
-border["ih"] = ""
-# border["iv"] = ""
-s.border=border
-s.hi_bg="[#b1]"
-s.hi_fg="[#6]"
-s.list=["","[#1]","","[#2]","","[#3]","","[#4]","","",""].list_string
+z = $in (execpath() + "/data/eg.csv")
 
-z=$in (execpath()+"/data/eg.csv")
-
-t.Data=z
-t.Format="csv"
-t.Display=[1,3,4,5,7].list_int
-t.Headers=true
-t.Row,t.Col=[2,10]
-t.Height,t.Width,t.Title=[30,120,".csv to table"]
+t["data"] = z
+t["format"] = "csv"
+t["display"] = [1, 3, 4, 5, 7]
+t["headers"] = true
+t["row"], t["col"] = [2, 10]
+t["height"], t["width"], t["title"] = [30, 120, ".csv to table"]
 
 cls
-aos=tui_table(t,s)
+aos = tui_table(t, s)
 
-if page=="pager"
-    t.tui_clear
+if page == "pager"
+    tui_clear(t, s)
 else
     println aos
 endif
 
 # array-of-struct
 
-t.Title="struct to table"
+t["title"] = "struct to table"
 
 struct ts
     index int
@@ -45,24 +41,23 @@ struct ts
     s string
 es
 
-var ar []any
-
-for e=0 to 99
+ar = []
+for e = 0 to 99
     uuid = ${uuidgen}
-    ar[e]=ts(e,rand(100),itob(rand(2)-1),randf(100),uuid)
-ef
-t.Data=ar
-t.Format="aos"
-t.Display=[0,1,2,3,4].list_int
-s.list=["[#b2][#6]","[#2]","[#4]","[#5]","[#b1][#5]"].list_string
+    ar[e] = ts(e, rand(100), itob(rand(2)-1), randf(100), uuid)
+endfor
+t["data"] = ar
+t["format"] = "aos"
+t["display"] = [0, 1, 2, 3, 4]
+s["list"] = ["[#b2][#6]", "[#2]", "[#4]", "[#5]", "[#b1][#5]"]
 
-aos=tui_table(t,s)
-if page=="pager"
-    t.tui_clear
+aos = tui_table(t, s)
+if page == "pager"
+    tui_clear(t, s)
 else
     println aos
 endif
 
-at term_h(),1
+at term_h(), 1
 cursoron()
 
