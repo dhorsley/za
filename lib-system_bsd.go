@@ -1,5 +1,7 @@
 //go:build (freebsd || openbsd || netbsd || dragonfly) && !linux && !windows
 // +build freebsd openbsd netbsd dragonfly
+// +build !linux
+// +build !windows
 
 package main
 
@@ -1220,4 +1222,19 @@ func getDefaultGatewayInfo() (map[string]interface{}, error) {
     }
 
     return nil, fmt.Errorf("no default gateway interface found for gateway %s", gateway)
+}
+
+// debugCPUFiles returns debug information about available CPU files (BSD placeholder)
+func debugCPUFiles() map[string]interface{} {
+    return map[string]interface{}{
+        "platform":    "BSD",
+        "cpu_files":   []string{},
+        "available":   false,
+        "description": "CPU file debugging not implemented on BSD systems",
+        "sysctl_paths": []string{
+            "hw.ncpu",
+            "hw.cpu_topology.topo_core_id",
+            "hw.cpu_topology.topo_socket_id",
+        },
+    }
 }
