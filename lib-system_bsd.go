@@ -190,6 +190,22 @@ func getSystemLoad() ([]float64, error) {
     // Format is typically "1.23 2.34 3.45"
     fields := strings.Fields(data)
     if len(fields) < 3 {
+        // If we got unexpected data, try to parse what we can
+        if len(fields) > 0 {
+            loads := make([]float64, 3)
+            for i := 0; i < 3; i++ {
+                if i < len(fields) {
+                    if val, err := strconv.ParseFloat(fields[i], 64); err == nil {
+                        loads[i] = val
+                    } else {
+                        loads[i] = 0
+                    }
+                } else {
+                    loads[i] = 0
+                }
+            }
+            return loads, nil
+        }
         return []float64{0, 0, 0}, fmt.Errorf("invalid loadavg format: %s", data)
     }
 
@@ -216,56 +232,62 @@ func getMemoryInfo() (MemoryInfo, error) {
         }
     }
 
-    // Get memory statistics using vm.stats.vm
-    // Get active memory
-    data, err = syscall.Sysctl("vm.stats.vm.v_active_count")
-    if err == nil {
-        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-            // Convert page count to bytes
-            info.Used = val * 4096
+    // Try different sysctl paths for memory statistics
+    memoryPaths := []string{
+        "vm.stats.vm.v_active_count",
+        "vm.stats.vm.v_active",
+        "vm.stats.vm.v_inactive",
+        "vm.stats.vm.v_wire_count",
+    }
+
+    // Get used memory
+    for _, path := range memoryPaths {
+        if data, err = syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                info.Used = val * 4096 // Convert page count to bytes
+                break
+            }
         }
     }
 
     // Get free memory
-    data, err = syscall.Sysctl("vm.stats.vm.v_free_count")
-    if err == nil {
-        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-            // Convert page count to bytes
-            info.Free = val * 4096
+    freePaths := []string{
+        "vm.stats.vm.v_free_count",
+        "vm.stats.vm.v_free",
+    }
+    for _, path := range freePaths {
+        if data, err = syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                info.Free = val * 4096 // Convert page count to bytes
+                break
+            }
         }
     }
 
     // Get cached memory
-    data, err = syscall.Sysctl("vm.stats.vm.v_cache_count")
-    if err == nil {
-        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-            // Convert page count to bytes
-            info.Cached = val * 4096
+    cachePaths := []string{
+        "vm.stats.vm.v_cache_count",
+        "vm.stats.vm.v_cache",
+    }
+    for _, path := range cachePaths {
+        if data, err = syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                info.Cached = val * 4096 // Convert page count to bytes
+                break
+            }
         }
     }
 
     // Get buffer memory
-    data, err = syscall.Sysctl("vm.stats.vm.v_buf_count")
-    if err == nil {
-        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-            // Convert page count to bytes
-            info.Buffers = val * 4096
-        }
+    bufferPaths := []string{
+        "vm.stats.vm.v_buf_count",
+        "vm.stats.vm.v_buf",
     }
-
-    // Try alternative sysctl paths if the above failed
-    if info.Used == 0 {
-        // Try alternative paths for memory statistics
-        altPaths := []string{
-            "vm.stats.vm.v_active",
-            "vm.stats.vm.v_inactive",
-        }
-        for _, path := range altPaths {
-            if data, err = syscall.Sysctl(path); err == nil {
-                if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                    info.Used = val * 4096
-                    break
-                }
+    for _, path := range bufferPaths {
+        if data, err = syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                info.Buffers = val * 4096 // Convert page count to bytes
+                break
             }
         }
     }
@@ -784,6 +806,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.ibytes", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ibytes", iface.Name),
                 fmt.Sprintf("kern.dev.%s.ibytes", iface.Name),
+                fmt.Sprintf("hw.net.%s.ibytes", iface.Name),
             }
 
             // Get received bytes
@@ -801,6 +824,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.obytes", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.obytes", iface.Name),
                 fmt.Sprintf("kern.dev.%s.obytes", iface.Name),
+                fmt.Sprintf("hw.net.%s.obytes", iface.Name),
             }
             for _, path := range txPaths {
                 if txBytesStr, err := unix.Sysctl(path); err == nil {
@@ -816,6 +840,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.ipackets", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ipackets", iface.Name),
                 fmt.Sprintf("kern.dev.%s.ipackets", iface.Name),
+                fmt.Sprintf("hw.net.%s.ipackets", iface.Name),
             }
             for _, path := range rxPacketPaths {
                 if rxPacketsStr, err := unix.Sysctl(path); err == nil {
@@ -831,6 +856,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.opackets", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.opackets", iface.Name),
                 fmt.Sprintf("kern.dev.%s.opackets", iface.Name),
+                fmt.Sprintf("hw.net.%s.opackets", iface.Name),
             }
             for _, path := range txPacketPaths {
                 if txPacketsStr, err := unix.Sysctl(path); err == nil {
@@ -846,6 +872,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.ierrors", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.ierrors", iface.Name),
                 fmt.Sprintf("kern.dev.%s.ierrors", iface.Name),
+                fmt.Sprintf("hw.net.%s.ierrors", iface.Name),
             }
             for _, path := range rxErrorPaths {
                 if rxErrorsStr, err := unix.Sysctl(path); err == nil {
@@ -860,6 +887,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 fmt.Sprintf("dev.%s.oerrors", iface.Name),
                 fmt.Sprintf("net.link.ether.inet.%s.oerrors", iface.Name),
                 fmt.Sprintf("kern.dev.%s.oerrors", iface.Name),
+                fmt.Sprintf("hw.net.%s.oerrors", iface.Name),
             }
             for _, path := range txErrorPaths {
                 if txErrorsStr, err := unix.Sysctl(path); err == nil {
@@ -917,6 +945,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.rbytes", device),
             fmt.Sprintf("kern.dev.%s.rbytes", device),
             fmt.Sprintf("hw.disk.%s.rbytes", device),
+            fmt.Sprintf("hw.diskstats.%s.rbytes", device),
         }
 
         // Get read bytes
@@ -934,6 +963,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.wbytes", device),
             fmt.Sprintf("kern.dev.%s.wbytes", device),
             fmt.Sprintf("hw.disk.%s.wbytes", device),
+            fmt.Sprintf("hw.diskstats.%s.wbytes", device),
         }
         for _, path := range writePaths {
             if writeBytesStr, err := unix.Sysctl(path); err == nil {
@@ -949,6 +979,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.rops", device),
             fmt.Sprintf("kern.dev.%s.rops", device),
             fmt.Sprintf("hw.disk.%s.rops", device),
+            fmt.Sprintf("hw.diskstats.%s.rops", device),
         }
         for _, path := range readOpsPaths {
             if readOpsStr, err := unix.Sysctl(path); err == nil {
@@ -964,6 +995,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.wops", device),
             fmt.Sprintf("kern.dev.%s.wops", device),
             fmt.Sprintf("hw.disk.%s.wops", device),
+            fmt.Sprintf("hw.diskstats.%s.wops", device),
         }
         for _, path := range writeOpsPaths {
             if writeOpsStr, err := unix.Sysctl(path); err == nil {
@@ -979,6 +1011,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.rtime", device),
             fmt.Sprintf("kern.dev.%s.rtime", device),
             fmt.Sprintf("hw.disk.%s.rtime", device),
+            fmt.Sprintf("hw.diskstats.%s.rtime", device),
         }
         for _, path := range readTimePaths {
             if readTimeStr, err := unix.Sysctl(path); err == nil {
@@ -994,6 +1027,7 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             fmt.Sprintf("dev.%s.wtime", device),
             fmt.Sprintf("kern.dev.%s.wtime", device),
             fmt.Sprintf("hw.disk.%s.wtime", device),
+            fmt.Sprintf("hw.diskstats.%s.wtime", device),
         }
         for _, path := range writeTimePaths {
             if writeTimeStr, err := unix.Sysctl(path); err == nil {
@@ -1032,63 +1066,7 @@ func getSlabInfo() map[string]SlabInfo {
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Try /proc/mounts first (available on some BSD systems)
-    mountDataBytes, err := os.ReadFile("/proc/mounts")
-    if err == nil {
-        lines := strings.Split(string(mountDataBytes), "\n")
-        for _, line := range lines {
-            fields := strings.Fields(line)
-            if len(fields) < 4 {
-                continue
-            }
-
-            device := fields[0]
-            mountPoint := fields[1]
-            filesystem := fields[2]
-
-            // Apply filters if specified
-            if options != nil {
-                if excludePatterns, exists := options["exclude_patterns"]; exists {
-                    if patterns, ok := excludePatterns.([]string); ok {
-                        for _, pattern := range patterns {
-                            if strings.Contains(filesystem, pattern) || strings.Contains(mountPoint, pattern) {
-                                continue
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Get filesystem stats using statfs
-            var stat unix.Statfs_t
-            if err := unix.Statfs(mountPoint, &stat); err != nil {
-                continue
-            }
-
-            // Calculate usage
-            total := stat.Blocks * uint64(stat.Bsize)
-            free := stat.Bfree * uint64(stat.Bsize)
-            used := total - free
-            usagePercent := 0.0
-            if total > 0 {
-                usagePercent = float64(used) / float64(total) * 100.0
-            }
-
-            diskInfo := map[string]interface{}{
-                "path":          device,
-                "size":          total,
-                "used":          used,
-                "available":     free,
-                "usage_percent": usagePercent,
-                "mounted_path":  mountPoint,
-            }
-
-            result = append(result, diskInfo)
-        }
-        return result, nil
-    }
-
-    // Fallback: use sysctl to get mount information
+    // Use sysctl to get mount information
     mountDataStr, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         // Try alternative sysctl paths
@@ -1164,49 +1142,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
 func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
 
-    // Try /proc/mounts first (available on some BSD systems)
-    mountDataBytes, err := os.ReadFile("/proc/mounts")
-    if err == nil {
-        lines := strings.Split(string(mountDataBytes), "\n")
-        for _, line := range lines {
-            fields := strings.Fields(line)
-            if len(fields) < 4 {
-                continue
-            }
-
-            device := fields[0]
-            mountPoint := fields[1]
-            filesystem := fields[2]
-            mountOptions := ""
-            if len(fields) > 3 {
-                mountOptions = fields[3]
-            }
-
-            // Apply filters if specified
-            if options != nil {
-                if filesystemFilter, exists := options["filesystem"]; exists {
-                    if fs, ok := filesystemFilter.(string); ok {
-                        if filesystem != fs {
-                            continue
-                        }
-                    }
-                }
-            }
-
-            mountInfo := map[string]interface{}{
-                "device":        device,
-                "mounted":       true,
-                "mounted_path":  mountPoint,
-                "filesystem":    filesystem,
-                "mount_options": mountOptions,
-            }
-
-            result = append(result, mountInfo)
-        }
-        return result, nil
-    }
-
-    // Fallback: use sysctl to get mount information
+    // Use sysctl to get mount information
     mountDataStr, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         // Try alternative sysctl paths
@@ -1305,7 +1241,47 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     }
 
     // Fallback: use sysctl for process info
-    // This is a simplified approach since BSD sysctl process info is complex
+    // Try different sysctl paths for process information
+    procPaths := []string{
+        fmt.Sprintf("kern.proc.pid.%d", pid),
+        fmt.Sprintf("kern.proc.%d", pid),
+        fmt.Sprintf("vm.proc.%d", pid),
+    }
+
+    for _, path := range procPaths {
+        if procData, err := syscall.Sysctl(path); err == nil {
+            // Parse process data
+            lines := strings.Split(procData, "\n")
+            if len(lines) > 0 {
+                // Parse the first line which contains process info
+                fields := strings.Fields(lines[0])
+                if len(fields) >= 17 {
+                    // Get memory usage from process data
+                    if len(fields) >= 6 {
+                        if rss, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+                            usage.MemoryCurrent = rss * 1024 // Convert from KB to bytes
+                        }
+                    }
+
+                    // Parse CPU times if available
+                    if len(fields) >= 17 {
+                        utime, _ := strconv.ParseUint(fields[13], 10, 64)
+                        stime, _ := strconv.ParseUint(fields[14], 10, 64)
+                        cutime, _ := strconv.ParseUint(fields[15], 10, 64)
+                        cstime, _ := strconv.ParseUint(fields[16], 10, 64)
+                        usage.CPUUser = float64(utime) / 100.0            // Convert to seconds
+                        usage.CPUSystem = float64(stime) / 100.0          // Convert to seconds
+                        usage.CPUChildrenUser = float64(cutime) / 100.0   // Convert to seconds
+                        usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
+                    }
+
+                    return usage, nil
+                }
+            }
+        }
+    }
+
+    // If all else fails, return basic info
     usage.CPUUser = 0
     usage.CPUSystem = 0
     usage.CPUChildrenUser = 0
