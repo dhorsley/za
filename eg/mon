@@ -209,9 +209,9 @@ define showMem()
     if len(mem_detailed.Slab) > 0
         # Convert slab map to sorted list format
         slab_list = []
-        foreach name, info in mem_detailed.Slab
+        foreach info in mem_detailed.Slab
             size_mb = (info.Objects * info.Size) / 1024 / 1024
-            slab_list = slab_list + [name + " " + format("%.1f", size_mb)]
+            slab_list = slab_list + [key_info + " " + format("%.1f", size_mb)]
         endfor
         
         # Sort by size (descending)
@@ -221,9 +221,7 @@ define showMem()
         slabs = "Slab: Name Size(MB)\n"
         count = 0
         foreach entry in slab_list
-            if count >= 5
-                break
-            endif
+            on count >= 5 do break
             slabs = slabs + "  " + entry + "\n"
             count = count + 1
         endfor
@@ -768,7 +766,7 @@ timeout=key_timeout
 sample_start_in=4
 net_sample_start_in=1
 
-interface = default_gateway_interface()
+interface = gw_interface()
 
 linecolour="[#1]"
 tink="[#5]"
