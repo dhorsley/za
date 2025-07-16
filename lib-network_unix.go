@@ -1,5 +1,5 @@
-//go:build !windows
-// +build !windows
+//go:build linux && !freebsd && !openbsd && !netbsd && !dragonfly && !windows && !test
+// +build linux,!freebsd,!openbsd,!netbsd,!dragonfly,!windows,!test
 
 package main
 
