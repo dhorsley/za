@@ -443,10 +443,10 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         showCursor()
                         // Clear the entire line and restore normal input display
                         clearChars(irow, icol, inputL)
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
-                        if remainingWidth > 0 {
-                            clearChars(irow, icol+inputL, remainingWidth)
+                        if remainingWidth > inputL {
+                            clearChars(irow, icol+inputL, remainingWidth-inputL)
                         }
                         at(irow, icol)
                         pf(string(s))
@@ -458,10 +458,10 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         showCursor()
                         // Clear the entire line and restore normal input display
                         clearChars(irow, icol, inputL)
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
-                        if remainingWidth > 0 {
-                            clearChars(irow, icol+inputL, remainingWidth)
+                        if remainingWidth > inputL {
+                            clearChars(irow, icol+inputL, remainingWidth-inputL)
                         }
                         at(irow, icol)
                         pf(string(s))
@@ -480,19 +480,20 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         }
                         currentSearchResult = 0
 
-                        // Update display
+                        // Update display - clear the search area and redraw
                         clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters that might be displayed
                         remainingWidth := width - searchDisplayCol
-                        if remainingWidth > 0 {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
                         }
                         at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                         if len(searchResults) > 0 {
                             pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                         }
-                    } else if c[0] == 8 { // Backspace
+
+                    } else if c[0] == 127 { // Backspace
                         if len(searchBuffer) > 0 {
                             searchBuffer = searchBuffer[:len(searchBuffer)-1]
 
@@ -508,45 +509,61 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                             }
                             currentSearchResult = 0
 
-                            // Update display
+                            // Update display - clear the search area and redraw
                             clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                            // Clear remaining characters within width bounds
+                            // Clear any remaining characters that might be displayed
                             remainingWidth := width - searchDisplayCol
-                            if remainingWidth > 0 {
-                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
                             }
                             at(searchDisplayRow, searchDisplayCol)
-                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                             if len(searchResults) > 0 {
                                 pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                             }
                         }
+                    } else if c[0] == 21 { // Ctrl+U - clear search buffer
+                        searchBuffer = []rune{}
+                        searchResults = []int{}
+                        currentSearchResult = 0
+
+                        // Update display - clear the search area and redraw
+                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                        // Clear any remaining characters that might be displayed
+                        remainingWidth := width - searchDisplayCol
+                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                        }
+                        at(searchDisplayRow, searchDisplayCol)
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                     }
                 } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
                     if len(searchResults) > 0 {
                         currentSearchResult = (currentSearchResult + 1) % len(searchResults)
+                        // Update display - clear the search area and redraw
                         clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters that might be displayed
                         remainingWidth := width - searchDisplayCol
-                        if remainingWidth > 0 {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
                         }
                         at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                         pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                     }
                     break
                 } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}) { // DOWN arrow in search
                     if len(searchResults) > 0 {
                         currentSearchResult = (currentSearchResult - 1 + len(searchResults)) % len(searchResults)
+                        // Update display - clear the search area and redraw
                         clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters that might be displayed
                         remainingWidth := width - searchDisplayCol
-                        if remainingWidth > 0 {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
                         }
                         at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                         pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                     }
                     break
@@ -563,15 +580,16 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         showCursor()
                         // Clear the entire line and restore normal input display
                         clearChars(irow, icol, inputL)
-                        // Clear remaining characters within width bounds
+                        // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
-                        if remainingWidth > 0 {
-                            clearChars(irow, icol+inputL, remainingWidth)
+                        if remainingWidth > inputL {
+                            clearChars(irow, icol+inputL, remainingWidth-inputL)
                         }
                         at(irow, icol)
                         pf(string(s))
                         break
-                    } else {
+                    } else if len(s) == 0 {
+                        // Only enter reverse search mode if there's no existing input
                         // First Ctrl+R press - enter reverse search mode
                         reverseSearchMode = true
                         searchBuffer = []rune{}
@@ -585,21 +603,20 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
 
                         // Clear the entire input line and show search prompt
                         clearChars(irow, icol, inputL)
-                        // Also clear any remaining characters on the line within width bounds
+                        // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
-                        if remainingWidth > 0 {
-                            clearChars(irow, icol+inputL, remainingWidth)
+                        if remainingWidth > inputL {
+                            clearChars(irow, icol+inputL, remainingWidth-inputL)
                         }
-                        // Clear any additional characters that might be on the line
-                        clearChars(irow, icol+inputL+remainingWidth, width-(icol+inputL+remainingWidth))
                         searchDisplayRow = irow
                         searchDisplayCol = icol
 
                         // Show initial search prompt
                         at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + "[#-]")
+                        pf("[#bold][#6]" + searchPrompt + "[#-][#4]▋[#-]")
                         break
                     }
+                    // If there's existing input, ignore Ctrl+R (don't enter search mode)
                 }
                 break
 

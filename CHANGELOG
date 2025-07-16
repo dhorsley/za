@@ -158,6 +158,10 @@ CHANGE LOG
     -----
 
     * Added ctrl-r support to getInput() for reverse history searching
+        - backspace deletes, ctrl-u clears input
+        - enter selects the current option
+        - cursor up/down find previous/next match
+        - other input amends the search term.
 
     * Added permanent history file support for REPL:
         - History automatically saved to ~/.za_history with 0600 permissions
