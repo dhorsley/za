@@ -1033,9 +1033,9 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
     var result []map[string]interface{}
 
     // Try /proc/mounts first (available on some BSD systems)
-    mountData, err := os.ReadFile("/proc/mounts")
+    mountDataBytes, err := os.ReadFile("/proc/mounts")
     if err == nil {
-        lines := strings.Split(string(mountData), "\n")
+        lines := strings.Split(string(mountDataBytes), "\n")
         for _, line := range lines {
             fields := strings.Fields(line)
             if len(fields) < 4 {
@@ -1089,7 +1089,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
     }
 
     // Fallback: use sysctl to get mount information
-    mountData, err = syscall.Sysctl("vfs.mounts")
+    mountDataStr, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         // Try alternative sysctl paths
         altPaths := []string{
@@ -1097,7 +1097,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             "vfs.mounts.all",
         }
         for _, path := range altPaths {
-            if mountData, err = syscall.Sysctl(path); err == nil {
+            if mountDataStr, err = syscall.Sysctl(path); err == nil {
                 break
             }
         }
@@ -1106,7 +1106,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
         }
     }
 
-    lines := strings.Split(mountData, "\n")
+    lines := strings.Split(mountDataStr, "\n")
     for _, line := range lines {
         fields := strings.Fields(line)
         if len(fields) < 4 {
@@ -1165,9 +1165,9 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
     var result []map[string]interface{}
 
     // Try /proc/mounts first (available on some BSD systems)
-    mountData, err := os.ReadFile("/proc/mounts")
+    mountDataBytes, err := os.ReadFile("/proc/mounts")
     if err == nil {
-        lines := strings.Split(string(mountData), "\n")
+        lines := strings.Split(string(mountDataBytes), "\n")
         for _, line := range lines {
             fields := strings.Fields(line)
             if len(fields) < 4 {
@@ -1207,7 +1207,7 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
     }
 
     // Fallback: use sysctl to get mount information
-    mountData, err = syscall.Sysctl("vfs.mounts")
+    mountDataStr, err := syscall.Sysctl("vfs.mounts")
     if err != nil {
         // Try alternative sysctl paths
         altPaths := []string{
@@ -1215,7 +1215,7 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
             "vfs.mounts.all",
         }
         for _, path := range altPaths {
-            if mountData, err = syscall.Sysctl(path); err == nil {
+            if mountDataStr, err = syscall.Sysctl(path); err == nil {
                 break
             }
         }
@@ -1224,7 +1224,7 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
         }
     }
 
-    lines := strings.Split(mountData, "\n")
+    lines := strings.Split(mountDataStr, "\n")
     for _, line := range lines {
         fields := strings.Fields(line)
         if len(fields) < 4 {
