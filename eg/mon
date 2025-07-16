@@ -210,19 +210,25 @@ define showMem()
         # Convert slab map to sorted list format
         slab_list = []
         foreach info in mem_detailed.Slab
-            size_mb = (info.Objects * info.Size) / 1024 / 1024
+            size_mb = (info.Objects.as_int * info.Size.as_int) / 1024f / 1024
             slab_list = slab_list + [key_info + " " + format("%.1f", size_mb)]
         endfor
         
         # Sort by size (descending)
-        slab_list = slab_list.fieldsort(2, "n", true)
+        slab_string=""
+        foreach s in slab_list
+            slab_string+=s+"\n"
+        endfor
+        slab_string = slab_string.fieldsort(2, "n", true)
         
         # Format for display (top 5 entries)
-        slabs = "Slab: Name Size(MB)\n"
+        # slabs = "Slab: Name Size(MB)\n"
+        slabs = ""
         count = 0
-        foreach entry in slab_list
+        foreach entry in slab_string
+            on entry == "" do continue
             on count >= 5 do break
-            slabs = slabs + "  " + entry + "\n"
+            slabs = slabs + entry + "\n"
             count = count + 1
         endfor
     endif
@@ -284,12 +290,16 @@ define showMem()
         at 10,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
         # would normally do with fields(). showing alternative below:
         if count(slabs)>0
+            lp=0
             for p = 0 to cs-1
                 l=lines(slabs,"{p}:{p}")
                 sa=strpos(l," ",0)
-                c1=substr(l,0,sa)
-                c2=substr(l,sa+1,len(l)-sa-1)
-                at 11+p,1, format("%20s  [#6]%-"+comwidth.as_string+"d[#-]",c1,as_int(c2))
+                if sa!=-1
+                    c1=substr(l,0,sa)
+                    c2=substr(l,sa+1,len(l)-sa-1)
+                    at 11+lp,1, format("%20s  [#6]%-"+comwidth.as_string+"s[#-]",c1,c2)
+                    lp++
+                endif
             endfor
         endif
     endif
