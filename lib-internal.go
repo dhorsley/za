@@ -78,6 +78,8 @@ func ulen(args any) (int, error) {
         return len(args), nil
     case []any:
         return len(args), nil
+    case []SlabInfo:
+        return len(args), nil
     case []ProcessInfo:
         return len(args), nil
     case []SystemResources:
@@ -97,6 +99,8 @@ func ulen(args any) (int, error) {
     case []ResourceUsage:
         return len(args), nil
     case []ResourceSnapshot:
+        return len(args), nil
+    case map[string]SlabInfo:
         return len(args), nil
     case map[string]ProcessInfo:
         return len(args), nil
