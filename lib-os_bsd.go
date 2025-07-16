@@ -1,8 +1,7 @@
-//go:build (freebsd || openbsd || netbsd || dragonfly) && !linux && !windows && !test
+//go:build (freebsd || openbsd || netbsd || dragonfly) && !linux && !windows
 // +build freebsd openbsd netbsd dragonfly
 // +build !linux
 // +build !windows
-// +build !test
 
 package main
 
