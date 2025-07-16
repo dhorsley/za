@@ -810,51 +810,50 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 lines := strings.Split(string(output), "\n")
                 for _, line := range lines {
                     line = strings.TrimSpace(line)
-                    if strings.Contains(line, "bytes") {
-                        // Parse bytes from ifconfig output
-                        // Format: "bytes 1234567890 9876543210"
+                    // Look for statistics in the ifconfig output
+                    // The format varies, but we can look for common patterns
+                    if strings.Contains(line, "RX packets") || strings.Contains(line, "TX packets") {
+                        // Parse packet statistics
                         fields := strings.Fields(line)
                         for i, field := range fields {
-                            if field == "bytes" && i+2 < len(fields) {
+                            if field == "packets" && i+1 < len(fields) {
                                 if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    rxBytes = val
+                                    if strings.Contains(line, "RX") {
+                                        rxPackets = val
+                                    } else if strings.Contains(line, "TX") {
+                                        txPackets = val
+                                    }
                                 }
-                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
-                                    txBytes = val
-                                }
-                                break
                             }
                         }
                     }
-                    if strings.Contains(line, "packets") {
-                        // Parse packets from ifconfig output
-                        // Format: "packets 123456 987654"
+                    if strings.Contains(line, "RX bytes") || strings.Contains(line, "TX bytes") {
+                        // Parse byte statistics
                         fields := strings.Fields(line)
                         for i, field := range fields {
-                            if field == "packets" && i+2 < len(fields) {
+                            if field == "bytes" && i+1 < len(fields) {
                                 if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    rxPackets = val
+                                    if strings.Contains(line, "RX") {
+                                        rxBytes = val
+                                    } else if strings.Contains(line, "TX") {
+                                        txBytes = val
+                                    }
                                 }
-                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
-                                    txPackets = val
-                                }
-                                break
                             }
                         }
                     }
-                    if strings.Contains(line, "errors") {
-                        // Parse errors from ifconfig output
-                        // Format: "errors 123 456"
+                    if strings.Contains(line, "RX errors") || strings.Contains(line, "TX errors") {
+                        // Parse error statistics
                         fields := strings.Fields(line)
                         for i, field := range fields {
-                            if field == "errors" && i+2 < len(fields) {
+                            if field == "errors" && i+1 < len(fields) {
                                 if val, err := strconv.ParseUint(fields[i+1], 10, 64); err == nil {
-                                    rxErrors = val
+                                    if strings.Contains(line, "RX") {
+                                        rxErrors = val
+                                    } else if strings.Contains(line, "TX") {
+                                        txErrors = val
+                                    }
                                 }
-                                if val, err := strconv.ParseUint(fields[i+2], 10, 64); err == nil {
-                                    txErrors = val
-                                }
-                                break
                             }
                         }
                     }
@@ -910,9 +909,27 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
 
     // Get disk stats via iostat command
     // This is a more reliable approach on FreeBSD
-    devices := []string{"ada0", "ada1", "da0", "da1"} // Common BSD device names
+    cmd := exec.Command("iostat", "-x")
+    output, err := cmd.Output()
+    if err != nil {
+        return stats, fmt.Errorf("iostat command failed")
+    }
 
-    for _, device := range devices {
+    // Parse iostat output to extract statistics for all devices
+    lines := strings.Split(string(output), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "extended device statistics") {
+            continue
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 6 {
+            continue
+        }
+
+        device := fields[0]
+
         // Apply device filter if specified
         if options != nil && options["device"] != nil {
             if device != options["device"].(string) {
@@ -920,68 +937,29 @@ func getDiskIO(options map[string]interface{}) ([]DiskIOStats, error) {
             }
         }
 
-        // Get disk I/O statistics using iostat command
+        // Parse read/write statistics from iostat output
+        // Format: device r/s w/s kr/s kw/s ms/r ms/w ms/o ms/t qlen %b
         var readBytes, writeBytes, readOps, writeOps uint64
         var readTime, writeTime uint64
 
-        // Try to get disk statistics using iostat - get all devices
-        cmd := exec.Command("iostat", "-x")
-        output, err := cmd.Output()
-        if err == nil {
-            // Parse iostat output to extract statistics
-            lines := strings.Split(string(output), "\n")
-            for _, line := range lines {
-                line = strings.TrimSpace(line)
-                if strings.Contains(line, device) {
-                    fields := strings.Fields(line)
-                    if len(fields) >= 6 {
-                        // Parse read/write statistics from iostat output
-                        // Format varies, but typically: device r/s w/s rkB/s wkB/s
-                        if len(fields) >= 5 {
-                            if val, err := strconv.ParseFloat(fields[2], 64); err == nil {
-                                readOps = uint64(val)
-                            }
-                            if val, err := strconv.ParseFloat(fields[3], 64); err == nil {
-                                writeOps = uint64(val)
-                            }
-                            if val, err := strconv.ParseFloat(fields[4], 64); err == nil {
-                                readBytes = uint64(val * 1024) // Convert KB to bytes
-                            }
-                            if val, err := strconv.ParseFloat(fields[5], 64); err == nil {
-                                writeBytes = uint64(val * 1024) // Convert KB to bytes
-                            }
-                        }
-                    }
-                }
+        if len(fields) >= 5 {
+            if val, err := strconv.ParseFloat(fields[1], 64); err == nil {
+                readOps = uint64(val)
+            }
+            if val, err := strconv.ParseFloat(fields[2], 64); err == nil {
+                writeOps = uint64(val)
+            }
+            if val, err := strconv.ParseFloat(fields[3], 64); err == nil {
+                readBytes = uint64(val * 1024) // Convert KB to bytes
+            }
+            if val, err := strconv.ParseFloat(fields[4], 64); err == nil {
+                writeBytes = uint64(val * 1024) // Convert KB to bytes
             }
         }
 
-        // If iostat didn't work, try sysctl with basic paths
+        // If no data found, skip this device
         if readBytes == 0 && writeBytes == 0 {
-            // Try basic sysctl paths that might exist
-            basicPaths := []string{
-                fmt.Sprintf("dev.%s.rbytes", device),
-                fmt.Sprintf("dev.%s.wbytes", device),
-                fmt.Sprintf("kern.dev.%s.rbytes", device),
-                fmt.Sprintf("kern.dev.%s.wbytes", device),
-            }
-
-            for _, path := range basicPaths {
-                if data, err := syscall.Sysctl(path); err == nil {
-                    if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                        if strings.Contains(path, "rbytes") {
-                            readBytes = val
-                        } else if strings.Contains(path, "wbytes") {
-                            writeBytes = val
-                        }
-                    }
-                }
-            }
-        }
-
-        // If still no data, return error instead of fake data
-        if readBytes == 0 && writeBytes == 0 {
-            return nil, fmt.Errorf("disk I/O statistics not available for device %s - sysctl queries failed", device)
+            continue
         }
 
         stats = append(stats, DiskIOStats{
