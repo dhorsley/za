@@ -265,6 +265,15 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
     var funcnames []string       // the list of possible standard library functions
     var helpType []int
 
+    // Reverse search state variables
+    var reverseSearchMode bool = false
+    var searchBuffer []rune
+    var searchResults []int     // indices of matching history entries
+    var currentSearchResult int // current position in search results
+    var searchPrompt string = "(search): "
+    var searchDisplayRow int
+    var searchDisplayCol int
+
     // files in cwd for tab completion
     var fileList map[string]os.FileInfo
 
@@ -420,6 +429,178 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 // Send SIGTSTP to the current process group to suspend Za
                 // Platform-specific implementation handles Unix vs Windows
                 handleCtrlZ()
+                break
+
+            case reverseSearchMode:
+                // Handle specific input during reverse search mode
+                if len(c) == 1 {
+                    if c[0] == 13 { // Enter - accept current result
+                        reverseSearchMode = false
+                        if len(searchResults) > 0 && currentSearchResult < len(searchResults) {
+                            s = []rune(hist[searchResults[currentSearchResult]])
+                            cpos = len(s)
+                        }
+                        showCursor()
+                        // Clear the entire line and restore normal input display
+                        clearChars(irow, icol, inputL)
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - icol
+                        if remainingWidth > 0 {
+                            clearChars(irow, icol+inputL, remainingWidth)
+                        }
+                        at(irow, icol)
+                        pf(string(s))
+                        break
+                    } else if c[0] == 18 { // Ctrl+R - cancel search
+                        reverseSearchMode = false
+                        s = orig_s
+                        cpos = len(s)
+                        showCursor()
+                        // Clear the entire line and restore normal input display
+                        clearChars(irow, icol, inputL)
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - icol
+                        if remainingWidth > 0 {
+                            clearChars(irow, icol+inputL, remainingWidth)
+                        }
+                        at(irow, icol)
+                        pf(string(s))
+                        break
+                    } else if c[0] >= 32 && c[0] <= 126 { // Printable character
+                        // Add character to search buffer
+                        searchBuffer = append(searchBuffer, rune(c[0]))
+
+                        // Search through history backwards
+                        searchResults = []int{}
+                        searchTerm := str.ToLower(string(searchBuffer))
+                        for i := len(hist) - 1; i >= 0; i-- {
+                            if str.Contains(str.ToLower(hist[i]), searchTerm) {
+                                searchResults = append(searchResults, i)
+                            }
+                        }
+                        currentSearchResult = 0
+
+                        // Update display
+                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - searchDisplayCol
+                        if remainingWidth > 0 {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        }
+                        at(searchDisplayRow, searchDisplayCol)
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        if len(searchResults) > 0 {
+                            pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                        }
+                    } else if c[0] == 8 { // Backspace
+                        if len(searchBuffer) > 0 {
+                            searchBuffer = searchBuffer[:len(searchBuffer)-1]
+
+                            // Re-search with updated buffer
+                            searchResults = []int{}
+                            if len(searchBuffer) > 0 {
+                                searchTerm := str.ToLower(string(searchBuffer))
+                                for i := len(hist) - 1; i >= 0; i-- {
+                                    if str.Contains(str.ToLower(hist[i]), searchTerm) {
+                                        searchResults = append(searchResults, i)
+                                    }
+                                }
+                            }
+                            currentSearchResult = 0
+
+                            // Update display
+                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                            // Clear remaining characters within width bounds
+                            remainingWidth := width - searchDisplayCol
+                            if remainingWidth > 0 {
+                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                            }
+                            at(searchDisplayRow, searchDisplayCol)
+                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                            if len(searchResults) > 0 {
+                                pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                            }
+                        }
+                    }
+                } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
+                    if len(searchResults) > 0 {
+                        currentSearchResult = (currentSearchResult + 1) % len(searchResults)
+                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - searchDisplayCol
+                        if remainingWidth > 0 {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        }
+                        at(searchDisplayRow, searchDisplayCol)
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                    }
+                    break
+                } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}) { // DOWN arrow in search
+                    if len(searchResults) > 0 {
+                        currentSearchResult = (currentSearchResult - 1 + len(searchResults)) % len(searchResults)
+                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - searchDisplayCol
+                        if remainingWidth > 0 {
+                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth)
+                        }
+                        at(searchDisplayRow, searchDisplayCol)
+                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-]")
+                        pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                    }
+                    break
+                }
+                break
+
+            case bytes.Equal(c, []byte{18}): // ctrl-r - reverse search
+                if histEnable && !histEmpty {
+                    if reverseSearchMode {
+                        // Second Ctrl+R press - cancel search
+                        reverseSearchMode = false
+                        s = orig_s
+                        cpos = len(s)
+                        showCursor()
+                        // Clear the entire line and restore normal input display
+                        clearChars(irow, icol, inputL)
+                        // Clear remaining characters within width bounds
+                        remainingWidth := width - icol
+                        if remainingWidth > 0 {
+                            clearChars(irow, icol+inputL, remainingWidth)
+                        }
+                        at(irow, icol)
+                        pf(string(s))
+                        break
+                    } else {
+                        // First Ctrl+R press - enter reverse search mode
+                        reverseSearchMode = true
+                        searchBuffer = []rune{}
+                        searchResults = []int{}
+                        currentSearchResult = 0
+
+                        // Save current input state
+                        if !navHist {
+                            orig_s = s
+                        }
+
+                        // Clear the entire input line and show search prompt
+                        clearChars(irow, icol, inputL)
+                        // Also clear any remaining characters on the line within width bounds
+                        remainingWidth := width - icol
+                        if remainingWidth > 0 {
+                            clearChars(irow, icol+inputL, remainingWidth)
+                        }
+                        // Clear any additional characters that might be on the line
+                        clearChars(irow, icol+inputL+remainingWidth, width-(icol+inputL+remainingWidth))
+                        searchDisplayRow = irow
+                        searchDisplayCol = icol
+
+                        // Show initial search prompt
+                        at(searchDisplayRow, searchDisplayCol)
+                        pf("[#bold][#6]" + searchPrompt + "[#-]")
+                        break
+                    }
+                }
                 break
 
             case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor
@@ -770,6 +951,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
 
             default:
+                // Normal input processing (only reached when not in reverse search mode)
                 if len(c) == 1 {
                     if c[0] > 32 && c[0] < 128 {
                         s = insertAt(s, cpos, rune(c[0]))
