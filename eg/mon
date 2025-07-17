@@ -402,16 +402,6 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     cursoroff()
 
-    proc_file=""
-    if is_file("/proc/stat")
-        proc_file=$in "/proc/stat"
-    else
-        return sample_start_in
-    endif
-
-    on len(proc_file)==0 do return sample_start_in
-
-
     pane select "cpu"
     print linecolour; # pane redraw
     header("{=tink} CPU [#-]")
@@ -422,9 +412,39 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     row=1
 
-    mult            = as_float(timeout)/10.0
-    indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
-    partindexlist   = tail(indexlist)
+doc `
+    case os
+    contains "bsd"
+        # map[core_0:map[idle:100 interrupt:0 system:0 user:0] core_1:map[idle:100 interrupt:0 system:0 user:0]]
+        cpuinfo=cpu_info().Usage["cores"]
+        cpucount=cpu_info().Usage["cores].len
+        foreach c in cpuinfo
+            vals["user"]=c["user"]
+            vals["sys"]=c["user"]
+            vals["irq"]=c["interrupt"]
+            vals["idle"]=c["idle"]
+            vals["nice"]=0
+            vals["iowait"]=0
+            vals["softirq"]=0
+            vals["steal"]=0
+            vals["guest"]=0
+            vals["total"]=c.values.sum
+        endfor
+
+    or
+    endcase
+`
+        proc_file=""
+        if is_file("/proc/stat")
+            proc_file=$in "/proc/stat"
+        else
+            return sample_start_in
+        endif
+        on len(proc_file)==0 do return sample_start_in
+
+        mult            = as_float(timeout)/10.0
+        indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
+        partindexlist   = tail(indexlist)
 
     # init previous values for cpu stats
 
@@ -435,7 +455,6 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
         name=F[1]
         on not name is string do continue
-        # on kind(name)!="string" do continue
         on name=="cpu" do continue
 
         if reg_match(name,"^cpu")

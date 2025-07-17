@@ -860,6 +860,12 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
         // Get CPU usage using BSD sysctl
         // Use BSD sysctl to get real CPU usage data
 
+		// Fallback values
+		info.Usage["user"] = 0.0
+		info.Usage["system"] = 0.0
+		info.Usage["interrupt"] = 0.0
+		info.Usage["idle"] = 100.0
+
         // Get CPU usage from sysctl
         cpuTimeData, err := syscall.Sysctl("kern.cp_time")
         if err == nil {
@@ -869,29 +875,23 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
                 user, _ := strconv.ParseUint(fields[0], 10, 64)
                 nice, _ := strconv.ParseUint(fields[1], 10, 64)
                 system, _ := strconv.ParseUint(fields[2], 10, 64)
-                idle, _ := strconv.ParseUint(fields[3], 10, 64)
+                interrupt, _ := strconv.ParseUint(fields[3], 10, 64)
+                idle, _ := strconv.ParseUint(fields[4], 10, 64)
 
                 // Calculate percentages
-                total := user + nice + system + idle
+                total := user + nice + system + interrupt + idle
                 if total > 0 {
                     userPercent := float64(user) / float64(total) * 100.0
                     systemPercent := float64(system) / float64(total) * 100.0
+                    interruptPercent := float64(interrupt) / float64(total) * 100.0
                     idlePercent := float64(idle) / float64(total) * 100.0
 
                     info.Usage["user"] = userPercent
+					info.Usage["interrupt"] = interruptPercent
                     info.Usage["system"] = systemPercent
                     info.Usage["idle"] = idlePercent
-                } else {
-                    info.Usage["user"] = 0.0
-                    info.Usage["system"] = 0.0
-                    info.Usage["idle"] = 100.0
                 }
             }
-        } else {
-            // Fallback values
-            info.Usage["user"] = 0.0
-            info.Usage["system"] = 0.0
-            info.Usage["idle"] = 100.0
         }
     } else {
         // Return data for all cores
@@ -900,6 +900,12 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
 
         for i := 0; i < info.Cores; i++ {
             coreData := make(map[string]interface{})
+
+			// Fallback values
+			coreData["user"] = 0.0
+			coreData["system"] = 0.0
+			coreData["idle"] = 100.0
+			coreData["interrupt"] = 0.0
 
             // Get CPU usage using BSD sysctl
             // Use BSD sysctl to get real CPU usage data for each core
@@ -914,29 +920,23 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
                     user, _ := strconv.ParseUint(fields[0], 10, 64)
                     nice, _ := strconv.ParseUint(fields[1], 10, 64)
                     system, _ := strconv.ParseUint(fields[2], 10, 64)
-                    idle, _ := strconv.ParseUint(fields[3], 10, 64)
+					interrupt, _ := strconv.ParseUint(fields[3], 10, 64)
+					idle, _ := strconv.ParseUint(fields[4], 10, 64)
 
                     // Calculate percentages
-                    total := user + nice + system + idle
+                    total := user + nice + system + interrupt + idle
                     if total > 0 {
                         userPercent := float64(user) / float64(total) * 100.0
                         systemPercent := float64(system) / float64(total) * 100.0
+                        interruptPercent := float64(interrupt) / float64(total) * 100.0
                         idlePercent := float64(idle) / float64(total) * 100.0
 
                         coreData["user"] = userPercent
                         coreData["system"] = systemPercent
+                        coreData["interrupt"] = interruptPercent
                         coreData["idle"] = idlePercent
-                    } else {
-                        coreData["user"] = 0.0
-                        coreData["system"] = 0.0
-                        coreData["idle"] = 100.0
                     }
                 }
-            } else {
-                // Fallback values
-                coreData["user"] = 0.0
-                coreData["system"] = 0.0
-                coreData["idle"] = 100.0
             }
             cores[fmt.Sprintf("core_%d", i)] = coreData
         }
