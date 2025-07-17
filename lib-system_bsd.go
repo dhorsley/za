@@ -263,12 +263,18 @@ func getSystemLoad() ([]float64, error) {
                     if sy, err := strconv.ParseFloat(fields[len(fields)-2], 64); err == nil {
                         if id, err := strconv.ParseFloat(fields[len(fields)-1], 64); err == nil {
                             // Calculate load average based on CPU usage
-                            // This is a simplified approach - convert CPU usage to load
+                            // Use all three values for more accurate calculation
                             totalUsage := us + sy
-                            load1 := totalUsage / 100.0  // Convert percentage to load
-                            load5 := totalUsage / 100.0  // Simplified - same as 1min
-                            load15 := totalUsage / 100.0 // Simplified - same as 1min
-                            return []float64{load1, load5, load15}, nil
+                            totalCPU := us + sy + id
+
+                            if totalCPU > 0 {
+                                // Calculate load as percentage of CPU in use
+                                cpuLoad := totalUsage / totalCPU
+                                load1 := cpuLoad
+                                load5 := cpuLoad  // Simplified - same as 1min for now
+                                load15 := cpuLoad // Simplified - same as 1min for now
+                                return []float64{load1, load5, load15}, nil
+                            }
                         }
                     }
                 }
