@@ -104,10 +104,14 @@ define bar(row,col,hsize,pc,colour)
 end
 
 define interface_ip(ip_in)
-    addrline =< ip addr show dev {ip_in}
-    fil=addrline.reg_filter("inet.*/")
-    ipaddr=addrline[fil[0][0]:fil[0][1]].reg_replace("inet ","").gsub("/","")
-    return ipaddr
+    foreach n in net_devices()
+        on n["name"]==ip_in do return n["ip_addresses"][0]
+    endfor
+    return ""
+    #addrline =< ip addr show dev {ip_in}
+    #fil=addrline.reg_filter("inet.*/")
+    #ipaddr=addrline[fil[0][0]:fil[0][1]].reg_replace("inet ","").gsub("/","")
+    #return ipaddr
 end
 
 define negreg(inp,matcher)
@@ -837,7 +841,7 @@ while !quit
     endif
 
     # capture system uptime
-    on is_file("/proc/uptime") do uptime=as_float(field($in "/proc/uptime",1))
+    uptime=sys_resources().Uptime
 
     # show panes
     sample_start_in=showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
