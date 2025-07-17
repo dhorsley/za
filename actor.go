@@ -470,6 +470,32 @@ func GetAsUint(expr any) (uint, bool) {
     return uint(0), true
 }
 
+func GetAsUint64(expr any) (uint64, bool) {
+    switch i := expr.(type) {
+    case float64:
+        return uint64(i), false
+    case int:
+        return uint64(i), false
+    case int64:
+        return uint64(i), false
+    case uint32:
+        return uint64(i), false
+    case uint64:
+        return i, false
+    case uint8:
+        return uint64(i), false
+    case uint:
+        return uint64(i), false
+    case string:
+        p, e := strconv.ParseFloat(i, 64)
+        if e == nil {
+            return uint64(p), false
+        }
+    default:
+    }
+    return uint64(0), true
+}
+
 // check for value in slice - used by lookahead()
 func InSlice(a int64, list []int64) bool {
     for k, _ := range list {

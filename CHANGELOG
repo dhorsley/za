@@ -23,6 +23,7 @@ CHANGE LOG
 
     * added explain()       : currently, describes a struct type
     * added has_privileges(): checks for root/sudo level active user
+    * added maxuint()       : for checking sentinel values (uint64)
 
     * resource usage functions:
 
