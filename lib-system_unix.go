@@ -24,9 +24,11 @@ func getTopCPU(n int) ([]ProcessInfo, error) {
         return nil, err
     }
 
-    // Sort by CPU percentage
+    // Sort by CPU time (user + system)
     sort.Slice(processes, func(i, j int) bool {
-        return processes[i].CPUPercent > processes[j].CPUPercent
+        totalI := processes[i].UserTime + processes[i].SystemTime
+        totalJ := processes[j].UserTime + processes[j].SystemTime
+        return totalI > totalJ
     })
 
     if n == -1 {
@@ -1051,32 +1053,19 @@ func debugCPUFiles() map[string]interface{} {
 func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     var stats []NetworkIOStats
 
-    // Read /proc/net/dev
-    data, err := os.ReadFile("/proc/net/dev")
+    // Get network interfaces from /sys/class/net
+    netDir := "/sys/class/net"
+    entries, err := os.ReadDir(netDir)
     if err != nil {
-        return nil, fmt.Errorf("failed to read /proc/net/dev: %v", err)
+        return nil, fmt.Errorf("failed to read /sys/class/net: %v", err)
     }
 
-    lines := strings.Split(string(data), "\n")
-    for _, line := range lines[2:] { // Skip header lines
-        if strings.TrimSpace(line) == "" {
+    for _, entry := range entries {
+        if !entry.IsDir() {
             continue
         }
 
-        fields := strings.Fields(line)
-        if len(fields) < 16 {
-            continue
-        }
-
-        interfaceName := strings.TrimSuffix(fields[0], ":")
-        rxBytes, _ := strconv.ParseUint(fields[1], 10, 64)
-        txBytes, _ := strconv.ParseUint(fields[9], 10, 64)
-        rxPackets, _ := strconv.ParseUint(fields[2], 10, 64)
-        txPackets, _ := strconv.ParseUint(fields[10], 10, 64)
-        rxErrors, _ := strconv.ParseUint(fields[3], 10, 64)
-        txErrors, _ := strconv.ParseUint(fields[11], 10, 64)
-        rxDropped, _ := strconv.ParseUint(fields[4], 10, 64)
-        txDropped, _ := strconv.ParseUint(fields[12], 10, 64)
+        interfaceName := entry.Name()
 
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
@@ -1085,16 +1074,88 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
 
+        // Get all statistics from /sys/class/net/{interface}/statistics/
+        statsPath := fmt.Sprintf("/sys/class/net/%s/statistics", interfaceName)
+        if _, err := os.Stat(statsPath); err != nil {
+            continue // Skip interfaces without statistics
+        }
+
+        var rxBytes, txBytes, rxPackets, txPackets, rxErrors, txErrors, rxDropped, txDropped, collisions uint64
+
+        // Read rx_bytes
+        if data, err := os.ReadFile(fmt.Sprintf("%s/rx_bytes", statsPath)); err == nil {
+            rxBytes, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            rxBytes = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read tx_bytes
+        if data, err := os.ReadFile(fmt.Sprintf("%s/tx_bytes", statsPath)); err == nil {
+            txBytes, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            txBytes = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read rx_packets
+        if data, err := os.ReadFile(fmt.Sprintf("%s/rx_packets", statsPath)); err == nil {
+            rxPackets, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            rxPackets = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read tx_packets
+        if data, err := os.ReadFile(fmt.Sprintf("%s/tx_packets", statsPath)); err == nil {
+            txPackets, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            txPackets = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read rx_errors
+        if data, err := os.ReadFile(fmt.Sprintf("%s/rx_errors", statsPath)); err == nil {
+            rxErrors, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            rxErrors = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read tx_errors
+        if data, err := os.ReadFile(fmt.Sprintf("%s/tx_errors", statsPath)); err == nil {
+            txErrors, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            txErrors = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read rx_dropped
+        if data, err := os.ReadFile(fmt.Sprintf("%s/rx_dropped", statsPath)); err == nil {
+            rxDropped, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            rxDropped = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read tx_dropped
+        if data, err := os.ReadFile(fmt.Sprintf("%s/tx_dropped", statsPath)); err == nil {
+            txDropped, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            txDropped = 0xFFFFFFFFFFFFFFFF
+        }
+
+        // Read collisions
+        if data, err := os.ReadFile(fmt.Sprintf("%s/collisions", statsPath)); err == nil {
+            collisions, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        } else {
+            collisions = 0xFFFFFFFFFFFFFFFF
+        }
+
         stats = append(stats, NetworkIOStats{
-            Interface: interfaceName,
-            RxBytes:   rxBytes,
-            TxBytes:   txBytes,
-            RxPackets: rxPackets,
-            TxPackets: txPackets,
-            RxErrors:  rxErrors,
-            TxErrors:  txErrors,
-            RxDropped: rxDropped,
-            TxDropped: txDropped,
+            Interface:  interfaceName,
+            RxBytes:    rxBytes,
+            TxBytes:    txBytes,
+            RxPackets:  rxPackets,
+            TxPackets:  txPackets,
+            RxErrors:   rxErrors,
+            TxErrors:   txErrors,
+            RxDropped:  rxDropped,
+            TxDropped:  txDropped,
+            Collisions: collisions,
         })
     }
 
@@ -1222,6 +1283,12 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
             }
         }
     }
+
+    // Set ContextSwitches to sentinel value (Linux doesn't provide this via /proc/{pid}/io)
+    usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
+
+    // Set PageFaults to sentinel value (Linux doesn't provide this via /proc/{pid}/io)
+    usage.PageFaults = 0xFFFFFFFFFFFFFFFF
 
     return usage, nil
 }

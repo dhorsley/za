@@ -21,7 +21,6 @@ type ProcessInfo struct {
     StartTime          int64
     UID                string
     GID                string
-    CPUPercent         float64
     UserTime           float64 // CPU time spent in user mode
     SystemTime         float64 // CPU time spent in system mode
     ChildrenUserTime   float64 // CPU time spent by children in user mode
@@ -72,8 +71,6 @@ type PressureStats struct {
 
 // SlabInfo represents kernel slab allocation information
 type SlabInfo struct {
-    Objects      int
-    Size         uint64
     ActiveObjs   uint64
     NumObjs      uint64
     ObjSize      uint64
