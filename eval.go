@@ -2346,6 +2346,11 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kuint64:
+            _, ok = value.(uint64)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
         case kfloat:
             _, ok = value.(float64)
             if ok {

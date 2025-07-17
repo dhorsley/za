@@ -449,7 +449,7 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "char", "asc", "as_uint",
+        "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
         "write_struct", "read_struct", "explain",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed",
@@ -922,6 +922,14 @@ func buildConversionLib() {
             return i, nil
         }
         return uint(0), errors.New(sf("could not convert [%T] (%v) to integer in as_uint()", args[0], args[0]))
+    }
+
+    slhelp["maxuint"] = LibHelp{in: "var", out: "uint64", action: "Represents the maximum possible uint value."}
+    stdlib["maxuint"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 0 {
+            return nil, errors.New("invalid arguments provided to maxuint()")
+        }
+		return uint64(math.MaxUint),nil
     }
 
     slhelp["as_int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
