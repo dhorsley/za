@@ -51,12 +51,6 @@ func unsafeSet(dest, src reflect.Value) {
 
     var srcDataPtr unsafe.Pointer
 
-    // To get a pointer to the source data, we use a robust whitelist. The fragile
-    // "interface header trick" is only used for types that are known to be
-    // pointer-based. All other types (structs, primitives, etc.) use the safe
-    // method of creating a temporary variable to get a stable data pointer.
-    // This prevents memory corruption from the header trick being used on an
-    // unsupported type.
     switch src.Kind() {
     case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Slice, reflect.String:
         var srcIface any

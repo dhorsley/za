@@ -1332,13 +1332,13 @@ func deepEqual(val1 any, val2 any) bool {
         return false
 
     case uint64:
-        int2, ok := val2.(int)
-        if ok {
-            return typ1 == uint64(int2)
-        }
         uintsixfour, ok := val2.(uint64)
         if ok {
             return typ1 == uintsixfour
+        }
+        int2, ok := val2.(int)
+        if ok {
+            return typ1 == uint64(int2)
         }
         intsixfour, ok := val2.(int64)
         if ok {
