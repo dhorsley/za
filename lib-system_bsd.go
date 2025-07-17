@@ -405,11 +405,48 @@ func getMemoryInfo() (MemoryInfo, error) {
     // Get swap information using vm.swap_info
     swapData, err := syscall.Sysctl("vm.swap_info")
     if err == nil {
-        // Parse swap info (simplified)
-        // This is a complex structure, so we'll use a simplified approach
-        info.SwapTotal = 0
-        info.SwapUsed = 0
-        info.SwapFree = 0
+        // Parse swap info from BSD sysctl output
+        // Format varies by BSD variant, try to parse common patterns
+        lines := strings.Split(swapData, "\n")
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line == "" {
+                continue
+            }
+
+            // Look for swap device information
+            fields := strings.Fields(line)
+            if len(fields) >= 4 {
+                // Try to parse swap device line
+                // Format might be: device total used free
+                if total, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
+                    info.SwapTotal += total * 1024 // Convert KB to bytes
+                }
+                if used, err := strconv.ParseUint(fields[2], 10, 64); err == nil {
+                    info.SwapUsed += used * 1024 // Convert KB to bytes
+                }
+                if free, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
+                    info.SwapFree += free * 1024 // Convert KB to bytes
+                }
+            }
+        }
+
+        // If no swap data found, try alternative parsing
+        if info.SwapTotal == 0 && len(swapData) > 0 {
+            // Try parsing as space-separated values
+            fields := strings.Fields(swapData)
+            if len(fields) >= 3 {
+                if total, err := strconv.ParseUint(fields[0], 10, 64); err == nil {
+                    info.SwapTotal = total
+                }
+                if used, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
+                    info.SwapUsed = used
+                }
+                if free, err := strconv.ParseUint(fields[2], 10, 64); err == nil {
+                    info.SwapFree = free
+                }
+            }
+        }
     }
 
     // Initialize pressure and OOM scores maps
