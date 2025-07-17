@@ -194,9 +194,11 @@ func getTopCPU(n int) ([]ProcessInfo, error) {
         return nil, err
     }
 
-    // Sort by CPU percentage
+    // Sort by CPU time (user + system)
     sort.Slice(processes, func(i, j int) bool {
-        return processes[i].CPUPercent > processes[j].CPUPercent
+        totalI := processes[i].UserTime + processes[i].SystemTime
+        totalJ := processes[j].UserTime + processes[j].SystemTime
+        return totalI > totalJ
     })
 
     if n == -1 {
@@ -792,15 +794,16 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         }
 
         stats = append(stats, NetworkIOStats{
-            Interface: iface.Name,
-            RxBytes:   rxBytes,
-            TxBytes:   txBytes,
-            RxPackets: rxPackets,
-            TxPackets: txPackets,
-            RxErrors:  rxErrors,
-            TxErrors:  txErrors,
-            RxDropped: rxDropped,
-            TxDropped: txDropped,
+            Interface:  iface.Name,
+            RxBytes:    rxBytes,
+            TxBytes:    txBytes,
+            RxPackets:  rxPackets,
+            TxPackets:  txPackets,
+            RxErrors:   rxErrors,
+            TxErrors:   txErrors,
+            RxDropped:  rxDropped,
+            TxDropped:  txDropped,
+            Collisions: 0xFFFFFFFFFFFFFFFF, // Sentinel value for unavailable data
         })
     }
 
@@ -1092,6 +1095,13 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     // Windows doesn't easily provide children CPU times or I/O stats
     usage.CPUChildrenUser = 0.0
     usage.CPUChildrenSystem = 0.0
+
+    // Set IO fields to sentinel values (Windows doesn't provide per-process IO stats)
+    usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
+    usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
+    usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
+    usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
+    usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
 
     return usage, nil
 }
