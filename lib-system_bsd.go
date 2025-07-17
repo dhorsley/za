@@ -436,7 +436,6 @@ func getMemoryInfo() (MemoryInfo, error) {
     cmd := exec.Command("vmstat")
     if output, err := cmd.Output(); err == nil {
         lines := strings.Split(string(output), "\n")
-        memoryFound := false
         for _, line := range lines {
             line = strings.TrimSpace(line)
             if line == "" || strings.HasPrefix(line, "procs") || strings.HasPrefix(line, "r") {
@@ -458,117 +457,18 @@ func getMemoryInfo() (MemoryInfo, error) {
                 // Calculate total memory as used + free
                 if info.Used > 0 && info.Free > 0 {
                     info.Total = info.Used + info.Free
-                    memoryFound = true
                 }
                 break
             }
         }
-
-        // If we found memory data, return success
-        if memoryFound {
-            return info, nil
-        }
     }
 
-    // If vmstat failed or didn't provide memory data, return error
-    return info, fmt.Errorf("failed to get memory information from vmstat")
-
-    // Try different sysctl paths for memory statistics
-    memoryPaths := []string{
-        "vm.stats.vm.v_active_count",
-        "vm.stats.vm.v_active",
-        "vm.stats.vm.v_inactive",
-        "vm.stats.vm.v_wire_count",
+    // Set sentinel values for fields not provided by vmstat
+    if info.Cached == 0 {
+        info.Cached = 0xFFFFFFFFFFFFFFFF // Sentinel value
     }
-
-    // Get used memory
-    for _, path := range memoryPaths {
-        if data, err := syscall.Sysctl(path); err == nil {
-            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                info.Used = val * 4096 // Convert page count to bytes
-                break
-            }
-        }
-    }
-
-    // Get free memory
-    freePaths := []string{
-        "vm.stats.vm.v_free_count",
-        "vm.stats.vm.v_free",
-    }
-    for _, path := range freePaths {
-        if data, err := syscall.Sysctl(path); err == nil {
-            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                info.Free = val * 4096 // Convert page count to bytes
-                break
-            }
-        }
-    }
-
-    // Get cached memory
-    cachePaths := []string{
-        "vm.stats.vm.v_cache_count",
-        "vm.stats.vm.v_cache",
-    }
-    for _, path := range cachePaths {
-        if data, err := syscall.Sysctl(path); err == nil {
-            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-                info.Cached = val * 4096 // Convert page count to bytes
-                break
-            }
-        }
-    }
-
-    // Get buffer memory
-    bufferPaths := []string{
-        "vm.stats.vm.v_buf_count",
-        "vm.stats.vm.v_buf",
-    }
-    for _, path := range bufferPaths {
-        if bufferData, err := syscall.Sysctl(path); err == nil {
-            if val, err := strconv.ParseUint(bufferData, 10, 64); err == nil {
-                info.Buffers = val * 4096 // Convert page count to bytes
-                break
-            }
-        }
-    }
-
-    // If still no data, try reading from /proc/meminfo
-    if info.Total == 0 {
-        if meminfo, err := os.ReadFile("/proc/meminfo"); err == nil {
-            lines := strings.Split(string(meminfo), "\n")
-            for _, line := range lines {
-                if strings.HasPrefix(line, "MemTotal:") {
-                    fields := strings.Fields(line)
-                    if len(fields) >= 2 {
-                        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                            info.Total = val * 1024 // Convert KB to bytes
-                        }
-                    }
-                } else if strings.HasPrefix(line, "MemFree:") {
-                    fields := strings.Fields(line)
-                    if len(fields) >= 2 {
-                        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                            info.Free = val * 1024 // Convert KB to bytes
-                        }
-                    }
-                } else if strings.HasPrefix(line, "Cached:") {
-                    fields := strings.Fields(line)
-                    if len(fields) >= 2 {
-                        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                            info.Cached = val * 1024 // Convert KB to bytes
-                        }
-                    }
-                } else if strings.HasPrefix(line, "Buffers:") {
-                    fields := strings.Fields(line)
-                    if len(fields) >= 2 {
-                        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                            info.Buffers = val * 1024 // Convert KB to bytes
-                        }
-                    }
-                }
-            }
-        }
+    if info.Buffers == 0 {
+        info.Buffers = 0xFFFFFFFFFFFFFFFF // Sentinel value
     }
 
     // Calculate available memory
@@ -578,7 +478,6 @@ func getMemoryInfo() (MemoryInfo, error) {
     swapData, err := syscall.Sysctl("vm.swap_info")
     if err == nil {
         // Parse swap info from BSD sysctl output
-        // Format varies by BSD variant, try to parse common patterns
         lines := strings.Split(swapData, "\n")
         for _, line := range lines {
             line = strings.TrimSpace(line)
@@ -602,24 +501,21 @@ func getMemoryInfo() (MemoryInfo, error) {
                 }
             }
         }
-
-        // If no swap data found, try alternative parsing
-        if info.SwapTotal == 0 && len(swapData) > 0 {
-            // Try parsing as space-separated values
-            fields := strings.Fields(swapData)
-            if len(fields) >= 3 {
-                if total, err := strconv.ParseUint(fields[0], 10, 64); err == nil {
-                    info.SwapTotal = total
-                }
-                if used, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                    info.SwapUsed = used
-                }
-                if free, err := strconv.ParseUint(fields[2], 10, 64); err == nil {
-                    info.SwapFree = free
-                }
-            }
-        }
     }
+
+    // Set sentinel values for swap if not available
+    if info.SwapTotal == 0 {
+        info.SwapTotal = 0xFFFFFFFFFFFFFFFF // Sentinel value
+    }
+    if info.SwapUsed == 0 {
+        info.SwapUsed = 0xFFFFFFFFFFFFFFFF // Sentinel value
+    }
+    if info.SwapFree == 0 {
+        info.SwapFree = 0xFFFFFFFFFFFFFFFF // Sentinel value
+    }
+
+    // Calculate available memory
+    info.Available = info.Free + info.Cached + info.Buffers
 
     // Initialize pressure and OOM scores maps
     info.Pressure = make(map[string]PressureStats)
