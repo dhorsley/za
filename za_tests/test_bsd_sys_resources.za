@@ -1,0 +1,45 @@
+# Test BSD system resources after fixes
+# This test verifies that sys_resources() returns meaningful values
+
+echo "Testing BSD system resources..."
+
+# Test sys_resources()
+echo "Testing sys_resources():"
+try
+    resources = sys_resources()
+    echo "✓ sys_resources() returned:"
+    echo "  CPUCount: " + as_string(resources.CPUCount)
+    echo "  LoadAverage: " + as_string(resources.LoadAverage)
+    echo "  MemoryTotal: " + as_string(resources.MemoryTotal)
+    echo "  MemoryUsed: " + as_string(resources.MemoryUsed)
+    echo "  MemoryFree: " + as_string(resources.MemoryFree)
+    echo "  MemoryCached: " + as_string(resources.MemoryCached)
+    echo "  SwapTotal: " + as_string(resources.SwapTotal)
+    echo "  SwapUsed: " + as_string(resources.SwapUsed)
+    echo "  SwapFree: " + as_string(resources.SwapFree)
+    echo "  Uptime: " + as_string(resources.Uptime)
+    
+    # Check if values are reasonable
+    if resources.CPUCount > 0 do
+        echo "  ✓ CPUCount is valid"
+    else
+        echo "  ⚠ CPUCount is zero"
+    fi
+    
+    if resources.MemoryTotal > 0 do
+        echo "  ✓ MemoryTotal is valid"
+    else
+        echo "  ⚠ MemoryTotal is zero"
+    fi
+    
+    if resources.Uptime > 0 do
+        echo "  ✓ Uptime is valid"
+    else
+        echo "  ⚠ Uptime is zero"
+    fi
+    
+catch err
+    echo "✗ sys_resources() failed: " + err
+endtry
+
+echo "System resources test completed." 
