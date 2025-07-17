@@ -30,9 +30,11 @@ func getTopCPU(n int) ([]ProcessInfo, error) {
         return nil, err
     }
 
-    // Sort by CPU percentage
+    // Sort by CPU time (user + system)
     sort.Slice(processes, func(i, j int) bool {
-        return processes[i].CPUPercent > processes[j].CPUPercent
+        totalI := processes[i].UserTime + processes[i].SystemTime
+        totalJ := processes[j].UserTime + processes[j].SystemTime
+        return totalI > totalJ
     })
 
     if n == -1 {
@@ -1289,6 +1291,14 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
                 }
             }
 
+            // Set IO fields to sentinel values (BSD doesn't provide per-process IO stats)
+            usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
+            usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
+            usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
+            usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
+            usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
+            usage.PageFaults = 0xFFFFFFFFFFFFFFFF
+
             return usage, nil
         }
     }
@@ -1328,6 +1338,14 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
                         usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
                     }
 
+                    // Set IO fields to sentinel values (BSD doesn't provide per-process IO stats)
+                    usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
+                    usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
+                    usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
+                    usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
+                    usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
+                    usage.PageFaults = 0xFFFFFFFFFFFFFFFF
+
                     return usage, nil
                 }
             }
@@ -1341,6 +1359,12 @@ func getResourceUsage(pid int) (ResourceUsage, error) {
     usage.CPUChildrenSystem = 0
     usage.MemoryCurrent = 0
     usage.MemoryPeak = 0
+    usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
+    usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
+    usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
+    usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
+    usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
+    usage.PageFaults = 0xFFFFFFFFFFFFFFFF
 
     return usage, nil
 }
