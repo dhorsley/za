@@ -353,8 +353,8 @@ func getMemoryInfo() (MemoryInfo, error) {
         "vm.stats.vm.v_buf",
     }
     for _, path := range bufferPaths {
-        if data, err = syscall.Sysctl(path); err == nil {
-            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+        if bufferData, err := syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(bufferData, 10, 64); err == nil {
                 info.Buffers = val * 4096 // Convert page count to bytes
                 break
             }
@@ -403,7 +403,7 @@ func getMemoryInfo() (MemoryInfo, error) {
     info.Available = info.Free + info.Cached + info.Buffers
 
     // Get swap information using vm.swap_info
-    data, err = syscall.Sysctl("vm.swap_info")
+    swapData, err := syscall.Sysctl("vm.swap_info")
     if err == nil {
         // Parse swap info (simplified)
         // This is a complex structure, so we'll use a simplified approach
