@@ -401,197 +401,89 @@ end
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     cursoroff()
-
     pane select "cpu"
-    print linecolour; # pane redraw
+    print linecolour
     header("{=tink} CPU [#-]")
 
     activity_bg=" "
     activity_indicator="▪"
     on !utf8supported() do activity_indicator="-"
 
+    # map[core_0:map[idle:100 interrupt:0 system:0 user:0] core_1:map[idle:100 interrupt:0 system:0 user:0]]
+    # cpucount=cpu_info().Usage["cores].len
+    cpuinfo=cpu_info().Usage["cores"]
+
+    var diff map[map]
     row=1
-
-doc `
-    case os
-    contains "bsd"
-        # map[core_0:map[idle:100 interrupt:0 system:0 user:0] core_1:map[idle:100 interrupt:0 system:0 user:0]]
-        cpuinfo=cpu_info().Usage["cores"]
-        cpucount=cpu_info().Usage["cores].len
-        foreach c in cpuinfo
-            vals["user"]=c["user"]
-            vals["sys"]=c["user"]
-            vals["irq"]=c["interrupt"]
-            vals["idle"]=c["idle"]
-            vals["nice"]=0
-            vals["iowait"]=0
-            vals["softirq"]=0
-            vals["steal"]=0
-            vals["guest"]=0
-            vals["total"]=c.values.sum
-        endfor
-
-    or
-    endcase
-`
-        proc_file=""
-        if is_file("/proc/stat")
-            proc_file=$in "/proc/stat"
-        else
-            return sample_start_in
+    mult=100
+    var vals map
+    foreach c in cpuinfo
+        core=key_c
+        vals["user"]=c["user"]
+        vals["sys"]=c["system"]
+        vals["irq"]=c["interrupt"]
+        vals["idle"]=c["idle"]
+        vals["total"]=c.values.sum
+        # calc difference from last sample. -- units are USER_HZ, 1/100 sec
+        if key(ref prev,core)
+            # diff[core]=nil
+            diff[core]["total"] = ( vals["total"].as_int-prev[core]["total"].as_int) * mult
+            foreach d in vals
+                k=key_d
+                on k=="total" do continue
+                diff[core][k]=0
+                on diff[core]["total"]!=0 do diff[core][k]=( (((d-prev[core][k].as_int))/diff[core]["total"]) * mult ) [0:100]
+            endfor
         endif
-        on len(proc_file)==0 do return sample_start_in
-
-        mult            = as_float(timeout)/10.0
-        indexlist       = ["total","user","nice","sys","idle","iowait","irq","softirq","steal","guest"]
-        partindexlist   = tail(indexlist)
+        @ prev[core] = vals.dup
+    endfor
 
     # init previous values for cpu stats
 
-    foreach line in proc_file
+    if sample_start_in-->0
+        at 2,2, "[#invert]Checking previous CPU values.[#-]"
+        return sample_start_in
+    endif
+        
+    # display
+    foreach c in cpuinfo
+        core=key_c
+        clear_line(row,1)
+        at row,1 , format("[#7]%5s ",core)
+        pos=7
 
-        fields(line)
-        on len(F)==0 do continue
-
-        name=F[1]
-        on not name is string do continue
-        on name=="cpu" do continue
-
-        if reg_match(name,"^cpu")
-
-            # split up row
-            f=F.tail
-            # convert string values to floats
-            f=f.list_float
-
-            # read values from row
-            vals["total"] = f.sum
-            foreach i in partindexlist
-                if f.head.is_number
-                    vals[i]    = f.head
-                else
-                    vals[i]    = 0f
-                endif
-                on f.len>0 do f = f.tail
-            endfor
-            
-            # set initial value for the global store
-            if !key("prev","{name}_total")
-                foreach i in indexlist
-                    @ prev["{name}_{i}"] = vals[i]
-                endfor
-            endif
-
-            # now populate local prev from global prev
-            foreach i in indexlist
-                if key("prev","{name}_{i}")
-                    g=prev["{name}_{i}"]
-                    if g.is_number
-                        one_prev[i]=g
-                    else
-                        one_prev[i]=0
-                    endif
-                else
-                    one_prev[i]=0
-                endif
-            endfor
-
-            # calc difference from last sample. -- units are USER_HZ, 1/100 sec
-            if one_prev["total"]!=nil
-                diff_total = as_float(vals["total"]-one_prev["total"])
-                foreach i in partindexlist
-                    if diff_total==0
-                        diff[i]=as_int(0)
-                    else
-                        if is_number(one_prev[i])
-                            diff[i] = ((vals[i]-as_int(one_prev[i])) / diff_total ) * mult
-                        endif
-                    endif
-                endfor
-
-                # figure display total
-                subindexlist = ["user","nice","sys","iowait","irq","softirq","steal","guest"]
-                disp_total=0.0
-                foreach i in subindexlist
-                    disp_total+=diff[i]
-                endfor
-            else
-                at 2,2, "[#invert]Checking previous CPU values.[#-]"
-                break
-            endif
-
-            # record for next iter
-            foreach i in indexlist
-                @ prev["{name}_{i}"] = vals[i]
-            endfor
-
-            # ensure positive and bounded
-            if one_prev["total"]!=nil
-                foreach i in partindexlist
-                    on as_int(diff[i])<0   do diff[i]=0
-                    on as_int(diff[i])>100 do diff[i]=100
-                endfor
-            endif
-            
-            # display
-            if sample_start_in-->0
-            else
-
-                clear_line(row,1)
-
-                at row,1 , format("[#7]%5s ",name)
-                pos=7
-
-                if showCpuDetails
-                    at row,pos, format(
-                                        "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#1]%3.0fsi[#-], [#7]%3.0fhi[#-], [#3]%3.0fgu[#-], [#2]%3.0fst[#-], [#6]%3.0fio[#-]",
-                                        as_float(diff["user"]),as_float(diff["sys"]),as_float(diff["softirq"]),
-                                        as_float(diff["irq"]),as_float(diff["guest"]),as_float(diff["steal"]),as_float(diff["iowait"])
-                                    )
-                    pos=pos+59
-                endif
-
-                col_sys     = "[#5]";       w_sys     = diff["sys"]/2
-                col_user    = "[#4]";       w_user    = diff["user"]/2
-                col_idle    = "[#fbblue]";  w_idle    = diff["idle"]/2
-                col_softirq = "[#1]";       w_softirq = diff["softirq"]/2
-                col_irq     = "[#7]";       w_irq     = diff["irq"]/2
-                col_guest   = "[#3]";       w_guest   = diff["guest"]/2
-                col_steal   = "[#2]";       w_steal   = diff["steal"]/2
-                col_iowait  = "[#6]";       w_iowait  = diff["iowait"]/2
-
-
-                if showCpuBars
-                    # fill cpu row background
-                    at row,pos, pad(activity_indicator,-1,48,activity_bg)
-
-                    # populate with values
-                    at row,pos
-                    print col_sys;      print pad(activity_indicator,1,w_sys.as_int,       activity_indicator)
-                    print col_user;     print pad(activity_indicator,1,w_user.as_int,      activity_indicator)
-                    print col_softirq;  print pad(activity_indicator,1,w_softirq.as_int,   activity_indicator)
-                    print col_irq;      print pad(activity_indicator,1,w_irq.as_int,       activity_indicator)
-                    print col_guest;    print pad(activity_indicator,1,w_guest.as_int,     activity_indicator)
-                    print col_steal;    print pad(activity_indicator,1,w_steal.as_int,     activity_indicator)
-                    print col_iowait;   print pad(activity_indicator,1,w_iowait.as_int,    activity_indicator)
-                    print "[#-][##]"
-                    pos=pos+49
-                endif
-
-                if showCpuTotals
-                    cursorx(pos)
-                    print format("❙ %4.2f",disp_total)
-                endif
-
-                row++
-
-            endif
-
+        if showCpuDetails
+            at row,pos, format( "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#7]%3.0fin[#-]",
+                                diff[core]["user"].as_float, diff[core]["sys"].as_float, diff[core]["irq"].as_float)
+            pos=pos+59
         endif
+
+        col_sys     = "[#5]";       w_sys     = diff[core]["sys"]/2
+        col_user    = "[#4]";       w_user    = diff[core]["user"]/2
+        col_idle    = "[#fbblue]";  w_idle    = diff[core]["idle"]/2
+        col_irq     = "[#7]";       w_irq     = diff[core]["irq"]/2
+
+        if showCpuBars
+            # fill cpu row background
+            at row,pos, pad(activity_indicator,-1,48,activity_bg)
+
+            # populate with values
+            at row,pos
+            print col_sys;      print pad(activity_indicator,1,w_sys.as_int, activity_indicator)
+            print col_user;     print pad(activity_indicator,1,w_user.as_int, activity_indicator)
+            print col_irq;      print pad(activity_indicator,1,w_irq.as_int, activity_indicator)
+            print "[#-][##]"
+            pos=pos+49
+        endif
+
+        if showCpuTotals
+            cursorx(pos)
+            print format("❙ %4.2f",diff[core]["total"].as_float)
+        endif
+
+        row++
     endfor
-
     return sample_start_in
-
 end
 
 
