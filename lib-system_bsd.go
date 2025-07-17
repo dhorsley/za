@@ -245,12 +245,44 @@ func getSystemResources() (SystemResources, error) {
 
 // getSystemLoad returns system load averages
 func getSystemLoad() ([]float64, error) {
-    // Try multiple sysctl paths for load average
+    // Use vmstat command for load average (primary method for BSD)
+    cmd := exec.Command("vmstat")
+    if output, err := cmd.Output(); err == nil {
+        lines := strings.Split(string(output), "\n")
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line == "" || strings.HasPrefix(line, "procs") || strings.HasPrefix(line, "r") {
+                continue // Skip header lines
+            }
+
+            fields := strings.Fields(line)
+            if len(fields) >= 15 {
+                // Parse vmstat output: r b w avm fre flt re pi po fr sr ada0 cd0 in sy cs us sy id
+                // The last three fields are CPU usage percentages: us sy id
+                if us, err := strconv.ParseFloat(fields[len(fields)-3], 64); err == nil {
+                    if sy, err := strconv.ParseFloat(fields[len(fields)-2], 64); err == nil {
+                        if id, err := strconv.ParseFloat(fields[len(fields)-1], 64); err == nil {
+                            // Calculate load average based on CPU usage
+                            // This is a simplified approach - convert CPU usage to load
+                            totalUsage := us + sy
+                            load1 := totalUsage / 100.0  // Convert percentage to load
+                            load5 := totalUsage / 100.0  // Simplified - same as 1min
+                            load15 := totalUsage / 100.0 // Simplified - same as 1min
+                            return []float64{load1, load5, load15}, nil
+                        }
+                    }
+                }
+                break
+            }
+        }
+    }
+
+    // Fallback to sysctl if vmstat fails
     loadPaths := []string{
         "vm.loadavg",
         "kern.loadavg",
         "vm.stats.vm.v_loadavg",
-        "kern.cp_time", // Alternative approach
+        "kern.cp_time",
     }
 
     var data string
@@ -291,8 +323,34 @@ func getSystemLoad() ([]float64, error) {
                     }
                 }
             }
-            // Return zeros if all methods fail
-            return []float64{0, 0, 0}, nil
+
+            // Try using sysctl command directly for load average
+            loadPaths := []string{"vm.loadavg", "kern.loadavg"}
+            for _, path := range loadPaths {
+                cmd := exec.Command("sysctl", "-n", path)
+                if output, err := cmd.Output(); err == nil {
+                    data := strings.TrimSpace(string(output))
+                    fields := strings.Fields(data)
+                    if len(fields) >= 3 {
+                        result := make([]float64, 3)
+                        for i := 0; i < 3; i++ {
+                            if i < len(fields) {
+                                if val, err := strconv.ParseFloat(fields[i], 64); err == nil {
+                                    result[i] = val
+                                } else {
+                                    result[i] = 0
+                                }
+                            } else {
+                                result[i] = 0
+                            }
+                        }
+                        return result, nil
+                    }
+                }
+            }
+
+            // Return error if all methods fail
+            return []float64{0, 0, 0}, fmt.Errorf("failed to get load average from any source")
         }
     }
 
@@ -368,35 +426,46 @@ func getMemoryInfo() (MemoryInfo, error) {
         }
     }
 
-    // If sysctl failed, try using vmstat command as fallback
-    if info.Total == 0 {
-        cmd := exec.Command("vmstat", "-h")
-        if output, err := cmd.Output(); err == nil {
-            lines := strings.Split(string(output), "\n")
-            for _, line := range lines {
-                if strings.Contains(line, "Memory:") {
-                    fields := strings.Fields(line)
-                    for i, field := range fields {
-                        if field == "Memory:" && i+1 < len(fields) {
-                            // Parse memory line like "Memory: 1024M"
-                            memStr := fields[i+1]
-                            if strings.HasSuffix(memStr, "M") {
-                                if val, err := strconv.ParseUint(strings.TrimSuffix(memStr, "M"), 10, 64); err == nil {
-                                    info.Total = val * 1024 * 1024 // Convert MB to bytes
-                                }
-                            } else if strings.HasSuffix(memStr, "G") {
-                                if val, err := strconv.ParseUint(strings.TrimSuffix(memStr, "G"), 10, 64); err == nil {
-                                    info.Total = val * 1024 * 1024 * 1024 // Convert GB to bytes
-                                }
-                            }
-                            break
-                        }
-                    }
-                    break
+    // Use vmstat command for memory information (primary method for BSD)
+    cmd := exec.Command("vmstat")
+    if output, err := cmd.Output(); err == nil {
+        lines := strings.Split(string(output), "\n")
+        memoryFound := false
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line == "" || strings.HasPrefix(line, "procs") || strings.HasPrefix(line, "r") {
+                continue // Skip header lines
+            }
+
+            fields := strings.Fields(line)
+            if len(fields) >= 5 {
+                // Parse vmstat output: r b w avm fre flt re pi po fr sr ada0 cd0 in sy cs us sy id
+                // avm = active virtual memory (used)
+                // fre = free memory
+                if avm, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
+                    info.Used = avm
                 }
+                if fre, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
+                    info.Free = fre
+                }
+
+                // Calculate total memory as used + free
+                if info.Used > 0 && info.Free > 0 {
+                    info.Total = info.Used + info.Free
+                    memoryFound = true
+                }
+                break
             }
         }
+
+        // If we found memory data, return success
+        if memoryFound {
+            return info, nil
+        }
     }
+
+    // If vmstat failed or didn't provide memory data, return error
+    return info, fmt.Errorf("failed to get memory information from vmstat")
 
     // Try different sysctl paths for memory statistics
     memoryPaths := []string{
