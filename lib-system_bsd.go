@@ -148,14 +148,46 @@ func getSystemResources() (SystemResources, error) {
         resources.SwapFree = 0xFFFFFFFFFFFFFFFF
     }
 
-    // Get uptime
-    if data, err := os.ReadFile("/var/run/dmesg.boot"); err == nil {
-        lines := strings.Split(string(data), "\n")
-        for _, line := range lines {
-            if strings.Contains(line, "Timecounter") {
-                // Parse uptime from boot time
-                // This is a simplified approach
-                break
+    // Get uptime using kern.boottime sysctl
+    boottimeData, err := syscall.Sysctl("kern.boottime")
+    if err == nil {
+        // Parse boottime data: { sec = 1752685192, usec = 878755 }
+        // Extract the timestamp from the boottime structure
+        if strings.Contains(boottimeData, "sec =") {
+            // Find the sec value
+            secIndex := strings.Index(boottimeData, "sec =")
+            if secIndex != -1 {
+                // Extract the number after "sec ="
+                secPart := boottimeData[secIndex+5:]
+                endIndex := strings.Index(secPart, ",")
+                if endIndex != -1 {
+                    secPart = secPart[:endIndex]
+                }
+                if secStr := strings.TrimSpace(secPart); secStr != "" {
+                    if bootSec, err := strconv.ParseInt(secStr, 10, 64); err == nil {
+                        // Calculate uptime in seconds
+                        currentTime := time.Now().Unix()
+                        uptimeSeconds := float64(currentTime - bootSec)
+                        resources.Uptime = uptimeSeconds
+                    }
+                }
+            }
+        }
+    } else {
+        // Fallback: try alternative sysctl paths
+        altPaths := []string{
+            "kern.boottime.sec",
+            "kern.boottime",
+        }
+        for _, path := range altPaths {
+            if boottimeData, err = syscall.Sysctl(path); err == nil {
+                // Try to parse as a simple integer
+                if bootSec, err := strconv.ParseInt(boottimeData, 10, 64); err == nil {
+                    currentTime := time.Now().Unix()
+                    uptimeSeconds := float64(currentTime - bootSec)
+                    resources.Uptime = uptimeSeconds
+                    break
+                }
             }
         }
     }
@@ -1405,26 +1437,15 @@ func getDefaultGatewayInterface() (string, error) {
 
 // getDefaultGatewayAddress returns the IP address of the default gateway (BSD implementation)
 func getDefaultGatewayAddress() (string, error) {
-    // Try to get routing table via sysctl
-    data, err := syscall.Sysctl("net.inet.ip.routing")
+    // Use netstat command to get routing table on BSD
+    cmd := exec.Command("netstat", "-rn")
+    output, err := cmd.Output()
     if err != nil {
-        // Try alternative sysctl paths
-        altPaths := []string{
-            "net.inet.ip.forwarding",
-            "net.inet.ip.routes",
-        }
-        for _, path := range altPaths {
-            if data, err = syscall.Sysctl(path); err == nil {
-                break
-            }
-        }
-        if err != nil {
-            return "", fmt.Errorf("failed to get routing information: %v", err)
-        }
+        return "", fmt.Errorf("netstat command failed: %v", err)
     }
 
-    // Parse the routing data to find default gateway
-    gateway := parseRoutingTable(data)
+    // Parse netstat output to find default gateway
+    gateway := parseNetstatRoutingTable(string(output))
     if gateway == "" {
         return "", fmt.Errorf("no default gateway found in routing table")
     }
@@ -1432,32 +1453,30 @@ func getDefaultGatewayAddress() (string, error) {
     return gateway, nil
 }
 
-// parseRoutingTable parses BSD routing table data to find default gateway
-func parseRoutingTable(data string) string {
-    lines := strings.Split(data, "\n")
+// parseNetstatRoutingTable parses BSD netstat routing table output to find default gateway
+func parseNetstatRoutingTable(output string) string {
+    lines := strings.Split(output, "\n")
     for _, line := range lines {
         line = strings.TrimSpace(line)
-        if line == "" {
+        if line == "" || strings.HasPrefix(line, "Routing tables") || strings.HasPrefix(line, "Destination") {
+            continue // Skip header lines
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
             continue
         }
 
-        // Look for default route entries
-        if strings.HasPrefix(line, "default") || strings.Contains(line, "0.0.0.0") {
-            fields := strings.Fields(line)
-            for i, field := range fields {
-                // Look for gateway indicators
-                if field == "via" || field == "gw" || field == "gateway" {
-                    if i+1 < len(fields) {
-                        gateway := fields[i+1]
-                        // Validate it's a proper IP address
-                        if net.ParseIP(gateway) != nil {
-                            return gateway
-                        }
-                    }
-                }
-                // Also check if any field looks like an IP address
-                if net.ParseIP(field) != nil && !strings.HasPrefix(field, "0.0.0.0") {
-                    return field
+        // Look for default route (destination is "default" or "0.0.0.0")
+        destination := fields[0]
+        if destination == "default" || destination == "0.0.0.0" {
+            // The gateway is typically in the 2nd or 3rd field
+            // Format: Destination Gateway Flags Refs Use Netif
+            if len(fields) >= 2 {
+                gateway := fields[1]
+                // Validate it's a proper IP address
+                if net.ParseIP(gateway) != nil && gateway != "0.0.0.0" {
+                    return gateway
                 }
             }
         }
@@ -1465,47 +1484,61 @@ func parseRoutingTable(data string) string {
     return ""
 }
 
+// parseNetstatRoutingTableWithInterface parses BSD netstat routing table output to find default gateway and interface
+func parseNetstatRoutingTableWithInterface(output string) (string, string) {
+    lines := strings.Split(output, "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" || strings.HasPrefix(line, "Routing tables") || strings.HasPrefix(line, "Destination") {
+            continue // Skip header lines
+        }
+
+        fields := strings.Fields(line)
+        if len(fields) < 4 {
+            continue
+        }
+
+        // Look for default route (destination is "default" or "0.0.0.0")
+        destination := fields[0]
+        if destination == "default" || destination == "0.0.0.0" {
+            // The gateway is typically in the 2nd field, interface in the last field
+            // Format: Destination Gateway Flags Refs Use Netif
+            if len(fields) >= 2 {
+                gateway := fields[1]
+                // Validate it's a proper IP address
+                if net.ParseIP(gateway) != nil && gateway != "0.0.0.0" {
+                    // Get the interface name (last field)
+                    interfaceName := ""
+                    if len(fields) >= 6 {
+                        interfaceName = fields[5] // Netif field
+                    }
+                    return gateway, interfaceName
+                }
+            }
+        }
+    }
+    return "", ""
+}
+
 // getDefaultGatewayInfo returns complete default gateway information (BSD implementation)
 func getDefaultGatewayInfo() (map[string]interface{}, error) {
-    gateway, err := getDefaultGatewayAddress()
+    // Use netstat command to get routing table on BSD
+    cmd := exec.Command("netstat", "-rn")
+    output, err := cmd.Output()
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("netstat command failed: %v", err)
     }
 
-    gwIP := net.ParseIP(gateway)
-    if gwIP == nil {
-        return nil, fmt.Errorf("invalid gateway IP: %s", gateway)
+    // Parse netstat output to find default gateway and interface
+    gateway, interfaceName := parseNetstatRoutingTableWithInterface(string(output))
+    if gateway == "" {
+        return nil, fmt.Errorf("no default gateway found in routing table")
     }
 
-    ifaces, err := net.Interfaces()
-    if err != nil {
-        return nil, err
-    }
-
-    for _, iface := range ifaces {
-        if iface.Flags&net.FlagUp == 0 {
-            continue
-        }
-        addrs, err := iface.Addrs()
-        if err != nil {
-            continue
-        }
-        for _, addr := range addrs {
-            ipnet, ok := addr.(*net.IPNet)
-            if !ok || ipnet.IP == nil || ipnet.IP.To4() == nil {
-                continue
-            }
-            // Check if gateway is in the same subnet as this interface
-            if ipnet.Contains(gwIP) {
-                return map[string]interface{}{
-                    "interface": iface.Name,
-                    "gateway":   gateway,
-                }, nil
-            }
-        }
-    }
-
-    return nil, fmt.Errorf("no default gateway interface found for gateway %s", gateway)
+    return map[string]interface{}{
+        "interface": interfaceName,
+        "gateway":   gateway,
+    }, nil
 }
 
 // debugCPUFiles returns debug information about available CPU files (BSD implementation)
