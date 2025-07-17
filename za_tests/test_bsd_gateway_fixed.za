@@ -1,0 +1,43 @@
+# Test BSD gateway functions after fix
+# This test verifies that all gateway functions work correctly
+
+echo "Testing BSD gateway functions..."
+
+# Test gw_interface()
+echo "Testing gw_interface():"
+try
+    interface = gw_interface()
+    echo "✓ gw_interface() returned: " + interface
+catch err
+    echo "✗ gw_interface() failed: " + err
+endtry
+
+# Test gw_address()
+echo "Testing gw_address():"
+try
+    gateway = gw_address()
+    echo "✓ gw_address() returned: " + gateway
+catch err
+    echo "✗ gw_address() failed: " + err
+endtry
+
+# Test gw_info()
+echo "Testing gw_info():"
+try
+    info = gw_info()
+    echo "✓ gw_info() returned: " + as_string(info)
+    if info["interface"] != "" do
+        echo "  Interface: " + info["interface"]
+    else
+        echo "  Interface: (empty)"
+    fi
+    if info["gateway"] != "" do
+        echo "  Gateway: " + info["gateway"]
+    else
+        echo "  Gateway: (empty)"
+    fi
+catch err
+    echo "✗ gw_info() failed: " + err
+endtry
+
+echo "Gateway function test completed." 

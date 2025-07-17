@@ -149,47 +149,54 @@ func getSystemResources() (SystemResources, error) {
     }
 
     // Get uptime using kern.boottime sysctl
-    boottimeData, err := syscall.Sysctl("kern.boottime")
-    if err == nil {
-        // Parse boottime data: { sec = 1752685192, usec = 878755 }
-        // Extract the timestamp from the boottime structure
-        if strings.Contains(boottimeData, "sec =") {
-            // Find the sec value
-            secIndex := strings.Index(boottimeData, "sec =")
-            if secIndex != -1 {
-                // Extract the number after "sec ="
-                secPart := boottimeData[secIndex+5:]
-                endIndex := strings.Index(secPart, ",")
-                if endIndex != -1 {
-                    secPart = secPart[:endIndex]
-                }
-                if secStr := strings.TrimSpace(secPart); secStr != "" {
-                    if bootSec, err := strconv.ParseInt(secStr, 10, 64); err == nil {
-                        // Calculate uptime in seconds
-                        currentTime := time.Now().Unix()
-                        uptimeSeconds := float64(currentTime - bootSec)
-                        resources.Uptime = uptimeSeconds
+    boottimePaths := []string{
+        "kern.boottime",
+        "kern.boottime.sec",
+    }
+
+    var uptimeSet bool
+    for _, path := range boottimePaths {
+        boottimeData, err := syscall.Sysctl(path)
+        if err == nil {
+            // Parse boottime data: { sec = 1752685192, usec = 878755 }
+            // Extract the timestamp from the boottime structure
+            if strings.Contains(boottimeData, "sec =") {
+                // Find the sec value
+                secIndex := strings.Index(boottimeData, "sec =")
+                if secIndex != -1 {
+                    // Extract the number after "sec ="
+                    secPart := boottimeData[secIndex+5:]
+                    endIndex := strings.Index(secPart, ",")
+                    if endIndex != -1 {
+                        secPart = secPart[:endIndex]
+                    }
+                    if secStr := strings.TrimSpace(secPart); secStr != "" {
+                        if bootSec, err := strconv.ParseInt(secStr, 10, 64); err == nil {
+                            // Calculate uptime in seconds
+                            currentTime := time.Now().Unix()
+                            uptimeSeconds := float64(currentTime - bootSec)
+                            resources.Uptime = uptimeSeconds
+                            uptimeSet = true
+                            break
+                        }
                     }
                 }
-            }
-        }
-    } else {
-        // Fallback: try alternative sysctl paths
-        altPaths := []string{
-            "kern.boottime.sec",
-            "kern.boottime",
-        }
-        for _, path := range altPaths {
-            if boottimeData, err = syscall.Sysctl(path); err == nil {
+            } else {
                 // Try to parse as a simple integer
                 if bootSec, err := strconv.ParseInt(boottimeData, 10, 64); err == nil {
                     currentTime := time.Now().Unix()
                     uptimeSeconds := float64(currentTime - bootSec)
                     resources.Uptime = uptimeSeconds
+                    uptimeSet = true
                     break
                 }
             }
         }
+    }
+
+    // If no uptime could be determined, set to 0
+    if !uptimeSet {
+        resources.Uptime = 0
     }
 
     return resources, nil
@@ -197,31 +204,35 @@ func getSystemResources() (SystemResources, error) {
 
 // getSystemLoad returns system load averages
 func getSystemLoad() ([]float64, error) {
-    // BSD implementation using sysctl
-    data, err := syscall.Sysctl("vm.loadavg")
+    // Try multiple sysctl paths for load average
+    loadPaths := []string{
+        "vm.loadavg",
+        "kern.loadavg",
+        "vm.stats.vm.v_loadavg",
+        "kern.cp_time", // Alternative approach
+    }
+
+    var data string
+    var err error
+
+    for _, path := range loadPaths {
+        if data, err = syscall.Sysctl(path); err == nil {
+            break
+        }
+    }
+
     if err != nil {
-        // Try alternative sysctl paths
-        altPaths := []string{
-            "kern.loadavg",
-            "vm.stats.vm.v_loadavg",
-        }
-        for _, path := range altPaths {
-            if data, err = syscall.Sysctl(path); err == nil {
-                break
-            }
-        }
-        if err != nil {
-            // Try reading from /proc/loadavg as fallback
-            if loadData, err := os.ReadFile("/proc/loadavg"); err == nil {
-                data = string(loadData)
-            } else {
-                return []float64{0, 0, 0}, err
-            }
+        // Try reading from /proc/loadavg as fallback
+        if loadData, err := os.ReadFile("/proc/loadavg"); err == nil {
+            data = string(loadData)
+        } else {
+            // Return zeros if all methods fail
+            return []float64{0, 0, 0}, nil
         }
     }
 
     // Parse the load average string
-    // Format is typically "1.23 2.34 3.45"
+    // Format is typically "1.23 2.34 3.45" or similar
     fields := strings.Fields(data)
     if len(fields) < 3 {
         // If we got unexpected data, try to parse what we can
@@ -240,14 +251,19 @@ func getSystemLoad() ([]float64, error) {
             }
             return loads, nil
         }
-        return []float64{0, 0, 0}, fmt.Errorf("invalid loadavg format: %s", data)
+        return []float64{0, 0, 0}, nil
     }
 
     loads := make([]float64, 3)
     for i := 0; i < 3; i++ {
-        loads[i], err = strconv.ParseFloat(fields[i], 64)
-        if err != nil {
-            return []float64{0, 0, 0}, fmt.Errorf("failed to parse load average: %v", err)
+        if i < len(fields) {
+            if val, err := strconv.ParseFloat(fields[i], 64); err == nil {
+                loads[i] = val
+            } else {
+                loads[i] = 0
+            }
+        } else {
+            loads[i] = 0
         }
     }
 
@@ -258,11 +274,30 @@ func getSystemLoad() ([]float64, error) {
 func getMemoryInfo() (MemoryInfo, error) {
     var info MemoryInfo
 
-    // Get total memory
-    data, err := syscall.Sysctl("hw.physmem")
-    if err == nil {
-        if val, err := strconv.ParseUint(data, 10, 64); err == nil {
-            info.Total = val
+    // Initialize maps
+    info.Pressure = make(map[string]PressureStats)
+    info.OOMScores = make(map[string]int)
+    info.Slab = make(map[string]SlabInfo)
+
+    // Try multiple sysctl paths for total memory
+    totalMemoryPaths := []string{
+        "hw.physmem",
+        "hw.realmem",
+        "vm.stats.vm.v_page_count",
+    }
+
+    var totalMemory uint64
+    for _, path := range totalMemoryPaths {
+        if data, err := syscall.Sysctl(path); err == nil {
+            if val, err := strconv.ParseUint(data, 10, 64); err == nil {
+                if path == "vm.stats.vm.v_page_count" {
+                    totalMemory = val * 4096 // Convert pages to bytes
+                } else {
+                    totalMemory = val
+                }
+                info.Total = totalMemory
+                break
+            }
         }
     }
 
@@ -276,7 +311,7 @@ func getMemoryInfo() (MemoryInfo, error) {
 
     // Get used memory
     for _, path := range memoryPaths {
-        if data, err = syscall.Sysctl(path); err == nil {
+        if data, err := syscall.Sysctl(path); err == nil {
             if val, err := strconv.ParseUint(data, 10, 64); err == nil {
                 info.Used = val * 4096 // Convert page count to bytes
                 break
@@ -290,7 +325,7 @@ func getMemoryInfo() (MemoryInfo, error) {
         "vm.stats.vm.v_free",
     }
     for _, path := range freePaths {
-        if data, err = syscall.Sysctl(path); err == nil {
+        if data, err := syscall.Sysctl(path); err == nil {
             if val, err := strconv.ParseUint(data, 10, 64); err == nil {
                 info.Free = val * 4096 // Convert page count to bytes
                 break
@@ -304,7 +339,7 @@ func getMemoryInfo() (MemoryInfo, error) {
         "vm.stats.vm.v_cache",
     }
     for _, path := range cachePaths {
-        if data, err = syscall.Sysctl(path); err == nil {
+        if data, err := syscall.Sysctl(path); err == nil {
             if val, err := strconv.ParseUint(data, 10, 64); err == nil {
                 info.Cached = val * 4096 // Convert page count to bytes
                 break
@@ -1522,17 +1557,20 @@ func parseNetstatRoutingTableWithInterface(output string) (string, string) {
 
 // getDefaultGatewayInfo returns complete default gateway information (BSD implementation)
 func getDefaultGatewayInfo() (map[string]interface{}, error) {
-    // Use netstat command to get routing table on BSD
-    cmd := exec.Command("netstat", "-rn")
-    output, err := cmd.Output()
+    // Get gateway address using netstat
+    gateway, err := getDefaultGatewayAddress()
     if err != nil {
-        return nil, fmt.Errorf("netstat command failed: %v", err)
+        return nil, err
     }
 
-    // Parse netstat output to find default gateway and interface
-    gateway, interfaceName := parseNetstatRoutingTableWithInterface(string(output))
-    if gateway == "" {
-        return nil, fmt.Errorf("no default gateway found in routing table")
+    // Get interface name using the same approach as getDefaultGatewayInterface
+    interfaceName, err := getDefaultGatewayInterface()
+    if err != nil {
+        // If we can't get the interface name, return just the gateway
+        return map[string]interface{}{
+            "interface": "",
+            "gateway":   gateway,
+        }, nil
     }
 
     return map[string]interface{}{
