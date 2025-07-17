@@ -194,6 +194,47 @@ func getSystemResources() (SystemResources, error) {
         }
     }
 
+    // If sysctl failed, try using uptime command as fallback
+    if !uptimeSet {
+        cmd := exec.Command("uptime")
+        if output, err := cmd.Output(); err == nil {
+            // Parse uptime output to extract uptime
+            outputStr := string(output)
+            if strings.Contains(outputStr, "up") {
+                // Look for patterns like "up 2 days, 3:45" or "up 3:45"
+                parts := strings.Split(outputStr, "up")
+                if len(parts) > 1 {
+                    uptimePart := strings.Split(parts[1], ",")[0] // Get first part before comma
+                    uptimePart = strings.TrimSpace(uptimePart)
+
+                    // Try to parse different uptime formats
+                    if strings.Contains(uptimePart, "day") {
+                        // Format: "2 days, 3:45"
+                        dayParts := strings.Split(uptimePart, "day")
+                        if len(dayParts) > 0 {
+                            if days, err := strconv.Atoi(strings.TrimSpace(dayParts[0])); err == nil {
+                                // Convert days to seconds (simplified)
+                                resources.Uptime = float64(days * 24 * 3600)
+                                uptimeSet = true
+                            }
+                        }
+                    } else if strings.Contains(uptimePart, ":") {
+                        // Format: "3:45" (hours:minutes)
+                        timeParts := strings.Split(uptimePart, ":")
+                        if len(timeParts) == 2 {
+                            if hours, err := strconv.Atoi(timeParts[0]); err == nil {
+                                if minutes, err := strconv.Atoi(timeParts[1]); err == nil {
+                                    resources.Uptime = float64(hours*3600 + minutes*60)
+                                    uptimeSet = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // If no uptime could be determined, set to 0
     if !uptimeSet {
         resources.Uptime = 0
@@ -226,6 +267,30 @@ func getSystemLoad() ([]float64, error) {
         if loadData, err := os.ReadFile("/proc/loadavg"); err == nil {
             data = string(loadData)
         } else {
+            // Try using uptime command as fallback
+            cmd := exec.Command("uptime")
+            if output, err := cmd.Output(); err == nil {
+                // Parse uptime output like "load average: 0.00, 0.00, 0.00"
+                outputStr := string(output)
+                if strings.Contains(outputStr, "load average:") {
+                    parts := strings.Split(outputStr, "load average:")
+                    if len(parts) > 1 {
+                        loadPart := strings.TrimSpace(parts[1])
+                        loads := strings.Split(loadPart, ",")
+                        if len(loads) >= 3 {
+                            result := make([]float64, 3)
+                            for i, load := range loads {
+                                if val, err := strconv.ParseFloat(strings.TrimSpace(load), 64); err == nil {
+                                    result[i] = val
+                                } else {
+                                    result[i] = 0
+                                }
+                            }
+                            return result, nil
+                        }
+                    }
+                }
+            }
             // Return zeros if all methods fail
             return []float64{0, 0, 0}, nil
         }
@@ -284,6 +349,8 @@ func getMemoryInfo() (MemoryInfo, error) {
         "hw.physmem",
         "hw.realmem",
         "vm.stats.vm.v_page_count",
+        "hw.physmem64",
+        "hw.realmem64",
     }
 
     var totalMemory uint64
@@ -297,6 +364,36 @@ func getMemoryInfo() (MemoryInfo, error) {
                 }
                 info.Total = totalMemory
                 break
+            }
+        }
+    }
+
+    // If sysctl failed, try using vmstat command as fallback
+    if info.Total == 0 {
+        cmd := exec.Command("vmstat", "-h")
+        if output, err := cmd.Output(); err == nil {
+            lines := strings.Split(string(output), "\n")
+            for _, line := range lines {
+                if strings.Contains(line, "Memory:") {
+                    fields := strings.Fields(line)
+                    for i, field := range fields {
+                        if field == "Memory:" && i+1 < len(fields) {
+                            // Parse memory line like "Memory: 1024M"
+                            memStr := fields[i+1]
+                            if strings.HasSuffix(memStr, "M") {
+                                if val, err := strconv.ParseUint(strings.TrimSuffix(memStr, "M"), 10, 64); err == nil {
+                                    info.Total = val * 1024 * 1024 // Convert MB to bytes
+                                }
+                            } else if strings.HasSuffix(memStr, "G") {
+                                if val, err := strconv.ParseUint(strings.TrimSuffix(memStr, "G"), 10, 64); err == nil {
+                                    info.Total = val * 1024 * 1024 * 1024 // Convert GB to bytes
+                                }
+                            }
+                            break
+                        }
+                    }
+                    break
+                }
             }
         }
     }
