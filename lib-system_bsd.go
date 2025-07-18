@@ -531,55 +531,47 @@ func getMemoryInfo() (MemoryInfo, error) {
 func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     var processes []ProcessInfo
 
-    // BSD implementation using /proc (if available) or sysctl
-    // Try /proc first (available on some BSD systems)
-    entries, err := os.ReadDir("/proc")
-    if err == nil {
-        // Use /proc approach (similar to Linux)
-        for _, entry := range entries {
-            if !entry.IsDir() {
-                continue
-            }
-
-            // Check if it's a process directory (numeric name)
-            pid, err := strconv.Atoi(entry.Name())
-            if err != nil {
-                continue
-            }
-
-            // Get process info
-            process, err := getProcessInfo(pid, options)
-            if err == nil {
-                processes = append(processes, process)
-            }
-        }
-        return processes, nil
-    }
-
-    // Fallback: use sysctl to get process list
-    // This is a simplified approach
-    data, err := syscall.Sysctl("kern.proc.pid")
+    // Use KVM interface (proper BSD approach)
+    // This is how BSD tools like ps, htop, atop actually work
+    kd, err := unix.KvmOpenfiles("", "", nil, unix.O_RDONLY)
     if err != nil {
-        return processes, nil
+        return processes, fmt.Errorf("failed to open kernel memory: %v", err)
+    }
+    defer kd.Close()
+
+    // Get all processes using KVM
+    procs, err := kd.Getprocs(unix.KERN_PROC_ALL, 0)
+    if err != nil {
+        return processes, fmt.Errorf("failed to get processes: %v", err)
     }
 
-    // Parse process list from sysctl output
-    lines := strings.Split(data, "\n")
-    for _, line := range lines {
-        if strings.TrimSpace(line) == "" {
-            continue
+    // Convert kinfo_proc to ProcessInfo
+    for _, proc := range procs {
+        process := ProcessInfo{
+            PID:         int(proc.Pid),
+            Name:        proc.Comm,
+            State:       getProcessState(proc.Stat),
+            PPID:        int(proc.Ppid),
+            Priority:    int(proc.Priority),
+            Nice:        int(proc.Nice),
+            StartTime:   int64(proc.Start),
+            Threads:     int(proc.Numthreads),
+            UID:         fmt.Sprintf("%d", proc.Uid),
+            GID:         fmt.Sprintf("%d", proc.Rgid),
+            UserTime:    float64(proc.Uutime) / 100.0, // Convert to seconds
+            SystemTime:  float64(proc.Ustime) / 100.0, // Convert to seconds
+            MemoryUsage: uint64(proc.Vsize),
+            MemoryRSS:   uint64(proc.Rss * 4096), // Convert pages to bytes
         }
 
-        // Try to extract PID from the line
-        fields := strings.Fields(line)
-        if len(fields) > 0 {
-            if pid, err := strconv.Atoi(fields[0]); err == nil {
-                process, err := getProcessInfo(pid, options)
-                if err == nil {
-                    processes = append(processes, process)
-                }
-            }
+        // Get command line arguments using KVM
+        if args, err := kd.Getargv(proc.Pid, 0); err == nil && len(args) > 0 {
+            process.Command = strings.Join(args, " ")
+        } else {
+            process.Command = process.Name
         }
+
+        processes = append(processes, process)
     }
 
     return processes, nil
@@ -590,93 +582,42 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
     var proc ProcessInfo
     proc.PID = pid
 
-    // Try /proc approach first
-    statPath := fmt.Sprintf("/proc/%d/stat", pid)
-    data, err := os.ReadFile(statPath)
-    if err == nil {
-        // Parse /proc/{pid}/stat (similar to Linux)
-        fields := strings.Fields(string(data))
-        if len(fields) < 24 {
-            return proc, fmt.Errorf("invalid stat format")
-        }
+    // Use KVM interface (proper BSD approach)
+    kd, err := unix.KvmOpenfiles("", "", nil, unix.O_RDONLY)
+    if err != nil {
+        return proc, fmt.Errorf("failed to open kernel memory: %v", err)
+    }
+    defer kd.Close()
 
-        // Parse basic process information
-        proc.Name = strings.Trim(fields[1], "()")
-        proc.State = fields[2]
-        proc.PPID, _ = strconv.Atoi(fields[3])
-        proc.Priority, _ = strconv.Atoi(fields[17])
-        proc.Nice, _ = strconv.Atoi(fields[18])
-        proc.StartTime, _ = strconv.ParseInt(fields[21], 10, 64)
-        proc.Threads, _ = strconv.Atoi(fields[19])
-
-        // Parse CPU timing information
-        if len(fields) >= 22 {
-            proc.UserTime, _ = strconv.ParseFloat(fields[13], 64)
-            proc.SystemTime, _ = strconv.ParseFloat(fields[14], 64)
-            proc.ChildrenUserTime, _ = strconv.ParseFloat(fields[15], 64)
-            proc.ChildrenSystemTime, _ = strconv.ParseFloat(fields[16], 64)
-        }
-
-        // Read command line (always try to get it)
-        cmdlinePath := fmt.Sprintf("/proc/%d/cmdline", pid)
-        if cmdline, err := os.ReadFile(cmdlinePath); err == nil {
-            proc.Command = strings.TrimSpace(strings.ReplaceAll(string(cmdline), "\x00", " "))
-        } else {
-            // If cmdline is not available, try /proc/{pid}/comm
-            commPath := fmt.Sprintf("/proc/%d/comm", pid)
-            if commData, err := os.ReadFile(commPath); err == nil {
-                proc.Command = strings.TrimSpace(string(commData))
-            } else {
-                proc.Command = proc.Name // Fallback to process name
-            }
-        }
-
-        // Read memory information from /proc/{pid}/statm
-        statmPath := fmt.Sprintf("/proc/%d/statm", pid)
-        if statmData, err := os.ReadFile(statmPath); err == nil {
-            statmFields := strings.Fields(string(statmData))
-            if len(statmFields) >= 2 {
-                size, _ := strconv.ParseUint(statmFields[0], 10, 64)
-                rss, _ := strconv.ParseUint(statmFields[1], 10, 64)
-                proc.MemoryUsage = size * 4096 // Convert pages to bytes
-                proc.MemoryRSS = rss * 4096
-            }
-        }
-
-        // Get user/group info
-        if stat, err := os.Stat(fmt.Sprintf("/proc/%d", pid)); err == nil {
-            if sysStat, ok := stat.Sys().(*syscall.Stat_t); ok {
-                proc.UID = fmt.Sprintf("%d", sysStat.Uid)
-                proc.GID = fmt.Sprintf("%d", sysStat.Gid)
-            }
-        }
-
-        return proc, nil
+    // Get specific process using KVM
+    procs, err := kd.Getprocs(unix.KERN_PROC_PID, pid)
+    if err != nil || len(procs) == 0 {
+        return proc, fmt.Errorf("process %d not found", pid)
     }
 
-    // Fallback: use sysctl for process info
-    // This is a simplified approach since BSD sysctl process info is complex
-    proc.Name = fmt.Sprintf("process-%d", pid)
-    proc.State = "unknown"
-    proc.PPID = 0
-    proc.Priority = 0
-    proc.Nice = 0
-    proc.StartTime = 0
-    proc.Threads = 1
-    proc.UserTime = 0
-    proc.SystemTime = 0
-    proc.ChildrenUserTime = 0
-    proc.ChildrenSystemTime = 0
-    proc.MemoryUsage = 0
-    proc.MemoryRSS = 0
-    proc.UID = "0"
-    proc.GID = "0"
-    // Try to get command from ps command
-    cmd := exec.Command("ps", "-p", fmt.Sprintf("%d", pid), "-o", "comm=")
-    if output, err := cmd.Output(); err == nil {
-        proc.Command = strings.TrimSpace(string(output))
+    kinfo := procs[0]
+    proc = ProcessInfo{
+        PID:         int(kinfo.Pid),
+        Name:        kinfo.Comm,
+        State:       getProcessState(kinfo.Stat),
+        PPID:        int(kinfo.Ppid),
+        Priority:    int(kinfo.Priority),
+        Nice:        int(kinfo.Nice),
+        StartTime:   int64(kinfo.Start),
+        Threads:     int(kinfo.Numthreads),
+        UID:         fmt.Sprintf("%d", kinfo.Uid),
+        GID:         fmt.Sprintf("%d", kinfo.Rgid),
+        UserTime:    float64(kinfo.Uutime) / 100.0,
+        SystemTime:  float64(kinfo.Ustime) / 100.0,
+        MemoryUsage: uint64(kinfo.Vsize),
+        MemoryRSS:   uint64(kinfo.Rss * 4096),
+    }
+
+    // Get command line arguments using KVM
+    if args, err := kd.Getargv(kinfo.Pid, 0); err == nil && len(args) > 0 {
+        proc.Command = strings.Join(args, " ")
     } else {
-        proc.Command = proc.Name // Fallback to process name
+        proc.Command = proc.Name
     }
 
     return proc, nil
@@ -1270,107 +1211,31 @@ func getMountInfo(options map[string]interface{}) ([]map[string]interface{}, err
 // getResourceUsage returns resource usage for a specific process
 func getResourceUsage(pid int) (ResourceUsage, error) {
     var usage ResourceUsage
-    usage.PID = pid
 
-    // Try to get process information using /proc first
-    statPath := fmt.Sprintf("/proc/%d/stat", pid)
-    data, err := os.ReadFile(statPath)
-    if err == nil {
-        // Parse /proc/{pid}/stat (similar to Linux)
-        fields := strings.Fields(string(data))
-        if len(fields) >= 24 {
-            // Parse CPU timing information
-            if len(fields) >= 22 {
-                utime, _ := strconv.ParseFloat(fields[13], 64)
-                stime, _ := strconv.ParseFloat(fields[14], 64)
-                cutime, _ := strconv.ParseFloat(fields[15], 64)
-                cstime, _ := strconv.ParseFloat(fields[16], 64)
-                usage.CPUUser = utime / 100.0            // Convert to seconds
-                usage.CPUSystem = stime / 100.0          // Convert to seconds
-                usage.CPUChildrenUser = cutime / 100.0   // Convert to seconds
-                usage.CPUChildrenSystem = cstime / 100.0 // Convert to seconds
-            }
+    // Use KVM to get process resource usage
+    kd, err := unix.KvmOpenfiles("", "", nil, unix.O_RDONLY)
+    if err != nil {
+        return usage, fmt.Errorf("failed to open kernel memory: %v", err)
+    }
+    defer kd.Close()
 
-            // Read memory information from /proc/{pid}/statm
-            statmPath := fmt.Sprintf("/proc/%d/statm", pid)
-            if statmData, err := os.ReadFile(statmPath); err == nil {
-                statmFields := strings.Fields(string(statmData))
-                if len(statmFields) >= 2 {
-                    size, _ := strconv.ParseUint(statmFields[0], 10, 64)
-                    rss, _ := strconv.ParseUint(statmFields[1], 10, 64)
-                    usage.MemoryCurrent = rss * 4096 // Convert pages to bytes
-                    usage.MemoryPeak = size * 4096
-                }
-            }
-
-            // Set IO fields to sentinel values (BSD doesn't provide per-process IO stats)
-            usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
-            usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
-            usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
-            usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
-            usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
-            usage.PageFaults = 0xFFFFFFFFFFFFFFFF
-
-            return usage, nil
-        }
+    // Get specific process using KVM
+    procs, err := kd.Getprocs(unix.KERN_PROC_PID, pid)
+    if err != nil || len(procs) == 0 {
+        return usage, fmt.Errorf("process %d not found", pid)
     }
 
-    // Fallback: use sysctl for process info
-    // Try different sysctl paths for process information
-    procPaths := []string{
-        fmt.Sprintf("kern.proc.pid.%d", pid),
-        fmt.Sprintf("kern.proc.%d", pid),
-        fmt.Sprintf("vm.proc.%d", pid),
-    }
+    kinfo := procs[0]
 
-    for _, path := range procPaths {
-        if procData, err := syscall.Sysctl(path); err == nil {
-            // Parse process data
-            lines := strings.Split(procData, "\n")
-            if len(lines) > 0 {
-                // Parse the first line which contains process info
-                fields := strings.Fields(lines[0])
-                if len(fields) >= 17 {
-                    // Get memory usage from process data
-                    if len(fields) >= 6 {
-                        if rss, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
-                            usage.MemoryCurrent = rss * 1024 // Convert from KB to bytes
-                        }
-                    }
+    // Set CPU times from KVM data
+    usage.UserTime = float64(kinfo.Uutime) / 100.0
+    usage.SystemTime = float64(kinfo.Ustime) / 100.0
 
-                    // Parse CPU times if available
-                    if len(fields) >= 17 {
-                        utime, _ := strconv.ParseUint(fields[13], 10, 64)
-                        stime, _ := strconv.ParseUint(fields[14], 10, 64)
-                        cutime, _ := strconv.ParseUint(fields[15], 10, 64)
-                        cstime, _ := strconv.ParseUint(fields[16], 10, 64)
-                        usage.CPUUser = float64(utime) / 100.0            // Convert to seconds
-                        usage.CPUSystem = float64(stime) / 100.0          // Convert to seconds
-                        usage.CPUChildrenUser = float64(cutime) / 100.0   // Convert to seconds
-                        usage.CPUChildrenSystem = float64(cstime) / 100.0 // Convert to seconds
-                    }
+    // Set memory usage from KVM data
+    usage.MemoryUsage = uint64(kinfo.Vsize)
+    usage.MemoryRSS = uint64(kinfo.Rss * 4096)
 
-                    // Set IO fields to sentinel values (BSD doesn't provide per-process IO stats)
-                    usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
-                    usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
-                    usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
-                    usage.IOWriteOps = 0xFFFFFFFFFFFFFFFF
-                    usage.ContextSwitches = 0xFFFFFFFFFFFFFFFF
-                    usage.PageFaults = 0xFFFFFFFFFFFFFFFF
-
-                    return usage, nil
-                }
-            }
-        }
-    }
-
-    // If all else fails, return basic info
-    usage.CPUUser = 0
-    usage.CPUSystem = 0
-    usage.CPUChildrenUser = 0
-    usage.CPUChildrenSystem = 0
-    usage.MemoryCurrent = 0
-    usage.MemoryPeak = 0
+    // Set sentinel values for fields not available on BSD
     usage.IOReadBytes = 0xFFFFFFFFFFFFFFFF
     usage.IOWriteBytes = 0xFFFFFFFFFFFFFFFF
     usage.IOReadOps = 0xFFFFFFFFFFFFFFFF
@@ -1771,4 +1636,22 @@ func debugCPUFiles() map[string]interface{} {
     }
 
     return result
+}
+
+// getProcessState converts BSD process state to string
+func getProcessState(stat int) string {
+    switch stat {
+    case 1:
+        return "S" // Sleeping
+    case 2:
+        return "R" // Running
+    case 3:
+        return "Z" // Zombie
+    case 4:
+        return "T" // Stopped
+    case 5:
+        return "D" // Uninterruptible sleep
+    default:
+        return "?"
+    }
 }
