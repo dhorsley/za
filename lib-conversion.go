@@ -929,7 +929,7 @@ func buildConversionLib() {
         if len(args) != 0 {
             return nil, errors.New("invalid arguments provided to maxuint()")
         }
-		return uint64(math.MaxUint),nil
+        return uint64(math.MaxUint),nil
     }
 
     slhelp["as_int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
