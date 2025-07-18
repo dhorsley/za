@@ -421,6 +421,8 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     foreach vals in cpuinfo
         core=key_vals
         unmap(ref vals,"idle")
+        unmap(ref vals,"nice")
+        unmap(ref vals,"guest_nice")
         vals["total"]=vals.values.sum 
 
         if key(ref prev,core)
@@ -449,15 +451,17 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         at row,1 , format("[#7]%5s ",core)
         pos=7
 
+        ordered_activities=diff[core].keys.sort
         if showCpuDetails
             colour=1
-            foreach v in diff[core]
-                on key_v=="total" do continue
+            foreach acti in ordered_activities
+                on acti=="total" do continue
+                v=diff[core][acti]
                 at row,pos
-                println "[#{colour}]%3d{=substr(key_v,0,3)}[#-] ".format(v)
-                pos+=8; colour++; on colour==8 do colour=1
+                println "[#{colour}]%3d {acti}[#-] ".format(v)
+                pos+=11; colour++; on colour==8 do colour=1
             endfor
-            pos=pos+5
+            pos=pos+2
         endif
 
         if showCpuBars
@@ -465,8 +469,9 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             at row,pos, pad(activity_indicator,-1,48,activity_bg)
             at row,pos
             colour=1
-            foreach v in diff[core]
-                on key_v=="total" do continue
+            foreach acti in ordered_activities
+                on acti=="total" do continue
+                v=diff[core][acti]
                 col_v = "[#{colour}]"; padw=as_int(v/2)
                 print col_v,pad(activity_indicator,1,padw,activity_indicator) , "[#-][##]"
                 colour++; on colour==8 do colour=1
