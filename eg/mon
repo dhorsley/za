@@ -439,13 +439,13 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     endif
 
     # display
-    ordered_cores=cpuinfo.keys.sort
+    ordered_cores=cpuinfo.keys.sort(map(.alphanumeric true))
 
     foreach core in ordered_cores
         c=cpuinfo.Usages["cores"][core]
         clear_line(row,1)
-        at row,1 , format("[#7]%5s ",core)
-        pos=7
+        at row,1 , format("[#7]%8s ",core)
+        pos=10
 
         ordered_activities=diff[core].keys.sort
         if showCpuDetails
