@@ -221,11 +221,15 @@ define showMem()
     if len(mem_detailed.Slab) > 0
         # Convert slab map to sorted list format
         slab_list = []
-        foreach info in mem_detailed.Slab
-            size_mb = (info.Objects.as_int * info.Size.as_int) / 1024f / 1024
-            slab_list = slab_list + [key_info + " " + format("%.1f", size_mb)]
-        endfor
-        
+        if mem_detailed.Slab.len>0
+            foreach info in mem_detailed.Slab
+                if info!=nil
+                    size_mb = (info.ActiveObjs.as_int * info.ObjSize.as_int) / 1024f / 1024
+                    slab_list = slab_list + [key_info + " " + format("%.1f", size_mb)]
+                endif
+            endfor
+        endif
+
         # Sort by size (descending)
         slab_string=""
         foreach s in slab_list
@@ -255,7 +259,6 @@ define showMem()
     mem_swap_total = resources.SwapTotal
     
     # Get detailed memory info for additional fields
-    mem_detailed = mem_info()
     mem_avail = mem_detailed.Available
     mem_active = mem_detailed.Used
 
@@ -410,36 +413,29 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     on !utf8supported() do activity_indicator="-"
 
     # map[core_0:map[idle:100 interrupt:0 system:0 user:0] core_1:map[idle:100 interrupt:0 system:0 user:0]]
-    # cpucount=cpu_info().Usage["cores].len
     cpuinfo=cpu_info().Usage["cores"]
 
     var diff map[map]
     row=1
-    mult=100
-    var vals map
-    foreach c in cpuinfo
-        core=key_c
-        vals["user"]=c["user"]
-        vals["sys"]=c["system"]
-        vals["irq"]=c["interrupt"]
-        vals["idle"]=c["idle"]
-        vals["total"]=c.values.sum
+
+    foreach vals in cpuinfo
+        core=key_vals
+        vals["total"]=vals.values.sum
+
         # calc difference from last sample. -- units are USER_HZ, 1/100 sec
         if key(ref prev,core)
-            # diff[core]=nil
-            diff[core]["total"] = ( vals["total"].as_int-prev[core]["total"].as_int) * mult
+            diff[core]["total"] = ( vals["total"]-prev[core]["total"])
             foreach d in vals
                 k=key_d
                 on k=="total" do continue
-                diff[core][k]=0
-                on diff[core]["total"]!=0 do diff[core][k]=( (((d-prev[core][k].as_int))/diff[core]["total"]) * mult ) [0:100]
+                diff[core][k]=0f
+                on diff[core]["total"]!=0 do diff[core][k]=( ((d-prev[core][k]).as_float/diff[core]["total"]) * 100 ) [0f:100f]
             endfor
         endif
         @ prev[core] = vals.dup
     endfor
 
     # init previous values for cpu stats
-
     if sample_start_in-->0
         at 2,2, "[#invert]Checking previous CPU values.[#-]"
         return sample_start_in
@@ -453,26 +449,27 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         pos=7
 
         if showCpuDetails
-            at row,pos, format( "[#4]%3.0fus[#-], [#5]%3.0fsy[#-], [#7]%3.0fin[#-]",
-                                diff[core]["user"].as_float, diff[core]["sys"].as_float, diff[core]["irq"].as_float)
-            pos=pos+59
+            colour=1
+            foreach v in diff[core]
+                on key_v=="total" do continue
+                at row,pos
+                println "[#{colour}]%3.0f{=substr(key_v,0,3)}[#-] ".format(v)
+                pos+=8; colour++; on colour==8 do colour=1
+            endfor
+            pos=pos+5
         endif
-
-        col_sys     = "[#5]";       w_sys     = diff[core]["sys"]/2
-        col_user    = "[#4]";       w_user    = diff[core]["user"]/2
-        col_idle    = "[#fbblue]";  w_idle    = diff[core]["idle"]/2
-        col_irq     = "[#7]";       w_irq     = diff[core]["irq"]/2
 
         if showCpuBars
             # fill cpu row background
             at row,pos, pad(activity_indicator,-1,48,activity_bg)
-
-            # populate with values
             at row,pos
-            print col_sys;      print pad(activity_indicator,1,w_sys.as_int, activity_indicator)
-            print col_user;     print pad(activity_indicator,1,w_user.as_int, activity_indicator)
-            print col_irq;      print pad(activity_indicator,1,w_irq.as_int, activity_indicator)
-            print "[#-][##]"
+            colour=1
+            foreach v in diff[core]
+                on key_v=="total" do continue
+                col_v = "[#{colour}]"; padw=as_int(v/2)
+                print col_v,pad(activity_indicator,1,padw,activity_indicator) , "[#-][##]"
+                colour++; on colour==8 do colour=1
+            endfor
             pos=pos+49
         endif
 
