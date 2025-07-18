@@ -26,6 +26,8 @@ import (
 )
 
 // BSD implementation of system monitoring functions
+//  The kvm calls rely more than a little on m.hashimoto's code
+//   @ https://github.com/mitchellh/go-ps/blob/master/process_freebsd.go
 
 // BSD process enumeration constants
 const (
@@ -34,6 +36,7 @@ const (
     KERN_PROC_PID      = 1  // by process id
     KERN_PROC_PROC     = 8  // only return procs
     KERN_PROC_PATHNAME = 12 // path to executable
+    KERN_PROC_ARGS     = 7  // process arguments
 )
 
 // Kinfo_proc represents BSD process information structure
@@ -1826,13 +1829,33 @@ func getCommString(comm [20]byte) string {
 }
 
 func getProcessArgs(pid int32) (string, error) {
-    // Try to get command line arguments using sysctl
-    // This is a simplified approach - may need more complex parsing
-    mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, pid}
-    _, _, err := call_sysctl(mib)
+    // Get command line arguments using sysctl
+    // Use KERN_PROC_ARGS to get the full command line
+    mib := []int32{CTL_KERN, KERN_PROC, KERN_PROC_ARGS, pid}
+    buf, length, err := call_sysctl(mib)
     if err != nil {
         return "", err
     }
-    // For now, return empty string - command line args need more complex handling
-    return "", nil
+
+    if length == 0 {
+        return "", nil
+    }
+
+    // Parse the command line arguments
+    // The buffer contains null-terminated strings
+    var args []string
+    current := ""
+    for i := 0; i < len(buf); i++ {
+        if buf[i] == 0 {
+            if current != "" {
+                args = append(args, current)
+                current = ""
+            }
+        } else {
+            current += string(buf[i])
+        }
+    }
+
+    // Join all arguments with spaces
+    return strings.Join(args, " "), nil
 }
