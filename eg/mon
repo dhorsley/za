@@ -412,24 +412,23 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     activity_indicator="▪"
     on !utf8supported() do activity_indicator="-"
 
-    # map[core_0:map[idle:100 interrupt:0 system:0 user:0] core_1:map[idle:100 interrupt:0 system:0 user:0]]
     cpuinfo=cpu_info().Usage["cores"]
+    cpucount=cpu_info().Usage["cores"].len
 
     var diff map[map]
     row=1
 
     foreach vals in cpuinfo
         core=key_vals
-        vals["total"]=vals.values.sum
+        unmap(ref vals,"idle")
+        vals["total"]=vals.values.sum 
 
-        # calc difference from last sample. -- units are USER_HZ, 1/100 sec
         if key(ref prev,core)
-            diff[core]["total"] = ( vals["total"]-prev[core]["total"])
+            diff[core]["total"] = as_int(vals["total"]-prev[core]["total"])
             foreach d in vals
                 k=key_d
                 on k=="total" do continue
-                diff[core][k]=0f
-                on diff[core]["total"]!=0 do diff[core][k]=( ((d-prev[core][k]).as_float/diff[core]["total"]) * 100 ) [0f:100f]
+                diff[core][k]=as_int(d-prev[core][k])
             endfor
         endif
         @ prev[core] = vals.dup
@@ -440,7 +439,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         at 2,2, "[#invert]Checking previous CPU values.[#-]"
         return sample_start_in
     endif
-        
+
     # display
     foreach c in cpuinfo
         core=key_c
@@ -453,7 +452,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             foreach v in diff[core]
                 on key_v=="total" do continue
                 at row,pos
-                println "[#{colour}]%3.0f{=substr(key_v,0,3)}[#-] ".format(v)
+                println "[#{colour}]%3d{=substr(key_v,0,3)}[#-] ".format(v)
                 pos+=8; colour++; on colour==8 do colour=1
             endfor
             pos=pos+5
