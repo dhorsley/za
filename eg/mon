@@ -441,8 +441,10 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     endif
 
     # display
-    foreach c in cpuinfo
-        core=key_c
+    ordered_cores=cpuinfo.keys.sort
+
+    foreach core in ordered_cores
+        c=cpuinfo.Usages["cores"][core]
         clear_line(row,1)
         at row,1 , format("[#7]%5s ",core)
         pos=7
@@ -672,7 +674,7 @@ end
 key_timeout=1000
 timeout=key_timeout
 
-sample_start_in=4
+sample_start_in=2
 net_sample_start_in=1
 
 interface = gw_interface()
