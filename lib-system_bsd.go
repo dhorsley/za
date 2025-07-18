@@ -1749,22 +1749,33 @@ func debugCPUFiles() map[string]interface{} {
 }
 
 // getProcessState converts BSD process state to string
+// Based on BSD process state constants:
+// #define SRUN     1   // Runnable
+// #define SSLEEP   2   // Sleeping
+// #define SSTOP    3   // Stopped
+// #define SZOMB    4   // Zombie
+// #define SWAIT    5   // Waiting
+// #define SLOCK    6   // Lock
+// #define SIDL     7   // Intermediate state
+// #define SDEAD    8   // Dead
 func getProcessState(stat byte) string {
     switch stat {
     case 1:
-        return "S" // Sleeping
+        return "R" // Runnable
     case 2:
-        return "R" // Running
+        return "S" // Sleeping
     case 3:
-        return "Z" // Zombie
-    case 4:
         return "T" // Stopped
+    case 4:
+        return "Z" // Zombie
     case 5:
-        return "D" // Uninterruptible sleep
+        return "W" // Waiting
     case 6:
-        return "W" // Wait
+        return "L" // Lock
     case 7:
-        return "L" // Lock wait
+        return "I" // Intermediate state
+    case 8:
+        return "D" // Dead
     default:
         return "?"
     }
