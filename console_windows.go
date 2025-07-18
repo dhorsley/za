@@ -110,17 +110,25 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
     pLine := &line[0]
     var n uint16
 
-    c := make(chan []byte)
-    timeoutChan := make(chan bool)
+    c := make(chan []byte, 1)         // Buffered channel to prevent goroutine leak
+    timeoutChan := make(chan bool, 1) // Buffered channel
     closed := false
     dur := time.Duration(timeo) * time.Millisecond
 
     go func() {
+        defer func() {
+            closed = true
+        }()
+
         for !closed {
             if timeo == 0 {
                 procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
                 if n > 0 && !closed {
-                    c <- []byte(string(utf16.Decode(line[:n])))
+                    select {
+                    case c <- []byte(string(utf16.Decode(line[:n]))):
+                    case <-timeoutChan:
+                        return
+                    }
                     break
                 }
             } else {
@@ -128,14 +136,16 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
                 procPeekConsoleInput.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
                 if n > 0 {
                     procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
-                    closed = true
-                    c <- []byte(string(utf16.Decode(line[:n])))
+                    select {
+                    case c <- []byte(string(utf16.Decode(line[:n]))):
+                    case <-timeoutChan:
+                        return
+                    }
                     break
                 }
                 select {
                 case <-timeoutChan:
-                    closed = true
-                    break
+                    return
                 default:
                     // Continue checking
                 }
@@ -150,6 +160,8 @@ func getch(timeo int) (b []byte, timeout bool, pasted bool, paste_string string)
         case <-time.After(dur):
             timeout = true
             timeoutChan <- true
+            // Give the goroutine a moment to clean up
+            time.Sleep(10 * time.Millisecond)
         }
     } else {
         select {
@@ -198,24 +210,31 @@ func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
         pLine := &line[0]
         var n uint16
 
-        c := make(chan []byte)
-        timeoutChan := make(chan bool)
+        c := make(chan []byte, 1)         // Buffered channel
+        timeoutChan := make(chan bool, 1) // Buffered channel
         closed := false
         dur := time.Duration(100) * time.Millisecond
 
         go func() {
+            defer func() {
+                closed = true
+            }()
+
             for !closed {
                 n = 0
                 procPeekConsoleInput.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
                 if n > 0 {
                     procReadConsole.Call(uintptr(syscall.Stdin), uintptr(unsafe.Pointer(pLine)), uintptr(len(line)), uintptr(unsafe.Pointer(&n)))
-                    closed = true
-                    c <- []byte(string(utf16.Decode(line[:n])))
+                    select {
+                    case c <- []byte(string(utf16.Decode(line[:n]))):
+                    case <-timeoutChan:
+                        return
+                    }
                     break
                 }
                 select {
                 case <-timeoutChan:
-                    break
+                    return
                 default:
                     // Continue checking
                 }
@@ -235,6 +254,8 @@ func collectBracketedPasteWindows() ([]byte, bool, bool, string) {
             }
         case <-time.After(dur):
             timeoutChan <- true
+            // Give the goroutine a moment to clean up
+            time.Sleep(10 * time.Millisecond)
         }
 
         procSetConsoleMode.Call(uintptr(syscall.Stdin), uintptr(mode))

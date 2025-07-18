@@ -396,13 +396,17 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     }
 
     for {
-        proc, err := getProcessInfo(int(pe32.ProcessID), nil)
+        // Pass the parent process ID that we already have
+        proc, err := getProcessInfoWithParent(int(pe32.ProcessID), int(pe32.ParentProcessID), int(pe32.Threads), nil)
         if err == nil {
             processes = append(processes, proc)
         }
 
         ret, _, err := kernel32.NewProc("Process32NextW").Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
         if ret == 0 {
+            // Process32NextW returns 0 when there are no more processes
+            // This is normal end-of-enumeration, not an error
+            // The return value of 0 indicates no more processes, which is expected
             break
         }
     }
@@ -410,10 +414,12 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     return processes, nil
 }
 
-// getProcessInfo returns detailed information for a specific process
-func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error) {
+// getProcessInfoWithParent returns detailed information for a specific process with known parent PID
+func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options map[string]interface{}) (ProcessInfo, error) {
     var proc ProcessInfo
     proc.PID = pid
+    proc.PPID = parentPID      // Use the parent PID we already have
+    proc.Threads = threadCount // Use the thread count we already have
 
     // Open process handle
     handle, _, err := kernel32.NewProc("OpenProcess").Call(PROCESS_QUERY_INFORMATION, 0, uintptr(pid))
@@ -479,41 +485,15 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
     // Get process state and other info using Windows API
     proc.State = "Running" // Default state
 
-    // Get parent process ID
-    var parentPID uint32
-    if parentProc := kernel32.NewProc("GetParentProcessId"); parentProc.Addr() != 0 {
-        r1, _, _ := parentProc.Call(uintptr(pid), uintptr(unsafe.Pointer(&parentPID)))
-        if r1 != 0 {
-            proc.PPID = int(parentPID)
-        } else {
-            proc.PPID = 0
-        }
-    } else {
-        proc.PPID = 0
-    }
-
-    // Get thread count
-    var threadCount uint32
-    if threadProc := kernel32.NewProc("GetProcessThreadCount"); threadProc.Addr() != 0 {
-        r1, _, _ := threadProc.Call(uintptr(handle), uintptr(unsafe.Pointer(&threadCount)))
-        if r1 != 0 {
-            proc.Threads = int(threadCount)
-        } else {
-            proc.Threads = 1 // Default
-        }
-    } else {
-        proc.Threads = 1 // Default
-    }
-
     // Get process start time
     var creationTime, exitTime, kernelTime, userTime syscall.Filetime
     if timeProc := kernel32.NewProc("GetProcessTimes"); timeProc.Addr() != 0 {
-        r1, _, _ := timeProc.Call(uintptr(handle),
+        r1, _, err := timeProc.Call(uintptr(handle),
             uintptr(unsafe.Pointer(&creationTime)),
             uintptr(unsafe.Pointer(&exitTime)),
             uintptr(unsafe.Pointer(&kernelTime)),
             uintptr(unsafe.Pointer(&userTime)))
-        if r1 != 0 {
+        if r1 != 0 && err == nil {
             // Convert Windows filetime to Unix timestamp
             proc.StartTime = int64(creationTime.LowDateTime) | (int64(creationTime.HighDateTime) << 32)
             proc.StartTime = (proc.StartTime - 116444736000000000) / 10000000 // Convert to Unix time
@@ -531,6 +511,58 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
     proc.ChildrenSystemTime = 0.0
 
     return proc, nil
+}
+
+// getProcessInfo returns detailed information for a specific process
+func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error) {
+    // For individual process lookup, we need to find the parent PID
+    // Use CreateToolhelp32Snapshot to find this specific process
+    snapshot, _, err := kernel32.NewProc("CreateToolhelp32Snapshot").Call(TH32CS_SNAPPROCESS, 0)
+    if snapshot == 0 {
+        return ProcessInfo{PID: pid}, err
+    }
+    defer kernel32.NewProc("CloseHandle").Call(snapshot)
+
+    var pe32 struct {
+        Size              uint32
+        Usage             uint32
+        ProcessID         uint32
+        DefaultHeapID     uintptr
+        ModuleID          uint32
+        Threads           uint32
+        ParentProcessID   uint32
+        PriorityClassBase int32
+        Flags             uint32
+        ExeFile           [260]uint16
+    }
+    pe32.Size = uint32(unsafe.Sizeof(pe32))
+
+    ret, _, err := kernel32.NewProc("Process32FirstW").Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+    if ret == 0 {
+        return ProcessInfo{PID: pid}, err
+    }
+
+    for {
+        if int(pe32.ProcessID) == pid {
+            return getProcessInfoWithParent(pid, int(pe32.ParentProcessID), int(pe32.Threads), options)
+        }
+
+        ret, _, err := kernel32.NewProc("Process32NextW").Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+        if ret == 0 {
+            // Process32NextW returns 0 when there are no more processes
+            // Check if this is a real error or just end of enumeration
+            if err != nil && err.Error() != "There are no more files." {
+                // This is a real error, not just end of enumeration
+                // Return the error to the caller
+                return ProcessInfo{PID: pid}, fmt.Errorf("Process32NextW failed: %v", err)
+            }
+            // Normal end of enumeration
+            break
+        }
+    }
+
+    // Process not found, return basic info
+    return ProcessInfo{PID: pid}, fmt.Errorf("process %d not found", pid)
 }
 
 // getProcessTree returns process hierarchy
