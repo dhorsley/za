@@ -24,6 +24,7 @@ CHANGE LOG
     * added explain()       : currently, describes a struct type
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
+    * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
 
     * resource usage functions:
 
@@ -189,6 +190,8 @@ CHANGE LOG
                 try uses a,b,c throws "test-error"
 
     * added ctrl-z (suspend to background) handling for non-windows builds, while accepting keystrokes.
+
+    * updated some examples, notably eg/mon to demonstrate some of the newer functions.
 
 
 1.1.9
