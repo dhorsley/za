@@ -496,11 +496,13 @@ func ev_add(val1 any, val2 any) (r any) {
 
 func ev_sub(val1 any, val2 any) any {
 
-    var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
+    var intInOne, intInTwo, uintInOne, uintInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
     case int:
         intInOne = true
+    case uint,uint64:
+        uintInOne = true
     case int64:
         i641 = true
     case *big.Int:
@@ -511,6 +513,8 @@ func ev_sub(val1 any, val2 any) any {
     switch val2.(type) {
     case int:
         intInTwo = true
+    case uint,uint64:
+        uintInTwo = true
     case int64:
         i642 = true
     case *big.Int:
@@ -525,6 +529,10 @@ func ev_sub(val1 any, val2 any) any {
 
     if i641 && i642 {
         return val1.(int64) - val2.(int64)
+    }
+
+    if uintInOne && uintInTwo {
+        return val1.(uint64) - val2.(uint64)
     }
 
     if bf1 && bf2 {
