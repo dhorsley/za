@@ -101,6 +101,31 @@ type NetworkIOStats struct {
     RxDropped  uint64
     TxDropped  uint64
     Collisions uint64 // Added for BSD and any platform that provides it
+
+    // Additional Windows-specific fields
+    MTU               uint32
+    InterfaceType     uint32
+    MediaType         uint32
+    OperStatus        uint32
+    AdminStatus       uint32
+    TransmitLinkSpeed uint64
+    ReceiveLinkSpeed  uint64
+
+    // Detailed packet breakdowns
+    RxUcastPkts       uint64
+    TxUcastPkts       uint64
+    RxNUcastPkts      uint64
+    TxNUcastPkts      uint64
+    RxUcastOctets     uint64
+    TxUcastOctets     uint64
+    RxMulticastOctets uint64
+    TxMulticastOctets uint64
+    RxBroadcastOctets uint64
+    TxBroadcastOctets uint64
+
+    // Additional error statistics
+    RxUnknownProtos uint64
+    OutQLen         uint64
 }
 
 // DiskIOStats represents disk I/O statistics
