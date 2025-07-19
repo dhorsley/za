@@ -1156,16 +1156,16 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
                 Collisions: collisions, // set from parsed value
 
-                // Additional fields (zero values for BSD)
-                MTU:               0,
-                InterfaceType:     0,
-                MediaType:         0,
-                OperStatus:        0,
-                AdminStatus:       0,
-                TransmitLinkSpeed: 0,
-                ReceiveLinkSpeed:  0,
+                // Additional fields available on BSD
+                MTU:               uint32(mtu),
+                InterfaceType:     uint32(interfaceType),
+                MediaType:         0, // BSD doesn't provide this concept
+                OperStatus:        uint32(operStatus),
+                AdminStatus:       1, // Assume enabled on BSD
+                TransmitLinkSpeed: linkSpeed,
+                ReceiveLinkSpeed:  linkSpeed, // BSD typically reports same speed for both
 
-                // Detailed packet breakdowns (zero values for BSD)
+                // Detailed packet breakdowns (BSD doesn't provide these breakdowns)
                 RxUcastPkts:       0,
                 TxUcastPkts:       0,
                 RxNUcastPkts:      0,
@@ -1177,9 +1177,9 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 RxBroadcastOctets: 0,
                 TxBroadcastOctets: 0,
 
-                // Additional error statistics (zero values for BSD)
-                RxUnknownProtos: 0,
-                OutQLen:         0,
+                // Additional error statistics
+                RxUnknownProtos: 0, // BSD doesn't provide this
+                OutQLen:         0, // BSD doesn't provide this
             })
         }
     }
