@@ -1045,7 +1045,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
 
-        // Initialize or get existing stats for this interface
+        // Find or create stats for this interface
         var stats *NetworkIOStats
         for i := range result {
             if result[i].Interface == interfaceName {
@@ -1065,15 +1065,17 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             stats = &result[len(result)-1]
         }
 
-        // Parse MTU (only if not already set or if this is a link layer entry)
-        if fields[1] != "-" && (stats.MTU == 0 || strings.Contains(fields[2], "<Link#")) {
+        // Parse MTU if available and not already set
+        if fields[1] != "-" && stats.MTU == 0 {
             if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
                 stats.MTU = uint32(val)
+                fmt.Printf("DEBUG: Set MTU for %s to %d\n", interfaceName, val)
             }
         }
 
-        // Parse traffic statistics (only if this is a link layer entry with actual data)
-        if strings.Contains(fields[2], "<Link#") {
+        // Parse traffic statistics from any line that has data
+        if fields[3] != "-" && fields[3] != "0" {
+            fmt.Printf("DEBUG: Processing traffic data for %s\n", interfaceName)
             // Parse input statistics
             if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
                 stats.RxPackets = val
@@ -1160,6 +1162,12 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
     }
+
+    fmt.Printf("DEBUG: Final result has %d interfaces: ", len(result))
+    for i, stats := range result {
+        fmt.Printf("%s (RxBytes: %d, TxBytes: %d), ", stats.Interface, stats.RxBytes, stats.TxBytes)
+    }
+    fmt.Printf("\n")
 
     return result, nil
 }
