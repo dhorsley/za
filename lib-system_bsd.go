@@ -1090,8 +1090,10 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse MTU
         var mtu uint64
-        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-            mtu = val
+        if fields[1] != "-" { // Check if MTU field is not a dash
+            if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
+                mtu = val
+            }
         }
 
         // Determine interface type based on name patterns
