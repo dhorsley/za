@@ -1076,34 +1076,34 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         // Parse traffic statistics from any line that has data
         if fields[3] != "-" && fields[3] != "0" {
             fmt.Printf("DEBUG: Processing traffic data for %s\n", interfaceName)
-            // Parse input statistics
-            if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
+            // Parse input statistics - only update if not already set
+            if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil && stats.RxPackets == 0 {
                 stats.RxPackets = val
             }
-            if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
+            if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil && stats.RxErrors == 0 {
                 stats.RxErrors = val
             }
-            if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+            if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil && stats.RxDropped == 0 {
                 stats.RxDropped = val
             }
-            if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil {
+            if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil && stats.RxBytes == 0 {
                 stats.RxBytes = val
             }
 
-            // Parse output statistics
-            if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil {
+            // Parse output statistics - only update if not already set
+            if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil && stats.TxPackets == 0 {
                 stats.TxPackets = val
             }
-            if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil {
+            if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil && stats.TxErrors == 0 {
                 stats.TxErrors = val
             }
-            if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil {
+            if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil && stats.TxBytes == 0 {
                 stats.TxBytes = val
             }
 
-            // Parse collisions (if available)
+            // Parse collisions (if available) - only update if not already set
             if len(fields) > 10 && fields[10] != "-" {
-                if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil {
+                if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil && stats.Collisions == 0 {
                     stats.Collisions = val
                 }
             }
