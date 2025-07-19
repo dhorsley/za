@@ -1035,6 +1035,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse interface name
         interfaceName := strings.TrimSpace(fields[0])
+        fmt.Printf("DEBUG: Processing line for interface: %s, fields: %v\n", interfaceName, fields)
 
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
@@ -1053,6 +1054,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
         if stats == nil {
+            fmt.Printf("DEBUG: Creating new stats for interface: %s\n", interfaceName)
             // Create new stats entry
             result = append(result, NetworkIOStats{
                 Interface: interfaceName,
