@@ -1012,7 +1012,7 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
 
 // getNetworkIO returns network I/O statistics
 func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
-    var stats []NetworkIOStats
+    var result []NetworkIOStats
 
     // Use netstat -i -b -n for reliable network statistics on BSD
     cmd := exec.Command("netstat", "-i", "-b", "-n")
@@ -1021,110 +1021,114 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         return nil, fmt.Errorf("netstat command failed: %v", err)
     }
 
-    // Parse netstat output to extract statistics
-    // Format: Name Mtu Network Address Ipkts Ierrs Idrop Ibytes Opkts Oerrs Obytes Coll
-    lines := strings.Split(string(output), "\n")
+    // Parse netstat output line by line
     for _, line := range lines {
-        line = strings.TrimSpace(line)
         if line == "" || strings.HasPrefix(line, "Name") {
-            continue // Skip header line
+            continue // Skip header and empty lines
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 12 {
-            continue // Need at least 12 fields for complete stats
-        }
-
-        interfaceName := fields[0]
-
-        // Only process link layer entries (those with <Link#X>)
-        // Skip IP address entries to avoid overwriting correct MTU values
-        if len(fields) >= 3 && !strings.HasPrefix(fields[2], "<Link#") {
+        if len(fields) < 9 {
             continue
         }
 
+        // Parse interface name
+        interfaceName := strings.TrimSpace(fields[0])
+
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
-            if interfaceName != options["interface"].(string) {
+            interfaceFilter := options["interface"].(string)
+            if interfaceName != interfaceFilter {
                 continue
             }
         }
 
-        // Parse statistics from netstat output
-        var rxPackets, txPackets, rxBytes, txBytes uint64
-        var rxErrors, txErrors, rxDropped, collisions uint64
-
-        // Parse input packets (Ipkts)
-        if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
-            rxPackets = val
+        // Initialize or get existing stats for this interface
+        var stats *NetworkIOStats
+        for i := range result {
+            if result[i].Interface == interfaceName {
+                stats = &result[i]
+                break
+            }
+        }
+        if stats == nil {
+            // Create new stats entry
+            result = append(result, NetworkIOStats{
+                Interface: interfaceName,
+                // Set defaults
+                InterfaceType: 1, // Default to Ethernet
+                AdminStatus:   1, // Assume enabled
+            })
+            stats = &result[len(result)-1]
         }
 
-        // Parse input errors (Ierrs)
-        if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
-            rxErrors = val
-        }
-
-        // Parse input drops (Idrop)
-        if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil {
-            rxDropped = val
-        }
-
-        // Parse input bytes (Ibytes)
-        if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil {
-            rxBytes = val
-        }
-
-        // Parse output packets (Opkts)
-        if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil {
-            txPackets = val
-        }
-
-        // Parse output errors (Oerrs)
-        if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil {
-            txErrors = val
-        }
-
-        // Parse output bytes (Obytes)
-        if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil {
-            txBytes = val
-        }
-
-        // Parse collisions (Coll)
-        if val, err := strconv.ParseUint(fields[11], 10, 64); err == nil {
-            collisions = val
-        }
-
-        // Parse MTU
-        var mtu uint64
-        if fields[1] != "-" { // Check if MTU field is not a dash
+        // Parse MTU (only if not already set or if this is a link layer entry)
+        if fields[1] != "-" && (stats.MTU == 0 || strings.Contains(fields[2], "<Link#")) {
             if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-                mtu = val
+                stats.MTU = uint32(val)
             }
         }
 
-        // Determine interface type based on name patterns
-        var interfaceType uint64
-        switch {
-        case strings.HasPrefix(interfaceName, "em") || strings.HasPrefix(interfaceName, "igb") || strings.HasPrefix(interfaceName, "ix"):
-            interfaceType = 1 // Ethernet
-        case strings.HasPrefix(interfaceName, "lo"):
-            interfaceType = 772 // Loopback
-        case strings.HasPrefix(interfaceName, "wlan") || strings.HasPrefix(interfaceName, "ath"):
-            interfaceType = 71 // WiFi
-        default:
-            interfaceType = 1 // Default to Ethernet
+        // Parse traffic statistics (only if this is a link layer entry with actual data)
+        if strings.Contains(fields[2], "<Link#") {
+            // Parse input statistics
+            if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
+                stats.RxPackets = val
+            }
+            if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
+                stats.RxErrors = val
+            }
+            if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+                stats.RxDropped = val
+            }
+            if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil {
+                stats.RxBytes = val
+            }
+
+            // Parse output statistics
+            if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil {
+                stats.TxPackets = val
+            }
+            if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil {
+                stats.TxErrors = val
+            }
+            if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil {
+                stats.TxBytes = val
+            }
+
+            // Parse collisions (if available)
+            if len(fields) > 10 && fields[10] != "-" {
+                if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil {
+                    stats.Collisions = val
+                }
+            }
+        }
+
+        // Determine interface type based on name patterns (only if not already set)
+        if stats.InterfaceType == 1 { // Only set if still default
+            switch {
+            case strings.HasPrefix(interfaceName, "em") || strings.HasPrefix(interfaceName, "igb") || strings.HasPrefix(interfaceName, "ix"):
+                stats.InterfaceType = 1 // Ethernet
+            case strings.HasPrefix(interfaceName, "lo"):
+                stats.InterfaceType = 772 // Loopback
+            case strings.HasPrefix(interfaceName, "wlan") || strings.HasPrefix(interfaceName, "ath"):
+                stats.InterfaceType = 71 // WiFi
+            default:
+                stats.InterfaceType = 1 // Default to Ethernet
+            }
         }
 
         // Determine operational status (if interface has traffic, it's likely up)
-        var operStatus uint64
-        if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
-            operStatus = 1 // Up
+        if stats.RxBytes > 0 || stats.TxBytes > 0 || stats.RxPackets > 0 || stats.TxPackets > 0 {
+            stats.OperStatus = 1 // Up
         } else {
-            operStatus = 2 // Down
+            stats.OperStatus = 2 // Down
         }
+    }
 
-        // Get link speed via sysctl (try common sysctl paths)
-        var linkSpeed uint64
+    // Get link speed via sysctl for each interface
+    for i := range result {
+        interfaceName := result[i].Interface
         speedCmds := []string{
             fmt.Sprintf("sysctl -n dev.%s.media", interfaceName),
             fmt.Sprintf("sysctl -n dev.%s.%s.media", interfaceName, interfaceName),
@@ -1137,60 +1141,24 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                     // Parse media info to extract speed
                     mediaInfo := strings.TrimSpace(string(output))
                     if strings.Contains(mediaInfo, "1000baseT") {
-                        linkSpeed = 1000000000 // 1 Gbps
+                        result[i].TransmitLinkSpeed = 1000000000 // 1 Gbps
+                        result[i].ReceiveLinkSpeed = 1000000000
                         break
                     } else if strings.Contains(mediaInfo, "100baseT") {
-                        linkSpeed = 100000000 // 100 Mbps
+                        result[i].TransmitLinkSpeed = 100000000 // 100 Mbps
+                        result[i].ReceiveLinkSpeed = 100000000
                         break
                     } else if strings.Contains(mediaInfo, "10baseT") {
-                        linkSpeed = 10000000 // 10 Mbps
+                        result[i].TransmitLinkSpeed = 10000000 // 10 Mbps
+                        result[i].ReceiveLinkSpeed = 10000000
                         break
                     }
                 }
             }
         }
-
-        // Include all interfaces, not just those with traffic
-        stats = append(stats, NetworkIOStats{
-            Interface:  interfaceName,
-            RxBytes:    rxBytes,
-            TxBytes:    txBytes,
-            RxPackets:  rxPackets,
-            TxPackets:  txPackets,
-            RxErrors:   rxErrors,
-            TxErrors:   txErrors,
-            RxDropped:  rxDropped,
-            TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
-            Collisions: collisions, // set from parsed value
-
-            // Additional fields available on BSD
-            MTU:               uint32(mtu),
-            InterfaceType:     uint32(interfaceType),
-            MediaType:         0, // BSD doesn't provide this concept
-            OperStatus:        uint32(operStatus),
-            AdminStatus:       1, // Assume enabled on BSD
-            TransmitLinkSpeed: linkSpeed,
-            ReceiveLinkSpeed:  linkSpeed, // BSD typically reports same speed for both
-
-            // Detailed packet breakdowns (BSD doesn't provide these breakdowns)
-            RxUcastPkts:       0,
-            TxUcastPkts:       0,
-            RxNUcastPkts:      0,
-            TxNUcastPkts:      0,
-            RxUcastOctets:     0,
-            TxUcastOctets:     0,
-            RxMulticastOctets: 0,
-            TxMulticastOctets: 0,
-            RxBroadcastOctets: 0,
-            TxBroadcastOctets: 0,
-
-            // Additional error statistics
-            RxUnknownProtos: 0, // BSD doesn't provide this
-            OutQLen:         0, // BSD doesn't provide this
-        })
     }
 
-    return stats, nil
+    return result, nil
 }
 
 // getDiskIO returns disk I/O statistics
