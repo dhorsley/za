@@ -1018,10 +1018,11 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     cmd := exec.Command("netstat", "-i", "-b", "-n")
     output, err := cmd.Output()
     if err != nil {
-        return nil, fmt.Errorf("netstat command failed: %v", err)
+        return nil, fmt.Errorf("failed to execute netstat: %v", err)
     }
 
     // Parse netstat output line by line
+    lines := strings.Split(string(output), "\n")
     for _, line := range lines {
         if line == "" || strings.HasPrefix(line, "Name") {
             continue // Skip header and empty lines
