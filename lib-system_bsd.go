@@ -1035,7 +1035,6 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse interface name
         interfaceName := strings.TrimSpace(fields[0])
-        fmt.Printf("DEBUG: Raw interface name bytes: %q\n", interfaceName)
 
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
