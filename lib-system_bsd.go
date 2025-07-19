@@ -1164,7 +1164,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     }
 
     fmt.Printf("DEBUG: Final result has %d interfaces: ", len(result))
-    for i, stats := range result {
+    for _, stats := range result {
         fmt.Printf("%s (RxBytes: %d, TxBytes: %d), ", stats.Interface, stats.RxBytes, stats.TxBytes)
     }
     fmt.Printf("\n")
