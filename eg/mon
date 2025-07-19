@@ -191,7 +191,7 @@ def mdisplay(r,c,w,f,t,msg)
     at r,c,msg
     if show
         bar(r,c+8,w,(f.as_int/t.as_float)*100,3)
-        smallprint(1024*f.as_float)
+        smallprint(f.as_float)
     else
         at r,c+9+w,"undefined"
     endif
