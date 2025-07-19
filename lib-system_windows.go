@@ -74,50 +74,87 @@ type WMI_TEMPERATURE_INFO struct {
     CurrentTemperature float64
 }
 
+// Windows API constants
+const (
+    IF_MAX_STRING_SIZE         = 256
+    IF_MAX_PHYS_ADDRESS_LENGTH = 32
+)
+
 // MibIfRow2 is used for Windows network interface statistics
-// (moved from inside getNetworkIO)
+type MibIfTable2 struct {
+    NumEntries uint32
+    Table      [1]MibIfRow2 // Variable length array - we'll access it with pointer arithmetic
+}
+
 type MibIfRow2 struct {
-    InterfaceIndex           uint32
-    InterfaceLuid            uint64
-    InterfaceGuid            [16]byte
-    Alias                    [256]uint16
-    Description              [256]uint16
-    PhysicalAddress          [32]byte
-    PhysicalAddressLength    uint32
-    PermanentPhysicalAddress [32]byte
-    Mtu                      uint32
-    Type                     uint32
-    TunnelType               uint32
-    MediaType                uint32
-    PhysicalMediumType       uint32
-    AccessType               uint32
-    DirectionType            uint32
-    InterfaceOperStatus      uint32
-    OperStatus               uint32
-    AdminStatus              uint32
-    MediaConnectState        uint32
-    NetworkGuid              [16]byte
-    ConnectionType           uint32
-    TransmitLinkSpeed        uint64
-    ReceiveLinkSpeed         uint64
-    InOctets                 uint64
-    InUcastPkts              uint64
-    InNUcastPkts             uint64
-    InDiscards               uint64
-    InErrors                 uint64
-    InUnknownProtos          uint64
-    InUcastOctets            uint64
-    InMulticastOctets        uint64
-    InBroadcastOctets        uint64
-    OutOctets                uint64
-    OutUcastPkts             uint64
-    OutNUcastPkts            uint64
-    OutDiscards              uint64
-    OutErrors                uint64
-    OutUcastOctets           uint64
-    OutMulticastOctets       uint64
-    OutBroadcastOctets       uint64
-    OutQLen                  uint64
+    InterfaceLuid               uint64
+    InterfaceIndex              uint32
+    InterfaceGuid               [16]byte
+    Alias                       [IF_MAX_STRING_SIZE + 1]uint16
+    Description                 [IF_MAX_STRING_SIZE + 1]uint16
+    PhysicalAddressLength       uint32
+    PhysicalAddress             [IF_MAX_PHYS_ADDRESS_LENGTH]byte
+    PermanentPhysicalAddress    [IF_MAX_PHYS_ADDRESS_LENGTH]byte
+    Mtu                         uint32
+    Type                        uint32
+    TunnelType                  uint32
+    MediaType                   uint32
+    PhysicalMediumType          uint32
+    AccessType                  uint32
+    DirectionType               uint32
+    InterfaceAndOperStatusFlags uint8 // Bit field
+    OperStatus                  uint32
+    AdminStatus                 uint32
+    MediaConnectState           uint32
+    NetworkGuid                 [16]byte
+    ConnectionType              uint32
+    TransmitLinkSpeed           uint64
+    ReceiveLinkSpeed            uint64
+    InOctets                    uint64
+    InUcastPkts                 uint64
+    InNUcastPkts                uint64
+    InDiscards                  uint64
+    InErrors                    uint64
+    InUnknownProtos             uint64
+    InUcastOctets               uint64
+    InMulticastOctets           uint64
+    InBroadcastOctets           uint64
+    OutOctets                   uint64
+    OutUcastPkts                uint64
+    OutNUcastPkts               uint64
+    OutDiscards                 uint64
+    OutErrors                   uint64
+    OutUcastOctets              uint64
+    OutMulticastOctets          uint64
+    OutBroadcastOctets          uint64
+    OutQLen                     uint64
+}
+
+type MibIfRow struct {
+    Name            [256]byte
+    Index           uint32
+    Type            uint32
+    Mtu             uint32
+    Speed           uint32
+    PhysAddrLen     uint32
+    PhysAddr        [8]byte
+    AdminStatus     uint32
+    OperStatus      uint32
+    LastChange      uint32
+    InOctets        uint32
+    InUcastPkts     uint32
+    InNUcastPkts    uint32
+    InDiscards      uint32
+    InErrors        uint32
+    InUnknownProtos uint32
+    OutOctets       uint32
+    OutUcastPkts    uint32
+    OutNUcastPkts   uint32
+    OutDiscards     uint32
+    OutErrors       uint32
+    OutQLen         uint32
+    DescrLen        uint32
+    Descr           [256]byte
 }
 
 // WMI query functions
@@ -488,7 +525,7 @@ func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options m
     // Get process start time
     var creationTime, exitTime, kernelTime, userTime syscall.Filetime
     if timeProc := kernel32.NewProc("GetProcessTimes"); timeProc.Addr() != 0 {
-        r1, _, err := timeProc.Call(uintptr(handle),
+        r1, _, _ := timeProc.Call(uintptr(handle),
             uintptr(unsafe.Pointer(&creationTime)),
             uintptr(unsafe.Pointer(&exitTime)),
             uintptr(unsafe.Pointer(&kernelTime)),
@@ -768,76 +805,236 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
     return info, nil
 }
 
-// getNetworkIO returns network I/O statistics
+// getNetworkIO returns network I/O throughput statistics (Windows implementation)
 func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     var stats []NetworkIOStats
 
-    // Get network interfaces using net.Interfaces
+    // Get network interfaces using net.Interfaces first
     ifaces, err := net.Interfaces()
     if err != nil {
-        return stats, err
+        return nil, fmt.Errorf("failed to get network interfaces: %v", err)
     }
 
-    for _, iface := range ifaces {
-        // Apply interface filter if specified
-        if options != nil && options["interface"] != nil {
-            if iface.Name != options["interface"].(string) {
-                continue
-            }
-        }
+    // Create a map to store interface statistics by MAC address
+    interfaceStats := make(map[string]NetworkIOStats)
 
-        // Get interface statistics using Windows API
-        var rxBytes, txBytes, rxPackets, txPackets uint64
-        var rxErrors, txErrors, rxDropped, txDropped uint64
+    // Get all interface statistics using GetIfTable2 and match by MAC address
+    if iphlpapi := syscall.NewLazyDLL("iphlpapi.dll"); iphlpapi.Handle() != 0 {
+        if getIfTable2 := iphlpapi.NewProc("GetIfTable2"); getIfTable2.Addr() != 0 {
+            // GetIfTable2 allocates memory and returns a pointer to the table
+            var tablePtr uintptr
+            r1, _, _ := getIfTable2.Call(uintptr(unsafe.Pointer(&tablePtr)))
 
-        // Use Windows API to get real network statistics
-        // Get adapter index for this interface
-        adapterIndex := uint32(0)
-        if adapterProc := iphlpapi.NewProc("GetAdapterIndex"); adapterProc.Addr() != 0 {
-            adapterName := syscall.StringToUTF16Ptr(iface.Name)
-            r1, _, _ := adapterProc.Call(uintptr(unsafe.Pointer(adapterName)), uintptr(unsafe.Pointer(&adapterIndex)))
-            if r1 != 0 {
-                adapterIndex = adapterIndex
-            }
-        }
+            if r1 == 0 { // NO_ERROR
+                // Parse the table structure
+                if tablePtr != 0 {
+                    // Cast the pointer to our structure
+                    table := (*MibIfTable2)(unsafe.Pointer(tablePtr))
 
-        // Use GetIfEntry2 to get interface statistics
-        if adapterIndex > 0 {
-            // Define the MIB_IFROW2 structure for Windows
-            var ifRow MibIfRow2
-            ifRow.InterfaceIndex = adapterIndex
+                    // Iterate through the entries
+                    for i := uint32(0); i < table.NumEntries; i++ {
+                        // Get pointer to the i-th row
+                        rowPtr := uintptr(unsafe.Pointer(&table.Table[0])) + uintptr(i)*unsafe.Sizeof(MibIfRow2{})
+                        ifRow := (*MibIfRow2)(unsafe.Pointer(rowPtr))
 
-            if getIfProc := iphlpapi.NewProc("GetIfEntry2"); getIfProc.Addr() != 0 {
-                r1, _, _ := getIfProc.Call(uintptr(unsafe.Pointer(&ifRow)))
-                if r1 == 0 {
-                    // Extract real statistics from the interface data
-                    rxBytes = ifRow.InOctets
-                    txBytes = ifRow.OutOctets
-                    rxPackets = ifRow.InUcastPkts + ifRow.InNUcastPkts
-                    txPackets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts
-                    rxErrors = ifRow.InErrors
-                    txErrors = ifRow.OutErrors
-                    rxDropped = ifRow.InDiscards
-                    txDropped = ifRow.OutDiscards
+                        // Convert MAC address to string for matching
+                        macStr := ""
+                        if ifRow.PhysicalAddressLength >= 6 {
+                            macStr = fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
+                                ifRow.PhysicalAddress[0], ifRow.PhysicalAddress[1], ifRow.PhysicalAddress[2],
+                                ifRow.PhysicalAddress[3], ifRow.PhysicalAddress[4], ifRow.PhysicalAddress[5])
+                        }
+
+                        // Convert interface name from UTF16 to string
+                        interfaceName := ""
+                        if ifRow.Description[0] != 0 {
+                            // Find null terminator
+                            nameLen := 0
+                            for nameLen < 256 && ifRow.Description[nameLen] != 0 {
+                                nameLen++
+                            }
+                            interfaceName = syscall.UTF16ToString(ifRow.Description[:nameLen])
+                        }
+
+                        // Create network stats for this interface
+                        netStats := NetworkIOStats{
+                            Interface:  interfaceName,
+                            RxBytes:    ifRow.InOctets,
+                            TxBytes:    ifRow.OutOctets,
+                            RxPackets:  ifRow.InUcastPkts + ifRow.InNUcastPkts,
+                            TxPackets:  ifRow.OutUcastPkts + ifRow.OutNUcastPkts,
+                            RxErrors:   ifRow.InErrors,
+                            TxErrors:   ifRow.OutErrors,
+                            RxDropped:  ifRow.InDiscards,
+                            TxDropped:  ifRow.OutDiscards,
+                            Collisions: 0, // Windows doesn't provide collision data
+
+                            // Additional Windows-specific fields
+                            MTU:               ifRow.Mtu,
+                            InterfaceType:     ifRow.Type,
+                            MediaType:         ifRow.MediaType,
+                            OperStatus:        ifRow.OperStatus,
+                            AdminStatus:       ifRow.AdminStatus,
+                            TransmitLinkSpeed: ifRow.TransmitLinkSpeed,
+                            ReceiveLinkSpeed:  ifRow.ReceiveLinkSpeed,
+
+                            // Detailed packet breakdowns
+                            RxUcastPkts:       ifRow.InUcastPkts,
+                            TxUcastPkts:       ifRow.OutUcastPkts,
+                            RxNUcastPkts:      ifRow.InNUcastPkts,
+                            TxNUcastPkts:      ifRow.OutNUcastPkts,
+                            RxUcastOctets:     ifRow.InUcastOctets,
+                            TxUcastOctets:     ifRow.OutUcastOctets,
+                            RxMulticastOctets: ifRow.InMulticastOctets,
+                            TxMulticastOctets: ifRow.OutMulticastOctets,
+                            RxBroadcastOctets: ifRow.InBroadcastOctets,
+                            TxBroadcastOctets: ifRow.OutBroadcastOctets,
+
+                            // Additional error statistics
+                            RxUnknownProtos: ifRow.InUnknownProtos,
+                            OutQLen:         ifRow.OutQLen,
+                        }
+
+                        // Store by MAC address for later matching, but prefer main interfaces over filter extensions
+                        if macStr != "" {
+                            // Check if this is a main interface (no filter extensions in name)
+                            isMainInterface := !strings.Contains(interfaceName, "-WFP") &&
+                                !strings.Contains(interfaceName, "-Kaspersky") &&
+                                !strings.Contains(interfaceName, "-Npcap") &&
+                                !strings.Contains(interfaceName, "-VirtualBox") &&
+                                !strings.Contains(interfaceName, "-QoS") &&
+                                !strings.Contains(interfaceName, "-Native WiFi") &&
+                                !strings.Contains(interfaceName, "-Virtual WiFi")
+
+                            // Only store if it's a main interface or if we haven't stored this MAC yet
+                            if isMainInterface || interfaceStats[macStr].Interface == "" {
+                                interfaceStats[macStr] = netStats
+                            }
+                        }
+                    }
+
+                    // Free the memory allocated by GetIfTable2
+                    if freeMibTable := iphlpapi.NewProc("FreeMibTable"); freeMibTable.Addr() != 0 {
+                        freeMibTable.Call(tablePtr)
+                    }
                 }
             }
         }
+    }
 
-        stats = append(stats, NetworkIOStats{
-            Interface:  iface.Name,
-            RxBytes:    rxBytes,
-            TxBytes:    txBytes,
-            RxPackets:  rxPackets,
-            TxPackets:  txPackets,
-            RxErrors:   rxErrors,
-            TxErrors:   txErrors,
-            RxDropped:  rxDropped,
-            TxDropped:  txDropped,
-            Collisions: 0xFFFFFFFFFFFFFFFF, // Sentinel value for unavailable data
-        })
+    // Now match the interfaces by MAC address
+    for _, iface := range ifaces {
+        // Apply interface filter if specified
+        shouldInclude := true
+        if options != nil && options["interface"] != nil {
+            shouldInclude = (iface.Name == options["interface"].(string))
+        }
+
+        if shouldInclude {
+            // Skip virtual interfaces
+            if !isVirtualInterface(iface.Name) {
+                // Try to match by MAC address
+                macStr := iface.HardwareAddr.String()
+                if macStr != "" {
+                    if netStats, exists := interfaceStats[macStr]; exists {
+                        // Update the interface name to the correct one
+                        netStats.Interface = iface.Name
+                        stats = append(stats, netStats)
+                    } else {
+                        // No match found, add with zero stats but include all fields
+                        stats = append(stats, NetworkIOStats{
+                            Interface:  iface.Name,
+                            RxBytes:    0,
+                            TxBytes:    0,
+                            RxPackets:  0,
+                            TxPackets:  0,
+                            RxErrors:   0,
+                            TxErrors:   0,
+                            RxDropped:  0,
+                            TxDropped:  0,
+                            Collisions: 0,
+
+                            // Additional Windows-specific fields (zero values)
+                            MTU:               0,
+                            InterfaceType:     0,
+                            MediaType:         0,
+                            OperStatus:        0,
+                            AdminStatus:       0,
+                            TransmitLinkSpeed: 0,
+                            ReceiveLinkSpeed:  0,
+
+                            // Detailed packet breakdowns (zero values)
+                            RxUcastPkts:       0,
+                            TxUcastPkts:       0,
+                            RxNUcastPkts:      0,
+                            TxNUcastPkts:      0,
+                            RxUcastOctets:     0,
+                            TxUcastOctets:     0,
+                            RxMulticastOctets: 0,
+                            TxMulticastOctets: 0,
+                            RxBroadcastOctets: 0,
+                            TxBroadcastOctets: 0,
+
+                            // Additional error statistics (zero values)
+                            RxUnknownProtos: 0,
+                            OutQLen:         0,
+                        })
+                    }
+                } else {
+                    // No MAC address, add with zero stats but include all fields
+                    stats = append(stats, NetworkIOStats{
+                        Interface:  iface.Name,
+                        RxBytes:    0,
+                        TxBytes:    0,
+                        RxPackets:  0,
+                        TxPackets:  0,
+                        RxErrors:   0,
+                        TxErrors:   0,
+                        RxDropped:  0,
+                        TxDropped:  0,
+                        Collisions: 0,
+
+                        // Additional Windows-specific fields (zero values)
+                        MTU:               0,
+                        InterfaceType:     0,
+                        MediaType:         0,
+                        OperStatus:        0,
+                        AdminStatus:       0,
+                        TransmitLinkSpeed: 0,
+                        ReceiveLinkSpeed:  0,
+
+                        // Detailed packet breakdowns (zero values)
+                        RxUcastPkts:       0,
+                        TxUcastPkts:       0,
+                        RxNUcastPkts:      0,
+                        TxNUcastPkts:      0,
+                        RxUcastOctets:     0,
+                        TxUcastOctets:     0,
+                        RxMulticastOctets: 0,
+                        TxMulticastOctets: 0,
+                        RxBroadcastOctets: 0,
+                        TxBroadcastOctets: 0,
+
+                        // Additional error statistics (zero values)
+                        RxUnknownProtos: 0,
+                        OutQLen:         0,
+                    })
+                }
+            }
+        }
     }
 
     return stats, nil
+}
+
+// PDH_FMT_COUNTERVALUE structure for Performance Counters
+type PDH_FMT_COUNTERVALUE struct {
+    CStatus         uint32
+    longValue       int32
+    doubleValue     float64
+    largeValue      int64
+    AnsiStringValue *byte
+    StringValue     *uint16
 }
 
 // debugCPUFiles returns debug information about available CPU files (Windows placeholder)
@@ -1351,16 +1548,38 @@ func getNetworkDevices(options map[string]interface{}) ([]map[string]interface{}
 
 // getDefaultGatewayInterface returns the name of the default gateway interface (Windows implementation)
 func getDefaultGatewayInterface() (string, error) {
-    // Use Windows API to get the default gateway interface
-    // This is a simplified implementation using netstat
-
-    // Get all network interfaces
+    // Use a more sophisticated approach: get all network interfaces and filter out virtual ones
     ifaces, err := net.Interfaces()
     if err != nil {
         return "", err
     }
 
-    // Look for interfaces that are up and have an IP address
+    // First, try to find interfaces that are likely to be physical network adapters
+    for _, iface := range ifaces {
+        if iface.Flags&net.FlagUp == 0 {
+            continue
+        }
+
+        // Skip virtual interfaces
+        if isVirtualInterface(iface.Name) {
+            continue
+        }
+
+        addrs, err := iface.Addrs()
+        if err != nil {
+            continue
+        }
+
+        for _, addr := range addrs {
+            if ipnet, ok := addr.(*net.IPNet); ok {
+                if !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+                    return iface.Name, nil
+                }
+            }
+        }
+    }
+
+    // If no physical interfaces found, fall back to any non-loopback interface
     for _, iface := range ifaces {
         if iface.Flags&net.FlagUp == 0 {
             continue
@@ -1371,52 +1590,53 @@ func getDefaultGatewayInterface() (string, error) {
             continue
         }
 
-        // Check if this interface has an IP address
         for _, addr := range addrs {
             if ipnet, ok := addr.(*net.IPNet); ok {
                 if !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-                    // This is a good candidate for the default gateway interface
-                    // For now, return the first non-loopback interface with an IPv4 address
                     return iface.Name, nil
                 }
             }
         }
     }
 
-    return "", fmt.Errorf("no suitable default gateway interface found")
+    return "", fmt.Errorf("no suitable network interface found")
+}
+
+// isVirtualInterface checks if an interface is virtual (WSL, VPN, etc.)
+func isVirtualInterface(name string) bool {
+    nameLower := strings.ToLower(name)
+
+    // Common virtual interface patterns
+    virtualPatterns := []string{
+        "vethernet",  // WSL
+        "vpn",        // VPN interfaces
+        "tunnel",     // Tunnel interfaces
+        "tap",        // TAP interfaces
+        "tun",        // TUN interfaces
+        "ppp",        // PPP interfaces
+        "slip",       // SLIP interfaces
+        "loopback",   // Loopback
+        "virtual",    // Virtual interfaces
+        "vmware",     // VMware
+        "virtualbox", // VirtualBox
+        "hyper-v",    // Hyper-V
+        "docker",     // Docker
+        "wsl",        // WSL
+        "bridge",     // Bridge interfaces
+    }
+
+    for _, pattern := range virtualPatterns {
+        if strings.Contains(nameLower, pattern) {
+            return true
+        }
+    }
+
+    return false
 }
 
 // getDefaultGatewayAddress returns the IP address of the default gateway (Windows implementation)
 func getDefaultGatewayAddress() (string, error) {
-    // Use Windows API to get the default gateway address
-    // Get the default gateway using GetAdaptersInfo
-
-    if getAdaptersInfoProc := iphlpapi.NewProc("GetAdaptersInfo"); getAdaptersInfoProc.Addr() != 0 {
-        // First call to get the size needed
-        var size uint32
-        r1, _, _ := getAdaptersInfoProc.Call(0, uintptr(unsafe.Pointer(&size)))
-
-        if r1 == 111 { // ERROR_BUFFER_TOO_SMALL
-            // Allocate buffer and call again
-            buffer := make([]byte, size)
-            r1, _, _ = getAdaptersInfoProc.Call(uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)))
-
-            if r1 == 0 { // NO_ERROR
-                // Parse the adapter info to find the default gateway
-                // This is a simplified approach - in a full implementation you'd parse the buffer
-                // For now, we'll use a fallback approach
-                return getDefaultGatewayFromRouteTable()
-            }
-        }
-    }
-
-    return getDefaultGatewayFromRouteTable()
-}
-
-// getDefaultGatewayFromRouteTable uses Windows API to get default gateway
-func getDefaultGatewayFromRouteTable() (string, error) {
-    // Use Windows API to get routing table
-    // Try GetIpForwardTable first
+    // Use Windows API to get the default gateway address from routing table
     if getIpForwardTableProc := iphlpapi.NewProc("GetIpForwardTable"); getIpForwardTableProc.Addr() != 0 {
         // First call to get the size needed
         var size uint32
@@ -1428,18 +1648,16 @@ func getDefaultGatewayFromRouteTable() (string, error) {
             r1, _, _ = getIpForwardTableProc.Call(uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)), 0)
 
             if r1 == 0 { // NO_ERROR
-                // Parse the routing table to find default gateway
-                return parseWindowsRoutingTable(buffer)
+                return parseWindowsRoutingTableForGateway(buffer)
             }
         }
     }
 
-    // Fallback: try to get from network interfaces
-    return getDefaultGatewayFromInterfaces()
+    return "", fmt.Errorf("failed to get routing table")
 }
 
-// parseWindowsRoutingTable parses Windows routing table to find default gateway
-func parseWindowsRoutingTable(buffer []byte) (string, error) {
+// parseWindowsRoutingTableForGateway parses Windows routing table to find default gateway address
+func parseWindowsRoutingTableForGateway(buffer []byte) (string, error) {
     if len(buffer) < 4 {
         return "", fmt.Errorf("buffer too small")
     }
@@ -1485,8 +1703,8 @@ func parseWindowsRoutingTable(buffer []byte) (string, error) {
     return "", fmt.Errorf("no default gateway found in routing table")
 }
 
-// getDefaultGatewayFromInterfaces tries to determine default gateway from interface configuration
-func getDefaultGatewayFromInterfaces() (string, error) {
+// getDefaultGatewayInterfaceFromInterfaces tries to determine default gateway interface from interface configuration
+func getDefaultGatewayInterfaceFromInterfaces() (string, error) {
     ifaces, err := net.Interfaces()
     if err != nil {
         return "", err
@@ -1505,21 +1723,18 @@ func getDefaultGatewayFromInterfaces() (string, error) {
         for _, addr := range addrs {
             if ipnet, ok := addr.(*net.IPNet); ok {
                 if !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-                    // Try to get gateway for this interface using Windows API
-                    if gateway := getInterfaceGateway(iface.Name); gateway != "" {
-                        return gateway, nil
-                    }
+                    return iface.Name, nil
                 }
             }
         }
     }
 
-    return "", fmt.Errorf("no default gateway found")
+    return "", fmt.Errorf("no default gateway interface found")
 }
 
 // getInterfaceGateway tries to get the gateway for a specific interface using Windows API
 func getInterfaceGateway(ifaceName string) string {
-    // Try to get gateway from interface using GetAdaptersInfo
+    // Use GetAdaptersInfo to get gateway information
     if getAdaptersInfoProc := iphlpapi.NewProc("GetAdaptersInfo"); getAdaptersInfoProc.Addr() != 0 {
         var size uint32
         r1, _, _ := getAdaptersInfoProc.Call(0, uintptr(unsafe.Pointer(&size)))
@@ -1529,7 +1744,6 @@ func getInterfaceGateway(ifaceName string) string {
             r1, _, _ = getAdaptersInfoProc.Call(uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)))
 
             if r1 == 0 { // NO_ERROR
-                // Parse adapter info to find gateway for this interface
                 return parseWindowsAdapterInfo(buffer, ifaceName)
             }
         }
@@ -1593,42 +1807,20 @@ func parseWindowsAdapterInfo(buffer []byte, ifaceName string) string {
 
 // getDefaultGatewayInfo returns complete default gateway information (Windows implementation)
 func getDefaultGatewayInfo() (map[string]interface{}, error) {
-    // Get the default gateway address first
-    gateway, err := getDefaultGatewayAddress()
+    // Get the default gateway interface
+    interfaceName, err := getDefaultGatewayInterface()
     if err != nil {
         return nil, err
     }
 
-    // Find the interface that has this gateway
-    ifaces, err := net.Interfaces()
+    // Get the default gateway address
+    gatewayAddress, err := getDefaultGatewayAddress()
     if err != nil {
         return nil, err
     }
 
-    // Look for interfaces that are up and have an IP address
-    for _, iface := range ifaces {
-        if iface.Flags&net.FlagUp == 0 {
-            continue
-        }
-
-        addrs, err := iface.Addrs()
-        if err != nil {
-            continue
-        }
-
-        // Check if this interface has an IP address
-        for _, addr := range addrs {
-            if ipnet, ok := addr.(*net.IPNet); ok {
-                if !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-                    // This is a good candidate for the default gateway interface
-                    return map[string]interface{}{
-                        "interface": iface.Name,
-                        "gateway":   gateway,
-                    }, nil
-                }
-            }
-        }
-    }
-
-    return nil, fmt.Errorf("no suitable default gateway interface found")
+    return map[string]interface{}{
+        "interface": interfaceName,
+        "gateway":   gatewayAddress,
+    }, nil
 }
