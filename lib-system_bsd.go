@@ -1090,10 +1090,16 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse MTU
         var mtu uint64
+        fmt.Printf("DEBUG: fields[1] = '%s'\n", fields[1])
         if fields[1] != "-" { // Check if MTU field is not a dash
             if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
                 mtu = val
+                fmt.Printf("DEBUG: Parsed MTU = %d\n", mtu)
+            } else {
+                fmt.Printf("DEBUG: Failed to parse MTU: %v\n", err)
             }
+        } else {
+            fmt.Printf("DEBUG: MTU field is dash, skipping\n")
         }
 
         // Determine interface type based on name patterns
