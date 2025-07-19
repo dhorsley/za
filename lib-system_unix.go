@@ -1067,10 +1067,6 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     }
 
     for _, entry := range entries {
-        if !entry.IsDir() {
-            continue
-        }
-
         interfaceName := entry.Name()
 
         // Apply interface filter if specified
@@ -1082,9 +1078,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Get all statistics from /sys/class/net/{interface}/statistics/
         statsPath := fmt.Sprintf("/sys/class/net/%s/statistics", interfaceName)
-        if _, err := os.Stat(statsPath); err != nil {
-            continue // Skip interfaces without statistics
-        }
+        // Remove the statistics path check - include all interfaces even if they don't have statistics
 
         var rxBytes, txBytes, rxPackets, txPackets, rxErrors, txErrors, rxDropped, txDropped, collisions uint64
 
@@ -1151,6 +1145,43 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             collisions = 0xFFFFFFFFFFFFFFFF
         }
 
+        // Read additional Linux-specific information
+        var mtu, interfaceType, operStatus, speed, multicast uint64
+
+        // Read MTU
+        if data, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/mtu", interfaceName)); err == nil {
+            mtu, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        }
+
+        // Read interface type
+        if data, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/type", interfaceName)); err == nil {
+            interfaceType, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        }
+
+        // Read operational status (convert string to numeric)
+        if data, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/operstate", interfaceName)); err == nil {
+            operState := strings.TrimSpace(string(data))
+            switch operState {
+            case "up":
+                operStatus = 1
+            case "down":
+                operStatus = 2
+            default:
+                operStatus = 0 // unknown
+            }
+        }
+
+        // Read link speed (convert Mbps to bps)
+        if data, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/speed", interfaceName)); err == nil {
+            speedMbps, _ := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+            speed = speedMbps * 1000000 // Convert Mbps to bps
+        }
+
+        // Read multicast statistics
+        if data, err := os.ReadFile(fmt.Sprintf("%s/multicast", statsPath)); err == nil {
+            multicast, _ = strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+        }
+
         stats = append(stats, NetworkIOStats{
             Interface:  interfaceName,
             RxBytes:    rxBytes,
@@ -1162,6 +1193,31 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             RxDropped:  rxDropped,
             TxDropped:  txDropped,
             Collisions: collisions,
+
+            // Additional fields available on Linux
+            MTU:               uint32(mtu),
+            InterfaceType:     uint32(interfaceType),
+            MediaType:         0, // Linux doesn't provide this concept
+            OperStatus:        uint32(operStatus),
+            AdminStatus:       1, // Assume enabled on Linux
+            TransmitLinkSpeed: speed,
+            ReceiveLinkSpeed:  speed, // Linux typically reports same speed for both
+
+            // Detailed packet breakdowns (Linux doesn't provide these breakdowns)
+            RxUcastPkts:       0,
+            TxUcastPkts:       0,
+            RxNUcastPkts:      0,
+            TxNUcastPkts:      0,
+            RxUcastOctets:     0,
+            TxUcastOctets:     0,
+            RxMulticastOctets: multicast, // Use multicast count as approximation
+            TxMulticastOctets: 0,
+            RxBroadcastOctets: 0,
+            TxBroadcastOctets: 0,
+
+            // Additional error statistics
+            RxUnknownProtos: 0, // Linux doesn't provide this
+            OutQLen:         0, // Linux doesn't provide this
         })
     }
 
