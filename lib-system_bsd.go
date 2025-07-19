@@ -1152,6 +1152,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Only include interfaces with actual data
         if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
+            fmt.Printf("DEBUG: Creating struct for %s with MTU=%d\n", interfaceName, mtu)
             stats = append(stats, NetworkIOStats{
                 Interface:  interfaceName,
                 RxBytes:    rxBytes,
