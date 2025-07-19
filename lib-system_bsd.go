@@ -1035,7 +1035,7 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse interface name
         interfaceName := strings.TrimSpace(fields[0])
-        fmt.Printf("DEBUG: Processing line for interface: %s, fields: %v\n", interfaceName, fields)
+        fmt.Printf("DEBUG: Raw interface name bytes: %q\n", interfaceName)
 
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
@@ -1054,7 +1054,6 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
         if stats == nil {
-            fmt.Printf("DEBUG: Creating new stats for interface: %s\n", interfaceName)
             // Create new stats entry
             result = append(result, NetworkIOStats{
                 Interface: interfaceName,
@@ -1069,13 +1068,11 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         if fields[1] != "-" && stats.MTU == 0 {
             if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
                 stats.MTU = uint32(val)
-                fmt.Printf("DEBUG: Set MTU for %s to %d\n", interfaceName, val)
             }
         }
 
         // Parse traffic statistics from any line that has data
         if fields[3] != "-" && fields[3] != "0" {
-            fmt.Printf("DEBUG: Processing traffic data for %s\n", interfaceName)
             // Parse input statistics - only update if not already set
             if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil && stats.RxPackets == 0 {
                 stats.RxPackets = val
@@ -1162,12 +1159,6 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
     }
-
-    fmt.Printf("DEBUG: Final result has %d interfaces: ", len(result))
-    for _, stats := range result {
-        fmt.Printf("%s (RxBytes: %d, TxBytes: %d), ", stats.Interface, stats.RxBytes, stats.TxBytes)
-    }
-    fmt.Printf("\n")
 
     return result, nil
 }
