@@ -759,6 +759,39 @@ func buildListLib() {
             case *big.Float:
                 l := make([]*big.Float, 0, 31)
                 return append(l, args[0].(*big.Float)), nil
+            case NetworkIOStats:
+                l := make([]NetworkIOStats, 0, 31)
+                return append(l, args[0].(NetworkIOStats)), nil
+            case DiskIOStats:
+                l := make([]DiskIOStats, 0, 31)
+                return append(l, args[0].(DiskIOStats)), nil
+            case ProcessInfo:
+                l := make([]ProcessInfo, 0, 31)
+                return append(l, args[0].(ProcessInfo)), nil
+            case SystemResources:
+                l := make([]SystemResources, 0, 31)
+                return append(l, args[0].(SystemResources)), nil
+            case MemoryInfo:
+                l := make([]MemoryInfo, 0, 31)
+                return append(l, args[0].(MemoryInfo)), nil
+            case CPUInfo:
+                l := make([]CPUInfo, 0, 31)
+                return append(l, args[0].(CPUInfo)), nil
+            case ProcessTree:
+                l := make([]ProcessTree, 0, 31)
+                return append(l, args[0].(ProcessTree)), nil
+            case ProcessMap:
+                l := make([]ProcessMap, 0, 31)
+                return append(l, args[0].(ProcessMap)), nil
+            case ResourceUsage:
+                l := make([]ResourceUsage, 0, 31)
+                return append(l, args[0].(ResourceUsage)), nil
+            case ResourceSnapshot:
+                l := make([]ResourceSnapshot, 0, 31)
+                return append(l, args[0].(ResourceSnapshot)), nil
+            case SlabInfo:
+                l := make([]SlabInfo, 0, 31)
+                return append(l, args[0].(SlabInfo)), nil
             case nil:
                 l := make([]any, 0, 31)
                 return l, nil
@@ -872,6 +905,138 @@ func buildListLib() {
                 s = l
             }
             l := append(s, args[1].(any))
+            return l, nil
+        case []NetworkIOStats:
+            if "NetworkIOStats" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:NetworkIOStats,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]NetworkIOStats, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(NetworkIOStats))
+            return l, nil
+        case []DiskIOStats:
+            if "DiskIOStats" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:DiskIOStats,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]DiskIOStats, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(DiskIOStats))
+            return l, nil
+        case []ProcessInfo:
+            if "ProcessInfo" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:ProcessInfo,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]ProcessInfo, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(ProcessInfo))
+            return l, nil
+        case []SystemResources:
+            if "SystemResources" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:SystemResources,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]SystemResources, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(SystemResources))
+            return l, nil
+        case []MemoryInfo:
+            if "MemoryInfo" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:MemoryInfo,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]MemoryInfo, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(MemoryInfo))
+            return l, nil
+        case []CPUInfo:
+            if "CPUInfo" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:CPUInfo,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]CPUInfo, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(CPUInfo))
+            return l, nil
+        case []ProcessTree:
+            if "ProcessTree" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:ProcessTree,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]ProcessTree, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(ProcessTree))
+            return l, nil
+        case []ProcessMap:
+            if "ProcessMap" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:ProcessMap,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]ProcessMap, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(ProcessMap))
+            return l, nil
+        case []ResourceUsage:
+            if "ResourceUsage" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:ResourceUsage,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]ResourceUsage, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(ResourceUsage))
+            return l, nil
+        case []ResourceSnapshot:
+            if "ResourceSnapshot" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:ResourceSnapshot,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]ResourceSnapshot, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(ResourceSnapshot))
+            return l, nil
+        case []SlabInfo:
+            if "SlabInfo" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:SlabInfo,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]SlabInfo, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(SlabInfo))
             return l, nil
         default:
             return nil, errors.New(sf("data type [%T] not supported in append()", args[0]))

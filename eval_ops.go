@@ -501,7 +501,7 @@ func ev_sub(val1 any, val2 any) any {
     switch val1.(type) {
     case int:
         intInOne = true
-    case uint,uint64:
+    case uint, uint64:
         uintInOne = true
     case int64:
         i641 = true
@@ -513,7 +513,7 @@ func ev_sub(val1 any, val2 any) any {
     switch val2.(type) {
     case int:
         intInTwo = true
-    case uint,uint64:
+    case uint, uint64:
         uintInTwo = true
     case int64:
         i642 = true
@@ -1668,6 +1668,50 @@ func accessArray(ident *[]Variable, obj any, field any) any {
                     if len(obj) > ifield {
                         return obj[ifield]
                     }
+                case []NetworkIOStats:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []DiskIOStats:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []ProcessInfo:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []SystemResources:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []MemoryInfo:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []CPUInfo:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []ProcessTree:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []ProcessMap:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []ResourceUsage:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []ResourceSnapshot:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
+                case []SlabInfo:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
                 default:
                     // Handle kdynamic types using reflection
                     rval := reflect.ValueOf(obj)
@@ -1726,6 +1770,39 @@ func slice(v any, from, to any) any {
     case []any:
         isArr = true
         arl = len(v.([]any))
+    case []NetworkIOStats:
+        isArr = true
+        arl = len(v.([]NetworkIOStats))
+    case []DiskIOStats:
+        isArr = true
+        arl = len(v.([]DiskIOStats))
+    case []ProcessInfo:
+        isArr = true
+        arl = len(v.([]ProcessInfo))
+    case []SystemResources:
+        isArr = true
+        arl = len(v.([]SystemResources))
+    case []MemoryInfo:
+        isArr = true
+        arl = len(v.([]MemoryInfo))
+    case []CPUInfo:
+        isArr = true
+        arl = len(v.([]CPUInfo))
+    case []ProcessTree:
+        isArr = true
+        arl = len(v.([]ProcessTree))
+    case []ProcessMap:
+        isArr = true
+        arl = len(v.([]ProcessMap))
+    case []ResourceUsage:
+        isArr = true
+        arl = len(v.([]ResourceUsage))
+    case []ResourceSnapshot:
+        isArr = true
+        arl = len(v.([]ResourceSnapshot))
+    case []SlabInfo:
+        isArr = true
+        arl = len(v.([]SlabInfo))
     case int, uint, int64, uint64, uint8, float64, *big.Int, *big.Float:
         // clamp operator
         if from == nil && to != nil { // only expressing upper limit
@@ -1803,6 +1880,28 @@ func slice(v any, from, to any) any {
         return v.([][]int)[fromInt:toInt]
     case []any:
         return v.([]any)[fromInt:toInt]
+    case []NetworkIOStats:
+        return v.([]NetworkIOStats)[fromInt:toInt]
+    case []DiskIOStats:
+        return v.([]DiskIOStats)[fromInt:toInt]
+    case []ProcessInfo:
+        return v.([]ProcessInfo)[fromInt:toInt]
+    case []SystemResources:
+        return v.([]SystemResources)[fromInt:toInt]
+    case []MemoryInfo:
+        return v.([]MemoryInfo)[fromInt:toInt]
+    case []CPUInfo:
+        return v.([]CPUInfo)[fromInt:toInt]
+    case []ProcessTree:
+        return v.([]ProcessTree)[fromInt:toInt]
+    case []ProcessMap:
+        return v.([]ProcessMap)[fromInt:toInt]
+    case []ResourceUsage:
+        return v.([]ResourceUsage)[fromInt:toInt]
+    case []ResourceSnapshot:
+        return v.([]ResourceSnapshot)[fromInt:toInt]
+    case []SlabInfo:
+        return v.([]SlabInfo)[fromInt:toInt]
     }
     return nil
 }
