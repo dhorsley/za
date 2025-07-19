@@ -1096,16 +1096,10 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         // Parse MTU
         var mtu uint64
-        fmt.Printf("DEBUG: fields[1] = '%s'\n", fields[1])
         if fields[1] != "-" { // Check if MTU field is not a dash
             if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
                 mtu = val
-                fmt.Printf("DEBUG: Parsed MTU = %d\n", mtu)
-            } else {
-                fmt.Printf("DEBUG: Failed to parse MTU: %v\n", err)
             }
-        } else {
-            fmt.Printf("DEBUG: MTU field is dash, skipping\n")
         }
 
         // Determine interface type based on name patterns
@@ -1156,47 +1150,44 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             }
         }
 
-        // Only include interfaces with actual data
-        if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
-            fmt.Printf("DEBUG: Creating struct for %s with MTU=%d\n", interfaceName, mtu)
-            stats = append(stats, NetworkIOStats{
-                Interface:  interfaceName,
-                RxBytes:    rxBytes,
-                TxBytes:    txBytes,
-                RxPackets:  rxPackets,
-                TxPackets:  txPackets,
-                RxErrors:   rxErrors,
-                TxErrors:   txErrors,
-                RxDropped:  rxDropped,
-                TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
-                Collisions: collisions, // set from parsed value
+        // Include all interfaces, not just those with traffic
+        stats = append(stats, NetworkIOStats{
+            Interface:  interfaceName,
+            RxBytes:    rxBytes,
+            TxBytes:    txBytes,
+            RxPackets:  rxPackets,
+            TxPackets:  txPackets,
+            RxErrors:   rxErrors,
+            TxErrors:   txErrors,
+            RxDropped:  rxDropped,
+            TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
+            Collisions: collisions, // set from parsed value
 
-                // Additional fields available on BSD
-                MTU:               uint32(mtu),
-                InterfaceType:     uint32(interfaceType),
-                MediaType:         0, // BSD doesn't provide this concept
-                OperStatus:        uint32(operStatus),
-                AdminStatus:       1, // Assume enabled on BSD
-                TransmitLinkSpeed: linkSpeed,
-                ReceiveLinkSpeed:  linkSpeed, // BSD typically reports same speed for both
+            // Additional fields available on BSD
+            MTU:               uint32(mtu),
+            InterfaceType:     uint32(interfaceType),
+            MediaType:         0, // BSD doesn't provide this concept
+            OperStatus:        uint32(operStatus),
+            AdminStatus:       1, // Assume enabled on BSD
+            TransmitLinkSpeed: linkSpeed,
+            ReceiveLinkSpeed:  linkSpeed, // BSD typically reports same speed for both
 
-                // Detailed packet breakdowns (BSD doesn't provide these breakdowns)
-                RxUcastPkts:       0,
-                TxUcastPkts:       0,
-                RxNUcastPkts:      0,
-                TxNUcastPkts:      0,
-                RxUcastOctets:     0,
-                TxUcastOctets:     0,
-                RxMulticastOctets: 0,
-                TxMulticastOctets: 0,
-                RxBroadcastOctets: 0,
-                TxBroadcastOctets: 0,
+            // Detailed packet breakdowns (BSD doesn't provide these breakdowns)
+            RxUcastPkts:       0,
+            TxUcastPkts:       0,
+            RxNUcastPkts:      0,
+            TxNUcastPkts:      0,
+            RxUcastOctets:     0,
+            TxUcastOctets:     0,
+            RxMulticastOctets: 0,
+            TxMulticastOctets: 0,
+            RxBroadcastOctets: 0,
+            TxBroadcastOctets: 0,
 
-                // Additional error statistics
-                RxUnknownProtos: 0, // BSD doesn't provide this
-                OutQLen:         0, // BSD doesn't provide this
-            })
-        }
+            // Additional error statistics
+            RxUnknownProtos: 0, // BSD doesn't provide this
+            OutQLen:         0, // BSD doesn't provide this
+        })
     }
 
     return stats, nil
