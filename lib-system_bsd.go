@@ -1071,36 +1071,71 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
         }
 
         // Parse traffic statistics from any line that has data
-        if fields[3] != "-" && fields[3] != "0" {
-            // Parse input statistics - only update if not already set
-            if val, err := strconv.ParseUint(fields[3], 10, 64); err == nil && stats.RxPackets == 0 {
-                stats.RxPackets = val
+        // BSD netstat format: Name Mtu Network Address Ipkts Ierrs Idrop Ibytes Opkts Oerrs Obytes Coll
+        // We want to prioritize <Link#> entries which contain the actual interface statistics
+        if len(fields) >= 11 {
+            // Check if this is a Link entry (contains actual interface stats)
+            isLinkEntry := strings.HasPrefix(fields[2], "<Link#")
+
+            // Parse input statistics - only update if not already set, prioritize Link entries
+            if fields[4] != "-" && fields[4] != "0" {
+                if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil {
+                    if stats.RxPackets == 0 || isLinkEntry {
+                        stats.RxPackets = val
+                    }
+                }
             }
-            if val, err := strconv.ParseUint(fields[4], 10, 64); err == nil && stats.RxErrors == 0 {
-                stats.RxErrors = val
+            if fields[5] != "-" && fields[5] != "0" {
+                if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil {
+                    if stats.RxErrors == 0 || isLinkEntry {
+                        stats.RxErrors = val
+                    }
+                }
             }
-            if val, err := strconv.ParseUint(fields[5], 10, 64); err == nil && stats.RxDropped == 0 {
-                stats.RxDropped = val
+            if fields[6] != "-" && fields[6] != "0" {
+                if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil {
+                    if stats.RxDropped == 0 || isLinkEntry {
+                        stats.RxDropped = val
+                    }
+                }
             }
-            if val, err := strconv.ParseUint(fields[6], 10, 64); err == nil && stats.RxBytes == 0 {
-                stats.RxBytes = val
+            if fields[7] != "-" && fields[7] != "0" {
+                if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil {
+                    if stats.RxBytes == 0 || isLinkEntry {
+                        stats.RxBytes = val
+                    }
+                }
             }
 
-            // Parse output statistics - only update if not already set
-            if val, err := strconv.ParseUint(fields[7], 10, 64); err == nil && stats.TxPackets == 0 {
-                stats.TxPackets = val
+            // Parse output statistics - only update if not already set, prioritize Link entries
+            if fields[8] != "-" && fields[8] != "0" {
+                if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil {
+                    if stats.TxPackets == 0 || isLinkEntry {
+                        stats.TxPackets = val
+                    }
+                }
             }
-            if val, err := strconv.ParseUint(fields[8], 10, 64); err == nil && stats.TxErrors == 0 {
-                stats.TxErrors = val
+            if fields[9] != "-" && fields[9] != "0" {
+                if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil {
+                    if stats.TxErrors == 0 || isLinkEntry {
+                        stats.TxErrors = val
+                    }
+                }
             }
-            if val, err := strconv.ParseUint(fields[9], 10, 64); err == nil && stats.TxBytes == 0 {
-                stats.TxBytes = val
+            if fields[10] != "-" && fields[10] != "0" {
+                if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil {
+                    if stats.TxBytes == 0 || isLinkEntry {
+                        stats.TxBytes = val
+                    }
+                }
             }
 
-            // Parse collisions (if available) - only update if not already set
-            if len(fields) > 10 && fields[10] != "-" {
-                if val, err := strconv.ParseUint(fields[10], 10, 64); err == nil && stats.Collisions == 0 {
-                    stats.Collisions = val
+            // Parse collisions (if available) - only update if not already set, prioritize Link entries
+            if len(fields) > 11 && fields[11] != "-" && fields[11] != "0" {
+                if val, err := strconv.ParseUint(fields[11], 10, 64); err == nil {
+                    if stats.Collisions == 0 || isLinkEntry {
+                        stats.Collisions = val
+                    }
                 }
             }
         }
