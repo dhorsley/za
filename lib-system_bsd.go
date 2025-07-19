@@ -1037,6 +1037,12 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
 
         interfaceName := fields[0]
 
+        // Only process link layer entries (those with <Link#X>)
+        // Skip IP address entries to avoid overwriting correct MTU values
+        if len(fields) >= 3 && !strings.HasPrefix(fields[2], "<Link#") {
+            continue
+        }
+
         // Apply interface filter if specified
         if options != nil && options["interface"] != nil {
             if interfaceName != options["interface"].(string) {
