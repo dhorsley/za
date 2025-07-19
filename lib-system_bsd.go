@@ -1088,6 +1088,60 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
             collisions = val
         }
 
+        // Parse MTU
+        var mtu uint64
+        if val, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
+            mtu = val
+        }
+
+        // Determine interface type based on name patterns
+        var interfaceType uint64
+        switch {
+        case strings.HasPrefix(interfaceName, "em") || strings.HasPrefix(interfaceName, "igb") || strings.HasPrefix(interfaceName, "ix"):
+            interfaceType = 1 // Ethernet
+        case strings.HasPrefix(interfaceName, "lo"):
+            interfaceType = 772 // Loopback
+        case strings.HasPrefix(interfaceName, "wlan") || strings.HasPrefix(interfaceName, "ath"):
+            interfaceType = 71 // WiFi
+        default:
+            interfaceType = 1 // Default to Ethernet
+        }
+
+        // Determine operational status (if interface has traffic, it's likely up)
+        var operStatus uint64
+        if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
+            operStatus = 1 // Up
+        } else {
+            operStatus = 2 // Down
+        }
+
+        // Get link speed via sysctl (try common sysctl paths)
+        var linkSpeed uint64
+        speedCmds := []string{
+            fmt.Sprintf("sysctl -n dev.%s.media", interfaceName),
+            fmt.Sprintf("sysctl -n dev.%s.%s.media", interfaceName, interfaceName),
+            fmt.Sprintf("sysctl -n hw.net.%s.media", interfaceName),
+        }
+
+        for _, speedCmd := range speedCmds {
+            if cmd := exec.Command("sh", "-c", speedCmd); cmd != nil {
+                if output, err := cmd.Output(); err == nil {
+                    // Parse media info to extract speed
+                    mediaInfo := strings.TrimSpace(string(output))
+                    if strings.Contains(mediaInfo, "1000baseT") {
+                        linkSpeed = 1000000000 // 1 Gbps
+                        break
+                    } else if strings.Contains(mediaInfo, "100baseT") {
+                        linkSpeed = 100000000 // 100 Mbps
+                        break
+                    } else if strings.Contains(mediaInfo, "10baseT") {
+                        linkSpeed = 10000000 // 10 Mbps
+                        break
+                    }
+                }
+            }
+        }
+
         // Only include interfaces with actual data
         if rxBytes > 0 || txBytes > 0 || rxPackets > 0 || txPackets > 0 {
             stats = append(stats, NetworkIOStats{
@@ -1101,6 +1155,31 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
                 RxDropped:  rxDropped,
                 TxDropped:  0,          // netstat doesn't provide tx_dropped, set to 0
                 Collisions: collisions, // set from parsed value
+
+                // Additional fields (zero values for BSD)
+                MTU:               0,
+                InterfaceType:     0,
+                MediaType:         0,
+                OperStatus:        0,
+                AdminStatus:       0,
+                TransmitLinkSpeed: 0,
+                ReceiveLinkSpeed:  0,
+
+                // Detailed packet breakdowns (zero values for BSD)
+                RxUcastPkts:       0,
+                TxUcastPkts:       0,
+                RxNUcastPkts:      0,
+                TxNUcastPkts:      0,
+                RxUcastOctets:     0,
+                TxUcastOctets:     0,
+                RxMulticastOctets: 0,
+                TxMulticastOctets: 0,
+                RxBroadcastOctets: 0,
+                TxBroadcastOctets: 0,
+
+                // Additional error statistics (zero values for BSD)
+                RxUnknownProtos: 0,
+                OutQLen:         0,
             })
         }
     }
