@@ -78,6 +78,9 @@ type SlabInfo struct {
     PagesPerSlab uint64
     Limit        uint64
     BatchCount   uint64
+    // Windows-specific fields for pool memory
+    PagedFrees    uint64
+    NonPagedFrees uint64
 }
 
 // CPUInfo represents CPU information and statistics
