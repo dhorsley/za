@@ -515,9 +515,6 @@ define showHdd()
         endcase
         on skip do continue
 
-        # Get usage percentage from the function result
-        usage_pct = disk["usage_percent"]
-        
         # Add to list as anonymous struct for sorting
         sorted_disks = append(sorted_disks, anon(
             .device device,
