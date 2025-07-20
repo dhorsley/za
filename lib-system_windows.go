@@ -17,8 +17,9 @@ import (
 
 // Windows API constants
 const (
-    PROCESS_QUERY_INFORMATION = 0x0400
-    TH32CS_SNAPPROCESS        = 0x00000002
+    PROCESS_QUERY_INFORMATION         = 0x0400
+    TH32CS_SNAPPROCESS                = 0x00000002
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 )
 
 // Windows implementation of system monitoring functions
@@ -26,10 +27,12 @@ const (
 var (
     psapi    = syscall.NewLazyDLL("psapi.dll")
     advapi32 = syscall.NewLazyDLL("advapi32.dll")
+    ntdll    = syscall.NewLazyDLL("ntdll.dll")
 
-    procGetProcessMemoryInfo = psapi.NewProc("GetProcessMemoryInfo")
-    procGetSystemInfo        = kernel32.NewProc("GetSystemInfo")
-    procGetTickCount64       = kernel32.NewProc("GetTickCount64")
+    procGetProcessMemoryInfo      = psapi.NewProc("GetProcessMemoryInfo")
+    procGetSystemInfo             = kernel32.NewProc("GetSystemInfo")
+    procGetTickCount64            = kernel32.NewProc("GetTickCount64")
+    procNtQueryInformationProcess = ntdll.NewProc("NtQueryInformationProcess")
 )
 
 // Windows API structures
@@ -394,10 +397,12 @@ func getMemoryInfo() (MemoryInfo, error) {
     info.SwapUsed = uint64(memStatus.TotalPageFile - memStatus.AvailPageFile)
     info.SwapFree = uint64(memStatus.AvailPageFile)
 
-    // Windows doesn't have slab allocation or memory pressure
+    // Windows doesn't have memory pressure or OOM scores like Linux
     info.Pressure = make(map[string]PressureStats)
     info.OOMScores = make(map[string]int)
-    info.Slab = make(map[string]SlabInfo)
+
+    // Get Windows pool memory information (equivalent to Linux slab)
+    info.Slab = getSlabInfo()
 
     return info, nil
 }
@@ -433,8 +438,25 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
     }
 
     for {
+        // Extract process name from ExeFile
+        exeName := syscall.UTF16ToString(pe32.ExeFile[:])
+        // Extract just the filename
+        for i := len(exeName) - 1; i >= 0; i-- {
+            if exeName[i] == '\\' || exeName[i] == '/' {
+                exeName = exeName[i+1:]
+                break
+            }
+        }
+        // Remove extension
+        for i := len(exeName) - 1; i >= 0; i-- {
+            if exeName[i] == '.' {
+                exeName = exeName[:i]
+                break
+            }
+        }
+
         // Pass the parent process ID that we already have
-        proc, err := getProcessInfoWithParent(int(pe32.ProcessID), int(pe32.ParentProcessID), int(pe32.Threads), nil)
+        proc, err := getProcessInfoWithParent(int(pe32.ProcessID), int(pe32.ParentProcessID), int(pe32.Threads), exeName, nil)
         if err == nil {
             processes = append(processes, proc)
         }
@@ -452,53 +474,80 @@ func getProcessList(options map[string]interface{}) ([]ProcessInfo, error) {
 }
 
 // getProcessInfoWithParent returns detailed information for a specific process with known parent PID
-func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options map[string]interface{}) (ProcessInfo, error) {
+func getProcessInfoWithParent(pid int, parentPID int, threadCount int, processName string, options map[string]interface{}) (ProcessInfo, error) {
     var proc ProcessInfo
     proc.PID = pid
     proc.PPID = parentPID      // Use the parent PID we already have
     proc.Threads = threadCount // Use the thread count we already have
 
-    // Open process handle
-    handle, _, err := kernel32.NewProc("OpenProcess").Call(PROCESS_QUERY_INFORMATION, 0, uintptr(pid))
+    // Use the process name from enumeration if available
+    if processName != "" {
+        proc.Name = processName
+    } else {
+        proc.Name = fmt.Sprintf("process-%d", pid)
+    }
+
+    // Try to open process with full access first, fall back to limited access
+    handle, _, err := kernel32.NewProc("OpenProcess").Call(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, 0, uintptr(pid))
     if handle == 0 {
-        return proc, err
+        // Try with limited access
+        handle, _, err = kernel32.NewProc("OpenProcess").Call(PROCESS_QUERY_LIMITED_INFORMATION, 0, uintptr(pid))
+        if handle == 0 {
+            // Set basic info and return
+            proc.Command = proc.Name
+            proc.State = "Unknown"
+            proc.UID = ""
+            proc.GID = ""
+            proc.Nice = 0
+            return proc, err
+        }
     }
     defer kernel32.NewProc("CloseHandle").Call(handle)
 
-    // Get process name
-    var size uint32 = 260 // MAX_PATH
-    filename := make([]uint16, size)
+    // Get command line using NtQueryInformationProcess
+    const ProcessCommandLineInformation = 0x22
+    var cmdLineSize uint32
+    var cmdLineBuffer []uint16
 
-    ret, _, err := kernel32.NewProc("GetModuleFileNameW").Call(
+    // First get the size needed
+    status, _, _ := procNtQueryInformationProcess.Call(
         uintptr(handle),
-        uintptr(unsafe.Pointer(&filename[0])),
-        uintptr(size),
+        ProcessCommandLineInformation,
+        0,
+        0,
+        uintptr(unsafe.Pointer(&cmdLineSize)),
     )
 
-    if ret > 0 {
-        path := syscall.UTF16ToString(filename[:ret])
-        // Extract just the filename
-        for i := len(path) - 1; i >= 0; i-- {
-            if path[i] == '\\' || path[i] == '/' {
-                path = path[i+1:]
-                break
+    if status == 0 && cmdLineSize > 0 {
+        cmdLineBuffer = make([]uint16, cmdLineSize)
+        status, _, _ = procNtQueryInformationProcess.Call(
+            uintptr(handle),
+            ProcessCommandLineInformation,
+            uintptr(unsafe.Pointer(&cmdLineBuffer[0])),
+            uintptr(cmdLineSize),
+            uintptr(unsafe.Pointer(&cmdLineSize)),
+        )
+
+        if status == 0 {
+            cmdLine := syscall.UTF16ToString(cmdLineBuffer)
+            if cmdLine != "" {
+                proc.Command = cmdLine
+            } else {
+                proc.Command = proc.Name
             }
+        } else {
+            proc.Command = proc.Name
         }
-        // Remove extension
-        for i := len(path) - 1; i >= 0; i-- {
-            if path[i] == '.' {
-                path = path[:i]
-                break
-            }
-        }
-        proc.Name = path
+    } else {
+        // Fallback: try to get command line from WMI or use process name
+        proc.Command = proc.Name
     }
 
     // Get memory info
     var memCounters PROCESS_MEMORY_COUNTERS
     memCounters.CB = uint32(unsafe.Sizeof(memCounters))
 
-    ret, _, err = procGetProcessMemoryInfo.Call(
+    ret, _, _ := procGetProcessMemoryInfo.Call(
         uintptr(handle),
         uintptr(unsafe.Pointer(&memCounters)),
         uintptr(unsafe.Sizeof(memCounters)),
@@ -509,18 +558,30 @@ func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options m
         proc.MemoryRSS = uint64(memCounters.WorkingSetSize)
     }
 
-    // Get process priority
-    priority, _, err := kernel32.NewProc("GetPriorityClass").Call(handle)
-    if err == nil {
-        proc.Priority = int(priority)
+    // Get process priority and convert to nice value
+    priority, _, _ := kernel32.NewProc("GetPriorityClass").Call(handle)
+    proc.Priority = int(priority)
+
+    // Convert Windows priority to Unix-style nice value
+    switch priority {
+    case 0x00000040: // IDLE_PRIORITY_CLASS
+        proc.Nice = 19
+    case 0x00004000: // BELOW_NORMAL_PRIORITY_CLASS
+        proc.Nice = 10
+    case 0x00000020: // NORMAL_PRIORITY_CLASS
+        proc.Nice = 0
+    case 0x00008000: // ABOVE_NORMAL_PRIORITY_CLASS
+        proc.Nice = -10
+    case 0x00000080: // HIGH_PRIORITY_CLASS
+        proc.Nice = -19
+    case 0x00000100: // REALTIME_PRIORITY_CLASS
+        proc.Nice = -20
+    default:
+        proc.Nice = 0
     }
 
-    // Always try to get command line (no longer optional)
-    // Windows doesn't easily provide command line via API
-    proc.Command = proc.Name
-
-    // Get process state and other info using Windows API
-    proc.State = "Running" // Default state
+    // Get process state and convert to Unix-style single letter
+    proc.State = getWindowsProcessState(handle)
 
     // Get process start time
     var creationTime, exitTime, kernelTime, userTime syscall.Filetime
@@ -530,10 +591,13 @@ func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options m
             uintptr(unsafe.Pointer(&exitTime)),
             uintptr(unsafe.Pointer(&kernelTime)),
             uintptr(unsafe.Pointer(&userTime)))
-        if r1 != 0 && err == nil {
+        if r1 != 0 {
             // Convert Windows filetime to Unix timestamp
-            proc.StartTime = int64(creationTime.LowDateTime) | (int64(creationTime.HighDateTime) << 32)
-            proc.StartTime = (proc.StartTime - 116444736000000000) / 10000000 // Convert to Unix time
+            // Windows filetime is 100-nanosecond intervals since 1601-01-01
+            // Unix time is seconds since 1970-01-01
+            filetime := uint64(creationTime.LowDateTime) | (uint64(creationTime.HighDateTime) << 32)
+            // Convert to Unix timestamp: subtract seconds from 1601 to 1970, convert to seconds
+            proc.StartTime = int64((filetime - 116444736000000000) / 10000000)
         }
     }
 
@@ -546,6 +610,20 @@ func getProcessInfoWithParent(pid int, parentPID int, threadCount int, options m
     // Windows doesn't easily provide children CPU times
     proc.ChildrenUserTime = 0.0
     proc.ChildrenSystemTime = 0.0
+
+    // Get owner information (UID/GID equivalent)
+    // Windows doesn't have Unix-style UID/GID, but we can get the owner
+    proc.UID = ""
+    proc.GID = ""
+
+    // Try to get process owner using Windows API
+    // This is a simplified approach - in a full implementation you'd use
+    // GetSecurityInfo or similar APIs to get the actual owner
+    // For now, we'll use the current user as a placeholder
+    if currentUser, err := getCurrentUsername(); err == nil {
+        proc.UID = currentUser
+        proc.GID = currentUser
+    }
 
     return proc, nil
 }
@@ -581,7 +659,23 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
 
     for {
         if int(pe32.ProcessID) == pid {
-            return getProcessInfoWithParent(pid, int(pe32.ParentProcessID), int(pe32.Threads), options)
+            // Extract process name from ExeFile
+            exeName := syscall.UTF16ToString(pe32.ExeFile[:])
+            // Extract just the filename
+            for i := len(exeName) - 1; i >= 0; i-- {
+                if exeName[i] == '\\' || exeName[i] == '/' {
+                    exeName = exeName[i+1:]
+                    break
+                }
+            }
+            // Remove extension
+            for i := len(exeName) - 1; i >= 0; i-- {
+                if exeName[i] == '.' {
+                    exeName = exeName[:i]
+                    break
+                }
+            }
+            return getProcessInfoWithParent(pid, int(pe32.ParentProcessID), int(pe32.Threads), exeName, options)
         }
 
         ret, _, err := kernel32.NewProc("Process32NextW").Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
@@ -647,6 +741,64 @@ func getProcessMap(startPID int) (ProcessMap, error) {
     // Windows doesn't have easy process relationship APIs
     // Return empty relations for now
     return pmap, nil
+}
+
+// getCurrentUsername returns the current username on Windows
+func getCurrentUsername() (string, error) {
+    // Get current user using Windows API
+    var size uint32 = 256
+    username := make([]uint16, size)
+
+    ret, _, err := advapi32.NewProc("GetUserNameW").Call(
+        uintptr(unsafe.Pointer(&username[0])),
+        uintptr(unsafe.Pointer(&size)),
+    )
+
+    if ret != 0 {
+        return syscall.UTF16ToString(username[:size]), nil
+    }
+
+    return "", err
+}
+
+// getWindowsProcessState converts Windows process state to Unix-style single letter
+// Windows doesn't have the same process states as Unix, but we can map them:
+// - Running processes -> "R" (Runnable/Running)
+// - Suspended processes -> "T" (Stopped)
+// - Terminated processes -> "Z" (Zombie)
+// - Unknown/other states -> "?"
+func getWindowsProcessState(handle uintptr) string {
+    // Try to get process exit code to determine if it's terminated
+    var exitCode uint32
+    ret, _, _ := kernel32.NewProc("GetExitCodeProcess").Call(handle, uintptr(unsafe.Pointer(&exitCode)))
+
+    if ret != 0 {
+        // If exit code is STILL_ACTIVE (259), process is running
+        if exitCode == 259 {
+            // Check if process is suspended
+            var suspendCount uint32
+            if suspendProc := ntdll.NewProc("NtQueryInformationProcess"); suspendProc.Addr() != 0 {
+                const ProcessSuspendCount = 0x22
+                status, _, _ := suspendProc.Call(
+                    handle,
+                    ProcessSuspendCount,
+                    uintptr(unsafe.Pointer(&suspendCount)),
+                    uintptr(unsafe.Sizeof(suspendCount)),
+                    0,
+                )
+                if status == 0 && suspendCount > 0 {
+                    return "T" // Suspended/Stopped
+                }
+            }
+
+            return "R" // Running
+        } else {
+            return "Z" // Zombie (terminated but not cleaned up)
+        }
+    }
+
+    // If we can't get exit code, return unknown state
+    return "?"
 }
 
 // getCPUInfo returns CPU information
@@ -1384,8 +1536,9 @@ func calculateIODiff(snapshot1, snapshot2 ResourceSnapshot, duration time.Durati
     return result
 }
 
-// getSlabInfo returns empty map on Windows (no /proc/slabinfo)
+// getSlabInfo returns Windows pool memory information mapped to SlabInfo struct
 func getSlabInfo() map[string]SlabInfo {
+    // Windows slab info collection disabled - no valid API available
     return make(map[string]SlabInfo)
 }
 

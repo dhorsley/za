@@ -311,15 +311,17 @@ func getSlabInfo() map[string]SlabInfo {
     }
 
     lines := strings.Split(string(data), "\n")
+    lineCount := 0
     for _, line := range lines {
         if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
             continue
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 7 {
+        if len(fields) < 8 {
             continue
         }
+        lineCount++
 
         name := fields[0]
         activeObjs, _ := strconv.ParseUint(fields[1], 10, 64)
@@ -331,13 +333,15 @@ func getSlabInfo() map[string]SlabInfo {
         batchCount, _ := strconv.ParseUint(fields[7], 10, 64)
 
         slabInfo[name] = SlabInfo{
-            ActiveObjs:   activeObjs,
-            NumObjs:      numObjs,
-            ObjSize:      objSize,
-            ObjPerSlab:   objPerSlab,
-            PagesPerSlab: pagesPerSlab,
-            Limit:        limit,
-            BatchCount:   batchCount,
+            ActiveObjs:    activeObjs,
+            NumObjs:       numObjs,
+            ObjSize:       objSize,
+            ObjPerSlab:    objPerSlab,
+            PagesPerSlab:  pagesPerSlab,
+            Limit:         limit,
+            BatchCount:    batchCount,
+            PagedFrees:    0, // Not available on Linux
+            NonPagedFrees: 0, // Not available on Linux
         }
     }
 
