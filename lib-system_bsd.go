@@ -29,6 +29,31 @@ import (
 //  The kvm calls rely more than a little on m.hashimoto's code
 //   @ https://github.com/mitchellh/go-ps/blob/master/process_freebsd.go
 
+// Stub functions for Windows-specific calls (not used on BSD)
+func getCurrentUsername() (string, error) {
+    return "", fmt.Errorf("getCurrentUsername not implemented on BSD")
+}
+
+func getCurrentLocale() (string, error) {
+    return "", fmt.Errorf("getCurrentLocale not implemented on BSD")
+}
+
+func getCurrentHomeDir() (string, error) {
+    return "", fmt.Errorf("getCurrentHomeDir not implemented on BSD")
+}
+
+func getWindowsReleaseInfo() (string, string, string, error) {
+    return "", "", "", fmt.Errorf("getWindowsReleaseInfo not implemented on BSD")
+}
+
+func getPowerShellVersion() (string, error) {
+    return "", fmt.Errorf("getPowerShellVersion not implemented on BSD")
+}
+
+func getCMDVersion() (string, error) {
+    return "", fmt.Errorf("getCMDVersion not implemented on BSD")
+}
+
 // BSD process enumeration constants
 const (
     CTL_KERN           = 1  // "high kernel": proc, limits

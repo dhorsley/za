@@ -89,6 +89,7 @@ type CPUInfo struct {
     Cores       int
     Threads     int
     Usage       map[string]interface{} // Changed from []float64 to map for named keys
+    Metrics     map[string]interface{} // Additional metrics (Windows-specific)
     LoadAverage []float64
 }
 
