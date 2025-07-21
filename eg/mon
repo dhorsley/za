@@ -285,7 +285,7 @@ define showMem()
             cs=8
             on count(slabs)<8 do cs=count(slabs)
             comwidth=10
-            at 8,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
+            at 9,1,format("[#b2][#7][#bold]%20s  %-{comwidth}s[##][#-]","slab allocatee","MB size")
             if count(slabs)>0
                 lp=0
                 for p = 0 to cs-1
@@ -294,14 +294,14 @@ define showMem()
                     if sa!=-1
                         c1=substr(l,0,sa)
                         c2=substr(l,sa+1,len(l)-sa-1)
-                        at 9+lp,1, format("%20s  [#6]%-"+comwidth.as_string+"s[#-]",c1,c2)
+                        at 10+lp,1, format("%20s  [#6]%-"+comwidth.as_string+"s[#-]",c1,c2)
                         lp++
                     endif
                 endfor
             endif
         endif
     else 
-        at 8,1,"[#1]Slab information requires root access.[#-]"
+        at 9,1,"[#1]Slab information requires root access.[#-]"
     endif
 end
 
@@ -630,7 +630,7 @@ define redef_layout(cpu_count,pfilter)
     pane define "procs",  cpu_count+13, 2,              21,      98,   "[#b1]"+tink+" Processes [##]"+pfilter, "round"
     pane define "envs",   cpu_count+3,  67,             9,       44,   "",                                    "none"
     pane define "mem",    cpu_count+3,  112,            16,      39,   "",                                    "none"
-    pane define "net",    cpu_count+16, 106,            18,      44,   "",                                    "none"
+    pane define "net",    cpu_count+19, 106,            16,      44,   "",                                    "none"
     # pane define "files",  cpu_count+23, 112,            8,       34,   "",                                    "none"
     pane define "status", cpu_count+35, 1,              1,       150,  "",                                    "none"
 
