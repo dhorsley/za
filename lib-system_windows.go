@@ -20,6 +20,7 @@ const (
     PROCESS_QUERY_INFORMATION         = 0x0400
     TH32CS_SNAPPROCESS                = 0x00000002
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    LOCALE_USER_DEFAULT               = 0x0400
 )
 
 // Windows implementation of system monitoring functions
@@ -28,6 +29,7 @@ var (
     psapi    = syscall.NewLazyDLL("psapi.dll")
     advapi32 = syscall.NewLazyDLL("advapi32.dll")
     ntdll    = syscall.NewLazyDLL("ntdll.dll")
+    pdh      = syscall.NewLazyDLL("pdh.dll")
 
     procGetProcessMemoryInfo      = psapi.NewProc("GetProcessMemoryInfo")
     procGetSystemInfo             = kernel32.NewProc("GetSystemInfo")
@@ -744,6 +746,7 @@ func getProcessMap(startPID int) (ProcessMap, error) {
 }
 
 // getCurrentUsername returns the current username on Windows
+
 func getCurrentUsername() (string, error) {
     // Get current user using Windows API
     var size uint32 = 256
@@ -759,6 +762,133 @@ func getCurrentUsername() (string, error) {
     }
 
     return "", err
+}
+
+func getCurrentLocale() (string, error) {
+    // Get current locale using Windows API
+    // Use LOCALE_SNAME (0x0000005c) to get the locale name
+    const LOCALE_SNAME = 0x0000005c
+    var size uint32 = 256
+    locale := make([]uint16, size)
+
+    ret, _, err := kernel32.NewProc("GetLocaleInfoW").Call(
+        uintptr(LOCALE_USER_DEFAULT), // LOCALE_USER_DEFAULT = 0x0400
+        uintptr(LOCALE_SNAME),
+        uintptr(unsafe.Pointer(&locale[0])),
+        uintptr(size),
+    )
+
+    if ret != 0 {
+        return syscall.UTF16ToString(locale[:ret-1]), nil // ret includes null terminator
+    }
+
+    return "", err
+}
+
+func getCurrentHomeDir() (string, error) {
+    // Get current user's home directory using Windows API
+    var size uint32 = 256
+    homeDir := make([]uint16, size)
+
+    ret, _, err := kernel32.NewProc("GetEnvironmentVariableW").Call(
+        uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("USERPROFILE"))),
+        uintptr(unsafe.Pointer(&homeDir[0])),
+        uintptr(size),
+    )
+
+    if ret != 0 {
+        return syscall.UTF16ToString(homeDir[:ret]), nil
+    }
+
+    return "", err
+}
+
+func getWindowsReleaseInfo() (string, string, string, error) {
+    // Get Windows release information using RtlGetVersion (more reliable than GetVersionExW)
+    var major, minor, build uint32
+
+    // Use RtlGetVersion which returns the actual OS version regardless of manifest
+    type RTL_OSVERSIONINFOEXW struct {
+        OSVersionInfoSize uint32
+        MajorVersion      uint32
+        MinorVersion      uint32
+        BuildNumber       uint32
+        PlatformId        uint32
+        CSDVersion        [128]uint16
+        ServicePackMajor  uint16
+        ServicePackMinor  uint16
+        SuiteMask         uint16
+        ProductType       byte
+        Reserved          byte
+    }
+
+    var osvi RTL_OSVERSIONINFOEXW
+    osvi.OSVersionInfoSize = uint32(unsafe.Sizeof(osvi))
+
+    ret, _, err := ntdll.NewProc("RtlGetVersion").Call(
+        uintptr(unsafe.Pointer(&osvi)),
+    )
+
+    if ret == 0 { // RtlGetVersion returns 0 on success
+        major = osvi.MajorVersion
+        minor = osvi.MinorVersion
+        build = osvi.BuildNumber
+        servicePackMajor := osvi.ServicePackMajor
+        servicePackMinor := osvi.ServicePackMinor
+
+        // Map Windows versions to release names (only currently supported versions)
+        var releaseName, releaseId string
+
+        // Check if this is a server version (ProductType == 2 for server, 1 for workstation)
+        isServer := osvi.ProductType == 2
+
+        switch {
+        case major == 10:
+            if isServer {
+                // Distinguish server versions by build number ranges
+                switch {
+                case build >= 14393 && build < 17763:
+                    releaseName = "Windows Server 2016"
+                    releaseId = "windowsserver2016"
+                case build >= 17763 && build < 20348:
+                    releaseName = "Windows Server 2019"
+                    releaseId = "windowsserver2019"
+                case build >= 20348:
+                    releaseName = "Windows Server 2022"
+                    releaseId = "windowsserver2022"
+                default:
+                    releaseName = "Windows Server"
+                    releaseId = "windowsserver"
+                }
+            } else {
+                // Distinguish Windows 10 vs 11 by build number
+                if build >= 22000 {
+                    releaseName = "Windows 11"
+                    releaseId = "windows11"
+                } else {
+                    releaseName = "Windows 10"
+                    releaseId = "windows10"
+                }
+            }
+        default:
+            releaseName = "Windows"
+            releaseId = "unknown"
+        }
+
+        // Include service pack information in version string
+        releaseVersion := fmt.Sprintf("%d.%d.%d", major, minor, build)
+        if servicePackMajor > 0 {
+            if servicePackMinor > 0 {
+                releaseVersion = fmt.Sprintf("%s SP%d.%d", releaseVersion, servicePackMajor, servicePackMinor)
+            } else {
+                releaseVersion = fmt.Sprintf("%s SP%d", releaseVersion, servicePackMajor)
+            }
+        }
+
+        return releaseName, releaseId, releaseVersion, nil
+    }
+
+    return "Windows", "windows", "unknown", err
 }
 
 // getWindowsProcessState converts Windows process state to Unix-style single letter
@@ -801,17 +931,167 @@ func getWindowsProcessState(handle uintptr) string {
     return "?"
 }
 
+// win32_SystemProcessorPerformanceInformation structure for NtQuerySystemInformation
+type win32_SystemProcessorPerformanceInformation struct {
+    IdleTime       int64  // idle time in 100ns
+    KernelTime     int64  // kernel time in 100ns (includes idle time)
+    UserTime       int64  // user time in 100ns
+    DpcTime        int64  // dpc time in 100ns
+    InterruptTime  int64  // interrupt time in 100ns
+    InterruptCount uint64 // interrupt count
+}
+
+const (
+    ClocksPerSec                               = 10000000.0
+    SystemProcessorPerformanceInformationClass = 8
+    SystemProcessorPerformanceInfoSize         = uint32(unsafe.Sizeof(win32_SystemProcessorPerformanceInformation{}))
+)
+
+func getPerCoreCPUMetrics(coreNumber int) (map[string]interface{}, error) {
+    coreData := make(map[string]interface{})
+
+    // Get performance info for all cores
+    perfInfo, err := getSystemProcessorPerformanceInfo()
+    if err != nil {
+        return nil, err
+    }
+
+    // Validate core number
+    if coreNumber >= 0 && coreNumber >= len(perfInfo) {
+        return nil, fmt.Errorf("core number %d exceeds available cores (%d)", coreNumber, len(perfInfo))
+    }
+
+    // Get data for specific core or aggregate
+    var coreInfo win32_SystemProcessorPerformanceInformation
+    if coreNumber == -1 {
+        // Aggregate all cores
+        for _, info := range perfInfo {
+            coreInfo.IdleTime += info.IdleTime
+            coreInfo.KernelTime += info.KernelTime
+            coreInfo.UserTime += info.UserTime
+            coreInfo.DpcTime += info.DpcTime
+            coreInfo.InterruptTime += info.InterruptTime
+            coreInfo.InterruptCount += info.InterruptCount
+        }
+    } else {
+        coreInfo = perfInfo[coreNumber]
+    }
+
+    // Calculate processor time (user + system)
+    if ClocksPerSec == 0 {
+        return nil, fmt.Errorf("ClocksPerSec is 0 - cannot calculate CPU times")
+    }
+
+    // Convert Windows 100ns intervals to jiffy-equivalent values
+    // Windows uses 100ns intervals, Linux uses jiffies (typically 100Hz = 10ms)
+    // Convert to jiffy-equivalent: 100ns * 100000 = 10ms = 1 jiffy
+    jiffyConversion := int64(100000) // 100ns to jiffy conversion factor
+
+    // Store CPU usage in jiffy-equivalent format like Linux
+    coreData["user"] = int64(coreInfo.UserTime / jiffyConversion)
+    coreData["nice"] = int64(0) // Windows doesn't have nice time
+    coreData["system"] = int64((coreInfo.KernelTime - coreInfo.IdleTime) / jiffyConversion)
+    coreData["idle"] = int64(coreInfo.IdleTime / jiffyConversion)
+    coreData["iowait"] = int64(0)     // Windows doesn't have iowait
+    coreData["irq"] = int64(0)        // Windows doesn't have irq
+    coreData["softirq"] = int64(0)    // Windows doesn't have softirq
+    coreData["steal"] = int64(0)      // Windows doesn't have steal
+    coreData["guest"] = int64(0)      // Windows doesn't have guest
+    coreData["guest_nice"] = int64(0) // Windows doesn't have guest_nice
+
+    return coreData, nil
+}
+
+// getSystemProcessorPerformanceInfo retrieves performance information for all cores
+func getSystemProcessorPerformanceInfo() ([]win32_SystemProcessorPerformanceInformation, error) {
+    // Make maxResults large for safety
+    maxBuffer := 2056
+    resultBuffer := make([]win32_SystemProcessorPerformanceInformation, maxBuffer)
+    bufferSize := uintptr(SystemProcessorPerformanceInfoSize) * uintptr(maxBuffer)
+    var retSize uint32
+
+    // Call NtQuerySystemInformation from ntdll.dll
+    ntdll := syscall.NewLazyDLL("ntdll.dll")
+    ntQuerySystemInformation := ntdll.NewProc("NtQuerySystemInformation")
+
+    retCode, _, err := ntQuerySystemInformation.Call(
+        SystemProcessorPerformanceInformationClass,
+        uintptr(unsafe.Pointer(&resultBuffer[0])),
+        bufferSize,
+        uintptr(unsafe.Pointer(&retSize)),
+    )
+
+    if retCode != 0 {
+        return nil, fmt.Errorf("NtQuerySystemInformation returned %d: %v", retCode, err)
+    }
+
+    // Safety check to prevent divide by zero
+    if SystemProcessorPerformanceInfoSize == 0 {
+        return nil, fmt.Errorf("SystemProcessorPerformanceInfoSize is 0 - struct size calculation failed")
+    }
+
+    // Calculate number of returned elements
+    numReturnedElements := retSize / SystemProcessorPerformanceInfoSize
+
+    // Trim results to actual number of cores
+    resultBuffer = resultBuffer[:numReturnedElements]
+
+    return resultBuffer, nil
+}
+
+// getSystemProcessorQueueLength returns the processor queue length using Windows Performance Monitor
+func getSystemProcessorQueueLength() (float64, error) {
+    // Use the System\Processor Queue Length counter
+    var query uintptr
+    r1, _, _ := pdh.NewProc("PdhOpenQueryW").Call(0, 0, uintptr(unsafe.Pointer(&query)))
+    if r1 == 0 {
+        var queueCounter uintptr
+
+        // Add the System/Processor Queue Length counter
+        r2, _, _ := pdh.NewProc("PdhAddCounterW").Call(query, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("\\System\\Processor Queue Length"))), 0, uintptr(unsafe.Pointer(&queueCounter)))
+        if r2 != 0 {
+            pdh.NewProc("PdhCloseQuery").Call(query)
+            return 0.0, fmt.Errorf("failed to add PDH counter")
+        }
+
+        // Collect data
+        r3, _, _ := pdh.NewProc("PdhCollectQueryData").Call(query)
+        if r3 != 0 {
+            pdh.NewProc("PdhRemoveCounter").Call(queueCounter)
+            pdh.NewProc("PdhCloseQuery").Call(query)
+            return 0.0, fmt.Errorf("failed to collect PDH data")
+        }
+
+        time.Sleep(100 * time.Millisecond)
+
+        r4, _, _ := pdh.NewProc("PdhCollectQueryData").Call(query)
+        if r4 != 0 {
+            pdh.NewProc("PdhRemoveCounter").Call(queueCounter)
+            pdh.NewProc("PdhCloseQuery").Call(query)
+            return 0.0, fmt.Errorf("failed to collect PDH data on second call")
+        }
+
+        var queueValue PDH_FMT_COUNTERVALUE
+        r5, _, _ := pdh.NewProc("PdhGetFormattedCounterValue").Call(queueCounter, 0x00000000, 0, uintptr(unsafe.Pointer(&queueValue)))
+        if r5 != 0 {
+            pdh.NewProc("PdhRemoveCounter").Call(queueCounter)
+            pdh.NewProc("PdhCloseQuery").Call(query)
+            return 0.0, fmt.Errorf("failed to get formatted counter value")
+        }
+
+        // Clean up
+        pdh.NewProc("PdhRemoveCounter").Call(queueCounter)
+        pdh.NewProc("PdhCloseQuery").Call(query)
+
+        return queueValue.DoubleValue, nil
+    }
+
+    return 0.0, fmt.Errorf("failed to open PDH query")
+}
+
 // getCPUInfo returns CPU information
 func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error) {
     var info CPUInfo
-
-    // Check if we should include detailed information
-    includeDetails := false
-    if options != nil && options["details"] != nil {
-        if details, ok := options["details"].(bool); ok {
-            includeDetails = details
-        }
-    }
 
     // Get system info
     var sysInfo SYSTEM_INFO
@@ -824,134 +1104,59 @@ func getCPUInfo(coreNumber int, options map[string]interface{}) (CPUInfo, error)
     // Validate core number if specified
     if coreNumber >= 0 {
         if coreNumber >= info.Cores {
-            return info, fmt.Errorf("invalid core number %d: system has %d cores", coreNumber, info.Cores)
+            return info, fmt.Errorf("core number %d exceeds available cores (%d)", coreNumber, info.Cores)
         }
     }
 
-    // Get CPU usage
+    // Get per-core CPU metrics
     if coreNumber >= 0 {
-        // Return data for specific core
-        info.Usage = make(map[string]interface{})
-        info.Usage["core"] = coreNumber
-
-        // Get CPU usage using Windows Performance Counters
-        // Use Windows API to get real CPU usage data
-
-        // Get processor time using GetSystemTimes
-        var idleTime, kernelTime, userTime syscall.Filetime
-        if timeProc := kernel32.NewProc("GetSystemTimes"); timeProc.Addr() != 0 {
-            r1, _, _ := timeProc.Call(
-                uintptr(unsafe.Pointer(&idleTime)),
-                uintptr(unsafe.Pointer(&kernelTime)),
-                uintptr(unsafe.Pointer(&userTime)))
-            if r1 != 0 {
-
-                // Convert filetime to 64-bit values
-                idle := uint64(idleTime.LowDateTime) | (uint64(idleTime.HighDateTime) << 32)
-                kernel := uint64(kernelTime.LowDateTime) | (uint64(kernelTime.HighDateTime) << 32)
-                user := uint64(userTime.LowDateTime) | (uint64(userTime.HighDateTime) << 32)
-
-                // Calculate CPU usage percentages
-                total := kernel + user
-                if total > 0 {
-                    idlePercent := float64(idle) / float64(total) * 100.0
-                    userPercent := float64(user) / float64(total) * 100.0
-                    systemPercent := float64(kernel-idle) / float64(total) * 100.0
-
-                    info.Usage["user"] = userPercent
-                    info.Usage["system"] = systemPercent
-                    info.Usage["idle"] = idlePercent
-                } else {
-                    info.Usage["user"] = 0.0
-                    info.Usage["system"] = 0.0
-                    info.Usage["idle"] = 100.0
-                }
-            }
+        // Get specific core data
+        coreData, err := getPerCoreCPUMetrics(coreNumber)
+        if err != nil {
+            return info, fmt.Errorf("failed to get core %d metrics: %v", coreNumber, err)
         }
+
+        // Put core data directly in Usage (like Linux format)
+        info.Usage = coreData
+
+        // Create metrics for this core
+        metrics := make(map[string]interface{})
+        metrics["interrupts_per_sec"] = int64(0) // Not available per-core
+        metrics["dpc_rate"] = int64(0)           // Not available per-core
+        metrics["dpc_time"] = int64(0)           // Not available per-core
+        metrics["idle_time"] = int64(0)          // Not available per-core
+        metrics["frequency_percent"] = 0.0       // Not available per-core
+        info.Metrics = metrics
     } else {
-        // Return data for all cores
-        info.Usage = make(map[string]interface{})
-        cores := make(map[string]interface{})
+        // Get all cores data
+        allCoresData := make(map[string]interface{})
+        allMetrics := make(map[string]interface{})
 
         for i := 0; i < info.Cores; i++ {
-            coreData := make(map[string]interface{})
-
-            // Get CPU usage using Windows Performance Counters
-            // Use Windows API to get real CPU usage data for each core
-
-            // For multi-core systems, we'll use the overall system times
-            // since per-core CPU times require more complex performance counters
-            var idleTime, kernelTime, userTime syscall.Filetime
-            if timeProc := kernel32.NewProc("GetSystemTimes"); timeProc.Addr() != 0 {
-                r1, _, _ := timeProc.Call(
-                    uintptr(unsafe.Pointer(&idleTime)),
-                    uintptr(unsafe.Pointer(&kernelTime)),
-                    uintptr(unsafe.Pointer(&userTime)))
-                if r1 != 0 {
-
-                    // Convert filetime to 64-bit values
-                    idle := uint64(idleTime.LowDateTime) | (uint64(idleTime.HighDateTime) << 32)
-                    kernel := uint64(kernelTime.LowDateTime) | (uint64(kernelTime.HighDateTime) << 32)
-                    user := uint64(userTime.LowDateTime) | (uint64(userTime.HighDateTime) << 32)
-
-                    // Calculate CPU usage percentages
-                    total := kernel + user
-                    if total > 0 {
-                        idlePercent := float64(idle) / float64(total) * 100.0
-                        userPercent := float64(user) / float64(total) * 100.0
-                        systemPercent := float64(kernel-idle) / float64(total) * 100.0
-
-                        coreData["user"] = userPercent
-                        coreData["system"] = systemPercent
-                        coreData["idle"] = idlePercent
-                    } else {
-                        coreData["user"] = 0.0
-                        coreData["system"] = 0.0
-                        coreData["idle"] = 100.0
-                    }
-                }
+            coreData, err := getPerCoreCPUMetrics(i)
+            if err != nil {
+                return info, fmt.Errorf("failed to get core %d metrics: %v", i, err)
             }
-            cores[fmt.Sprintf("core_%d", i)] = coreData
+
+            // Put core data directly (like Linux format)
+            allCoresData[fmt.Sprintf("core_%d", i)] = coreData
         }
-        info.Usage["cores"] = cores
 
-        if includeDetails {
-            // Get real CPU frequency and temperature using WMI
-            cpuInfo, err := getWMICPUInfo()
-            frequencies := make(map[string]interface{})
-            temperatures := make(map[string]interface{})
+        // Create the "cores" container like Linux/Unix version
+        info.Usage = make(map[string]interface{})
+        info.Usage["cores"] = allCoresData
 
-            if err == nil && len(cpuInfo) > 0 {
-                // Use the same frequency for all cores since WMI typically provides overall CPU info
-                freq := float64(cpuInfo[0].CurrentClockSpeed)
-                for i := 0; i < info.Cores; i++ {
-                    frequencies[fmt.Sprintf("core_%d", i)] = freq
-                }
-            } else {
-                for i := 0; i < info.Cores; i++ {
-                    frequencies[fmt.Sprintf("core_%d", i)] = -999.0 // Clearly invalid sentinel value
-                }
-            }
-
-            tempInfo, err := getWMITemperatureInfo()
-            if err == nil && len(tempInfo) > 0 {
-                // Use the same temperature for all cores
-                temp := tempInfo[0].CurrentTemperature
-                for i := 0; i < info.Cores; i++ {
-                    temperatures[fmt.Sprintf("core_%d", i)] = temp
-                }
-            } else {
-                for i := 0; i < info.Cores; i++ {
-                    temperatures[fmt.Sprintf("core_%d", i)] = -999.0 // Clearly invalid sentinel value
-                }
-            }
-
-            info.Usage["frequencies_mhz"] = frequencies
-            info.Usage["temperatures_celsius"] = temperatures
-        }
+        // Create system-wide metrics
+        allMetrics["interrupts_per_sec"] = int64(0) // Not available system-wide
+        allMetrics["dpc_rate"] = int64(0)           // Not available system-wide
+        allMetrics["dpc_time"] = int64(0)           // Not available system-wide
+        allMetrics["idle_time"] = int64(0)          // Not available system-wide
+        allMetrics["frequency_percent"] = 0.0       // Not available system-wide
+        info.Metrics = allMetrics
     }
 
-    // Get load average (not available on Windows)
+    // Get load average (Windows doesn't have traditional load averages)
+    // Use zeros as substitute since queue length is removed
     info.LoadAverage = []float64{0, 0, 0}
 
     return info, nil
@@ -1177,16 +1382,6 @@ func getNetworkIO(options map[string]interface{}) ([]NetworkIOStats, error) {
     }
 
     return stats, nil
-}
-
-// PDH_FMT_COUNTERVALUE structure for Performance Counters
-type PDH_FMT_COUNTERVALUE struct {
-    CStatus         uint32
-    longValue       int32
-    doubleValue     float64
-    largeValue      int64
-    AnsiStringValue *byte
-    StringValue     *uint16
 }
 
 // debugCPUFiles returns debug information about available CPU files (Windows placeholder)
@@ -1976,4 +2171,13 @@ func getDefaultGatewayInfo() (map[string]interface{}, error) {
         "interface": interfaceName,
         "gateway":   gatewayAddress,
     }, nil
+}
+
+// PDH_FMT_COUNTERVALUE structure for Performance Data Helper
+type PDH_FMT_COUNTERVALUE struct {
+    CStatus     uint32
+    LargeValue  int64
+    DoubleValue float64
+    AnsiValue   [1024]byte
+    WideValue   [1024]uint16
 }

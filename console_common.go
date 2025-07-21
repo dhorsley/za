@@ -1773,7 +1773,7 @@ func pf(s string, va ...any) {
         chpos := 0
         c := col
         for ; chpos < len(sna); c += 1 {
-            if c%MW == 0 {
+            if MW > 0 && c%MW == 0 {
                 row++
                 c = 0
             }
@@ -1799,7 +1799,7 @@ func pf(s string, va ...any) {
     chpos := 0
     c := col
     for ; chpos < len(sna); c += 1 {
-        if c%MW == 0 {
+        if MW > 0 && c%MW == 0 {
             row++
             c = 0
         }

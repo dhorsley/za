@@ -971,16 +971,30 @@ func main() {
         gvset("@zsh_version", "")
         gvset("@bash_version", "")
         gvset("@bash_versinfo", "")
-        gvset("@user", "")
-        gvset("@home", "")
-        gvset("@lang", "")
         gvset("@cwd", ".")
         gvset("@wsl", "")
-        gvset("@release_id", "windows")
-        gvset("@release_name", "windows")
-        gvset("@release_version", "windows")
         gvset("@winterm", false)
         gvset("@runInWindowsParent", true)
+
+        // Get Windows-specific user and locale information
+        if username, err := getCurrentUsername(); err == nil {
+            gvset("@user", username)
+        }
+        if locale, err := getCurrentLocale(); err == nil {
+            gvset("@lang", locale)
+        }
+        if homeDir, err := getCurrentHomeDir(); err == nil {
+            gvset("@home", homeDir)
+        }
+        if releaseName, releaseId, releaseVersion, err := getWindowsReleaseInfo(); err == nil {
+            gvset("@release_name", releaseName)
+            gvset("@release_id", releaseId)
+            gvset("@release_version", releaseVersion)
+        }
+
+        // Set empty shell version info for Windows (no external execution)
+        gvset("@powershell_version", "")
+        gvset("@cmd_version", "")
     }
 
     shelltype, _ := gvget("@shelltype")
