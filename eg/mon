@@ -138,13 +138,16 @@ define showEnv()
     clear(2,8,1)
     cursoroff()
 
-    at 2,2, "[#-]Hostname             : [#6]{=hostname()}[#-]"
-    at 3,2, "Bash Version         : [#6]{=bash_version()}[#-]"
-    at 4,2, "User                 : [#6]{=user()}[#-]"
-    at 5,2, "OS                   : [#6]{=os()}[#-]"
-    at 6,2, "Locale               : [#6]{=lang()}[#-]"
-    at 7,2, "Distribution         : [#6]{=release_name()}[#-]"
-    at 8,2, "Distribution Version : [#6]{=release_version()}[#-]"
+    at 1,2, "[#-]Hostname             : [#6]{=hostname()}[#-]"
+    at 2,2, "User                 : [#6]{=user()}[#-]"
+    at 3,2, "OS                   : [#6]{=os()}[#-]"
+    at 4,2, "Locale               : [#6]{=lang()}[#-]"
+    at 5,2, "Distribution         : [#6]{=release_name()}[#-]"
+    at 6,2, "Distribution Version : [#6]{=release_version()}[#-]"
+    case os()
+    is "linux"
+        at 7,2, "Bash Version         : [#6]{=bash_version()}[#-]"
+    endcase
 end
 
 
@@ -401,12 +404,14 @@ end
 
 define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
+    opsys=os()
+
     cursoroff()
     pane select "cpu"
     print linecolour
     header("{=tink} CPU [#-]")
 
-    activity_bg=" "
+    activity_bg="-"
     activity_indicator="▪"
     on !utf8supported() do activity_indicator="-"
 
@@ -444,7 +449,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     ordered_cores=cpuinfo.keys.sort(map(.alphanumeric true))
 
     foreach core in ordered_cores
-        c=cpuinfo.Usages["cores"][core]
+        c=cpuinfo[core]
         clear_line(row,1)
         at row,1 , format("[#7]%8s ",core)
         pos=10
@@ -464,7 +469,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
         if showCpuBars
             # fill cpu row background
-            at row,pos, pad(activity_indicator,-1,48,activity_bg)
+            at row,pos, "[#dim]"+pad(activity_indicator,-1,48,activity_bg)+"[#-]"
             at row,pos
             colour=1
             foreach acti in ordered_activities
@@ -479,7 +484,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
         if showCpuTotals
             cursorx(pos)
-            print format("❙ %4.2f",diff[core]["total"].as_float)
+            on diff[core]["total"]>0 do print format("❙ %4.0f",diff[core]["total"].as_float)
         endif
 
         row++
@@ -560,13 +565,6 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     cursoroff()
 
-    if net_sample_start_in>0
-        @ net_sample_start_in-=1
-        @ prev_rbytes=0f
-        @ prev_tbytes=0f
-        return 
-    endif
-
     pane select "net"
     print linecolour
     header("{=tink} Network [#-]")
@@ -579,6 +577,13 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
         # current counters 
         rbytes  = n.RxBytes.as_float
         tbytes  = n.TxBytes.as_float
+
+        if net_sample_start_in>0
+            @ net_sample_start_in-=1
+            @ prev_rbytes=rbytes
+            @ prev_tbytes=tbytes
+            return 
+        endif
 
         # diff from previous
         drb=rbytes-prev_rbytes

@@ -17,6 +17,31 @@ import (
 
 // Unix/Linux implementation of system monitoring functions
 
+// Stub functions for Windows-specific calls (not used on Unix)
+func getCurrentUsername() (string, error) {
+    return "", fmt.Errorf("getCurrentUsername not implemented on Unix")
+}
+
+func getCurrentLocale() (string, error) {
+    return "", fmt.Errorf("getCurrentLocale not implemented on Unix")
+}
+
+func getCurrentHomeDir() (string, error) {
+    return "", fmt.Errorf("getCurrentHomeDir not implemented on Unix")
+}
+
+func getWindowsReleaseInfo() (string, string, string, error) {
+    return "", "", "", fmt.Errorf("getWindowsReleaseInfo not implemented on Unix")
+}
+
+func getPowerShellVersion() (string, error) {
+    return "", fmt.Errorf("getPowerShellVersion not implemented on Unix")
+}
+
+func getCMDVersion() (string, error) {
+    return "", fmt.Errorf("getCMDVersion not implemented on Unix")
+}
+
 // getTopCPU returns top N CPU consumers
 func getTopCPU(n int) ([]ProcessInfo, error) {
     processes, err := getProcessList(nil)

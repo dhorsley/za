@@ -1485,6 +1485,30 @@ func buildInternalLib() {
         return v.(string), err
     }
 
+    slhelp["powershell_version"] = LibHelp{in: "", out: "string", action: "Returns the PowerShell version (Windows only)."}
+    stdlib["powershell_version"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("powershell_version", args, 0); !ok {
+            return nil, err
+        }
+        v, found := gvget("@powershell_version")
+        if !found {
+            return "", nil
+        }
+        return v.(string), err
+    }
+
+    slhelp["cmd_version"] = LibHelp{in: "", out: "string", action: "Returns the CMD version (Windows only)."}
+    stdlib["cmd_version"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("cmd_version", args, 0); !ok {
+            return nil, err
+        }
+        v, found := gvget("@cmd_version")
+        if !found {
+            return "", nil
+        }
+        return v.(string), err
+    }
+
     slhelp["keypress"] = LibHelp{in: "[timeout_ms]", out: "int", action: "Returns an integer corresponding with a keypress.\n" +
         "Internally, the minimum timeout value is currently 1 decisecond.\n" +
         "See the termios(3) man page for reasoning about VMIN/VTIME."}

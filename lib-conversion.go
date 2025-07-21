@@ -15,8 +15,8 @@ import (
     "math/big"
     "os"
     "reflect"
-    "sort"
     "strconv"
+    "sort"
     "strings"
     str "strings"
     "unsafe"
@@ -206,7 +206,7 @@ func convertValue(value any, targetTypeStr string) (any, error) {
 // Helper function for pretty printing
 func pp(input any, maxDepth int, indent string) (string, error) {
     // Define color codes using ZA's sparkle system
-    colors := map[string]string{
+    colours := map[string]string{
         "key":         "[#5]", // map keys
         "string":      "[#4]", // string values
         "number":      "[#6]", // numeric values
@@ -220,27 +220,28 @@ func pp(input any, maxDepth int, indent string) (string, error) {
     // Use reflection to handle all types dynamically
     val := reflect.ValueOf(input)
     if !val.IsValid() {
-        return sparkle(colors["null"] + "null" + colors["reset"]), nil
+        return sparkle(colours["null"] + "null" + colours["reset"]), nil
     }
 
-    result := prettyPrintValue(val, "", 0, maxDepth, indent, colors)
+    result := prettyPrintValue(val, "", 0, maxDepth, indent, colours)
     return result, nil
 }
 
 // Recursive pretty printer that works with any reflected type
-func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDepth int, indent string, colors map[string]string) string {
+func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDepth int, indent string, colours map[string]string) string {
+
     if depth > maxDepth {
-        return colors["null"] + "... (max depth reached)" + colors["reset"]
+        return colours["null"] + "... (max depth reached)" + colours["reset"]
     }
     // Handle nil values
     if !val.IsValid() {
-        return colors["null"] + "null" + colors["reset"]
+        return colours["null"] + "null" + colours["reset"]
     }
     if val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface ||
         val.Kind() == reflect.Chan || val.Kind() == reflect.Func ||
         val.Kind() == reflect.Map || val.Kind() == reflect.Slice {
         if val.IsNil() {
-            return colors["null"] + "null" + colors["reset"]
+            return colours["null"] + "null" + colours["reset"]
         }
     }
 
@@ -257,29 +258,29 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
 
     switch v := interfaceValue.(type) {
     case string:
-        return colors["string"] + "\"" + v + "\"" + colors["reset"]
+        return colours["string"] + "\"" + v + "\"" + colours["reset"]
     case bool:
-        return colors["boolean"] + fmt.Sprintf("%v", v) + colors["reset"]
+        return colours["boolean"] + fmt.Sprintf("%v", v) + colours["reset"]
     case int, int8, int16, int32, int64:
-        return colors["number"] + fmt.Sprintf("%v", v) + colors["reset"]
+        return colours["number"] + fmt.Sprintf("%v", v) + colours["reset"]
     case uint, uint8, uint16, uint32, uint64:
-        return colors["number"] + fmt.Sprintf("%v", v) + colors["reset"]
+        return colours["number"] + fmt.Sprintf("%v", v) + colours["reset"]
     case float32, float64:
-        return colors["number"] + fmt.Sprintf("%v", v) + colors["reset"]
+        return colours["number"] + fmt.Sprintf("%v", v) + colours["reset"]
     case *big.Int:
-        return colors["number"] + v.String() + colors["reset"]
+        return colours["number"] + v.String() + colours["reset"]
     case *big.Float:
-        return colors["number"] + v.String() + colors["reset"]
+        return colours["number"] + v.String() + colours["reset"]
     }
 
     switch val.Kind() {
     case reflect.Map:
         var result strings.Builder
-        result.WriteString(colors["map_start"] + "{" + colors["reset"] + "\n")
+        result.WriteString(colours["map_start"] + "{" + colours["reset"] + "\n")
 
         keys := val.MapKeys()
         if len(keys) == 0 {
-            result.WriteString(currentIndent + colors["map_start"] + "}" + colors["reset"])
+            result.WriteString(currentIndent + colours["map_start"] + "}" + colours["reset"])
             return result.String()
         }
 
@@ -294,81 +295,69 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
             var keyValue any
             if key.CanInterface() {
                 keyValue = key.Interface()
-            } else {
-                // Handle unexported fields using unsafe
-                ptr := unsafe.Pointer(key.UnsafeAddr())
-                rv := reflect.NewAt(key.Type(), ptr).Elem()
-                keyValue = rv.Interface()
             }
             keyPairs = append(keyPairs, keyPair{key, fmt.Sprintf("%v", keyValue)})
         }
+
         sort.Slice(keyPairs, func(i, j int) bool {
             return keyPairs[i].str < keyPairs[j].str
         })
 
         for i, kp := range keyPairs {
             key := kp.key
-            // Print key with type-aware formatting
-            result.WriteString(currentIndent + indent + colors["key"])
+            result.WriteString(currentIndent + indent + colours["key"])
             if key.Kind() == reflect.String {
                 result.WriteString("\"" + key.String() + "\"")
             } else {
-                var keyValue any
-                if key.CanInterface() {
-                    keyValue = key.Interface()
-                } else {
-                    // Handle unexported fields using unsafe
-                    ptr := unsafe.Pointer(key.UnsafeAddr())
-                    rv := reflect.NewAt(key.Type(), ptr).Elem()
-                    keyValue = rv.Interface()
-                }
-                result.WriteString(fmt.Sprintf("%v", keyValue))
+                result.WriteString(fmt.Sprintf("%v", key.Interface()))
             }
-            result.WriteString(colors["reset"] + ": ")
-            value := val.MapIndex(key)
-            valueResult := prettyPrintValue(value, currentIndent+indent, depth+1, maxDepth, indent, colors)
-            result.WriteString(valueResult)
+            result.WriteString(colours["reset"] + ": ")
+
+            result.WriteString(prettyPrintValue(val.MapIndex(key), currentIndent+indent, depth+1, maxDepth, indent, colours))
+
             if i < len(keyPairs)-1 {
                 result.WriteString(",")
             }
             result.WriteString("\n")
         }
-        result.WriteString(currentIndent + colors["map_start"] + "}" + colors["reset"])
+        result.WriteString(currentIndent + colours["map_start"] + "}" + colours["reset"])
         return result.String()
 
     case reflect.Slice, reflect.Array:
         var result strings.Builder
-        result.WriteString(colors["slice_start"] + "[" + colors["reset"] + "\n")
+        result.WriteString(colours["slice_start"] + "[" + colours["reset"] + "\n")
         for i := 0; i < val.Len(); i++ {
             result.WriteString(currentIndent + indent)
-            result.WriteString(prettyPrintValue(val.Index(i), currentIndent+indent, depth+1, maxDepth, indent, colors))
+            result.WriteString(prettyPrintValue(val.Index(i), currentIndent+indent, depth+1, maxDepth, indent, colours))
             if i < val.Len()-1 {
                 result.WriteString(",")
             }
             result.WriteString("\n")
         }
-        result.WriteString(currentIndent + colors["slice_start"] + "]" + colors["reset"])
+        result.WriteString(currentIndent + colours["slice_start"] + "]" + colours["reset"])
         return result.String()
 
     case reflect.Interface:
         if val.IsNil() {
-            return colors["null"] + "null" + colors["reset"]
+            return colours["null"] + "null" + colours["reset"]
         }
-        concreteVal := val.Elem()
-        return prettyPrintValue(concreteVal, currentIndent, depth+1, maxDepth, indent, colors)
+        var result strings.Builder
+        result.WriteString(prettyPrintValue(val.Elem(), currentIndent, depth+1, maxDepth, indent, colours))
+        return result.String()
+
     case reflect.Ptr:
         if val.IsNil() {
-            return colors["null"] + "null" + colors["reset"]
+            return colours["null"] + "null" + colours["reset"]
         }
-        return prettyPrintValue(val.Elem(), currentIndent, depth+1, maxDepth, indent, colors)
+        return prettyPrintValue(val.Elem(), currentIndent, depth+1, maxDepth, indent, colours)
     case reflect.Struct:
         var result strings.Builder
-        result.WriteString(colors["map_start"] + "{" + colors["reset"] + "\n")
+        result.WriteString(colours["map_start"] + "{" + colours["reset"] + "\n")
         typ := val.Type()
         for i := 0; i < val.NumField(); i++ {
             field := val.Field(i)
             fieldName := typ.Field(i).Name
-            result.WriteString(currentIndent + indent + colors["key"] + "\"" + fieldName + "\"" + colors["reset"] + ": ")
+            result.WriteString(currentIndent + indent + colours["key"] + "\"" + fieldName + "\"" + colours["reset"] + ": ")
 
             // Handle unexported fields using the same approach as the codebase
             var fieldValue any
@@ -383,13 +372,13 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
 
             // Create a new reflect.Value for the field value
             fieldVal := reflect.ValueOf(fieldValue)
-            result.WriteString(prettyPrintValue(fieldVal, currentIndent+indent, depth+1, maxDepth, indent, colors))
+            result.WriteString(prettyPrintValue(fieldVal, currentIndent+indent, depth+1, maxDepth, indent, colours))
             if i < val.NumField()-1 {
                 result.WriteString(",")
             }
             result.WriteString("\n")
         }
-        result.WriteString(currentIndent + colors["map_start"] + "}" + colors["reset"])
+        result.WriteString(currentIndent + colours["map_start"] + "}" + colours["reset"])
         return result.String()
     default:
         var interfaceValue any
@@ -401,7 +390,7 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
             rv := reflect.NewAt(val.Type(), ptr).Elem()
             interfaceValue = rv.Interface()
         }
-        return colors["string"] + fmt.Sprintf("%v", interfaceValue) + colors["reset"]
+        return colours["string"] + fmt.Sprintf("%v", interfaceValue) + colours["reset"]
     }
 }
 
@@ -929,7 +918,7 @@ func buildConversionLib() {
         if len(args) != 0 {
             return nil, errors.New("invalid arguments provided to maxuint()")
         }
-        return uint64(math.MaxUint),nil
+        return uint64(math.MaxUint), nil
     }
 
     slhelp["as_int64"] = LibHelp{in: "var", out: "integer", action: "Convert [#i1]var[#i0] to an int64 type, or errors."}
