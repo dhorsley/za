@@ -1,0 +1,25 @@
+{
+  "name": "za-language",
+  "displayName": "ZA Language",
+  "description": "Syntax highlighting for ZA programming language",
+  "version": "0.0.1",
+  "publisher": "za-language",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Programming Languages"],
+  "keywords": ["za", "language", "syntax"],
+  "contributes": {
+    "languages": [{
+      "id": "za",
+      "aliases": ["ZA", "za"],
+      "extensions": [".za"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "za",
+      "scopeName": "source.za",
+      "path": "./syntaxes/za.tmLanguage.json"
+    }]
+  }
+} 
