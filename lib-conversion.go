@@ -440,7 +440,7 @@ func buildConversionLib() {
     categories["conversion"] = []string{
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
-        "write_struct", "read_struct", "explain",
+        "write_struct", "read_struct",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed",
     }
 
@@ -478,6 +478,7 @@ func buildConversionLib() {
         return m, nil
     }
 
+    /*
     slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
     stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
@@ -536,6 +537,7 @@ func buildConversionLib() {
 
         return result.String(), nil
     }
+    */
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
     stdlib["write_struct"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
