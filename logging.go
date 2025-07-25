@@ -33,9 +33,11 @@ var logQueue chan LogRequest
 var logWorkerRunning bool
 var workerMutex sync.Mutex
 
+/*
 func init() {
     // fmt.Fprintf(os.Stderr, "DEBUG: logging.go init() - logWorkerRunning=%v logQueue=%p\n", logWorkerRunning, logQueue)
 }
+*/
 
 var queueFullWarned bool
 
