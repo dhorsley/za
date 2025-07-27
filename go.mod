@@ -1,6 +1,6 @@
 module za
 
-go 1.21
+go 1.23.0
 
 toolchain go1.24.4
 
@@ -10,8 +10,9 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/itchyny/gojq v0.12.17
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/pkg/term v0.0.0-20200520122047-c3ffed290a03
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.34.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
