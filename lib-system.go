@@ -199,7 +199,7 @@ func buildSystemLib() {
     }
 
     // Top N resource consumers (with ALL option where n=-1)
-    slhelp["top_cpu"] = LibHelp{in: "n", out: "[]ProcessInfo", action: "Returns top N CPU consumers (processes). Use n=-1 for ALL processes."}
+    slhelp["top_cpu"] = LibHelp{in: "int", out: "[]ProcessInfo", action: "Returns top N CPU consumers (processes). Use -1 for ALL processes."}
     stdlib["top_cpu"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("top_cpu", args, 1, "1", "int"); !ok {
             return nil, err
@@ -208,7 +208,7 @@ func buildSystemLib() {
         return getTopCPU(n)
     }
 
-    slhelp["top_mem"] = LibHelp{in: "n", out: "[]ProcessInfo", action: "Returns top N memory consumers (processes). Use n=-1 for ALL processes."}
+    slhelp["top_mem"] = LibHelp{in: "int", out: "[]ProcessInfo", action: "Returns top N memory consumers (processes). Use -1 for ALL processes."}
     stdlib["top_mem"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("top_mem", args, 1, "1", "int"); !ok {
             return nil, err
@@ -217,7 +217,7 @@ func buildSystemLib() {
         return getTopMemory(n)
     }
 
-    slhelp["top_nio"] = LibHelp{in: "n", out: "[]NetworkIOStats", action: "Returns top N network consumers (interfaces). Use n=-1 for ALL interfaces."}
+    slhelp["top_nio"] = LibHelp{in: "int", out: "[]NetworkIOStats", action: "Returns top N network consumers (interfaces). Use -1 for ALL interfaces."}
     stdlib["top_nio"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("top_nio", args, 1, "1", "int"); !ok {
             return nil, err
@@ -226,7 +226,7 @@ func buildSystemLib() {
         return getTopNetwork(n)
     }
 
-    slhelp["top_dio"] = LibHelp{in: "n", out: "[]DiskIOStats", action: "Returns top N disk I/O consumers (devices). Use n=-1 for ALL devices."}
+    slhelp["top_dio"] = LibHelp{in: "int", out: "[]DiskIOStats", action: "Returns top N disk I/O consumers (devices). Use -1 for ALL devices."}
     stdlib["top_dio"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("top_dio", args, 1, "1", "int"); !ok {
             return nil, err
@@ -244,7 +244,7 @@ func buildSystemLib() {
         return getSystemResources()
     }
 
-    slhelp["sys_load"] = LibHelp{in: "", out: "map", action: "Returns system load averages (1, 5, 15 minute) with named keys."}
+    slhelp["sys_load"] = LibHelp{in: "", out: "map", action: "Returns system load averages (1, 5, 15 minute)."}
     stdlib["sys_load"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("sys_load", args, 0); !ok {
             return nil, err
@@ -270,7 +270,7 @@ func buildSystemLib() {
     }
 
     // Memory information with pressure and OOM scores
-    slhelp["mem_info"] = LibHelp{in: "", out: "MemoryInfo", action: "Returns detailed memory information including pressure indicators, OOM scores, and slab allocation."}
+    slhelp["mem_info"] = LibHelp{in: "", out: "MemoryInfo", action: "Returns detailed memory information, if available."}
     stdlib["mem_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("mem_info", args, 0); !ok {
             return nil, err
