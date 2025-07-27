@@ -1,0 +1,10 @@
+#!/usr/bin/za
+
+set_env("ZA_DB_ENGINE","sqlite3")
+
+h=db_init("files/test.db")
+res=h.db_query("select * from users",map(.format "map"))
+h.db_close
+println res.pp
+
+

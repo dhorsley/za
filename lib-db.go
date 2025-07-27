@@ -39,12 +39,22 @@ func buildDbLib() {
         dbuser, ex_user := os.LookupEnv("ZA_DB_USER")
         dbpass, ex_pass := os.LookupEnv("ZA_DB_PASS")
 
-        if !(ex_host || ex_eng || ex_port || ex_user || ex_pass) {
-            return nil, errors.New("Error: Missing DB details at startup.")
+        if !ex_eng {
+            return nil,errors.New("Error: No DB engine specified.")
         }
 
         // instantiate the db connection:
-        dbh, err := sql.Open(dbeng, dbuser+":"+dbpass+"@tcp("+dbhost+":"+dbport+")/"+schema)
+        var dbh *sql.DB
+
+        switch dbeng {
+        case "mysql":
+            if !(ex_host || ex_port || ex_user || ex_pass) {
+                return nil, errors.New("Error: Missing DB details at startup.")
+            }
+            dbh, err = sql.Open(dbeng, dbuser+":"+dbpass+"@tcp("+dbhost+":"+dbport+")/"+schema)
+        case "sqlite3":
+            dbh, err = sql.Open(dbeng, schema) // schema will be path or uri
+        }
         if err != nil {
             return nil, err
         }
