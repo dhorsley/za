@@ -21,6 +21,13 @@ CHANGE LOG
     library changes
     ---------------
 
+    * (experimental):
+        - added support for sqlite3 db format on local paths
+        - this may be removed later as it adds 4MB to the binary size.
+        - see eg/dblite for example script.
+        - @todo: if this feature stays in, credits will need adding to the
+                    credits file and online manual, plus any licensing files (if needed)
+
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
     * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
