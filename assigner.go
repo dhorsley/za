@@ -805,7 +805,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
                         }
                     }
                 }
-                return // We handled this assignment.
+                return
             }
         }
 
