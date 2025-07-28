@@ -23,7 +23,7 @@ struct pid_lookup
 es
 
 
-# (even more) hacky sort, as there's no builtin sort by struct field
+# (even more) hacky sort, as there is no builtin sort by struct field
 define fsort(m)
     s=""
     foreach q in m
