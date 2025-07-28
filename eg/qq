@@ -1,0 +1,74 @@
+#!/usr/bin/za
+
+doc `detect unbalanced quotes in input file.`
+
+input filename param 1 is "filename"
+
+osq=false
+odq=false
+
+fh=fopen(filename,"r")
+on fh==nil do exit 66,"File {filename} cannot be read."
+
+struct pos
+    sl   int
+    sc   int
+    fl   int
+    fc   int
+endstruct
+
+var ssp,dsp pos
+
+p=0
+row=0
+col=0
+lp=0
+
+interpol(false)
+while
+    l=fh.fread("\n")
+    if l.len==0 
+        row+=1
+        on !fh.feof do continue
+        break
+    endif
+    for e=0 to l.len-1
+        case l[e]
+        is `"`
+            odq=!odq
+            if odq
+                dsp.sl=row+1
+                dsp.sc=e+1
+                dsp.fl,dsp.fc=[0,0]
+            else
+                dsp.fl=row+1
+                dsp.fc=e+1
+                dsp.sl,dsp.sc=[0,0]
+            endif
+        is `'`
+            osq=!osq
+            if osq
+                ssp.sl=row+1
+                ssp.sc=e+1
+                ssp.fl,ssp.fc=[0,0]
+            else
+                ssp.fl=row+1
+                ssp.fc=e+1
+                ssp.sl,ssp.sc=[0,0]
+            endif
+        endcase
+    endfor
+    row++
+    on fh.feof do break
+endwhile
+p=fh.ftell
+fh.fclose
+interpol(true)
+
+println
+println "file name   : ",filename
+println "file length : ",p
+println
+on ssp.sl!=0 and ssp.fl==0 do println "Unbalanced single quotes begin @ line {=ssp.sl} col {=ssp.sc}"
+on dsp.sl!=0 and dsp.fl==0 do println "Unbalanced double quotes begin @ line {=dsp.sl} col {=dsp.sc}"
+
