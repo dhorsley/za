@@ -1,8 +1,17 @@
 #!/usr/bin/za
 
-doc `detect unbalanced quotes in input file.`
+doc `
+    detect unbalanced quotes in input file.
+     - does not deal with utf-8 yet, or comments.
+`
 
 input filename param 1 is "filename"
+
+def rep(m)
+    print m,"[#-] @ ",row+1,",",e+1
+    on osq or odq do print " - "
+    on not (osq or odq) do println
+end
 
 osq=false
 odq=false
@@ -32,29 +41,38 @@ while
         on !fh.feof do continue
         break
     endif
+    println l
     for e=0 to l.len-1
         case l[e]
         is `"`
-            odq=!odq
-            if odq
-                dsp.sl=row+1
-                dsp.sc=e+1
-                dsp.fl,dsp.fc=[0,0]
+            if not osq
+                odq=!odq
+                if odq
+                    cursorx(e+1); rep("[#4]start")
+                    dsp.sl,dsp.sc=[row+1,e+1]
+                    dsp.fl,dsp.fc=[0,0]
+                else
+                    rep("[#2]end")
+                    dsp.fl,dsp.fc=[row+1,e+1]
+                    dsp.sl,dsp.sc=[0,0]
+                endif
             else
-                dsp.fl=row+1
-                dsp.fc=e+1
-                dsp.sl,dsp.sc=[0,0]
+                # rep("[#6]skipping double")
             endif
         is `'`
-            osq=!osq
-            if osq
-                ssp.sl=row+1
-                ssp.sc=e+1
-                ssp.fl,ssp.fc=[0,0]
+            if not odq
+                osq=!osq
+                if osq
+                    cursorx(e+1); rep("[#6]start")
+                    ssp.sl,ssp.sc=[row+1,e+1]
+                    ssp.fl,ssp.fc=[0,0]
+                else
+                    rep("[#2]end")
+                    ssp.fl,ssp.fc=[row+1,e+1]
+                    ssp.sl,ssp.sc=[0,0]
+                endif
             else
-                ssp.fl=row+1
-                ssp.fc=e+1
-                ssp.sl,ssp.sc=[0,0]
+                # rep("[#6]skipping single")
             endif
         endcase
     endfor
