@@ -11,7 +11,8 @@ def rep(e,m)
     cursorx(offset+e)
     # print m,"[#-] @ ",row+1,",",e+1
     print m
-    on not (osq or odq) do println
+    # on not (osq or odq) do println
+    @extra=true
 end
 
 offset=9
@@ -44,7 +45,10 @@ while
         on !fh.feof do continue
         break
     endif
-    println fgrgb(30,60,60)+format("%05d : ",row+1)+addansi("[#-]")+l
+    print fgrgb(30,60,60)+format("%05d : ",row+1)+addansi("[#-]")
+    l.literal
+    println
+    extra=false
     for e=0 to l.len-1
         if not (odq or osq or obt) and l[e:] ~ "(^#|//)"
             # println "skipping comment: ",l[e:]
@@ -86,6 +90,7 @@ while
         endcase
     endfor
     row++
+    on extra do println
     on fh.feof do break
 endwhile
 p=fh.ftell
