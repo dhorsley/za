@@ -183,7 +183,7 @@ func buildStringLib() {
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count", "inset", "wrap",
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail",
-        "reverse", "tr", "lower", "upper", "format", "ccformat", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
+        "reverse", "tr", "lower", "upper", "format", "ccformat", "literal", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
         "rvalid", "levdist", "keys",
     }
@@ -341,6 +341,23 @@ func buildStringLib() {
         }
         return sparkle(sf(args[0].(string), args[1:]...)), nil
     }
+
+    slhelp["literal"] = LibHelp{in: "string,var_args", out: "string", action: "Format the input string."}
+    stdlib["literal"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) == 0 {
+            return "", errors.New("Bad arguments (count) in literal()")
+        }
+        if sf("%T", args[0]) != "string" {
+            return "", errors.New("Bad arguments (type) (arg #1 not string) in literal()")
+        }
+        if len(args) == 1 {
+            fmt.Print(args[0].(string))
+            return nil, nil
+        }
+        fmt.Printf(args[0].(string), args[1:]...)
+        return nil, nil
+    }
+
 
     slhelp["keys"] = LibHelp{in: "map", out: "[]string", action: "Returns a list of map keys"}
     stdlib["keys"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
