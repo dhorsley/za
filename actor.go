@@ -5473,10 +5473,10 @@ tco_reentry:
             inside_with = false
 
         case C_Print:
-            parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, interactive, false, false)
+            parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, interactive, false, false, true)
 
         case C_Println:
-            parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, interactive, true, false)
+            parser.console_output(inbound.Tokens[1:], ifs, ident, inbound.SourceLine, interactive, true, false, true)
 
         case C_Log:
             // Check for level prefix (e.g., "debug:", "info:", etc.)
@@ -5663,7 +5663,7 @@ tco_reentry:
 
                 // print surplus, no LF
                 if inbound.TokenCount > nextCommaAt+1 {
-                    parser.console_output(inbound.Tokens[nextCommaAt+1:], ifs, ident, inbound.SourceLine, interactive, false, false)
+                    parser.console_output(inbound.Tokens[nextCommaAt+1:], ifs, ident, inbound.SourceLine, interactive, false, false, true)
                 }
 
             }
@@ -7631,7 +7631,7 @@ func (parser *leparser) evalCommaArray(ifs uint32, tokens []Token) (resu []any, 
 
 // print / println / log handler
 // when logging, user must decide for themselves if they want a LF at end.
-func (parser *leparser) console_output(tokens []Token, ifs uint32, ident *[]Variable, sourceLine int16, interactive bool, lf bool, logging bool) {
+func (parser *leparser) console_output(tokens []Token, ifs uint32, ident *[]Variable, sourceLine int16, interactive bool, lf bool, logging bool, sparkly bool) {
     plog_out := ""
     if len(tokens) > 0 {
         evnest := 0
@@ -7656,10 +7656,18 @@ func (parser *leparser) console_output(tokens []Token, ifs uint32, ident *[]Vari
                 case string:
                     v = interpolate(parser.namespace, ifs, ident, v.(string))
                 }
-                if logging {
-                    plog_out += sf(`%v`, sparkle(v))
+                if sparkly {
+                    if logging {
+                        plog_out += sf(`%v`, sparkle(v))
+                    } else {
+                        pf(`%v`, sparkle(v))
+                    }
                 } else {
-                    pf(`%v`, sparkle(v))
+                    if logging {
+                        plog_out += sf(`%v`, v)
+                    } else {
+                        pf(`%v`, v)
+                    }
                 }
                 continue
             }
