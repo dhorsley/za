@@ -938,8 +938,8 @@ func buildConversionLib() {
     slhelp["as_string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]value[#i0] to a string."}
     stdlib["as_string"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("as_string", args, 2,
-            "1", "any",
-            "2", "any", "int"); !ok {
+            "2", "any", "int",
+            "1", "any"); !ok {
             return nil, err
         }
         var i string

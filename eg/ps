@@ -182,13 +182,13 @@ foreach r in keys
     odd=not odd
 
     p=res[field(r,1)]
-    if can_read("/proc/{=p.pid}")
-        s=stat("/proc/{=p.pid}")
-        p.uid=s.Uid.as_string
-        p.gid=s.Gid.as_string
-        on username(p.uid.as_int)!="" do p.uid=username(p.uid.as_int)
-        on groupname(p.gid.as_int)!="" do p.gid=groupname(p.gid.as_int)
-    endif
+    pi=ps_info(p.pid)
+    p.uid=pi.UID
+    p.gid=pi.GID
+    on username(p.uid.as_int)!="" do p.uid=username(p.uid.as_int)
+    on groupname(p.gid.as_int)!="" do p.gid=groupname(p.gid.as_int)
+    # ps_info fields:
+    # {PID:1, Name:"systemd", State:"S", PPID:0, Priority:20, Nice:0, StartTime:39, UID:"0", GID:"0", UserTime:301, SystemTime:561, ChildrenUserTime:8439, ChildrenSystemTime:9221, MemoryUsage:0x1796000, MemoryRSS:0xf26000, Threads:1, Command:"/sbin/init splash"}
 
     tempwidth=TW-72
     args=format("%v",arglists[p.pid])
