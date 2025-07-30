@@ -1326,7 +1326,9 @@ func main() {
         } else {
             // banner
             title := sparkle("Za Interactive Mode")
-            pf("\n%s\n\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
+            pf("\n%s", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
+            pf(str.Repeat("\n",BMARGIN+2))
+            row+=2
         }
 
         /*
