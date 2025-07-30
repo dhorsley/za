@@ -19,7 +19,6 @@ import (
     "strings"
     str "strings"
     "sync/atomic"
-    "unicode/utf8"
 )
 
 var execMode bool // used by report() for errors
@@ -37,7 +36,8 @@ func ulen(args any) (int, error) {
     case nil:
         return 0, nil
     case string:
-        return utf8.RuneCountInString(args), nil
+        return len(args), nil 
+        // return utf8.RuneCountInString(args), nil
     case []string:
         return len(args), nil
     case []int:
@@ -379,7 +379,7 @@ func buildInternalLib() {
         "local", "clktck", "funcref", "thisfunc", "thisref", "cursoron", "cursoroff", "cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w", "pane_r", "pane_c", "utf8supported", "execpath", "trap", "coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term", "term", "has_colour",
-        "len", "echo", "get_row", "get_col", "unmap", "await", "get_mem", "zainfo", "get_cores", "permit",
+        "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "get_mem", "zainfo", "get_cores", "permit",
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
         "ast", "varbind", "sizeof", "dup", "log_queue_status",
         "set_depth",
@@ -1240,6 +1240,14 @@ func buildInternalLib() {
             return ulen(args[0])
         }
         return nil, errors.New("Bad argument in len()")
+    }
+
+    slhelp["rlen"] = LibHelp{in: "string", out: "integer", action: "Returns length of string in runes."}
+    stdlib["rlen"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("rlen", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        return rlen(args[0].(string)),nil
     }
 
     slhelp["await"] = LibHelp{in: "handle_map[,all_flag]", out: "[]result", action: "Checks for async completion."}

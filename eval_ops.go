@@ -439,7 +439,7 @@ func ev_add(val1 any, val2 any) (r any) {
     }
 
     // int|float + []number = add to each element (commutative)
-    // @note: need to added big int and big float support to these cases too (for +-*/)
+    // @note: need to add big int and big float support to these cases too (for +-*/)
     switch val1.(type) {
     case []int, []float64, []uint, []uint8, []uint64, []int64, []any:
         switch val2.(type) {
