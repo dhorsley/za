@@ -1331,13 +1331,6 @@ func main() {
             row+=2
         }
 
-        /*
-           if row>=MH-BMARGIN {
-               if row>MH { row=MH }
-               for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
-               row=MH-BMARGIN
-           }
-        */
 
         // state control
         endFunc := false
@@ -1360,6 +1353,7 @@ func main() {
         numlookup.lmset(1, "main")
 
         started := false
+        first_prompt:=true
         gvset("@lastcmd", "")
 
         for {
@@ -1568,6 +1562,10 @@ func main() {
                     for past := row - (MH - BMARGIN); past > 0; past-- {
                         at(MH+1, 1)
                         fmt.Print(eol)
+                        if first_prompt {
+                            past=0
+                            first_prompt=false
+                        }
                     }
                     row = MH - BMARGIN
                 }

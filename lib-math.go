@@ -785,14 +785,14 @@ Examples of format strings, given n = 12345.6789:
 "#,###." => "12,345"
 "#,###" => "12345,678"
 "#\u202F###,##" => "12 345,67"
-"#.###,###### => 12.345,678900
+"#.###,######" => 12.345,678900
 "" (aka default format) => 12,345.67
 
 The highest precision allowed is 9 digits after the decimal symbol.
 There is also a version for integer number, RenderInteger(),
 which is convenient for calls within template.
 
-I didn't feel it was worth to publish a library just for this piece
+I didnt feel it was worth to publish a library just for this piece
 of code, hence the snippet. Feel free to reuse as you wish.
 
 Source Modified: 
