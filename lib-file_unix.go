@@ -329,6 +329,13 @@ func fileStatSys(filename string) interface{} {
         return nil
     }
 
+    var uid,gid int
+
+    if sysstat,ok:=stat.Sys().(*syscall.Stat_t); ok {
+        uid=int(sysstat.Uid)
+        gid=int(sysstat.Gid)
+    }
+
     // Return a map with stat information
     return map[string]interface{}{
         "name":    stat.Name(),
@@ -336,5 +343,7 @@ func fileStatSys(filename string) interface{} {
         "mode":    int(stat.Mode()),
         "modtime": stat.ModTime().Unix(),
         "is_dir":  stat.IsDir(),
+        "uid":     uid,
+        "gid":     gid,
     }
 }
