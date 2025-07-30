@@ -3,6 +3,8 @@
 doc `
     detect unbalanced quotes in input file.
      - wide characters and comments skipped (# or //).
+     - unterminated quotes (esp. single quotes) in multiline comments
+        can still cause problems.
 `
 
 input filename param 1 is "filename"
