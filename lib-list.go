@@ -1823,7 +1823,7 @@ func buildListLib() {
                         b, bErr := GetAsFloat(list.([]string)[j])
                         // If both parse as numbers, compare numerically
                         if !aErr && !bErr {
-                            return a > b
+                            return a < b
                         }
                         // If only one parses as number, put numbers first
                         if !aErr && bErr {
@@ -1833,10 +1833,10 @@ func buildListLib() {
                             return false
                         }
                         // If neither parses as number, fall back to string comparison
-                        return list.([]string)[i] > list.([]string)[j]
+                        return list.([]string)[i] < list.([]string)[j]
                     })
                 } else {
-                    sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] > list.([]string)[j] })
+                    sort.SliceStable(list, func(i, j int) bool { return list.([]string)[i] < list.([]string)[j] })
                 }
                 return list, nil
 
@@ -1851,10 +1851,10 @@ func buildListLib() {
                     sort.SliceStable(list, func(i, j int) bool {
                         a, _ := GetAsFloat(sf("%v", list.([]any)[i]))
                         b, _ := GetAsFloat(sf("%v", list.([]any)[j]))
-                        return a > b
+                        return a < b
                     })
                 } else {
-                    sort.SliceStable(list, func(i, j int) bool { return sf("%v", list.([]any)[i]) > sf("%v", list.([]any)[j]) })
+                    sort.SliceStable(list, func(i, j int) bool { return sf("%v", list.([]any)[i]) < sf("%v", list.([]any)[j]) })
                 }
                 return list, nil
 
