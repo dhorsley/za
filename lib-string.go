@@ -10,6 +10,7 @@ import (
     "regexp"
     "runtime"
     "strconv"
+    "unicode/utf8"
     str "strings"
 )
 
@@ -182,7 +183,7 @@ func buildStringLib() {
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count", "inset", "wrap",
-        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail",
+        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail","is_utf8",
         "reverse", "tr", "lower", "upper", "format", "ccformat", "literal", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
         "rvalid", "levdist", "keys",
@@ -571,6 +572,15 @@ func buildStringLib() {
             return nil, err
         }
         return regexWillCompile(args[0].(string)), nil
+    }
+
+    slhelp["is_utf8"] = LibHelp{in: "string", out: "string", action: "Checks for utf8 rune and returns width. 1 on no match."}
+    stdlib["is_utf8"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("is_utf8", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        _,width:=utf8.DecodeRune([]byte(args[0].(string)))
+        return width,nil
     }
 
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}

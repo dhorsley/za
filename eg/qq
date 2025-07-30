@@ -2,16 +2,14 @@
 
 doc `
     detect unbalanced quotes in input file.
-     - does not deal with utf-8 yet, comments skipped (# or //).
+     - wide characters and comments skipped (# or //).
 `
 
 input filename param 1 is "filename"
 
 def rep(e,m)
     cursorx(offset+e)
-    # print m,"[#-] @ ",row+1,",",e+1
     print m
-    # on not (osq or odq) do println
     @extra=true
 end
 
@@ -49,21 +47,38 @@ while
     l.literal
     println
     extra=false
+    sz=0
+    rev_offset_utf=0
     for e=0 to l.len-1
+
+        # utf skipping
+        if sz>0
+            sz--
+            continue
+        endif
+        sz=l[e:].is_utf8
+        if sz>1
+            rev_offset_utf+=sz-1
+            sz--
+            continue
+        endif
+        sz=0
+
+        # comment skipping
         if not (odq or osq or obt) and l[e:] ~ "(^#|//)"
-            # println "skipping comment: ",l[e:]
             break
         endif
+
         case l[e]
         is `"`
             if not (osq or obt)
                 odq=!odq
                 if odq
-                    rep(e,"[#4]^")
+                    rep(e-rev_offset_utf,"[#4]^")
                     dsp.sl,dsp.sc=[row+1,e+1]
                     dsp.fl,dsp.fc=[0,0]
                 else
-                    rep(e,"[#2]$")
+                    rep(e-rev_offset_utf,"[#2]$")
                     dsp.fl,dsp.fc=[row+1,e+1]
                     dsp.sl,dsp.sc=[0,0]
                 endif
@@ -74,11 +89,11 @@ while
             if not (odq or obt)
                 osq=!osq
                 if osq
-                    rep(e,"[#6]^")
+                    rep(e-rev_offset_utf,"[#6]^")
                     ssp.sl,ssp.sc=[row+1,e+1]
                     ssp.fl,ssp.fc=[0,0]
                 else
-                    rep(e,"[#2]$")
+                    rep(e-rev_offset_utf,"[#2]$")
                     ssp.fl,ssp.fc=[row+1,e+1]
                     ssp.sl,ssp.sc=[0,0]
                 endif
