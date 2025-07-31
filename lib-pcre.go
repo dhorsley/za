@@ -39,9 +39,9 @@ func buildRegexLib() {
         if ok,err:=expect_args("reg_match",args,1,"2","string","string"); !ok { return "",err }
         b:=args[0].(string)
         if args[1].(string)=="" { return true,nil }
-        m:=pcre.MustCompileParseJIT(args[1].(string),pcre.STUDY_JIT_COMPILE).Matcher([]byte(b),0)
+        m:=pcre.MustCompileParseJIT(args[1].(string),pcre.STUDY_JIT_COMPILE).NewMatcherString(b,0)
         n:=0
-        for f:=m.Matches; f; f=m.Match([]byte(b),0) {
+        for f:=m.Matches; f; f=m.MatchStringWFlags(b,0) {
             n++
             b=b[m.Index()[1]:]
         }
