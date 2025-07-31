@@ -1155,7 +1155,7 @@ func buildNetworkLib() {
         for _, p := range ports {
             port, e := GetAsInt(p)
             if e {
-                return nil, fmt.Errorf("invalid port specified '%v',e")
+                return nil, fmt.Errorf("invalid port specified '%v'",e)
             }
             conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
             if err == nil {
