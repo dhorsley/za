@@ -32,12 +32,9 @@ struct w
     end
 endstruct
 
-# --- Utility for printing section titles ---
 def title(a)
     println "\n[#4]" + a + "[#-]"
 end
-
-# --- Begin unit test ---
 
 title("Struct instantiation and field access")
 var a q
@@ -117,7 +114,6 @@ foreach s in arr_q
     println "struct in arr_q: ", s
 endfor
 
-# --- Passing structs to functions ---
 def print_struct(s)
     println "Inside print_struct: ", s
 end
@@ -135,6 +131,5 @@ res = call_double_and_return(q(7, 0f, false))
 println "Result of call_double_and_return: ", res
 assert res == 14
 
-# --- End ---
-println "Unit test for struct arrays, passing to functions, and UFCS-style calls passed!"
+println "Test passed"
 
