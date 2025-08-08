@@ -57,14 +57,10 @@ while
     for e=0 to lend
 
         # utf skipping
-        # on sz-->0 do continue
-        if sz>0
-            sz--
-            continue
-        endif
+        on sz-- > 0 do continue
         sz=l[e:].is_utf8
         if sz>1
-            rev_offset_utf+=sz-1
+            rev_offset_utf+= sz-1
             sz--
             continue
         endif
