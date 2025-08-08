@@ -523,7 +523,7 @@ binloop1:
             panic(fmt.Errorf("assignment is not a valid operation in expressions"))
 
         default:
-            panic(fmt.Errorf(" [ broken on %s? ] ", tokNames[token.tokType]))
+            panic(fmt.Errorf(" [ broken on type %s '%s'? ] ", tokNames[token.tokType],token.tokText))
 
         }
 

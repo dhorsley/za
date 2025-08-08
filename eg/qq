@@ -1,5 +1,7 @@
 #!/usr/bin/za
 
+error_extend(true)
+
 doc `
     detect unbalanced quotes in input file.
      - wide characters and comments skipped (# or //).
@@ -51,9 +53,11 @@ while
     extra=false
     sz=0
     rev_offset_utf=0
-    for e=0 to l.len-1
+    lend=l.len-1
+    for e=0 to lend
 
         # utf skipping
+        # on sz-->0 do continue
         if sz>0
             sz--
             continue
@@ -67,8 +71,9 @@ while
         sz=0
 
         # comment skipping
-        if not (odq or osq or obt) and l[e:] ~ "(^#|//)"
-            break
+        if not (odq or osq or obt)
+            on e!=lend and substr(l,e,2)=="//" do break
+            on l[e]=="#" do break
         endif
 
         case l[e]
