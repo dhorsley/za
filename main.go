@@ -1353,7 +1353,6 @@ func main() {
         numlookup.lmset(1, "main")
 
         started := false
-        first_prompt:=true
         gvset("@lastcmd", "")
 
         for {
@@ -1405,15 +1404,16 @@ func main() {
                 if errVal != nil {
                     pf("error in startup script processing:%s\n", errVal)
                 }
-                if row >= MH-BMARGIN {
-                    if row > MH {
-                        row = MH
-                    }
-                    for past := row - (MH - BMARGIN); past > 0; past-- {
-                        at(MH+1, 1)
+
+                if row > MH-BMARGIN {
+                    lastrow:=row
+                    if row>MH { lastrow=MH }
+                    row=MH-BMARGIN
+                    at(MH+1,1)
+                    for rcount:=lastrow-(MH-BMARGIN) ; rcount > 0; rcount-- {
                         fmt.Print(eol)
                     }
-                    row = MH - BMARGIN
+                    at(row,1)
                 }
 
                 started = true
@@ -1455,14 +1455,6 @@ func main() {
                 // so, we shove the cursor along here:
 
                 row++
-
-                /*
-                   if started && row>=MH-BMARGIN {
-                       if row>MH { row=MH }
-                       for past:=row-(MH-BMARGIN);past>0;past-- { at(MH+1,1); fmt.Print(eol) }
-                       row=MH-BMARGIN
-                   }
-                */
 
                 at(row, 1)
                 col = 1
@@ -1555,19 +1547,15 @@ func main() {
                 atomic.StoreInt32(&calltable[mainloc].callLine, 1)
                 _, endFunc, _, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{}, nil)
 
-                if row >= MH-BMARGIN {
-                    if row > MH {
-                        row = MH
-                    }
-                    for past := row - (MH - BMARGIN); past > 0; past-- {
-                        at(MH+1, 1)
+                if row > MH-BMARGIN {
+                    lastrow:=row
+                    if row>MH { lastrow=MH }
+                    row=MH-BMARGIN
+                    at(MH+1,1)
+                    for rcount:=lastrow-(MH-BMARGIN) ; rcount > 0; rcount-- {
                         fmt.Print(eol)
-                        if first_prompt {
-                            past=0
-                            first_prompt=false
-                        }
                     }
-                    row = MH - BMARGIN
+                    at(row,1)
                 }
 
                 if endFunc {
