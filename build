@@ -7,7 +7,9 @@ var strip_enable,upx_enable bool
 
 tgt="default"
 ipath="/usr/bin"
-gobin="go"
+
+# gobin="go"
+gobin="~/go/bin/go1.25rc1"
 
 for a = 1 to argc()
     input do_what optarg a
