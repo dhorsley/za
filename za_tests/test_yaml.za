@@ -169,8 +169,8 @@ println "\n18. Testing error handling - invalid YAML..."
 var result any
 try uses result
     invalid_yaml = "invalid yaml structure"
-    result = yaml_parse(invalid_yaml)??
-    on result == nil do throw "err-18"
+    result = yaml_parse(invalid_yaml)??"err-18"
+    # on result == nil do throw "err-18"
     println "Unexpected success:", result
 catch err is "err-18"
     println "Expected error:", err.pp
