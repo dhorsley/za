@@ -1,11 +1,11 @@
 #!/usr/bin/za
 
-exreg("NETWORK_ERROR", "netbroke")
+exreg("NETWORK_ERROR", "crit")
 exreg("DATABASE_ERROR", "error")
 
 println "Testing enum value types:"
-println "ex.NETWORK_ERROR =", ex.NETWORK_ERROR, "(type:", typeof(ex.NETWORK_ERROR), ")"
-println "ex.DATABASE_ERROR =", ex.DATABASE_ERROR, "(type:", typeof(ex.DATABASE_ERROR), ")"
+println "ex.NETWORK_ERROR =", ex.NETWORK_ERROR, "(type:", kind(ex.NETWORK_ERROR), ")"
+println "ex.DATABASE_ERROR =", ex.DATABASE_ERROR, "(type:", kind(ex.DATABASE_ERROR), ")"
 
 # Test the throws clause validation
 try throws ex.NETWORK_ERROR

@@ -4,16 +4,16 @@
 error_extend(true)
 
 # Test 1: Unknown function name (should suggest "split")
-echo "Testing typo suggestion for 'splt'..."
+println "Testing typo suggestion for 'splt'..."
 splt('hello,world', ',')
 
 # Test 2: Unknown keyword (should suggest "print")
-echo "Testing typo suggestion for 'prnt'..."
-prnt("hello")
+println "Testing typo suggestion for 'prnt'..."
+prnt "hello"
 
 # Test 3: Unknown variable (should suggest available variables)
-echo "Testing typo suggestion for unknown variable..."
+println "Testing typo suggestion for unknown variable..."
 unknown_var = 42
-echo(unknown_var)
+println unknwn_var
 
-echo "All tests completed." 
+println "All tests completed." 
