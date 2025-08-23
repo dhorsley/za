@@ -343,13 +343,13 @@ binloop1:
                 continue
             }
 
-        /*
-           case O_Try: // handle ?? at end of expression
-               if p.pos == p.len-1 {
-                   left = p.tryOperator(left, nil)
-                   continue
-               }
-        */
+        case O_Try: // handle ?? at end of expression
+			if p.pos == p.len-1 {
+            	left = p.tryOperator(left, nil)
+            } else {
+				left = p.tryOperator(left, right)
+			}	
+            continue
 
         case SYM_LAND:
 
@@ -470,9 +470,6 @@ binloop1:
 
         case O_Query: // ternary
             left = p.tern_if(left, right)
-
-        case O_Try: // ?? operator
-            left = p.tryOperator(left, right)
 
         case SYM_EQ:
             left = deepEqual(left, right)
