@@ -2,7 +2,6 @@
 
 error_extend(true)
 exception_strictness("warn")
-permit("error_exit", false)
 
 doc "Comprehensive database functionality test script"
 doc "Tests all db_query features including new map options and output formats"
@@ -30,6 +29,8 @@ println "[#1]Database connection established[#-]\n"
 println "[#2]Test 1: Basic query with string separator[#-]"
 res1=h.db_query("SELECT 1 as test_col, 'hello' as test_str", "|")
 println "Result: {res1}\n"
+
+permit("error_exit", false)
 
 # Test 1.5: Simple test to debug the issue
 println "[#2]Test 1.5: Debug test[#-]"
