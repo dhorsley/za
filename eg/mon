@@ -359,7 +359,7 @@ define showProcs(ct,uptime)
 
         # final list display
         lcount=18
-        comwidth=55
+        comwidth=term_w()-90
 
         at 1,1, format (  "[#b2][#7][#bold]%2s %8s %8s %5s %5s %7s %-{comwidth}s[##][#-]", "st","ppid","pid","user","sys","threads","command" )
 
@@ -501,8 +501,9 @@ define showHdd()
 
     # Use built-in disk usage function instead of external df commands
     disk_info = disk_usage()
-    
-    at 1,1, format("[#b2][#7][#bold]%16s %-7s %-7s %-4s %-24s[#-][##]","path","size","avail","use%","mpath")
+   
+    mpwidth=pane_w()-40
+    at 1,1, format("[#b2][#7][#bold]%16s %-7s %-7s %-4s %-{mpwidth}s[#-][##]","path","size","avail","use%","mpath")
     row=2
 
     # Sort by usage percentage (descending) and filter out unwanted devices
@@ -554,7 +555,7 @@ define showHdd()
         usage_str = format("%.0f", usage_pct)
         
         at row,1, format(`%16s %-7s %-7s %-4s %-20s`,
-            shorten(device,16), total_str, avail_str, usage_str, shorten(mountpoint,21))
+            shorten(device,16), total_str, avail_str, usage_str, shorten(mountpoint,mpwidth-3))
         row++
         count++
     endfor
@@ -624,15 +625,16 @@ end
 
 define redef_layout(cpu_count,pfilter)
 
-    #            name    row            col             h        w             title                          border
-    pane define "cpu",    1,            1,         cpu_count+1,  150,  "",                                    "none"
-    pane define "hdd",    cpu_count+3,  2,              8,       64,   "[#b1]"+tink+" Disks [##]",             "round"
-    pane define "procs",  cpu_count+13, 2,              21,      98,   "[#b1]"+tink+" Processes [##]"+pfilter, "round"
-    pane define "envs",   cpu_count+3,  67,             9,       44,   "",                                    "none"
-    pane define "mem",    cpu_count+3,  112,            16,      39,   "",                                    "none"
-    pane define "net",    cpu_count+19, 106,            16,      44,   "",                                    "none"
-    # pane define "files",  cpu_count+23, 112,            8,       34,   "",                                    "none"
-    pane define "status", cpu_count+35, 1,              1,       150,  "",                                    "none"
+    tw=term_w()
+
+    #            name    row            col             h               w       title                                   border
+    pane define "cpu",    1,            1,              cpu_count+1,    tw-1,   "",                                     "none"
+    pane define "hdd",    cpu_count+3,  2,              8,              tw-92,  "[#b1]"+tink+" Disks [##]",             "round"
+    pane define "procs",  cpu_count+13, 2,              21,             tw-47,  "[#b1]"+tink+" Processes [##]"+pfilter, "round"
+    pane define "envs",   cpu_count+3,  tw-88,          9,              44,     "",                                     "none"
+    pane define "mem",    cpu_count+3,  tw-40,          16,             39,     "",                                     "none"
+    pane define "net",    cpu_count+19, tw-45,          16,             44,     "",                                     "none"
+    pane define "status", cpu_count+35, 1,              1,              tw-1,   "",                                     "none"
 
     @ net_sample_count = 40
 
@@ -807,9 +809,7 @@ while !quit
 
 endwhile
 
-print "[#RSB]"
-println
-# at term_h()-1,1
+at term_h()-1,1,"[#RSB]\n"
 cursoron()
 
 

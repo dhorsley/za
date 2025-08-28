@@ -1,0 +1,23 @@
+#!/usr/bin/env za
+
+exception_strictness("warn")
+
+println "\nTest 7: Unhandled exception bubbling to caller"
+def throw_unhandled()
+    println "Function will throw unhandled exception"
+    try
+        throw "unhandled_error"
+    catch err is "different_error"
+        println "This won't match"
+    endtry
+    println "[Test 7 subfunc] This should not print"
+end
+
+try
+    println "Calling function that throws unhandled exception"
+    throw_unhandled()
+    println "This should not print"
+catch err is "unhandled_error"
+    println "Caller caught unhandled exception:", err
+endtry
+
