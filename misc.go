@@ -971,7 +971,7 @@ func showEnhancedExpectArgsErrorWithCallArgs(parser *leparser, line int16, enhan
     parser.report(line, sf("\n%v\n", enhancedErr.OriginalError))
 
     // Then show enhanced context
-    pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
+    pf("\n[#6]Enhanced Error Context[#-]\n")
 
     // For stdlib functions, use the original Args array to preserve order
     if len(enhancedErr.Args) > 0 {
@@ -1037,7 +1037,7 @@ func showEnhancedErrorWithCallArgs(parser *leparser, line int16, err error, ifs 
     parser.report(line, sf("\n%v\n", errorMessage))
 
     // Then show enhanced context
-    pf("\n[#6]=== Enhanced Error Context ===[#-]\n")
+    pf("\n[#6]Enhanced Error Context[#-]\n")
 
     // Show call chain context with current call arguments
     evalChainCount := showCallChainContextWithCurrentCall(currentCallArgs, currentFunctionName)
