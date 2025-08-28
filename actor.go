@@ -1146,7 +1146,6 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // error handler
     defer func() {
         if r := recover(); r != nil {
-
             // fall back to shell command?
             if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
                 cmd := basecode[source_base][parser.pc].Original
