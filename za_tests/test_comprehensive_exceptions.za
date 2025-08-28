@@ -98,7 +98,7 @@ def throw_unhandled()
     catch err is "different_error"
         println "This won't match"
     endtry
-    println "This should not print"
+    println "[Test 7 subfunc] This should not print"
 end
 
 try
