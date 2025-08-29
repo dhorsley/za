@@ -9,7 +9,6 @@ doc `
         can still cause problems.
 `
 
-input filename param 1 is "filename"
 
 def rep(e,m)
     cursorx(offset+e)
@@ -17,108 +16,120 @@ def rep(e,m)
     @extra=true
 end
 
-offset=9
-osq=false
-odq=false
-obt=false
 
-fh=fopen(filename,"r")
-on fh==nil do exit 66,"File {filename} cannot be read."
-
-struct pos
+struct s_pos
     sl   int
     sc   int
     fl   int
     fc   int
 endstruct
 
-var ssp,dsp pos
+var ssp,dsp s_pos
 
-p=0
-row=0
-col=0
-lp=0
+foreach filename in argv()
 
-interpol(false)
-while
-    l=fh.fread("\n")
-    if l.len==0 
-        row+=1
-        on !fh.feof do continue
-        break
-    endif
-    print fgrgb(30,60,60)+format("%05d : ",row+1)+addansi("[#-]")
-    l.literal
-    println
-    extra=false
-    sz=0
-    rev_offset_utf=0
-    lend=l.len-1
-    for e=0 to lend
+    on not is_file(filename) do continue
 
-        # utf skipping
-        on sz-- > 0 do continue
-        sz=l[e:].is_utf8
-        if sz>1
-            rev_offset_utf+= sz-1
-            sz--
-            continue
+    println "[#6]File : {filename}[#-]"
+
+    ssp = s_pos()
+    dsp = s_pos()
+
+    offset=9
+    osq=false
+    odq=false
+    obt=false
+
+    fh=fopen(filename,"r")
+    on fh==nil do exit 66,"File {filename} cannot be read."
+
+    p=0
+    row=0
+    col=0
+    lp=0
+
+    interpol(false)
+    while
+        l=fh.fread("\n")
+        if l.len==0 
+            row+=1
+            on !fh.feof do continue
+            break
         endif
+        print fgrgb(30,60,60)+format("%05d : ",row+1)+addansi("[#-]")
+        l.literal
+        println
+        extra=false
         sz=0
+        rev_offset_utf=0
+        lend=l.len-1
+        for e=0 to lend
 
-        # comment skipping
-        if not (odq or osq or obt)
-            on e!=lend and substr(l,e,2)=="//" do break
-            on l[e]=="#" do break
-        endif
-
-        case l[e]
-        is `"`
-            if not (osq or obt)
-                odq=!odq
-                if odq
-                    rep(e-rev_offset_utf,"[#4]^")
-                    dsp.sl,dsp.sc=[row+1,e+1]
-                    dsp.fl,dsp.fc=[0,0]
-                else
-                    rep(e-rev_offset_utf,"[#2]$")
-                    dsp.fl,dsp.fc=[row+1,e+1]
-                    dsp.sl,dsp.sc=[0,0]
-                endif
-            else
-                # rep(e,"[#6]skipping double")
+            # utf skipping
+            on sz-- > 0 do continue
+            sz=l[e:].is_utf8
+            if sz>1
+                rev_offset_utf+= sz-1
+                sz--
+                continue
             endif
-        is `'`
-            if not (odq or obt)
-                osq=!osq
-                if osq
-                    rep(e-rev_offset_utf,"[#6]^")
-                    ssp.sl,ssp.sc=[row+1,e+1]
-                    ssp.fl,ssp.fc=[0,0]
-                else
-                    rep(e-rev_offset_utf,"[#2]$")
-                    ssp.fl,ssp.fc=[row+1,e+1]
-                    ssp.sl,ssp.sc=[0,0]
-                endif
-            else
-                # rep(e,"[#6]skipping single")
-            endif
-        is "`"
-            on not (osq or odq) do obt=!obt
-        endcase
-    endfor
-    row++
-    on extra do println
-    on fh.feof do break
-endwhile
-p=fh.ftell
-fh.fclose
-interpol(true)
+            sz=0
 
-println
-println "file name   : ",filename
-println "file length : ",p
-println
-on ssp.sl!=0 and ssp.fl==0 do println "Unbalanced single quotes begin @ line {=ssp.sl} col {=ssp.sc}"
-on dsp.sl!=0 and dsp.fl==0 do println "Unbalanced double quotes begin @ line {=dsp.sl} col {=dsp.sc}"
+            # comment skipping
+            if not (odq or osq or obt)
+                on e!=lend and substr(l,e,2)=="//" do break
+                on l[e]=="#" do break
+            endif
+
+            case l[e]
+            is `"`
+                if not (osq or obt)
+                    odq=!odq
+                    if odq
+                        rep(e-rev_offset_utf,"[#4]^")
+                        dsp.sl,dsp.sc=[row+1,e+1]
+                        dsp.fl,dsp.fc=[0,0]
+                    else
+                        rep(e-rev_offset_utf,"[#2]$")
+                        dsp.fl,dsp.fc=[row+1,e+1]
+                        dsp.sl,dsp.sc=[0,0]
+                    endif
+                else
+                    # rep(e,"[#6]skipping double")
+                endif
+            is `'`
+                if not (odq or obt)
+                    osq=!osq
+                    if osq
+                        rep(e-rev_offset_utf,"[#6]^")
+                        ssp.sl,ssp.sc=[row+1,e+1]
+                        ssp.fl,ssp.fc=[0,0]
+                    else
+                        rep(e-rev_offset_utf,"[#2]$")
+                        ssp.fl,ssp.fc=[row+1,e+1]
+                        ssp.sl,ssp.sc=[0,0]
+                    endif
+                else
+                    # rep(e,"[#6]skipping single")
+                endif
+            is "`"
+                on not (osq or odq) do obt=!obt
+            endcase
+        endfor
+        row++
+        on extra do println
+        on fh.feof do break
+    endwhile
+    p=fh.ftell
+    fh.fclose
+    interpol(true)
+
+    println
+    println "file length : ",p
+    println
+    on ssp.sl!=0 and ssp.fl==0 do println "[#2]Unbalanced single quotes begin @ line {=ssp.sl} col {=ssp.sc}[#-]"
+    on dsp.sl!=0 and dsp.fl==0 do println "[#2]Unbalanced double quotes begin @ line {=dsp.sl} col {=dsp.sc}[#-]"
+
+endfor 
+
 
