@@ -408,7 +408,6 @@ func validateLogFilePath(path string) (string, error) {
         forbiddenPrefixes = []string{
             "/tmp/",
             "/var/tmp/",
-            "/dev/",
             "/proc/",
             "/sys/",
             "/boot/",
@@ -428,7 +427,6 @@ func validateLogFilePath(path string) (string, error) {
         forbiddenPrefixes = []string{
             "/tmp/",
             "/var/tmp/",
-            "/dev/",
             "/proc/",
             "/sys/",
             "/boot/",
