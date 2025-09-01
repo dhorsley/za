@@ -819,8 +819,7 @@ func formatStackTrace(stackTrace []stackFrame) string {
     }
     var result strings.Builder
     for i, frame := range stackTrace {
-        // Add 1 to line numbers for 1-based display (0-based internally)
-        displayLine := frame.line + 1
+        displayLine := frame.line
 
         // Build the called function info if available
         calledInfo := ""
@@ -971,7 +970,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         }
         // Show location info if available
         if excInfo != nil {
-            pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line+1, excInfo.function)
+            pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line, excInfo.function)
 
             // Show stack trace if available
             if len(excInfo.stackTrace) > 0 {
@@ -993,7 +992,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
         header := "[#6]WARNING: Unhandled exception:"
         showUnhandled(header, category)
         if excInfo != nil {
-            pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", excInfo.line+1, excInfo.function)
+            pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", excInfo.line, excInfo.function)
 
             // Show stack trace if available
             if len(excInfo.stackTrace) > 0 {
@@ -1022,7 +1021,7 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
 
         // Show location info if available
         if excInfo != nil {
-            pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line+1, excInfo.function)
+            pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line, excInfo.function)
 
             // Show stack trace if available
             if len(excInfo.stackTrace) > 0 {
@@ -1087,7 +1086,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
             errorChain = append(errorChain, chainInfo{
                 loc:            calltable[csloc].caller,
                 name:           caller_str,
-                line:           int16(calltable[csloc].callLine), // Store the callLine directly
+                line:           int16(calltable[csloc].callLine)+1, // Store the callLine directly
                 filename:       callerFilename,
                 registrant:     registrant,
                 argNames:       paramNames,
@@ -1099,7 +1098,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
             errorChain = append(errorChain, chainInfo{
                 loc:            calltable[csloc].caller,
                 name:           caller_str,
-                line:           int16(calltable[csloc].callLine), // Store the callLine directly
+                line:           int16(calltable[csloc].callLine)+1, // Store the callLine directly
                 filename:       callerFilename,
                 registrant:     registrant,
                 namespace:      currentModule,       // Add current namespace
@@ -1247,7 +1246,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         excInfo := &exceptionInfo{
                             category:   excThrow.Category,
                             message:    excThrow.Message,
-                            line:       int(inbound.SourceLine),
+                            line:       int(inbound.SourceLine)+1,
                             function:   calltable[csloc].fs,
                             fs:         csloc,
                             stackTrace: generateStackTrace(calltable[csloc].fs, csloc, inbound.SourceLine),
@@ -1288,7 +1287,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         excInfo := &exceptionInfo{
                             category:   category,
                             message:    message,
-                            line:       int(inbound.SourceLine),
+                            line:       int(inbound.SourceLine)+1,
                             function:   calltable[csloc].fs,
                             fs:         csloc,
                             stackTrace: generateStackTrace(calltable[csloc].fs, csloc, inbound.SourceLine),
@@ -2288,7 +2287,6 @@ tco_reentry:
             var enddistance int16
 
             endfound, enddistance, _ = lookahead(source_base, parser.pc, 0, 0, C_Endwhile, []int64{C_While}, []int64{C_Endwhile})
-            // pf("(while debug) -> on line %v : end_found %+v : distance %+v\n",inbound.SourceLine,endfound,enddistance)
             if !endfound {
                 parser.report(inbound.SourceLine, "could not find an ENDWHILE")
                 finish(false, ERR_SYNTAX)
@@ -5157,7 +5155,6 @@ tco_reentry:
                     if we.result.(bool) { // HAS truth
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("case-has (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 default:
@@ -5169,26 +5166,22 @@ tco_reentry:
                 if we.result == carton.value { // matched IS value
                     wc[wccount].performed = true
                     wc[wccount].dodefault = false
-                    // pf("case-is (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                     ramble_on = true
                 }
 
             case C_Contains:
-                // pf("case-reached-contains\ncarton: %#v\n",carton)
                 reg := sparkle(we.result.(string))
                 switch carton.value.(type) {
                 case string:
                     if matched, _ := regexp.MatchString(reg, carton.value.(string)); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("case-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 case int:
                     if matched, _ := regexp.MatchString(reg, strconv.Itoa(carton.value.(int))); matched { // matched CONTAINS regex
                         wc[wccount].performed = true
                         wc[wccount].dodefault = false
-                        // pf("case-contains (@line %d): true -> %+v == %+v\n",inbound.SourceLine,we.result,carton.value)
                         ramble_on = true
                     }
                 }
@@ -6495,7 +6488,7 @@ tco_reentry:
                                             excInfo := &exceptionInfo{
                                                 category:   retArray[1],
                                                 message:    GetAsString(retArray[2]),
-                                                line:       int(inbound.SourceLine),
+                                                line:       int(inbound.SourceLine)+1,
                                                 function:   fs,
                                                 fs:         ifs,
                                                 stackTrace: nil, // No stack trace in fallback
@@ -6972,8 +6965,7 @@ tco_reentry:
                 }
 
                 // Capture stack trace at throw time using full call chain
-                // Use the actual source line (already 1-based)
-                actualLine := inbound.SourceLine
+                actualLine := inbound.SourceLine+1
                 stackTraceCopy := generateStackTrace(fs, ifs, actualLine)
 
                 // Set up exception state atomically
