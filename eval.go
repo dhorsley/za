@@ -162,11 +162,11 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                 }
 
                 // Create exception info with corrected line number (similar to C_Throw)
-                stackTraceCopy := generateStackTrace(calltable[p.fs].fs, p.fs, p.line)
+                stackTraceCopy := generateStackTrace(calltable[p.fs].fs, p.fs, p.line+1)
                 excInfo := &exceptionInfo{
                     category:   category,
                     message:    message,
-                    line:       int(p.line),
+                    line:       int(p.line)+1,
                     function:   calltable[p.fs].fs,
                     fs:         p.fs,
                     stackTrace: stackTraceCopy,
