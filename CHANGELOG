@@ -32,6 +32,8 @@ CHANGE LOG
     * added maxuint()       : for checking sentinel values (uint64)
     * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
 
+    * added ctrl-l to keypress() (value 12)
+
     * resource usage functions:
 
         These should work across Linux/BSD/Windows, but behaviours will be platform dependent
@@ -196,6 +198,8 @@ CHANGE LOG
                 try uses a,b,c throws "test-error"
 
     * added ctrl-z (suspend to background) handling for non-windows builds, while accepting keystrokes.
+
+    * added ctrl-l support to eg/mon
 
     * updated some examples, notably eg/mon to demonstrate some of the newer functions.
 

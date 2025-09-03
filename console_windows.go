@@ -299,6 +299,8 @@ func wrappedGetCh(p int, disp bool) (k int) {
                 k = 10
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
                 k = 11
+            case bytes.Equal(c, []byte{12}):
+                k = 12 // ctrl-l
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
                 k = 8
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
