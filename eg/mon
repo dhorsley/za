@@ -722,16 +722,18 @@ showCpuTotals=true
 iter=0
 proc_filter=""
 lt=epoch_nano_time()
+redraw=false
 
 while !quit
 
     iter++
 
     # in case of window change (sigwinch)
-    if w!=term_w()
+    if redraw or w!=term_w()
         cls
         w=term_w()
         redef_layout(cpu_count,pfilter)
+        redraw=false
     endif
 
     # capture system uptime
@@ -802,6 +804,8 @@ while !quit
         print "(D) cpu details  (B) cpu bars  (T) cpu totals  (f) filter"
         k=keypress(1500)
         clear(1,1,1)
+    has k==12 # ctrl-l
+        redraw=true
     endcase
 
     cursoroff()
