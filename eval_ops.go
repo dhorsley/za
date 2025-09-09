@@ -2217,6 +2217,15 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
         if r.IsNil() {
             return nil, true
         }
+    case reflect.Map:
+        if field!="kind" {
+            f := r.MapIndex(reflect.ValueOf(field))
+            if f.IsValid() {
+                return f.Interface(), false
+            }
+            pf("field [%s] does not exist in map\n",field)
+            return nil, true
+        }
     }
 
     if r.Kind() == reflect.Struct {
