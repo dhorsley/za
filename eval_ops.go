@@ -2223,8 +2223,9 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             if f.IsValid() {
                 return f.Interface(), false
             }
-            pf("field [%s] does not exist in map\n",field)
-            return nil, true
+            // pf("field [%s] does not exist in map\n",field)
+            // return nil, true
+            // DO NOT RETURN AN ERROR HERE - map.field may refer to a function call
         }
     }
 
