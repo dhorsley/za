@@ -9,23 +9,6 @@ import (
     "unsafe"
 )
 
-// debug_assignment is a helper to print debug messages only when the feature flag is enabled.
-func debug_assignment(format string, a ...any) {
-    // No-op for performance - debug calls removed
-}
-
-// dumpVal provides a detailed debug print of a reflect.Value's state.
-func dumpVal(name string, v reflect.Value) {
-    if !F_EnableComplexAssignments {
-        return
-    }
-    if !v.IsValid() {
-        // debug_assignment("  - DUMP %s: Invalid reflect.Value\n", name)  // Commented out debug output
-        return
-    }
-    // debug_assignment("  - DUMP %s: Type: %v, Kind: %v, IsValid: %v, CanAddr: %v, CanSet: %v\n",
-    //  name, v.Type(), v.Kind(), v.IsValid(), v.CanAddr(), v.CanSet())  // Commented out debug output
-}
 
 // intStrCache provides a cache for small integer to string conversions to reduce allocations.
 var intStrCache [1024]string
@@ -182,7 +165,6 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
     // We must "auto-vivify" a new slice to hold the value. The type of the
     // new slice is inferred from the value being assigned.
     if !slice.IsValid() {
-        // debug_assignment("  - growSlice: auto-vivifying a new slice from invalid value\n")
         elemType := reflect.TypeOf(valueForTyping)
         // This handles the case where a nil is being assigned to a new variable.
         // We default to creating a slice of interfaces ([]any).
@@ -194,18 +176,10 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
         return newSlice, nil
     }
 
-    // Guard against calling Len/Cap on non-slice types in debug logging.
-    if slice.Kind() == reflect.Slice {
-        // debug_assignment("  - slice: Type: %v, Kind: %v, Len: %d, Cap: %d\n", slice.Type(), slice.Kind(), slice.Len(), slice.Cap())
-    } else {
-        // debug_assignment("  - slice: Type: %v, Kind: %v\n", slice.Type(), slice.Kind())
-    }
-
     // If we get an interface, it's likely from a container like []any. If it's
     // nil, we can safely replace it with a new slice (auto-vivification).
     if slice.Kind() == reflect.Interface {
         if slice.IsNil() {
-            // debug_assignment("  - growSlice: auto-vivifying a new []any slice from nil interface\n")
             newSlice := reflect.MakeSlice(reflect.TypeOf([]any{}), index+1, index+1)
             return newSlice, nil
         }
@@ -217,7 +191,6 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
         // Attempt to handle array-like access on a nil or empty map. This is a
         // common case when a variable is declared but not initialized.
         if slice.Kind() == reflect.Map && slice.Len() == 0 {
-            // debug_assignment("  - growSlice: auto-vivifying a new []any slice from empty map\n")
             newSlice := reflect.MakeSlice(reflect.TypeOf([]any{}), index+1, index+1)
             return newSlice, nil
         }
@@ -225,7 +198,6 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
     }
 
     if index >= slice.Len() {
-        // debug_assignment("  - growSlice: growing slice\n")
         newSize := index + 1
         newCap := slice.Cap()
         if newSize > newCap {
@@ -236,28 +208,23 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
         }
         newSlice := reflect.MakeSlice(slice.Type(), newSize, newCap)
         reflect.Copy(newSlice, slice)
-        // debug_assignment("  - growSlice: new slice: Len: %d, Cap: %d\n", newSlice.Len(), newSlice.Cap())
         return newSlice, nil
     }
-    // debug_assignment("  - growSlice: no growth needed\n")
     return slice, nil
 }
 
 // convertAssignmentValue handles type conversions and checking for assignments.
 func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
-    // debug_assignment("[DEBUG] ENTER: convertAssignmentValue. targetType: %v, value: %#v (%T)\n", targetType, value, value)
 
     // If targetType is nil, it signifies assignment to a new key in a map or a new
     // element in a slice that is being auto-vivified. In this case, there's no
     // existing type to convert to, so we accept the new value as-is.
     if targetType == nil {
-        // debug_assignment("  - convert: nil targetType, accepting value as-is\n")
         return value, nil
     }
 
     // Handle nil value - always allowed for auto-vivified containers
     if value == nil {
-        // debug_assignment("  - convert: nil path\n")
         switch targetType.Kind() {
         case reflect.Interface, reflect.Slice, reflect.Map, reflect.Ptr, reflect.Chan:
             return nil, nil
@@ -272,7 +239,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
 
     // Fast path for big number types using direct type comparison
     if targetType == Typemap["bigi"] {
-        // debug_assignment("  - convert: bigi path\n")
         if value == nil {
             return nil, fmt.Errorf("cannot convert nil to big.Int")
         }
@@ -285,7 +251,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
         return GetAsBigInt(value), nil
     }
     if targetType == Typemap["bigf"] {
-        // debug_assignment("  - convert: bigf path\n")
         if value == nil {
             return nil, fmt.Errorf("cannot convert nil to big.Float")
         }
@@ -305,14 +270,11 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
 
     // Handle interface special cases
     if targetKind == reflect.Interface {
-        // debug_assignment("  - convert: interface path\n")
         if valueType != nil && valueType.AssignableTo(targetType) {
-            // debug_assignment("    - assignable to interface\n")
             return value, nil
         }
         // Allow any value to be assigned to an empty interface (`any` or `interface{}`)
         if targetType.NumMethod() == 0 {
-            // debug_assignment("    - empty interface\n")
             return value, nil
         }
         return nil, fmt.Errorf("type %v does not implement interface %v", valueType, targetType)
@@ -320,12 +282,10 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
 
     // Handle array/slice element assignment
     if targetKind == reflect.Slice || targetKind == reflect.Array {
-        // debug_assignment("  - convert: slice/array path\n")
         valueKind := valueReflect.Kind()
 
         // Case 1: Assigning a whole slice/array to another slice/array
         if valueKind == reflect.Slice || valueKind == reflect.Array {
-            // debug_assignment("    - whole slice/array assignment path\n")
             sourceType := valueReflect.Type()
             targetElemType := targetType.Elem()
             sourceElemType := sourceType.Elem()
@@ -333,12 +293,10 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
             // Fast path: if element types are directly assignable, just return the original value.
             // The caller (reflect.Set) will handle the assignment.
             if sourceElemType.AssignableTo(targetElemType) {
-                // debug_assignment("      - elements are directly assignable\n")
                 return value, nil
             }
 
             // Slow path: element-by-element conversion is needed.
-            // debug_assignment("      - elements require conversion\n")
             sourceLen := valueReflect.Len()
             newSlice := reflect.MakeSlice(targetType, sourceLen, sourceLen)
 
@@ -370,7 +328,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
 
     // Handle map element assignment
     if targetKind == reflect.Map {
-        // debug_assignment("  - convert: map path\n")
         if valueType != nil {
             valueKind := valueType.Kind()
             // For whole map assignment
@@ -378,7 +335,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
                 // For untyped, allow if key/value types are compatible
                 if valueType.Key().AssignableTo(targetType.Key()) &&
                     valueType.Elem().AssignableTo(targetType.Elem()) {
-                    // debug_assignment("    - whole map assignable\n")
                     return value, nil
                 }
             }
@@ -391,13 +347,11 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
     // For untyped variables:
     // 1. Check direct assignability
     if valueType != nil && valueType.AssignableTo(targetType) {
-        // debug_assignment("  - convert: direct assignable path\n")
         return value, nil
     }
 
     // 2. Try conversion for basic types only
     if valueType != nil && valueType.ConvertibleTo(targetType) {
-        // debug_assignment("  - convert: convertible path\n")
         // Special handling for uint32
         if targetType.Kind() == reflect.Uint32 {
             switch v := value.(type) {
@@ -418,7 +372,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
         case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
             reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint64,
             reflect.Float32, reflect.Float64, reflect.String:
-            // debug_assignment("    - basic type convertible\n")
             return reflect.ValueOf(value).Convert(targetType).Interface(), nil
         }
     }
@@ -426,7 +379,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
     // FINAL FALLBACK: If no other conversion rule matches, return the original value.
     // The subsequent assignment logic (e.g., reflect.Set) will be the final arbiter
     // of whether the assignment is valid. This allows for more dynamic assignments.
-    // debug_assignment("  - convert: FALLBACK, returning original value\n")
     return value, nil
 }
 
@@ -480,12 +432,20 @@ struct back. This "copy-modify-replace" strategy avoids Go's reflection errors
 with unexported fields.
 */
 func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, fieldName string, value any) error {
+
     ts, found := vget(&varToken, lfs, lident, varToken.tokText)
     if !found {
         return fmt.Errorf("record variable %v not found", varToken.tokText)
     }
 
     val := reflect.ValueOf(ts)
+
+    if val.Kind() == reflect.Map {
+        vsetElement(nil, lfs, lident, varToken.tokText, fieldName, value)
+        return nil
+        // return fmt.Errorf("*map lhs assignment attempt with dot*")
+    }
+
     if val.Kind() != reflect.Struct {
         return fmt.Errorf("variable %v is not a struct", varToken.tokText)
     }
@@ -1016,10 +976,8 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 // tryElementAssign attempts a fast-path assignment for slice or map elements.
 // It handles auto-vivification of nil containers. Returns true on success.
 func tryElementAssign(container any, key any, value any) bool {
-    // debug_assignment("[DEBUG] ENTER: tryElementAssign. container: %T, key: %#v, value: %#v\n", container, key, value)
     switch c := container.(type) {
     case map[string]any:
-        // debug_assignment("  - tryElementAssign: map[string]any case\n")
         var skey string
         switch k := key.(type) {
         case string:
@@ -1041,11 +999,9 @@ func tryElementAssign(container any, key any, value any) bool {
         default:
             skey = fmt.Sprintf("%v", k)
         }
-        // debug_assignment("    - skey: %s\n", skey)
         c[skey] = value
         return true
     case []any:
-        // debug_assignment("  - tryElementAssign: []any case\n")
         idx, ok := key.(int)
         if !ok {
             return false // Index must be an integer for a slice.
@@ -1053,7 +1009,6 @@ func tryElementAssign(container any, key any, value any) bool {
         if idx < 0 {
             return false // Negative index is invalid.
         }
-        // debug_assignment("    - idx: %d\n", idx)
 
         if idx >= len(c) {
             // This path should not be taken for `[]any`, as `growSlice` in the
@@ -1091,12 +1046,10 @@ func funcOf(slice any) (res struct {
 // typedAssign performs a type-safe assignment for simple variables, mimicking the
 // logic of the original `vset` function. It returns true on success.
 func typedAssign(v *Variable, value any) bool {
-    // debug_assignment("[DEBUG] ENTER: typedAssign. var: %s, value: %#v (%T)\n", v.IName, value, value)
     var ok bool
     switch v.IKind {
     case kdynamic:
         // Dynamic multi-dimensional type - use reflection for type checking
-        // debug_assignment("  - typedAssign: dynamic type case (IKind=kdynamic)\n")
         if v.IValue != nil {
             targetType := reflect.TypeOf(v.IValue)
             valueType := reflect.TypeOf(value)
@@ -1105,117 +1058,97 @@ func typedAssign(v *Variable, value any) bool {
                 ok = true
             }
         }
-        // debug_assignment("  - typedAssign: dynamic type result: %v\n", ok)
     case kbool:
-        // debug_assignment("  - typedAssign: kbool case\n")
         if val, isType := value.(bool); isType {
             v.IValue = val
             ok = true
         }
     case kint, kint64:
-        // debug_assignment("  - typedAssign: kint/kint64 case\n")
         if val, isType := value.(int); isType {
             v.IValue = val
             ok = true
         }
     case kuint, kuint64:
-        // debug_assignment("  - typedAssign: kuint/kuint64 case\n")
         if val, isType := value.(uint); isType {
             v.IValue = val
             ok = true
         }
     case kfloat:
-        // debug_assignment("  - typedAssign: kfloat case\n")
         if val, isType := value.(float64); isType {
             v.IValue = val
             ok = true
         }
     case kstring:
-        // debug_assignment("  - typedAssign: kstring case\n")
         if val, isType := value.(string); isType {
             v.IValue = val
             ok = true
         }
     case kbyte:
-        // debug_assignment("  - typedAssign: kbyte case\n")
         if val, isType := value.(uint8); isType {
             v.IValue = val
             ok = true
         }
     case kbigi:
-        // debug_assignment("  - typedAssign: kbigi case\n")
         if val, isType := value.(*big.Int); isType {
             v.IValue.(*big.Int).Set(val)
             ok = true
         }
     case kbigf:
-        // debug_assignment("  - typedAssign: kbigf case\n")
         if val, isType := value.(*big.Float); isType {
             v.IValue.(*big.Float).Set(val)
             ok = true
         }
     case ksbool:
-        // debug_assignment("  - typedAssign: ksbool case\n")
         if val, isType := value.([]bool); isType {
             v.IValue = val
             ok = true
         }
     case ksint:
-        // debug_assignment("  - typedAssign: ksint case\n")
         if val, isType := value.([]int); isType {
             v.IValue = val
             ok = true
         }
     case ksuint:
-        // debug_assignment("  - typedAssign: ksuint case\n")
         if val, isType := value.([]uint); isType {
             v.IValue = val
             ok = true
         }
     case ksfloat:
-        // debug_assignment("  - typedAssign: ksfloat case\n")
         if val, isType := value.([]float64); isType {
             v.IValue = val
             ok = true
         }
     case ksstring:
-        // debug_assignment("  - typedAssign: ksstring case\n")
         if val, isType := value.([]string); isType {
             v.IValue = val
             ok = true
         }
     case ksbyte:
-        // debug_assignment("  - typedAssign: ksbyte case\n")
         if val, isType := value.([]uint8); isType {
             v.IValue = val
             ok = true
         }
     case ksbigi:
-        // debug_assignment("  - typedAssign: ksbigi case\n")
         if val, isType := value.([]*big.Int); isType {
             v.IValue = val
             ok = true
         }
     case ksbigf:
-        // debug_assignment("  - typedAssign: ksbigf case\n")
         if val, isType := value.([]*big.Float); isType {
             v.IValue = val
             ok = true
         }
     case ksany:
-        // debug_assignment("  - typedAssign: ksany case\n")
         if val, isType := value.([]any); isType {
             v.IValue = val
             ok = true
         }
     case kmap:
-        // debug_assignment("  - typedAssign: kmap case\n")
         if val, isType := value.(map[string]any); isType {
             v.IValue = val
             ok = true
         }
     case knil, kany:
-        // debug_assignment("  - typedAssign: knil/kany case\n")
         v.IValue = value
         ok = true
     }
@@ -1232,7 +1165,6 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
     }
 
     rootVar := &(*lident)[chain.BindPos]
-    // debug_assignment("[DEBUG] ENTER: processAssignment. valueToSet: %#v, rootVar.IValue: %#v\n", valueToSet, rootVar.IValue)
     if !rootVar.declared {
         rootVar.IName = chain.Name
         rootVar.declared = true
@@ -1261,14 +1193,11 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
     var finalVal reflect.Value
     var err error
 
-    // debug_assignment("[DEBUG] processAssignment: Calling recursiveAssign\n")
     // Call recursive assign, skipping the first access (which is just the variable itself)
     finalVal, err = p.recursiveAssign(reflect.ValueOf(rootVar.IValue), chain.Accesses[1:], valueToSet)
     if err != nil {
-        // debug_assignment("[DEBUG] processAssignment: recursiveAssign returned err\n")
         return err
     }
-    // debug_assignment("[DEBUG] processAssignment: recursiveAssign returned. finalVal: %#v\n", finalVal)
 
     if finalVal.IsValid() {
         rootVar.IValue = finalVal.Interface()
@@ -1280,16 +1209,10 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
 }
 
 func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, valueToSet any) (reflect.Value, error) {
-    // debug_assignment("[DEBUG] ENTER: recursiveAssign. accesses_len: %d, valueToSet: %#v (%T)\n", len(accesses), valueToSet, valueToSet)
-    if currentVal.IsValid() {
-        // debug_assignment("  - currentVal: Type: %v, Kind: %v, CanAddr: %v, CanSet: %v\n", currentVal.Type(), currentVal.Kind(), currentVal.CanAddr(), currentVal.CanSet())
-    } else {
-        // debug_assignment("  - currentVal: Invalid\n")
-    }
+
     // Base case: If there are no more access steps, we have the final container.
     // We just need to convert the value we're setting and return it.
     if len(accesses) == 0 {
-        // debug_assignment("[DEBUG] recursiveAssign: Base case\n")
         var targetType reflect.Type
         if currentVal.IsValid() {
             targetType = currentVal.Type()
@@ -1307,20 +1230,15 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
     // If the current value is an interface, recurse into the value it contains.
     // This is the key to preventing memory corruption from temporary copies.
     if currentVal.IsValid() && currentVal.Kind() == reflect.Interface {
-        // debug_assignment("[DEBUG] recursiveAssign: Recursing into interface\n")
         // If the interface is nil, we can't recurse. The next step (e.g., AccessMap)
         // will handle auto-vivification of a new container.
-        if currentVal.IsNil() {
-            // debug_assignment("[DEBUG] recursiveAssign: Interface is nil, proceeding to auto-vivify\n")
-        } else {
+        if ! currentVal.IsNil() {
             return p.recursiveAssign(currentVal.Elem(), accesses, valueToSet)
         }
     }
 
-    // debug_assignment("about to switch on access.Type of %+v\n", access.Type)
     switch access.Type {
     case AccessArray:
-        // debug_assignment("[DEBUG] recursiveAssign: AccessArray case\n")
         index := access.Key.(int)
 
         // Grow slice if necessary. This might create a new slice value.
@@ -1349,7 +1267,6 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         return newSlice, nil
 
     case AccessMap:
-        // debug_assignment("[DEBUG] recursiveAssign: AccessMap case\n")
         // Consistent with AccessArray/AccessField, if the map is not addressable
         // (e.g., from a slice/interface), we must make a mutable copy.
         if !currentVal.CanAddr() {
@@ -1382,17 +1299,10 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         default:
             skey = fmt.Sprintf("%v", k)
         }
-        // debug_assignment("[DEBUG] recursiveAssign: AccessMap case. skey: %s\n", skey)
         rkey := reflect.ValueOf(skey)
 
         // Recursively call on the element.
         elem := currentVal.MapIndex(rkey)
-        // debug_assignment("[DEBUG] recursiveAssign: AccessMap recursing\n")
-        if elem.IsValid() {
-            // debug_assignment("  - elem: Type: %v, Kind: %v, CanAddr: %v, CanSet: %v\n", elem.Type(), elem.Kind(), elem.CanAddr(), elem.CanSet())
-        } else {
-            // debug_assignment("  - elem: Invalid\n")
-        }
 
         // After retrieving an element, if it's an interface, we must unwrap it
         // before passing it to the next recursive step.
@@ -1410,7 +1320,6 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         return currentVal, nil
 
     case AccessField:
-        // debug_assignment("[DEBUG] recursiveAssign: AccessField case\n")
         if !currentVal.IsValid() {
             return reflect.Value{}, fmt.Errorf("cannot access field on nil value")
         }
@@ -1418,7 +1327,6 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
         // to remove the taint before we can access its fields for modification.
         if !currentVal.CanAddr() {
-            // debug_assignment("[DEBUG] recursiveAssign: AccessField unaddressable struct\n")
             currentVal = deepCopyValue(currentVal)
         }
 
@@ -1426,12 +1334,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         if !field.IsValid() {
             return reflect.Value{}, fmt.Errorf("field '%s' not found in struct %v", access.Field, currentVal.Type())
         }
-        // debug_assignment("[DEBUG] recursiveAssign: AccessField recursing. field: %s\n", access.Field)
-        if field.IsValid() {
-            // debug_assignment("  - field: Type: %v, Kind: %v, CanAddr: %v, CanSet: %v\n", field.Type(), field.Kind(), field.CanAddr(), field.CanSet())
-        } else {
-            // debug_assignment("  - field: Invalid\n")
-        }
+
         // Recursively call on the field.
         modifiedField, err := p.recursiveAssign(field, remainingAccesses, valueToSet)
         if err != nil {
@@ -1460,7 +1363,6 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 }
 
 func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variable, rfs uint32, rident *[]Variable) (Chain, error) {
-    // debug_assignment("[DEBUG] ENTER: parseAccessChain\n")
     if len(tokens) == 0 || tokens[0].tokType != Identifier {
         return Chain{}, fmt.Errorf("invalid assignee: must start with an identifier")
     }
@@ -1487,7 +1389,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
     // Process tokens to build access chain
     i := 1
     for i < len(tokens) {
-        // debug_assignment("  - parseAccessChain: loop, token: %v\n", tokens[i])
         switch tokens[i].tokType {
         case LeftSBrace:
             // Handle array/map access with [] notation
@@ -1514,7 +1415,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
             if err != nil {
                 return Chain{}, fmt.Errorf("invalid index/key expression: %v", err)
             }
-            // debug_assignment("    - parsed key: %#v\n", key)
 
             var accessType AccessType
             if idx, ok := key.(int); ok {
@@ -1530,7 +1430,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
                 Type: accessType,
                 Key:  key,
             })
-            // debug_assignment("    - appended access: type %d, key %#v\n", accessType, key)
 
             i = rbPos + 1
 
@@ -1541,14 +1440,12 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
             }
 
             field := tokens[i].tokText
-            // debug_assignment("    - parsed field: %s\n", field)
 
             // Add struct access to chain
             chain.Accesses = append(chain.Accesses, Access{
                 Type:  AccessField,
                 Field: field,
             })
-            // debug_assignment("    - appended access: type AccessField, field %s\n", field)
             i++
 
         default:
@@ -1556,7 +1453,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
         }
     }
 
-    // debug_assignment("  - parseAccessChain: completed, returning chain: %+v\n", chain)
     return chain, nil
 }
 
