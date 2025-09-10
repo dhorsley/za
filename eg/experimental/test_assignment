@@ -103,6 +103,8 @@ m["a"] = 1
 m["b"] = 2
 assert m["b"] == 2
 m.a = 42
+m.b = m.a
+println "new map content : ",m
 
 # Using non-string key (should be converted to string)
 m[3] = "three"
