@@ -433,11 +433,14 @@ with unexported fields.
 */
 func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, fieldName string, value any) error {
 
+	pf("inside HFA\n")
+	// ts is target struct
     ts, found := vget(&varToken, lfs, lident, varToken.tokText)
     if !found {
         return fmt.Errorf("record variable %v not found", varToken.tokText)
     }
 
+	// reflection of target struct value:
     val := reflect.ValueOf(ts)
 
     if val.Kind() == reflect.Map {
@@ -450,24 +453,36 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
         return fmt.Errorf("variable %v is not a struct", varToken.tokText)
     }
 
+	// make a new temporary target struct type to work with and populate it from the original
+	pf("making temp\n")
     tmp := reflect.New(val.Type()).Elem()
     tmp.Set(val)
+	pf("temp make complete\n")
 
+	// get a ref to the required field:
     field := tmp.FieldByName(fieldName)
     if !field.IsValid() {
         return fmt.Errorf("field %v not found in struct %v", fieldName, varToken.tokText)
     }
 
+	// if the field is not public then change ref to a new instance of the field
+	// this may not be right, it's an attempt to remove the taint
+	pf("settable check\n")
     if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
+	pf("field now settable\n")
 
+	// populate field value from required value in fn arguments
     if value == nil {
         field.Set(reflect.Zero(field.Type()))
     } else {
         valToSet := reflect.ValueOf(value)
         if valToSet.Type().AssignableTo(field.Type()) {
+			pf("setting field with [%+v]\n",valToSet)
             field.Set(valToSet)
+			pf("field set complete\n")
+			// unsafeSet(field,valToSet)
         } else {
             return fmt.Errorf("cannot assign result (%T) to %v.%v (%v)", value, varToken.tokText, fieldName, field.Type())
         }
