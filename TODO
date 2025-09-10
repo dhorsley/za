@@ -2,6 +2,37 @@
 TODO
 ----
 
+STRUCT FORMAT
+-------------
+
+Private field access is becoming a bit of a fever dream.
+
+Will look at feasability of just auto formatting struct field names to public,
+i.e. upper-cased name[0] in both reads and writes.
+
+If this is done consistently (for Za variables, but not for any external structs),
+then I can probably vastly simplify everything related to structs.
+
+There will be a minor performance hit in some places due to the name wrangling,
+but it would allow for all of the unsafe private field manipulation to be removed
+and also eliminate a few of the more exotic bugs that came with it.
+
+So, example:
+
+struct s
+    Name    string
+    value   int
+endstruct
+var q s
+q.name = "test" # would become q.Name internally
+println q.name  # would become q.Name internally
+
+( pseudo: if field_name[0]>96 { field_name[0]=field_name[0]-32 } )
+
+I think this would need doing, initally at least, on all access rather than just during struct
+definition, as struct literals/Anon() would also need converting.
+
+
 KERNEL PARAMETER TUNING
 ----------------------
 
