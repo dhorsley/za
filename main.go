@@ -1156,10 +1156,10 @@ func main() {
     }()
 
     var cop struct {
-        out  string
-        err  string
-        code int
-        okay bool
+        Out  string
+        Err  string
+        Code int
+        Okay bool
     }
 
     // @note:
@@ -1182,44 +1182,44 @@ func main() {
     if runtime.GOOS != "windows" {
 
         cop = Copper("echo -n $WSL_DISTRO_NAME", true)
-        gvset("@wsl", cop.out)
+        gvset("@wsl", cop.Out)
 
         switch shelltype {
         case "zsh":
             cop = Copper("echo -n $ZSH_VERSION", true)
-            gvset("@zsh_version", cop.out)
+            gvset("@zsh_version", cop.Out)
         case "bash":
             cop = Copper("echo -n $BASH_VERSION", true)
-            gvset("@bash_version", cop.out)
+            gvset("@bash_version", cop.Out)
             cop = Copper("echo -n $BASH_VERSINFO", true)
-            gvset("@bash_versinfo", cop.out)
+            gvset("@bash_versinfo", cop.Out)
             cop = Copper("echo -n $LANG", true)
-            gvset("@lang", cop.out)
+            gvset("@lang", cop.Out)
         }
 
         cop = Copper("echo -n $USER", true)
-        gvset("@user", cop.out)
+        gvset("@user", cop.Out)
 
         gvset("@os", runtime.GOOS)
 
         cop = Copper("echo -n $HOME", true)
-        gvset("@home", cop.out)
+        gvset("@home", cop.Out)
 
         gvset("@release_name", "unknown")
         gvset("@release_version", "unknown")
 
         release_info := Copper("cat /etc/*-release", true)
-        s := lgrep(release_info.out, "^ID=")
+        s := lgrep(release_info.Out, "^ID=")
         s = lcut(s, 2, "=")
         release_id := stripOuterQuotes(s, 1)
 
         if runtime.GOOS == "linux" {
 
-            s := lgrep(release_info.out, "^NAME=")
+            s := lgrep(release_info.Out, "^NAME=")
             s = lcut(s, 2, "=")
             gvset("@release_name", stripOuterQuotes(s, 1))
 
-            s = lgrep(release_info.out, "^VERSION_ID=")
+            s = lgrep(release_info.Out, "^VERSION_ID=")
             s = lcut(s, 2, "=")
             gvset("@release_version", stripOuterQuotes(s, 1))
 

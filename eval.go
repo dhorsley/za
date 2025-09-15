@@ -1994,14 +1994,14 @@ func (p *leparser) number(token Token) (num any) {
 }
 
 type cmd_result struct {
-    out  string
-    err  string
-    code int
-    okay bool
+    Out  string
+    Err  string
+    Code int
+    Okay bool
 }
 type bg_result struct {
-    name   string
-    handle chan any
+    Name   string
+    Handle chan any
 }
 
 func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr string, result cmd_result, bgresult bg_result) {
@@ -2042,7 +2042,7 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
             fnlookup.lmdelete(p.namespace + "::" + csumName)
             numlookup.lmdelete(lmv)
             // return
-            return true, "", cmd_result{}, bg_result{name: id, handle: h}
+            return true, "", cmd_result{}, bg_result{Name: id, Handle: h}
         }
 
         pf("Background process could not be generated.\n")
@@ -2051,7 +2051,7 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
     }
 
     result = system(cmd, false)
-    return result.okay, result.out, result, bg_result{}
+    return result.Okay, result.Out, result, bg_result{}
 
 }
 
@@ -2071,11 +2071,11 @@ func (p *leparser) command() string {
     // pf("command : |%s|\n",dp.(string))
     cmd := system(interpolate(p.namespace, p.fs, p.ident, dp.(string)), false)
 
-    if cmd.okay {
-        return cmd.out
+    if cmd.Okay {
+        return cmd.Out
     }
 
-    panic(fmt.Errorf("error in command operator (code:%d) '%s'", cmd.code, cmd.err))
+    panic(fmt.Errorf("error in command operator (code:%d) '%s'", cmd.Code, cmd.Err))
 
 }
 
@@ -3256,13 +3256,13 @@ func (p *leparser) tryOperator(left any, right any) any {
             shouldThrow = true
 
         case struct {
-            out  string
-            err  string
-            code int
-            okay bool
+            Out  string
+            Err  string
+            Code int
+            Okay bool
         }:
             // Shell command result from {...}
-            if !v.okay {
+            if !v.Okay {
                 shouldThrow = true
             }
 
