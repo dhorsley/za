@@ -597,7 +597,7 @@ func (p *leparser) list_filter(left any, right any) any {
             if cond[e] == '#' && cond[e+1] == '.' {
                 for f := e + 2; f < len(cond); f += 1 {
                     if str.IndexByte(identifier_set, cond[f]) == -1 {
-                        fields = append(fields, cond[e+2:f])
+                        fields = append(fields, renameSF(cond[e+2:f]))
                         e = f
                         fieldpos = append(fieldpos, f-1)
                         break
@@ -883,7 +883,7 @@ func (p *leparser) list_map(left any, right any) any {
             if cond[e] == '#' && cond[e+1] == '.' {
                 for f := e + 2; f < len(cond); f += 1 {
                     if str.IndexByte(identifier_set, cond[f]) == -1 {
-                        fields = append(fields, cond[e+2:f])
+                        fields = append(fields, renameSF(cond[e+2:f]))
                         e = f
                         fieldpos = append(fieldpos, f-1)
                         break
