@@ -9,7 +9,7 @@ func struct_match(obj any) (name string, count int) {
     obj_struct_fields := make(map[string]string, 4)
     val := reflect.ValueOf(obj)
     for i := 0; i < val.NumField(); i++ {
-        n := val.Type().Field(i).Name
+        n := renameSF(val.Type().Field(i).Name)
         t := val.Type().Field(i).Type
         obj_struct_fields[n] = t.String()
     }

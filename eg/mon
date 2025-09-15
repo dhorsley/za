@@ -426,16 +426,21 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         unmap(ref vals,"idle")
         unmap(ref vals,"nice")
         unmap(ref vals,"guest_nice")
-        vals["total"]=vals.values.sum 
+        vals["total"]=vals.values.sum.as_uint
 
-        if key(ref prev,core)
-            diff[core]["total"] = as_int(vals["total"]-prev[core]["total"])
-            foreach d in vals
-                k=key_d
-                on k=="total" do continue
-                diff[core][k]=as_int(d-prev[core][k])
+        if not key(ref prev,core)
+            foreach k in vals.keys
+                prev[core][k]=as_uint(0)
             endfor
         endif
+
+        diff[core]["total"] = as_int(vals["total"] - prev[core]["total"] )
+        foreach d in vals
+            k=key_d
+            on k=="total" do continue
+            diff[core][k]=as_int(d - (prev[core][k]) )
+        endfor
+
         @ prev[core] = vals.dup
     endfor
 
@@ -450,18 +455,20 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
     foreach core in ordered_cores
         c=cpuinfo[core]
+        dc=diff[core]
+
         clear_line(row,1)
         at row,1 , format("[#7]%8s ",core)
         pos=10
 
-        ordered_activities=diff[core].keys.sort
+        ordered_activities=sort(dc.keys)
+
         if showCpuDetails
             colour=1
             foreach acti in ordered_activities
                 on acti=="total" do continue
-                v=diff[core][acti]
-                at row,pos
-                println "[#{colour}]%3d {acti}[#-] ".format(v)
+                v=dc[acti]
+                at row,pos,"[#{colour}]%3d {acti}[#-] ".format(v)
                 pos+=11; colour++; on colour==8 do colour=1
             endfor
             pos=pos+2
@@ -470,11 +477,12 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         if showCpuBars
             # fill cpu row background
             at row,pos, "[#dim]"+pad(activity_indicator,-1,48,activity_bg)+"[#-]"
-            at row,pos
+            cursorx(pos)
+            # at row,pos
             colour=1
             foreach acti in ordered_activities
                 on acti=="total" do continue
-                v=diff[core][acti]
+                v=dc[acti]
                 col_v = "[#{colour}]"; padw=as_int(v/2)
                 print col_v,pad(activity_indicator,1,padw,activity_indicator) , "[#-][##]"
                 colour++; on colour==8 do colour=1
@@ -484,7 +492,11 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
 
         if showCpuTotals
             cursorx(pos)
-            on diff[core]["total"]>0 do print format("❙ %4.0f",diff[core]["total"].as_float)
+            if dc.len>0 and key(ref dc,"total")
+                if dc["total"]>0
+                    print format("❙ %4.0f",dc["total"].as_float)
+                endif
+            endif
         endif
 
         row++
@@ -702,7 +714,7 @@ pfilter=""
 redef_layout(cpu_count,pfilter)
 
 # cpu history setup
-var prev map
+var prev map[map]
 
 # net graph setup
 prev_rbytes=0

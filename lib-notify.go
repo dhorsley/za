@@ -5,18 +5,20 @@ package main
 import (
     "errors"
     "github.com/fsnotify/fsnotify"
-    "reflect"
+    // "reflect"
     "regexp"
     str "strings"
     "strconv"
-    "unsafe"
+    // "unsafe"
 )
 
 
+/*
 func GetWatcherField(obj any,fieldname string) any {
     field:=reflect.ValueOf(obj).Elem().FieldByName(fieldname)
     return reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Interface()
 }
+*/
 
 
 var notify_handler_list=make(map[*fsnotify.Watcher]bool)   // map of each instantiated watcher
