@@ -529,7 +529,7 @@ func tui_template(t tui, s tui_style) (string, error) {
         // get name from match
         field_name := v[1]
         // get t.Data.<field> with reflection
-        field_value := refstruct.FieldByName(field_name)
+        field_value := refstruct.FieldByName(renameSF(field_name))
         // search/replace all {.<field>} with value from above
         t.Content = str.Replace(t.Content, "{."+field_name+"}", sf("%v", field_value), -1)
     }
