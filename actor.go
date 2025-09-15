@@ -1153,17 +1153,17 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                 s = str.TrimRight(s, "\n")
                 if len(s) > 0 {
                     cop := Copper(s, false)
-                    gvset("@last", cop.code)
-                    gvset("@last_err", cop.err)
-                    if !cop.okay {
-                        pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s, " \t"))
-                        pf(cop.err + "\n")
+                    gvset("@last", cop.Code)
+                    gvset("@last_err", cop.Err)
+                    if !cop.Okay {
+                        pf("Error: [%d] in shell command '%s'\n", cop.Code, str.TrimLeft(s, " \t"))
+                        pf(cop.Err + "\n")
                     } else {
-                        if len(cop.out) > 0 {
-                            if cop.out[len(cop.out)-1] != '\n' {
-                                cop.out += "\n"
+                        if len(cop.Out) > 0 {
+                            if cop.Out[len(cop.Out)-1] != '\n' {
+                                cop.Out += "\n"
                             }
-                            pf("%s", cop.out)
+                            pf("%s", cop.Out)
                         }
                     }
                 }
@@ -2469,18 +2469,18 @@ tco_reentry:
                 // ensure result block has content:
                 switch we.result.(type) {
                 case struct {
-                    out  string
-                    err  string
-                    code int
-                    okay bool
+                    Out  string
+                    Err  string
+                    Code int
+                    Okay bool
                 }:
                     // cast cmd results as their stdout string in loops
                     we.result = we.result.(struct {
-                        out  string
-                        err  string
-                        code int
-                        okay bool
-                    }).out
+                        Out  string
+                        Err  string
+                        Code int
+                        Okay bool
+                    }).Out
                 case string:
                 default:
                     if inbound.Tokens[3+skip].tokType == ResultBlock {
@@ -7190,7 +7190,7 @@ tco_reentry:
                         case O_AssCommand:
                             vset(&inbound.Tokens[0], ifs, ident, lhs_name, cop)
                         case O_AssOutCommand:
-                            vset(&inbound.Tokens[0], ifs, ident, lhs_name, cop.out)
+                            vset(&inbound.Tokens[0], ifs, ident, lhs_name, cop.Out)
                         }
                     }
                     // skip normal eval below
@@ -7395,10 +7395,10 @@ tco_reentry:
 }
 
 func system(cmds string, display bool) (cop struct {
-    out  string
-    err  string
-    code int
-    okay bool
+    Out  string
+    Err  string
+    Code int
+    Okay bool
 }) {
 
     if hasOuter(cmds, '`') {
@@ -7443,16 +7443,16 @@ func system(cmds string, display bool) (cop struct {
     for _, cmd := range cmdList {
         cop = Copper(cmd, false)
         if display {
-            pf("%s", cop.out)
+            pf("%s", cop.Out)
         } else {
-            final_out += cop.out + "\n"
+            final_out += cop.Out + "\n"
         }
         // pf("sys: [%3d] : %s\n",k,cmd)
         // pf("cmdout: %+v\n",cop)
     }
 
     if !display {
-        cop.out = str.Trim(final_out, "\n")
+        cop.Out = str.Trim(final_out, "\n")
     }
 
     return cop
@@ -7475,17 +7475,17 @@ func coprocCall(s string) {
         }
 
         cop := Copper(cet, false)
-        if !cop.okay {
-            pf("Error: [%d] in shell command '%s'\n", cop.code, str.TrimLeft(s, " \t"))
+        if !cop.Okay {
+            pf("Error: [%d] in shell command '%s'\n", cop.Code, str.TrimLeft(s, " \t"))
             if interactive {
-                pf(cop.err)
+                pf(cop.Err)
             }
         } else {
-            if len(cop.out) > 0 {
-                if cop.out[len(cop.out)-1] != '\n' {
-                    cop.out += "\n"
+            if len(cop.Out) > 0 {
+                if cop.Out[len(cop.Out)-1] != '\n' {
+                    cop.Out += "\n"
                 }
-                pf("%s", cop.out)
+                pf("%s", cop.Out)
             }
         }
     }
