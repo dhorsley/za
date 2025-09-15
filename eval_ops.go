@@ -12,6 +12,8 @@ import (
     "sync/atomic"
     "time"
     "unsafe"
+	"unicode"
+	"unicode/utf8"
 )
 
 func ev_slice_get_type(arr interface{}) reflect.Type {
@@ -501,7 +503,10 @@ func ev_sub(val1 any, val2 any) any {
     switch val1.(type) {
     case int:
         intInOne = true
-    case uint, uint64:
+    case uint64:
+		uintInOne = true
+    case uint:
+		val1=uint64(val1.(uint))
         uintInOne = true
     case int64:
         i641 = true
@@ -513,7 +518,10 @@ func ev_sub(val1 any, val2 any) any {
     switch val2.(type) {
     case int:
         intInTwo = true
-    case uint, uint64:
+	case uint64:
+		uintInTwo = true
+	case uint:
+		val2=uint64(val2.(uint))
         uintInTwo = true
     case int64:
         i642 = true
@@ -2179,6 +2187,13 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
     }
 }
 
+
+// enforce upper case identifier char [0]
+func renameSF(f string) string {
+    r,i:=utf8.DecodeRuneInString(f)
+    return string(unicode.ToTitle(r))+f[i:]
+}
+
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
     // pf("\nENTERED accessFieldOrFunc() with obj : %#v\n",obj)
@@ -2241,6 +2256,10 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             res, err := kind(struct_name_for_kind, obj)
             return res, err != nil
         }
+
+		// Note: We will always enforce Upper case alpha at pos 0
+		//       to force struct field to be public
+		field=renameSF(field)
 
         if pre_type == Identifier {
             bin := pre_pos

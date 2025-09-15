@@ -11,10 +11,10 @@
 println "--> Section 1: Definitions"
 
 struct TestStruct
-    name        string
-    value       int
-    slice       []
-    data_map    any
+    Name        string
+    Value       int
+    Slice       []
+    Data_map    any
 endstruct
 
 # Will be populated with TestStruct instances
@@ -48,15 +48,15 @@ println "    ... passed"
 println "--> Section 3: Struct Field Assignments"
 
 s = TestStruct()
-s.name = "MyStruct"
-s.value = 123
+s.Name = "MyStruct"
+s.Value = 123
 
-assert s.name == "MyStruct"
-assert s.value == 123
+assert s.Name == "MyStruct"
+assert s.Value == 123
 
 # Assign a whole struct
 s2 = s
-assert s2.name == "MyStruct"
+assert s2.Name == "MyStruct"
 
 println "    ... passed"
 
@@ -83,10 +83,10 @@ assert len(grow_slice) == 3
 # Typed slice conversion
 # Assign a generic []any to a typed []int field in a struct
 holder_slice = [TestStruct(), TestStruct()]
-holder_slice[0].slice = [10, 20, 30] # This should work as []any
+holder_slice[0].Slice = [10, 20, 30] # This should work as []any
 
 var typed_holder TestStruct
-typed_holder.slice = [1, 2, 3] # This should also work.
+typed_holder.Slice = [1, 2, 3] # This should also work.
 
 # Assign nil to a slice element (in an 'any' slice)
 any_slice = [1, 2, 3]
@@ -124,20 +124,22 @@ println "    ... passed"
 # === 6. Complex Chained Assignments ===
 println "--> Section 6: Complex Chained Assignments"
 
+showstruct
+
 # Create a complex structure
-root = TestStruct()
+Root = TestStruct()
 m1["key1"]=100
 m2["key2"]=[0,10,20]
-root.name = "root_struct"
-root.slice = [TestStruct(), TestStruct()]
-root.slice[0].name = "nested_struct_1"
-root.slice[0].data_map = m1
-root.slice[1].name = "nested_struct_2"
-root.slice[1].data_map = m2
+Root.Name = "Root_struct"
+Root.Slice = [TestStruct(), TestStruct()]
+Root.Slice[0].Data_map = m1
+Root.Slice[0].Name = "Nested_struct_1"
+Root.Slice[1].Data_map = m2
+Root.Slice[1].Name = "Nested_struct_2"
 
 # Perform a deeply nested assignment
-root.slice[1].data_map["key2"][2] = 999
-assert root.slice[1].data_map["key2"][2] == 999
+Root.Slice[1].Data_map["key2"][2] = 999
+assert Root.Slice[1].Data_map["key2"][2] == 999
 
 println "    ... passed"
 
@@ -162,9 +164,9 @@ assert d1 == 99
 
 # Unpack into complex targets
 unpack_s = TestStruct()
-unpack_s.name, unpack_s.value = ["unpacked", 789]
-assert unpack_s.name == "unpacked"
-assert unpack_s.value == 789
+unpack_s.Name, unpack_s.Value = ["unpacked", 789]
+assert unpack_s.Name == "unpacked"
+assert unpack_s.Value == 789
 
 unpack_arr = [0,0]
 unpack_arr[0], unpack_arr[1] = [11, 22]

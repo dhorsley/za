@@ -740,8 +740,8 @@ func buildInternalLib() {
         }
         a, s := getMemUsage()
         return struct {
-            alloc  uint64
-            system uint64
+            Alloc  uint64
+            System uint64
         }{a / 1024 / 1024, s / 1024 / 1024}, nil
     }
 

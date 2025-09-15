@@ -1730,13 +1730,18 @@ func buildListLib() {
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
     slhelp["sort"] = LibHelp{in: "list[,bool_reverse|map_options]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order, or with map options."}
     stdlib["sort"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("sort", args, 4,
+        if ok, err := expect_args("sort", args, 5,
             "3", "any", "bool", "bool",
             "2", "any", "bool",
             "2", "any", "map",
+			"1", "nil",
             "1", "any"); !ok {
             return nil, err
         }
+
+		if args[0]==nil {
+			return nil,nil
+		}
 
         list := args[0]
         direction := false

@@ -908,7 +908,7 @@ func buildConversionLib() {
         if len(args) != 1 {
             return -1, errors.New("invalid arguments provided to as_uint()")
         }
-        i, invalid := GetAsUint(args[0])
+        i, invalid := GetAsUint64(args[0])
         if !invalid {
             return i, nil
         }

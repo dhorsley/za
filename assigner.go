@@ -21,40 +21,15 @@ func intToString(i int) string {
     return strconv.Itoa(i)
 }
 
-// unsafeSet bypasses Go's visibility rules by performing a raw memory copy.
-// It is the key to handling unexported struct fields. It works by constructing
-// an interface{} header for the source value to get a pointer to its underlying
-// data, then copying that data to the destination's address.
-func unsafeSet(dest, src reflect.Value) {
+func unsafeSet(dest reflect.Value, obj any) {
     if !dest.CanAddr() {
-        // This should be caught by the caller, but as a safeguard.
         panic("unsafeSet called on non-addressable destination")
     }
-    destPtr := dest.UnsafeAddr()
-
-    var srcDataPtr unsafe.Pointer
-
-    switch src.Kind() {
-    case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Slice, reflect.String:
-        var srcIface any
-        ifacePtr := (*[2]unsafe.Pointer)(unsafe.Pointer(&srcIface))
-        srcTyp := src.Type()
-        ifacePtr[0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&srcTyp))[1]
-        ifacePtr[1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&src))[1]
-        srcDataPtr = (*[2]unsafe.Pointer)(unsafe.Pointer(&srcIface))[1]
-    default:
-        tempVal := reflect.New(src.Type()).Elem()
-        tempVal.Set(src)
-        srcDataPtr = tempVal.Addr().UnsafePointer()
-    }
-
-    size := src.Type().Size()
-    if size > 0 {
-        destSlice := unsafe.Slice((*byte)(unsafe.Pointer(destPtr)), size)
-        srcSlice := unsafe.Slice((*byte)(srcDataPtr), size)
-        copy(destSlice, srcSlice)
-    }
+	r := reflect.ValueOf(obj)
+	dest = reflect.New(r.Type()).Elem()
+	dest.Set(r)
 }
+
 
 // AccessType represents different ways to access data structures (array indexing, map lookup, etc)
 type AccessType int
@@ -207,7 +182,9 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
             }
         }
         newSlice := reflect.MakeSlice(slice.Type(), newSize, newCap)
-        reflect.Copy(newSlice, slice)
+        for i := 0; i < slice.Len(); i++ {
+            copyHelper(newSlice.Index(i), slice.Index(i))
+        }
         return newSlice, nil
     }
     return slice, nil
@@ -291,7 +268,6 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
             sourceElemType := sourceType.Elem()
 
             // Fast path: if element types are directly assignable, just return the original value.
-            // The caller (reflect.Set) will handle the assignment.
             if sourceElemType.AssignableTo(targetElemType) {
                 return value, nil
             }
@@ -382,58 +358,14 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
     return value, nil
 }
 
-// resolveStructLiteral checks if a value is an anonymous struct literal that
-// matches a single, known struct definition. If so, it replaces the literal
-// with a new instance of that a properly-typed, named struct. This is the
-// key to fixing errors caused by the mismatch between anonymous literals and
-// the interpreter's internal struct representation.
-func resolveStructLiteral(val any) any {
-    if val == nil {
-        return nil
-    }
-    if reflect.TypeOf(val).Kind() != reflect.Struct {
-        return val
-    }
-
-    if name, count := struct_match(val); count == 1 {
-        // We have a unique match. Create a new instance of the correct type.
-        fieldDefs := structmaps[name]
-        if fieldDefs == nil {
-            return val // Should not happen if struct_match passed.
-        }
-
-        sfields := make([]reflect.StructField, 0, len(fieldDefs)/4)
-        for i := 0; i < len(fieldDefs)/4; i++ {
-            sfields = append(sfields, reflect.StructField{
-                Name: fieldDefs[i*4].(string),
-                Type: Typemap[fieldDefs[i*4+1].(string)],
-            })
-        }
-        namedStructType := reflect.StructOf(sfields)
-        newInstance := reflect.New(namedStructType).Elem()
-
-        // Copy values from the anonymous literal to the new named instance.
-        literal := reflect.ValueOf(val)
-        for i := 0; i < literal.NumField(); i++ {
-            // The field in the new instance is unexported, so we must use unsafeSet.
-            unsafeSet(newInstance.Field(i), literal.Field(i))
-        }
-        return newInstance.Interface()
-    }
-
-    return val
-}
-
 /*
 handleFieldAssignment is a helper function to handle direct field assignments
 on a struct variable (e.g., `variable.field = value`). It fetches the struct,
 creates a mutable copy, sets the field on the copy, and writes the modified
-struct back. This "copy-modify-replace" strategy avoids Go's reflection errors
-with unexported fields.
+struct back.
 */
 func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, fieldName string, value any) error {
 
-	pf("inside HFA\n")
 	// ts is target struct
     ts, found := vget(&varToken, lfs, lident, varToken.tokText)
     if !found {
@@ -446,18 +378,18 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     if val.Kind() == reflect.Map {
         vsetElement(nil, lfs, lident, varToken.tokText, fieldName, value)
         return nil
-        // return fmt.Errorf("*map lhs assignment attempt with dot*")
     }
 
     if val.Kind() != reflect.Struct {
         return fmt.Errorf("variable %v is not a struct", varToken.tokText)
     }
 
+	// enforce casing
+	fieldName=renameSF(fieldName)
+
 	// make a new temporary target struct type to work with and populate it from the original
-	pf("making temp\n")
     tmp := reflect.New(val.Type()).Elem()
     tmp.Set(val)
-	pf("temp make complete\n")
 
 	// get a ref to the required field:
     field := tmp.FieldByName(fieldName)
@@ -465,13 +397,9 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
         return fmt.Errorf("field %v not found in struct %v", fieldName, varToken.tokText)
     }
 
-	// if the field is not public then change ref to a new instance of the field
-	// this may not be right, it's an attempt to remove the taint
-	pf("settable check\n")
     if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
-	pf("field now settable\n")
 
 	// populate field value from required value in fn arguments
     if value == nil {
@@ -479,10 +407,7 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     } else {
         valToSet := reflect.ValueOf(value)
         if valToSet.Type().AssignableTo(field.Type()) {
-			pf("setting field with [%+v]\n",valToSet)
             field.Set(valToSet)
-			pf("field set complete\n")
-			// unsafeSet(field,valToSet)
         } else {
             return fmt.Errorf("cannot assign result (%T) to %v.%v (%v)", value, varToken.tokText, fieldName, field.Type())
         }
@@ -512,6 +437,9 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
     var skey string
     var ikey int
     isMap := false
+
+    // uppercase initial
+    fieldName=renameSF(fieldName)
 
     switch k := key.(type) {
     case string:
@@ -557,7 +485,7 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
         return fmt.Errorf("field %v not found in struct", fieldName)
     }
 
-    if !field.CanSet() {
+	if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
 
@@ -1225,6 +1153,10 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
 
 func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, valueToSet any) (reflect.Value, error) {
 
+	// pf("inside RA with acs -> %+v\n",accesses)
+	// pf("inside RA with cv  -> [#6]%#v[#-]\n",currentVal)
+	// pf("inside RA with val -> %+v\n",valueToSet)
+
     // Base case: If there are no more access steps, we have the final container.
     // We just need to convert the value we're setting and return it.
     if len(accesses) == 0 {
@@ -1243,13 +1175,12 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
     remainingAccesses := accesses[1:]
 
     // If the current value is an interface, recurse into the value it contains.
-    // This is the key to preventing memory corruption from temporary copies.
     if currentVal.IsValid() && currentVal.Kind() == reflect.Interface {
         // If the interface is nil, we can't recurse. The next step (e.g., AccessMap)
         // will handle auto-vivification of a new container.
         if ! currentVal.IsNil() {
             return p.recursiveAssign(currentVal.Elem(), accesses, valueToSet)
-        }
+		}
     }
 
     switch access.Type {
@@ -1270,28 +1201,25 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
             return reflect.Value{}, err
         }
 
-        // To modify a slice, we must create a new copy, set the element in the
-        // copy, and then return the new slice. Direct in-place modification
-        // of slice elements via reflection is not possible in this context.
-        // This was the source of the memory corruption.
         newSlice := reflect.MakeSlice(currentVal.Type(), currentVal.Len(), currentVal.Cap())
-        reflect.Copy(newSlice, currentVal)
-        // We must use unsafeSet here, not Set, because the slice may contain
-        // dynamically created structs with unexported fields.
-        unsafeSet(newSlice.Index(index), modifiedElem)
+		newSlice=currentVal
+		newSlice.Index(index).Set(modifiedElem)
         return newSlice, nil
 
     case AccessMap:
-        // Consistent with AccessArray/AccessField, if the map is not addressable
-        // (e.g., from a slice/interface), we must make a mutable copy.
-        if !currentVal.CanAddr() {
-            currentVal = deepCopyValue(currentVal)
-        }
-        if !currentVal.IsValid() || (currentVal.Kind() != reflect.Map) {
-            // Auto-vivify map as string-keyed, as it's the only supported user-space map.
-            currentVal = reflect.ValueOf(make(map[string]any))
-        }
 
+		var newMap reflect.Value
+
+		// pf("cvk -> %+v\n",currentVal.Kind())
+		// pf("(am) accessing %v | ",access.Key)
+
+		if currentVal.Kind() == reflect.Invalid {
+			newMap=reflect.MakeMap(reflect.TypeOf(make(map[string]any)))
+		} else {
+			newMap=currentVal
+		}
+
+		// copy from below
         // All non-string keys are converted to strings.
         var skey string
         switch k := access.Key.(type) {
@@ -1317,9 +1245,9 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         rkey := reflect.ValueOf(skey)
 
         // Recursively call on the element.
-        elem := currentVal.MapIndex(rkey)
+        elem := newMap.MapIndex(rkey)
 
-        // After retrieving an element, if it's an interface, we must unwrap it
+		// After retrieving an element, if it's an interface, we must unwrap it
         // before passing it to the next recursive step.
         if elem.IsValid() && elem.Kind() == reflect.Interface {
             elem = elem.Elem()
@@ -1331,21 +1259,31 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         }
 
         // Set the (potentially modified) element back into the map.
-        currentVal.SetMapIndex(rkey, modifiedElem)
-        return currentVal, nil
+        newMap.SetMapIndex(rkey, modifiedElem)
+        return newMap, nil
 
     case AccessField:
+		// enforce field casing
+		access.Field=renameSF(access.Field)
         if !currentVal.IsValid() {
             return reflect.Value{}, fmt.Errorf("cannot access field on nil value")
         }
 
         // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
-        // to remove the taint before we can access its fields for modification.
         if !currentVal.CanAddr() {
             currentVal = deepCopyValue(currentVal)
         }
 
-        field := currentVal.FieldByName(access.Field)
+		var field reflect.Value
+
+		if currentVal.Kind()==reflect.Struct {
+		    field = currentVal.FieldByName(access.Field)
+		} else {
+			if currentVal.IsNil() {
+            	field = reflect.ValueOf(make(map[string]any))
+			}
+		}
+
         if !field.IsValid() {
             return reflect.Value{}, fmt.Errorf("field '%s' not found in struct %v", access.Field, currentVal.Type())
         }
@@ -1369,8 +1307,8 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         }
 
         // Set the field on our (now addressable) struct.
-        unsafeSet(field, finalField)
-
+		// field.Set(finalField)
+		field=finalField
         return currentVal, nil
     }
 
@@ -1454,7 +1392,7 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
                 return Chain{}, fmt.Errorf("invalid field access: unexpected token after dot")
             }
 
-            field := tokens[i].tokText
+            field := renameSF(tokens[i].tokText)
 
             // Add struct access to chain
             chain.Accesses = append(chain.Accesses, Access{
@@ -1471,6 +1409,14 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
     return chain, nil
 }
 
+func debugSet(rv reflect.Value) {
+	if rv.CanSet() {
+		pf(" :- can set\n")
+	} else {
+		pf(" :- cannot set\n")
+	}
+}
+
 // deepCopyValue creates a clean, mutable copy of a potentially tainted, unaddressable reflect.Value.
 func deepCopyValue(v reflect.Value) reflect.Value {
     if !v.IsValid() {
@@ -1478,14 +1424,14 @@ func deepCopyValue(v reflect.Value) reflect.Value {
     }
     // Create a new, addressable value of the same type to be our clean destination.
     dest := reflect.New(v.Type()).Elem()
-    // Copy from the (potentially tainted) source `v` to the clean destination `dest`.
     copyHelper(dest, v)
     return dest
 }
 
 // copyHelper recursively copies from a source value to a settable destination value.
-// It uses `unsafeSet` to bypass taint checks on all field types.
 func copyHelper(dest, src reflect.Value) {
+	// pf("copyHelper called with [settable? %v] dest -> %#v\n",dest.CanSet(),dest)
+	// pf("copyHelper called with [settable? %v] src  -> %#v\n",src.CanSet(),src)
     if !src.IsValid() {
         return
     }
@@ -1497,12 +1443,12 @@ func copyHelper(dest, src reflect.Value) {
         }
     case reflect.Slice:
         if !src.IsNil() {
-            // Create a new clean slice and recursively copy elements into it.
-            newSlice := reflect.MakeSlice(src.Type(), src.Len(), src.Cap())
+			newSlice := reflect.MakeSlice(src.Type(), src.Len(), src.Cap())
             for i := 0; i < src.Len(); i++ {
                 copyHelper(newSlice.Index(i), src.Index(i))
             }
-            dest.Set(newSlice)
+            dest=reflect.ValueOf(newSlice)
+		//	reflect.Copy(dest,newSlice)
         }
 
     case reflect.Map:
@@ -1517,23 +1463,25 @@ func copyHelper(dest, src reflect.Value) {
         if !src.IsNil() {
             // Create a clean copy of the value within the interface.
             copiedElem := deepCopyValue(src.Elem())
-            // When the destination is an interface, we must use the standard Set operation.
-            // This is safe because copiedElem is a new, clean value. Using unsafeSet
-            // here would corrupt the interface's internal pointers.
             dest.Set(copiedElem)
         }
     case reflect.Ptr:
         if !src.IsNil() {
-            // Create a new pointer of the same type as the original.
             newPtr := reflect.New(src.Type().Elem())
-            // Recursively copy the value from the original pointer's target
-            // to the new pointer's target.
             copyHelper(newPtr.Elem(), src.Elem())
-            // Set the destination value to be the new pointer.
             dest.Set(newPtr)
         }
+	case reflect.Bool:
+		unsafeSet(dest,src.Bool())
+	case reflect.Float64:
+		unsafeSet(dest,src.Float())
+	case reflect.Uint,reflect.Uint64:
+		unsafeSet(dest,src.Uint())
+	case reflect.Int:
+		unsafeSet(dest,src.Int())
+	case reflect.String:
+		unsafeSet(dest,src.String())
     default:
-        // This handles primitive types (int, string, bool, etc.).
-        unsafeSet(dest, src)
+		unsafeSet(dest,src.Interface())
     }
 }
