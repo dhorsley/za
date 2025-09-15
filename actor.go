@@ -1702,7 +1702,7 @@ tco_reentry:
                     break
                 }
 
-                structNode = append(structNode, inbound.Tokens[0].tokText, cet.text, hasValue, default_value.result)
+                structNode = append(structNode, renameSF(inbound.Tokens[0].tokText), cet.text, hasValue, default_value.result)
                 // pf("current struct node build at :\n%#v\n",structNode)
 
                 continue

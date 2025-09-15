@@ -1385,6 +1385,12 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         var t Variable
 
         if len(arg_names) > 0 {
+
+			// enforce initial case
+			for i,an := range arg_names {
+				arg_names[i]=renameSF(an)
+			}
+
             // named field handling:
             //  struct_name(.name value,...,.name value)
             if len(arg_names) == len(iargs) {
