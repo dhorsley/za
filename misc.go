@@ -90,11 +90,11 @@ func dir(filter string) []dirent {
             continue
         }
         var fs dirent
-        fs.name = file.Name()
-        fs.size = file.Size()
-        fs.mode = int(file.Mode())
-        fs.mtime = file.ModTime().Unix()
-        fs.is_dir = file.IsDir()
+        fs.Name = file.Name()
+        fs.Size = file.Size()
+        fs.Mode = int(file.Mode())
+        fs.Mtime = file.ModTime().Unix()
+        fs.Is_dir = file.IsDir()
         dl = append(dl, fs)
     }
     return dl
@@ -1212,9 +1212,9 @@ func extractVariableNames(sourceLine string) []string {
         if err == nil {
             if tokenResult, ok := result.(token_result); ok {
                 // Filter for IDENTIFIER token types
-                for i, tokenType := range tokenResult.types {
-                    if tokenType == "IDENTIFIER" && i < len(tokenResult.tokens) {
-                        varName := tokenResult.tokens[i]
+                for i, tokenType := range tokenResult.Types {
+                    if tokenType == "IDENTIFIER" && i < len(tokenResult.Tokens) {
+                        varName := tokenResult.Tokens[i]
                         if !seen[varName] {
                             variables = append(variables, varName)
                             seen[varName] = true

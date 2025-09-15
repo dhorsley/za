@@ -978,9 +978,9 @@ func buildWebLib() {
         }
         s, down_code, _ := download(args[0].(string))
         if down_code > 299 {
-            return web_info{result: "", code: int(down_code)}, nil
+            return web_info{Result: "", Code: int(down_code)}, nil
         }
-        return web_info{result: string(s), code: int(down_code)}, nil
+        return web_info{Result: string(s), Code: int(down_code)}, nil
     }
 
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[string]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
