@@ -397,6 +397,9 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
         return fmt.Errorf("field %v not found in struct %v", fieldName, varToken.tokText)
     }
 
+	// if the field is not public then change ref to a new instance of the field
+	// this may not be right, it's an attempt to remove the taint
+	// pf("settable check\n")
     if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
