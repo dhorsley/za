@@ -2482,10 +2482,10 @@ var cmdlock = &sync.Mutex{}
 
 // submit a command for coprocess execution
 func Copper(line string, squashErr bool) struct {
-    out  string
-    err  string
-    code int
-    okay bool
+    Out  string
+    Err  string
+    Code int
+    Okay bool
 } {
 
     if !permit_shell {
@@ -2495,18 +2495,18 @@ func Copper(line string, squashErr bool) struct {
     // remove some bad conditions...
     if str.HasSuffix(str.TrimRight(line, " "), "|") {
         return struct {
-            out  string
-            err  string
-            code int
-            okay bool
+            Out  string
+            Err  string
+            Code int
+            Okay bool
         }{"", "", -1, false}
     }
     if tr(line, DELETE, "| ", "") == "" {
         return struct {
-            out  string
-            err  string
-            code int
-            okay bool
+            Out  string
+            Err  string
+            Code int
+            Okay bool
         }{"", "", -1, false}
     }
     line = str.TrimRight(line, "\n")
@@ -2613,10 +2613,10 @@ func Copper(line string, squashErr bool) struct {
             os.Remove(errorFile.Name())
             procKill(os.Getpid())
             return struct {
-                out  string
-                err  string
-                code int
-                okay bool
+                Out  string
+                Err  string
+                Code int
+                Okay bool
             }{"", "interrupt", -3, false}
         } else {
             if err == nil {
@@ -2656,10 +2656,10 @@ func Copper(line string, squashErr bool) struct {
     }
 
     return struct {
-        out  string
-        err  string
-        code int
-        okay bool
+        Out  string
+        Err  string
+        Code int
+        Okay bool
     }{string(ns), errout, errint, errint == 0}
 }
 

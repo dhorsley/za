@@ -190,19 +190,19 @@ func isinstalled(pkg string) (bool) {
     err:=-1
     switch v.(string) {
     case "ubuntu", "debian","pop":
-        err = Copper("dpkg -V "+pkg+" 2>/dev/null", true).code
+        err = Copper("dpkg -V "+pkg+" 2>/dev/null", true).Code
         if err==0 {
-            ret:=Copper("dpkg -s "+pkg+` 2>/dev/null | grep "^Status:.* deinstall"`,true).out
+            ret:=Copper("dpkg -s "+pkg+` 2>/dev/null | grep "^Status:.* deinstall"`,true).Out
             if len(ret)>0 {
                 err=-1
             }
         }
     case "opensuse":
-        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
+        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).Code
     case "alpine":
-        err = Copper("apk info -e "+pkg+" 2>/dev/null", true).code
+        err = Copper("apk info -e "+pkg+" 2>/dev/null", true).Code
     case "fedora", "amzn", "centos", "rhel":
-        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).code
+        err = Copper("rpm -q "+pkg+" 2>/dev/null", true).Code
     default:
         return false
     }
@@ -252,7 +252,7 @@ func uninstall(pkgs string) (state int) {
 
     if firstInstallRun {
         pf("Updating repository.\n")
-        err := Copper(updateCommand, true).code
+        err := Copper(updateCommand, true).Code
         if err != 0 {
             pf("Problem performing system update!\n")
             finish(true, ERR_PACKAGE)
@@ -261,18 +261,18 @@ func uninstall(pkgs string) (state int) {
         firstInstallRun = false
     }
 
-    err := Copper(checkcmd1+pkgs+checkcmd2, true).code
+    err := Copper(checkcmd1+pkgs+checkcmd2, true).Code
     if err == 0 { // installed
         // remove
         removeCommand := sf("%s %s %s", pm, inopts, pkgs)
         // pf("[rem] Executing: %s\n",removeCommand)
         pf("Removing: %v\n", pkgs)
         cop := Copper(removeCommand, true)
-        if !cop.okay {
+        if !cop.Okay {
             pf("\nPotential problem removing packages [%s]\n",pkgs)
-            pf(cop.out)
+            pf(cop.Out)
             finish(false,ERR_PACKAGE)
-            return cop.code
+            return cop.Code
         }
     } else {
         return -1
@@ -317,14 +317,14 @@ func install(pkgs string,quiet bool) (state int) {
         case ".deb": // dpkg
             cmd := "dpkg -s "+pbname
             cop := Copper(cmd, true)
-            if cop.code>0 || !str.Contains(cop.out,"Status: install ok installed") { // not installed
+            if cop.Code>0 || !str.Contains(cop.Out,"Status: install ok installed") { // not installed
                 if !quiet { pf("[#3]%s not currently installed.[#-]\n",pbname) }
             } else {
                 if !quiet { pf("[#3]%s already installed. Overwriting.[#-]\n",pbname) }
             }
             cmd = "dpkg -i "+pkgs
             cop = Copper(cmd, true)
-            if cop.code>0 {
+            if cop.Code>0 {
                 if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
@@ -333,14 +333,14 @@ func install(pkgs string,quiet bool) (state int) {
         case ".rpm": // rpm
             cmd := "rpm -qi "+pbname
             cop := Copper(cmd, true)
-            if cop.code==0 { // installed
+            if cop.Code==0 { // installed
                 if !quiet { pf("[#3]%s already installed. Overwriting.[#-]\n",pbname) }
             } else {
                 if !quiet { pf("[#3]%s install not detected.[#-]\n",pbname) }
             }
             cmd = "rpm -U "+pkgs
             cop = Copper(cmd, true)
-            if cop.code>0 {
+            if cop.Code>0 {
                 if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
@@ -349,7 +349,7 @@ func install(pkgs string,quiet bool) (state int) {
         case ".apk": // apk
             cmd:="apk add --allow-untrusted "+pbname
             cop:=Copper(cmd,true)
-            if cop.code>0 {
+            if cop.Code>0 {
                 if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
                 return -1
             }
@@ -411,7 +411,7 @@ func install(pkgs string,quiet bool) (state int) {
     if firstInstallRun {
         // do update
         if !quiet { pf("Updating repository.\n") }
-        err := Copper(updateCommand, true).code
+        err := Copper(updateCommand, true).Code
         if err != 0 {
             if !quiet { pf("Problem performing system update!\n[cmd->%s]\n",updateCommand) }
             finish(true, ERR_PACKAGE)
@@ -427,17 +427,17 @@ func install(pkgs string,quiet bool) (state int) {
     plist := str.Split(pkgs, ",")
     for _, p := range plist {
 
-        err := Copper(checkcmd1+p+checkcmd2, true).code
+        err := Copper(checkcmd1+p+checkcmd2, true).Code
         if err == 1 { // not installed
             // install
             installCommand := sf("sudo %s %s %s", pm, inopts, p)
             if !quiet { pf("Installing: %v\n", p) }
             cop := Copper(installCommand, true)
-            if !cop.okay {
+            if !cop.Okay {
                 pf("\nPotential problem installing packages [%s]\n",p)
-                if !quiet { pf(cop.out) }
+                if !quiet { pf(cop.Out) }
                 finish(false,ERR_PACKAGE)
-                return cop.code
+                return cop.Code
             }
         } else {
             // already there or invalid names. either way, do nothing...
@@ -459,7 +459,7 @@ func service(name string, action string) (bool, error) {
     rv := v.(string)
 
     sys := Copper("ps -o comm= -q 1", true)
-    if !sys.okay {
+    if !sys.Okay {
         pf("Error: could not check process 1.\n")
         return false, errors.New("Could not check process 1.")
     }
@@ -523,12 +523,12 @@ func service(name string, action string) (bool, error) {
         finish(false, ERR_UNSUPPORTED)
     }
 
-    if sys.out != expected {
+    if sys.Out != expected {
         pf("Warning: your current init system does not match the expected init system for this OS!\nContinuing execution, however, you may encounter issues.\n")
     }
 
     unknown := false
-    var cop struct{out string;err string;code int; okay bool}
+    var cop struct{Out string;Err string;Code int; Okay bool}
 
     switch expected {
     case "systemd":
@@ -569,12 +569,12 @@ func service(name string, action string) (bool, error) {
         return false, errors.New("Error: We only support upstart and systemd.\n")
     }
 
-    if !cop.okay {
+    if !cop.Okay {
         pf("Error: the required service action '%s' on '%s' could not be completed successfully. Please investigate.\n", action, name)
         return false, errors.New("Error: could not complete the required action.")
     }
 
-    pf("%s\n", cop.out)
+    pf("%s\n", cop.Out)
     return true, nil
 
 }
