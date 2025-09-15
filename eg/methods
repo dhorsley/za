@@ -46,6 +46,7 @@ println "b: ", b
 
 title("Calling a.double()")
 a.double
+println "A->",a
 assert a.a == 84
 
 title("Calling b.triple()")
@@ -75,6 +76,8 @@ println "c.kind: ", c.kind
 assert c.a == 168
 
 title("Calling double() on literal (c), assigning to j")
+var j q
+println "test:",(c).double
 j = (c).double
 println "j: ", j
 assert j == 336

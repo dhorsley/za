@@ -197,33 +197,33 @@ type Pane struct {
 // stdlib types...
 
 type dirent struct {
-    name   string
-    size   int64
-    mode   int // from uint32
-    mtime  int64
-    is_dir bool
+    Name   string
+    Size   int64
+    Mode   int // from uint32
+    Mtime  int64
+    Is_dir bool
 }
 
 type token_result struct {
-    tokens []string
-    types  []string
+    Tokens []string
+    Types  []string
 }
 
 type zainfo struct {
-    version string
-    name    string
-    build   string
+    Version string
+    Name    string
+    Build   string
 }
 
 type alloc_info struct {
-    id   int
-    name string
-    size int
+    Id   int
+    Name string
+    Size int
 }
 
 type web_info struct {
-    result string
-    code   int
+    Result string
+    Code   int
 }
 
 // Enhanced error handling structures
