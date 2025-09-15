@@ -27,10 +27,18 @@ var q s
 q.name = "test" # would become q.Name internally
 println q.name  # would become q.Name internally
 
-( pseudo: if field_name[0]>96 { field_name[0]=field_name[0]-32 } )
-
-I think this would need doing, initally at least, on all access rather than just during struct
+I think this would need doing, initially at least, on all access rather than just during struct
 definition, as struct literals/Anon() would also need converting.
+
+****
+NOTE
+  this is now done, with the exception of auto-capitalising struct references in string literals
+   where interpolation is happening. will look at this next, but just capitalise access for now in
+   interpolated access.
+  this does not apply to template config interpolation in lib-tui.go - this is automated.
+  additionally, we capitalise the first rune, rather than ascii value.  
+****
+
 
 
 KERNEL PARAMETER TUNING

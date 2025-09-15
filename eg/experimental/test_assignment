@@ -11,10 +11,10 @@
 println "--> Section 1: Definitions"
 
 struct TestStruct
-    Name        string
-    Value       int
-    Slice       []
-    Data_map    any
+    name        string
+    value       int
+    slice       []
+    data_map    any
 endstruct
 
 # Will be populated with TestStruct instances
@@ -83,10 +83,10 @@ assert len(grow_slice) == 3
 # Typed slice conversion
 # Assign a generic []any to a typed []int field in a struct
 holder_slice = [TestStruct(), TestStruct()]
-holder_slice[0].Slice = [10, 20, 30] # This should work as []any
+holder_slice[0].slice = [10, 20, 30] # This should work as []any
 
 var typed_holder TestStruct
-typed_holder.Slice = [1, 2, 3] # This should also work.
+typed_holder.slice = [1, 2, 3] # This should also work.
 
 # Assign nil to a slice element (in an 'any' slice)
 any_slice = [1, 2, 3]
@@ -131,15 +131,15 @@ Root = TestStruct()
 m1["key1"]=100
 m2["key2"]=[0,10,20]
 Root.Name = "Root_struct"
-Root.Slice = [TestStruct(), TestStruct()]
-Root.Slice[0].Data_map = m1
-Root.Slice[0].Name = "Nested_struct_1"
-Root.Slice[1].Data_map = m2
-Root.Slice[1].Name = "Nested_struct_2"
+Root.slice = [TestStruct(), TestStruct()]
+Root.slice[0].Data_map = m1
+Root.slice[0].Name = "Nested_struct_1"
+Root.slice[1].Data_map = m2
+Root.slice[1].Name = "Nested_struct_2"
 
 # Perform a deeply nested assignment
-Root.Slice[1].Data_map["key2"][2] = 999
-assert Root.Slice[1].Data_map["key2"][2] == 999
+Root.slice[1].Data_map["key2"][2] = 999
+assert Root.slice[1].Data_map["key2"][2] == 999
 
 println "    ... passed"
 
