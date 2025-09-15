@@ -100,11 +100,11 @@ func buildOsLib() {
                 continue
             }
             var fs dirent
-            fs.name = file.Name()
-            fs.size = file.Size()
-            fs.mode = int(file.Mode())
-            fs.mtime = file.ModTime().Unix()
-            fs.is_dir = file.IsDir()
+            fs.Name = file.Name()
+            fs.Size = file.Size()
+            fs.Mode = int(file.Mode())
+            fs.Mtime = file.ModTime().Unix()
+            fs.Is_dir = file.IsDir()
             dl = append(dl, fs)
         }
 

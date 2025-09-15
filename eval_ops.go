@@ -2259,7 +2259,12 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
 		// Note: We will always enforce Upper case alpha at pos 0
 		//       to force struct field to be public
-		field=renameSF(field)
+
+        // NB field is deliberately shadowed here so that it returns
+        //     to the uncapitalised version if it falls through
+        //     to the enum/func checks further below!!
+
+		field:=renameSF(field)
 
         if pre_type == Identifier {
             bin := pre_pos

@@ -680,7 +680,7 @@ func buildInternalLib() {
         v, _ := gvget("@version")
         l, _ := gvget("@language")
         c, _ := gvget("@ct_info")
-        return zainfo{version: v.(string), name: l.(string), build: c.(string)}, nil
+        return zainfo{Version: v.(string), Name: l.(string), Build: c.(string)}, nil
     }
 
     slhelp["sysvar"] = LibHelp{in: "system_variable_name", out: "struct", action: "Returns the value of a system variable."}
@@ -1689,7 +1689,7 @@ func buildInternalLib() {
                 break
             }
         }
-        return token_result{tokens: toks, types: toktypes}, err
+        return token_result{Tokens: toks, Types: toktypes}, err
     }
 
     slhelp["release_version"] = LibHelp{in: "", out: "string", action: "Returns the OS version number."}
