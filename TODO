@@ -35,9 +35,26 @@ NOTE
   this is now done, with the exception of auto-capitalising struct references in string literals
    where interpolation is happening. will look at this next, but just capitalise access for now in
    interpolated access.
+    - tested: works as expected. interpolated references get retokenised and handled by current 
+        mechanisms that were added already to auto-cap.
   this does not apply to template config interpolation in lib-tui.go - this is automated.
   additionally, we capitalise the first rune, rather than ascii value.  
+  other internal structs (e.g. dirent, alloc_info, etc) were also changed to use public field 
+    definitions (but still can be referenced with either initial case.
+  more testing will need doing against all the eg/* cases for missed struct changes. however,
+    almost everything tested so far is okay.
+    - fix: []dirent access in list_map and list_query operators (-> and ?>) 
+        - needed to wrap the field list construction parameter inside renameSF()
 ****
+
+REMAINING CLEANUP AND ISSUES WITH COMPLEX LHS ASSIGNMENT
+--------------------------------------------------------
+
+    - much commenting/dead code/etc to tidy
+    - still some lack of functionality (see eg/experimental/*)
+        - mainly revolves around differentiating array/slice/map types and their indices
+            during auto-vivification
+        - cleaner error messages required in places.
 
 
 
