@@ -918,194 +918,6 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
     }
 }
 
-/*
-// tryElementAssign attempts a fast-path assignment for slice or map elements.
-// It handles auto-vivification of nil containers. Returns true on success.
-func tryElementAssign(container any, key any, value any) bool {
-    switch c := container.(type) {
-    case map[string]any:
-        var skey string
-        switch k := key.(type) {
-        case string:
-            skey = k
-        case int:
-            skey = intToString(k)
-        case uint:
-            skey = strconv.FormatUint(uint64(k), 10)
-        case int64:
-            skey = strconv.FormatInt(k, 10)
-        case uint64:
-            skey = strconv.FormatUint(k, 10)
-        case float64:
-            skey = strconv.FormatFloat(k, 'f', -1, 64)
-        case *big.Int:
-            skey = k.String()
-        case *big.Float:
-            skey = k.String()
-        default:
-            skey = fmt.Sprintf("%v", k)
-        }
-        c[skey] = value
-        return true
-    case []any:
-        idx, ok := key.(int)
-        if !ok {
-            return false // Index must be an integer for a slice.
-        }
-        if idx < 0 {
-            return false // Negative index is invalid.
-        }
-
-        if idx >= len(c) {
-            // This path should not be taken for `[]any`, as `growSlice` in the
-            // recursive path handles it. But for safety, we'll leave this check.
-            return false
-        }
-        c[idx] = value
-        return true
-    }
-    return false
-}
-*/
-
-/*
-// funcOf is a reflection helper that takes any slice, array, or pointer to one,
-// and returns a generic accessor function. This allows the caller to treat
-// them as a generic list without needing complex type switches.
-func funcOf(slice any) (res struct {
-    Len func() int
-    Get func(i int) any
-}, ok bool) {
-    v := reflect.ValueOf(slice)
-    for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
-        if !v.Elem().IsValid() {
-            return res, false
-        }
-        v = v.Elem()
-    }
-    if v.Kind() != reflect.Slice && v.Kind() != reflect.Array {
-        return res, false
-    }
-    res.Len = v.Len
-    res.Get = func(i int) any { return v.Index(i).Interface() }
-    return res, true
-}
-*/
-
-/*
-// typedAssign performs a type-safe assignment for simple variables, mimicking the
-// logic of the original `vset` function. It returns true on success.
-func typedAssign(v *Variable, value any) bool {
-    var ok bool
-    switch v.IKind {
-    case kdynamic:
-        // Dynamic multi-dimensional type - use reflection for type checking
-        if v.IValue != nil {
-            targetType := reflect.TypeOf(v.IValue)
-            valueType := reflect.TypeOf(value)
-            if valueType != nil && valueType.AssignableTo(targetType) {
-                v.IValue = value
-                ok = true
-            }
-        }
-    case kbool:
-        if val, isType := value.(bool); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kint, kint64:
-        if val, isType := value.(int); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kuint, kuint64:
-        if val, isType := value.(uint); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kfloat:
-        if val, isType := value.(float64); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kstring:
-        if val, isType := value.(string); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kbyte:
-        if val, isType := value.(uint8); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kbigi:
-        if val, isType := value.(*big.Int); isType {
-            v.IValue.(*big.Int).Set(val)
-            ok = true
-        }
-    case kbigf:
-        if val, isType := value.(*big.Float); isType {
-            v.IValue.(*big.Float).Set(val)
-            ok = true
-        }
-    case ksbool:
-        if val, isType := value.([]bool); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksint:
-        if val, isType := value.([]int); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksuint:
-        if val, isType := value.([]uint); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksfloat:
-        if val, isType := value.([]float64); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksstring:
-        if val, isType := value.([]string); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksbyte:
-        if val, isType := value.([]uint8); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksbigi:
-        if val, isType := value.([]*big.Int); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksbigf:
-        if val, isType := value.([]*big.Float); isType {
-            v.IValue = val
-            ok = true
-        }
-    case ksany:
-        if val, isType := value.([]any); isType {
-            v.IValue = val
-            ok = true
-        }
-    case kmap:
-        if val, isType := value.(map[string]any); isType {
-            v.IValue = val
-            ok = true
-        }
-    case knil, kany:
-        v.IValue = value
-        ok = true
-    }
-    return ok
-}
-*/
-
 // processAssignment is the main refactored assignment function.
 func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Variable) error {
     // Ensure the root variable exists.
@@ -1344,7 +1156,6 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         }
 
         // Set the field on our (now addressable) struct.
-		// field.Set(finalField)
 		field=finalField
         return currentVal, nil
     }
@@ -1446,15 +1257,7 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
     return chain, nil
 }
 
-func debugSet(rv reflect.Value) {
-	if rv.CanSet() {
-		pf(" :- can set\n")
-	} else {
-		pf(" :- cannot set\n")
-	}
-}
 
-// deepCopyValue creates a clean, mutable copy of a potentially tainted, unaddressable reflect.Value.
 func deepCopyValue(v reflect.Value) reflect.Value {
     if !v.IsValid() {
         return v
@@ -1500,7 +1303,6 @@ func copyHelper(dest, src reflect.Value) {
             // Create a clean copy of the value within the interface.
             copiedElem := deepCopyValue(src.Elem())
 			unsafeSet(dest,copiedElem)
-            // dest.Set(copiedElem)
         }
     case reflect.Ptr:
         if !src.IsNil() {
@@ -1522,3 +1324,4 @@ func copyHelper(dest, src reflect.Value) {
 		unsafeSet(dest,src.Interface())
     }
 }
+
