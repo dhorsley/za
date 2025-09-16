@@ -399,7 +399,6 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
 
 	// if the field is not public then change ref to a new instance of the field
 	// this may not be right, it's an attempt to remove the taint
-	// pf("settable check\n")
     if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
@@ -919,6 +918,7 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
     }
 }
 
+/*
 // tryElementAssign attempts a fast-path assignment for slice or map elements.
 // It handles auto-vivification of nil containers. Returns true on success.
 func tryElementAssign(container any, key any, value any) bool {
@@ -966,7 +966,9 @@ func tryElementAssign(container any, key any, value any) bool {
     }
     return false
 }
+*/
 
+/*
 // funcOf is a reflection helper that takes any slice, array, or pointer to one,
 // and returns a generic accessor function. This allows the caller to treat
 // them as a generic list without needing complex type switches.
@@ -988,7 +990,9 @@ func funcOf(slice any) (res struct {
     res.Get = func(i int) any { return v.Index(i).Interface() }
     return res, true
 }
+*/
 
+/*
 // typedAssign performs a type-safe assignment for simple variables, mimicking the
 // logic of the original `vset` function. It returns true on success.
 func typedAssign(v *Variable, value any) bool {
@@ -1100,6 +1104,7 @@ func typedAssign(v *Variable, value any) bool {
     }
     return ok
 }
+*/
 
 // processAssignment is the main refactored assignment function.
 func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Variable) error {
@@ -1211,31 +1216,44 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
     case AccessMap:
 
-		var newMap reflect.Value
+		var newContainer reflect.Value
 
 		// pf("cvk -> %+v\n",currentVal.Kind())
 		// pf("(am) accessing %v | ",access.Key)
+		// pf("(am) access list: %#v\n",accesses)
+
+		var isMap bool
+
+		if currentVal.Kind() == reflect.Map {
+			isMap=true
+		}
 
 		if currentVal.Kind() == reflect.Invalid {
-			newMap=reflect.MakeMap(reflect.TypeOf(make(map[string]any)))
+			newContainer=reflect.MakeMap(reflect.TypeOf(make(map[string]any)))
+			isMap=true
 		} else {
-			newMap=currentVal
+			newContainer=currentVal
 		}
 
 		// copy from below
         // All non-string keys are converted to strings.
         var skey string
+		var ikey int
         switch k := access.Key.(type) {
         case string:
             skey = k
         case int:
             skey = intToString(k)
+			ikey = k
         case uint:
             skey = strconv.FormatUint(uint64(k), 10)
+			ikey = int(k)
         case int64:
             skey = strconv.FormatInt(k, 10)
+			ikey = int(k)
         case uint64:
             skey = strconv.FormatUint(k, 10)
+			ikey = int(k)
         case float64:
             skey = strconv.FormatFloat(k, 'f', -1, 64)
         case *big.Int:
@@ -1248,7 +1266,18 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         rkey := reflect.ValueOf(skey)
 
         // Recursively call on the element.
-        elem := newMap.MapIndex(rkey)
+		var elem reflect.Value
+		if isMap {
+        	elem = newContainer.MapIndex(rkey)
+		} else {
+			// Grow slice if necessary. This might create a new slice value.
+			grownSlice, err := growSlice(newContainer, ikey, valueToSet)
+			if err != nil {
+				return reflect.Value{}, err
+			}
+        	newContainer = grownSlice
+			elem = newContainer.Index(ikey)
+		}
 
 		// After retrieving an element, if it's an interface, we must unwrap it
         // before passing it to the next recursive step.
@@ -1262,8 +1291,13 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         }
 
         // Set the (potentially modified) element back into the map.
-        newMap.SetMapIndex(rkey, modifiedElem)
-        return newMap, nil
+		if isMap {
+			newContainer.SetMapIndex(rkey, modifiedElem)
+			return newContainer, nil
+		}
+
+		newContainer.Index(ikey).Set(modifiedElem)
+		return newContainer, nil
 
     case AccessField:
 		// enforce field casing
@@ -1451,7 +1485,6 @@ func copyHelper(dest, src reflect.Value) {
                 copyHelper(newSlice.Index(i), src.Index(i))
             }
             dest=reflect.ValueOf(newSlice)
-		//	reflect.Copy(dest,newSlice)
         }
 
     case reflect.Map:
