@@ -1499,7 +1499,8 @@ func copyHelper(dest, src reflect.Value) {
         if !src.IsNil() {
             // Create a clean copy of the value within the interface.
             copiedElem := deepCopyValue(src.Elem())
-            dest.Set(copiedElem)
+			unsafeSet(dest,copiedElem)
+            // dest.Set(copiedElem)
         }
     case reflect.Ptr:
         if !src.IsNil() {
