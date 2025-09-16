@@ -3,29 +3,28 @@
 # === Struct Definitions ===
 
 struct Node
-    name string
-    val  int
+    Name string
+    Val  int
 endstruct
 
 struct Container
-    inner any       # will store a map holding Node
-    items []        # array of Holder (dynamic type)
+    Inner any       # will store a map holding Node
+    Items []        # array of Holder (dynamic type)
 endstruct
 
 struct Holder
-    thing []int
+    Thing []int
 endstruct
 
 # === Setup ===
 
 # Create a Node instance
 showstruct
-println "Node() output: ",Node()
 println "Node() type  : ",Node().kind
-println
 n1 = Node()
-n1.name = "leaf"
-n1.val = 0
+n1.Name = "leaf"
+n1.Val = 99
+println "New Node value: ",n1
 
 # Store it in a map
 var m map
@@ -33,16 +32,19 @@ m["inner"] = n1
 
 # Create Container and assign values
 c = Container()
-c.inner = m
-c.items = [Holder(), Holder()]
+c.Inner = m
+c.Items = [Holder(), Holder()]
+println "m       : ",m
 
-c.items[0].thing = [0, 0, 0]
-c.items[1].thing = [0, 0, 0]
+c.Items[0].Thing = [9,8,7]
+c.Items[1].Thing = [6,5,4]
+println "built container c: %#v".format(c)
 
 # === Fixed-size array tests ===
 mat = [[1,2],[3,4],5,6]
 println "Mat before chained assignment : ",mat
 mat[1][1] = 42
+println "Mat after chained assignment  : ",mat
 assert mat[1][1] == 42
 
 var labels [4]string

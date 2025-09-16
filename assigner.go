@@ -377,6 +377,7 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
 
     if val.Kind() == reflect.Map {
         vsetElement(nil, lfs, lident, varToken.tokText, fieldName, value)
+		// pf("setting map element %s\n",fieldName)
         return nil
     }
 
@@ -387,7 +388,7 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
 	// enforce casing
 	fieldName=renameSF(fieldName)
 
-	// make a new temporary target struct type to work with and populate it from the original
+	// make a new temporary target struct type to work with and populate it
     tmp := reflect.New(val.Type()).Elem()
     tmp.Set(val)
 
@@ -398,18 +399,26 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     }
 
 	// if the field is not public then change ref to a new instance of the field
-	// this may not be right, it's an attempt to remove the taint
+	// this may not be right, it's an attempt to remove the taint (that clearly is not working!)
+
     if !field.CanSet() {
         field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
     }
 
 	// populate field value from required value in fn arguments
+	// @todo: fix this:
+	// this is still somewhat broken. it thinks it is reading private fields
+	//  even when it is not. something further up in the chain must be propagating
+	//  this blockage down, probably due to addressability/trying to mutate originals
+
     if value == nil {
         field.Set(reflect.Zero(field.Type()))
     } else {
         valToSet := reflect.ValueOf(value)
         if valToSet.Type().AssignableTo(field.Type()) {
             field.Set(valToSet)
+			// pf("latest dest field value: %+v\n",field.Interface())
+			// pf("latest dest tmp value  : %+v\n",tmp.Interface())
         } else {
             return fmt.Errorf("cannot assign result (%T) to %v.%v (%v)", value, varToken.tokText, fieldName, field.Type())
         }
