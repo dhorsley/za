@@ -54,13 +54,20 @@ tmp = [5, 6]
 a, b = tmp
 assert a == 5
 assert b == 6
+println "a,b:{a},{b}"
 
 # === Discard (`_`) use ===
 vals = [100, 200]
 x, _ = vals
 assert x == 100
+println "x:",x
 
 # === Nested tuple unpack (manual split) ===
 group = [[1, 2], [3, 4]]
-g1a, g
+println "group: ",group
+
+g1a,g1b = group
+println "g1a:",g1a
+println "g1b:",g1b
+
 
