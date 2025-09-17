@@ -53,6 +53,13 @@ REMAINING CLEANUP AND ISSUES WITH COMPLEX LHS ASSIGNMENT
     - still some lack of functionality (see eg/experimental/*)
     - some value types still not populating through reflection
         depending on what came before them as their container types?
+        - on closer inspection, the fault initially seems to be that
+            array indices cannot be assigned during chaining if the array 
+            is empty, even if typed and present.
+            if the slice has content already it can be overwritten.
+            however, this is still broken as index 0 is always overwritten
+            instead of the specified index.
+
     - cleaner error messages required in places.
 
 
