@@ -373,6 +373,8 @@ func main() {
 
     // lineWrap=true // currently disabled - it breaks up ansi sequences. will re-enable when dealt with.
 
+	setupRO() // to calc offset position of read-only flag in struct type info - used to disable it during copies.
+
     // time zone handling
     if tz := os.Getenv("TZ"); tz != "" {
         var err error
