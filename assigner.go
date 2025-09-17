@@ -21,7 +21,6 @@ func intToString(i int) string {
     return strconv.Itoa(i)
 }
 
-/*
 func unsafeSet(dest reflect.Value, obj any) {
     if !dest.CanAddr() {
         panic("unsafeSet called on non-addressable destination")
@@ -30,7 +29,6 @@ func unsafeSet(dest reflect.Value, obj any) {
     dest = reflect.New(r.Type()).Elem()
     dest.Set(r)
 }
-*/
 
 // AccessType represents different ways to access data structures (array indexing, map lookup, etc)
 type AccessType int
@@ -261,7 +259,7 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
     // Handle array/slice element assignment
     if targetKind == reflect.Slice || targetKind == reflect.Array {
         valueKind := valueReflect.Kind()
-        pf("[cav] slice assignment to %v with %+v\n",targetKind,value)
+        // pf("[cav] slice assignment to %v with %+v\n",targetKind,value)
 
         // Case 1: Assigning a whole slice/array to another slice/array
         if valueKind == reflect.Slice || valueKind == reflect.Array {
@@ -968,7 +966,7 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
 
     // Call recursive assign, skipping the first access (which is just the variable itself)
     finalVal, err = p.recursiveAssign(reflect.ValueOf(rootVar.IValue), chain.Accesses[1:], valueToSet)
-    pf("(pa) final val -> %#v\n",finalVal)
+    // pf("(pa) final val -> %#v\n",finalVal)
     if err != nil {
         return err
     }
@@ -984,9 +982,9 @@ func (p *leparser) processAssignment(chain Chain, valueToSet any, lident *[]Vari
 
 func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, valueToSet any) (reflect.Value, error) {
 
-    pf("inside RA with acs -> %+v\n",accesses)
-    pf("inside RA with cv  -> [#6]%#v[#-]\n",currentVal)
-    pf("inside RA with val -> %+v\n",valueToSet)
+    // pf("inside RA with acs -> %+v\n",accesses)
+    // pf("inside RA with cv  -> [#6]%#v[#-]\n",currentVal)
+    // pf("inside RA with val -> %+v\n",valueToSet)
 
     // Base case: If there are no more access steps, we have the final container.
     // We just need to convert the value we're setting and return it.
@@ -1004,7 +1002,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
     access := accesses[0] // The CURRENT access to process
     remainingAccesses := accesses[1:]
-    pf("Current access -> %+v\n",access)
+    // pf("Current access -> %+v\n",access)
 
     // If the current value is an interface, recurse into the value it contains.
     if currentVal.IsValid() && currentVal.Kind() == reflect.Interface {
@@ -1020,37 +1018,42 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         index := access.Key.(int)
 
         // Grow slice if necessary. This might create a new slice value.
-        pf("(aa) slice size %v\n",currentVal.Len())
+        // pf("(aa) slice size %v\n",currentVal.Len())
         grownSlice, err := growSlice(currentVal, index, valueToSet)
         if err != nil {
             return reflect.Value{}, err
         }
-        pf("(aa) new size %v\n",grownSlice.Len())
+        // pf("(aa) new size %v\n",grownSlice.Len())
         currentVal = grownSlice
 
         // Recursively call on the element.
         elem := currentVal.Index(index)
-        pf("(aa) elem : %+v\n",elem)
+        // pf("(aa) elem : %+v\n",elem)
         modifiedElem, err := p.recursiveAssign(elem, remainingAccesses, valueToSet)
-        pf("(aa) mod elem : %+v\n",modifiedElem)
+        // pf("(aa) mod elem : %+v\n",modifiedElem)
         if err != nil {
             return reflect.Value{}, err
         }
 
+		// copy slice
         newSlice := reflect.MakeSlice(currentVal.Type(), currentVal.Len(), currentVal.Cap())
-        newSlice=currentVal
+        // newSlice.Set(currentVal)
+        for i := 0; i < currentVal.Len(); i++ {
+            newSlice.Index(i).Set(reflect.ValueOf(recCopy(currentVal.Index(i).Interface())))
+        }
 
+		// update slice with new elem
         newSlice.Index(index).Set(modifiedElem)
-        pf("(aa) new slice -> %#v\n",newSlice)
+        // pf("(aa) new slice -> %#v\n",newSlice)
         return newSlice, nil
 
     case AccessMap:
 
         var newContainer reflect.Value
 
-        pf("cvk -> %+v\n",currentVal.Kind())
-        pf("(am) accessing %v | ",access.Key)
-        pf("(am) access list: %#v\n",accesses)
+        // pf("cvk -> %+v\n",currentVal.Kind())
+        // pf("(am) accessing %v | ",access.Key)
+        // pf("(am) access list: %#v\n",accesses)
 
         var isMap bool
 
@@ -1142,18 +1145,15 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
             currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
         }
         */
-
         currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
-        var field reflect.Value
-        pf("cv entry -> %#v\n",currentVal)
 
-        if currentVal.Kind()==reflect.Struct {
-            field = currentVal.FieldByName(access.Field)
-        } else {
-            if currentVal.IsNil() {
-                field = reflect.ValueOf(make(map[string]any))
-            }
-        }
+        var field reflect.Value
+        // pf("cv entry -> %#v\n",currentVal)
+
+    	tmp := reflect.New(currentVal.Type()).Elem()
+    	tmp.Set(currentVal)
+
+		field=tmp.FieldByName(access.Field)
         disableRO(&field)
 
         if !field.IsValid() {
@@ -1161,38 +1161,18 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         }
 
         // Recursively call on the field.
-        pf("mod field, ra from -> %#v\n",field)
-        field, err := p.recursiveAssign(field, remainingAccesses, valueToSet)
-        pf("mod field, returned with -> %#v\n",field)
-        disableRO(&field)
-
+        finalField, err := p.recursiveAssign(field, remainingAccesses, valueToSet)
         if err != nil {
             return reflect.Value{}, err
         }
-
-        /*
-        // BOXING LOGIC: If target is interface, ensure value is boxed.
-        finalField := field
-        if field.Type().Kind() == reflect.Interface && modifiedField.IsValid() && modifiedField.Type() != field.Type() {
-            if modifiedField.Type().AssignableTo(field.Type()) {
-                boxedVal := reflect.New(field.Type()).Elem()
-                boxedVal.Set(modifiedField)
-                finalField = boxedVal
-            } else {
-                return reflect.Value{}, fmt.Errorf("type mismatch: cannot assign %v to interface type %v", modifiedField.Type(), field.Type())
-            }
-        }
         disableRO(&finalField)
-        */
 
         // Set the field on our (now addressable) struct.
-        // field=finalField
-        currentVal.FieldByName(access.Field).Set(field)
+		field.Set(finalField)
+		currentVal=tmp
 
-        pf("field is       -> %#v\n",field)
-        // pf("mod field is   -> %#v\n",modifiedField)
-        // pf("final field is -> %#v\n",finalField)
-        pf("cv is    -> %#v\n",currentVal)
+        // pf("field is -> %#v\n",field)
+        // pf("cv is    -> %#v\n",currentVal)
         return currentVal, nil
     }
 
