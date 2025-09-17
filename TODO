@@ -50,11 +50,10 @@ NOTE
 REMAINING CLEANUP AND ISSUES WITH COMPLEX LHS ASSIGNMENT
 --------------------------------------------------------
 
-    - much commenting/dead code/etc to tidy
     - still some lack of functionality (see eg/experimental/*)
-        - DONE: mainly revolves around differentiating array/slice/map types and their indices
-            during auto-vivification
-        - cleaner error messages required in places.
+    - some value types still not populating through reflection
+        depending on what came before them as their container types?
+    - cleaner error messages required in places.
 
 
 

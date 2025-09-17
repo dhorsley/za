@@ -183,7 +183,7 @@ func growSlice(slice reflect.Value, index int, valueForTyping any) (reflect.Valu
         }
         newSlice := reflect.MakeSlice(slice.Type(), newSize, newCap)
         for i := 0; i < slice.Len(); i++ {
-            copyHelper(newSlice.Index(i), slice.Index(i))
+            newSlice.Index(i).Set(reflect.ValueOf(recCopy(slice.Index(i).Interface())))
         }
         return newSlice, nil
     }
@@ -250,7 +250,7 @@ func convertAssignmentValue(targetType reflect.Type, value any) (any, error) {
         if valueType != nil && valueType.AssignableTo(targetType) {
             return value, nil
         }
-        // Allow any value to be assigned to an empty interface (`any` or `interface{}`)
+        // Allow any value to be assigned to an empty interface (`any` or `any`)
         if targetType.NumMethod() == 0 {
             return value, nil
         }
@@ -394,6 +394,8 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
 
 	// get a ref to the required field:
     field := tmp.FieldByName(fieldName)
+	disableRO(&field)
+
     if !field.IsValid() {
         return fmt.Errorf("field %v not found in struct %v", fieldName, varToken.tokText)
     }
@@ -406,11 +408,6 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     }
 
 	// populate field value from required value in fn arguments
-	// @todo: fix this:
-	// this is still somewhat broken. it thinks it is reading private fields
-	//  even when it is not. something further up in the chain must be propagating
-	//  this blockage down, probably due to addressability/trying to mutate originals
-
     if value == nil {
         field.Set(reflect.Zero(field.Type()))
     } else {
@@ -492,6 +489,8 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
     tmp.Set(targetStruct)
 
     field := tmp.FieldByName(fieldName)
+	disableRO(&field)
+
     if !field.IsValid() {
         return fmt.Errorf("field %v not found in struct", fieldName)
     }
@@ -1032,6 +1031,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
         newSlice := reflect.MakeSlice(currentVal.Type(), currentVal.Len(), currentVal.Cap())
 		newSlice=currentVal
+
 		newSlice.Index(index).Set(modifiedElem)
         return newSlice, nil
 
@@ -1089,14 +1089,14 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         // Recursively call on the element.
 		var elem reflect.Value
 		if isMap {
-        	elem = newContainer.MapIndex(rkey)
+			elem = newContainer.MapIndex(rkey)
 		} else {
 			// Grow slice if necessary. This might create a new slice value.
 			grownSlice, err := growSlice(newContainer, ikey, valueToSet)
 			if err != nil {
 				return reflect.Value{}, err
 			}
-        	newContainer = grownSlice
+			newContainer = grownSlice
 			elem = newContainer.Index(ikey)
 		}
 
@@ -1127,20 +1127,23 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
             return reflect.Value{}, fmt.Errorf("cannot access field on nil value")
         }
 
+		/*
         // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
         if !currentVal.CanAddr() {
-            currentVal = deepCopyValue(currentVal)
+            currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
         }
+		*/
 
 		var field reflect.Value
 
 		if currentVal.Kind()==reflect.Struct {
-		    field = currentVal.FieldByName(access.Field)
+			field = currentVal.FieldByName(access.Field)
 		} else {
 			if currentVal.IsNil() {
-            	field = reflect.ValueOf(make(map[string]any))
+				field = reflect.ValueOf(make(map[string]any))
 			}
 		}
+		disableRO(&field)
 
         if !field.IsValid() {
             return reflect.Value{}, fmt.Errorf("field '%s' not found in struct %v", access.Field, currentVal.Type())
@@ -1148,6 +1151,8 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
         // Recursively call on the field.
         modifiedField, err := p.recursiveAssign(field, remainingAccesses, valueToSet)
+		disableRO(&modifiedField)
+
         if err != nil {
             return reflect.Value{}, err
         }
@@ -1159,6 +1164,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
                 boxedVal := reflect.New(field.Type()).Elem()
                 boxedVal.Set(modifiedField)
                 finalField = boxedVal
+				disableRO(&finalField)
             } else {
                 return reflect.Value{}, fmt.Errorf("type mismatch: cannot assign %v to interface type %v", modifiedField.Type(), field.Type())
             }
@@ -1267,70 +1273,137 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
 }
 
 
-func deepCopyValue(v reflect.Value) reflect.Value {
-    if !v.IsValid() {
-        return v
-    }
-    // Create a new, addressable value of the same type to be our clean destination.
-    dest := reflect.New(v.Type()).Elem()
-    copyHelper(dest, v)
-    return dest
+func recCopy(original any) (copy any) {
+	if original == nil {
+		return nil
+	}
+	value := reflect.ValueOf(original)
+	return rcopy(value).Interface()
 }
 
-// copyHelper recursively copies from a source value to a settable destination value.
-func copyHelper(dest, src reflect.Value) {
-	// pf("copyHelper called with [settable? %v] dest -> %#v\n",dest.CanSet(),dest)
-	// pf("copyHelper called with [settable? %v] src  -> %#v\n",src.CanSet(),src)
-    if !src.IsValid() {
-        return
-    }
-
-    switch src.Kind() {
-    case reflect.Struct:
-        for i := 0; i < src.NumField(); i++ {
-            copyHelper(dest.Field(i), src.Field(i))
-        }
-    case reflect.Slice:
-        if !src.IsNil() {
-			newSlice := reflect.MakeSlice(src.Type(), src.Len(), src.Cap())
-            for i := 0; i < src.Len(); i++ {
-                copyHelper(newSlice.Index(i), src.Index(i))
-            }
-            dest=reflect.ValueOf(newSlice)
-        }
-
-    case reflect.Map:
-        if !src.IsNil() {
-            newMap := reflect.MakeMap(src.Type())
-            for _, key := range src.MapKeys() {
-                newMap.SetMapIndex(deepCopyValue(key), deepCopyValue(src.MapIndex(key)))
-            }
-            dest.Set(newMap)
-        }
-    case reflect.Interface:
-        if !src.IsNil() {
-            // Create a clean copy of the value within the interface.
-            copiedElem := deepCopyValue(src.Elem())
-			unsafeSet(dest,copiedElem)
-        }
-    case reflect.Ptr:
-        if !src.IsNil() {
-            newPtr := reflect.New(src.Type().Elem())
-            copyHelper(newPtr.Elem(), src.Elem())
-            dest.Set(newPtr)
-        }
-	case reflect.Bool:
-		unsafeSet(dest,src.Bool())
-	case reflect.Float64:
-		unsafeSet(dest,src.Float())
-	case reflect.Uint,reflect.Uint64:
-		unsafeSet(dest,src.Uint())
-	case reflect.Int:
-		unsafeSet(dest,src.Int())
-	case reflect.String:
-		unsafeSet(dest,src.String())
-    default:
-		unsafeSet(dest,src.Interface())
-    }
+func rcopy(original reflect.Value) reflect.Value {
+	switch original.Kind() {
+	case reflect.Slice:
+		return rcopySlice(original)
+	case reflect.Map:
+		return rcopyMap(original)
+	case reflect.Ptr:
+		return rcopyPointer(original)
+	case reflect.Struct:
+		return rcopyStruct(original)
+	case reflect.Chan:
+		return rcopyChan(original)
+	case reflect.Array:
+		return rcopyArray(original)
+	default:
+		return forceCopyValue(original)
+	}
 }
+
+func forceCopyValue(original reflect.Value) reflect.Value {
+	originalType := original.Type()
+	newPointer := reflect.New(originalType)
+	newPointer.Elem().Set(original)
+	return newPointer.Elem()
+}
+
+func rcopySlice(original reflect.Value) reflect.Value {
+	if original.IsNil() {
+		return original
+	}
+	copy := reflect.MakeSlice(original.Type(), 0, 0)
+	for i := 0; i < original.Len(); i++ {
+		elementCopy := rcopy(original.Index(i))
+		copy = reflect.Append(copy, elementCopy)
+	}
+	return copy
+}
+
+func rcopyArray(original reflect.Value) reflect.Value {
+	if original.Len() == 0 {
+		return original
+	}
+	elementType := original.Index(0).Type()
+	arrayType := reflect.ArrayOf(original.Len(), elementType)
+	newPointer := reflect.New(arrayType)
+	copy := newPointer.Elem()
+	for i := 0; i < original.Len(); i++ {
+		subCopy := rcopy(original.Index(i))
+		copy.Index(i).Set(subCopy)
+	}
+	return copy
+}
+
+func rcopyMap(original reflect.Value) reflect.Value {
+	if original.IsNil() {
+		return original
+	}
+	keyType := original.Type().Key()
+	valueType := original.Type().Elem()
+	mapType := reflect.MapOf(keyType, valueType)
+	copy := reflect.MakeMap(mapType)
+	for _, key := range original.MapKeys() {
+		value := rcopy(original.MapIndex(key))
+		copy.SetMapIndex(key, value)
+	}
+	return copy
+}
+
+func rcopyPointer(original reflect.Value) reflect.Value {
+	if original.IsNil() {
+		return original
+	}
+	element := original.Elem()
+	copy := reflect.New(element.Type())
+	copyElement := rcopy(element)
+	copy.Elem().Set(copyElement)
+	return copy
+}
+
+func rcopyStruct(original reflect.Value) reflect.Value {
+	// pf("rcs: original->%#v\n",original)
+    copy := reflect.New(original.Type()).Elem()
+	for i := 0; i < original.NumField(); i++ {
+		fieldValue := original.Field(i)
+		disableRO(&fieldValue)
+		destField := copy.Field(i)
+		disableRO(&destField)
+		destField.Set(rcopy(fieldValue))
+	}
+	return copy
+}
+
+func rcopyChan(original reflect.Value) reflect.Value {
+	return reflect.MakeChan(original.Type(), original.Cap())
+}
+
+
+func setupRO() {
+	t:=reflect.TypeOf(reflect.Value{})
+	for i:=0;i<t.NumField();i++ {
+		f:=t.Field(i)
+		if f.Name=="flag" {
+			flagOffset=f.Offset
+			return
+		}
+	}
+	panic("No flag field found in reflect.Value")
+}
+
+var flagOffset uintptr // set by a call to setupRO() in main
+
+const (
+	// Lifted from go/src/reflect/value.go.
+	flagStickyRO uintptr = 1 << 5
+	flagEmbedRO  uintptr = 1 << 6
+	flagRO       uintptr = flagStickyRO | flagEmbedRO
+)
+
+func disableRO(v *reflect.Value) {
+	flags:=(*uintptr)(unsafe.Pointer(uintptr(unsafe.Pointer(v))+flagOffset))
+	*flags &^= flagRO
+}
+
+
+
 

@@ -29,16 +29,21 @@ println "New Node value: ",n1
 # Store it in a map
 var m map
 m["inner"] = n1
+println "m       : ",m
 
 # Create Container and assign values
 c = Container()
 c.Inner = m
 c.Items = [Holder(), Holder()]
-println "m       : ",m
 
-c.Items[0].Thing = [9,8,7]
-c.Items[1].Thing = [6,5,4]
+c.Items[0].Thing = [9,8,7].list_int
+c.Items[1].Thing = [6,5,4].list_int
 println "built container c: %#v".format(c)
+
+# @note: still something wrong with these:
+println "Items   : ",c.Items
+println "Thing 0 : ",c.Items[0].Thing
+println "Thing 1 : ",c.Items[1].Thing
 
 # === Fixed-size array tests ===
 mat = [[1,2],[3,4],5,6]
@@ -48,7 +53,7 @@ println "Mat after chained assignment  : ",mat
 assert mat[1][1] == 42
 
 var labels [4]string
-labels[0], labels[1] = ["a", "b"]
+labels[0], labels[1] = ["a", "b"].list_string
 assert labels[1] == "b"
 
 # === Basic multi-assignment ===
