@@ -1,0 +1,28 @@
+#!/usr/bin/env za
+
+struct q
+    a int
+    b bool
+    c []int
+endstruct
+
+var z q
+
+z.a=42
+z.b=true
+z.c=[99].list_int
+# z.c=[].list_int
+println "z->",z
+println "z.a->",z.a
+println "z.b->",z.b
+println "z.c->",z.c
+
+z.c[0]=101
+println "z.c->",z.c[:]
+
+z.c[11]=42
+println "z.c->",z.c[:]
+
+
+
+
