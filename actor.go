@@ -3580,27 +3580,58 @@ tco_reentry:
                 finish(false, ERR_SYNTAX)
             } else {
 
-                // @note:
-                //  we use indirect access with thisLoop here (and throughout
-                //  loop code) for a minor speed bump. we should periodically
-                //  review this as an optimisation in Go could make this unnecessary.
+                // add an IF clause to guard the continue against execution, optionally.
 
-                switch lastConstruct[depth-1] {
-                case C_For, C_Foreach:
-                    thisLoop = &loops[depth]
-                    parser.pc = (*thisLoop).forEndPos - 1
+                var continueIgnore bool
 
-                case C_While:
-                    thisLoop = &loops[depth]
-                    parser.pc = (*thisLoop).whileContinueAt - 1
+                if inbound.TokenCount > 1 {
+                    if inbound.Tokens[1].tokType==C_If {
+                        if inbound.TokenCount==2 {
+                            parser.report(inbound.SourceLine, "missing condition in CONTINUE IF statement")
+                            finish(false, ERR_EVAL)
+                            break
+                        } else {
+							we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[2:])
+                            if we.evalError {
+                                parser.report(inbound.SourceLine, "could not evaluate CONTINUE IF condition")
+                                finish(false, ERR_EVAL)
+                                break
+                            }
+                            switch we.result.(type) {
+                            case bool:
+                                if ! we.result.(bool) {
+                                    // condition not met so flag an ignore state on 
+                                    // the rest of the continue statement
+                                    continueIgnore=true
+                                }
+                            default:
+                                parser.report(inbound.SourceLine, "CONTINUE IF condition must evaluate to boolean")
+                                finish(false, ERR_EVAL)
+                                break
+                            }
+                        }
+                    }
+                }
 
-                case C_Case:
-                    // mark this as an error for now, as we don't currently
-                    //  backtrack through lastConstruct to check the actual
-                    //  loop type so that it can be properly unwound.
-                    parser.report(inbound.SourceLine, "Attempting to CONTINUE inside a CASE is not permitted.")
-                    finish(false, ERR_SYNTAX)
+                ////////////////////////////////////////////////////
 
+                if ! continueIgnore {
+                    switch lastConstruct[depth-1] {
+                    case C_For, C_Foreach:
+                        thisLoop = &loops[depth]
+                        parser.pc = (*thisLoop).forEndPos - 1
+
+                    case C_While:
+                        thisLoop = &loops[depth]
+                        parser.pc = (*thisLoop).whileContinueAt - 1
+
+                    case C_Case:
+                        // mark this as an error for now, as we don't currently
+                        //  backtrack through lastConstruct to check the actual
+                        //  loop type so that it can be properly unwound.
+                        parser.report(inbound.SourceLine, "Attempting to CONTINUE inside a CASE is not permitted.")
+                        finish(false, ERR_SYNTAX)
+                    }
                 }
 
             }
