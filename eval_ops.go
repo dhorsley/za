@@ -1574,9 +1574,9 @@ func asObjectKey(key any) string {
 
 func accessArray(ident *[]Variable, obj any, field any) any {
 
-    // pf("aa-typ : (%T)\\n",obj)
-    // pf("aa-obj : (%T) %+v\\n",obj,obj)
-    // pf("aa-fld : (%T) %+v\\n",field,field)
+     // pf("aa-typ : (%T)\n",obj)
+     // pf("aa-obj : (%T) %+v\n",obj,obj)
+     // pf("aa-fld : (%T) %+v\n",field,field)
 
     switch obj := obj.(type) {
     case string: // string[n] access

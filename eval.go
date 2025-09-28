@@ -1156,6 +1156,8 @@ func (p *leparser) rcompare(left any, right any, insensitive bool, multi bool) a
 
 func (p *leparser) accessArray(left any, right Token) any {
 
+	// pf("p.aa inbound left array is : %+v\n",left)
+
     var start, end any
     var hasStart, hasEnd, hasRange bool
     var sendNil bool
@@ -1207,7 +1209,7 @@ func (p *leparser) accessArray(left any, right Token) any {
             if p.peek().tokType != RightSBrace {
                 dp, err := p.dparse(0, false)
                 if err != nil {
-                    // panic(fmt.Errorf("map key could not be evaluated"))
+                    panic(fmt.Errorf("map key could not be evaluated"))
                     return nil
                 }
                 switch dp.(type) {
@@ -1348,7 +1350,6 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     iargs := []any{}
     arg_names := []string{}
     argpos := 1
-
     if p.peek().tokType != RParen {
         for {
             switch p.peek().tokType {
@@ -1361,7 +1362,6 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
                 panic(fmt.Errorf("missing argument #%d", argpos))
             }
             dp, err := p.dparse(0, false)
-            // pf("in arg parse with result : %#v and err : %#v\n",dp,err)
             if err != nil {
                 panic(fmt.Errorf("error here -> %+v\n", err))
                 return nil, err
