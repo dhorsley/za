@@ -55,6 +55,7 @@ REMAINING CLEANUP AND ISSUES WITH COMPLEX LHS ASSIGNMENT
         - DONE: fixed struct unsafe/unaddressable stuff in AccessField clause.
     - cleaner error messages required in places.
     - some performance improvements are required.
+    - need to flush output logs on exit (with/without error)
 
 
 KERNEL PARAMETER TUNING
