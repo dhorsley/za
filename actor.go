@@ -3591,7 +3591,7 @@ tco_reentry:
                             finish(false, ERR_EVAL)
                             break
                         } else {
-							we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[2:])
+                            we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[2:])
                             if we.evalError {
                                 parser.report(inbound.SourceLine, "could not evaluate CONTINUE IF condition")
                                 finish(false, ERR_EVAL)
@@ -3657,7 +3657,7 @@ tco_reentry:
                     thisLoop = &loops[depth]
                     forceEnd = false
 
-                    var efound, er bool
+                    var efound, er, ifEr bool
                     switch inbound.Tokens[1].tokType {
                     case C_Case:
                         efound, _, er = lookahead(source_base, parser.pc, 1, 0, C_Endcase, []int64{C_Case}, []int64{C_Endcase})
@@ -3679,6 +3679,13 @@ tco_reentry:
                         breakIn = C_While
                         forceEnd = true
                         parser.pc = (*thisLoop).whileContinueAt - 1
+                    case C_If:
+                        ifEr=true
+                    }
+                    if ifEr {
+                        parser.report(inbound.SourceLine, "BREAK IF missing a condition")
+                        finish(false, ERR_SYNTAX)
+                        break
                     }
                     if er {
                         // lookahead error
@@ -3693,7 +3700,52 @@ tco_reentry:
 
                 }
 
-                if !forceEnd {
+                // break [n] if ... syntax
+
+				var has_break_count bool
+                if inbound.TokenCount > 2 {
+
+                    if inbound.Tokens[1].tokType==C_If || ( inbound.Tokens[1].tokType==NumericLiteral && inbound.Tokens[2].tokType==C_If ) {
+
+                        cond_start_pos := 2
+                        if inbound.Tokens[1].tokType == NumericLiteral {
+                            break_count,_ = GetAsInt(inbound.Tokens[1].tokVal)
+                            cond_start_pos = 3
+							has_break_count = true
+                        }
+
+                        we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[cond_start_pos:])
+                        if we.evalError {
+                            parser.report(inbound.SourceLine, "could not evaluate BREAK IF condition")
+                            finish(false, ERR_EVAL)
+                            break
+                        }
+
+                        var hasIfErr bool
+						var breakIgnore bool
+
+                        switch we.result.(type) {
+                        case bool:
+                            if ! we.result.(bool) {
+								breakIgnore=true
+							}
+							if !has_break_count {
+								break_count = 1
+								has_break_count = true
+							}
+                        default:
+                            parser.report(inbound.SourceLine, "BREAK IF condition must evaluate to boolean")
+                            finish(false, ERR_EVAL)
+                            hasIfErr = true
+                        }
+                        if hasIfErr { break }
+						if breakIgnore { continue } // this skips all potential break processing and moves to next pc statement
+                    }
+                }
+
+                /////////////////////////////////////
+
+                if !forceEnd && !has_break_count {
                     // break by expression
                     break_depth := parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[1:])
                     switch break_depth.result.(type) {
@@ -3707,7 +3759,7 @@ tco_reentry:
                     }
                 }
 
-                if forceEnd {
+				if forceEnd { // IF clause cannot trigger this:
                     // set count of back tracking in end* statements
                     for break_count = 1; break_count <= depth; break_count += 1 {
                         // pf("(cbreak) increasing break_count to %v\n",break_count)

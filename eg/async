@@ -17,7 +17,7 @@ for e = 0 to 99
     async handles q(e)
 endfor
 
-while true
+# while true
 
     println "[#2]Waiting...[#-]"
     res=await("handles",true)
@@ -32,4 +32,4 @@ while true
     println
     pause 50
 
-endwhile
+# endwhile

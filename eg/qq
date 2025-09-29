@@ -28,7 +28,7 @@ var ssp,dsp s_pos
 
 foreach filename in argv()
 
-    on not is_file(filename) do continue
+    continue if not is_file(filename)
 
     println "[#6]File : {filename}[#-]"
 
@@ -53,7 +53,7 @@ foreach filename in argv()
         l=fh.fread("\n")
         if l.len==0 
             row+=1
-            on !fh.feof do continue
+            continue if !fh.feof
             break
         endif
         print fgrgb(30,60,60)+format("%05d : ",row+1)+addansi("[#-]")
@@ -66,7 +66,7 @@ foreach filename in argv()
         for e=0 to lend
 
             # utf skipping
-            on sz-- > 0 do continue
+            continue if sz-- > 0
             sz=l[e:].is_utf8
             if sz>1
                 rev_offset_utf+= sz-1
@@ -77,8 +77,8 @@ foreach filename in argv()
 
             # comment skipping
             if not (odq or osq or obt)
-                on e!=lend and substr(l,e,2)=="//" do break
-                on l[e]=="#" do break
+                break if e!=lend and substr(l,e,2)=="//"
+                break if l[e]=="#"
             endif
 
             case l[e]
@@ -118,7 +118,7 @@ foreach filename in argv()
         endfor
         row++
         on extra do println
-        on fh.feof do break
+        break if fh.feof
     endwhile
     p=fh.ftell
     fh.fclose

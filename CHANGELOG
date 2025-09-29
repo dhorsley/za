@@ -175,9 +175,11 @@ CHANGE LOG
     other
     -----
 
-    * (experimental) Added 'IF cond' clause to CONTINUE statement
-        - just to save typing out an IF or ON..DO.. statement in addition
-        - may extend to BREAK statement also later, if no problems encountered.
+    * (experimental) Added 'IF cond' clause to CONTINUE and BREAK statements
+        - just for saving some typing of IF or ON..DO.. statements
+        - BREAK [n] [IF cond]
+        - CONTINUE [IF cond]
+        - cannot be used in conjunction with BREAK <keyword_type> CLAUSE yet
 
     * Added ctrl-r support to getInput() for reverse history searching
         - backspace deletes, ctrl-u clears input
