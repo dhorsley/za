@@ -254,6 +254,11 @@ var atlock = &sync.Mutex{}
 // optionally terminates execution.
 func finish(hard bool, i int) {
     if permit_error_exit {
+
+        if logWorkerRunning {
+            stopLogWorker()
+        }
+
         if hard {
             os.Exit(i)
         }
@@ -5892,6 +5897,9 @@ tco_reentry:
             switch str.ToLower(inbound.Tokens[1].tokText) {
 
             case "off":
+                for len(logQueue)>0 {
+                    // let the queue flush
+                }
                 loggingEnabled = false
                 stopLogWorker() // Stop the background logging worker
 
