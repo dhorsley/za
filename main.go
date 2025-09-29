@@ -1715,6 +1715,10 @@ func main() {
     }
 
     // a little paranoia to finish things off...
+    if logWorkerRunning {
+        stopLogWorker()
+    }
+
     setEcho(true)
 
     if runtime.GOOS != "windows" {

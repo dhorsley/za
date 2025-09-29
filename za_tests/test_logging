@@ -137,12 +137,12 @@ logging status
 # Test file cleanup
 println "\nCleaning up test files..."
 if is_file(test_log_path)
-    delete(test_log_path)
+    # delete(test_log_path)
     println "Removed {test_log_path}"
 endif
 
 if is_file(test_output_path)
-    delete(test_output_path)
+    # delete(test_output_path)
     println "Removed {test_output_path}"
 endif
 

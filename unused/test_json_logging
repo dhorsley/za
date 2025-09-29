@@ -7,6 +7,8 @@ println "Testing JSON logging features..."
 # Test 1: Enable JSON logging and basic log
 logging json on
 logging on "test.log"
+logging status
+
 log "This is a JSON log message"
 
 # Test 2: Add some fields
@@ -36,5 +38,7 @@ log "All fields cleared"
 # Test 7: Switch back to regular logging
 logging json off
 log "Back to regular logging"
+logging off
 
 println "JSON logging test complete. Check test.log for results." 
+
