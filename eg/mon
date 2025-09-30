@@ -266,12 +266,21 @@ define showMem()
     on winterm() do mem_avail=mem_free
 
     # display mem
-    mdisplay(1,2,16,mem_total,mem_total, "[#4]Total  : ")
-    mdisplay(2,2,16,mem_free,mem_total,  "[#4]Free   : ")
-    mdisplay(3,2,16,mem_avail,mem_total, "[#4]Avail  : ")
-    mdisplay(4,2,16,mem_cached,mem_total,"[#4]Cached : ")
-    mdisplay(5,2,16,mem_active,mem_total,"[#4]Active : ")
-    mdisplay(6,2,16,mem_swap_free,mem_swap_total,  "[#4]Fr Swap: ")
+    if mem_total==0
+        at 1,2,"could not read total memory"
+    else
+        mdisplay(1,2,16,mem_total,mem_total, "[#4]Total  : ")
+        mdisplay(2,2,16,mem_free,mem_total,  "[#4]Free   : ")
+        mdisplay(3,2,16,mem_avail,mem_total, "[#4]Avail  : ")
+        mdisplay(4,2,16,mem_cached,mem_total,"[#4]Cached : ")
+        mdisplay(5,2,16,mem_active,mem_total,"[#4]Active : ")
+    endif
+
+    if mem_swap_total==0
+        at 6,2,"could not read total swap memory"
+    else
+        mdisplay(6,2,16,mem_swap_free,mem_swap_total,  "[#4]Fr Swap: ")
+    endif
 
     al=get_mem().alloc.as_int
     ts=get_mem().system.as_int
