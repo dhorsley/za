@@ -60,14 +60,14 @@ define ps(filter)
     foreach p in procs
 
         dn="/proc/"+p
-        on !is_dir(dn) do continue
+        continue if !is_dir(dn)
 
         # read data from .../stat
         ps = $in "{dn}/stat"
 
         # ignore name filtered processes
         cmd=ps.filter(`\(.*?\)`).tr("d","()")
-        on !match(cmd,filter) do continue
+        continue if !match(cmd,filter)
 
         # populate line from stat
         ps.replace("\(.*?\)","command").fields

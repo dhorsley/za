@@ -2,64 +2,15 @@
 TODO
 ----
 
-STRUCT FORMAT
--------------
+REMAINING CLEANUP
+-----------------
 
-Private field access is becoming a bit of a fever dream.
-
-Will look at feasability of just auto formatting struct field names to public,
-i.e. upper-cased name[0] in both reads and writes.
-
-If this is done consistently (for Za variables, but not for any external structs),
-then I can probably vastly simplify everything related to structs.
-
-There will be a minor performance hit in some places due to the name wrangling,
-but it would allow for all of the unsafe private field manipulation to be removed
-and also eliminate a few of the more exotic bugs that came with it.
-
-So, example:
-
-struct s
-    Name    string
-    value   int
-endstruct
-var q s
-q.name = "test" # would become q.Name internally
-println q.name  # would become q.Name internally
-
-I think this would need doing, initially at least, on all access rather than just during struct
-definition, as struct literals/Anon() would also need converting.
-
-****
-NOTE
-  this is now done, with the exception of auto-capitalising struct references in string literals
-   where interpolation is happening. will look at this next, but just capitalise access for now in
-   interpolated access.
-    - tested: works as expected. interpolated references get retokenised and handled by current 
-        mechanisms that were added already to auto-cap.
-  this does not apply to template config interpolation in lib-tui.go - this is automated.
-  additionally, we capitalise the first rune, rather than ascii value.  
-  other internal structs (e.g. dirent, alloc_info, etc) were also changed to use public field 
-    definitions (but still can be referenced with either initial case.
-  more testing will need doing against all the eg/* cases for missed struct changes. however,
-    almost everything tested so far is okay.
-    - fix: []dirent access in list_map and list_query operators (-> and ?>) 
-        - needed to wrap the field list construction parameter inside renameSF()
-****
-
-REMAINING CLEANUP AND ISSUES WITH COMPLEX LHS ASSIGNMENT
---------------------------------------------------------
-
-    - some value types still not populating through reflection
-        - DONE: slower slice clone for now, for surety. needs more attention.
-        - DONE: fixed struct unsafe/unaddressable stuff in AccessField clause.
     - cleaner error messages required in places.
     - some performance improvements are required.
-    - need to flush output logs on exit (with/without error)
 
 
 KERNEL PARAMETER TUNING
-----------------------
+-----------------------
 
 * TODO: Kernel parameter tuning support
     - sysctl_get(parameter) - get kernel parameter value
@@ -127,8 +78,6 @@ PLUGIN ARCHITECTURE FOR CUSTOM FIREWALLS
 * TODO: Example plugins for legacy firewalls
     - iptables plugin (CLI wrapper)
     - ufw plugin (Ubuntu firewall)
-    - Custom enterprise firewall plugins
-    - Plugin sharing and community ecosystem
 
 ADVANCED FIREWALL FEATURES
 --------------------------
@@ -161,10 +110,10 @@ FIREWALL EVENT LOGGING AND AUDIT
     * All firewall operations should respect the "only one active firewall" principle
     * Native libraries should be used where possible (nftables, firewalld, Windows Firewall)
     * CLI wrappers only when no native library is available (pf)
-    * Plugin architecture allows for custom firewall support without modifying core code
     * Security and privilege validation is critical for all firewall operations
     * Cross-platform consistency is a key design principle
     * Performance and resource efficiency are important considerations
+
 
 LATER / UNDECIDED
 -----------------
@@ -174,10 +123,8 @@ LATER / UNDECIDED
         - currently, everything gets tested all the time.
         - may also be worth establishing a cache of tested modules/checksums to save re-testing
 
-* MAYBE: add install note for windows w/wsl stating that sudoers file may need 
+    * MAYBE: add install note for windows w/wsl stating that sudoers file may need 
             updating with : Defaults env_keep=WSL_DISTRO_NAME
             and possibly other env vars, depending on user requirements.
-
-
 
 
