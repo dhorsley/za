@@ -2,18 +2,12 @@
 
 # same as struct example, except using an assoc. array. similar speed to fixed length arrays.
 
-# logging on "./debug_log"
-# logging quiet
-
-seed(epoch_nano_time())
+seed(-1)
 
 struct person
     name    string
     age     int
     dob     string
-    def get()
-        return self.name
-    end
 endstruct
 
 forenames= ["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iris","Janis","Keith","Larry","Moon","Naomi","Orpheus","Pamela",
@@ -35,7 +29,6 @@ for e=1 to 1000
     endfor
     print
 endfor
-
 
 println "1000 iterations of 100 struct init and populations."
 
