@@ -45,7 +45,7 @@ while not quit
     
     menu = tui_menu(menu_config, s)
 
-    on menu.Cancel do break
+    break if menu.Cancel
 
     case menu.Result
     is 1
