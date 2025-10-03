@@ -426,6 +426,15 @@ func checkWriteCapability(path string) error {
         // Directory created successfully - leave it for actual logging use
     }
 
+    /* @note: revisit this later. it's a bad implementation.
+        this forbids us from, for example, writing to /dev/stdout as a file
+        because it would try to touch a test log file in /dev
+        even just checking the writability of the parent dir is probably a
+        bad idea. 
+        redo this!
+    */
+
+    /*
     // Check if we can write to the directory
     testFile := filepath.Join(dir, ".za_log_test")
     f, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -434,6 +443,7 @@ func checkWriteCapability(path string) error {
     }
     f.Close()
     os.Remove(testFile) // Clean up test file
+    */
 
     // If the log file already exists, check if it's writable
     if _, err := os.Stat(path); err == nil {
