@@ -8,11 +8,12 @@
 # resource information on a single summary view.
 #
 
+count=0
+
+
 #
 # FUNCTIONS
 #
-
-count=0
 
 define clear(lstart,lend,column)
     for f=lstart to lend
@@ -523,7 +524,8 @@ define showHdd()
     # Use built-in disk usage function instead of external df commands
     disk_info = disk_usage()
    
-    mpwidth=pane_w()-40
+    mpwidth=pane_w()-40[:pane_w()-10]
+
     at 1,1, format("[#b2][#7][#bold]%16s %-7s %-7s %-4s %-{mpwidth}s[#-][##]","path","size","avail","use%","mpath")
     row=2
 
@@ -576,7 +578,9 @@ define showHdd()
         usage_str = format("%.0f", usage_pct)
         
         at row,1, format(`%16s %-7s %-7s %-4s %-20s`,
-            shorten(device,16), total_str, avail_str, usage_str, shorten(mountpoint,mpwidth-3))
+            shorten(device,16),
+            total_str, avail_str, usage_str,
+            shorten(mountpoint,mpwidth-3))
         row++
         count++
     endfor
