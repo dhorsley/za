@@ -1172,15 +1172,15 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         }
                     }
                 }
-                if row >= MH-BMARGIN {
+                if row >= MH {
                     if row > MH {
                         row = MH
                     }
-                    for past := row - (MH - BMARGIN); past > 0; past-- {
+                    for past := row - MH; past > 0; past-- {
                         at(MH+1, 1)
                         fmt.Print("\n")
                     }
-                    row = MH - BMARGIN
+                    row = MH
                 }
             } else {
 

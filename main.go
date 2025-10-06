@@ -163,7 +163,6 @@ var pe io.ReadCloser  // process error stream
 // Global: console related
 var row, col int       // for pane + terminal use
 var MW, MH int         // for pane + terminal use
-var BMARGIN int        // bottom offset to stop io at
 var currentpane string // for pane use
 var tt *term.Term      // keystroke input receiver
 var ansiMode bool      // to disable ansi colour output
@@ -373,7 +372,7 @@ func main() {
 
     // lineWrap=true // currently disabled - it breaks up ansi sequences. will re-enable when dealt with.
 
-	setupRO() // to calc offset position of read-only flag in struct type info - used to disable it during copies.
+    setupRO() // to calc offset position of read-only flag in struct type info - used to disable it during copies.
 
     // time zone handling
     if tz := os.Getenv("TZ"); tz != "" {
@@ -399,8 +398,6 @@ func main() {
     if runtime.GOOS == "windows" {
         winmode = true
     }
-
-    BMARGIN = 8
 
     permit_shell = true
     permit_eval = true
@@ -1292,10 +1289,12 @@ func main() {
         interactiveFeed = true
 
         // output separator, may be unnecessary really
+        /*
         eol := "\n"
         if runtime.GOOS == "windows" {
             eol = "\r\n"
         }
+        */
 
         // term loop
         pf("\033[s") // save cursor
@@ -1329,7 +1328,6 @@ func main() {
             // banner
             title := sparkle("Za Interactive Mode")
             pf("\n%s", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
-            pf(str.Repeat("\n",BMARGIN+2))
             row+=2
         }
 
@@ -1396,6 +1394,7 @@ func main() {
 
             // startup script processing:
             var errVal error
+
             if !started && hasScript {
                 phraseParse(ctx, "main", startScript, 0, 0)
                 basemodmap[1] = "main"
@@ -1407,16 +1406,12 @@ func main() {
                     pf("error in startup script processing:%s\n", errVal)
                 }
 
-                if row > MH-BMARGIN {
-                    lastrow:=row
-                    if row>MH { lastrow=MH }
-                    row=MH-BMARGIN
+                if row>MH {
                     at(MH+1,1)
-                    for rcount:=lastrow-(MH-BMARGIN) ; rcount > 0; rcount-- {
-                        fmt.Print(eol)
-                    }
-                    at(row,1)
+					fmt.Println()
+                    row=MH
                 }
+                at(row,1)
 
                 started = true
             }
@@ -1549,16 +1544,12 @@ func main() {
                 atomic.StoreInt32(&calltable[mainloc].callLine, 1)
                 _, endFunc, _, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{}, nil)
 
-                if row > MH-BMARGIN {
-                    lastrow:=row
-                    if row>MH { lastrow=MH }
-                    row=MH-BMARGIN
+                if row>MH {
                     at(MH+1,1)
-                    for rcount:=lastrow-(MH-BMARGIN) ; rcount > 0; rcount-- {
-                        fmt.Print(eol)
-                    }
-                    at(row,1)
+					fmt.Println()
+                    row=MH
                 }
+                at(row,1)
 
                 if endFunc {
                     break
