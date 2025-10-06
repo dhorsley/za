@@ -145,16 +145,19 @@ prompt=(form_prompt())
 
 # set banner
 ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
-ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter"]
+ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter","ivrit"]
 ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"]
 ignore_fonts+= ["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"]
 
-effects = [ "","-F gay","-F metal","-F border" ]
+effects = [ "","-F rainbow","-F metal","-F border" ]
 
 banner=` {="@language".sysvar} - version {="@version".sysvar} `
 
-if is_installed("figlet")
+if is_installed("figlet") or is_file("/usr/bin/figlet")
+
     fontdir="/usr/share/figlet"
+    arch=${lsb_release -a}.grep("^Distributor ID:").field(2).field(2,"\t")
+    on arch == "Arch" do fontdir+="/fonts"
 
     variants = (
         dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"` 
@@ -164,11 +167,15 @@ if is_installed("figlet")
     variants = variants ?> `not ($pn #) in ignore_fonts`
 
     seed(-1)
-    fv=variants[variants.len.rand-1]
-    use_effect = effects[effects.len.rand-1]
+    p=banner
+    if variants.len>0
+        fv=variants[variants.len.rand-1]
+        # use_effect = effects[effects.len.rand-1]
+        # p=${toilet -f {fv} {use_effect} -S -w {=term_w()} "{=banner}"}
+        p=${figlet -f {fv} -S -w {=term_w()} "{=banner}"}
+    endif
 
-    p=${toilet -f {fv} {use_effect} -S -w {=term_w()} "{=banner}"}
-    unset variants, fontdir, use_effect
+    unset variants, fontdir #, use_effect
 else
     p=banner
 endif
