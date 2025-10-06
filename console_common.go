@@ -228,11 +228,6 @@ func hasPrefixRunes(runes, prefix []rune) bool {
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
-    BMARGIN := BMARGIN
-    if !interactive {
-        BMARGIN = 0
-    }
-
     old_wrap := lineWrap
     lineWrap = false
 
@@ -264,6 +259,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
     var helpType []int
+	HELP_SIZE := 8
 
     // Reverse search state variables
     var reverseSearchMode bool = false
@@ -321,10 +317,10 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
         rowLen := int(dispL-1) / MW
-        if srow > MH-BMARGIN {
-            srow = MH - BMARGIN
+        if srow > MH {
+            srow = MH
         }
-        if srow == MH-BMARGIN {
+        if srow == MH {
             srow = srow - rowLen
         }
         if lastsrow != srow {
@@ -369,7 +365,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
             fmt.Printf(str.Repeat(mask, inputL))
         }
         if startedContextHelp {
-            for i := irow + 1 + rowLen; i <= irow+BMARGIN; i += 1 {
+            for i := irow + 1 + rowLen; i <= irow+HELP_SIZE; i += 1 {
                 at(i, 1)
                 clearToEOL()
             }
@@ -378,7 +374,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
         }
 
         // move cursor to correct position (cpos)
-        if irow == MH-BMARGIN && cursAtCol == 1 {
+        if irow == MH && cursAtCol == 1 {
             srow--
             rowLen++
             fmt.Printf("\n\033M")
@@ -638,7 +634,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 if startedContextHelp {
                     contextHelpSelected = true
                     clearChars(irow, icol, inputL)
-                    for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
                     }
@@ -674,13 +670,13 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         }
                         s = insertWord(s, newstart, add+helpList[0]+" ")
                         cpos = len(s) - 1
-                        for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                        for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                             at(i, 1)
                             clearToEOL()
                         }
                     }
                     helpstring = ""
-                    for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
                     }
@@ -725,7 +721,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                     helpstring = ""
                 }
 
-                for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                     at(i, 1)
                     clearToEOL()
                 }
@@ -922,7 +918,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         funcnames = nil
 
                         startedContextHelp = true
-                        for i := irow + 1; i <= irow+BMARGIN; i++ {
+                        for i := irow + 1; i <= irow+HELP_SIZE; i++ {
                             at(i, 1)
                             clearToEOL()
                         }
@@ -936,7 +932,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                         sort.Strings(funcnames)
 
                     } else {
-                        for i := irow + 1; i <= irow+BMARGIN; i++ {
+                        for i := irow + 1; i <= irow+HELP_SIZE; i++ {
                             at(i, 1)
                             clearToEOL()
                         }
@@ -986,7 +982,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 }
 
                 if startedContextHelp {
-                    for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
                     }
@@ -1159,7 +1155,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                     s = insertWord(s, newstart, helpList[0])
                     cpos = newstart + len(helpList[0])
 
-                    for i := irow + 1; i <= irow+BMARGIN; i += 1 {
+                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
                     }
