@@ -114,7 +114,7 @@ end
 define negreg(inp,matcher)
     out=""
     foreach l in inp
-        on match(l,matcher) do continue
+        continue if match(l,matcher)
         out=out+l+"\n"
     endfor
     return out
@@ -244,8 +244,8 @@ define showMem()
         slabs = ""
         count = 0
         foreach entry in slab_string
-            on entry == "" do continue
-            on count >= 5 do break
+            continue if entry == ""
+            break if count >= 5
             slabs = slabs + entry + "\n"
             count = count + 1
         endfor
@@ -341,14 +341,13 @@ define showProcs(ct,uptime)
         procstarttime = 1f*p.StartTime
         comm = p.Command
 
-        on procstarttime==0 do continue
-        on ppid==0 do continue
-
+        continue if procstarttime==0 or ppid==0
+        
         # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
         if pid!=pid()
             putime=as_float(uptime-(procstarttime/ct))
-            on putime==0 do continue
-
+            continue if putime==0
+            
             proc_list[pid]=[ state, ppid, 100*as_float(utime/ct/putime), 100*as_float(stime/ct/putime), 
                             100*as_float(cutime/ct/putime), 100*as_float(cstime/ct/putime), 
                             threads, procstarttime, gsub(comm," ","_") 
@@ -378,7 +377,7 @@ define showProcs(ct,uptime)
         foreach p in sorted
             at 20-lcount,1
             fields(p," ")
-            on proc_filter!="" and not reg_match($lc F[10],$lc proc_filter) do continue
+            continue if proc_filter!="" and not reg_match($lc F[10],$lc proc_filter)
             # skip low activity processes
             # on as_float(F[4])<0.2 or as_float(F[5])<0.2 do continue
             on NF==9 do F[10]=""
@@ -386,7 +385,7 @@ define showProcs(ct,uptime)
             print format("%2s %8d %8d %5.0f %5.0f %7.0f [#6]%-{=comwidth-1}s[#-]",
                 F[1],as_int(F[2]),as_int(F[3]),as_float(F[4]),as_float(F[5]),as_float(F[8]),collapse(F[10])
             )
-            on lcount--==0 do break
+            break if lcount--==0
         endfor
 
     endif
@@ -447,7 +446,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         diff[core]["total"] = as_int(vals["total"] - prev[core]["total"] )
         foreach d in vals
             k=key_d
-            on k=="total" do continue
+            continue if k=="total"
             diff[core][k]=as_int(d - (prev[core][k]) )
         endfor
 
@@ -476,10 +475,10 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
         if showCpuDetails
             colour=1
             foreach acti in ordered_activities
-                on acti=="total" do continue
+                continue if acti=="total"
                 v=dc[acti]
                 at row,pos,"[#{colour}]%3d {acti}[#-] ".format(v)
-                pos+=11; colour++; on colour==8 do colour=1
+                pos+=11; colour++ ; on colour==8 do colour=1
             endfor
             pos=pos+2
         endif
@@ -491,7 +490,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
             # at row,pos
             colour=1
             foreach acti in ordered_activities
-                on acti=="total" do continue
+                continue if acti=="total"
                 v=dc[acti]
                 col_v = "[#{colour}]"; padw=as_int(v/2)
                 print col_v,pad(activity_indicator,1,padw,activity_indicator) , "[#-][##]"
@@ -542,8 +541,8 @@ define showHdd()
         or
             on device ~ `^([a-zA-Z]:|driver|/dev/loop|/dev/sr|tmpfs|run|snapfuse)` do skip=true
         endcase
-        on skip do continue
-
+        continue if skip
+        
         # Add to list as anonymous struct for sorting
         sorted_disks = append(sorted_disks, anon(
             .device device,
@@ -562,8 +561,8 @@ define showHdd()
     max_disks = 6
     count = 0
     foreach disk in sorted_disks
-        on count >= max_disks do break
-       
+        break if count >= max_disks
+        
         device = disk.device
         total = disk.total
         used = disk.used
@@ -598,7 +597,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
     at 1,4,"Interface [{interface}] Addr : {ipaddr} "
 
     foreach n in nio()
-        on n.Interface!=interface do continue
+        continue if n.Interface!=interface
         
         # current counters 
         rbytes  = n.RxBytes.as_float
