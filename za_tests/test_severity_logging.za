@@ -1,3 +1,5 @@
+#!/usr/bin/env za
+
 # Test severity-based logging during exception handling
 println "[#5][#bold]Testing Severity-Based Logging[#boff][#-]"
 
