@@ -28,7 +28,7 @@ append_to(ref members, member(.forename "Stimpson J", .surname "Cat", .age 3, .t
 tui_screen(1)
 
 # Create default style with map literal
-s = map(.fill true, .bg "3", .fg "7", .hi_bg "2", .hi_fg "7", .border map(.bg "3", .fg "7"))
+s = map(.fill true, .bg "6", .fg "0", .hi_bg "6", .hi_fg "2", .border map(.bg "6", .fg "0"))
 rad=nil
 quit=false
 

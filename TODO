@@ -9,11 +9,6 @@ REMAINING CLEANUP
     - some performance improvements are required.
 
 
-MISC
-----
-
-    - add some detection for Arch linux (currently resorting to lsb_release filtering in scripts)
-    - add package handling for Arch (with yay or pacman?)
 
 
 
