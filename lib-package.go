@@ -199,6 +199,8 @@ func isinstalled(pkg string) (bool) {
         }
     case "opensuse":
         err = Copper("rpm -q "+pkg+" 2>/dev/null", true).Code
+    case "arch":
+        err = Copper("pacman -Q "+pkg+" 2>/dev/null", true).Code
     case "alpine":
         err = Copper("apk info -e "+pkg+" 2>/dev/null", true).Code
     case "fedora", "amzn", "centos", "rhel":
@@ -231,6 +233,12 @@ func uninstall(pkgs string) (state int) {
         inopts = "remove -y"
         checkcmd1 = "rpm -q "
         checkcmd2 = ""
+    case "arch":
+        pm = "pacman"
+        upopts = ""
+        inopts = "--noconfirm -R"
+        checkcmd1 = "pacman -Q "
+        checkcmd2 = ""
     case "alpine":
         pm = "apk"
         upopts = "update -q"
@@ -250,7 +258,7 @@ func uninstall(pkgs string) (state int) {
     updateCommand := sf("%s %s", pm, upopts)
     // pf("[upd] Executing: %s\n",updateCommand)
 
-    if firstInstallRun {
+    if firstInstallRun && upopts!="" {
         pf("Updating repository.\n")
         err := Copper(updateCommand, true).Code
         if err != 0 {
@@ -264,7 +272,7 @@ func uninstall(pkgs string) (state int) {
     err := Copper(checkcmd1+pkgs+checkcmd2, true).Code
     if err == 0 { // installed
         // remove
-        removeCommand := sf("%s %s %s", pm, inopts, pkgs)
+        removeCommand := sf("sudo %s %s %s", pm, inopts, pkgs)
         // pf("[rem] Executing: %s\n",removeCommand)
         pf("Removing: %v\n", pkgs)
         cop := Copper(removeCommand, true)
@@ -355,6 +363,15 @@ func install(pkgs string,quiet bool) (state int) {
             }
             if !quiet { pf("[#4]%s installed.[#-]\n",pkgs) }
             return 0
+        case ".zst": // pacman support
+            cmd:="pacman --noconfirm -U "+pbname
+            cop:=Copper(cmd,true)
+            if cop.Code>0 {
+                if !quiet { pf("[#2]Error during package install! Do you have privileges?[#-]\n") }
+                return -1
+            }
+            if !quiet { pf("[#4]%s installed.[#-]\n",pkgs) }
+            return 0
         case ".sh" : // execute script
             if !quiet { pf("[#2]Script execution not supported![#-]") }
             return -1
@@ -390,6 +407,12 @@ func install(pkgs string,quiet bool) (state int) {
         inopts = "install -y -l"
         checkcmd1 = "rpm -q "
         checkcmd2 = ""
+    case "arch":
+        pm = "pacman"
+        upopts = ""
+        inopts = "--noconfirm -S"
+        checkcmd1 = "pacman -Q "
+        checkcmd2 = ""
     case "alpine":
         pm = "apk"
         upopts = "update -q"
@@ -408,7 +431,7 @@ func install(pkgs string,quiet bool) (state int) {
 
     updateCommand := sf("sudo %s %s", pm, upopts)
 
-    if firstInstallRun {
+    if firstInstallRun && upopts != "" {
         // do update
         if !quiet { pf("Updating repository.\n") }
         err := Copper(updateCommand, true).Code
@@ -482,6 +505,8 @@ func service(name string, action string) (bool, error) {
                 expected = "upstart"
             }
         }
+	case "arch":
+		expected = "systemd"
     case "opensuse": // default from 12.2 (12 in suse enterprise)
         if vc, _ := vcmp(rv, "12.2"); vc >= 0 {
             expected = "systemd"
@@ -519,7 +544,7 @@ func service(name string, action string) (bool, error) {
         pf("Service control is disabled for Alpine!\n")
         finish(false, ERR_UNSUPPORTED)
     default:
-        pf("A number of systems are currently unsupported.\nThese include:- Arch, CoreOS, Gentoo, Knoppix, Mageia, Mint, Slackware and Solus.\n")
+        pf("A number of systems are currently unsupported.\nThese include:- CoreOS, Gentoo, Knoppix, Mageia, Mint, Slackware and Solus.\n")
         finish(false, ERR_UNSUPPORTED)
     }
 
