@@ -333,6 +333,11 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
         }
         lastsrow = srow
 
+		// shift positions if inside low-end context help
+		if startedContextHelp && srow>MH-HELP_SIZE {
+			srow-=HELP_SIZE
+		}
+
         // print prompt
         at(srow, scol)
         fmt.Printf(sparkle(sprompt))
@@ -916,6 +921,14 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                 if hintEnable {
                     if !startedContextHelp {
                         funcnames = nil
+
+						if irow>MH-1 {
+							for i:=srow; i<irow+HELP_SIZE;i++ {
+								at(MH+1,1); fmt.Println()
+							}
+							srow=srow-HELP_SIZE
+							irow=irow-HELP_SIZE
+						}
 
                         startedContextHelp = true
                         for i := irow + 1; i <= irow+HELP_SIZE; i++ {
