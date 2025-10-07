@@ -156,8 +156,8 @@ banner=` {="@language".sysvar} - version {="@version".sysvar} `
 if is_installed("figlet") or is_file("/usr/bin/figlet")
 
     fontdir="/usr/share/figlet"
-    arch=${lsb_release -a}.grep("^Distributor ID:").field(2).field(2,"\t")
-    on arch == "Arch" do fontdir+="/fonts"
+    # arch=${lsb_release -a}.grep("^Distributor ID:").field(2).field(2,"\t")
+    on release_id() == "arch" do fontdir+="/fonts"
 
     variants = (
         dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"` 
