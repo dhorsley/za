@@ -7320,21 +7320,15 @@ tco_reentry:
                     if we.errVal != nil {
                         errmsg = sf("%+v\n", we.errVal)
                     }
-                    parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
-                    finish(false, ERR_EVAL)
-                    break
+					if !interactive { // PIG
+						parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
+						finish(false, ERR_EVAL)
+						break
+					} else {
+						panic("")
+					}
                 }
             }
-
-            /*
-               if we.result != nil {
-                   if retArray, ok := we.result.([]any); ok && len(retArray) >= 1 {
-                       if status, ok := retArray[0].(int); ok && status == EXCEPTION_THROWN {
-
-                       }
-                   }
-               }
-            */
 
             // normalProcessing:
             // Check if we have an active exception that needs handling (atomic, no lock needed)
