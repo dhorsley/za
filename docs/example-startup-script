@@ -26,7 +26,7 @@ def form_logo()
     is "redhat"
         s=bg256(0xa0)+"[#7] R "+fg256(0xa0)
     endcase
-    return s+bg256(0x12)+endcap
+    return s+bg256(0x12)
 end
 
 def form_time()
@@ -54,6 +54,7 @@ def form_git()
             branch=""
         endif
 
+        unstaged=gs_text.grep("not staged")
         _=fields(gs_text[1])
         if NF>5
             str_status=F[4:7].join
@@ -105,10 +106,11 @@ end
 def form_prompt()
     @last_cmd_status=last()
     cached_fg=form_git()
-    return ( form_logo() + bg256(0x12) + fg256(0x25) + form_time() + bg256(0x1b) + fg256(0x12) + endcap +
-         bg256(0x1b) + fg256(0xc3) + form_dir() + bg256(0xe2) + fg256(0x1b) +
-         form_aws() + bg256(0xe2) + endcap +
-         cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
+    return ( 
+        form_logo() + bg256(0x1b) + endcap +
+        form_dir() + bg256(0xe2) + fg256(0x1b) +
+        form_aws() + bg256(0xe2) + endcap +
+        cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
     )
 end
 
@@ -125,7 +127,6 @@ endstruct
 
 
 # set prompt
-
 awsenv=get_env("AWS_DEFAULT_PROFILE")
 
 var envlist map
@@ -143,7 +144,7 @@ gtl=${git rev-parse --show-toplevel}
 # right-hand side of prompt assignment is re-evaluated 
 # before each input prompt is presented.
 prompt=(form_prompt())
-# end-set-prompt
+
 
 # set banner
 ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
@@ -158,7 +159,6 @@ banner=` {="@language".sysvar} - version {="@version".sysvar} `
 if is_installed("figlet") or is_file("/usr/bin/figlet")
 
     fontdir="/usr/share/figlet"
-    # arch=${lsb_release -a}.grep("^Distributor ID:").field(2).field(2,"\t")
     on release_id() == "arch" do fontdir+="/fonts"
 
     variants = (
@@ -172,8 +172,6 @@ if is_installed("figlet") or is_file("/usr/bin/figlet")
     p=banner
     if variants.len>0
         fv=variants[variants.len.rand-1]
-        # use_effect = effects[effects.len.rand-1]
-        # p=${toilet -f {fv} {use_effect} -S -w {=term_w()} "{=banner}"}
         p=${figlet -f {fv} -S -w {=term_w()} "{=banner}"}
     endif
 
@@ -184,10 +182,6 @@ endif
 
 println "\n\n[#5]{p}[#-]\n"
 help
-# end-set-banner
-
-#println "fv->",fv
-#println "ue->",use_effect
 
 unset banner,p,ignore_fonts,effects
 
