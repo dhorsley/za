@@ -20,7 +20,7 @@ cx=width/2
 cy=height/2
 pi=pi()
 c=rand(7).as_float
-crate=0.025
+c_rate=0.025
 bounce=0.012
 maxrot=13.0
 
@@ -36,13 +36,11 @@ while !quit
         x = 2*theta * cos(theta/pi)/8
         y = theta * sin(theta/pi)/8
         px=cx+x; py=cy+y
-        if px>0 and py>0 and px<width and py<height and not (x==0 and y==0)
-            at py,px,"o"
-        endif
+        on px>0 and py>0 and px<width and py<height and not (x==0 and y==0) do at py,px,"o"
         theta = theta + rotation
         on x > width/2.0 do theta = 0.0
     endfor
-    c=c+crate
+    c+=c_rate
     on c>8 do c=rand(7).as_float
     rotation+=bounce
     on rotation>maxrot or rotation<0.03 do bounce=-bounce

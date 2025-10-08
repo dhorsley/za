@@ -1315,9 +1315,11 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     // filter for enabling struct type names here:
     structvalues := []any{}
     found := false
+		structmapslock.RLock()
     if structvalues, found = structmaps[name]; found || name == "anon" {
         isStruct = true
     }
+		structmapslock.RUnlock()
     // end-struct-filter
 
     if !isStruct {
@@ -2200,9 +2202,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
             }
         }
     }
+		structmapslock.RLock()
     if _, found := structmaps[sname]; found || sname == "anon" {
         return sname, nil
     }
+		structmapslock.RUnlock()
 
     panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 

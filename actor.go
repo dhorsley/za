@@ -247,9 +247,6 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
     return r, id
 }
 
-var testlock = &sync.Mutex{}
-var atlock = &sync.Mutex{}
-
 // finish : flag the machine state as okay or in error and
 // optionally terminates execution.
 func finish(hard bool, i int) {
@@ -667,12 +664,16 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 }
 
 // setup mutex locks
-var calllock = &sync.RWMutex{}   // function call related
-var lastlock = &sync.RWMutex{}   // cached globals
-var farglock = &sync.RWMutex{}   // function args manipulation
-var fspacelock = &sync.RWMutex{} // token storage related
-var globlock = &sync.RWMutex{}   // enum access lock
-var sglock = &sync.RWMutex{}     // setglob lock
+var calllock = &sync.RWMutex{}   			// function call related
+var lastlock = &sync.RWMutex{}   			// cached globals
+var farglock = &sync.RWMutex{}   			// function args manipulation
+var fspacelock = &sync.RWMutex{} 			// token storage related
+var globlock = &sync.RWMutex{}   			// enum access lock
+var sglock = &sync.RWMutex{}     			// setglob lock
+var structmapslock = &sync.RWMutex{} 	// structmaps access
+var testlock = &sync.Mutex{}					// test state processing
+var atlock = &sync.Mutex{}						// console cursor positioning
+
 
 // for error reporting : keeps a list of parent->child function calls
 //
@@ -2187,15 +2188,9 @@ tco_reentry:
                         }
                     }
 
-                    /*
-                       pf("(struct check) found_namespace is %s\n",found_namespace)
-                       pf("(struct check) new_type_token_string is %s\n",new_type_token_string)
-                       pf("(struct check) sname is %s\n",sname)
-                       pf("(struct check) structmaps:\n%#v\n",structmaps)
-                    */
-
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+										structmapslock.RLock()
                     for sn, _ := range structmaps {
                         if sn == sname {
                             isStruct = true
@@ -2203,6 +2198,7 @@ tco_reentry:
                             break
                         }
                     }
+										structmapslock.RUnlock()
 
                     if isStruct {
                         t := (*ident)[sid]
@@ -5404,7 +5400,9 @@ tco_reentry:
 
             //
             // take definition and create a structmaps entry from it:
+						structmapslock.Lock()
             structmaps[structName] = structNode[:]
+						structmapslock.Unlock()
 
             structName = ""
             structNode = []any{}
@@ -5421,6 +5419,7 @@ tco_reentry:
                 filter = interpolate(currentModule, ifs, ident, cet.text)
             }
 
+						structmapslock.RLock()
             for k, s := range structmaps {
 
                 if matched, _ := regexp.MatchString(filter, k); !matched {
@@ -5435,6 +5434,7 @@ tco_reentry:
                 pf("\n")
 
             }
+						structmapslock.RUnlock()
 
         case C_With:
 
