@@ -15,8 +15,16 @@ else
     pathRoot="/usr/share/vim"
 ei
 
-# where's vim at?
 
+# install for nvim
+nvim=is_installed("nvim")
+if nvim
+  println "- Copying za.vim to nvim syntax file path"
+  | sudo cp -f za.vim /usr/share/nvim/runtime/syntax/
+  # need to add the equivalent of the scripts.vim file type handler in here still
+endif
+
+# where's old vim at?
 allPaths=[]
 vim9=false
 foreach p in dir(pathRoot)
