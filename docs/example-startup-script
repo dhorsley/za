@@ -54,12 +54,13 @@ def form_git()
             branch=""
         endif
 
-        unstaged=gs_text.grep("not staged")
+        unstaged=gs.out.grep("^Changes")
+
         _=fields(gs_text[1])
         if NF>5
             str_status=F[4:7].join
             status="[#2]✕[#0]"
-            on str_status=="uptodate" do status="[#4]✓[#0]"
+            on unstaged.len==0 and str_status=="uptodate" do status="[#4]✓[#0]"
             return bg256(0xe2) + fg256(0x11) + " ({branch} {status}) " + bg256(0) + fg256(0xe2)
         endif
 
