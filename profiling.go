@@ -665,6 +665,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             structFilter, _ := reader.ReadString('\n')
             structFilter = str.TrimSpace(structFilter)
 
+						structmapslock.RLock()
             for k, s := range structmaps {
                 if structFilter != "" {
                     if matched, _ := regexp.MatchString(structFilter, k); !matched {
@@ -677,6 +678,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                 }
                 pf("\n")
             }
+						structmapslock.RUnlock()
 
         case "w", "watch":
             pf("Enter variable name to watch: ")
