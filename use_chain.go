@@ -121,12 +121,11 @@ func uc_match_enum(s string) (string) {
     return ""
 }
 
-// @todo: structmaps is completely unprotected by locks throughout the code
-//          this should be corrected. will do this later, honest.
-
 func uc_match_struct(s string) (string) {
     chainlock.RLock()
     defer chainlock.RUnlock()
+		structmapslock.RLock()
+		defer structmapslock.RUnlock()
     for p:=0; p<len(uchain); p+=1 {
         if _,found:=structmaps[uchain[p]+"::"+s]; found {
             return uchain[p]

@@ -2419,6 +2419,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             par_struct_fields := make(map[string]string, 4)
+						structmapslock.RLock()
             if structvalues, exists := structmaps[fm.parent]; exists {
                 for svpos := 0; svpos < len(structvalues); svpos += 4 {
                     pfieldtype := structvalues[svpos+1].(string)
@@ -2428,6 +2429,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
                     par_struct_fields[structvalues[svpos].(string)] = pfieldtype
                 }
             }
+						structmapslock.RUnlock()
 
             structs_equal := true
             for k, v := range par_struct_fields {
