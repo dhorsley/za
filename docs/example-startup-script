@@ -109,7 +109,7 @@ def form_prompt()
     cached_fg=form_git()
     return ( 
         form_logo() + bg256(0x1b) + endcap +
-        form_dir() + bg256(0xe2) + fg256(0x1b) +
+        "[#6]"+form_dir() + bg256(0xe2) + fg256(0x1b) +
         form_aws() + bg256(0xe2) + endcap +
         cached_fg + endcap + "[#-][##]" + form_end_prompt() + "[#-][##]"
     )
