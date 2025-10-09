@@ -1734,14 +1734,14 @@ func buildListLib() {
             "3", "any", "bool", "bool",
             "2", "any", "bool",
             "2", "any", "map",
-			"1", "nil",
+            "1", "nil",
             "1", "any"); !ok {
             return nil, err
         }
 
-		if args[0]==nil {
-			return nil,nil
-		}
+        if args[0]==nil {
+            return nil,nil
+        }
 
         list := args[0]
         direction := false

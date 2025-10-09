@@ -505,8 +505,8 @@ func service(name string, action string) (bool, error) {
                 expected = "upstart"
             }
         }
-	case "arch":
-		expected = "systemd"
+    case "arch":
+        expected = "systemd"
     case "opensuse": // default from 12.2 (12 in suse enterprise)
         if vc, _ := vcmp(rv, "12.2"); vc >= 0 {
             expected = "systemd"

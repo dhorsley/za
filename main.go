@@ -1408,7 +1408,7 @@ func main() {
 
                 if row>=MH-1 {
                     at(MH+1,1)
-					fmt.Println()
+                    fmt.Println()
                     row=MH-1
                 }
                 at(row,1)
@@ -1546,7 +1546,7 @@ func main() {
 
                 if row>=MH-1 {
                     at(MH+1,1)
-					fmt.Println()
+                    fmt.Println()
                     row=MH-1
                 }
                 at(row,1)

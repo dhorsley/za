@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+
+find . -name "*.go" -exec ex -c "retab" -c "wq" {} \;
+
