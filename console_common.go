@@ -259,7 +259,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
     var helpType []int
-	HELP_SIZE := 8
+    HELP_SIZE := 8
 
     // Reverse search state variables
     var reverseSearchMode bool = false
@@ -333,10 +333,10 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
         }
         lastsrow = srow
 
-		// shift positions if inside low-end context help
-		if startedContextHelp && srow>MH-HELP_SIZE {
-			srow-=HELP_SIZE
-		}
+        // shift positions if inside low-end context help
+        if startedContextHelp && srow>MH-HELP_SIZE {
+            srow-=HELP_SIZE
+        }
 
         // print prompt
         at(srow, scol)
@@ -922,13 +922,13 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
                     if !startedContextHelp {
                         funcnames = nil
 
-						if irow>MH-1 {
-							for i:=srow; i<irow+HELP_SIZE;i++ {
-								at(MH+1,1); fmt.Println()
-							}
-							srow=srow-HELP_SIZE
-							irow=irow-HELP_SIZE
-						}
+                        if irow>MH-1 {
+                            for i:=srow; i<irow+HELP_SIZE;i++ {
+                                at(MH+1,1); fmt.Println()
+                            }
+                            srow=srow-HELP_SIZE
+                            irow=irow-HELP_SIZE
+                        }
 
                         startedContextHelp = true
                         for i := irow + 1; i <= irow+HELP_SIZE; i++ {

@@ -12,8 +12,8 @@ import (
     "sync/atomic"
     "time"
     "unsafe"
-	"unicode"
-	"unicode/utf8"
+    "unicode"
+    "unicode/utf8"
 )
 
 func ev_slice_get_type(arr interface{}) reflect.Type {
@@ -504,9 +504,9 @@ func ev_sub(val1 any, val2 any) any {
     case int:
         intInOne = true
     case uint64:
-		uintInOne = true
+        uintInOne = true
     case uint:
-		val1=uint64(val1.(uint))
+        val1=uint64(val1.(uint))
         uintInOne = true
     case int64:
         i641 = true
@@ -518,10 +518,10 @@ func ev_sub(val1 any, val2 any) any {
     switch val2.(type) {
     case int:
         intInTwo = true
-	case uint64:
-		uintInTwo = true
-	case uint:
-		val2=uint64(val2.(uint))
+    case uint64:
+        uintInTwo = true
+    case uint:
+        val2=uint64(val2.(uint))
         uintInTwo = true
     case int64:
         i642 = true
@@ -2257,14 +2257,14 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             return res, err != nil
         }
 
-		// Note: We will always enforce Upper case alpha at pos 0
-		//       to force struct field to be public
+        // Note: We will always enforce Upper case alpha at pos 0
+        //       to force struct field to be public
 
         // NB field is deliberately shadowed here so that it returns
         //     to the uncapitalised version if it falls through
         //     to the enum/func checks further below!!
 
-		field:=renameSF(field)
+        field:=renameSF(field)
 
         if pre_type == Identifier {
             bin := pre_pos
@@ -2419,7 +2419,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             par_struct_fields := make(map[string]string, 4)
-						structmapslock.RLock()
+                        structmapslock.RLock()
             if structvalues, exists := structmaps[fm.parent]; exists {
                 for svpos := 0; svpos < len(structvalues); svpos += 4 {
                     pfieldtype := structvalues[svpos+1].(string)
@@ -2429,7 +2429,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
                     par_struct_fields[structvalues[svpos].(string)] = pfieldtype
                 }
             }
-						structmapslock.RUnlock()
+                        structmapslock.RUnlock()
 
             structs_equal := true
             for k, v := range par_struct_fields {

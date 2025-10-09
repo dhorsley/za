@@ -13,7 +13,7 @@ try throws "default_error"
     println "Throwing network timeout"
     throw "network_timeout"
 catch err is "network_error", "timeout_error", "network_timeout"
-    println "✓ Caught network-related error:", err
+    println "✓ Caught network-related error:", err.pp
 endtry
 
 # Test 2: Mixed string and enum patterns
@@ -22,7 +22,7 @@ try throws "default_error"
     println "Throwing network error"
     throw "network_error"
 catch err is "network_error", ex.NETWORK_ERROR, "connection_error"
-    println "✓ Caught network error (string):", err
+    println "✓ Caught network error (string):", err.pp
 endtry
 
 # Test 3: Enum values only
@@ -31,7 +31,7 @@ try throws "default_error"
     println "Throwing timeout error"
     throw ex.TIMEOUT_ERROR
 catch err is ex.NETWORK_ERROR, ex.TIMEOUT_ERROR, ex.DATABASE_ERROR
-    println "✓ Caught timeout error (enum):", err
+    println "✓ Caught timeout error (enum):", err.pp
 endtry
 
 # Test 4: Mixed integers and strings
@@ -40,7 +40,7 @@ try throws "default_error"
     println "Throwing integer error"
     throw 42
 catch err is 42, "forty_two", 1001
-    println "✓ Caught integer error:", err
+    println "✓ Caught integer error:", err.pp
 endtry
 
 # Test 5: Variables in patterns
@@ -53,7 +53,7 @@ try throws "default_error"
     println "Throwing custom error"
     throw "custom_error_1"
 catch err is error1, error2, error3
-    println "✓ Caught custom error:", err
+    println "✓ Caught custom error:", err.pp
 endtry
 
 # Test 6: No match (should continue to next catch)
@@ -64,7 +64,7 @@ try throws "default_error"
 catch err is "network_error", "timeout_error"
     println "✗ Should not catch this"
 catch err contains "unmatched"
-    println "✓ Caught with contains:", err
+    println "✓ Caught with contains:", err.pp
 endtry
 
 # Test 7: Multiple catch blocks with different patterns
@@ -75,7 +75,7 @@ try throws "default_error"
 catch err is "network_error", "timeout_error"
     println "✗ Should not catch network errors"
 catch err is "database_error", "sql_error", ex.DATABASE_ERROR
-    println "✓ Caught database error:", err
+    println "✓ Caught database error:", err.pp
 catch err contains "error"
     println "✗ Should not reach this (already caught)"
 endtry
@@ -86,7 +86,7 @@ try throws "default_error"
     println "Throwing simple error"
     throw "simple_error"
 catch err is "simple_error"
-    println "✓ Caught single pattern:", err
+    println "✓ Caught single pattern:", err.pp
 endtry
 
 # Test 9: Error handling - invalid pattern
@@ -97,7 +97,7 @@ try throws "default_error"
 catch err is "valid_error", invalid_variable
     println "✗ Should not reach this due to error"
 catch err is "test_error"
-    println "✓ Caught after error:", err
+    println "✓ Caught after error:", err.pp
 endtry
 
 println "\n=== All advanced catch pattern tests completed ===" 

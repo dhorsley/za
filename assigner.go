@@ -1035,14 +1035,14 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
             return reflect.Value{}, err
         }
 
-		// copy slice
+        // copy slice
         newSlice := reflect.MakeSlice(currentVal.Type(), currentVal.Len(), currentVal.Cap())
         // newSlice.Set(currentVal)
         for i := 0; i < currentVal.Len(); i++ {
             newSlice.Index(i).Set(reflect.ValueOf(recCopy(currentVal.Index(i).Interface())))
         }
 
-		// update slice with new elem
+        // update slice with new elem
         newSlice.Index(index).Set(modifiedElem)
         // pf("(aa) new slice -> %#v\n",newSlice)
         return newSlice, nil
@@ -1150,10 +1150,10 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         var field reflect.Value
         // pf("cv entry -> %#v\n",currentVal)
 
-    	tmp := reflect.New(currentVal.Type()).Elem()
-    	tmp.Set(currentVal)
+        tmp := reflect.New(currentVal.Type()).Elem()
+        tmp.Set(currentVal)
 
-		field=tmp.FieldByName(access.Field)
+        field=tmp.FieldByName(access.Field)
         disableRO(&field)
 
         if !field.IsValid() {
@@ -1168,8 +1168,8 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         disableRO(&finalField)
 
         // Set the field on our (now addressable) struct.
-		field.Set(finalField)
-		currentVal=tmp
+        field.Set(finalField)
+        currentVal=tmp
 
         // pf("field is -> %#v\n",field)
         // pf("cv is    -> %#v\n",currentVal)

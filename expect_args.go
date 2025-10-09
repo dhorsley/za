@@ -49,10 +49,10 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
         for p = next; p < (next + nc); p += 1 {
             switch args[n].(type) {
             case nil:
-				if types[p]=="nil" {
-					n+=1
-					continue
-				}
+                if types[p]=="nil" {
+                    n+=1
+                    continue
+                }
                 return false, errors.New(sf("nil evaluation in stdlib arg #%d parsing", n))
             case float64:
                 if types[p] == "float" || types[p] == "number" {

@@ -664,15 +664,15 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 }
 
 // setup mutex locks
-var calllock = &sync.RWMutex{}   			// function call related
-var lastlock = &sync.RWMutex{}   			// cached globals
-var farglock = &sync.RWMutex{}   			// function args manipulation
-var fspacelock = &sync.RWMutex{} 			// token storage related
-var globlock = &sync.RWMutex{}   			// enum access lock
-var sglock = &sync.RWMutex{}     			// setglob lock
-var structmapslock = &sync.RWMutex{} 	// structmaps access
-var testlock = &sync.Mutex{}					// test state processing
-var atlock = &sync.Mutex{}						// console cursor positioning
+var calllock = &sync.RWMutex{}              // function call related
+var lastlock = &sync.RWMutex{}              // cached globals
+var farglock = &sync.RWMutex{}              // function args manipulation
+var fspacelock = &sync.RWMutex{}            // token storage related
+var globlock = &sync.RWMutex{}              // enum access lock
+var sglock = &sync.RWMutex{}                // setglob lock
+var structmapslock = &sync.RWMutex{}    // structmaps access
+var testlock = &sync.Mutex{}                    // test state processing
+var atlock = &sync.Mutex{}                      // console cursor positioning
 
 
 // for error reporting : keeps a list of parent->child function calls
@@ -2190,7 +2190,7 @@ tco_reentry:
 
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-										structmapslock.RLock()
+                                        structmapslock.RLock()
                     for sn, _ := range structmaps {
                         if sn == sname {
                             isStruct = true
@@ -2198,7 +2198,7 @@ tco_reentry:
                             break
                         }
                     }
-										structmapslock.RUnlock()
+                                        structmapslock.RUnlock()
 
                     if isStruct {
                         t := (*ident)[sid]
@@ -3703,7 +3703,7 @@ tco_reentry:
 
                 // break [n] if ... syntax
 
-				var has_break_count bool
+                var has_break_count bool
                 if inbound.TokenCount > 2 {
 
                     if inbound.Tokens[1].tokType==C_If || ( inbound.Tokens[1].tokType==NumericLiteral && inbound.Tokens[2].tokType==C_If ) {
@@ -3712,7 +3712,7 @@ tco_reentry:
                         if inbound.Tokens[1].tokType == NumericLiteral {
                             break_count,_ = GetAsInt(inbound.Tokens[1].tokVal)
                             cond_start_pos = 3
-							has_break_count = true
+                            has_break_count = true
                         }
 
                         we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[cond_start_pos:])
@@ -3723,24 +3723,24 @@ tco_reentry:
                         }
 
                         var hasIfErr bool
-						var breakIgnore bool
+                        var breakIgnore bool
 
                         switch we.result.(type) {
                         case bool:
                             if ! we.result.(bool) {
-								breakIgnore=true
-							}
-							if !has_break_count {
-								break_count = 1
-								has_break_count = true
-							}
+                                breakIgnore=true
+                            }
+                            if !has_break_count {
+                                break_count = 1
+                                has_break_count = true
+                            }
                         default:
                             parser.report(inbound.SourceLine, "BREAK IF condition must evaluate to boolean")
                             finish(false, ERR_EVAL)
                             hasIfErr = true
                         }
                         if hasIfErr { break }
-						if breakIgnore { continue } // this skips all potential break processing and moves to next pc statement
+                        if breakIgnore { continue } // this skips all potential break processing and moves to next pc statement
                     }
                 }
 
@@ -3760,7 +3760,7 @@ tco_reentry:
                     }
                 }
 
-				if forceEnd { // IF clause cannot trigger this:
+                if forceEnd { // IF clause cannot trigger this:
                     // set count of back tracking in end* statements
                     for break_count = 1; break_count <= depth; break_count += 1 {
                         // pf("(cbreak) increasing break_count to %v\n",break_count)
@@ -5400,9 +5400,9 @@ tco_reentry:
 
             //
             // take definition and create a structmaps entry from it:
-						structmapslock.Lock()
+                        structmapslock.Lock()
             structmaps[structName] = structNode[:]
-						structmapslock.Unlock()
+                        structmapslock.Unlock()
 
             structName = ""
             structNode = []any{}
@@ -5419,7 +5419,7 @@ tco_reentry:
                 filter = interpolate(currentModule, ifs, ident, cet.text)
             }
 
-						structmapslock.RLock()
+                        structmapslock.RLock()
             for k, s := range structmaps {
 
                 if matched, _ := regexp.MatchString(filter, k); !matched {
@@ -5434,7 +5434,7 @@ tco_reentry:
                 pf("\n")
 
             }
-						structmapslock.RUnlock()
+                        structmapslock.RUnlock()
 
         case C_With:
 
@@ -7320,13 +7320,13 @@ tco_reentry:
                     if we.errVal != nil {
                         errmsg = sf("%+v\n", we.errVal)
                     }
-					if !interactive { // PIG
-						parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
-						finish(false, ERR_EVAL)
-						break
-					} else {
-						panic("")
-					}
+                    if !interactive { // PIG
+                        parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
+                        finish(false, ERR_EVAL)
+                        break
+                    } else {
+                        panic("")
+                    }
                 }
             }
 
