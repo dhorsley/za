@@ -26,41 +26,49 @@ It doesn't matter either way, it's self contained.
 LANGUAGE INSTALLATION FROM SOURCE
 ---------------------------------
 
-Ubuntu:
+PREREQUISITES
 
-sudo apt update
+- Go compiler - v1.21+
+- if building for Alpine: upx compression tool
+- lib-pcre3: if building for Arch/Alpine, then this is not required.
+  - lib-pcre3 is required for the reg*() Za library functions.
+    - these are not installed by default in Arch/Alpine so are
+      not present in those build versions.
+  - sqlite3 dev/header files
+    - this db engine is not currently supported in Arch as 
+       you need to use the alpine build which disables CGO.
+
+For debian, redhat and similar builds as well as FreeBSD and similar you
+should be fine generating a 'normal' glibc build.
 
 
-first install:
+For Debian, Ubuntu, Redhat and similar:
+---------------------------------------
 
-adjust ./GO to suitable paths, then:
+- first install:
 
-  ./GO
+If required, adjust ./GO to suitable paths, then:
+
+  ./GO # only if needed
   go build za
-  cp -f za /usr/bin/
+  cp -f za /usr/bin/ # or whereever you want it
 
-
-subsequent rebuild/update/install:
+- subsequent rebuild/update/install:
 
   ./build [upx] [strip]
--or-
+    -or-
   ./build libc [upx] [strip]
 
 If the rebuild fails, then run go build za for better output.
 the language version number will not appear at run-time unless compiled using the "build" script
 
-To cross-compile for Alpine (default):
---------------------------------------
+
+To cross-compile for Arch/Alpine (default):
+-------------------------------------------
 
   ./build alpine [upx] [strip]
--or-
-  ./build [upx] [strip]
 
 If you have UPX installed then the upx option above can be used to compress the binary for docker builds.
-
-Currently you may need to choose between the alpine build (internal net lib compiled in) or the default
-build (cgo-static) instead should you require the lib-pcre3 helper functions in the internal library.
-This will be resolved over time, hopefully.
 
 
 To cross-compile for Windows:
@@ -71,6 +79,11 @@ If compiling on an Ubuntu host:
   ./build win
 
 This option leaves the binary unstripped so that Windows 10 doesn't complain too much.
+
+Windows support may or may not be entirely broken, sub-par, slightly broken or even fully functional at any given time.
+There is no support for these builds and they are provided as a best-effort solution.
+
+Additionally, some minor features are not present in Windows where there is no clear parallel option.
 
 Also underwhelming in the Windows version:
 
@@ -84,5 +97,6 @@ To compile on FreeBSD:
 
 The OS should be detected by the build script. You should still do your initial build using the first
 install instructions above.
+
 
 
