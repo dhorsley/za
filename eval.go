@@ -344,11 +344,11 @@ binloop1:
             }
 
         case O_Try: // handle ?? at end of expression
-			if p.pos == p.len-1 {
-            	left = p.tryOperator(left, nil)
+            if p.pos == p.len-1 {
+                left = p.tryOperator(left, nil)
             } else {
-				left = p.tryOperator(left, right)
-			}	
+                left = p.tryOperator(left, right)
+            }   
             continue
 
         case SYM_LAND:
@@ -1156,7 +1156,7 @@ func (p *leparser) rcompare(left any, right any, insensitive bool, multi bool) a
 
 func (p *leparser) accessArray(left any, right Token) any {
 
-	// pf("p.aa inbound left array is : %+v\n",left)
+    // pf("p.aa inbound left array is : %+v\n",left)
 
     var start, end any
     var hasStart, hasEnd, hasRange bool
@@ -1315,11 +1315,11 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     // filter for enabling struct type names here:
     structvalues := []any{}
     found := false
-		structmapslock.RLock()
+        structmapslock.RLock()
     if structvalues, found = structmaps[name]; found || name == "anon" {
         isStruct = true
     }
-		structmapslock.RUnlock()
+        structmapslock.RUnlock()
     // end-struct-filter
 
     if !isStruct {
@@ -1388,10 +1388,10 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 
         if len(arg_names) > 0 {
 
-			// enforce initial case
-			for i,an := range arg_names {
-				arg_names[i]=renameSF(an)
-			}
+            // enforce initial case
+            for i,an := range arg_names {
+                arg_names[i]=renameSF(an)
+            }
 
             // named field handling:
             //  struct_name(.name value,...,.name value)
@@ -2202,11 +2202,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
             }
         }
     }
-		structmapslock.RLock()
+        structmapslock.RLock()
     if _, found := structmaps[sname]; found || sname == "anon" {
         return sname, nil
     }
-		structmapslock.RUnlock()
+        structmapslock.RUnlock()
 
     panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 
