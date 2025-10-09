@@ -1,11 +1,10 @@
 
-
 All of the following third-party packages are used in the final binary.
 
 Any of these marked as "Go Modules" should not be distributed with the
 source package for Za, but instead retrieved as Go modules pre-compilation.
 
-Many thanks to all involved with creating these!    
+Many thanks to all involved with creating these!
 
 
 Name    : go-sql-driver
@@ -50,3 +49,38 @@ Licence : Florian's copyright file reproduced in full @ PCRE-COPYRIGHT-FILE
 Home    : https://github.com/GRbit/go-pcre
 Type    : Go Module
 
+Name    : go-sqlite3
+Author  : Yasuhiro Matsumoto
+Licence : MIT License
+Home    : https://github.com/mattn/go-sqlite3
+Type    : Go Module
+
+Name    : term
+Author  : Peter Kleiweg
+Licence : MIT License
+Home    : https://github.com/pkg/term
+Type    : Go Module
+
+Name    : x/sys
+Author  : The Go Authors
+Licence : BSD-3-Clause License
+Home    : https://golang.org/x/sys
+Type    : Go Module
+
+Name    : yaml.v3
+Author  : Canonical Ltd
+Licence : Apache License 2.0
+Home    : https://gopkg.in/yaml.v3
+Type    : Go Module
+
+Name    : edwards25519
+Author  : Filippo Valsorda
+Licence : BSD-3-Clause License
+Home    : https://filippo.io/edwards25519
+Type    : Go Module (indirect dependency)
+
+Name    : timefmt-go
+Author  : itchyny
+Licence : MIT License
+Home    : https://github.com/itchyny/timefmt-go
+Type    : Go Module (indirect dependency)
