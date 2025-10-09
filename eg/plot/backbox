@@ -1,5 +1,6 @@
 #!/usr/bin/za
-    
+
+
 def quit()
     repoll=poll_dur
     while
@@ -11,34 +12,39 @@ def quit()
             endif
             repoll=poll_dur
         endif
-        k=keypress(100)
-        on k!=0 do @ quit=true
+        k=keypress(1000)
+        break if k!=0
     endwhile
+    @quitting=true
+    at h-1,1
+    cls
+    cursoron()
+    exit
 end
 
 
 # MAIN
 
 poll_dur=7
-quit=false
 
-bh=9; bw=16
+bh,bw=[4,8]
 w=term_w()
 h=term_h()
+quitting=false
 
 async nil quit()
 
 cls
 cursoroff()
-while !quit
+while not quitting
 
     row_count=as_int(h/bh)
     col_count=as_int(w/bw)
     
     for r=0 to row_count
-        on r*bh>=term_h() do continue
-        for c=0 to col_count-1
-            on c*bw>=term_w() do continue
+        continue if r*bh>=term_h()
+        for c=0 to col_count
+            continue if c*bw>=term_w()
             hue="[#b{=rand(7)}]"
             for sr=0 to bh-1
                 at r*bh+sr,c*bw
@@ -48,10 +54,4 @@ while !quit
     endfor
 
 endwhile
-
-at h-1,1
-| reset
-cursoron()
-exit
-
 

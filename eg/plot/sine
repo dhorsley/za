@@ -2,12 +2,12 @@
 
 # about as similar to processing.js example as you can do with text chars
 
-fps=20
+fps=10
 input fps optarg 1
 
 
 define calcWave(dx,amplitude)
-    @ theta += 0.2
+    @ theta = ( theta + 0.2 ) % 180
     x=theta
     yvalues=[]
     for i = 0 to width-1
@@ -38,7 +38,7 @@ end
 
 cls
 
-theta = 45.0
+theta = 0f
 period = 120.0
 
 height=term_h()
