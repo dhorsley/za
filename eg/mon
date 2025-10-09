@@ -238,7 +238,7 @@ define showMem()
             slab_string+=s+"\n"
         endfor
         slab_string = slab_string.fieldsort(2, "n", true)
-        
+
         # Format for display (top 5 entries)
         # slabs = "Slab: Name Size(MB)\n"
         slabs = ""
@@ -259,7 +259,7 @@ define showMem()
     mem_cached = resources.MemoryCached
     mem_swap_free = resources.SwapFree
     mem_swap_total = resources.SwapTotal
-    
+
     # Get detailed memory info for additional fields
     mem_avail = mem_detailed.Available
     mem_active = mem_detailed.Used
@@ -342,12 +342,12 @@ define showProcs(ct,uptime)
         comm = p.Command
 
         continue if procstarttime==0 or ppid==0
-        
+
         # if not this process' pid (putime: seconds of process time) // putime==0 when proc just started.
         if pid!=pid()
             putime=as_float(uptime-(procstarttime/ct))
             continue if putime==0
-            
+
             proc_list[pid]=[ state, ppid, 100*as_float(utime/ct/putime), 100*as_float(stime/ct/putime), 
                             100*as_float(cutime/ct/putime), 100*as_float(cstime/ct/putime), 
                             threads, procstarttime, gsub(comm," ","_") 
