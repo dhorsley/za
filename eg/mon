@@ -8,9 +8,6 @@
 # resource information on a single summary view.
 #
 
-count=0
-
-
 #
 # FUNCTIONS
 #
@@ -688,7 +685,11 @@ end
 
 #
 # MAIN
-# 
+#
+
+on term_h()==-1 do exit 1, "No output channel attached to process."
+
+count=0
 
 # in milliseconds
 key_timeout=1000
