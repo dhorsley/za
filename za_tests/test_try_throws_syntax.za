@@ -47,7 +47,7 @@ try throws 42
     println "In try block with integer default"
     throw  # Should use default integer 42
 catch err is 42
-    println "Caught integer error:", err
+    println "Caught integer error:", err.pp
 endtry
 
 # Test 6: Invalid type (should cause error during parsing)
