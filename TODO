@@ -2,15 +2,6 @@
 TODO
 ----
 
-REMAINING CLEANUP
------------------
-
-    - cleaner error messages required in places.
-    - some performance improvements are required.
-
-
-
-
 
 KERNEL PARAMETER TUNING
 -----------------------
@@ -24,6 +15,7 @@ KERNEL PARAMETER TUNING
     - sysctl_categories() - list available parameter categories
     - sysctl_restore_defaults() - restore default kernel parameters
 
+
 CORE FIREWALL DETECTION & MANAGEMENT
 ------------------------------------
 
@@ -34,14 +26,14 @@ CORE FIREWALL DETECTION & MANAGEMENT
     - Windows Firewall: WMI connection + active profiles detection
 
 * TODO: Unified firewall API
-    - firewall_capable() - detect active firewall with capabilities
-    - firewall_guard() - safe guard for firewall operations
-    - firewall_enable(firewall_type) - enable specific firewall
-    - firewall_disable() - disable current active firewall
-    - firewall_add_rule(protocol, port, action) - add firewall rule
-    - firewall_remove_rule(protocol, port, action) - remove firewall rule
-    - firewall_list_rules() - list current firewall rules
-    - firewall_get_stats() - get firewall statistics
+    - fw_capable() - detect active firewall with capabilities
+    - fw_guard() - safe guard for firewall operations
+    - fw_enable(firewall_type) - enable specific firewall
+    - fw_disable() - disable current active firewall
+    - fw_add_rule(protocol, port, action) - add firewall rule
+    - fw_remove_rule(protocol, port, action) - remove firewall rule
+    - fw_list_rules() - list current firewall rules
+    - fw_get_stats() - get firewall statistics
 
 * TODO: Platform-specific native library integration
     - nftables: github.com/google/nftables (direct netlink)
@@ -50,7 +42,7 @@ CORE FIREWALL DETECTION & MANAGEMENT
     - pf: CLI wrapper (no native library available)
 
 * TODO: Privilege checking and security validation
-    - has_privileges() - check if user has firewall management permissions
+    - fw_has_privileges() - check if user has firewall management permissions
     - Platform-specific privilege validation (root, sudo, doas, Windows admin)
     - Automatic privilege requirement detection and error reporting
 
@@ -59,53 +51,59 @@ CORE FIREWALL DETECTION & MANAGEMENT
     - Automatic platform detection and appropriate firewall selection
     - Unified error handling and status reporting
 
+
 PLUGIN ARCHITECTURE FOR CUSTOM FIREWALLS
 ----------------------------------------
 
 * TODO: Custom firewall plugin registration system
-    - firewall_register_plugin(firewall_type, handler_functions)
-    - firewall_unregister_plugin(firewall_type)
+    - fw_register_plugin(firewall_type, handler_functions)
+    - fw_unregister_plugin(firewall_type)
     - Plugin detection integration with native firewall detection
     - Plugin capability reporting and validation
 
 * TODO: Plugin interface specification
-    - detect() - detect if firewall is active
-    - enable() - enable the firewall
-    - disable() - disable the firewall  
-    - add_rule(protocol, port, action) - add firewall rule
-    - remove_rule(protocol, port, action) - remove firewall rule
-    - list_rules() - list current rules
-    - get_stats() - get firewall statistics
-    - capabilities - list of supported capabilities
+    - fw_detect() - detect if firewall is active
+    - fw_enable() - enable the firewall
+    - fw_disable() - disable the firewall  
+    - fw_add_rule(protocol, port, action) - add firewall rule
+    - fw_remove_rule(protocol, port, action) - remove firewall rule
+    - fw_list_rules() - list current rules
+    - fw_get_stats() - get firewall statistics
+    - fw_capabilities() - list of supported capabilities
 
 * TODO: Example plugins for legacy firewalls
     - iptables plugin (CLI wrapper)
     - ufw plugin (Ubuntu firewall)
 
+
 ADVANCED FIREWALL FEATURES
 --------------------------
 
 * TODO: Real-time firewall monitoring
-    - firewall_monitor_events() - real-time event streams
-    - nftables_events() - netlink event monitoring
-    - firewalld_events() - D-Bus event monitoring
-    - Windows Firewall events - WMI event monitoring
-    - pf events - CLI-based event monitoring
+    - fw_monitor_events() - real-time event streams
+      - these should be unified so we don't need, for example, separate event lookups such as:
+        - fw_nftables_events() - netlink event monitoring
+        - fw_firewalld_events() - D-Bus event monitoring
+        - Windows Firewall events - WMI event monitoring
+        - pf events - CLI-based event monitoring
 
 * TODO: Rate monitoring and statistics
-    - firewall_rate_monitor() - hits/second monitoring
-    - firewall_rate_alert(threshold) - rate threshold alerts
+    - fw_rate_monitor() - hits/second monitoring
+    - fw_rate_alert(threshold) - rate threshold alerts
+        - how to do this without a separate event loop?
+        - ... or spin one up dynamically when monitors added?
     - Rate history tracking and anomaly detection
     - Performance impact monitoring
+
 
 FIREWALL EVENT LOGGING AND AUDIT
 --------------------------------
 
 * TODO: Firewall event logging and audit
-    - firewall_log_events() - capture firewall events
-    - firewall_audit_trail() - comprehensive audit logging
-    - firewall_compliance_report() - compliance reporting
-    - firewall_security_analysis() - security analysis and recommendations
+    - fw_log_events() - capture firewall events
+    - fw_audit_trail() - comprehensive audit logging
+    - fw_compliance_report() - compliance reporting
+    - fw_security_analysis() - security analysis and recommendations
 
     NOTES
     -----
@@ -129,5 +127,8 @@ LATER / UNDECIDED
     * MAYBE: add install note for windows w/wsl stating that sudoers file may need 
             updating with : Defaults env_keep=WSL_DISTRO_NAME
             and possibly other env vars, depending on user requirements.
+
+    * probably we require many other similar notices/warning/info above OS specific caveats.
+
 
 

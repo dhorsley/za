@@ -30,14 +30,15 @@ CHANGE LOG
     ---------------
 
     * (experimental):
+    *   - TODO: support this in alpine and arch builds also.
+    *     - there are issues with CGO support/sqllite3 for the build on these releases.
         - added support for sqlite3 db format on local paths
         - this may be removed later as it adds 4MB to the binary size.
         - see eg/dblite for example script.
-        - @todo: if this feature stays in, credits will need adding to the
-                    credits file and online manual, plus any licensing files (if needed)
 
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
+    *   - TODO: add similar for other basic type widths
     * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
 
     * added ctrl-l to keypress() (value 12)
@@ -109,6 +110,8 @@ CHANGE LOG
 
     * added pp() function for pretty printing some common types
         pp(map|slice, [indent], [max_depth])
+        - TODO: some types not yet supported. this should be expanded so that pp() generates
+                reasonably sane json where possible.
 
     * renamed net lib to web
 
@@ -171,6 +174,8 @@ CHANGE LOG
         keys(): Returns a list of map keys
         values(): Returns a list of map values
 
+    * TODO: make sure all this new crap is in the syntax highlighting config files and the libdoc generated pages.
+
 
     other
     -----
@@ -180,6 +185,7 @@ CHANGE LOG
         - BREAK [n] [IF cond]
         - CONTINUE [IF cond]
         - cannot be used in conjunction with BREAK <keyword_type> CLAUSE yet
+          - TODO: add support for this, e.g. 'BREAK CASE|FOR|FOREACH|WHILE IF cond'
 
     * Added ctrl-r support to getInput() for reverse history searching
         - backspace deletes, ctrl-u clears input
