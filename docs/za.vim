@@ -455,6 +455,35 @@ syntax match sum_functions "\(^|.\|\s*\)sha224sum\s*("he=e-1
 syntax match sum_functions "\(^|.\|\s*\)sha256sum\s*("he=e-1
 syntax match sum_functions "\(^|.\|\s*\)s3sum\s*("he=e-1
 
+syntax match auto_functions "\(^|.\|\s*\)tcp_server_accept\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)tcp_server_stop\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)tcp_traceroute\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)to_typed\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)top_cpu\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)top_dio\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)top_mem\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)top_nio\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)traceroute\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)trim\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)user_add\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)user_del\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)user_info\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)user_list\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)user_mod\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)values\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)yaml_delete\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)yaml_get\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)yaml_marshal\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)yaml_parse\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)yaml_set\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_add\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_create\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_create_from_dir\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_extract\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_extract_file\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_list\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)zip_remove\s*("he=e-1
+
 " Za Keywords: {{{1
 " ==============
 
@@ -534,7 +563,7 @@ syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,tui_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,auto_functions,tui_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -585,6 +614,10 @@ hi def link db_functions functionlist
 hi def link string_functions functionlist
 hi def link html_functions functionlist
 hi def link image_functions functionlist
+hi def link sum_functions functionlist
+hi def link auto_functions functionlist
+
+
 
 if !exists("g:sh_no_error")
  hi def link CondError      Error
