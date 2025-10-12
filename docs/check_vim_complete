@@ -1,5 +1,13 @@
 #!/usr/bin/za
 
+doc `
+    INTERNAL USE ONLY - it does not do what you think it does
+`
+
+fixup=false
+input mode optarg 1
+on mode=="fixup" do fixup=true
+
 funclist=[]
 foreach f in func_inputs()
     append_to(ref funclist,key_f)
@@ -22,8 +30,18 @@ diff=|diff --suppress-common-lines -y "{a}" "{b}"
 
 if ! diff.okay
     println "[#2]mismatch[#-]"
-    println "%-47s%40s".format("[#5]Za help list[#-]","[#5]Vim list[#-]")
-    println diff.out
+    if not fixup
+      println "%-47s%40s".format("[#5]Za help list[#-]","[#5]Vim list[#-]")
+      println diff.out
+    else
+      println "Missing functions:"
+      foreach l in diff.out.tr("s","\t\ ")
+        l.fields
+        if F.len>2 and F[2]=="<" 
+          println `syntax match auto_functions "\(^|.\|\s*\){=$st F[1]}\s*("he=e-1`
+        endif
+      endfor
+    endif
 else
     println "No differences."
 endif
