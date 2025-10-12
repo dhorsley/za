@@ -30,15 +30,15 @@ CHANGE LOG
     ---------------
 
     * (experimental):
-    *   - TODO: support this in alpine and arch builds also.
-    *     - there are issues with CGO support/sqllite3 for the build on these releases.
+        - TODO: support this in alpine and arch builds also.
+          - there are issues with CGO support/sqllite3 for the build on these releases.
         - added support for sqlite3 db format on local paths
         - this may be removed later as it adds 4MB to the binary size.
         - see eg/dblite for example script.
 
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
-    *   - TODO: add similar for other basic type widths
+        - TODO: add similar for other basic type widths
     * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
 
     * added ctrl-l to keypress() (value 12)
