@@ -299,9 +299,11 @@ func buildOsLib() {
         if ok, err := expect_args("chroot", args, 1, "1", "string"); !ok {
             return nil, err
         }
+
         if interactive {
             return nil, errors.New("chroot not permitted in interactive mode.")
         }
+
         return nil, chroot(args[0].(string))
     }
 
