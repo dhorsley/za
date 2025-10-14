@@ -136,6 +136,9 @@ syntax match conversion_functions "\(^|.\|\s*\)dtoo\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)otod\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)s2m\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)m2s\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)maxint\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)maxuint\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)maxfloat\s*("he=e-1
 
 syntax match internal_functions "\(^|.\|\s*\)ast\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)dinfo\s*("he=e-1
@@ -471,18 +474,18 @@ syntax match auto_functions "\(^|.\|\s*\)user_info\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)user_list\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)user_mod\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)values\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)yaml_delete\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)yaml_get\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)yaml_marshal\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)yaml_parse\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)yaml_set\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_add\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_create\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_create_from_dir\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_extract\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_extract_file\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_list\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)zip_remove\s*("he=e-1
+syntax match yaml_functions "\(^|.\|\s*\)yaml_delete\s*("he=e-1
+syntax match yaml_functions "\(^|.\|\s*\)yaml_get\s*("he=e-1
+syntax match yaml_functions "\(^|.\|\s*\)yaml_marshal\s*("he=e-1
+syntax match yaml_functions "\(^|.\|\s*\)yaml_parse\s*("he=e-1
+syntax match yaml_functions "\(^|.\|\s*\)yaml_set\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_add\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_create\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_create_from_dir\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_extract\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_extract_file\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_list\s*("he=e-1
+syntax match zip_functions "\(^|.\|\s*\)zip_remove\s*("he=e-1
 
 " Za Keywords: {{{1
 " ==============
@@ -563,7 +566,7 @@ syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,auto_functions,tui_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,yaml_functions,zip_functions,auto_functions,tui_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -615,9 +618,9 @@ hi def link string_functions functionlist
 hi def link html_functions functionlist
 hi def link image_functions functionlist
 hi def link sum_functions functionlist
+hi def link yaml_functions functionlist
+hi def link zip_functions functionlist
 hi def link auto_functions functionlist
-
-
 
 if !exists("g:sh_no_error")
  hi def link CondError      Error
