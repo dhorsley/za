@@ -915,6 +915,22 @@ func buildConversionLib() {
         return uint(0), errors.New(sf("could not convert [%T] (%v) to integer in as_uint()", args[0], args[0]))
     }
 
+    slhelp["maxfloat"] = LibHelp{in: "var", out: "float", action: "Represents the maximum possible float value."}
+    stdlib["maxfloat"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 0 {
+            return nil, errors.New("invalid arguments provided to maxfloat()")
+        }
+        return float64(math.MaxFloat64), nil
+    }
+
+    slhelp["maxint"] = LibHelp{in: "var", out: "int", action: "Represents the maximum possible int value."}
+    stdlib["maxint"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 0 {
+            return nil, errors.New("invalid arguments provided to maxint()")
+        }
+        return int(math.MaxInt), nil
+    }
+
     slhelp["maxuint"] = LibHelp{in: "var", out: "uint64", action: "Represents the maximum possible uint value."}
     stdlib["maxuint"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if len(args) != 0 {
