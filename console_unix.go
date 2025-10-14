@@ -291,7 +291,12 @@ func GetSize(fd int) (int, int, error) {
     if err != nil {
         return -1, -1, err
     }
-    return int(ws.Col), int(ws.Row), nil
+    w:=int(ws.Col)
+    h:=int(ws.Row)
+    if w==0 { w=-1 }
+    if h==0 { h=-1 }
+    return w,h,nil
+    // return int(ws.Col), int(ws.Row), nil
 }
 
 // handleCtrlZ sends SIGTSTP to suspend the process on Unix systems
