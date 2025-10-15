@@ -1,14 +1,7 @@
 #!/usr/bin/za
 
 doc `
-    rough first attempt at a logtail equivalent. based on the perl one.
-    it highlights some issues around int/uint (64) handling.
-    needed to add to library:
-        - ftell()
-        - stat()
-    and to the evaluator:
-        - some equality check support for uint64/int64
-            ( this is still not great, i may still end up forcing manual casting pre-comparison )
+    rough attempt at a logtail equivalent. based on the perl one.
 `
 
 stdin="/dev/stdin"
@@ -37,22 +30,25 @@ inode=0
 ino=0
 offset=0
 
-oh=fopen(offfile,"r")
+oh=nil
+on offfile.is_file do oh=fopen(offfile,"r")
 
 if oh!=nil
 
     if oh.ftell!=nil
-        inode=fread(oh,"\n").as_int64
-        offset=fread(oh,"\n").as_int64
+        inode=fread(oh,"\n").as_int
+        offset=fread(oh,"\n").as_int
+        #println "r-INO : ",inode
+        #println "r-OFF : ",offset
     endif
     fclose(oh)
 
     size=file_size(logfile)
     on size==-1 do exit 65,"Cannot get {logfile} file size."
-    ino=stat(logfile).Ino
+    ino=stat(logfile).sys.Ino.as_int
 
     if inode==ino
-        on offset==size do exit 0
+        on offset==size do exit 0  
         if offset>size
             offset = 0
             println "[#2]***************"
@@ -63,13 +59,15 @@ if oh!=nil
 
     on inode!=ino or offset>size do offset=0
 
-    fh.fseek(as_int(offset),0)
+    fh.fseek(offset,0)
 
 endif
 
+interpol(false)
 while not feof(fh)
     println fread(fh,"\n")
 endwhile
+interpol(true)
 
 on logfile!=stdin do size=fh.ftell
 fclose(fh)
@@ -77,7 +75,9 @@ fclose(fh)
 if not testmode and offfile!=""
     oh=fopen(offfile,"w")
     on oh==nil do exit 73,"File {offfile} cannot be created. Check your permissions."
-    fwrite(oh,"{ino}\n{size}\n")
+    #println "w-INO : ",ino
+    #println "w-OFF : ",size
+    fwrite(oh,"{=ino}\n{=size}\n")
     fclose(oh)
 endif
 
