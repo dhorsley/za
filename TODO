@@ -119,16 +119,11 @@ FIREWALL EVENT LOGGING AND AUDIT
 LATER / UNDECIDED
 -----------------
 
-    * add a test mode that *does not* test imported modules.
-        - i.e. only test the main file and assume the modules are already tested.
-        - currently, everything gets tested all the time.
-        - may also be worth establishing a cache of tested modules/checksums to save re-testing
+    * add install note for windows w/wsl stating that sudoers file may need 
+        updating with : Defaults env_keep=WSL_DISTRO_NAME
+        and possibly other env vars, depending on user requirements.
 
-    * MAYBE: add install note for windows w/wsl stating that sudoers file may need 
-            updating with : Defaults env_keep=WSL_DISTRO_NAME
-            and possibly other env vars, depending on user requirements.
-
-    * probably we require many other similar notices/warning/info above OS specific caveats.
+    * probably we require many other similar notices/warning/info about OS specific caveats.
 
 
 
