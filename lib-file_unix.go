@@ -345,5 +345,6 @@ func fileStatSys(filename string) interface{} {
         "is_dir":  stat.IsDir(),
         "uid":     uid,
         "gid":     gid,
+				"sys":		 stat.Sys(),
     }
 }
