@@ -5,6 +5,31 @@ CHANGE LOG
 1.2.0
 =====
 
+    Remaining experimental features:
+
+    * sqlite db support
+    * lib-tui.go
+    * try..catch..then..endtry support
+    * try operator
+    * interactive/tab completion mode support for variable depth
+
+    Almost out of test (to be supported in 1.2.1):
+
+    * break/continue if
+    * break for/foreach/while/case
+    * enhanced logging features
+    * function arguments: default arguments
+
+    Now considered supported:
+
+    * flock() call
+    * cmdfallback flag
+    * caret unary operator inside array range expressions.
+    * breaking expression lines on dot char at end of line.
+    * optional name qualification for enums
+    * optional name qualification for structs
+
+
     fixes
     -----
 
@@ -177,7 +202,7 @@ CHANGE LOG
     other
     -----
 
-    * (experimental) Added 'IF cond' clause to CONTINUE and BREAK statements
+    * Added 'IF cond' clause to CONTINUE and BREAK statements
         - just for saving some typing of IF or ON..DO.. statements
         - BREAK [n] [IF cond]
         - CONTINUE [IF cond]
