@@ -45,13 +45,12 @@ CHANGE LOG
         - some issues with kernel/proc/etc missing/unsupported values.
         - had to supplement the bsd version with some fallback external exec support.
 
-    Syntactic sugar added for R.H.S. local scope map keys (to deref using a dot char):
+    Syntactic sugar added for local scope map keys (to deref using a dot char):
         - e.g.:
             m["blah"]=42
             println m["blah"]
             println m.blah
             # both return 42
-        - may add same to LHS in assignments later.
 
 
     library changes
