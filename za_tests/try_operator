@@ -2,19 +2,16 @@
 
 # Simple test for ?? operator parsing
 
-permit("error_exit", false)
+# permit("error_exit", false)
 exception_strictness("warn")
-error_style("exception")
-
-println "Testing ?? operator parsing..."
 
 # Test 1: Basic ?? operator with right-hand side
 println "Test 1: nil ?? 'error'"
 try
-    result = nil ?? "error"
+    result = nil ?? "test 1 error"
     println "This should not be reached"
 catch err
-    println "Caught: " + err["message"]
+    println "Test 1 Caught: " + err.pp
 endtry
 
 # Test 2: ?? operator without right-hand side (this should work)
@@ -23,7 +20,11 @@ try
     result = nil ??
     println "This should not be reached"
 catch err
-    println "Caught: " + err["message"]
+    println "Test 2 Caught: " + err["message"]
 endtry
 
-println "Done" 
+# Test 3: Basic ?? operator without try
+println "Test 3: nil ??"
+result = nil ??
+println "This should not be reached"
+

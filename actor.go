@@ -7320,7 +7320,7 @@ tco_reentry:
                     if we.errVal != nil {
                         errmsg = sf("%+v\n", we.errVal)
                     }
-                    if !interactive { // PIG
+                    if !interactive {
                         parser.report(inbound.SourceLine, sf("Error in evaluation\n%s", errmsg))
                         finish(false, ERR_EVAL)
                         break
