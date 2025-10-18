@@ -8,10 +8,11 @@ CHANGE LOG
     Remaining experimental features:
 
     * sqlite db support
+      - arch/alpine static/dynamic issues
     * lib-tui.go
-    * try..catch..then..endtry support
-    * try operator
+      - missing features and further tidying/debug to do
     * interactive/tab completion mode support for variable depth
+      - needs attention. messy ui and completion selection for deeper nestings
 
     Almost out of test (to be supported in 1.2.1):
 
@@ -19,6 +20,8 @@ CHANGE LOG
     * break for/foreach/while/case
     * enhanced logging features
     * function arguments: default arguments
+    * try..catch..then..endtry support
+    * try operator
 
     Now considered supported:
 
