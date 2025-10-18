@@ -411,7 +411,7 @@ func main() {
             sglock.Unlock()
             shelltype, _ := gvget("@shelltype")
             if shelltype == "bash" || shelltype == "ash" {
-                if MW != -1 {
+                if MW != -1 && permit_shell {
                     if runtime.GOOS == "freebsd" {
                         Copper(sf(`alias ls="COLUMNS=%d ls -C"`, MW), true)
                     } else {
