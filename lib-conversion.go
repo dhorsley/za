@@ -15,8 +15,8 @@ import (
     "math/big"
     "os"
     "reflect"
-    "strconv"
     "sort"
+    "strconv"
     "strings"
     str "strings"
     "unsafe"
@@ -432,6 +432,348 @@ func describeType(t reflect.Type) string {
     }
 }
 
+func toTable(data any, options map[string]any) string {
+    // Parse options
+    colors := map[string]string{}
+    var colorOpt map[string]any
+    if c, ok := options["colors"].(map[string]any); ok {
+        colorOpt = c
+    } else if c, ok := options["colours"].(map[string]any); ok {
+        colorOpt = c
+    }
+    if colorOpt != nil {
+        for k, v := range colorOpt {
+            if s, ok := v.(string); ok {
+                colors[k] = s
+            }
+        }
+    }
+
+    tableWidth := 0
+    if tw, ok := options["table_width"].(int); ok {
+        tableWidth = tw
+    }
+
+    columnWidths := map[string]int{}
+    if cw, ok := options["column_widths"].(map[string]any); ok {
+        for k, v := range cw {
+            if i, ok := v.(int); ok {
+                columnWidths[k] = i
+            }
+        }
+    }
+
+    align := map[string]string{}
+    if a, ok := options["align"].(map[string]any); ok {
+        for k, v := range a {
+            if s, ok := v.(string); ok {
+                align[k] = s
+            }
+        }
+    }
+
+    includeHeaders := true
+    if ih, ok := options["include_headers"].(bool); ok {
+        includeHeaders = ih
+    }
+
+    borderStyle := "ascii"
+    if bs, ok := options["border_style"].(string); ok {
+        borderStyle = bs
+    }
+
+    truncate := false
+    if t, ok := options["truncate"].(bool); ok {
+        truncate = t
+    }
+
+    // Extract columns and rows
+    var columns []string
+    var rows [][]string
+
+    v := reflect.ValueOf(data)
+    switch v.Kind() {
+    case reflect.Slice:
+        if v.Len() == 0 {
+            return ""
+        }
+        elem := v.Index(0)
+        if elem.Kind() == reflect.Interface {
+            elem = elem.Elem()
+        }
+        if elem.Kind() == reflect.Map {
+            // []map[string]any
+            seen := make(map[string]bool)
+            for i := 0; i < v.Len(); i++ {
+                vi := v.Index(i)
+                if vi.Kind() == reflect.Interface {
+                    vi = vi.Elem()
+                }
+                m := vi.Interface().(map[string]any)
+                for k := range m {
+                    if !seen[k] {
+                        seen[k] = true
+                        columns = append(columns, k)
+                    }
+                }
+            }
+            for i := 0; i < v.Len(); i++ {
+                vi := v.Index(i)
+                if vi.Kind() == reflect.Interface {
+                    vi = vi.Elem()
+                }
+                m := vi.Interface().(map[string]any)
+                row := make([]string, len(columns))
+                for j, col := range columns {
+                    if val, ok := m[col]; ok {
+                        row[j] = sf("%v", val)
+                    } else {
+                        row[j] = ""
+                    }
+                }
+                rows = append(rows, row)
+            }
+        } else if elem.Kind() == reflect.Struct {
+            // []struct
+            t := elem.Type()
+            for i := 0; i < t.NumField(); i++ {
+                columns = append(columns, t.Field(i).Name)
+            }
+            for i := 0; i < v.Len(); i++ {
+                s := v.Index(i)
+                if s.Kind() == reflect.Interface {
+                    s = s.Elem()
+                }
+                row := make([]string, len(columns))
+                for j, col := range columns {
+                    f := s.FieldByName(col)
+                    row[j] = sf("%v", f.Interface())
+                }
+                rows = append(rows, row)
+            }
+        } else {
+            // Single column
+            columns = []string{"value"}
+            for i := 0; i < v.Len(); i++ {
+                vi := v.Index(i)
+                rows = append(rows, []string{sf("%v", vi.Interface())})
+            }
+        }
+    case reflect.Map:
+        // Single map as one row
+        m := data.(map[string]any)
+        for k := range m {
+            columns = append(columns, k)
+        }
+        row := make([]string, len(columns))
+        for j, col := range columns {
+            row[j] = sf("%v", m[col])
+        }
+        rows = append(rows, row)
+    default:
+        return sf("%v", data)
+    }
+
+    // Apply column_order if provided
+    if co, ok := options["column_order"].([]any); ok {
+        newColumns := []string{}
+        for _, c := range co {
+            if s, ok := c.(string); ok {
+                newColumns = append(newColumns, s)
+            }
+        }
+        // Add any missing columns
+        seen := make(map[string]bool)
+        for _, c := range newColumns {
+            seen[c] = true
+        }
+        for _, c := range columns {
+            if !seen[c] {
+                newColumns = append(newColumns, c)
+            }
+        }
+        columns = newColumns
+    }
+
+    // Calculate widths
+    widths := make([]int, len(columns))
+    for i, col := range columns {
+        if w, ok := columnWidths[col]; ok {
+            widths[i] = w
+        } else {
+            widths[i] = len(col)
+        }
+    }
+    for _, row := range rows {
+        for i, cell := range row {
+            if len(cell) > widths[i] {
+                widths[i] = len(cell)
+            }
+        }
+    }
+
+    // Adjust for tableWidth
+    if tableWidth > 0 {
+        total := 0
+        for _, w := range widths {
+            total += w + 3 // padding
+        }
+        total += 1 // borders
+        if total > tableWidth {
+            excess := total - tableWidth
+            for excess > 0 {
+                reduced := false
+                for i := range widths {
+                    if widths[i] > 1 {
+                        widths[i]--
+                        excess--
+                        reduced = true
+                        if excess == 0 {
+                            break
+                        }
+                    }
+                }
+                if !reduced {
+                    break
+                }
+            }
+        }
+    }
+
+    // Build table
+    var buf strings.Builder
+
+    borderChars := map[string]map[string]string{
+        "ascii": {
+            "topLeft":     "+",
+            "topRight":    "+",
+            "bottomLeft":  "+",
+            "bottomRight": "+",
+            "horizontal":  "-",
+            "vertical":    "|",
+            "cross":       "+",
+        },
+        "unicode": {
+            "topLeft":     "┌",
+            "topRight":    "┐",
+            "bottomLeft":  "└",
+            "bottomRight": "┘",
+            "horizontal":  "─",
+            "vertical":    "│",
+            "cross":       "┼",
+        },
+    }
+
+    bc := borderChars[borderStyle]
+
+    // Top border
+    buf.WriteString(bc["topLeft"])
+    for i, w := range widths {
+        for j := 0; j < w+2; j++ {
+            buf.WriteString(bc["horizontal"])
+        }
+        if i < len(widths)-1 {
+            buf.WriteString(bc["cross"])
+        }
+    }
+    buf.WriteString(bc["topRight"])
+    buf.WriteString("\n")
+
+    // Headers
+    if includeHeaders {
+        buf.WriteString(bc["vertical"])
+        for i, col := range columns {
+            alignCol := "left"
+            if a, ok := align[col]; ok {
+                alignCol = a
+            }
+            cell := col
+            if len(cell) > widths[i] && truncate {
+                cell = cell[:widths[i]-3] + "..."
+            }
+            padded := padString(cell, widths[i], alignCol)
+            if c, ok := colors["header"]; ok {
+                buf.WriteString(c)
+                buf.WriteString(padded)
+                buf.WriteString("[#-]")
+            } else {
+                buf.WriteString(padded)
+            }
+            buf.WriteString(bc["vertical"])
+        }
+        buf.WriteString("\n")
+
+        // Separator
+        buf.WriteString(bc["cross"])
+        for i, w := range widths {
+            for j := 0; j < w+2; j++ {
+                buf.WriteString(bc["horizontal"])
+            }
+            if i < len(widths)-1 {
+                buf.WriteString(bc["cross"])
+            }
+        }
+        buf.WriteString(bc["cross"])
+        buf.WriteString("\n")
+    }
+
+    // Rows
+    for _, row := range rows {
+        buf.WriteString(bc["vertical"])
+        for i, cell := range row {
+            alignCol := "left"
+            if a, ok := align[columns[i]]; ok {
+                alignCol = a
+            }
+            c := cell
+            if len(c) > widths[i] && truncate {
+                c = c[:widths[i]-3] + "..."
+            }
+            padded := padString(c, widths[i], alignCol)
+            if col, ok := colors["data"]; ok {
+                buf.WriteString(col)
+                buf.WriteString(padded)
+                buf.WriteString("[#-]")
+            } else {
+                buf.WriteString(padded)
+            }
+            buf.WriteString(bc["vertical"])
+        }
+        buf.WriteString("\n")
+    }
+
+    // Bottom border
+    buf.WriteString(bc["bottomLeft"])
+    for i, w := range widths {
+        for j := 0; j < w+2; j++ {
+            buf.WriteString(bc["horizontal"])
+        }
+        if i < len(widths)-1 {
+            buf.WriteString(bc["cross"])
+        }
+    }
+    buf.WriteString(bc["bottomRight"])
+    buf.WriteString("\n")
+
+    return buf.String()
+}
+
+func padString(s string, width int, align string) string {
+    if len(s) >= width {
+        return " " + s[:width] + " "
+    }
+    switch align {
+    case "right":
+        return " " + strings.Repeat(" ", width-len(s)) + s + " "
+    case "center":
+        left := (width - len(s)) / 2
+        right := width - len(s) - left
+        return " " + strings.Repeat(" ", left) + s + strings.Repeat(" ", right) + " "
+    default:
+        return " " + s + strings.Repeat(" ", width-len(s)) + " "
+    }
+}
+
 func buildConversionLib() {
 
     // conversion
@@ -441,7 +783,7 @@ func buildConversionLib() {
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
-        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed",
+        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table",
     }
 
     slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
@@ -479,64 +821,64 @@ func buildConversionLib() {
     }
 
     /*
-    slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
-    stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
-            return nil, err
-        }
+         slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
+         stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+                 if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
+                         return nil, err
+                 }
 
-        obj := args[0]
-        if reflect.TypeOf(obj).Kind() != reflect.Struct {
-            return nil, errors.New("explain: expected struct argument")
-        }
+                 obj := args[0]
+                 if reflect.TypeOf(obj).Kind() != reflect.Struct {
+                         return nil, errors.New("explain: expected struct argument")
+                 }
 
-        val := reflect.ValueOf(obj)
-        typ := val.Type()
+                 val := reflect.ValueOf(obj)
+                 typ := val.Type()
 
-        var result strings.Builder
+                 var result strings.Builder
 
-        // Get struct name
-        structName := "Unknown"
-        if name, count := struct_match(obj); count == 1 {
-            structName = name
-        } else {
-            structName = typ.String()
-        }
+                 // Get struct name
+                 structName := "Unknown"
+                 if name, count := struct_match(obj); count == 1 {
+                         structName = name
+                 } else {
+                         structName = typ.String()
+                 }
 
-        result.WriteString(sf("Struct '%s' contains %d fields:\n\n", structName, val.NumField()))
+                 result.WriteString(sf("Struct '%s' contains %d fields:\n\n", structName, val.NumField()))
 
-        // Describe each field
-        for i := 0; i < val.NumField(); i++ {
-            field := val.Field(i)
-            fieldType := typ.Field(i)
+                 // Describe each field
+                 for i := 0; i < val.NumField(); i++ {
+                         field := val.Field(i)
+                         fieldType := typ.Field(i)
 
-            // Field name
-            result.WriteString(sf("  %d. %s: ", i+1, fieldType.Name))
+                         // Field name
+                         result.WriteString(sf("  %d. %s: ", i+1, fieldType.Name))
 
-            // Field type description
-            typeDesc := describeType(field.Type())
-            result.WriteString(typeDesc)
+                         // Field type description
+                         typeDesc := describeType(field.Type())
+                         result.WriteString(typeDesc)
 
-            // Current value (if simple)
-            if field.Kind() == reflect.String || field.Kind() == reflect.Int || field.Kind() == reflect.Float64 || field.Kind() == reflect.Bool {
-                var fieldValue any
-                if field.CanInterface() {
-                    fieldValue = field.Interface()
-                } else {
-                    ptr := unsafe.Pointer(field.UnsafeAddr())
-                    rv := reflect.NewAt(field.Type(), ptr).Elem()
-                    fieldValue = rv.Interface()
-                }
-                result.WriteString(sf(" (current value: %v)", fieldValue))
-            } else if field.Kind() == reflect.Slice {
-                result.WriteString(sf(" (length: %d)", field.Len()))
-            }
+                         // Current value (if simple)
+                         if field.Kind() == reflect.String || field.Kind() == reflect.Int || field.Kind() == reflect.Float64 || field.Kind() == reflect.Bool {
+                                 var fieldValue any
+                                 if field.CanInterface() {
+                                         fieldValue = field.Interface()
+                                 } else {
+                                         ptr := unsafe.Pointer(field.UnsafeAddr())
+                                         rv := reflect.NewAt(field.Type(), ptr).Elem()
+                                         fieldValue = rv.Interface()
+                                 }
+                                 result.WriteString(sf(" (current value: %v)", fieldValue))
+                         } else if field.Kind() == reflect.Slice {
+                                 result.WriteString(sf(" (length: %d)", field.Len()))
+                         }
 
-            result.WriteString("\n")
-        }
+                         result.WriteString("\n")
+                 }
 
-        return result.String(), nil
-    }
+                 return result.String(), nil
+         }
     */
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
@@ -673,11 +1015,11 @@ func buildConversionLib() {
     }
 
     /*
-       // kind stub
-       slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
-       stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-           return ret,err
-       }
+         // kind stub
+         slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
+         stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+                 return ret,err
+         }
     */
 
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
@@ -825,6 +1167,24 @@ func buildConversionLib() {
         }
 
         return pp(input, maxDepth, indent)
+    }
+
+    slhelp["table"] = LibHelp{in: "data, [options]", out: "string", action: `Convert map, slice, or slice of structs to text table. Options: map(.colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
+    stdlib["table"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("table", args, 2,
+            "1", "any",
+            "2", "any", "map"); !ok {
+            return nil, err
+        }
+
+        data := args[0]
+        options := map[string]any{}
+
+        if len(args) > 1 {
+            options = args[1].(map[string]any)
+        }
+
+        return sparkle(toTable(data, options)), nil
     }
 
     slhelp["as_bigi"] = LibHelp{in: "expr", out: "big_int", action: "Convert [#i1]expr[#i0] to a big integer. Also ensures this is a copy."}
