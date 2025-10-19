@@ -11,6 +11,7 @@ CHANGE LOG
       - missing features and further tidying/debug to do
     * interactive/tab completion mode support for variable depth
       - needs attention. messy ui and completion selection for deeper nestings
+    * sqlite3 db support
 
     Almost out of test (to be supported in 1.2.1):
 
@@ -41,12 +42,10 @@ CHANGE LOG
     Arch build:
       - added specific build for arch linux
         - ./build arch
-        - this will act the same as the default build except
-           for linking dynamically instead (for sqlite3 and 
-          pcre libs).
-        - this is for when compiling inside arch rather than
-           a cross-compile from a linux platform where *.a
-           files are available.
+        - this will act the same as the default build except for linking dynamically
+           instead (for sqlite3 and pcre libs).
+        - this is for when compiling inside arch rather than a cross-compile from a 
+           linux platform where *.a files are available.
 
     BSD build:
         - partially tested now. build cross-compiles to BSD and compiles natively.
@@ -68,14 +67,19 @@ CHANGE LOG
         - added support for sqlite3 db format on local paths
         - this may be removed later as it adds 4MB to the binary size.
         - see eg/dblite for example script.
-        - TODO: support this in alpine and arch builds also.
-          - there are issues with CGO support/sqllite3 for the build on these releases.
 
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
     * updated sort()        : now accepts an option map (.reverse bool, .numeric bool, .alphanumeric bool)
 
     * added ctrl-l to keypress() (value 12)
+
+    * table() function for formatting maps, slices, or slices of structs as ANSI-
+        coloured text tables.
+      - Supports options for colors (using Za colour codes), table width, column widths,
+         alignment, headers, border styles (ASCII/Unicode), truncation, and custom column ordering
+      - Example:
+          table(data, map(.colours map(.header "[#2]"), .column_order ["name", "age"]))
 
     * resource usage functions:
 
