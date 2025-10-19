@@ -15,9 +15,10 @@ for a = 1 to argc()
     input do_what optarg a
     case $lc do_what
         is "help"
-            exit 0,`\n./build [libc|win|alpine] [upx] [strip] [-path "install_path"]\n`
+            exit 0,`\n./build [libc|win|arch|alpine] [upx] [strip] [-path "install_path"]\n`
         is "upx"    ; upx_enable=true
         is "strip"  ; strip_enable=true
+        is "arch"   ; tgt="arch"
         is "alpine" ; tgt="alpine"
         is "bsd"    ; tgt="bsd"
         is "libc"   ; tgt="libc"
@@ -58,6 +59,8 @@ if ! os() ~ "^freebsd"
     case tgt
     is "default"
         on buildDefault(bvers,bdate)!=0 do exit e.build,"Failed to build default version."
+    is "arch"
+        on buildArch(bvers,bdate)!=0 do exit e.build,"Failed to build arch version."
     has tgt ~i "^(alpine)$"
         on buildMusl(bvers,bdate)!=0 do exit e.build,"Failed to build musl version."
     is "libc"
@@ -92,7 +95,7 @@ endif
 
 
 case tgt
-contains "^(default|alpine|libc)$"
+contains "^(default|alpine|arch|libc)$"
     "Installing {tgt} build to {ipath}".progress
     | sudo cp -f za {ipath}
     | sudo chmod 755 {ipath}/za
