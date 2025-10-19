@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+
+find . -name "*.go" -exec nvim -u ~/.config/nvim/init.lua -e -c "set expandtab" -c "set tabstop=4" -c "retab" -c "wq" {} \;
+

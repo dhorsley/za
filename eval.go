@@ -347,11 +347,11 @@ binloop1:
             if p.pos == p.len-1 {
                 left = p.tryOperator(left, nil)
             } else {
-            		right, err = p.dparse(p.prectable[token.tokType]+1, false)
-								if err==nil {
-                	left = p.tryOperator(left, right)
-								}
-            		panic(fmt.Errorf("Invalid expression in try operator message"))
+                                right, err = p.dparse(p.prectable[token.tokType]+1, false)
+                                if err==nil {
+                                    left = p.tryOperator(left, right)
+                                }
+                                panic(fmt.Errorf("Invalid expression in try operator message"))
             }
             continue
 
@@ -3252,52 +3252,52 @@ func (p *leparser) tryOperator(left any, right any) any {
 
     var shouldThrow bool
 
-		// Check if left indicates a failure condition
+        // Check if left indicates a failure condition
 
-		switch v := left.(type) {
-		case nil:
-				// nil result - convert to exception
-				shouldThrow = true
+        switch v := left.(type) {
+        case nil:
+                // nil result - convert to exception
+                shouldThrow = true
 
-		case struct {
-				Out  string
-				Err  string
-				Code int
-				Okay bool
-		}:
-				// Shell command result from {...}
-				if !v.Okay {
-						shouldThrow = true
-				}
+        case struct {
+                Out  string
+                Err  string
+                Code int
+                Okay bool
+        }:
+                // Shell command result from {...}
+                if !v.Okay {
+                        shouldThrow = true
+                }
 
-		case bool:
-				// Boolean result - false is considered failure
-				if !v {
-						shouldThrow = true
-				}
+        case bool:
+                // Boolean result - false is considered failure
+                if !v {
+                        shouldThrow = true
+                }
 
-		case error:
-				// Already an error - convert to exception
-				shouldThrow = true
+        case error:
+                // Already an error - convert to exception
+                shouldThrow = true
 
-		case string:
-				// Empty string is considered failure
-				if v == "" {
-						shouldThrow = true
-				}
+        case string:
+                // Empty string is considered failure
+                if v == "" {
+                        shouldThrow = true
+                }
 
-		case int:
-				// Zero is considered failure
-				if v == 0 {
-						shouldThrow = true
-				}
+        case int:
+                // Zero is considered failure
+                if v == 0 {
+                        shouldThrow = true
+                }
 
-		case float64:
-				// Zero is considered failure
-				if v == 0.0 {
-						shouldThrow = true
-				}
-		}
+        case float64:
+                // Zero is considered failure
+                if v == 0.0 {
+                        shouldThrow = true
+                }
+        }
 
     if shouldThrow {
         // Convert right to string for exception category
