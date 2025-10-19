@@ -7,8 +7,6 @@ CHANGE LOG
 
     Remaining experimental features:
 
-    * sqlite db support
-      - arch/alpine static/dynamic issues
     * lib-tui.go
       - missing features and further tidying/debug to do
     * interactive/tab completion mode support for variable depth
@@ -39,6 +37,16 @@ CHANGE LOG
     lots of changes since last win64 build testing:
         - Windows build compiles.
         - limited testing done so far with it.
+
+    Arch build:
+      - added specific build for arch linux
+        - ./build arch
+        - this will act the same as the default build except
+           for linking dynamically instead (for sqlite3 and 
+          pcre libs).
+        - this is for when compiling inside arch rather than
+           a cross-compile from a linux platform where *.a
+           files are available.
 
     BSD build:
         - partially tested now. build cross-compiles to BSD and compiles natively.
