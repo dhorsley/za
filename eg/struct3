@@ -5,9 +5,9 @@
 seed(-1)
 
 struct person
-    name    string
-    age     int
-    dob     string
+    Name    string
+    Age     int
+    Dob     string
 endstruct
 
 forenames= ["Ada","Bob","Craig","David","Ergan","Frederick","George","Harry","Iris","Janis","Keith","Larry","Moon","Naomi","Orpheus","Pamela",
@@ -18,17 +18,21 @@ surnames = ["Johnson","Smith","Cole","Plant","Ferry","Oakey","Gore","Cohen","Cop
             "Petty","Strummer","Weller","Homme","Sandoval","Zevon","Costello"
 ]
 
+var people []any
 for e=1 to 1000
-    for p=1 to 100
+    for p=0 to 99
         people[p]=person(
             .name forenames[rand(forenames.len)-1]+" "+surnames[rand(surnames.len)-1],
             .age  rand(49),
             .dob  date(rand(1546300800)) # 1970 to 2019
         )
-        println format("%4v,%3v : %32s : %2d",e,p,people[p].name,people[p].age)
+        # println format("%4v,%3v : %32s : %2d",e,p,people[p].Name,people[p].Age)
     endfor
-    print
+    # print
 endfor
 
 println "1000 iterations of 100 struct init and populations."
+println "Last iteration data:"
+println people.table
+
 
