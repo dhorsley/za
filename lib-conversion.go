@@ -168,7 +168,7 @@ func convertValue(value any, targetTypeStr string) (any, error) {
             elem := sourceSlice.Index(i)
 
             // If the element is an interface{}, get the concrete value
-            if elem.Kind() == reflect.Interface {
+            if elem.Kind() == reflect.Interface && !elem.IsNil() {
                 elem = elem.Elem()
             }
 
@@ -493,23 +493,27 @@ func toTable(data any, options map[string]any) string {
 
     v := reflect.ValueOf(data)
     switch v.Kind() {
-    case reflect.Slice:
+    case reflect.Slice: // must be of map or of struct
+
         if v.Len() == 0 {
             return ""
         }
         elem := v.Index(0)
+
         if elem.Kind() == reflect.Interface {
             elem = elem.Elem()
         }
-        if elem.Kind() == reflect.Map {
-            // []map[string]any
+
+        if elem.Kind() == reflect.Map || elem.Kind() == reflect.Struct {
             seen := make(map[string]bool)
             for i := 0; i < v.Len(); i++ {
                 vi := v.Index(i)
-                if vi.Kind() == reflect.Interface {
-                    vi = vi.Elem()
+                var m map[string]any
+                if elem.Kind() == reflect.Struct {
+                    m=s2m(vi.Interface())
+                } else {
+                    m=vi.Interface().(map[string]any)
                 }
-                m := vi.Interface().(map[string]any)
                 for k := range m {
                     if !seen[k] {
                         seen[k] = true
@@ -519,10 +523,12 @@ func toTable(data any, options map[string]any) string {
             }
             for i := 0; i < v.Len(); i++ {
                 vi := v.Index(i)
-                if vi.Kind() == reflect.Interface {
-                    vi = vi.Elem()
+                var m map[string]any
+                if elem.Kind() == reflect.Struct {
+                    m=s2m(vi.Interface())
+                } else {
+                    m=vi.Interface().(map[string]any)
                 }
-                m := vi.Interface().(map[string]any)
                 row := make([]string, len(columns))
                 for j, col := range columns {
                     if val, ok := m[col]; ok {
@@ -530,24 +536,6 @@ func toTable(data any, options map[string]any) string {
                     } else {
                         row[j] = ""
                     }
-                }
-                rows = append(rows, row)
-            }
-        } else if elem.Kind() == reflect.Struct {
-            // []struct
-            t := elem.Type()
-            for i := 0; i < t.NumField(); i++ {
-                columns = append(columns, t.Field(i).Name)
-            }
-            for i := 0; i < v.Len(); i++ {
-                s := v.Index(i)
-                if s.Kind() == reflect.Interface {
-                    s = s.Elem()
-                }
-                row := make([]string, len(columns))
-                for j, col := range columns {
-                    f := s.FieldByName(col)
-                    row[j] = sf("%v", f.Interface())
                 }
                 rows = append(rows, row)
             }
@@ -567,7 +555,11 @@ func toTable(data any, options map[string]any) string {
         }
         row := make([]string, len(columns))
         for j, col := range columns {
-            row[j] = sf("%v", m[col])
+            val := m[col]
+            if v := reflect.ValueOf(val); v.Kind() == reflect.Interface && !v.IsNil() {
+                val = v.Elem().Interface()
+            }
+            row[j] = sf("%v", val)
         }
         rows = append(rows, row)
     default:

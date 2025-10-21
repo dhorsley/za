@@ -58,6 +58,7 @@ CHANGE LOG
             println m["blah"]
             println m.blah
             # both return 42
+            m.blah="new value"
 
 
     library changes
