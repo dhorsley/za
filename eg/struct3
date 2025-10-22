@@ -33,6 +33,6 @@ endfor
 
 println "1000 iterations of 100 struct init and populations."
 println "Last iteration data:"
-println people.table
+println people.table(map(.column_order ["Dob","Age","Name"]))
 
 
