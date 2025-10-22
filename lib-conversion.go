@@ -489,7 +489,9 @@ func toTable(data any, options map[string]any) string {
 
     // Extract columns and rows
     var columns []string
-    var rows [][]string
+    var rows []map[string]any
+    var defaultStructColumns []string
+    var isStruct bool
 
     v := reflect.ValueOf(data)
     switch v.Kind() {
@@ -510,6 +512,15 @@ func toTable(data any, options map[string]any) string {
                 vi := v.Index(i)
                 var m map[string]any
                 if elem.Kind() == reflect.Struct {
+                    // create a default column ordering
+                    if i==0 {
+                        rt := elem.Type()
+                        for fpos := 0; fpos < rt.NumField(); fpos++ {
+                            defaultStructColumns = append(defaultStructColumns,rt.Field(fpos).Name)
+                        }
+                        isStruct=true
+                    }
+                    // then convert to an unordered map
                     m=s2m(vi.Interface())
                 } else {
                     m=vi.Interface().(map[string]any)
@@ -520,31 +531,9 @@ func toTable(data any, options map[string]any) string {
                         columns = append(columns, k)
                     }
                 }
-            }
-            for i := 0; i < v.Len(); i++ {
-                vi := v.Index(i)
-                var m map[string]any
-                if elem.Kind() == reflect.Struct {
-                    m=s2m(vi.Interface())
-                } else {
-                    m=vi.Interface().(map[string]any)
-                }
-                row := make([]string, len(columns))
-                for j, col := range columns {
-                    if val, ok := m[col]; ok {
-                        row[j] = sf("%v", val)
-                    } else {
-                        row[j] = ""
-                    }
-                }
+                // populate
+                row := m
                 rows = append(rows, row)
-            }
-        } else {
-            // Single column
-            columns = []string{"value"}
-            for i := 0; i < v.Len(); i++ {
-                vi := v.Index(i)
-                rows = append(rows, []string{sf("%v", vi.Interface())})
             }
         }
     case reflect.Map:
@@ -553,15 +542,7 @@ func toTable(data any, options map[string]any) string {
         for k := range m {
             columns = append(columns, k)
         }
-        row := make([]string, len(columns))
-        for j, col := range columns {
-            val := m[col]
-            if v := reflect.ValueOf(val); v.Kind() == reflect.Interface && !v.IsNil() {
-                val = v.Elem().Interface()
-            }
-            row[j] = sf("%v", val)
-        }
-        rows = append(rows, row)
+        rows = append(rows, m)
     default:
         return sf("%v", data)
     }
@@ -585,6 +566,11 @@ func toTable(data any, options map[string]any) string {
             }
         }
         columns = newColumns
+    } else {
+        if isStruct {
+            // apply the struct field order we collated earlier
+            columns=defaultStructColumns
+        }
     }
 
     // Calculate widths
@@ -597,7 +583,8 @@ func toTable(data any, options map[string]any) string {
         }
     }
     for _, row := range rows {
-        for i, cell := range row {
+        for i,cv := range columns {
+            cell:=sf("%+v",row[cv])
             if len(cell) > widths[i] {
                 widths[i] = len(cell)
             }
@@ -712,12 +699,12 @@ func toTable(data any, options map[string]any) string {
     // Rows
     for _, row := range rows {
         buf.WriteString(bc["vertical"])
-        for i, cell := range row {
+        for i, col := range columns {
             alignCol := "left"
             if a, ok := align[columns[i]]; ok {
                 alignCol = a
             }
-            c := cell
+            c := sf("%+v",row[col])
             if len(c) > widths[i] && truncate {
                 c = c[:widths[i]-3] + "..."
             }
