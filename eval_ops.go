@@ -1811,6 +1811,12 @@ func slice(v any, from, to any) any {
     case []SlabInfo:
         isArr = true
         arl = len(v.([]SlabInfo))
+    case [][]any:
+        isArr = true
+        arl = len(v.([][]any))
+    case []map[string]any:
+        isArr = true
+        arl = len(v.([]map[string]any))
     case int, uint, int64, uint64, uint8, float64, *big.Int, *big.Float:
         // clamp operator
         if from == nil && to != nil { // only expressing upper limit
@@ -1910,6 +1916,10 @@ func slice(v any, from, to any) any {
         return v.([]ResourceSnapshot)[fromInt:toInt]
     case []SlabInfo:
         return v.([]SlabInfo)[fromInt:toInt]
+    case [][]any:
+        return v.([][]any)[fromInt:toInt]
+    case []map[string]any:
+        return v.([]map[string]any)[fromInt:toInt]
     }
     return nil
 }
