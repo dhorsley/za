@@ -58,7 +58,7 @@ CHANGE LOG
             println m["blah"]
             println m.blah
             # both return 42
-            m.blah="new value"
+m.blah="new value"
 
 
     library changes
@@ -75,16 +75,22 @@ CHANGE LOG
 
     * added ctrl-l to keypress() (value 12)
 
-    * table() function for formatting maps, slices, or slices of structs as ANSI-
-        coloured text tables.
-      - Supports options for colors (using Za colour codes), table width, column widths,
+    * table() function for formatting slices of maps/structs as, optionally ANSI-coloured, text tables.
+      - Supports options for colours (using Za colour codes), table width, column widths,
          alignment, headers, border styles (ASCII/Unicode), truncation, and custom column ordering
       - Examples:
           table(data, map(.colours map(.header "[#2]"), .column_order ["name", "age"]))
           cpu_info(). s2m. table(map(.truncate true, .column_widths map(.Model 40,.Usage 60,.LoadAverage 20), .column_order ["Model","Cores","Threads","LoadAverage","Usage"] ))
+          disk_usage(). table(map(.border_style "unicode",.column_order ["path","mounted_path","used","size"]))
 
       - still @todo: add a .hide option ([]string) for curtailing the display of named fields
       - still @todo: maybe the opposite too with a .show option? or a .showOnlyOrdered to only show fields that also have a .column_order setting?
+
+      - if no column_order provided then:
+        - map fields as columns are unordered by default
+        - if []struct is provided then the default order will be the struct definition's named field order.
+          - for instanced/anon structs it will be the order they were named in.
+        - that is all over-ridden if a .column_order is provided.
 
     * resource usage functions:
 
