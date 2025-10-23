@@ -79,8 +79,12 @@ CHANGE LOG
         coloured text tables.
       - Supports options for colors (using Za colour codes), table width, column widths,
          alignment, headers, border styles (ASCII/Unicode), truncation, and custom column ordering
-      - Example:
+      - Examples:
           table(data, map(.colours map(.header "[#2]"), .column_order ["name", "age"]))
+          cpu_info(). s2m. table(map(.truncate true, .column_widths map(.Model 40,.Usage 60,.LoadAverage 20), .column_order ["Model","Cores","Threads","LoadAverage","Usage"] ))
+
+      - still @todo: add a .hide option ([]string) for curtailing the display of named fields
+      - still @todo: maybe the opposite too with a .show option? or a .showOnlyOrdered to only show fields that also have a .column_order setting?
 
     * resource usage functions:
 
