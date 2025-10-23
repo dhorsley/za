@@ -585,7 +585,7 @@ func toTable(data any, options map[string]any) string {
     for _, row := range rows {
         for i,cv := range columns {
             cell:=sf("%+v",row[cv])
-            if len(cell) > widths[i] {
+            if len(cell) > widths[i] && !truncate {
                 widths[i] = len(cell)
             }
         }
@@ -1148,7 +1148,7 @@ func buildConversionLib() {
         return pp(input, maxDepth, indent)
     }
 
-    slhelp["table"] = LibHelp{in: "data, [options]", out: "string", action: `Convert map, slice, or slice of structs to text table. Options: map(.colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
+    slhelp["table"] = LibHelp{in: "data, [options]", out: "string", action: `Convert a slice of maps or structs to a text table. Options: map(.colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
     stdlib["table"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("table", args, 2,
             "1", "any",
