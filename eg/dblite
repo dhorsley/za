@@ -9,6 +9,15 @@ try
     h=db_init(execpath()+"/files/test.db")
     res=h.db_query("select * from users",map(.format "map"))
     h.db_close
-    println res.pp
+    println res[:30].table(
+        map(
+            .border_style "unicode",
+            .colours map(
+                .header     fgrgb(200,100,0),
+                .data       fgrgb(10,100,200)
+            ),
+            .column_order ["id","name","email"]
+        )
+    )
 endtry
 
