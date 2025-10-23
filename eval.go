@@ -2578,6 +2578,7 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
         }
 
         idx := el.(int)
+
         if idx < 0 || idx >= val.Len() {
             // For slices, extend if needed
             if vt.Kind() == reflect.Slice {
@@ -2595,7 +2596,14 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
                     val = newSlice
                     (*ident)[bin].IValue = val.Interface()
                 } else {
-                    val.SetLen(newLen)
+                    // pf("else clause:\nval:%#v\nlen:%v\ncap:%v\n",val,newLen,val.Cap())
+                    // val.SetLen(newLen) // this won't work as not addressable
+                    // so bodging it with a full copy for the moment:
+                    newSlice:=reflect.MakeSlice(vt,newLen,val.Cap())
+                    reflect.Copy(newSlice, val)
+                    val = newSlice
+                    (*ident)[bin].IValue = val.Interface()
+                    // ^^ this needs much improvement ^^
                 }
             } else {
                 panic(fmt.Errorf("Out of bounds access [element %d] on array of length %d", idx, val.Len()))
