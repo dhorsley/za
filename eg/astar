@@ -57,6 +57,7 @@ seed(-1)
 # setup grid
 mh=term_h()
 mw=term_w()
+on mh==-1 or mw==-1 do mh,mw=[25,80]
 
 var g [mh*mw] int
 for e=0 to mh*mw-1
