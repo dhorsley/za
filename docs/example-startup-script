@@ -120,6 +120,20 @@ def has_root()
     return sudo!="" or user()=="root"
 end
 
+# run cmd in parent shell without capturing Channels
+# this will not capture the error code correctly.
+def nocap(cmd)
+    capmem=sysvar("@commandCapture")
+    comem=!sysvar("@runInParent")
+    capture_shell(false)
+    coproc(false)
+    z={{cmd}}
+    capture_shell(capmem)
+    coproc(comem)
+    return z
+end
+
+
 struct environment
     bg    int
     fg    int
