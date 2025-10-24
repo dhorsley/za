@@ -226,7 +226,7 @@ func hasPrefixRunes(runes, prefix []rune) bool {
 }
 
 // getInput() : get an input string from stdin, in raw mode
-func getInput(prompt string, in_defaultString string, pane string, row int, col int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
+func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
     old_wrap := lineWrap
     lineWrap = false
@@ -288,26 +288,27 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
 
     endLine := false // input complete?
 
-    at(row, col)
+    at(girow, gicol)
 
     var srow, scol int // the start of input, including prompt position
     var irow, icol int // current start of input position
+    var rowLen int
 
     irow = srow
-    lastsrow := row
+    lastsrow := girow
     defaultAccepted := false
     clearWidth := 0
-    if width-col >= 0 {
-        clearWidth = width - col
+    if width-gicol >= 0 {
+        clearWidth = width - gicol
     }
 
     fmt.Printf(sparkle(pcol))
-    clearChars(row, col, clearWidth)
+    clearChars(girow, gicol, clearWidth)
     for {
 
         // calc new values for row,col
-        srow = row
-        scol = col
+        srow = girow
+        scol = gicol
         promptL := displayedLen(sprompt)
         inputL := displayedLen(string(s))
         dispL := promptL + inputL
@@ -316,7 +317,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
 
         // move start row back if multiline at bottom of window
         // @note: MH and MW are globals which may change during a SIGWINCH event.
-        rowLen := int(dispL-1) / MW
+        rowLen = int(dispL-1) / MW
         if srow > MH {
             srow = MH
         }
@@ -327,7 +328,7 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
             m1 := min(lastsrow, srow)
             m2 := max(lastsrow, srow)
             for r := m2; r > m1; r-- {
-                at(r, col)
+                at(r, gicol)
                 clearToEOL()
             }
         }
@@ -1198,11 +1199,17 @@ func getInput(prompt string, in_defaultString string, pane string, row int, col 
         clearChars(srow, scol, clearWidth)
         at(srow, scol)
         fmt.Printf(sparkle(sprompt))
-        fmt.Print(string(s)) // recolour const sets italics
+        fmt.Print(string(s))
     }
 
     lineWrap = old_wrap
 
+    inputL  := displayedLen(string(s))
+    promptL := displayedLen(sprompt)
+    dispL   := promptL + inputL
+    rowLen   = int(dispL) / MW
+    row     += rowLen + 1
+    at(row,1)
     return string(s), eof, broken
 }
 
@@ -1793,6 +1800,7 @@ func pf(s string, va ...any) {
             chpos++
         }
 
+        col=c
         return
     }
 
@@ -1818,8 +1826,8 @@ func pf(s string, va ...any) {
         }
         chpos++
     }
+    col=c
     atlock.Unlock()
-
 }
 
 // apply ansi code translation to inbound strings
