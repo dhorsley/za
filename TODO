@@ -16,6 +16,12 @@ TODO
   - this is not 100% depending on the behaviour of the subcommand (e.g. less works, more doesn't)
     we should try to improve this somehow.
 
+  - added a nocap("cmd") function to the startup script.
+    - this disables capture and the sub process in order to
+      execute cmd. the previous state of capture and sub cmd
+      execution are restored after completion and the cmd output
+      struct returned.
+
 
 KERNEL PARAMETER TUNING
 -----------------------
