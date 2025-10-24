@@ -1406,10 +1406,10 @@ func main() {
                     pf("error in startup script processing:%s\n", errVal)
                 }
 
-                if row>=MH-1 {
-                    at(MH+1,1)
+                if row>=MH {
+                    at(MH,1)
                     fmt.Println()
-                    row=MH-1
+                    row=MH
                 }
                 at(row,1)
 
@@ -1448,12 +1448,12 @@ func main() {
                     break
                 }
 
-                // getInput re-prints the prompt+input but doesn't add a newline or further at() calls
-                // so, we shove the cursor along here:
+                for ;row>=MH;row-- {
+                    at(MH,1)
+                    fmt.Println()
+                }
 
-                row++
-
-                at(row, 1)
+                at(row,1)
                 col = 1
 
                 if input == "\n" {
@@ -1544,10 +1544,8 @@ func main() {
                 atomic.StoreInt32(&calltable[mainloc].callLine, 1)
                 _, endFunc, _, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{}, nil)
 
-                if row>=MH-1 {
-                    at(MH+1,1)
-                    fmt.Println()
-                    row=MH-1
+                if row>MH {
+                    row=MH
                 }
                 at(row,1)
 
