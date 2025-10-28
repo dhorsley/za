@@ -23,6 +23,63 @@ TODO
       struct returned.
 
 
+- macro system
+
+  - syntax - values must be quoted
+    - macro [!] [-+] m_name [`"] value [`"]
+
+  - definition
+    macro [!] + m_name [`"] value [`"]
+    - defines a new macro.
+      - if an existing m_name, then redefinition will complete successfully.
+  
+  - use
+    #m_name
+    - searched and replaced before tokenisation
+    - we may need to also limit the places that this can be used.
+      - i.e. repl use is intended.
+             normal script lines should be fine.
+             during eval() or exec() calls? maybe not?
+             inside string interpolation? maybe not?
+             inside system() type calls, e.g. | ${..} {..} &{..} =|  et al?
+               - these should be fine but there may be some strange buggy cases doing this.
+
+  - deletion
+    macro [!] - [m_name]
+    - use macro - to remove all macros
+    - use macro - m_name to delete a single macro
+
+  - if the ! qualifier is present then a redefinition, deletion or a
+    complete macro set reset will emit a console message.
+
+  - storage - macros will be held in a global map[string]string
+ 
+  - example
+    path="/tmp"
+    macro +options `-l`
+    macro +ez `eza #options --icons=always`
+    #ez {path}
+    - the above will expand before tokenisation so that {...} variable subst can still happen.
+
+
+  - notes
+
+    - macro expansion should be eagerly evaluated - we cannot effectively tokenise macros without causing
+      a host of other problems.
+      in the example above #options may be redefined but #ez will still act against what value #options had
+      when it was defined.
+      use {...} variable expansion instead if more dynamism is required.
+
+    - in practice, this will look a lot like the expansion loop we do for interpolating variables but with 
+       a different search syntax (#...) instead of ({...})
+       ... with the loop ending when no further expansions have occurred in the last iteration.
+       - we should probably check what happens with recursive expansions here also!
+
+    - in reality, this feature would mostly be for REPL use (and definitions in startup scripts).
+      however, there are probably some infrequent use cases in real scripts, which means we will also need
+      to protect the access to the global macro map against concurrent access with a lock. 
+
+
 KERNEL PARAMETER TUNING
 -----------------------
 
