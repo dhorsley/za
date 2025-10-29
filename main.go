@@ -25,7 +25,7 @@ import (
     "time"
 
     term "github.com/pkg/term"
-    // _ "modernc.org/sqlite" 
+    // _ "modernc.org/sqlite"
     _ "github.com/mattn/go-sqlite3"
 
     // for profiling:
@@ -102,6 +102,9 @@ var modlist = make(map[string]bool)
 
 // defined function list
 var funcmap = make(map[string]Funcdef)
+
+// macro storage
+var macroMap sync.Map // map[string]string for macro name -> expansion value
 
 // base-to-modulename mapping list
 var basemodmap = make(map[uint32]string)
@@ -306,6 +309,7 @@ var permit_permit bool                      // default: true, when false, permit
 var permit_cmd_fallback bool                // default: false, when true and in interactive mode, exec in shell as fallback
 var permit_error_exit bool = true           // default: true, when false, error handler won't exit program
 var permit_exception_strictness bool = true // default: true, when false, exception_strictness() function is disabled
+var permit_macro bool = true                // default: true, when false, macro statement is disabled
 
 // Global: exception handling
 var exceptionStrictness string = "strict" // default: strict, options: strict, permissive, warn, disabled
@@ -1290,10 +1294,10 @@ func main() {
 
         // output separator, may be unnecessary really
         /*
-        eol := "\n"
-        if runtime.GOOS == "windows" {
-            eol = "\r\n"
-        }
+           eol := "\n"
+           if runtime.GOOS == "windows" {
+               eol = "\r\n"
+           }
         */
 
         // term loop
@@ -1328,9 +1332,8 @@ func main() {
             // banner
             title := sparkle("Za Interactive Mode")
             pf("\n%s", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
-            row+=2
+            row += 2
         }
-
 
         // state control
         endFunc := false
@@ -1406,12 +1409,12 @@ func main() {
                     pf("error in startup script processing:%s\n", errVal)
                 }
 
-                if row>=MH {
-                    at(MH,1)
+                if row >= MH {
+                    at(MH, 1)
                     fmt.Println()
-                    row=MH
+                    row = MH
                 }
-                at(row,1)
+                at(row, 1)
 
                 started = true
             }
@@ -1448,12 +1451,12 @@ func main() {
                     break
                 }
 
-                for ;row>=MH;row-- {
-                    at(MH,1)
+                for ; row >= MH; row-- {
+                    at(MH, 1)
                     fmt.Println()
                 }
 
-                at(row,1)
+                at(row, 1)
                 col = 1
 
                 if input == "\n" {
@@ -1544,10 +1547,10 @@ func main() {
                 atomic.StoreInt32(&calltable[mainloc].callLine, 1)
                 _, endFunc, _, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{}, nil)
 
-                if row>MH {
-                    row=MH
+                if row > MH {
+                    row = MH
                 }
-                at(row,1)
+                at(row, 1)
 
                 if endFunc {
                     break

@@ -208,3 +208,11 @@ _=permit("cmdfallback",true)
 
 | alias b="batcat -f"
 
+# set up aliases/macros
+macro +ls `"eza --icons=always".nocap`
+macro +df `df -h`
+macro +free `free -m`
+println "Default Macros:"
+macro list
+
+

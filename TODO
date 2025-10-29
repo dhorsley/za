@@ -25,14 +25,17 @@ TODO
 
 - macro system
 
+  DONE:
   - syntax - values must be quoted
     - macro [!] [-+] m_name [`"] value [`"]
 
+  DONE:
   - definition
     macro [!] + m_name [`"] value [`"]
     - defines a new macro.
       - if an existing m_name, then redefinition will complete successfully.
-  
+ 
+  DONE:
   - use
     #m_name
     - searched and replaced before tokenisation
@@ -44,6 +47,7 @@ TODO
              inside system() type calls, e.g. | ${..} {..} &{..} =|  et al?
                - these should be fine but there may be some strange buggy cases doing this.
 
+  DONE:
   - deletion
     macro [!] - [m_name]
     - use macro - to remove all macros
@@ -52,8 +56,10 @@ TODO
   - if the ! qualifier is present then a redefinition, deletion or a
     complete macro set reset will emit a console message.
 
+  DONE:
   - storage - macros will be held in a global map[string]string
- 
+
+  DONE:
   - example
     path="/tmp"
     macro +options `-l`
@@ -64,6 +70,7 @@ TODO
 
   - notes
 
+  DONE:
     - macro expansion should be eagerly evaluated - we cannot effectively tokenise macros without causing
       a host of other problems.
       in the example above #options may be redefined but #ez will still act against what value #options had
@@ -78,6 +85,19 @@ TODO
     - in reality, this feature would mostly be for REPL use (and definitions in startup scripts).
       however, there are probably some infrequent use cases in real scripts, which means we will also need
       to protect the access to the global macro map against concurrent access with a lock. 
+
+  NOT DONE:
+    - considering adding parameterisation in later pass of this feature
+      - e.g.:
+        macro +add(x,y) `x+y`
+        macro +add(x,y,z) `x+y+z`
+        macro -add(x,y)
+        - this would leave the three parameter version in place and
+          only remove the two parameter version.
+        macro -add
+        - this would remove all versions of 'add'
+      - this feature would require more complex parsing to tokenise the value
+        string so i am leaving this until later.
 
 
 KERNEL PARAMETER TUNING
