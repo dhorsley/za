@@ -36,7 +36,7 @@ func ulen(args any) (int, error) {
     case nil:
         return 0, nil
     case string:
-        return len(args), nil 
+        return len(args), nil
         // return utf8.RuneCountInString(args), nil
     case []string:
         return len(args), nil
@@ -1019,7 +1019,7 @@ func buildInternalLib() {
         return v, nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit: determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod: ignore duplicate module imports.\nexitquiet: shorter error message.\nshell: permit shell commands,  eval: permit eval() calls,  interpol: permit string interpolation.\ncmdfallback: make shell call on eval failure in interactive mode,  permit: enable/disable permit() function call.\nexception_strictness: enable/disable exception_strictness() function call."}
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit: determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod: ignore duplicate module imports.\nexitquiet: shorter error message.\nshell: permit shell commands,  eval: permit eval() calls,  interpol: permit string interpolation.\ncmdfallback: make shell call on eval failure in interactive mode,  permit: enable/disable permit() function call.\nexception_strictness: enable/disable exception_strictness() function call.\nmacro: enable/disable macro statement."}
     stdlib["permit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("permit", args, 4,
             "2", "string", "bool",
@@ -1118,6 +1118,14 @@ func buildInternalLib() {
                 return nil, nil
             default:
                 return nil, errors.New("permit(exception_strictness) accepts a boolean value only.")
+            }
+        case "macro":
+            switch args[1].(type) {
+            case bool:
+                permit_macro = args[1].(bool)
+                return nil, nil
+            default:
+                return nil, errors.New("permit(macro) accepts a boolean value only.")
             }
         }
 
@@ -1247,7 +1255,7 @@ func buildInternalLib() {
         if ok, err := expect_args("rlen", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        return rlen(args[0].(string)),nil
+        return rlen(args[0].(string)), nil
     }
 
     slhelp["await"] = LibHelp{in: "handle_map[,all_flag]", out: "[]result", action: "Checks for async completion."}

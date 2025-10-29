@@ -664,16 +664,15 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 }
 
 // setup mutex locks
-var calllock = &sync.RWMutex{}              // function call related
-var lastlock = &sync.RWMutex{}              // cached globals
-var farglock = &sync.RWMutex{}              // function args manipulation
-var fspacelock = &sync.RWMutex{}            // token storage related
-var globlock = &sync.RWMutex{}              // enum access lock
-var sglock = &sync.RWMutex{}                // setglob lock
-var structmapslock = &sync.RWMutex{}    // structmaps access
-var testlock = &sync.Mutex{}                    // test state processing
-var atlock = &sync.Mutex{}                      // console cursor positioning
-
+var calllock = &sync.RWMutex{}       // function call related
+var lastlock = &sync.RWMutex{}       // cached globals
+var farglock = &sync.RWMutex{}       // function args manipulation
+var fspacelock = &sync.RWMutex{}     // token storage related
+var globlock = &sync.RWMutex{}       // enum access lock
+var sglock = &sync.RWMutex{}         // setglob lock
+var structmapslock = &sync.RWMutex{} // structmaps access
+var testlock = &sync.Mutex{}         // test state processing
+var atlock = &sync.Mutex{}           // console cursor positioning
 
 // for error reporting : keeps a list of parent->child function calls
 //
@@ -1092,7 +1091,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
             errorChain = append(errorChain, chainInfo{
                 loc:            calltable[csloc].caller,
                 name:           caller_str,
-                line:           int16(calltable[csloc].callLine)+1, // Store the callLine directly
+                line:           int16(calltable[csloc].callLine) + 1, // Store the callLine directly
                 filename:       callerFilename,
                 registrant:     registrant,
                 argNames:       paramNames,
@@ -1104,7 +1103,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
             errorChain = append(errorChain, chainInfo{
                 loc:            calltable[csloc].caller,
                 name:           caller_str,
-                line:           int16(calltable[csloc].callLine)+1, // Store the callLine directly
+                line:           int16(calltable[csloc].callLine) + 1, // Store the callLine directly
                 filename:       callerFilename,
                 registrant:     registrant,
                 namespace:      currentModule,       // Add current namespace
@@ -1252,7 +1251,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         excInfo := &exceptionInfo{
                             category:   excThrow.Category,
                             message:    excThrow.Message,
-                            line:       int(inbound.SourceLine)+1,
+                            line:       int(inbound.SourceLine) + 1,
                             function:   calltable[csloc].fs,
                             fs:         csloc,
                             stackTrace: generateStackTrace(calltable[csloc].fs, csloc, inbound.SourceLine),
@@ -1293,7 +1292,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         excInfo := &exceptionInfo{
                             category:   category,
                             message:    message,
-                            line:       int(inbound.SourceLine)+1,
+                            line:       int(inbound.SourceLine) + 1,
                             function:   calltable[csloc].fs,
                             fs:         csloc,
                             stackTrace: generateStackTrace(calltable[csloc].fs, csloc, inbound.SourceLine),
@@ -2190,7 +2189,7 @@ tco_reentry:
 
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-                                        structmapslock.RLock()
+                    structmapslock.RLock()
                     for sn, _ := range structmaps {
                         if sn == sname {
                             isStruct = true
@@ -2198,7 +2197,7 @@ tco_reentry:
                             break
                         }
                     }
-                                        structmapslock.RUnlock()
+                    structmapslock.RUnlock()
 
                     if isStruct {
                         t := (*ident)[sid]
@@ -3332,7 +3331,7 @@ tco_reentry:
 
                         // map ranges are randomly ordered!!
 
-                        case map[string]any,map[string]alloc_info,map[string]stackFrame,map[string]tui,map[string]dirent:
+                        case map[string]any, map[string]alloc_info, map[string]stackFrame, map[string]tui, map[string]dirent:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -3344,19 +3343,19 @@ tco_reentry:
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
-                        case map[string]ProcessInfo,map[string]SystemResources,map[string]MemoryInfo,map[string]CPUInfo:
+                        case map[string]ProcessInfo, map[string]SystemResources, map[string]MemoryInfo, map[string]CPUInfo:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
-                        case map[string]NetworkIOStats,map[string]DiskIOStats,map[string]ProcessTree,map[string]ProcessMap:
+                        case map[string]NetworkIOStats, map[string]DiskIOStats, map[string]ProcessTree, map[string]ProcessMap:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
                             }
 
-                        case map[string]ResourceUsage,map[string]ResourceSnapshot,map[string][]string,map[string]SlabInfo:
+                        case map[string]ResourceUsage, map[string]ResourceSnapshot, map[string][]string, map[string]SlabInfo:
                             if (*thisLoop).iterOverMap.Next() { // true means not exhausted
                                 vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).iterOverMap.Key().String())
                                 vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverMap.Value().Interface())
@@ -3586,8 +3585,8 @@ tco_reentry:
                 var continueIgnore bool
 
                 if inbound.TokenCount > 1 {
-                    if inbound.Tokens[1].tokType==C_If {
-                        if inbound.TokenCount==2 {
+                    if inbound.Tokens[1].tokType == C_If {
+                        if inbound.TokenCount == 2 {
                             parser.report(inbound.SourceLine, "missing condition in CONTINUE IF statement")
                             finish(false, ERR_EVAL)
                             break
@@ -3600,10 +3599,10 @@ tco_reentry:
                             }
                             switch we.result.(type) {
                             case bool:
-                                if ! we.result.(bool) {
-                                    // condition not met so flag an ignore state on 
+                                if !we.result.(bool) {
+                                    // condition not met so flag an ignore state on
                                     // the rest of the continue statement
-                                    continueIgnore=true
+                                    continueIgnore = true
                                 }
                             default:
                                 parser.report(inbound.SourceLine, "CONTINUE IF condition must evaluate to boolean")
@@ -3616,7 +3615,7 @@ tco_reentry:
 
                 ////////////////////////////////////////////////////
 
-                if ! continueIgnore {
+                if !continueIgnore {
                     switch lastConstruct[depth-1] {
                     case C_For, C_Foreach:
                         thisLoop = &loops[depth]
@@ -3681,7 +3680,7 @@ tco_reentry:
                         forceEnd = true
                         parser.pc = (*thisLoop).whileContinueAt - 1
                     case C_If:
-                        ifEr=true
+                        ifEr = true
                     }
                     if ifEr {
                         parser.report(inbound.SourceLine, "BREAK IF missing a condition")
@@ -3706,11 +3705,11 @@ tco_reentry:
                 var has_break_count bool
                 if inbound.TokenCount > 2 {
 
-                    if inbound.Tokens[1].tokType==C_If || ( inbound.Tokens[1].tokType==NumericLiteral && inbound.Tokens[2].tokType==C_If ) {
+                    if inbound.Tokens[1].tokType == C_If || (inbound.Tokens[1].tokType == NumericLiteral && inbound.Tokens[2].tokType == C_If) {
 
                         cond_start_pos := 2
                         if inbound.Tokens[1].tokType == NumericLiteral {
-                            break_count,_ = GetAsInt(inbound.Tokens[1].tokVal)
+                            break_count, _ = GetAsInt(inbound.Tokens[1].tokVal)
                             cond_start_pos = 3
                             has_break_count = true
                         }
@@ -3727,8 +3726,8 @@ tco_reentry:
 
                         switch we.result.(type) {
                         case bool:
-                            if ! we.result.(bool) {
-                                breakIgnore=true
+                            if !we.result.(bool) {
+                                breakIgnore = true
                             }
                             if !has_break_count {
                                 break_count = 1
@@ -3739,8 +3738,12 @@ tco_reentry:
                             finish(false, ERR_EVAL)
                             hasIfErr = true
                         }
-                        if hasIfErr { break }
-                        if breakIgnore { continue } // this skips all potential break processing and moves to next pc statement
+                        if hasIfErr {
+                            break
+                        }
+                        if breakIgnore {
+                            continue
+                        } // this skips all potential break processing and moves to next pc statement
                     }
                 }
 
@@ -4487,6 +4490,104 @@ tco_reentry:
                 // func not found
                 parser.report(inbound.SourceLine, sf("invalid function '%s' in ASYNC call", call))
                 finish(false, ERR_EVAL)
+            }
+
+        case C_Macro:
+
+            if !permit_macro {
+                parser.report(inbound.SourceLine, "macro() not permitted!")
+                finish(false, ERR_EVAL)
+                break
+            }
+
+            // macro [!] [-+] m_name "value" or macro [!] - [m_name] or macro list
+
+            if inbound.TokenCount == 1 {
+                pf("Usage: macro [!] [-+] name \"value\" | macro [!] - [name] | macro [!] list\n")
+                break
+            }
+
+            var verbose bool
+            var isDefine bool
+            var name string
+            var value string
+            var errMsg string
+
+            i := int16(1) // start after 'macro'
+
+            // check for !
+            if i < inbound.TokenCount && inbound.Tokens[i].tokText == "!" {
+                verbose = true
+                i++
+            }
+
+            // check for list
+            if i < inbound.TokenCount && inbound.Tokens[i].tokText == "list" {
+                // list macros
+                var count int
+                macroMap.Range(func(key, val any) bool {
+                    count++
+                    k := key.(string)
+                    v := val.(string)
+                    pf("%s -> \"%s\"\n", k, v)
+                    return true
+                })
+                if count == 0 {
+                    pf("No macros defined.\n")
+                }
+                break
+            }
+
+            // check for - or +
+            if i < inbound.TokenCount {
+                tok := inbound.Tokens[i]
+                if tok.tokType == O_Plus {
+                    isDefine = true
+                    i++
+                } else if tok.tokType == O_Minus {
+                    isDefine = false
+                    i++
+                } else {
+                    errMsg = "Expected - or + after macro"
+                }
+            } else {
+                errMsg = "Incomplete macro statement"
+            }
+
+            if errMsg == "" {
+                if isDefine {
+                    // define: name "value"
+                    if i+1 < inbound.TokenCount {
+                        name = inbound.Tokens[i].tokText
+                        i++
+                        if inbound.Tokens[i].tokType == StringLiteral {
+                            value = inbound.Tokens[i].tokText
+                            i++
+                        } else {
+                            errMsg = "Expected quoted value for macro define"
+                        }
+                    } else {
+                        errMsg = "Expected name and value for macro define"
+                    }
+                } else {
+                    // undefine: [name]
+                    if i < inbound.TokenCount {
+                        name = inbound.Tokens[i].tokText
+                        i++
+                    } // else name empty means undefine all
+                }
+            }
+
+            if errMsg != "" {
+                pf("Error: %s\n", errMsg)
+                break
+            }
+
+            // execute
+            if isDefine {
+                macroDefine(name, value, verbose)
+            } else {
+                macroUndefine(name)
             }
 
         case C_Require: // @note: this keyword may be remove
@@ -5400,9 +5501,9 @@ tco_reentry:
 
             //
             // take definition and create a structmaps entry from it:
-                        structmapslock.Lock()
+            structmapslock.Lock()
             structmaps[structName] = structNode[:]
-                        structmapslock.Unlock()
+            structmapslock.Unlock()
 
             structName = ""
             structNode = []any{}
@@ -5419,7 +5520,7 @@ tco_reentry:
                 filter = interpolate(currentModule, ifs, ident, cet.text)
             }
 
-                        structmapslock.RLock()
+            structmapslock.RLock()
             for k, s := range structmaps {
 
                 if matched, _ := regexp.MatchString(filter, k); !matched {
@@ -5434,7 +5535,7 @@ tco_reentry:
                 pf("\n")
 
             }
-                        structmapslock.RUnlock()
+            structmapslock.RUnlock()
 
         case C_With:
 
@@ -5897,7 +5998,7 @@ tco_reentry:
             switch str.ToLower(inbound.Tokens[1].tokText) {
 
             case "off":
-                for len(logQueue)>0 {
+                for len(logQueue) > 0 {
                     // let the queue flush
                 }
                 loggingEnabled = false
@@ -6343,7 +6444,7 @@ tco_reentry:
             // eval
             expr, err = parser.Eval(ifs, inbound.Tokens[1:])
             if err != nil {
-                parser.report(inbound.SourceLine, sf("Could not evaluate expression.\n%#v\n%+v",expr,err))
+                parser.report(inbound.SourceLine, sf("Could not evaluate expression.\n%#v\n%+v", expr, err))
                 finish(false, ERR_SYNTAX)
                 break
             }
@@ -6579,7 +6680,7 @@ tco_reentry:
                                             excInfo := &exceptionInfo{
                                                 category:   retArray[1],
                                                 message:    GetAsString(retArray[2]),
-                                                line:       int(inbound.SourceLine)+1,
+                                                line:       int(inbound.SourceLine) + 1,
                                                 function:   fs,
                                                 fs:         ifs,
                                                 stackTrace: nil, // No stack trace in fallback
@@ -7056,7 +7157,7 @@ tco_reentry:
                 }
 
                 // Capture stack trace at throw time using full call chain
-                actualLine := inbound.SourceLine+1
+                actualLine := inbound.SourceLine + 1
                 stackTraceCopy := generateStackTrace(fs, ifs, actualLine)
 
                 // Set up exception state atomically

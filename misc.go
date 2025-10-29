@@ -12,6 +12,7 @@ import (
     "runtime"
     "strings"
     str "strings"
+    "sync"
     "sync/atomic"
 )
 
@@ -1655,5 +1656,81 @@ func callCustomErrorHandler(handlerName string, namespace string, evalfs uint32)
 
     if callErr != nil {
         pf("[#1]Error in custom error handler: %s[#-]\n", callErr)
+    }
+}
+
+// macroExpand expands macros in the input string
+func macroExpand(input string) string {
+    const maxDepth = 10
+    for depth := 0; depth < maxDepth; depth++ {
+        changed := false
+        var result strings.Builder
+        inString := false
+        quoteChar := byte(0)
+        i := 0
+        for i < len(input) {
+            ch := input[i]
+            if !inString {
+                if ch == '"' || ch == '\'' || ch == '`' {
+                    inString = true
+                    quoteChar = ch
+                    result.WriteByte(ch)
+                    i++
+                    continue
+                }
+            } else {
+                if ch == quoteChar {
+                    inString = false
+                    quoteChar = 0
+                    result.WriteByte(ch)
+                    i++
+                    continue
+                }
+            }
+            if !inString && ch == '#' {
+                // check if followed by identifier
+                j := i + 1
+                if j < len(input) && (input[j] == '_' || (input[j] >= 'a' && input[j] <= 'z') || (input[j] >= 'A' && input[j] <= 'Z')) {
+                    // start of identifier
+                    start := j
+                    for j < len(input) && (input[j] == '_' || (input[j] >= 'a' && input[j] <= 'z') || (input[j] >= 'A' && input[j] <= 'Z') || (input[j] >= '0' && input[j] <= '9')) {
+                        j++
+                    }
+                    name := input[start:j]
+                    if val, ok := macroMap.Load(name); ok {
+                        result.WriteString(val.(string))
+                        changed = true
+                        i = j
+                        continue
+                    }
+                }
+            }
+            result.WriteByte(ch)
+            i++
+        }
+        input = result.String()
+        if !changed {
+            break
+        }
+    }
+    return input
+}
+
+// macroDefine stores a macro
+func macroDefine(name, value string, verbose bool) {
+    if verbose {
+        if _, ok := macroMap.Load(name); ok {
+            pf("Warning: Redefining macro '%s'\n", name)
+        }
+    }
+    macroMap.Store(name, value)
+}
+
+// macroUndefine removes a macro or all if name is empty
+func macroUndefine(name string) {
+    if name == "" {
+        macroMap = sync.Map{} // reset all
+    } else {
+        macroMap.Delete(name)
     }
 }

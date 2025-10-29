@@ -115,6 +115,8 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
 
     input += "\n"
 
+    input = macroExpand(input)
+
     pos := start
     lstart := start
 
