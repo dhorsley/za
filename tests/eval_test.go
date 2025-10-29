@@ -161,6 +161,39 @@ func TestMacroExpand(t *testing.T) {
     if len(result) == 0 {
         t.Errorf("Recursion test failed, empty result")
     }
+
+    // Test parameterized macro
+    macroDefine("add(x,y)", "$x + $y", false)
+    result = macroExpand("#add(1,2)")
+    if result != "1 + 2" {
+        t.Errorf("Expected '1 + 2', got '%s'", result)
+    }
+
+    // Test parameterized with strings
+    macroDefine("concat(a,b)", `"$a""$a" "$b"`, false)
+    result = macroExpand(`#concat("hello", "world")`)
+    if result != `"hello""hello" "world"` {
+        t.Errorf("Expected '\"hello\"\"hello\" \"world\"', got '%s'", result)
+    }
+
+    // Test parameterized with no args, default empty
+    macroDefine("ls(path)", `"eza --icons=always $path"`, false)
+    result = macroExpand("#ls")
+    if result != `"eza --icons=always "` {
+        t.Errorf("Expected '\"eza --icons=always \"', got '%s'", result)
+    }
+
+    // Test parameterized with () , empty args
+    result = macroExpand("#ls()")
+    if result != `"eza --icons=always "` {
+        t.Errorf("Expected '\"eza --icons=always \"', got '%s'", result)
+    }
+
+    // Test parameterized with arg
+    result = macroExpand(`#ls("/")`)
+    if result != `"eza --icons=always /"` {
+        t.Errorf("Expected '\"eza --icons=always /\"', got '%s'", result)
+    }
 }
 
 func TestMacroDefineUndefine(t *testing.T) {
@@ -169,8 +202,13 @@ func TestMacroDefineUndefine(t *testing.T) {
 
     // Define
     macroDefine("test", "value", false)
-    if val, ok := macroMap.Load("test"); !ok || val != "value" {
+    if val, ok := macroMap.Load("test"); !ok {
         t.Errorf("Macro define failed")
+    } else {
+        def := val.(MacroDef)
+        if def.Template != "value" || len(def.Params) != 0 {
+            t.Errorf("Macro define failed")
+        }
     }
 
     // Undefine specific
