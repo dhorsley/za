@@ -206,13 +206,18 @@ enum s3sum ( okay=0, warn, file, sum )
 # enable command fallback
 _=permit("cmdfallback",true)
 
-| alias b="batcat -f"
-
 # set up aliases/macros
-macro +ls(path) `"eza --icons=always $path".nocap.out`
-macro +df `df -h`
-macro +free `free -m`
-macro +ml `macro list`
+opt_icon="--icons=always"
+macro +ls(path)     `"eza {opt_icon} $path".nocap.out`
+macro +la(path)     `"eza -a {opt_icon} $path".nocap.out`
+macro +df           `df -h`
+macro +free         `free -m`
+macro +b            `bat -f`
+macro +ml           `macro list`
+macro +v(path)      `"nvim $path".nocap.code`
+macro +wget         `wget -c`
+macro +cdl(dirname) `_=cd("$dirname"); "eza {opt_icon}".nocap.out`
+macro +nic          `net_interfaces_detailed().table(map(.colours map(.header "[#2]",.data "[#6]")))`
 println "Default Macros:"
 macro list
 
