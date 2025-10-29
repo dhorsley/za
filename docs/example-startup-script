@@ -209,9 +209,10 @@ _=permit("cmdfallback",true)
 | alias b="batcat -f"
 
 # set up aliases/macros
-macro +ls `"eza --icons=always".nocap.out`
+macro +ls(path) `"eza --icons=always $path".nocap.out`
 macro +df `df -h`
 macro +free `free -m`
+macro +ml `macro list`
 println "Default Macros:"
 macro list
 

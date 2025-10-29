@@ -4528,8 +4528,12 @@ tco_reentry:
                 macroMap.Range(func(key, val any) bool {
                     count++
                     k := key.(string)
-                    v := val.(string)
-                    pf("[#1]#%s[#-] -> %s\n", k, v)
+                    def := val.(MacroDef)
+                    paramsStr := str.Join(def.Params, ",")
+                    if paramsStr != "" {
+                        paramsStr = "(" + paramsStr + ")"
+                    }
+                    pf("[#1]#%s%s[#-] -> %s\n", k, paramsStr, def.Template)
                     return true
                 })
                 if count == 0 {
@@ -4557,24 +4561,24 @@ tco_reentry:
             if errMsg == "" {
                 if isDefine {
                     // define: name "value"
-                    if i+1 < inbound.TokenCount {
-                        name = inbound.Tokens[i].tokText
+                    name = ""
+                    for i < inbound.TokenCount && inbound.Tokens[i].tokType != StringLiteral {
+                        name += inbound.Tokens[i].tokText
                         i++
-                        if inbound.Tokens[i].tokType == StringLiteral {
-                            value = inbound.Tokens[i].tokText
-                            i++
-                        } else {
-                            errMsg = "Expected quoted value for macro define"
-                        }
+                    }
+                    if i < inbound.TokenCount && inbound.Tokens[i].tokType == StringLiteral {
+                        value = inbound.Tokens[i].tokText
+                        i++
                     } else {
-                        errMsg = "Expected name and value for macro define"
+                        errMsg = "Expected quoted value for macro define"
                     }
                 } else {
                     // undefine: [name]
-                    if i < inbound.TokenCount {
-                        name = inbound.Tokens[i].tokText
+                    name = ""
+                    for i < inbound.TokenCount {
+                        name += inbound.Tokens[i].tokText
                         i++
-                    } // else name empty means undefine all
+                    }
                 }
             }
 
