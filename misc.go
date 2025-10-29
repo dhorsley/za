@@ -1659,6 +1659,71 @@ func callCustomErrorHandler(handlerName string, namespace string, evalfs uint32)
     }
 }
 
+// parseArgs parses arguments from input starting at start (at '('), returns args and end pos
+func parseArgs(input string, start int) ([]string, int) {
+    level := 1 // already inside (
+    args := []string{}
+    current := ""
+    inString := false
+    quote := byte(0)
+    i := start + 1 // skip the (
+    for i < len(input) {
+        ch := input[i]
+        if !inString {
+            if ch == '"' || ch == '\'' || ch == '`' {
+                inString = true
+                quote = ch
+            } else if ch == '(' {
+                level++
+            } else if ch == ')' {
+                level--
+                if level == 0 {
+                    if current != "" {
+                        args = append(args, str.TrimSpace(current))
+                    }
+                    return args, i + 1
+                }
+            } else if ch == ',' && level == 1 {
+                args = append(args, str.TrimSpace(current))
+                current = ""
+                i++
+                continue
+            }
+        } else {
+            if ch == quote {
+                inString = false
+                quote = 0
+            }
+        }
+        if level > 0 {
+            current += string(ch)
+        }
+        i++
+    }
+    return nil, start // invalid
+}
+
+// unquote removes outer quotes from arg if present
+func unquote(arg string) string {
+    if len(arg) >= 2 {
+        if (arg[0] == '"' && arg[len(arg)-1] == '"') ||
+            (arg[0] == '\'' && arg[len(arg)-1] == '\'') ||
+            (arg[0] == '`' && arg[len(arg)-1] == '`') {
+            return arg[1 : len(arg)-1]
+        }
+    }
+    return arg
+}
+
+// substitute replaces $param with unquoted arg in template
+func substitute(template string, params, args []string) string {
+    result := template
+    for i, p := range params {
+        result = str.ReplaceAll(result, "$"+p, unquote(args[i]))
+    }
+    return result
+}
+
 // macroExpand expands macros in the input string
 func macroExpand(input string) string {
     const maxDepth = 10
@@ -1698,10 +1763,45 @@ func macroExpand(input string) string {
                     }
                     name := input[start:j]
                     if val, ok := macroMap.Load(name); ok {
-                        result.WriteString(val.(string))
-                        changed = true
-                        i = j
-                        continue
+                        def := val.(MacroDef)
+                        if len(def.Params) == 0 {
+                            result.WriteString(def.Template)
+                            changed = true
+                            i = j
+                            continue
+                        } else {
+                            // check for (
+                            if j < len(input) && input[j] == '(' {
+                                args, end := parseArgs(input, j)
+                                if end > j {
+                                    if len(args) == len(def.Params) {
+                                        expanded := substitute(def.Template, def.Params, args)
+                                        result.WriteString(expanded)
+                                        changed = true
+                                        i = end
+                                        continue
+                                    } else if len(args) == 0 && len(def.Params) > 0 {
+                                        // #name() with params, use empty args
+                                        args = make([]string, len(def.Params))
+                                        expanded := substitute(def.Template, def.Params, args)
+                                        result.WriteString(expanded)
+                                        changed = true
+                                        i = end
+                                        continue
+                                    }
+                                }
+                            } else {
+                                // no parens, use empty args if params
+                                if len(def.Params) > 0 {
+                                    args := make([]string, len(def.Params))
+                                    expanded := substitute(def.Template, def.Params, args)
+                                    result.WriteString(expanded)
+                                    changed = true
+                                    i = j
+                                    continue
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1716,14 +1816,43 @@ func macroExpand(input string) string {
     return input
 }
 
+type MacroDef struct {
+    Params   []string
+    Template string
+}
+
+// parseMacroName parses name like "add(x,y)" into "add", ["x","y"]
+func parseMacroName(name string) (string, []string) {
+    idx := str.Index(name, "(")
+    if idx == -1 {
+        return name, nil
+    }
+    base := name[:idx]
+    paramsStr := name[idx+1:]
+    if !str.HasSuffix(paramsStr, ")") {
+        return name, nil // invalid, return as is
+    }
+    paramsStr = paramsStr[:len(paramsStr)-1]
+    if paramsStr == "" {
+        return base, []string{}
+    }
+    params := str.Split(paramsStr, ",")
+    for i, p := range params {
+        params[i] = str.TrimSpace(p)
+    }
+    return base, params
+}
+
 // macroDefine stores a macro
 func macroDefine(name, value string, verbose bool) {
+    base, params := parseMacroName(name)
+    def := MacroDef{Params: params, Template: value}
     if verbose {
-        if _, ok := macroMap.Load(name); ok {
-            pf("Warning: Redefining macro '%s'\n", name)
+        if _, ok := macroMap.Load(base); ok {
+            pf("Warning: Redefining macro '%s'\n", base)
         }
     }
-    macroMap.Store(name, value)
+    macroMap.Store(base, def)
 }
 
 // macroUndefine removes a macro or all if name is empty
@@ -1731,6 +1860,7 @@ func macroUndefine(name string) {
     if name == "" {
         macroMap = sync.Map{} // reset all
     } else {
-        macroMap.Delete(name)
+        base, _ := parseMacroName(name)
+        macroMap.Delete(base)
     }
 }
