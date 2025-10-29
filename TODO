@@ -99,6 +99,10 @@ TODO
       - this feature would require more complex parsing to tokenise the value
         string so i am leaving this until later.
 
+  TODO:
+    - change macroExpand() and others back to using the already lexed tokens (such as identifier) instead of 
+      re-inventing the wheel with bespoke tokenisation.
+
 
 KERNEL PARAMETER TUNING
 -----------------------
