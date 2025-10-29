@@ -102,6 +102,18 @@ TODO
   TODO:
     - change macroExpand() and others back to using the already lexed tokens (such as identifier) instead of 
       re-inventing the wheel with bespoke tokenisation.
+    - macros cannot currently be defined in the same parsed unit as they will be used in
+      - this is because the entire file/module is converted to phrases in one pass.
+        - this is good for now, as we only want macros used in the REPL currently.
+          however, this will need fixing if we want them to be more easily available in scripts.
+        - to fix this we would need to recognise macro statements during the phraseParse() stage 
+            and to process the macroExpand() call after each phrase is generated.
+            - we currently only run macroExpand() once over the whole input string on each phraseParse() call.
+            - this would also entail changing where comments are discarded if we keep the # symbol as the
+              macro prefix.
+        - you can currently work around this by defining macros early (in main or a module block) then only 
+          using those macros inside other modules. this is very restrictive but not an issue given current 
+          expected usage of them.
 
 
 KERNEL PARAMETER TUNING

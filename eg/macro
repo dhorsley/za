@@ -1,0 +1,15 @@
+
+macro ! +ml `macro list`
+macro ! +ls `ls -l`
+
+def mtest()
+    println "macro list:"
+    #ml
+end
+
+showdef main:::mtest
+
+mtest()
+
+
+
