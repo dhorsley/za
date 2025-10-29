@@ -312,6 +312,7 @@ const (
     C_Step
     C_As
     C_Do
+    C_Macro
     C_Enum
     C_Try
     C_Catch
