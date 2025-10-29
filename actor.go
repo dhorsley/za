@@ -4529,7 +4529,7 @@ tco_reentry:
                     count++
                     k := key.(string)
                     v := val.(string)
-                    pf("%s -> \"%s\"\n", k, v)
+                    pf("[#1]#%s[#-] -> %s\n", k, v)
                     return true
                 })
                 if count == 0 {
