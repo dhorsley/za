@@ -224,6 +224,10 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
     }
     p.pos += 1
 
+    if p.pos>=p.len {
+        return left,err
+    }
+
     ct := &p.tokens[p.pos]
 
     if p.prectable[ct.tokType] == PrecedenceInvalid {
@@ -347,11 +351,11 @@ binloop1:
             if p.pos == p.len-1 {
                 left = p.tryOperator(left, nil)
             } else {
-                                right, err = p.dparse(p.prectable[token.tokType]+1, false)
-                                if err==nil {
-                                    left = p.tryOperator(left, right)
-                                }
-                                panic(fmt.Errorf("Invalid expression in try operator message"))
+                right, err = p.dparse(p.prectable[token.tokType]+1, false)
+                if err==nil {
+                    left = p.tryOperator(left, right)
+                }
+                panic(fmt.Errorf("Invalid expression in try operator message"))
             }
             continue
 
@@ -448,7 +452,18 @@ binloop1:
         }
 
         if p.pos >= p.len {
-            panic(fmt.Errorf("Incomplete expression, terminates early (on token-2,token-1,token: %s %s %s)", tokNames[p.prev2.tokType], tokNames[p.prev.tokType], tokNames[token.tokType]))
+            estring:="Incomplete expression, terminates early (on "
+            if p.prev2.tokType<END_STATEMENTS {
+                estring+=sf("token-2 [%s], ",tokNames[p.prev2.tokType])
+            }
+            if p.prev.tokType<END_STATEMENTS {
+                estring+=sf("token-1 [%s], ",tokNames[p.prev.tokType])
+            }
+            if token.tokType<END_STATEMENTS {
+                estring+=sf("token [%s], ",tokNames[token.tokType])
+            }
+            estring+=")"
+            panic(estring)
         }
 
         right, err = p.dparse(p.prectable[token.tokType]+1, false)
