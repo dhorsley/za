@@ -3905,9 +3905,11 @@ tco_reentry:
                         if (*ident)[resu[e][0].bindpos].declared {
                             vunset(ifs, ident, removee)
                         } else {
+                            /*
                             parser.report(inbound.SourceLine, sf("Variable %s does not exist.", removee))
                             finish(false, ERR_EVAL)
                             break
+                            */
                         }
                     } else {
                         parser.report(inbound.SourceLine, sf("Invalid variable specification '%v' in UNSET.", resu[e]))
