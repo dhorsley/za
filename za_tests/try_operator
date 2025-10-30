@@ -6,7 +6,7 @@
 exception_strictness("warn")
 
 # Test 1: Basic ?? operator with right-hand side
-println "Test 1: nil ?? 'error'"
+println "Test 1: nil ?? 'test 1 error'"
 try
     result = nil ?? "test 1 error"
     println "This should not be reached"

@@ -104,7 +104,6 @@ end
 try
     println "Calling function that throws unhandled exception"
     throw_unhandled()
-    println "This should not print"
 catch err is "unhandled_error"
     println "Caller caught unhandled exception:", err
 endtry
