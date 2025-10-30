@@ -2,26 +2,6 @@
 TODO
 ----
 
-- look into rerouting stdin,stdout,stderr for external calls when in repl mode?
-
-  - you can currently run a subcommand interactively by doing something similar
-    to below:
-
-    capture_shell(false); coproc(false)
-    # run nvim interactively
-    nvim test_file
-    # za scripts need the -f flag to stipulate the script is coming from a file
-    za -f some_other_za_interactive_script
-
-  - this is not 100% depending on the behaviour of the subcommand (e.g. less works, more doesn't)
-    we should try to improve this somehow.
-
-  - added a nocap("cmd") function to the startup script.
-    - this disables capture and the sub process in order to
-      execute cmd. the previous state of capture and sub cmd
-      execution are restored after completion and the cmd output
-      struct returned.
-
 
 KERNEL PARAMETER TUNING
 -----------------------
