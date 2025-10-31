@@ -226,8 +226,9 @@ macro +cpu          `
                         _=append_to(ref data,c)
                     endfor
                     println data.table(map(.colours map(.header "[#2]",.data "[#6]")))`
-println "Default Macros:"
-macro list
-println
+
+# println "Default Macros:"
+# macro list
+# println
 
 

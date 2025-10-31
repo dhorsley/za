@@ -12,6 +12,7 @@ CHANGE LOG
     * interactive/tab completion mode support for variable depth
       - needs attention. messy ui and completion selection for deeper nestings
     * sqlite3 db support
+    * macro support
 
     Almost out of test (to be supported in 1.2.1):
 
@@ -44,7 +45,7 @@ CHANGE LOG
         - ./build arch
         - this will act the same as the default build except for linking dynamically
            instead (for sqlite3 and pcre libs).
-        - this is for when compiling inside arch rather than a cross-compile from a 
+        - this is for when compiling inside arch rather than a cross-compile from a
            linux platform where *.a files are available.
 
     BSD build:
@@ -58,7 +59,7 @@ CHANGE LOG
             println m["blah"]
             println m.blah
             # both return 42
-m.blah="new value"
+            m.blah="new value"
 
 
     library changes
@@ -107,7 +108,7 @@ m.blah="new value"
         ps_map([pid])       : Returns process relationships
         ps_list(options)    : Returns all processes. options map: .include_cmdline bool, .include_environ bool
 
-        cpu_info()          : Returns CPU information with per-core data 
+        cpu_info()          : Returns CPU information with per-core data
             cpu_info([core_number|map(.core core_number,.details bool)])
 
         nio()               : Returns network I/O throughput statistics
@@ -238,7 +239,7 @@ m.blah="new value"
         macro [!] + m_name [`"] value [`"]
         - defines a new macro.
           - if an existing m_name, then redefinition will complete successfully.
-    
+
       - use
         #m_name
         - searched and replaced before tokenisation
@@ -273,10 +274,27 @@ m.blah="new value"
 
           macro +add(x,y,z) `$x+$y+$z`
           macro -add(x,y,z)
-          or, 
+          or,
           macro -add
 
           macro +ls(path) `"eza #options --icons=always $path".nocap.out`
+
+      - enhanced macro expansion system with new capabilities:
+        - intra-input macro expansion in REPL mode for interactive sessions
+        - varargs support using `...` syntax for variable argument lists
+        - secondary/nested expansion of macros within macro arguments
+        - improved array literal parsing in macro arguments
+        - string literal mode with `#macro!` syntax for debugging expanded code
+        - example:
+            ➜ macro +t1(a,b...) `println "$a"; foreach i in $b; println i,"->",i.kind; endfor`
+            ➜ #t1("test","a",42,"b",[1,2,3])
+            test
+            a->string
+            42->int
+            b->string
+            [1 2 3]->[]any
+            ➜ #t1!("test","a",42,"b",[1,2,3])
+            println "test"; foreach i in ["a",42,"b",[1,2,3]]; println i,"->",i.kind; endfor
 
     * Added 'IF cond' clause to CONTINUE and BREAK statements
         - just for saving some typing of IF or ON..DO.. statements
@@ -346,7 +364,7 @@ m.blah="new value"
     * (experimental) reintroduced break <type> handling (i.e. BREAK [FOR|FOREACH|WHILE|CASE])
         - this was disabled in an earlier version due to some suspect test results.
             - break FOR|FOREACH could confuse each other as they shared the ENDFOR keyword.
-                - this has now been resolved with some additional logic and 
+                - this has now been resolved with some additional logic and
                     breakIn now uses the opening token type instead of the closing one.
         - just checking if the issue still presents.
         - this cannot be combined with a break count integer.
@@ -370,12 +388,12 @@ m.blah="new value"
             - opens on alternate screen
             - ctrl-d to accept input, escape to abandon, ctrl-r to return top-line only.
             - Added dynamic height adjustment in multi line editor.
-            - Line numbering in multi line editor with coloured 5-digit width 
+            - Line numbering in multi line editor with coloured 5-digit width
                 and truncation indicator (…) for long lines.
             - tab key generates 4 spaces. not changing this.
             - basic fuzzy search mode (ctrl-f)
             - some tweaks to filter out undesirable stuff from pastes.
-    
+
     * some refinements to asynchronous calls with ASYNC and await()
         - picked apart a few small issues with it. some new locking mechanisms introduced.
 
@@ -420,7 +438,7 @@ m.blah="new value"
         - the original array is left untouched.
         - this is probably terribly slow and janky
             - lots of unsafe/reflection, use at your own risk.
-            - necessary as Za structs are formed as real Go structs, but 
+            - necessary as Za structs are formed as real Go structs, but
                 without the public/private field name case restrictions.
         - order booleans are false for descending and true for ascending.
 
@@ -486,7 +504,7 @@ m.blah="new value"
 
         - new operator:
             - Added ?? operator for safe expression evaluation with fallback values.
-                - expr ?? 
+                - expr ??
                 - expr ?? fallback_value     # usually might be an ex.* exception enum value
             - Returns fallback_value if expression throws an exception or error
             - Returns expression result if evaluation succeeds
@@ -504,7 +522,7 @@ m.blah="new value"
             format_stack_trace()
                 - Format and display a stack trace with colours
             exreg("name",level):
-                - register a custom exception enum 
+                - register a custom exception enum
                 - level is for setting the logging level default during the catch processing.
 
          - new syntax patterns:
@@ -653,10 +671,10 @@ m.blah="new value"
         - see eg/manual_checks/test_error_handler for examples
 
     * added JSON logging option to LOG/LOGGING statements.
-        - See unused/test_json_logging for example. 
+        - See unused/test_json_logging for example.
         - similar syntax to USE statement. (- and + for json field addition/clear. push/pop for stacking the field list)
 
-    * added a small profiler, invoked with the -P CLI option. 
+    * added a small profiler, invoked with the -P CLI option.
         - this returns a breakdown of parse and execution times for each function called.
             - this includes the execution times of stdlib calls as well as user defined calls.
             - the output should be hierarchical, following the stored call chain.
@@ -693,7 +711,7 @@ m.blah="new value"
         - calls can now include defaults:
             define f(a="123",b=42)
             end
-            f(b=0) 
+            f(b=0)
             # ... now will populate args with (a="123",b=0)
         - optional args should be specified in their function signature with f(optarg=nil)
         - early work, may still have issues with more complex types, needs more testing.
@@ -754,9 +772,9 @@ m.blah="new value"
         - div and mul already existed
         - todo: add per element array(a) [ + | - | * | / ] array(b)
             - need to move array concatenation away from the + operator first
- 
+
     * added support for functions inside structs.
-        - todo: add skip of assignment back to 'self' if it was not used in a lhs context during a method call. 
+        - todo: add skip of assignment back to 'self' if it was not used in a lhs context during a method call.
         - permitted func definition, setting a parent field to the struct.
         - changed UFCS in eval_ops.* to:
             - recognise parent when called as (obj).(method)
@@ -793,8 +811,8 @@ m.blah="new value"
                 - see eg/farm for example.
 
         - added support for infering type of structs during evaluation to allow method calls
-            to the struct type, when only a single struct field declaration list matches the 
-            instance being inferred from. 
+            to the struct type, when only a single struct field declaration list matches the
+            instance being inferred from.
 
         - not doing yet: ary[expr].method calls won't work. not likely to change as it involves
             chasing back through the tokens and checking the type of ary[expr].
@@ -883,7 +901,7 @@ m.blah="new value"
 
     * [ubuntu,debian,popos] updated apt/dpkg behaviour:
         - now accounts for previously installed and subsequently deinstalled
-          packages, which leave the package cached. 
+          packages, which leave the package cached.
 
     * updated ternary if handling to skip false expressions without barfing unicorn chunks.
 
@@ -892,7 +910,7 @@ m.blah="new value"
             - these are now non-fatal in the host language.
             - however, in most cases they will also be non-fatal in Za also.
                 - this was a deliberate choice, and rvalid() should be used to confirm regex validity where it matters.
-    
+
     * same change for regex validity checking in numerous standard library calls, such as grep(), dir(), replace() etc etc
         - did not change the reg_* functions as the PCRE engine already returns sensible errors.
             - this may change for consistency later.
@@ -959,7 +977,7 @@ m.blah="new value"
         - code to remove gc bottleneck during recursion
 
     * added ctrl-k to line editor (del to end of line)
- 
+
     * still experimental:
         - fix/resume
         - self syntax
@@ -1037,7 +1055,7 @@ m.blah="new value"
 
         - FIX stanzas are skipped when there is no current try fault raised within the function (or main).
 
-        - a FIX stanza that does not contain a code label is always executed. execution will follow through into subsequent code, 
+        - a FIX stanza that does not contain a code label is always executed. execution will follow through into subsequent code,
             including other FIX stanzas, if there is no resume or exit (or other form of branch away) at the end of the stanza.
             - this behaviour may change later.
 
@@ -1060,7 +1078,7 @@ m.blah="new value"
         - if provided as unqualified struct_name then it will be internally
             represented as current_namespace::struct_name
         - the global level namespace is 'main'
-       
+
     In addition to the above, when we are happy, or at least happier, with their state, then
     we may look into further changes to support user defined temporary namespace changes in
     a more programmatic fashion.
@@ -1082,7 +1100,7 @@ m.blah="new value"
 
     * removed fileabs and filebase. replaced by $pa and $pb operators.
     * (experimental) added expect() call for checking a list against a set of type variants
-        - see eg/expect for example. 
+        - see eg/expect for example.
 
     other
     -----
@@ -1153,7 +1171,7 @@ m.blah="new value"
                 - instead only the parenthesis surrounded args are passed.
                 - you can modify 'self' inside the func call
                 - however you must return self to be allocated by the caller if you need to modify the source struct.
-            - this is not ever intended to be the start of OO! not going down that path. 
+            - this is not ever intended to be the start of OO! not going down that path.
                 - just tinkering at the moment to see if this form has any use.
         - this is extremely likely to be removed - don't rely on it!
         - if you previously relied on the UFCS-like passing of structs, this may be broken until this is reverted.
@@ -1172,7 +1190,7 @@ m.blah="new value"
         - if a function exists within a module with the same name as the module or its alias, then you must
             always refer to the function fully qualified.
 
-    * extended SHOWDEF to permit a module name or alias argument, for listing all 
+    * extended SHOWDEF to permit a module name or alias argument, for listing all
         definitions from an imported module.
 
     * added test output file filename specifier to LOGGING command, i.e.:
@@ -1253,7 +1271,7 @@ m.blah="new value"
 
         Update: all of the changes above have been done. Still testing, but recursion is now considerably
         faster. It has slowed down normal var allocation a little as we have to bounds check and realloc
-        ident arrays dynamically now, but not a big drain so far. 
+        ident arrays dynamically now, but not a big drain so far.
 
         There are two consts, identGrowthSize and identInitialSize which control the process. The exception
         is global and sysvar storage which are now initialised at len 64 by default as they are likely to
@@ -1271,7 +1289,7 @@ m.blah="new value"
     * BREAKING CHANGE!! renamed float, int, uint, bool, bigi, bigf, string functions with prefix "as_"
         - SORRY!
         - this was done to accommodate float, int, uint, bool, string, bigi, bigf as type keywords
-        
+
 
     other
     -----
@@ -1352,7 +1370,7 @@ m.blah="new value"
     * damped ansi output from bg/fg 256/rgb funcs.
     * fixed one of the issues in -r mode.
 
-    * had an issue with some scripts requiring coproc(false) when piped out. 
+    * had an issue with some scripts requiring coproc(false) when piped out.
         - Doh! fixed.
             - was setting an alias for multi-column ls width at startup/sig_winch resize to the term_width.
             - termwidth (TW) defaults to -1 when running without an attached terminal.
@@ -1417,7 +1435,7 @@ m.blah="new value"
     * added dir entry support to filter operator ?>
         - may add other struct types later, depending on performance. it's another hack job.
         - e.g.:
-           dir() ?> `#.name ~i "^lib-" and #.size<3000` 
+           dir() ?> `#.name ~i "^lib-" and #.size<3000`
             [{name:lib-pcre.go size:2334 mode:416 mtime:1648825572 is_dir:false}]
 
     * (experimental) added clamping operator:
@@ -1463,7 +1481,7 @@ m.blah="new value"
         - added bigi() and bigf() for converting to big int and float from other types.
         - added list_bigi() and list_bigf() for converting to []*big int and []*big float from []interface{}
         - string(s[,prec]) conversion updated for outputting bigi and bigf with optional precision.
-    
+
 
     fixes
     -----
@@ -1551,7 +1569,7 @@ m.blah="new value"
             - reg_match(haystack,pcre_needle) (bool) : match present?
             - reg_filter(haystack,pcre_needle) ([][]int) : list of matching pair positions
             - reg_replace(haystack,pcre_needle,replacement) (string) : replace all occurences
-            
+
         - as a test, eg/regex (benchmarkgames test):
             - was previously taking about 16 seconds with the 5MB test file
             - directly replacing the filter and replace calls with reg_filter and reg_replace
@@ -1652,16 +1670,16 @@ m.blah="new value"
         - this produces a definitive exit when addition is performed with string and either int, float or bool
         - this may be extended where appropriate if it proves useful.
         - the flag is intended to help find unintentional type mixings when debugging.
-        - ideally, we would catch this sort of thing in a type system, but as we don't 
+        - ideally, we would catch this sort of thing in a type system, but as we don't
             exactly have one, well.. you get this instead for now!
         - you will probably only use this if you are setting out to enforce types throughout a piece of code.
-            - for most uses of this language, it just shouldn't matter, but it was computationally cheap to 
-                add this check, so it's in. 
+            - for most uses of this language, it just shouldn't matter, but it was computationally cheap to
+                add this check, so it's in.
 
     * added support for optional printing at end of AT command:
         - e.g. AT 10,20, 1+2, " = 3"
         - LF at end-of-line must be user supplied. for AT the default would usually be to not require it anyway.
-        
+
     * also, unified PRINT, PRINTLN and LOG (and now AT) into a common call.
 
     * decision: ruled out support for prepared statements.
@@ -1844,7 +1862,7 @@ m.blah="new value"
                  instead of starting at around the right place.
 
         - had to rework a few things around locks, parser instances and lhs/rhs ident tables
-        - less small allocs + gc, but still plenty that can't be avoided because of 
+        - less small allocs + gc, but still plenty that can't be avoided because of
            dynamic typing parts of the code. will just have to live with this.
 
     * added lookahead caching (stored in ast token for C_If) on IF statements.
@@ -1864,7 +1882,7 @@ m.blah="new value"
         - we could possibly move these entirely into the parser struct later if needed
             to permit some kind of yielding facility.
 
-    * moved the program counter from local var to each parser's struct. 
+    * moved the program counter from local var to each parser's struct.
         this saved us needing to take copies of it for error reporting, but otherwise
         a negligable speed change - just less GC.
 
@@ -1932,7 +1950,7 @@ m.blah="new value"
     library features
     ----------------
 
-    * added some more lib calls: 
+    * added some more lib calls:
         - os: can_read, can_write, parent, fileabs
         - conversion: dtoo, otod
         - os: is_symlink, is_device, is_pipe, is_socket, is_sticky, is_setuid, is_setgid
@@ -2117,7 +2135,7 @@ m.blah="new value"
         * locks are now always enforced by default except in a few safe areas.
         * the locks() library call and the -l startup option will be removed in 1.0.14
         * this has obviously had a negative effect on the language speed, but it is a fairly
-            minor reduction in most cases. (<1%). It might get worse in hot code depending 
+            minor reduction in most cases. (<1%). It might get worse in hot code depending
             on the nature of operations, but it was worth the trade-off for operational safety.
     * changed system() and Copper() calls to cause assignation of struct instead of string when
         using the =| operator. This allows for an occasionally more readable use of =|.
@@ -2176,12 +2194,12 @@ m.blah="new value"
             except in the further HAS clauses of course.
         - as before, WHEN clauses continue to match on a first come-first served basis.
         - context help and manual still need updating for new clause type.
-        - the HAS clause essentially acts as our if..else if..else if..end method, but 
+        - the HAS clause essentially acts as our if..else if..else if..end method, but
             it also allows for some other alternative arrangements in conjunction with
             IS, CONTAINS and OR clauses.
 
-        - the HAS keyword name may yet change for an alternative if we can think of 
-            anything suitable.  Things like SATISFIES, ADMITS, MEETS, CONCURS and a few other 
+        - the HAS keyword name may yet change for an alternative if we can think of
+            anything suitable.  Things like SATISFIES, ADMITS, MEETS, CONCURS and a few other
             alternative were just too wordy... and yes, I know we have CONTAINS, but
             that one is up for barter too.
 
@@ -2218,13 +2236,13 @@ m.blah="new value"
         - both produce a list of the same type as input
         - both accept lists of bool, uint, int or float
         - filter has a slightly higher precedence than map
-        - reduction will probably not be implemented as it can be conveyed with 
+        - reduction will probably not be implemented as it can be conveyed with
             a user-defined function or library call as with max() and avg() below.
 
         - may be worth considering a way of auto-promoting larger filter and map operations
-            to parallel tasking by splitting the l.h.s. 
+            to parallel tasking by splitting the l.h.s.
             - would require some kind of local/remote pipeline and some resiliency on failed
-                transfers and result gens. 
+                transfers and result gens.
             - this is pretty far out of scope for the language so it will probably gather dust.
 
         - update: added support for arrays and maps of simple interface{} types.
@@ -2251,12 +2269,12 @@ m.blah="new value"
         42
 
      >> print list_float(70..90) -> "deg2rad(#).sin"
-        [0.9396926207859084 0.9455185755993167 0.9510565162951535 0.9563047559630354 0.9612616959383188 
-         0.9659258262890683 0.9702957262759966 0.9743700647852352 0.9781476007338056 0.981627183447664 
-         0.9848077530122081 0.9876883405951377 0.9902680687415703 0.9925461516413221 0.9945218953682734 
+        [0.9396926207859084 0.9455185755993167 0.9510565162951535 0.9563047559630354 0.9612616959383188
+         0.9659258262890683 0.9702957262759966 0.9743700647852352 0.9781476007338056 0.981627183447664
+         0.9848077530122081 0.9876883405951377 0.9902680687415703 0.9925461516413221 0.9945218953682734
          0.9961946980917454 0.9975640502598242 0.9986295347545738 0.9993908270190958 0.9998476951563913 1]
 
-    * you may also filter against simple assoc array types with string keys and value types of bool, int, uint, 
+    * you may also filter against simple assoc array types with string keys and value types of bool, int, uint,
         float and string. see eg/op_filter for basic example of assoc array filter and map.
 
         PLEASE NOTE:
@@ -2266,10 +2284,10 @@ m.blah="new value"
             single thing that would help lower resource cost. They just brute force over the lists.
 
             This may improve in the future if heavily used. Likely not though. For now you can expect a
-            very long list of numbers (e.g. 100 million) to take a minute or two to filter or map. 
+            very long list of numbers (e.g. 100 million) to take a minute or two to filter or map.
             1 Million items will probably take a couple of seconds.
 
-            We will add support for []struct and map[string]struct later if required. (# would probably have 
+            We will add support for []struct and map[string]struct later if required. (# would probably have
             to stand in for the variable name in the case of arrays. i.e. new_array = old_array ?> `#.name=="smith"`;
             or something similar. not sure about syntax for map[string]struct yet, but would likely be the same! )
 
@@ -2323,16 +2341,16 @@ m.blah="new value"
         * finally replaced the identifier lookups with something approaching a name
             binding scheme. the language should be somewhat faster now.
 
-            - BREAKING CHANGE: as part of this rework we have had to remove support 
+            - BREAKING CHANGE: as part of this rework we have had to remove support
                 for l.h.s. variable interpolation. it may be re-introduced later if
-                necessary, but it will always suffer from slower relative 
+                necessary, but it will always suffer from slower relative
                 performance due to its nature.
 
             - All functions, including global/main are now pre-parsed on first call
                 to tag identifiers with allocation slots in local storage.
 
             - Where evaluation is, by necessity, more dynamic, lookups are still
-                performed instead. 
+                performed instead.
 
         * some example code removed that required l.h.s. interpolation.
 
@@ -2350,7 +2368,7 @@ m.blah="new value"
         simple in-expression assignment
         result chaining
         multi-line REPL input
-        compound assignments and sqr,sqrt operators 
+        compound assignments and sqr,sqrt operators
         pre/post increment operators
         split interpolation into local replacement and evaluation types.
 
@@ -2368,7 +2386,7 @@ m.blah="new value"
             - namespaces must follow conventional identifier rules (no hyphens, start with letter, etc)
             - on function call, a reference such as namespace.funcname(q) will call function "funcname"
                from module file "namespace" with args "q".
-            - without a namespace and dot a plain funcname should call the last defined version 
+            - without a namespace and dot a plain funcname should call the last defined version
                that it can find. (defined during execution of the current function space)
 
             - no idea if this will work properly yet, but shouldn't interfere with current naming.
@@ -2385,7 +2403,7 @@ m.blah="new value"
 
                 ~  : direct match           (result:bool)       e.g. "abcd" ~ "d" => true
                 ~i : insensitive match      (result:bool)       e.g. "abCd" ~i "c" => true
-                ~f : filtering match        (result:[]string)   
+                ~f : filtering match        (result:[]string)
                     - e.g. "abcd" ~f "."    => [ "a", "b", "c", "d" ]
                     - e.g. "abcd" ~f ".{2}" => [ "ab", "cd" ]
 
@@ -2406,7 +2424,7 @@ m.blah="new value"
                         __cd__
                         __ef__
 
-    
+
         * added str * pos_int : repeat string operator
 
         * added []string and []uint to + operator.
@@ -2441,7 +2459,7 @@ m.blah="new value"
                     a=1,b,c=[2,3]
 
             - this behaviour may change, it's a fairly simple amendment. but not sure that
-                the use cases would justify it yet. 
+                the use cases would justify it yet.
 
         * return values:
 
@@ -2454,7 +2472,7 @@ m.blah="new value"
                     - #lhsargs < #rhsargs : all return values returned to lhs var as an array
                     - otherwise, a direct left-to-right mapping.
 
-            - handling for multiple return assignment is pretty slow at the moment. still working on 
+            - handling for multiple return assignment is pretty slow at the moment. still working on
                 improving this, but should be working now.
 
             - e.g.
@@ -2465,7 +2483,7 @@ m.blah="new value"
 
             -   x=swap(x,y)
                 println x
-             >> 20 
+             >> 20
 
             -   x,y,z=swap(x,y)
              >> Error in evaluation
@@ -2554,11 +2572,11 @@ m.blah="new value"
             * needs more testing
                 * added a bodge to the parser to keep hold of the previous token
                 ( added another one for the pre-previous token too, for the compound assignment ops )
-                    - not how it's supposed to be done, hence more testing. 
+                    - not how it's supposed to be done, hence more testing.
                     - we only keep the accumulated left-hand value not the token normally.
                     - bodge should allow us to add -=, +=, /=, *= and %= fairly easily now.
 
-        * fixed tail-call elimination (hopefully!) after the changes for multiple return 
+        * fixed tail-call elimination (hopefully!) after the changes for multiple return
             values broke it. needs some more testing, but appears to be correct.
 
 
@@ -2592,7 +2610,7 @@ m.blah="new value"
             * power (**) operator.
 
             * logical operators: negation ! , bool && and ||
-            * decimal shifts: shift left and right operators: << >> 
+            * decimal shifts: shift left and right operators: << >>
 
             * string literal support
             * array literals: [ x,y,z ]
@@ -2606,7 +2624,7 @@ m.blah="new value"
 
             * user-defined function integration
             * standard library integration
-                * for both of these, there still may be some clean up to do in order to reduce the 
+                * for both of these, there still may be some clean up to do in order to reduce the
                     number of chained function calls these pass through. (ev/udf/Call/interpolate/buildRhs/etc)
 
             * getglob() is now optional!
@@ -2618,7 +2636,7 @@ m.blah="new value"
             * the new evaluator started life around 4-5 times slower than python.
             * we are now at around half the speed of python evaluation after a little tweaking.
                 * we will continue to tinker with this between releases, but expect it to get steadily faster.
-                * i will run out of ideas eventually (probably not far from now) on how to improve it, but 
+                * i will run out of ideas eventually (probably not far from now) on how to improve it, but
                     the basic issues are avoiding mem allocations, avoiding defers, avoiding mutexes (to a small degree),
                      avoiding maps, using smaller datatypes, avoiding even array lookups, cutting out function call chains,
                      inlining more of the smaller things, forcing things on to the internal stack, etc, etc.
@@ -2651,7 +2669,7 @@ m.blah="new value"
             eg/map_writes       55s         11s         ( 20 million iterations, avg 3 runs )
 
 
-    * Added language version comparison in REQUIRE command. 
+    * Added language version comparison in REQUIRE command.
 
         usage: REQUIRE x.y.z
 
@@ -2663,7 +2681,7 @@ m.blah="new value"
 
         * var is used for declaring an "expected" type.
             It is not enforced completely, it is more for additional sanity checking.
-        
+
         * as an example:
 
             var i bool      # i=false
@@ -2679,7 +2697,7 @@ m.blah="new value"
         * the underlying storage type will be set to the appropriate type (instead of untyped)
             and the internal vset() function enforces it.
 
-        * if you try to VAR an existing variable name in the same function scope you will 
+        * if you try to VAR an existing variable name in the same function scope you will
             also get a run-time error. E.g.:
 
             i=42
@@ -2690,14 +2708,14 @@ m.blah="new value"
 
         * you can still continue to use untyped variables without the declaration as before.
 
-        * this is not meant to be a full type system, it is only intended to help with 
+        * this is not meant to be a full type system, it is only intended to help with
             basic checking. the scope may be extended further to help in other areas, but
             most likely you'll never use this :)
 
             * we'll expand this into compound or other data types later if there's justification to do so,
                 I'm just not sure how useful it will be yet.
 
-        * another reason for this is that some library functions may be able to perform better if 
+        * another reason for this is that some library functions may be able to perform better if
             they understand the argument types ahead of time.
 
 
@@ -2725,7 +2743,7 @@ m.blah="new value"
         + siege : siege -b -c 100 -r 100 -k http://127.0.0.1:8080/fun/awsip
         * siege worked fine for lower numbers than above. would have been fine with higher
             except that the example page has a link to unpkg.com for pure CSS and this and
-            DNS lookups hit rate limitations upstream. 
+            DNS lookups hit rate limitations upstream.
             Lower numbers for -c and -r were fine (once throttles dropped away between tests)
         * siege was perfect with the above (or higher) -c and -r when fetching the static
             example @ http://127.0.0.1:8080/exmachina/index.html.
@@ -2796,7 +2814,7 @@ m.blah="new value"
             * unlike Go, there is no enforcement of private/public capitalisation of field names.
                 * that is, all fields are available regardless of casing, within Za.
 
-        * structs should also allow for some slightly cleaner passing around of bunches of config. 
+        * structs should also allow for some slightly cleaner passing around of bunches of config.
 
         * serialise and deserialise struct to string/json/something for save/load:
             * new lib calls: write_struct(file,source_struct_name) and read_struct(file,dest_struct_name)
@@ -2804,7 +2822,7 @@ m.blah="new value"
                 * read_struct requires a reference struct as a template for populating the return value.
                     * the usual process would be to define a struct, initialise a var as that struct type
                         then use the empty initialised var as the destination struct which read_struct will
-                        populate after examining the layout. 
+                        populate after examining the layout.
 
         * some vague examples here: eg/struct, eg/struct[23], eg/struct-serial
 
@@ -2832,7 +2850,7 @@ m.blah="new value"
                 then unspecified behaviour occurs. generally, the array element will assume the type and zero value
                 of one of the struct fields of the whole struct assigned to it. populate the struct before assignment
                 to the array element! (at least partially)
-    
+
             * you can access fields directly, eg:
                 | print a[0].name
             * or retrieve an entire struct record:
@@ -2865,7 +2883,7 @@ m.blah="new value"
             | m["first"]=a
             | print kind(m["first"])
             > struct { a int; b bool }
-            
+
             | for e=1 to 5; m[rand(10000)]=a; endfor; print m
             > map[1319:{0 false} 1848:{0 false} 2082:{0 false} 2541:{0 false} 3301:{0 false}]
 
@@ -2880,7 +2898,7 @@ m.blah="new value"
     * more doc cleanup
 
     * moved interface{} type cases to end of switches.
-        * fixed error in reverse() lib call due to the new placements. (type assertion error 
+        * fixed error in reverse() lib call due to the new placements. (type assertion error
             revealed in previously uncalled code).
         * fixed a bad append() in eg/mon (int to []float)
 
@@ -2890,7 +2908,7 @@ m.blah="new value"
 
     * added terminal object nil check in term_complete()
 
-    * added expand_aliases and -i to bash startups. 
+    * added expand_aliases and -i to bash startups.
             it still won't pull a startup file in, but at least the alias command
              will work again for new aliases.
 
@@ -2917,14 +2935,14 @@ m.blah="new value"
 
         * no extra system variables output that are sh/ash/dash specific yet.
 
-    * zsh seems fine still, except for only putting out a single zsh specific sysvar. will work 
+    * zsh seems fine still, except for only putting out a single zsh specific sysvar. will work
         on more of them later.
 
     * will deal with WSL/mingw/windows'y things later.
 
     * fixed repeated enter key glitches in interactive mode. (was more slow ANSI VT response issues).
 
-    * added check for terminal availability and ready-to-send status in GetCursorPos(). 
+    * added check for terminal availability and ready-to-send status in GetCursorPos().
         * mainly added for docker compatibility when not using -it in exec/run.
 
     * added some more functionality around handling "all interfaces" 0.0.0.0 web service requests.
@@ -2953,7 +2971,7 @@ m.blah="new value"
         * time_hours,time_minutes,time_seconds,time_nanos,time_dow,time_dom,time_month,time_year
 
     * interactive mode:
-        * cosmetic fixes in console_linux.go/getInput(). 
+        * cosmetic fixes in console_linux.go/getInput().
             stopped colour codes and percent signs wreaking havoc.
 
     * some more examples in function docs.
@@ -3004,7 +3022,7 @@ m.blah="new value"
         * added addansi() lib call.
         * added uninstall() lib call. *experimental, not tested in all OS yet*
 
-        * added download() lib call in lib-net. Like web_download() but auto names and 
+        * added download() lib call in lib-net. Like web_download() but auto names and
             provides console feedback.
 
         * added func_categories, func_inputs, func_outputs, func_descriptions lib calls.
@@ -3018,13 +3036,13 @@ m.blah="new value"
         * added up-scaler to loop allocator
 
         * fixed issue with calltable id allocator not reserving instances before async tasks
-            swamped it. new allocation requests now have faked allocation slot info on 
+            swamped it. new allocation requests now have faked allocation slot info on
             exit from GetNextFnSpace().
 
         * amended calltable id allocator to loop while req_ifs>cap as async
             allocations were busting it a new asshole. (instead of only allocating once)
 
-        * added deallocator to calltable[] actor.go/GetNextFnSpace(). 
+        * added deallocator to calltable[] actor.go/GetNextFnSpace().
         * added deallocator to loops[] in actor.go/Call()
 
         * updated help descriptions for library calls.
@@ -3037,11 +3055,11 @@ m.blah="new value"
         * added eg/tests/libcov for vaguely checking library test coverage.
 
         * function reference
-            * auto-generating now with libdoc tool. still needs some work. 
+            * auto-generating now with libdoc tool. still needs some work.
             * za-ref.html now contains a link back to zalang.org/funpages/index.html instead
                 of maintaining two lots of fn descs.
             * libdoc is executing during "docpull" run.
-            * example pages can be created by hand and placed in a prepared location for 
+            * example pages can be created by hand and placed in a prepared location for
                 inclusion in the final page output.
 
 ---------------------------------------------------------------------------------------------
@@ -3052,7 +3070,7 @@ m.blah="new value"
         * updated source comments
         * updated error reports and help texts
         * removed more dead code
-        * removed a Call() parameter left over from separate call modes. 
+        * removed a Call() parameter left over from separate call modes.
             * this should speed up recursion considerably. It was passing an empty struct in.
                 * it's still slow, just not as much :)
         * changed actor.go/inbound to use pointers instead of copying phrase from source.
@@ -3062,7 +3080,7 @@ m.blah="new value"
         * added a few more of the missing iteration types in FOREACH
         * added argument 2 in funcs() to return (true) or display (false:default) the results.
         * updated help text
-        * bah, had to tinker more with interpolation. was throwing errors in the background 
+        * bah, had to tinker more with interpolation. was throwing errors in the background
             when it should have been ignoring unevaluable contents of curly braces.
                 * added shouldError param to ev() and interpolate()
             @note-to-self: don't go back in that code for a few weeks, give yourself a chance to heal.
@@ -3105,7 +3123,7 @@ m.blah="new value"
             * console resize signalling (SIGWINCH) is disabled
 
             * i don't have any burning ambition to get this working fully, but the executable
-                works given the caveats above. Getting those things working is an incredibly 
+                works given the caveats above. Getting those things working is an incredibly
                 low priority for me... possibly never.
 
             * to build: ./build win (generates za.exe, copy it where you want it).
@@ -3113,7 +3131,7 @@ m.blah="new value"
         * added -C flag (force ANSI colour on)
         * added ansi(bool) to enable/disable ANSI colours support at run-time.
         * added separate handler for executing windows commands in | and =|
-            * uses "cmd /c {command}" 
+            * uses "cmd /c {command}"
             * may add some support for varying the command interpreter and options later.
         * added windows detection in col() for CRLF splits.
         * updated term_h() and term_w() to fetch approximately correct terminal dimensions on windows
@@ -3121,9 +3139,9 @@ m.blah="new value"
         * you can now wrap up | and =| command call text in backticks (`cmd`) to allow semi-colons in command.
         * added system(str[,bool]) for executing a more constructed system call. display output when bool is true.
         * added dir() lib function. dir(path[,filter]). returns a list of directory entries as an assoc array.
-            * each entry consists of these keys: "name", "size", "mode", "mtime", "is_dir" 
+            * each entry consists of these keys: "name", "size", "mode", "mtime", "is_dir"
 
-        * added a check in ASSERT to warn if an assignment is present.  
+        * added a check in ASSERT to warn if an assignment is present.
             * For example, the following would cause a fatal exit:
                 ASSERT strpos(t,"we ",0)=0
 
@@ -3166,7 +3184,7 @@ m.blah="new value"
 
         * started work on tail call optimization
 
-            * in the first instance (and probably the only one!) we have added some simple tail recursion 
+            * in the first instance (and probably the only one!) we have added some simple tail recursion
                elimination on return statements
 
                 Under these conditions the function will be re-used:
@@ -3186,13 +3204,13 @@ m.blah="new value"
                 Obviously, you still have to write recursive functions in a manner which takes advantage of this.
                  It's still interpreted, after all!
 
-            * added: tco() library call, to check if the current function is in a TCE loop. This is useful for 
+            * added: tco() library call, to check if the current function is in a TCE loop. This is useful for
                 keeping counters in benchmarks.
 
-        * added: echo(bool[,string]) lib func. Enable (true), disable (false) or return the status (no arg) of local console echo. 
+        * added: echo(bool[,string]) lib func. Enable (true), disable (false) or return the status (no arg) of local console echo.
             * if second option provided, it sets the character mask for hidden input with PROMPT command.
 
-        * added: getrow() and getcol() call in library to use GetCursorPos() func. 
+        * added: getrow() and getcol() call in library to use GetCursorPos() func.
         * added: (internal) GetCursorPos() equivalent for Windows.
         * added: unmap(a,k) to remove a map key 'k' from array 'a'
 
@@ -3205,7 +3223,7 @@ m.blah="new value"
                         for the asynchronous task.
                     * key_name is an override for the handle id in handle-map.
 
-                * if a handle_id exists in handle_map then you should assume it is still running. 
+                * if a handle_id exists in handle_map then you should assume it is still running.
                     * it may have completed, but you won't know until you next poll for results with await()
 
             * new standard library call: await()
@@ -3217,7 +3235,7 @@ m.blah="new value"
                         handle_map to complete execution (flag:true) or will just poll each in handle_map for completion
                         whilst populating the results list, but return to the caller immediately upon check completion.
                     * as a task completes, await() will remove the handle_id from the handle_map.
-                
+
             * example case:
 
                 # some background task
@@ -3240,7 +3258,7 @@ m.blah="new value"
 
 
             * if you do not care about the order of the returned results, you can skip adding a key_name in the async statement.
-                * a unique key is generated in these circumstances, i.e. "async_f@39495943999" or similar. 
+                * a unique key is generated in these circumstances, i.e. "async_f@39495943999" or similar.
 
             * if you plan to use async with functions including shell interaction then you should use the -S option at launch.
                 * attempts to run shell commands in parallel may otherwise return interleaved results and assorted other
@@ -3250,7 +3268,7 @@ m.blah="new value"
             * it would probably also be wise to use the -l option (or the locks(true) call at runtime) to ensure that all mutex
                 locking is enabled, for the same reason. this should not be necessary, but this is a new feature after all!
 
-        * added: coproc(bool) call. This is to enable processing of | and =| statements using either the co-process shell (true) 
+        * added: coproc(bool) call. This is to enable processing of | and =| statements using either the co-process shell (true)
             or the current execution pid's shell (false). This was added so that async command calls could be safely processed.
             On windows, by default, execution is in the current process rather than the child shell (as we use 'cmd /c' calls
             currently on windows.)
@@ -3294,7 +3312,7 @@ m.blah="new value"
             bugs_collection_link (string) http://api.launchpad.dev/beta/bugs
 
     * added (test) support for shell-less executions.
-        if the -s arg is set to /bin/false, then any | or =| commands are routed through the shell of 
+        if the -s arg is set to /bin/false, then any | or =| commands are routed through the shell of
             the za instance parent, rather than a child process.
         last() and last_out() are still supported, but more limited in stderr output.
         may give this it's own cli opt arg later.
@@ -3302,7 +3320,7 @@ m.blah="new value"
 
     * added -S CLI argument for disabling the co-process shell entirely.
     * added has_shell() to lib-internal.
-    * added abs() to lib-math. 
+    * added abs() to lib-math.
         * this gets inaccurate for floats, e.g.
             > print abs(-2.30000000000000001)
             2.3
@@ -3375,7 +3393,7 @@ m.blah="new value"
 1.0.2 fixes:
 
         1. added general support for array types in interpolate(). whole arrays and any simple type should
-            now be converted during interpolation.  Array elements are still considered out-of-scope for 
+            now be converted during interpolation.  Array elements are still considered out-of-scope for
             conversion and should continue to be resolved in the usual manner outside of interpolation.
 
         2. added a default conversion in interpolation that also displays the type when caught.
@@ -3389,9 +3407,9 @@ m.blah="new value"
 
         4. added new function: interpol(bool). This enables or disables string interpolation.
 
-        5. added basic handling of array elements and evaluation inside of interpolation phrases. 
+        5. added basic handling of array elements and evaluation inside of interpolation phrases.
             needed to add a conversion of array elements in interpolation. was able to cover calcs and other eval at same time.
-    
+
             This kind of thing should now be possible:
 
               a="10"; b=20; c["x"]="bang!"
@@ -3403,9 +3421,9 @@ m.blah="new value"
             Use with caution for now - test feature. Mixing ` and " badly will definitely result in unexpected behaviour.
             It probably has bounds issues too. Still under review!
 
-        6. changed ON..DO to re-enter inside function rather than re-call fn in different mode. 
+        6. changed ON..DO to re-enter inside function rather than re-call fn in different mode.
             removed CALL vs ENACT mode. we instead build a phrase and inject it at ondo_reenter.
-        
+
         7. stripped part of the old multi return value code, replaced with simplified version.
 
         8. changed function startups to reuse space for variable sets (functionspaces) or loop counters if previously allocated.
@@ -3414,7 +3432,7 @@ m.blah="new value"
 
         9. fixed a broken empty lexed string case in lexer.go... wasn't returning properly.
 
-       10. i may have forgotten to add a couple of ampersands here and there.. nowhere important, just on a few of the 
+       10. i may have forgotten to add a couple of ampersands here and there.. nowhere important, just on a few of the
             mutex locks. nothing to see here - move along!
 
        11. retested with -race and pprof. couple of small edge cases when stress testing the web server concurrency.
@@ -3437,7 +3455,7 @@ m.blah="new value"
 
             they are fine for their original purpose of simple counters, but would be best if they
             went away entirely. a faster evaluator would allow for that.
- 
+
 1.0.0 pre-release version - documentation/file structure changes
 
 ---------------------------------------------------------------------------------------------
