@@ -1139,7 +1139,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
             return reflect.Value{}, fmt.Errorf("cannot access field on nil value")
         }
 
-        /*  
+        /*
         // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
         if !currentVal.CanAddr() {
             currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))

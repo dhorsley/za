@@ -142,7 +142,7 @@ func stopLogWorker() {
         for ;len(logQueue)>0; {
             // pf("flushing log queue # %d.\n",len(logQueue))
         }
-        
+
         close(logQueue)
         logQueue = nil
         workerMutex.Unlock()
@@ -430,7 +430,7 @@ func checkWriteCapability(path string) error {
         this forbids us from, for example, writing to /dev/stdout as a file
         because it would try to touch a test log file in /dev
         even just checking the writability of the parent dir is probably a
-        bad idea. 
+        bad idea.
         redo this!
     */
 
