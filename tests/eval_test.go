@@ -194,6 +194,25 @@ func TestMacroExpand(t *testing.T) {
     if result != `"eza --icons=always /"` {
         t.Errorf("Expected '\"eza --icons=always /\"', got '%s'", result)
     }
+
+    // Test macro to string mode
+    macroDefine("simple", "hello world", false)
+    result = macroExpand("#simple!")
+    if result != "`hello world`" {
+        t.Errorf("Expected '`hello world`', got '%s'", result)
+    }
+
+    // Test parameterized macro to string
+    result = macroExpand("#add(1,2)!")
+    if result != "`1 + 2`" {
+        t.Errorf("Expected '`1 + 2`', got '%s'", result)
+    }
+
+    // Test parameterized macro to string with strings
+    result = macroExpand(`#concat("hello", "world")!`)
+    if result != "`\"hello\"\"hello\" \"world\"`" {
+        t.Errorf("Expected '`\"hello\"\"hello\" \"world\"`', got '%s'", result)
+    }
 }
 
 func TestMacroDefineUndefine(t *testing.T) {
