@@ -725,7 +725,7 @@ func help_ops(ns string) {
 [#4]a || b[#-]      boolean OR  ( or a or b  )  [#4]a && b[#-]      boolean AND ( or a and b )
 [#4]a << b[#-]      bitwise left shift          [#4]a >> b[#-]      bitwise right shift
 [#4]a | b[#-]       bitwise OR                  [#4]a & b[#-]       bitwise AND
-[#4]a ^ b[#-]       bitwise XOR                 
+[#4]a ^ b[#-]       bitwise XOR
 
 [#4]a ~f b[#-]      array of matches from string a using regex b[#-]
 [#4]s.f[#-]         field access                [#4]s .. e[#-]      builds an array of values in the range s to e
@@ -735,7 +735,7 @@ func help_ops(ns string) {
 
 [#4]array|map ?> "bool_expr"[#-]
 [#4]array|map -> "expression"[#-]
-  Filters (?>) or maps (->) matches of 'bool_expr' (?>) or values of 'expression' (->) against elements in 
+  Filters (?>) or maps (->) matches of 'bool_expr' (?>) or values of 'expression' (->) against elements in
   an array/map to return a new array/map. Each # in bool_expr/expression is replaced by each array/map value in turn.
 
 [#1]Comparisons[#-]
@@ -791,7 +791,7 @@ func help(ns string, hargs string) {
     [#4]-d[#-] : Enable full debugger
     [#4]-P[#-] : Enable function profiling output
     [#4]-Q[#-] : Show shell command options
-    
+
 
 `
     gpf(ns, helppage)
@@ -929,7 +929,7 @@ Available commands:
 [#2]PANE SELECT [#i1]name[#i0][#-]                                - Select a defined pane as active.
 [#2]PANE OFF[#-]                                        - Disable panes.
 [#6]INPUT [#i1]id[#i0] [#i1](PARAM|OPTARG)[#i0] [#i1]position[#i0] [ IS [#i1]hint[#i0] ][#-]    - set variable [#i1]id[#i0] from argument.
-[#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]                           - set variable [#i1]id[#i0] from environmental variable.         
+[#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]                           - set variable [#i1]id[#i0] from environmental variable.
 [#6]PROMPT [#i1]var prompt[#i0] [ [#i1]validator[#i0] ][#-]                 - set [#i1]var[#i0] from stdin. loops until [#i1]validator[#i0] satisfied.
 [#3]MODULE [#i1]modname[#i0] [ AS [#i1]alias[#i0] ][#-]                     - reads in state from a module file.
 [#3]TEST [#i1]name[#i0] GROUP [#i1]gname[#i0] [ ASSERT FAIL|CONTINUE ][#-]  - Define a test
@@ -1774,6 +1774,10 @@ func macroExpand(input string) string {
                             if j < len(input) && input[j] == '(' {
                                 args, end := parseArgs(input, j)
                                 if end > j {
+                                    // Expand macros in args before substitution
+                                    for k := range args {
+                                        args[k] = macroExpand(args[k])
+                                    }
                                     if len(args) == len(def.Params) {
                                         expanded := substitute(def.Template, def.Params, args)
                                         result.WriteString(expanded)
@@ -1862,5 +1866,58 @@ func macroUndefine(name string) {
     } else {
         base, _ := parseMacroName(name)
         macroMap.Delete(base)
+    }
+}
+
+// processMacroPhrase executes macro define/undefine inline during phrasing
+func processMacroPhrase(phrase Phrase) {
+    tokens := phrase.Tokens
+    if len(tokens) < 2 {
+        return // malformed
+    }
+    i := 1 // after 'macro'
+    verbose := false
+    if i < len(tokens) && tokens[i].tokText == "!" {
+        verbose = true
+        i++
+    }
+    if i < len(tokens) && tokens[i].tokText == "list" {
+        return
+    }
+    isDefine := false
+    if i < len(tokens) {
+        if tokens[i].tokText == "+" {
+            isDefine = true
+            i++
+        } else if tokens[i].tokText == "-" {
+            isDefine = false
+            i++
+        } else {
+            return
+        }
+    }
+    if isDefine {
+        // Collect name until StringLiteral
+        nameParts := []string{}
+        for i < len(tokens) && tokens[i].tokType != StringLiteral {
+            nameParts = append(nameParts, tokens[i].tokText)
+            i++
+        }
+        name := strings.Join(nameParts, "")
+
+        // Extract value from StringLiteral
+        if i < len(tokens) && tokens[i].tokType == StringLiteral {
+            value := tokens[i].tokText
+            macroDefine(name, value, verbose)
+        }
+    } else {
+        // Undefine: collect name as concatenation
+        nameParts := []string{}
+        for i < len(tokens) {
+            nameParts = append(nameParts, tokens[i].tokText)
+            i++
+        }
+        name := strings.Join(nameParts, "")
+        macroUndefine(name)
     }
 }

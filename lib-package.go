@@ -473,7 +473,7 @@ func install(pkgs string,quiet bool) (state int) {
 }
 
 
-// take a service action. actions are permitted for upstart and systemd tools. 
+// take a service action. actions are permitted for upstart and systemd tools.
 func service(name string, action string) (bool, error) {
 
     v, _ := gvget("@release_id")

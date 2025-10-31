@@ -795,7 +795,7 @@ which is convenient for calls within template.
 I didnt feel it was worth to publish a library just for this piece
 of code, hence the snippet. Feel free to reuse as you wish.
 
-Source Modified: 
+Source Modified:
 
 */
 

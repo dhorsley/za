@@ -51,7 +51,7 @@ func uc_top(s string) (bool) {
     for p:=0; p<len(uchain); p+=1 {
         na=append(na,uchain[p])
     }
-    uchain=na 
+    uchain=na
     return true
 }
 
@@ -104,7 +104,7 @@ func uc_match_func(s string) (string) {
         if fnlookup.lmexists(uchain[p]+"::"+s) {
             return uchain[p]
         }
-    } 
+    }
     return ""
 }
 
@@ -117,7 +117,7 @@ func uc_match_enum(s string) (string) {
         if _,found:=enum[uchain[p]+"::"+s]; found {
             return uchain[p]
         }
-    } 
+    }
     return ""
 }
 
@@ -130,7 +130,7 @@ func uc_match_struct(s string) (string) {
         if _,found:=structmaps[uchain[p]+"::"+s]; found {
             return uchain[p]
         }
-    } 
+    }
     return ""
 }
 
