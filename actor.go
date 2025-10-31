@@ -3906,9 +3906,9 @@ tco_reentry:
                             vunset(ifs, ident, removee)
                         } else {
                             /*
-                            parser.report(inbound.SourceLine, sf("Variable %s does not exist.", removee))
-                            finish(false, ERR_EVAL)
-                            break
+                               parser.report(inbound.SourceLine, sf("Variable %s does not exist.", removee))
+                               finish(false, ERR_EVAL)
+                               break
                             */
                         }
                     } else {
@@ -4531,7 +4531,12 @@ tco_reentry:
                     count++
                     k := key.(string)
                     def := val.(MacroDef)
-                    paramsStr := str.Join(def.Params, ",")
+                    params := make([]string, len(def.Params))
+                    copy(params, def.Params)
+                    if def.HasVarargs && len(params) > 0 {
+                        params[len(params)-1] += "..."
+                    }
+                    paramsStr := str.Join(params, ",")
                     if paramsStr != "" {
                         paramsStr = "(" + paramsStr + ")"
                     }

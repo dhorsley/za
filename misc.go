@@ -1778,6 +1778,22 @@ func macroExpand(input string) string {
                                     for k := range args {
                                         args[k] = macroExpand(args[k])
                                     }
+                                    // Handle varargs
+                                    if def.HasVarargs {
+                                        if len(args) < len(def.Params)-1 {
+                                            // invalid, skip
+                                            i++
+                                            continue
+                                        }
+                                        varargs := args[len(def.Params)-1:]
+                                        args = args[:len(def.Params)-1]
+                                        quotedVarargs := make([]string, len(varargs))
+                                        for k, a := range varargs {
+                                            quotedVarargs[k] = fmt.Sprintf("%q", unquote(a))
+                                        }
+                                        varargsStr := "[" + str.Join(quotedVarargs, ",") + "]"
+                                        args = append(args, varargsStr)
+                                    }
                                     if len(args) == len(def.Params) {
                                         expanded := substitute(def.Template, def.Params, args)
                                         result.WriteString(expanded)
@@ -1787,6 +1803,9 @@ func macroExpand(input string) string {
                                     } else if len(args) == 0 && len(def.Params) > 0 {
                                         // #name() with params, use empty args
                                         args = make([]string, len(def.Params))
+                                        if def.HasVarargs {
+                                            args[len(args)-1] = "[]"
+                                        }
                                         expanded := substitute(def.Template, def.Params, args)
                                         result.WriteString(expanded)
                                         changed = true
@@ -1798,6 +1817,9 @@ func macroExpand(input string) string {
                                 // no parens, use empty args if params
                                 if len(def.Params) > 0 {
                                     args := make([]string, len(def.Params))
+                                    if def.HasVarargs {
+                                        args[len(args)-1] = "[]"
+                                    }
                                     expanded := substitute(def.Template, def.Params, args)
                                     result.WriteString(expanded)
                                     changed = true
@@ -1821,36 +1843,47 @@ func macroExpand(input string) string {
 }
 
 type MacroDef struct {
-    Params   []string
-    Template string
+    Params     []string
+    Template   string
+    HasVarargs bool
 }
 
-// parseMacroName parses name like "add(x,y)" into "add", ["x","y"]
-func parseMacroName(name string) (string, []string) {
+// parseMacroName parses name like "add(x,y...)" into "add", ["x","y"], true
+func parseMacroName(name string) (string, []string, bool) {
     idx := str.Index(name, "(")
     if idx == -1 {
-        return name, nil
+        return name, nil, false
     }
     base := name[:idx]
     paramsStr := name[idx+1:]
     if !str.HasSuffix(paramsStr, ")") {
-        return name, nil // invalid, return as is
+        return name, nil, false // invalid, return as is
     }
     paramsStr = paramsStr[:len(paramsStr)-1]
     if paramsStr == "" {
-        return base, []string{}
+        return base, []string{}, false
     }
     params := str.Split(paramsStr, ",")
+    hasVarargs := false
     for i, p := range params {
-        params[i] = str.TrimSpace(p)
+        p = str.TrimSpace(p)
+        if str.HasSuffix(p, "...") {
+            if i != len(params)-1 {
+                // varargs must be last
+                return name, nil, false
+            }
+            p = p[:len(p)-3] // remove ...
+            hasVarargs = true
+        }
+        params[i] = p
     }
-    return base, params
+    return base, params, hasVarargs
 }
 
 // macroDefine stores a macro
 func macroDefine(name, value string, verbose bool) {
-    base, params := parseMacroName(name)
-    def := MacroDef{Params: params, Template: value}
+    base, params, hasVarargs := parseMacroName(name)
+    def := MacroDef{Params: params, Template: value, HasVarargs: hasVarargs}
     if verbose {
         if _, ok := macroMap.Load(base); ok {
             pf("Warning: Redefining macro '%s'\n", base)
@@ -1864,7 +1897,7 @@ func macroUndefine(name string) {
     if name == "" {
         macroMap = sync.Map{} // reset all
     } else {
-        base, _ := parseMacroName(name)
+        base, _, _ := parseMacroName(name)
         macroMap.Delete(base)
     }
 }
