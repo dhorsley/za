@@ -707,7 +707,7 @@ func buildWebLib() {
     web_client = &http.Client{Transport: web_tr}
 
     features["web"] = Feature{version: 1, category: "web"}
-    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.
@@ -1039,6 +1039,18 @@ func buildWebLib() {
         return string(s), nil
     }
 
+    slhelp["web_raw_send"] = LibHelp{in: "method_string,url_string,headers_map,body_string", out: "[]any", action: "Send HTTP request with custom method, headers, and raw body. Returns [body, headers, status_code]."}
+    stdlib["web_raw_send"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_raw_send", args, 4, "4", "string", "string", "map[string]interface {}", "string"); !ok {
+            return nil, err
+        }
+        method := args[0].(string)
+        url := args[1].(string)
+        headers := args[2].(map[string]any)
+        body := args[3].(string)
+        return rawSend(method, url, headers, body)
+    }
+
     slhelp["download"] = LibHelp{in: "url_string", out: "local_name", action: "Downloads from URL [#i1]url_string[#i0] and stores the returned data in the file [#i1]local_name[#i0]. Includes console feedback."}
     stdlib["download"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("download", args, 1, "1", "string"); !ok {
@@ -1102,6 +1114,30 @@ func post(loc string, valueMap any) ([]byte, bool) {
         }
     }
     return []byte{}, false
+}
+
+func rawSend(method, url string, headers map[string]any, body string) ([]any, error) {
+    req, err := http.NewRequest(method, url, str.NewReader(body))
+    if err != nil {
+        return nil, err
+    }
+    for k, v := range headers {
+        req.Header.Set(k, v.(string))
+    }
+    resp, err := web_client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    respBody, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return nil, err
+    }
+    respHeaders := make(map[string]any)
+    for k, v := range resp.Header {
+        respHeaders[k] = str.Join(v, ",")
+    }
+    return []any{string(respBody), respHeaders, resp.StatusCode}, nil
 }
 
 func download(loc string) ([]byte, int, http.Header) {
