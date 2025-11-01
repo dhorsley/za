@@ -107,7 +107,7 @@ end
 def form_prompt()
     @last_cmd_status=last()
     cached_fg=form_git()
-    return ( 
+    return (
         form_logo() + bg256(0x1b) + endcap +
         "[#6]"+form_dir() + bg256(0xe2) + fg256(0x1b) +
         form_aws() + bg256(0xe2) + endcap +
@@ -156,7 +156,7 @@ last_git_path=""
 endcap="▙"
 gs={git status}
 gtl=${git rev-parse --show-toplevel}
-# right-hand side of prompt assignment is re-evaluated 
+# right-hand side of prompt assignment is re-evaluated
 # before each input prompt is presented.
 prompt=(form_prompt())
 
@@ -177,7 +177,7 @@ if is_installed("figlet") or is_file("/usr/bin/figlet")
     on release_id() == "arch" do fontdir+="/fonts"
 
     variants = (
-        dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"` 
+        dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"`
     ) -> "#.name"
 
     # filter undesired out
@@ -226,6 +226,34 @@ macro +cpu          `
                         _=append_to(ref data,c)
                     endfor
                     println data.table(map(.colours map(.header "[#2]",.data "[#6]")))`
+
+macro +backtick "`"
+
+macro +ask(query) `
+    url="https://api.cerebras.ai/v1/chat/completions"
+    model="llama-3.3-70b"
+    maxtokens=500
+    data=#backtick{
+            "model":"{model}",
+            "stream":false,
+            "max_tokens":{maxtokens},
+            "temperature":0.2,
+            "top_p":1,
+            "messages":[{"role":"system","content":"$query"}]
+        }#backtick
+    headers=map(
+            .Authorization "Bearer "+get_env("ZA_AI_TOKEN"),
+            .Content-Type "application/json"
+    )
+    result=web_raw_send("POST",url,headers,data)
+    if result[2]==200
+        parsed=json_decode(result[0])
+        println parsed.choices[0].message.content
+    else
+        println "Invalid response from AI endpoint."
+    endif
+    unset data,headers
+`
 
 # println "Default Macros:"
 # macro list
