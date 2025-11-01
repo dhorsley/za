@@ -166,7 +166,7 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                 excInfo := &exceptionInfo{
                     category:   category,
                     message:    message,
-                    line:       int(p.line)+1,
+                    line:       int(p.line) + 1,
                     function:   calltable[p.fs].fs,
                     fs:         p.fs,
                     stackTrace: stackTraceCopy,
@@ -224,8 +224,8 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
     }
     p.pos += 1
 
-    if p.pos>=p.len {
-        return left,err
+    if p.pos >= p.len {
+        return left, err
     }
 
     ct := &p.tokens[p.pos]
@@ -352,7 +352,7 @@ binloop1:
                 left = p.tryOperator(left, nil)
             } else {
                 right, err = p.dparse(p.prectable[token.tokType]+1, false)
-                if err==nil {
+                if err == nil {
                     left = p.tryOperator(left, right)
                 }
                 panic(fmt.Errorf("Invalid expression in try operator message"))
@@ -452,17 +452,17 @@ binloop1:
         }
 
         if p.pos >= p.len {
-            estring:="Incomplete expression, terminates early (on "
-            if p.prev2.tokType<END_STATEMENTS {
-                estring+=sf("token-2 [%s], ",tokNames[p.prev2.tokType])
+            estring := "Incomplete expression, terminates early (on "
+            if p.prev2.tokType < END_STATEMENTS {
+                estring += sf("token-2 [%s], ", tokNames[p.prev2.tokType])
             }
-            if p.prev.tokType<END_STATEMENTS {
-                estring+=sf("token-1 [%s], ",tokNames[p.prev.tokType])
+            if p.prev.tokType < END_STATEMENTS {
+                estring += sf("token-1 [%s], ", tokNames[p.prev.tokType])
             }
-            if token.tokType<END_STATEMENTS {
-                estring+=sf("token [%s], ",tokNames[token.tokType])
+            if token.tokType < END_STATEMENTS {
+                estring += sf("token [%s], ", tokNames[token.tokType])
             }
-            estring+=")"
+            estring += ")"
             panic(estring)
         }
 
@@ -539,7 +539,7 @@ binloop1:
             panic(fmt.Errorf("assignment is not a valid operation in expressions"))
 
         default:
-            panic(fmt.Errorf(" [ broken on type %s '%s'? ] ", tokNames[token.tokType],token.tokText))
+            panic(fmt.Errorf(" [ broken on type %s '%s'? ] ", tokNames[token.tokType], token.tokText))
 
         }
 
@@ -1334,11 +1334,11 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     // filter for enabling struct type names here:
     structvalues := []any{}
     found := false
-        structmapslock.RLock()
+    structmapslock.RLock()
     if structvalues, found = structmaps[name]; found || name == "anon" {
         isStruct = true
     }
-        structmapslock.RUnlock()
+    structmapslock.RUnlock()
     // end-struct-filter
 
     if !isStruct {
@@ -1408,8 +1408,8 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         if len(arg_names) > 0 {
 
             // enforce initial case
-            for i,an := range arg_names {
-                arg_names[i]=renameSF(an)
+            for i, an := range arg_names {
+                arg_names[i] = renameSF(an)
             }
 
             // named field handling:
@@ -1822,19 +1822,36 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
         for {
             switch p.peek().tokType {
             case SYM_DOT:
-                p.next()                                               // move-to-dot
-                p.next()                                               // skip-to-name-from-dot
-                arg_names = append(arg_names, p.tokens[p.pos].tokText) // add name field
+                p.next() // consume dot
+                key := ""
+                // pf("sym_dot pre loop, pos->%d len->%d\n",p.pos,p.len)
+                for {
+                    // pf("nt->%+v pos->%d ckey->%s\n",tokNames[p.peek().tokType],p.pos,key)
+                    if p.pos >= p.len { pf("broke on len\n") ; break }
+                    key += p.peek().tokText
+                    p.next() // consume identifier/keyword
+
+                    if p.pos >= p.len || p.peek().tokType != O_Minus {
+                        // pf("broke on not minus/len\n")
+                        break
+                    }
+                    key+="-"
+                    p.next() // consume -
+                }
+                arg_names = append(arg_names, key) // add name field
+                // pf("added key '%s' to arg_names\n",key)
             case RParen, O_Comma:
                 // missing/blank arg in list
                 panic(fmt.Errorf("missing argument #%d", argpos))
             }
+            // pf("p.pos->%d peek()->%+v\n",p.pos,p.peek())
             dp, err := p.dparse(0, false)
             if err != nil {
-                panic(fmt.Errorf("error parsing map argument -> %#v\n", err))
+                panic(fmt.Errorf("error parsing map argument -> %+v\n", err))
             }
             iargs = append(iargs, dp)
             if p.peek().tokType != O_Comma {
+                // pf("broke on not comma, was [%s]\n",tokNames[p.peek().tokType])
                 break
             }
             p.next()
@@ -1845,7 +1862,7 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
     if p.peek().tokType == RParen {
         p.next() // consume rparen
     } else {
-        panic(fmt.Errorf("expected closing parenthesis for map literal"))
+        panic(fmt.Errorf("expected closing parenthesis for map literal, not [%s]",tokNames[p.peek().tokType]))
     }
 
     // Build the map from the parsed arguments
@@ -1861,6 +1878,7 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
         panic(fmt.Errorf("length mismatch of argument names [%d] to values [%d]", len(arg_names), len(iargs)))
     }
 
+    // pf("result=%#v\np.pos->%d\n",result,p.pos)
     return result, true
 }
 
@@ -2221,11 +2239,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
             }
         }
     }
-        structmapslock.RLock()
+    structmapslock.RLock()
     if _, found := structmaps[sname]; found || sname == "anon" {
         return sname, nil
     }
-        structmapslock.RUnlock()
+    structmapslock.RUnlock()
 
     panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 
@@ -2614,7 +2632,7 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
                     // pf("else clause:\nval:%#v\nlen:%v\ncap:%v\n",val,newLen,val.Cap())
                     // val.SetLen(newLen) // this won't work as not addressable
                     // so bodging it with a full copy for the moment:
-                    newSlice:=reflect.MakeSlice(vt,newLen,val.Cap())
+                    newSlice := reflect.MakeSlice(vt, newLen, val.Cap())
                     reflect.Copy(newSlice, val)
                     val = newSlice
                     (*ident)[bin].IValue = val.Interface()
@@ -3275,52 +3293,52 @@ func (p *leparser) tryOperator(left any, right any) any {
 
     var shouldThrow bool
 
-        // Check if left indicates a failure condition
+    // Check if left indicates a failure condition
 
-        switch v := left.(type) {
-        case nil:
-                // nil result - convert to exception
-                shouldThrow = true
+    switch v := left.(type) {
+    case nil:
+        // nil result - convert to exception
+        shouldThrow = true
 
-        case struct {
-                Out  string
-                Err  string
-                Code int
-                Okay bool
-        }:
-                // Shell command result from {...}
-                if !v.Okay {
-                        shouldThrow = true
-                }
-
-        case bool:
-                // Boolean result - false is considered failure
-                if !v {
-                        shouldThrow = true
-                }
-
-        case error:
-                // Already an error - convert to exception
-                shouldThrow = true
-
-        case string:
-                // Empty string is considered failure
-                if v == "" {
-                        shouldThrow = true
-                }
-
-        case int:
-                // Zero is considered failure
-                if v == 0 {
-                        shouldThrow = true
-                }
-
-        case float64:
-                // Zero is considered failure
-                if v == 0.0 {
-                        shouldThrow = true
-                }
+    case struct {
+        Out  string
+        Err  string
+        Code int
+        Okay bool
+    }:
+        // Shell command result from {...}
+        if !v.Okay {
+            shouldThrow = true
         }
+
+    case bool:
+        // Boolean result - false is considered failure
+        if !v {
+            shouldThrow = true
+        }
+
+    case error:
+        // Already an error - convert to exception
+        shouldThrow = true
+
+    case string:
+        // Empty string is considered failure
+        if v == "" {
+            shouldThrow = true
+        }
+
+    case int:
+        // Zero is considered failure
+        if v == 0 {
+            shouldThrow = true
+        }
+
+    case float64:
+        // Zero is considered failure
+        if v == 0.0 {
+            shouldThrow = true
+        }
+    }
 
     if shouldThrow {
         // Convert right to string for exception category
@@ -3354,4 +3372,3 @@ func (p *leparser) tryOperator(left any, right any) any {
     // No failure, return the original value
     return left
 }
-
