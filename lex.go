@@ -382,7 +382,7 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             break
         }
 
-        if len(term) != 0 && str.IndexByte(term, input[currentChar]) != -1 {
+        if !escaping && len(term) != 0 && str.IndexByte(term, input[currentChar]) != -1 {
             // found a terminator character
 
             if matchBlock && input[currentChar-1] != '\\' {
@@ -433,6 +433,8 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                             nw = append(nw, '\t')
                         case 'n':
                             nw = append(nw, '\n')
+                        case '`':
+                            nw = append(nw, '\\', '`')
                         case '"':
                             nw = append(nw, '\\', '"')
                         default:
