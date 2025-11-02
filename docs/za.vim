@@ -102,6 +102,7 @@ syntax match list_functions "\(^|.\|\s*\)scan_left\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)eqlen\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)list_fill\s*("he=e-1
 
+syntax match conversion_functions "\(^|.\|\s*\)md2ansi\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)f2n\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)byte\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_int64\s*("he=e-1
@@ -113,7 +114,7 @@ syntax match conversion_functions "\(^|.\|\s*\)as_bool\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_float\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_string\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)kind\s*("he=e-1
-syntax match conversion_functions "\(^|.\|\s*\)is_number\s*("he=e-1 
+syntax match conversion_functions "\(^|.\|\s*\)is_number\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)char\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)asc\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)list_float\s*("he=e-1
@@ -630,7 +631,7 @@ if !exists("g:sh_no_error")
 endif
 
 hi def link Arithmetic          Special
-hi def link Comment             comment 
+hi def link Comment             comment
 hi def link Conditional         Conditional
 hi def link CtrlSeq             Special
 hi def link ExprRegion          Delimiter
