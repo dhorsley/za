@@ -248,7 +248,7 @@ macro +ask(query) `
     result=web_raw_send("POST",url,headers,data)
     if result[2]==200
         parsed=json_decode(result[0])
-        println parsed.choices[0].message.content
+        println parsed.choices[0].message.content.md2ansi
     else
         println "Invalid response from AI endpoint."
     endif
