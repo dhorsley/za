@@ -15,6 +15,7 @@ import (
     "math/big"
     "os"
     "reflect"
+    "regexp"
     "sort"
     "strconv"
     "strings"
@@ -513,17 +514,17 @@ func toTable(data any, options map[string]any) string {
                 var m map[string]any
                 if elem.Kind() == reflect.Struct {
                     // create a default column ordering
-                    if i==0 {
+                    if i == 0 {
                         rt := elem.Type()
                         for fpos := 0; fpos < rt.NumField(); fpos++ {
-                            defaultStructColumns = append(defaultStructColumns,rt.Field(fpos).Name)
+                            defaultStructColumns = append(defaultStructColumns, rt.Field(fpos).Name)
                         }
-                        isStruct=true
+                        isStruct = true
                     }
                     // then convert to an unordered map
-                    m=s2m(vi.Interface())
+                    m = s2m(vi.Interface())
                 } else {
-                    m=vi.Interface().(map[string]any)
+                    m = vi.Interface().(map[string]any)
                 }
                 for k := range m {
                     if !seen[k] {
@@ -569,7 +570,7 @@ func toTable(data any, options map[string]any) string {
     } else {
         if isStruct {
             // apply the struct field order we collated earlier
-            columns=defaultStructColumns
+            columns = defaultStructColumns
         }
     }
 
@@ -583,8 +584,8 @@ func toTable(data any, options map[string]any) string {
         }
     }
     for _, row := range rows {
-        for i,cv := range columns {
-            cell:=sf("%+v",row[cv])
+        for i, cv := range columns {
+            cell := sf("%+v", row[cv])
             if len(cell) > widths[i] && !truncate {
                 widths[i] = len(cell)
             }
@@ -704,7 +705,7 @@ func toTable(data any, options map[string]any) string {
             if a, ok := align[columns[i]]; ok {
                 alignCol = a
             }
-            c := sf("%+v",row[col])
+            c := sf("%+v", row[col])
             if len(c) > widths[i] && truncate {
                 c = c[:widths[i]-3] + "..."
             }
@@ -753,6 +754,130 @@ func padString(s string, width int, align string) string {
     }
 }
 
+func md2ansi(s string) string {
+    // headings # ## ### etc.
+    re := regexp.MustCompile(`(?m)^(#{1,6})\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        level := len(re.FindStringSubmatch(match)[1])
+        inner := re.FindStringSubmatch(match)[2]
+        switch level {
+        case 1:
+            return "[#fblue][#bold]" + inner + "[#boff][#-]"
+        case 2:
+            return "[#fred][#bold]" + inner + "[#boff][#-]"
+        case 3:
+            return "[#fyellow]" + inner + "[#-]"
+        default:
+            return "[#fcyan]" + inner + "[#-]"
+        }
+    })
+    // strikethrough ~~text~~
+    re = regexp.MustCompile(`~~(.+?)~~`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#crossed]" + inner + "[#-]"
+    })
+    // bold **text** and __text__
+    re = regexp.MustCompile(`\*\*(.*?)\*\*`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#fgreen]" + inner + "[#-]"
+    })
+    re = regexp.MustCompile(`__(.*?)__`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#fgreen]" + inner + "[#-]"
+    })
+    // italic *text* and _text_
+    re = regexp.MustCompile(`\*(.*?)\*`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#i1]" + inner + "[#i0]"
+    })
+    re = regexp.MustCompile(`_(.*?)_`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#i1]" + inner + "[#i0]"
+    })
+    // code blocks ```code```
+    re = regexp.MustCompile("(?s)```(.+?)```")
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#invert]" + inner + "[#-]"
+    })
+    // inline code `text`
+    re = regexp.MustCompile("`(.*?)`")
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#invert]" + inner + "[#-]"
+    })
+    // superscript ^text^
+    re = regexp.MustCompile(`\^(.*?)\^`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#underline]" + inner + "[#-]"
+    })
+    // subscript ~text~
+    re = regexp.MustCompile(`~(.*?)~`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        inner := re.FindStringSubmatch(match)[1]
+        return "[#dim]" + inner + "[#-]"
+    })
+    // footnote definitions [^n]: text
+    re = regexp.MustCompile(`(?m)^\[\^\d+\]:\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#i1]" + match + "[#i0]"
+    })
+    // footnote references [^n]
+    re = regexp.MustCompile(`\[\^\d+\]`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // highlight untranslated markdown with dim red
+    // links
+    re = regexp.MustCompile(`\[[^\]]+\]\([^)]+\)`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // images
+    re = regexp.MustCompile(`!\[[^\]]+\]\([^)]+\)`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // lists
+    re = regexp.MustCompile(`(?m)^[-*+]\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // blockquotes
+    re = regexp.MustCompile(`(?m)^>\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // highlight untranslated markdown with dim red
+    // links
+    re = regexp.MustCompile(`\[[^\]]+\]\([^)]+\)`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // images
+    re = regexp.MustCompile(`!\[[^\]]+\]\([^)]+\)`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // lists
+    re = regexp.MustCompile(`(?m)^[-*+]\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    // blockquotes
+    re = regexp.MustCompile(`(?m)^>\s+(.+)$`)
+    s = re.ReplaceAllStringFunc(s, func(match string) string {
+        return "[#dim][#fred]" + match + "[#-]"
+    })
+    return s
+}
+
 func buildConversionLib() {
 
     // conversion
@@ -762,7 +887,7 @@ func buildConversionLib() {
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
-        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table",
+        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi",
     }
 
     slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
@@ -800,64 +925,64 @@ func buildConversionLib() {
     }
 
     /*
-         slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
-         stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-                 if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
-                         return nil, err
-                 }
+       slhelp["explain"] = LibHelp{in: "struct", out: "string", action: "Returns a plain English description of a data structure's layout and types."}
+       stdlib["explain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+               if ok, err := expect_args("explain", args, 1, "1", "any"); !ok {
+                       return nil, err
+               }
 
-                 obj := args[0]
-                 if reflect.TypeOf(obj).Kind() != reflect.Struct {
-                         return nil, errors.New("explain: expected struct argument")
-                 }
+               obj := args[0]
+               if reflect.TypeOf(obj).Kind() != reflect.Struct {
+                       return nil, errors.New("explain: expected struct argument")
+               }
 
-                 val := reflect.ValueOf(obj)
-                 typ := val.Type()
+               val := reflect.ValueOf(obj)
+               typ := val.Type()
 
-                 var result strings.Builder
+               var result strings.Builder
 
-                 // Get struct name
-                 structName := "Unknown"
-                 if name, count := struct_match(obj); count == 1 {
-                         structName = name
-                 } else {
-                         structName = typ.String()
-                 }
+               // Get struct name
+               structName := "Unknown"
+               if name, count := struct_match(obj); count == 1 {
+                       structName = name
+               } else {
+                       structName = typ.String()
+               }
 
-                 result.WriteString(sf("Struct '%s' contains %d fields:\n\n", structName, val.NumField()))
+               result.WriteString(sf("Struct '%s' contains %d fields:\n\n", structName, val.NumField()))
 
-                 // Describe each field
-                 for i := 0; i < val.NumField(); i++ {
-                         field := val.Field(i)
-                         fieldType := typ.Field(i)
+               // Describe each field
+               for i := 0; i < val.NumField(); i++ {
+                       field := val.Field(i)
+                       fieldType := typ.Field(i)
 
-                         // Field name
-                         result.WriteString(sf("  %d. %s: ", i+1, fieldType.Name))
+                       // Field name
+                       result.WriteString(sf("  %d. %s: ", i+1, fieldType.Name))
 
-                         // Field type description
-                         typeDesc := describeType(field.Type())
-                         result.WriteString(typeDesc)
+                       // Field type description
+                       typeDesc := describeType(field.Type())
+                       result.WriteString(typeDesc)
 
-                         // Current value (if simple)
-                         if field.Kind() == reflect.String || field.Kind() == reflect.Int || field.Kind() == reflect.Float64 || field.Kind() == reflect.Bool {
-                                 var fieldValue any
-                                 if field.CanInterface() {
-                                         fieldValue = field.Interface()
-                                 } else {
-                                         ptr := unsafe.Pointer(field.UnsafeAddr())
-                                         rv := reflect.NewAt(field.Type(), ptr).Elem()
-                                         fieldValue = rv.Interface()
-                                 }
-                                 result.WriteString(sf(" (current value: %v)", fieldValue))
-                         } else if field.Kind() == reflect.Slice {
-                                 result.WriteString(sf(" (length: %d)", field.Len()))
-                         }
+                       // Current value (if simple)
+                       if field.Kind() == reflect.String || field.Kind() == reflect.Int || field.Kind() == reflect.Float64 || field.Kind() == reflect.Bool {
+                               var fieldValue any
+                               if field.CanInterface() {
+                                       fieldValue = field.Interface()
+                               } else {
+                                       ptr := unsafe.Pointer(field.UnsafeAddr())
+                                       rv := reflect.NewAt(field.Type(), ptr).Elem()
+                                       fieldValue = rv.Interface()
+                               }
+                               result.WriteString(sf(" (current value: %v)", fieldValue))
+                       } else if field.Kind() == reflect.Slice {
+                               result.WriteString(sf(" (length: %d)", field.Len()))
+                       }
 
-                         result.WriteString("\n")
-                 }
+                       result.WriteString("\n")
+               }
 
-                 return result.String(), nil
-         }
+               return result.String(), nil
+       }
     */
 
     slhelp["write_struct"] = LibHelp{in: "filename,name_of_struct", out: "size", action: "Sends a struct to file. Returns byte size written."}
@@ -994,11 +1119,11 @@ func buildConversionLib() {
     }
 
     /*
-         // kind stub
-         slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
-         stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-                 return ret,err
-         }
+       // kind stub
+       slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
+       stdlib["kind"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+               return ret,err
+       }
     */
 
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
@@ -1395,6 +1520,14 @@ func buildConversionLib() {
         }
 
         return nil, errors.New(sf("to_typed: cannot convert value of type %T to type %s", value, typeString))
+    }
+
+    slhelp["md2ansi"] = LibHelp{in: "markdown_string", out: "ansi_code_string", action: "Converts simple markdown syntax to Za ANSI color codes."}
+    stdlib["md2ansi"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("md2ansi", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        return md2ansi(args[0].(string)), nil
     }
 
 }
