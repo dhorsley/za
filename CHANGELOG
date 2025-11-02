@@ -224,6 +224,11 @@ CHANGE LOG
         keys(): Returns a list of map keys
         values(): Returns a list of map values
 
+    * Added md2ansi() markdown to ansi conversion call.
+        - this may be missing some markdown elements still, but these will be added over time where it makes sense.
+        - the current colour scheme and stylings may change over time.
+        - we may possibly add some kind of user styling capability to this later, but it's not currently planned.
+
 
     other
     -----
@@ -323,6 +328,7 @@ CHANGE LOG
         - Added map(.key value, .key2 value2, ...) syntax for maps literals
         - Returns map[string]any with the specified key-value pairs
         - Example: opts = map(.uid 2000, .gid 3000, .create_home true)
+        - added support for hyphens in map .key-names.
 
     * added USES clause for try statement.
         - this is used to dictate 'captured' variables inside a try/catch block.
