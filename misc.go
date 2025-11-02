@@ -887,19 +887,12 @@ func ihelp(ns string, hargs string) {
 }
 
 /* bit verbose with these ones listed too:
-[#5]SHOWDEF[#-]                                         - list function definitions.
-[#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
-[#2]LOGGING [WEB] OFF|ON [#i1]name[#i0][#-]                        - disable or enable logging and specify the log file name.
-[#2]LOGGING ACCESSFILE|TESTFILE [#i1]filename[#i0][#-]                    - option to squash console echo of LOG messages.
-[#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
 [#6]REQUIRE [#i1]feature[#i0] [ [#i1]num[#i0] ][#-]                         - assert feature availability and optional version level, or exit.
-[#7]SHOWSTRUCT[#-]                                      - display structure definitions.
 [#7]WITH [#i1]var[#i0] AS [#i1]name[#i0][#-]                                - starts a WITH construct.
 [#7]ENDWITH[#-]                                         - ends a WITH construct.
 [#7]NOP[#-]                                             - no operation - dummy command.
 [#7]VERSION[#-]                                         - show Za version.
 [#7]HELP[#-]                                            - this page.
-
 */
 
 var cmdpage string = `
@@ -908,6 +901,9 @@ Available commands:
 [#5]RETURN [#i1]retval[#i0][#-]                                   - return from function, with value.
 [#5]END[#-]                                             - end a function definition.
 [#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
+[#5]SHOWDEF[#-]                                         - list function definitions.
+[#5]MACRO [!] [-+] name `+"`value`"+` | macro [!] - [name][#-]- add/remove/clear macro definitions
+[#5]MACRO LIST[#-]                                      - list macro definitions
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
 [#4]IF [#i1]condition[#i0][#-] ... [#4]ELSE[#-] ... [#4]ENDIF[#-]                 - conditional execution.
 [#4]WHILE [#i1]condition[#i0][#-]                                 - start while...end loop block.
@@ -928,6 +924,10 @@ Available commands:
 [#2]PANE DEFINE [#i1]name,row,col,h,w[,title[,border]][#i0][#-]   - Define a new coordinate pane.
 [#2]PANE SELECT [#i1]name[#i0][#-]                                - Select a defined pane as active.
 [#2]PANE OFF[#-]                                        - Disable panes.
+[#2]LOG [#i1]expression[#i0][#-]                                  - local echo plus pre-named destination log file.
+[#2]LOGGING [WEB] OFF|ON [#i1]name[#i0][#-]                       - disable or enable logging and specify the log file name.
+[#2]LOGGING ACCESSFILE|TESTFILE [#i1]filename[#i0][#-]            - option to squash console echo of LOG messages.
+[#2]LOGGING QUIET | LOUD[#-]                            - option to squash console echo of LOG messages.
 [#6]INPUT [#i1]id[#i0] [#i1](PARAM|OPTARG)[#i0] [#i1]position[#i0] [ IS [#i1]hint[#i0] ][#-]    - set variable [#i1]id[#i0] from argument.
 [#6]INPUT [#i1]id[#i0] ENV [#i1]env_name[#i0][#-]                           - set variable [#i1]id[#i0] from environmental variable.
 [#6]PROMPT [#i1]var prompt[#i0] [ [#i1]validator[#i0] ][#-]                 - set [#i1]var[#i0] from stdin. loops until [#i1]validator[#i0] satisfied.
@@ -941,12 +941,14 @@ Available commands:
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
+[#7]SHOWSTRUCT[#-]                                      - display structure definitions.
 [#7]USE [-|+|^|POP|PUSH] [[#i1]name[#i0]][#-]                     - namespace chain rule configuration.
 [#7]|[#-] [#i1]command[#i0]                                       - execute shell command.
 [#i1]name[#i0][#i1](params)[#i0]                                    - call a function, with parameters <params>
 [#i1]var[#i0] = [#i1]value[#i0]                                     - assign to variable.
 [#i1]var[#i0] =| [#i1]expression[#i0]                               - store result of a local shell command to variable.
 # comment                                       - comment to end of line.
+#macro_name[!][(args...)]                       - operate a macro. with the ! prefix, the macro substitution is displayed.
 `
 
 func commands(ns string) {
