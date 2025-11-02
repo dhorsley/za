@@ -236,6 +236,11 @@ CHANGE LOG
     * (experimental) Added simple macro system.
       - this is mainly for use in the REPL
       - it can be used elsewhere but with certain caveats.
+      - this is not a hygienic macro system, you need to be careful
+         about cleanup of new variables and shadowing of existing ones.
+         it would have be been possible to avoid this in the design,
+         but for the use case it was deemed to be unnecessary. most
+         scripts should not even require this facility.
 
       - syntax - values must be quoted
         - macro [!] [-+] m_name [`"] value [`"]
@@ -251,8 +256,6 @@ CHANGE LOG
         - we may need to also limit the places that this can be used.
           - i.e. repl use is intended.
                 normal script lines should be fine.
-                during eval() or exec() calls? maybe not?
-                inside string interpolation? maybe not?
                 inside system() type calls, e.g. | ${..} {..} &{..} =|  et al?
                   - these should be fine but there may be some strange buggy cases doing this.
 
@@ -287,6 +290,7 @@ CHANGE LOG
       - enhanced macro expansion system with new capabilities:
         - intra-input macro expansion in REPL mode for interactive sessions
         - varargs support using `...` syntax for variable argument lists
+        - missing named parameters will be expanded to empty strings
         - secondary/nested expansion of macros within macro arguments
         - improved array literal parsing in macro arguments
         - string literal mode with `#macro!` syntax for debugging expanded code
