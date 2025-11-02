@@ -1803,12 +1803,11 @@ func macroExpand(input string) string {
                                         varargsStr := "[" + str.Join(formattedArgs, ",") + "]"
                                         args = append(args, varargsStr)
                                     }
-                                    if len(args) == len(def.Params) {
-                                        expanded = substitute(def.Template, def.Params, args)
-                                        j = end
-                                    } else if len(args) == 0 && len(def.Params) > 0 {
-                                        // #name() with params, use empty args
-                                        args = make([]string, len(def.Params))
+                                    if len(args) <= len(def.Params) {
+                                        // Pad missing args with empty strings
+                                        for len(args) < len(def.Params) {
+                                            args = append(args, "")
+                                        }
                                         if def.HasVarargs {
                                             args[len(args)-1] = "[]"
                                         }

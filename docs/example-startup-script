@@ -229,7 +229,7 @@ macro +cpu          `
 
 macro +backtick "`"
 
-macro +ask(query) `
+macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
     model="llama-3.3-70b"
     maxtokens=500
@@ -248,7 +248,13 @@ macro +ask(query) `
     result=web_raw_send("POST",url,headers,data)
     if result[2]==200
         parsed=json_decode(result[0])
-        println parsed.choices[0].message.content.md2ansi
+        value=parsed.choices[0].message.content.md2ansi
+        if "$ask_rv" == ""
+            println value
+        else
+            $ask_rv = value
+        endif
+        unset value
     else
         println "Invalid response from AI endpoint."
     endif
