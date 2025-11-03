@@ -803,13 +803,13 @@ func md2ansi(s string) string {
     re = regexp.MustCompile("(?s)```(.+?)```")
     s = re.ReplaceAllStringFunc(s, func(match string) string {
         inner := re.FindStringSubmatch(match)[1]
-        return "[#invert]" + inner + "[#-]"
+        return "[#dim][#1]" + inner + "[#-]"
     })
     // inline code `text`
     re = regexp.MustCompile("`(.*?)`")
     s = re.ReplaceAllStringFunc(s, func(match string) string {
         inner := re.FindStringSubmatch(match)[1]
-        return "[#invert]" + inner + "[#-]"
+        return "[#1]" + inner + "[#-]"
     })
     // superscript ^text^
     re = regexp.MustCompile(`\^(.*?)\^`)
@@ -1527,7 +1527,7 @@ func buildConversionLib() {
         if ok, err := expect_args("md2ansi", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        return md2ansi(args[0].(string)), nil
+        return "\n"+md2ansi(args[0].(string))+"\n", nil
     }
 
 }
