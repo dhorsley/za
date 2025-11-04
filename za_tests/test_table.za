@@ -1,0 +1,50 @@
+#!/usr/bin/za
+
+# Test table() function with string parsing
+
+println "--> Testing table() string parsing"
+
+# Test 1: Parse CSV string without headers
+csv_data = "Alice,30,Engineer\nBob,25,Designer"
+parsed = table(csv_data, map(.parse_only true, .separator ","))
+println "Parsed data:", parsed
+if len(parsed) != 2 or len(parsed[0]) != 3 or parsed[0][0] != "Alice" or parsed[0][1] != "30" or parsed[0][2] != "Engineer" or parsed[1][0] != "Bob" or parsed[1][1] != "25" or parsed[1][2] != "Designer"
+    println "ERROR: Parsed data does not match expected"
+    exit 1
+endif
+
+# Test 2: Parse with headers
+csv_with_headers = "Name,Age,Job\nAlice,30,Engineer\nBob,25,Designer"
+parsed_headers = table(csv_with_headers, map(.parse_only true, .has_headers true))
+println "Parsed with headers:", parsed_headers
+# Should be the same as above since parse_only returns [][]any
+
+# Test 3: Format parsed data
+formatted = table(parsed, map(.has_headers false))
+println "Formatted table:"
+println formatted
+
+# Test 4: Auto-detect separator (tab)
+tsv_data = "Name\tAge\tJob\nAlice\t30\tEngineer"
+parsed_tsv = table(tsv_data, map(.parse_only true, .has_headers true))
+println "Parsed TSV:", parsed_tsv
+
+# Test wrap_text
+println "--> Testing wrap_text"
+
+text = "This is a long text that should be wrapped at the console width or specified width."
+wrapped = wrap_text(text)
+println "Wrapped text:"
+println wrapped
+
+wrapped40 = wrap_text(text, 40)
+println "Wrapped at 40:"
+println wrapped40
+
+# Test with newlines
+text_nl = "Line 1\nLine 2\nThis is a longer line that should wrap."
+wrapped_nl = wrap_text(text_nl, 20)
+println "Wrapped with newlines at 20:"
+println wrapped_nl
+
+println "All tests passed!"

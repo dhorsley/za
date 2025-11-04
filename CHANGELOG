@@ -76,6 +76,10 @@ CHANGE LOG
 
     * added ctrl-l to keypress() (value 12)
 
+    * replaced the line wrapping function with a new version. the version handles hidden characters/ANSI better
+        as well as some other edge cases.
+        - this function is exposed as wrap_string(string,wrap_length_int)
+
     * table() function for formatting slices of maps/structs as, optionally ANSI-coloured, text tables.
       - Supports options for colours (using Za colour codes), table width, column widths,
          alignment, headers, border styles (ASCII/Unicode), truncation, and custom column ordering
@@ -84,8 +88,54 @@ CHANGE LOG
           cpu_info(). s2m. table(map(.truncate true, .column_widths map(.Model 40,.Usage 60,.LoadAverage 20), .column_order ["Model","Cores","Threads","LoadAverage","Usage"] ))
           disk_usage(). table(map(.border_style "unicode",.column_order ["path","mounted_path","used","size"]))
 
-      - still @todo: add a .hide option ([]string) for curtailing the display of named fields
-      - still @todo: maybe the opposite too with a .show option? or a .showOnlyOrdered to only show fields that also have a .column_order setting?
+      - added a .hide option ([]string) for curtailing the display of named fields
+      - added a .showOnlyOrdered option to only show fields that also have a .column_order setting
+
+      - added a separator detection algorithm and the ability to split a newline separated
+       string, allowing for example:
+
+          ${ls -l lib-*}.table
+
+            +------------+------+--------+--------+--------+------+------+-------+------------------------+
+            | Col1       | Col2 | Col3   | Col4   | Col5   | Col6 | Col7 | Col8  | Col9                   |
+            +------------+------+--------+--------+--------+------+------+-------+------------------------+
+            | -rw-r--r-- | 1    | daniel | daniel | 52155  | Nov  | 4    | 21:42 | lib-conversion.go      |
+            | -rw-r--r-- | 1    | daniel | daniel | 23862  | Nov  | 2    | 16:10 | lib-cron.go            |
+            | -rw-r--r-- | 1    | daniel | daniel | 13348  | Nov  | 2    | 16:10 | lib-date.go            |
+            | -rw-r--r-- | 1    | daniel | daniel | 22314  | Nov  | 2    | 16:10 | lib-db.go              |
+            | -rw-r--r-- | 1    | daniel | daniel | 14213  | Nov  | 2    | 16:10 | lib-error.go           |
+            | -rw-r--r-- | 1    | daniel | daniel | 13121  | Nov  | 2    | 16:10 | lib-file_unix.go       |
+            ...
+
+      - added a parse_only option for returning the converted structure as a [][]any instead
+        of displaying it.
+        - e.g.
+
+            println ${ls -l lib-*}.table(map(.parse_only true)).pp
+            [
+                [
+                    "-rw-r--r--",
+                    "1",
+                    "daniel",
+                    "daniel",
+                    "52155",
+                    "Nov",
+                    "4",
+                    "21:42",
+                    "lib-conversion.go"
+                ],
+                [
+                    "-rw-r--r--",
+                    "1",
+                    "daniel",
+                    "daniel",
+                    "23862",
+                    "Nov",
+                    "2",
+                    "16:10",
+                    "lib-cron.go"
+                ],
+            ...
 
       - if no column_order provided then:
         - map fields as columns are unordered by default

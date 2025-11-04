@@ -10,8 +10,8 @@ import (
     "regexp"
     "runtime"
     "strconv"
-    "unicode/utf8"
     str "strings"
+    "unicode/utf8"
 )
 
 // calculateLevenshteinDistance computes the edit distance between two strings
@@ -183,7 +183,7 @@ func buildStringLib() {
     features["string"] = Feature{version: 1, category: "text"}
     categories["string"] = []string{"pad", "field", "fields", "get_value", "has_start", "has_end", "match", "filter",
         "substr", "gsub", "replace", "trim", "lines", "count", "inset", "wrap",
-        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail","is_utf8",
+        "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "line_head", "line_tail", "is_utf8",
         "reverse", "tr", "lower", "upper", "format", "ccformat", "literal", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
         "rvalid", "levdist", "keys",
@@ -358,7 +358,6 @@ func buildStringLib() {
         fmt.Printf(args[0].(string), args[1:]...)
         return nil, nil
     }
-
 
     slhelp["keys"] = LibHelp{in: "map", out: "[]string", action: "Returns a list of map keys"}
     stdlib["keys"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -548,6 +547,34 @@ func buildStringLib() {
         return owrap, nil
     }
 
+    slhelp["wrap_text"] = LibHelp{in: "string [, number]", out: "string", action: "Wrap text at console width (default) or specified width, preserving words and ANSI codes."}
+    stdlib["wrap_text"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("wrap_text", args, 2,
+            "2", "string", "number",
+            "1", "string"); !ok {
+            return nil, err
+        }
+        s := args[0].(string)
+        width := uint(MW) // Default to console width
+        if len(args) > 1 {
+            var w float64
+            switch v := args[1].(type) {
+            case float64:
+                w = v
+            case int:
+                w = float64(v)
+            case uint:
+                w = float64(v)
+            default:
+                w = 0
+            }
+            if w > 0 {
+                width = uint(w)
+            }
+        }
+        return wrapString(s, width), nil
+    }
+
     slhelp["stripquotes"] = LibHelp{in: "string", out: "string", action: "Remove outer quotes (double, single or backtick)"}
     stdlib["stripquotes"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("stripquotes", args, 1, "1", "string"); !ok {
@@ -579,8 +606,8 @@ func buildStringLib() {
         if ok, err := expect_args("is_utf8", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        _,width:=utf8.DecodeRune([]byte(args[0].(string)))
-        return width,nil
+        _, width := utf8.DecodeRune([]byte(args[0].(string)))
+        return width, nil
     }
 
     slhelp["lower"] = LibHelp{in: "string", out: "string", action: "Convert to lower-case."}
