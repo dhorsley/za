@@ -4,12 +4,10 @@
 package main
 
 import (
-    "bytes"
     "fmt"
     "reflect"
     "regexp"
     str "strings"
-    "unicode"
 )
 
 type tui struct {
@@ -394,115 +392,65 @@ func absClearChars(row int, col int, l int) {
     fmt.Print(str.Repeat(" ", l))
 }
 
-/* mitchell hashimoto word wrap code below, with some amendments
-    from: https://github.com/mitchellh/go-wordwrap/blob/master/wordwrap.go
-   mit licensed.
-   not likely to need an update, so just taking the func.
-   may add a left/right/full justify option to it later.
-*/
-// const nbsp = 0xA0
 const nbsp = 26 // ascii substitute char
 
 func wrapString(s string, lim uint) string {
-    // Initialize a buffer with a slightly larger size to account for breaks
-    if len(s) == 0 {
+    if len(s) == 0 || lim == 0 {
         return s
     }
 
-    init := make([]byte, 0, len(s))
-    buf := bytes.NewBuffer(init)
+    lines := str.Split(s, "\n")
+    var wrappedLines []string
 
-    var current uint
-    var wordBuf, spaceBuf bytes.Buffer
-    var wordBufLen, spaceBufLen uint
-    var truncCount int
-
-    for _, char := range s {
-        if char == '\n' {
-            if wordBuf.Len() == 0 {
-                if current+spaceBufLen > lim {
-                    current = 0
-                } else {
-                    current += spaceBufLen
-                    spaceBuf.WriteTo(buf)
-                }
-                spaceBuf.Reset()
-                spaceBufLen = 0
-            } else { // eol and word content in buffer
-
-                // end truncation bodge
-                // this is nasty, it just brutally elides sections that
-                // may lead to overspill. need to replace this entire function tbh.
-                if truncCount > 0 {
-                    if buf.Len()-truncCount > 0 {
-                        buf.Truncate(buf.Len() - truncCount)
-                        truncCount = 0
-                        buf.WriteRune('~')
-                        spaceBuf.Reset()
-                        spaceBufLen = 0
-                        wordBuf.Reset()
-                        wordBufLen = 0
-                    }
-                }
-
-                // normal operation
-                current += spaceBufLen + wordBufLen // skip position marker past accumulated stuff
-                spaceBuf.WriteTo(buf)
-                spaceBuf.Reset()
-                spaceBufLen = 0
-                wordBuf.WriteTo(buf)
-                wordBuf.Reset()
-                wordBufLen = 0
-            }
-            buf.WriteRune(char)
-            current = 0
-        } else if unicode.IsSpace(char) && char != nbsp {
-            if spaceBuf.Len() == 0 || wordBuf.Len() > 0 {
-                current += spaceBufLen + wordBufLen
-                spaceBuf.WriteTo(buf)
-                spaceBuf.Reset()
-                spaceBufLen = 0
-                wordBuf.WriteTo(buf)
-                wordBuf.Reset()
-                wordBufLen = 0
-            }
-
-            spaceBuf.WriteRune(char)
-            spaceBufLen++
-        } else {
-            if char == nbsp {
-                wordBuf.WriteRune(' ')
-            } else {
-                wordBuf.WriteRune(char)
-            }
-            wordBufLen++
-
-            if current+wordBufLen+spaceBufLen > lim {
-                if wordBufLen < lim {
-                    buf.WriteRune('\n')
-                    current = 0
-                    spaceBuf.Reset()
-                    spaceBufLen = 0
-                } else {
-                    truncCount += 1
-                }
-            }
-        }
+    for _, line := range lines {
+        wrappedLines = append(wrappedLines, wrapLine(line, lim))
     }
 
-    if wordBuf.Len() == 0 {
-        if current+spaceBufLen <= lim {
-            spaceBuf.WriteTo(buf)
-        }
-    } else {
-        spaceBuf.WriteTo(buf)
-        wordBuf.WriteTo(buf)
-    }
-
-    return buf.String()
+    return str.Join(wrappedLines, "\n")
 }
 
-/* end of theft */
+func wrapLine(line string, lim uint) string {
+    var result str.Builder
+    words := str.FieldsFunc(line, func(r rune) bool {
+        return r == ' ' || r == '\t'
+    })
+
+    currentLine := ""
+    currentVisibleLen := 0
+
+    for _, word := range words {
+        wordVisibleLen := displayedLen(word)
+
+        // Check if adding word (with space) exceeds limit
+        spaceNeeded := 0
+        if len(currentLine) > 0 {
+            spaceNeeded = 1 // Visible length of space
+        }
+
+        if currentVisibleLen+spaceNeeded+wordVisibleLen > int(lim) {
+            // Wrap: output current line
+            result.WriteString(currentLine)
+            result.WriteRune('\n')
+            currentLine = word
+            currentVisibleLen = wordVisibleLen
+        } else {
+            // Add to current line
+            if len(currentLine) > 0 {
+                currentLine += " "
+                currentVisibleLen += 1
+            }
+            currentLine += word
+            currentVisibleLen += wordVisibleLen
+        }
+    }
+
+    // Append remaining line
+    if len(currentLine) > 0 {
+        result.WriteString(currentLine)
+    }
+
+    return result.String()
+}
 
 func str_inset(n int) string {
     return sf("\033[%dG", n)
