@@ -348,6 +348,9 @@ CHANGE LOG
 
     * updated some examples, notably eg/mon to demonstrate some of the newer functions.
 
+    * (breaking) renamed all() and any() to alltrue() and anytrue().
+        - "any" conflicted with the keyword for the any type.
+
 
 1.1.9
 =====
@@ -1296,8 +1299,7 @@ CHANGE LOG
     * s3sum(filename[,blocksize]) added for calculating checksum of local file.
          - this and other *sum funcs have been moved to separate source file.
 
-    * BREAKING CHANGE!! renamed float, int, uint, bool, bigi, bigf, string functions with prefix "as_"
-        - SORRY!
+    * (breaking) renamed float, int, uint, bool, bigi, bigf, string functions with prefix "as_"
         - this was done to accommodate float, int, uint, bool, string, bigi, bigf as type keywords
 
 
@@ -1981,7 +1983,7 @@ CHANGE LOG
     * updated vim syntax file
     * added 'f' suffix on numeric literals for enforcing float type.
     * library function name review (for consistency)
-        - breaking changes: some function name changes have had underscores added/removed for consistency.
+        - (breaking) some function name changes have had underscores added/removed for consistency.
     * added expect_args() to all standard library functions where it makes sense to.
     * added { and } as outer delimiters for ENUM as well as ( and )
     * altered ENUM to accept expressions in member assignments.
@@ -2351,7 +2353,7 @@ CHANGE LOG
         * finally replaced the identifier lookups with something approaching a name
             binding scheme. the language should be somewhat faster now.
 
-            - BREAKING CHANGE: as part of this rework we have had to remove support
+            - (breaking): as part of this rework we have had to remove support
                 for l.h.s. variable interpolation. it may be re-introduced later if
                 necessary, but it will always suffer from slower relative
                 performance due to its nature.
@@ -2384,10 +2386,10 @@ CHANGE LOG
 
         DETAILS
 
-        * breaking change - renamed start() and end() to hasstart() and hasend()
-        * breaking change - adjusted some functions to return structs instead:
+        * (breaking) renamed start() and end() to hasstart() and hasend()
+        * (breaking) adjusted some functions to return structs instead:
             - dir() tokens() zainfo() web_get()
-        * breaking change - adjusted fields() to only return an array (F[])
+        * (breaking) adjusted fields() to only return an array (F[])
             - it was bogging down the var count per function when you used fields()
                 on a string with a large number of fields.
 
@@ -2559,7 +2561,7 @@ CHANGE LOG
 
         * removed deval() test function.
 
-        * breaking change - separated interpolation into { ... } for var substitution and {= ... } for evaluation.
+        * (breaking) separated interpolation into { ... } for var substitution and {= ... } for evaluation.
             * if you need to read a global variable in substitution now, you should eval {=... } instead.
                 ( or read the variable locally and substitute as normal )
 
@@ -2573,7 +2575,7 @@ CHANGE LOG
                     # {file} would be ignored.
 
 
-        * breaking change - removed ZERO, INC and DEC statements.
+        * (breaking) removed ZERO, INC and DEC statements.
             * these were becoming more troublesome than they were worth to maintain.
             * ZERO was already effectively replaced with the more flexible VAR statement.
             * commands replaced in eg/ code.
