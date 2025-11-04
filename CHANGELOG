@@ -78,7 +78,7 @@ CHANGE LOG
 
     * replaced the line wrapping function with a new version. the version handles hidden characters/ANSI better
         as well as some other edge cases.
-        - this function is exposed as wrap_string(string,wrap_length_int)
+        - this function is exposed as wrap_text(string,wrap_length_int)
 
     * table() function for formatting slices of maps/structs as, optionally ANSI-coloured, text tables.
       - Supports options for colours (using Za colour codes), table width, column widths,
