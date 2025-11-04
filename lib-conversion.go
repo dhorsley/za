@@ -433,6 +433,239 @@ func describeType(t reflect.Type) string {
     }
 }
 
+// detectSeparator attempts to auto-detect the field separator in a CSV/TSV-like string
+func detectSeparator(input string) string {
+    candidates := []string{",", "\t", "|", ";", " "}
+    allLines := strings.Split(input, "\n")
+    if len(allLines) == 0 {
+        return ","
+    }
+
+    bestSep := ","
+    bestScore := 0.0
+
+    for _, sep := range candidates {
+        // First, find max fields for this sep
+        allFieldCounts := []int{}
+        for _, line := range allLines {
+            if strings.TrimSpace(line) == "" {
+                continue
+            }
+            fields := splitWithQuotes(line, sep)
+            allFieldCounts = append(allFieldCounts, len(fields))
+        }
+        if len(allFieldCounts) == 0 {
+            continue
+        }
+        maxFields := 0
+        for _, c := range allFieldCounts {
+            if c > maxFields {
+                maxFields = c
+            }
+        }
+        // Sample lines with max fields (up to 10)
+        sampleLines := []string{}
+        for i, line := range allLines {
+            if allFieldCounts[i] == maxFields {
+                sampleLines = append(sampleLines, line)
+                if len(sampleLines) >= 10 {
+                    break
+                }
+            }
+        }
+        if len(sampleLines) == 0 {
+            continue
+        }
+        // Score on sample
+        fieldCounts := []int{}
+        totalFields := 0
+        for _, line := range sampleLines {
+            fields := splitWithQuotes(line, sep)
+            count := len(fields)
+            fieldCounts = append(fieldCounts, count)
+            totalFields += count
+        }
+        // Calculate variance
+        mean := float64(totalFields) / float64(len(fieldCounts))
+        variance := 0.0
+        for _, c := range fieldCounts {
+            variance += (float64(c) - mean) * (float64(c) - mean)
+        }
+        variance /= float64(len(fieldCounts))
+        // Score: lower variance better, bonus for more fields
+        score := 100.0 - variance + mean
+        if score > bestScore {
+            bestScore = score
+            bestSep = sep
+        }
+    }
+    return bestSep
+}
+
+// splitWithQuotes splits a string by separator, respecting quotes
+func splitWithQuotes(s, sep string) []string {
+    if sep == " " {
+        // For space, use fields to split on any whitespace (no quote handling for simplicity)
+        return strings.Fields(s)
+    }
+    var result []string
+    var current strings.Builder
+    inQuotes := false
+    quoteChar := byte(0)
+
+    for i := 0; i < len(s); i++ {
+        c := s[i]
+        if !inQuotes && (c == '"' || c == '\'') {
+            inQuotes = true
+            quoteChar = c
+        } else if inQuotes && c == quoteChar {
+            inQuotes = false
+            quoteChar = 0
+        } else if !inQuotes && strings.HasPrefix(s[i:], sep) {
+            result = append(result, current.String())
+            current.Reset()
+            i += len(sep) - 1
+            continue
+        }
+        current.WriteByte(c)
+    }
+    result = append(result, current.String())
+    return result
+}
+
+// parseTableString parses a string into [][]any
+func parseTableString(input string, options map[string]any) [][]any {
+    detectSep := true
+    if d, ok := options["detect_sep"].(bool); ok {
+        detectSep = d
+    }
+
+    sep := ","
+    if s, ok := options["separator"].(string); ok {
+        sep = s
+    } else if detectSep {
+        sep = detectSeparator(input)
+    }
+
+    lines := strings.Split(input, "\n")
+    var rows [][]any
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
+        fields := splitWithQuotes(line, sep)
+        row := make([]any, len(fields))
+        for i, f := range fields {
+            row[i] = strings.TrimSpace(f)
+        }
+        rows = append(rows, row)
+    }
+
+    // Pad rows to max columns with empty strings
+    if len(rows) > 0 {
+        maxCols := 0
+        for _, row := range rows {
+            if len(row) > maxCols {
+                maxCols = len(row)
+            }
+        }
+        for i, row := range rows {
+            for len(row) < maxCols {
+                row = append(row, "")
+            }
+            rows[i] = row
+        }
+    }
+
+    return rows
+}
+
+// applyFiltering filters [][]any based on show_only_ordered and hide
+func applyFiltering(rows [][]any, options map[string]any) [][]any {
+    if len(rows) == 0 {
+        return rows
+    }
+
+    maxCols := len(rows[0])
+
+    showOnlyOrdered := false
+    if soo, ok := options["show_only_ordered"].(bool); ok {
+        showOnlyOrdered = soo
+    }
+
+    var columnOrder []string
+    if co, ok := options["column_order"].([]any); ok {
+        for _, c := range co {
+            if s, ok := c.(string); ok {
+                columnOrder = append(columnOrder, s)
+            }
+        }
+    }
+
+    var hide []string
+    if h, ok := options["hide"].([]any); ok {
+        for _, item := range h {
+            if s, ok := item.(string); ok {
+                hide = append(hide, s)
+            }
+        }
+    }
+
+    if (showOnlyOrdered && len(columnOrder) > 0) || len(hide) > 0 {
+        // Generate column names
+        colNames := make([]string, maxCols)
+        for i := 0; i < maxCols; i++ {
+            colNames[i] = sf("Col%d", i+1)
+        }
+
+        // Determine indices to keep
+        keepIndices := []int{}
+        if showOnlyOrdered && len(columnOrder) > 0 {
+            // Only ordered columns
+            for _, col := range columnOrder {
+                for i, name := range colNames {
+                    if name == col {
+                        keepIndices = append(keepIndices, i)
+                        break
+                    }
+                }
+            }
+        } else {
+            // All columns
+            for i := 0; i < maxCols; i++ {
+                keepIndices = append(keepIndices, i)
+            }
+        }
+
+        // Remove hidden
+        if len(hide) > 0 {
+            hideMap := make(map[string]bool)
+            for _, h := range hide {
+                hideMap[h] = true
+            }
+            filtered := []int{}
+            for _, idx := range keepIndices {
+                if !hideMap[colNames[idx]] {
+                    filtered = append(filtered, idx)
+                }
+            }
+            keepIndices = filtered
+        }
+
+        // Filter rows
+        for i, row := range rows {
+            newRow := make([]any, len(keepIndices))
+            for j, idx := range keepIndices {
+                newRow[j] = row[idx]
+            }
+            rows[i] = newRow
+        }
+    }
+
+    return rows
+}
+
 func toTable(data any, options map[string]any) string {
     // Parse options
     colors := map[string]string{}
@@ -488,64 +721,129 @@ func toTable(data any, options map[string]any) string {
         truncate = t
     }
 
+    showOnlyOrdered := false
+    if soo, ok := options["show_only_ordered"].(bool); ok {
+        showOnlyOrdered = soo
+    }
+
+    var hide []string
+    if h, ok := options["hide"].([]any); ok {
+        for _, item := range h {
+            if s, ok := item.(string); ok {
+                hide = append(hide, s)
+            }
+        }
+    }
+
     // Extract columns and rows
     var columns []string
     var rows []map[string]any
     var defaultStructColumns []string
     var isStruct bool
 
-    v := reflect.ValueOf(data)
-    switch v.Kind() {
-    case reflect.Slice: // must be of map or of struct
+    // Handle [][]any (parsed table data)
+    if tableData, ok := data.([][]any); ok {
+        hasHeaders := false
+        if h, ok := options["has_headers"].(bool); ok {
+            hasHeaders = h
+        }
 
-        if v.Len() == 0 {
+        if len(tableData) == 0 {
             return ""
         }
-        elem := v.Index(0)
 
-        if elem.Kind() == reflect.Interface {
-            elem = elem.Elem()
-        }
-
-        if elem.Kind() == reflect.Map || elem.Kind() == reflect.Struct {
-            seen := make(map[string]bool)
-            for i := 0; i < v.Len(); i++ {
-                vi := v.Index(i)
-                var m map[string]any
-                if elem.Kind() == reflect.Struct {
-                    // create a default column ordering
-                    if i == 0 {
-                        rt := elem.Type()
-                        for fpos := 0; fpos < rt.NumField(); fpos++ {
-                            defaultStructColumns = append(defaultStructColumns, rt.Field(fpos).Name)
-                        }
-                        isStruct = true
-                    }
-                    // then convert to an unordered map
-                    m = s2m(vi.Interface())
-                } else {
-                    m = vi.Interface().(map[string]any)
+        var headerRow []any
+        var dataRows [][]any
+        if hasHeaders && len(tableData) > 0 {
+            headerRow = tableData[0]
+            dataRows = tableData[1:]
+        } else {
+            dataRows = tableData
+            // Generate headers
+            maxCols := 0
+            for _, row := range dataRows {
+                if len(row) > maxCols {
+                    maxCols = len(row)
                 }
-                for k := range m {
-                    if !seen[k] {
-                        seen[k] = true
-                        columns = append(columns, k)
-                    }
-                }
-                // populate
-                row := m
-                rows = append(rows, row)
+            }
+            headerRow = make([]any, maxCols)
+            for i := 0; i < maxCols; i++ {
+                headerRow[i] = sf("Col%d", i+1)
             }
         }
-    case reflect.Map:
-        // Single map as one row
-        m := data.(map[string]any)
-        for k := range m {
-            columns = append(columns, k)
+
+        // Convert to []map[string]any
+        for _, row := range dataRows {
+            m := make(map[string]any)
+            for i, val := range row {
+                if i < len(headerRow) {
+                    key := sf("%v", headerRow[i])
+                    m[key] = val
+                }
+            }
+            rows = append(rows, m)
         }
-        rows = append(rows, m)
-    default:
-        return sf("%v", data)
+
+        // Set columns from headerRow
+        for _, h := range headerRow {
+            columns = append(columns, sf("%v", h))
+        }
+
+        // Skip the reflect switch
+    } else {
+        v := reflect.ValueOf(data)
+        switch v.Kind() {
+        case reflect.Slice: // must be of map or of struct
+
+            if v.Len() == 0 {
+                return ""
+            }
+            elem := v.Index(0)
+
+            if elem.Kind() == reflect.Interface {
+                elem = elem.Elem()
+            }
+
+            if elem.Kind() == reflect.Map || elem.Kind() == reflect.Struct {
+                seen := make(map[string]bool)
+                for i := 0; i < v.Len(); i++ {
+                    vi := v.Index(i)
+                    var m map[string]any
+                    if elem.Kind() == reflect.Struct {
+                        // create a default column ordering
+                        if i == 0 {
+                            rt := elem.Type()
+                            for fpos := 0; fpos < rt.NumField(); fpos++ {
+                                defaultStructColumns = append(defaultStructColumns, rt.Field(fpos).Name)
+                            }
+                            isStruct = true
+                        }
+                        // then convert to an unordered map
+                        m = s2m(vi.Interface())
+                    } else {
+                        m = vi.Interface().(map[string]any)
+                    }
+                    for k := range m {
+                        if !seen[k] {
+                            seen[k] = true
+                            columns = append(columns, k)
+                        }
+                    }
+                    // populate
+                    row := m
+                    rows = append(rows, row)
+                }
+            }
+        case reflect.Map:
+            // Single map as one row
+            m := data.(map[string]any)
+            for k := range m {
+                columns = append(columns, k)
+            }
+            rows = append(rows, m)
+        default:
+            return sf("%v", data)
+        }
     }
 
     // Apply column_order if provided
@@ -556,17 +854,37 @@ func toTable(data any, options map[string]any) string {
                 newColumns = append(newColumns, s)
             }
         }
-        // Add any missing columns
-        seen := make(map[string]bool)
-        for _, c := range newColumns {
-            seen[c] = true
+        if showOnlyOrdered {
+            // Only show ordered columns
+            columns = newColumns
+        } else {
+            // Add any missing columns
+            seen := make(map[string]bool)
+            for _, c := range newColumns {
+                seen[c] = true
+            }
+            for _, c := range columns {
+                if !seen[c] {
+                    newColumns = append(newColumns, c)
+                }
+            }
+            columns = newColumns
+        }
+    }
+
+    // Apply hide
+    if len(hide) > 0 {
+        filteredColumns := []string{}
+        hideMap := make(map[string]bool)
+        for _, h := range hide {
+            hideMap[h] = true
         }
         for _, c := range columns {
-            if !seen[c] {
-                newColumns = append(newColumns, c)
+            if !hideMap[c] {
+                filteredColumns = append(filteredColumns, c)
             }
         }
-        columns = newColumns
+        columns = filteredColumns
     } else {
         if isStruct {
             // apply the struct field order we collated earlier
@@ -1273,7 +1591,7 @@ func buildConversionLib() {
         return pp(input, maxDepth, indent)
     }
 
-    slhelp["table"] = LibHelp{in: "data, [options]", out: "string", action: `Convert a slice of maps or structs to a text table. Options: map(.colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
+    slhelp["table"] = LibHelp{in: "data, [options]", out: "string or [][]any", action: `Convert a slice of maps/structs to a text table, or parse a string to structured data. If data is string, parses it. Options: .parse_only true (return [][]any), .has_headers false, .detect_sep true, .separator ",", .hide ["field1"], .show_only_ordered true, plus table options: .colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
     stdlib["table"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("table", args, 2,
             "1", "any",
@@ -1286,6 +1604,22 @@ func buildConversionLib() {
 
         if len(args) > 1 {
             options = args[1].(map[string]any)
+        }
+
+        // If data is string, parse it
+        if s, ok := data.(string); ok {
+            parsed := parseTableString(s, options)
+            data = parsed
+        }
+
+        // Check if parse_only is set
+        if po, ok := options["parse_only"].(bool); ok && po {
+            if tableData, ok := data.([][]any); ok {
+                filtered := applyFiltering(tableData, options)
+                return filtered, nil
+            }
+            // If not [][]any, return as is
+            return data, nil
         }
 
         return sparkle(toTable(data, options)), nil
@@ -1527,7 +1861,7 @@ func buildConversionLib() {
         if ok, err := expect_args("md2ansi", args, 1, "1", "string"); !ok {
             return nil, err
         }
-        return "\n"+md2ansi(args[0].(string))+"\n", nil
+        return "\n" + md2ansi(args[0].(string)) + "\n", nil
     }
 
 }

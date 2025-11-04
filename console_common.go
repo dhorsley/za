@@ -302,7 +302,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         clearWidth = width - gicol
     }
 
-    fmt.Printf(sparkle(pcol))
+    fmt.Print(sparkle(pcol))
     clearChars(girow, gicol, clearWidth)
     for {
 
@@ -335,19 +335,19 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         lastsrow = srow
 
         // shift positions if inside low-end context help
-        if startedContextHelp && srow>MH-HELP_SIZE {
-            srow-=HELP_SIZE
+        if startedContextHelp && srow > MH-HELP_SIZE {
+            srow -= HELP_SIZE
         }
 
         // print prompt
         at(srow, scol)
-        fmt.Printf(sparkle(sprompt))
+        fmt.Print(sparkle(sprompt))
 
         irow = srow + (int(scol+promptL-1) / MW)
         icol = ((scol + promptL - 1) % MW) + 1
 
         // change input colour
-        fmt.Printf(sparkle(pcol))
+        fmt.Print(sparkle(pcol))
 
         cursAtCol := ((icol + inputL - 1) % MW) + 1
         rowLen = int(icol+inputL-1) / MW
@@ -368,7 +368,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 }
             }
         } else {
-            fmt.Printf(str.Repeat(mask, inputL))
+            fmt.Print(str.Repeat(mask, inputL))
         }
         if startedContextHelp {
             for i := irow + 1 + rowLen; i <= irow+HELP_SIZE; i += 1 {
@@ -376,7 +376,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 clearToEOL()
             }
             at(irow+1, 1)
-            fmt.Printf(sparkle(helpstring))
+            fmt.Print(sparkle(helpstring))
         }
 
         // move cursor to correct position (cpos)
@@ -923,12 +923,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     if !startedContextHelp {
                         funcnames = nil
 
-                        if irow>MH-1 {
-                            for i:=srow; i<irow+HELP_SIZE;i++ {
-                                at(MH+1,1); fmt.Println()
+                        if irow > MH-1 {
+                            for i := srow; i < irow+HELP_SIZE; i++ {
+                                at(MH+1, 1)
+                                fmt.Println()
                             }
-                            srow=srow-HELP_SIZE
-                            irow=irow-HELP_SIZE
+                            srow = srow - HELP_SIZE
+                            irow = irow - HELP_SIZE
                         }
 
                         startedContextHelp = true
@@ -1191,25 +1192,25 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
     }
 
     if echo.(bool) {
-        fmt.Printf(sparkle(pcol))
+        fmt.Print(sparkle(pcol))
         clearWidth := 0
         if width-scol >= 0 {
             clearWidth = width - scol
         }
         clearChars(srow, scol, clearWidth)
         at(srow, scol)
-        fmt.Printf(sparkle(sprompt))
+        fmt.Print(sparkle(sprompt))
         fmt.Print(string(s))
     }
 
     lineWrap = old_wrap
 
-    inputL  := displayedLen(string(s))
+    inputL := displayedLen(string(s))
     promptL := displayedLen(sprompt)
-    dispL   := promptL + inputL
-    rowLen   = int(dispL) / MW
-    row     += rowLen + 1
-    at(row,1)
+    dispL := promptL + inputL
+    rowLen = int(dispL) / MW
+    row += rowLen + 1
+    at(row, 1)
     return string(s), eof, broken
 }
 
@@ -1800,7 +1801,7 @@ func pf(s string, va ...any) {
             chpos++
         }
 
-        col=c
+        col = c
         return
     }
 
@@ -1826,7 +1827,7 @@ func pf(s string, va ...any) {
         }
         chpos++
     }
-    col=c
+    col = c
     atlock.Unlock()
 }
 
