@@ -1548,9 +1548,9 @@ func buildListLib() {
     }
 
     // all(l) returns bool true if a[:] all true (&&)
-    slhelp["all"] = LibHelp{in: "bool_list", out: "bool", action: "Returns true if all items in [#i1]bool_list[#i0] evaluate to true."}
-    stdlib["all"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("all", args, 1, "1", "[]bool"); !ok {
+    slhelp["alltrue"] = LibHelp{in: "[]bool", out: "bool", action: "Returns true if all items in [#i1][]bool[#i0] evaluate to true."}
+    stdlib["alltrue"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("alltrue", args, 1, "1", "[]bool"); !ok {
             return nil, err
         }
         for _, v := range args[0].([]bool) {
@@ -1562,9 +1562,9 @@ func buildListLib() {
     }
 
     // any(l) returns bool true if a[:] any true (||)
-    slhelp["any"] = LibHelp{in: "list", out: "boolean", action: "Returns true if any item in [#i1]list[#i0] evaluates to true."}
-    stdlib["any"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("any", args, 1, "1", "[]bool"); !ok {
+    slhelp["anytrue"] = LibHelp{in: "[]bool", out: "boolean", action: "Returns true if any item in [#i1][]bool[#i0] evaluates to true."}
+    stdlib["anytrue"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("anytrue", args, 1, "1", "[]bool"); !ok {
             return nil, err
         }
         for _, v := range args[0].([]bool) {
