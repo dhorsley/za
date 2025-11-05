@@ -229,10 +229,12 @@ macro +cpu          `
 
 macro +backtick "`"
 
+macro  +w `${w} . lines("1:") . table ( map(.has_headers true, .colours map(.header "[#2]",.data "[#6]") ) )`
+
 macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
     model="llama-3.3-70b"
-    maxtokens=500
+    maxtokens=1000
     data=#backtick{
             "model":"{model}",
             "stream":false,
@@ -250,7 +252,7 @@ macro +ask(query,ask_rv) `
         parsed=json_decode(result[0])
         value=parsed.choices[0].message.content.md2ansi
         if "$ask_rv" == ""
-            println value
+            println value.wrap_text
         else
             $ask_rv = value
         endif
