@@ -217,7 +217,8 @@ macro +ml           `macro list`
 macro +v(path)      `"nvim $path".nocap.code`
 macro +wget         `wget -c`
 macro +cdl(dirname) `_=cd("$dirname"); "eza {opt_icon}".nocap.out`
-macro +nic          `net_interfaces_detailed().table(map(.colours map(.header "[#2]",.data "[#6]")))`
+
+macro +nic          `net_interfaces_detailed().table(map(.colours map(.header "[#2]",.data "[#6]"),.border_style "unicode"))`
 macro +cpu          `
                     unset data
                     var data []
@@ -225,11 +226,10 @@ macro +cpu          `
                         c.core=key_c
                         _=append_to(ref data,c)
                     endfor
-                    println data.table(map(.colours map(.header "[#2]",.data "[#6]")))`
+                    println data.table(map(.colours map(.header "[#2]",.data "[#6]"),.border_style "unicode"))`
+macro  +w `${w} . lines("1:") . table ( map(.has_headers true, .colours map(.header "[#2]",.data "[#6]"),.border_style "unicode" ) )`
 
 macro +backtick "`"
-
-macro  +w `${w} . lines("1:") . table ( map(.has_headers true, .colours map(.header "[#2]",.data "[#6]") ) )`
 
 macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
