@@ -902,7 +902,7 @@ Available commands:
 [#5]END[#-]                                             - end a function definition.
 [#5]ASYNC [#i1]handle_map f(...)[#i0] [[#i1]handle_id[#i0]][#-]             - run a function asynchronously.
 [#5]SHOWDEF[#-]                                         - list function definitions.
-[#5]MACRO [!] [-+] name `+"`value`"+` | macro [!] - [name][#-]- add/remove/clear macro definitions
+[#5]MACRO [!] [-+] name ` + "`value`" + ` | macro [!] - [name][#-]- add/remove/clear macro definitions
 [#5]MACRO LIST[#-]                                      - list macro definitions
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
 [#4]IF [#i1]condition[#i0][#-] ... [#4]ELSE[#-] ... [#4]ENDIF[#-]                 - conditional execution.
@@ -1724,6 +1724,8 @@ func unquote(arg string) string {
 
 // substitute replaces $param with unquoted arg in template
 func substitute(template string, params, args []string) string {
+    // pf("substitute called. template: '%s' params %#v args %#v\n", template, params, args)
+
     result := template
     for i, p := range params {
         result = str.ReplaceAll(result, "$"+p, unquote(args[i]))
@@ -1784,10 +1786,12 @@ func macroExpand(input string) string {
                             // check for (
                             if j < len(input) && input[j] == '(' {
                                 args, end := parseArgs(input, j)
+                                // pf("produced args: %#v\n", args)
                                 if end > j {
                                     // Expand macros in args before substitution
                                     for k := range args {
                                         args[k] = macroExpand(args[k])
+                                        // pf("macroExpand produced: %#v\n", args[k])
                                     }
                                     // Handle varargs
                                     if def.HasVarargs {
@@ -1797,20 +1801,24 @@ func macroExpand(input string) string {
                                             continue
                                         }
                                         varargs := args[len(def.Params)-1:]
+                                        // pf("read varargs: %#v\n", varargs)
                                         args = args[:len(def.Params)-1]
                                         formattedArgs := make([]string, len(varargs))
                                         for k, a := range varargs {
                                             formattedArgs[k] = formatArg(a)
                                         }
                                         varargsStr := "[" + str.Join(formattedArgs, ",") + "]"
+                                        // pf("generated varargs string: %#v\n", varargsStr)
                                         args = append(args, varargsStr)
                                     }
                                     if len(args) <= len(def.Params) {
                                         // Pad missing args with empty strings
+                                        padded := false
                                         for len(args) < len(def.Params) {
                                             args = append(args, "")
+                                            padded = true
                                         }
-                                        if def.HasVarargs {
+                                        if padded && def.HasVarargs {
                                             args[len(args)-1] = "[]"
                                         }
                                         expanded = substitute(def.Template, def.Params, args)
@@ -1873,11 +1881,12 @@ func parseMacroName(name string) (string, []string, bool) {
         return name, nil, false
     }
     base := name[:idx]
-    paramsStr := name[idx+1:]
-    if !str.HasSuffix(paramsStr, ")") {
+    if !str.HasSuffix(name, ")") {
         return name, nil, false // invalid, return as is
     }
-    paramsStr = paramsStr[:len(paramsStr)-1]
+    paramsStr := name[idx:]
+    paramsStr = strings.TrimPrefix(paramsStr, "(")
+    paramsStr = strings.TrimSuffix(paramsStr, ")")
     if paramsStr == "" {
         return base, []string{}, false
     }

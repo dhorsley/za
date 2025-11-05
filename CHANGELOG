@@ -67,8 +67,11 @@ CHANGE LOG
 
     * (experimental):
         - added support for sqlite3 db format on local paths
-        - this may be removed later as it adds 4MB to the binary size.
         - see eg/dblite for example script.
+        - this may be removed later as it adds 4MB to the binary size.
+            - build using strip and upx options to alleviate this, e.g.;-
+              ./build [target_type] strip upx
+                # target type may be glibc (default) | arch | bsd | alpine
 
     * added has_privileges(): checks for root/sudo level active user
     * added maxuint()       : for checking sentinel values (uint64)
@@ -83,6 +86,7 @@ CHANGE LOG
     * table() function for formatting slices of maps/structs as, optionally ANSI-coloured, text tables.
       - Supports options for colours (using Za colour codes), table width, column widths,
          alignment, headers, border styles (ASCII/Unicode), truncation, and custom column ordering
+
       - Examples:
           table(data, map(.colours map(.header "[#2]"), .column_order ["name", "age"]))
           cpu_info(). s2m. table(map(.truncate true, .column_widths map(.Model 40,.Usage 60,.LoadAverage 20), .column_order ["Model","Cores","Threads","LoadAverage","Usage"] ))
