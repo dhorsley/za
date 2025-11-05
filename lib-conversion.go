@@ -950,6 +950,10 @@ func toTable(data any, options map[string]any) string {
             "horizontal":  "-",
             "vertical":    "|",
             "cross":       "+",
+            "crosstop":    "+",
+            "crossbottom": "+",
+            "crossleft":   "+",
+            "crossright":  "+",
         },
         "unicode": {
             "topLeft":     "┌",
@@ -959,6 +963,10 @@ func toTable(data any, options map[string]any) string {
             "horizontal":  "─",
             "vertical":    "│",
             "cross":       "┼",
+            "crosstop":    "┬",
+            "crossbottom": "┴",
+            "crossleft":   "├",
+            "crossright":  "┤",
         },
     }
 
@@ -971,7 +979,7 @@ func toTable(data any, options map[string]any) string {
             buf.WriteString(bc["horizontal"])
         }
         if i < len(widths)-1 {
-            buf.WriteString(bc["cross"])
+            buf.WriteString(bc["crosstop"])
         }
     }
     buf.WriteString(bc["topRight"])
@@ -1002,7 +1010,7 @@ func toTable(data any, options map[string]any) string {
         buf.WriteString("\n")
 
         // Separator
-        buf.WriteString(bc["cross"])
+        buf.WriteString(bc["crossleft"])
         for i, w := range widths {
             for j := 0; j < w+2; j++ {
                 buf.WriteString(bc["horizontal"])
@@ -1011,7 +1019,7 @@ func toTable(data any, options map[string]any) string {
                 buf.WriteString(bc["cross"])
             }
         }
-        buf.WriteString(bc["cross"])
+        buf.WriteString(bc["crossright"])
         buf.WriteString("\n")
     }
 
@@ -1047,7 +1055,7 @@ func toTable(data any, options map[string]any) string {
             buf.WriteString(bc["horizontal"])
         }
         if i < len(widths)-1 {
-            buf.WriteString(bc["cross"])
+            buf.WriteString(bc["crossbottom"])
         }
     }
     buf.WriteString(bc["bottomRight"])
