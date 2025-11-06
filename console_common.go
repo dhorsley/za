@@ -293,6 +293,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
     var srow, scol int // the start of input, including prompt position
     var irow, icol int // current start of input position
     var rowLen int
+    var completion_count int
+
 
     irow = srow
     lastsrow := girow
@@ -921,9 +923,10 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 // completion hinting setup
                 if hintEnable {
                     if !startedContextHelp {
+                        completion_count+=1
                         funcnames = nil
 
-                        if irow > MH-1 {
+                        if irow > MH-1 && completion_count==1 {
                             for i := srow; i < irow+HELP_SIZE; i++ {
                                 at(MH+1, 1)
                                 fmt.Println()
