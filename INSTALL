@@ -35,7 +35,7 @@ PREREQUISITES
     - these are not installed by default in Arch/Alpine so are
       not present in those build versions.
   - sqlite3 dev/header files
-    - this db engine is not currently supported in Arch as 
+    - this db engine is not currently supported in Arch as
        you need to use the alpine build which disables CGO.
 
 For debian, redhat and similar builds as well as FreeBSD and similar you
@@ -63,12 +63,25 @@ If the rebuild fails, then run go build za for better output.
 the language version number will not appear at run-time unless compiled using the "build" script
 
 
-To cross-compile for Arch/Alpine (default):
--------------------------------------------
+To cross-compile for Alpine (default):
+--------------------------------------
 
   ./build alpine [upx] [strip]
 
 If you have UPX installed then the upx option above can be used to compress the binary for docker builds.
+
+
+To compile for Arch:
+--------------------
+
+./build arch strip upx
+
+
+Note: The default in most cases should be to use the strip and upx options for most linux/bsd platforms.
+       This takes the installable binary size down to a much smaller artifact size for distribution, which
+       is possibly going to be a container in many cases. It makes more sense to compact the binary and let
+       the operating system take care of caching it if called multiple times than it does to inflate
+       container sizes for the sake of a milliseconds faster interpreter startup.
 
 
 To cross-compile for Windows:
@@ -96,7 +109,7 @@ To compile on FreeBSD:
   ./build
 
 The OS should be detected by the build script. You should still do your initial build using the first
-install instructions above.
+install instructions above. you can add the bsd option if it is not auto-detected.
 
 
 
