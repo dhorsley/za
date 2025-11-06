@@ -435,7 +435,7 @@ func describeType(t reflect.Type) string {
 
 // detectSeparator attempts to auto-detect the field separator in a CSV/TSV-like string
 func detectSeparator(input string) string {
-    candidates := []string{",", "\t", "|", ";", " "}
+    candidates := []string{",", "\t", ":", "|", ";", " "}
     allLines := strings.Split(input, "\n")
     if len(allLines) == 0 {
         return ","
