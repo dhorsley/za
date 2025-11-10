@@ -218,7 +218,12 @@ macro +v(path)      `"nvim $path".nocap.code`
 macro +wget         `wget -c`
 macro +cdl(dirname) `_=cd("$dirname"); "eza {opt_icon}".nocap.out`
 
-macro +nic          `net_interfaces_detailed().table(map(.colours map(.header "[#2]",.data "[#6]"),.border_style "unicode"))`
+macro +nic          `net_interfaces_detailed().table(map(
+                        .colours map(.header "[#2]",.data "[#6]"),
+                        .border_style "unicode",
+                        .column_order ["index","up","name","hardware","ips","mtu"]
+                        ))`
+
 macro +cpu          `
                     unset data
                     var data []
