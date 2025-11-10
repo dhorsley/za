@@ -1331,7 +1331,7 @@ func main() {
         } else {
             // banner
             title := sparkle("Za Interactive Mode")
-            pf("\n%s", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
+            pf("\n%s\n", sparkle("[#bold][#ul][#6]"+title+"[#-][##]"))
             row += 2
         }
 

@@ -2929,11 +2929,6 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
         return s
     }
 
-    // Fallback to manual scan if string is larger than 250 KB
-    if len(s) > 250*1024 {
-        return manualInterpolate(ns, fs, ident, s)
-    }
-
     orig := s
     r := regexp.MustCompile(`{([^{}]*)}`)
 
@@ -3034,54 +3029,6 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
     return s
 }
 
-// fallback manual interpolation for large strings
-func manualInterpolate(ns string, fs uint32, ident *[]Variable, s string) string {
-    orig := s
-    var interparse *leparser
-    interparse = &leparser{}
-    interparse.fs = fs
-    interparse.ident = ident
-    interparse.interpolating = true
-    interparse.namespace = ns
-    interparse.ctx = withProfilerContext(context.Background())
-
-    if interactive {
-        interparse.mident = 1
-    } else {
-        interparse.mident = 2
-    }
-
-    for {
-        start := str.IndexByte(s, '{')
-        if start == -1 {
-            break
-        }
-        end := str.IndexByte(s[start:], '}')
-        if end == -1 {
-            break
-        }
-        end += start
-        segment := s[start+1 : end]
-        if len(segment) > 0 && segment[0] == '=' {
-            if aval, err := ev(interparse, fs, segment[1:]); err == nil {
-                s = s[:start] + sf("%v", aval) + s[end+1:]
-            } else {
-                s = s[:start] + s[end+1:]
-            }
-        } else {
-            if kv, there := vget(nil, fs, ident, segment); there {
-                s = s[:start] + sf("%v", kv) + s[end+1:]
-            } else {
-                s = s[:start] + s[end+1:]
-            }
-        }
-    }
-
-    if s == "<nil>" {
-        s = orig
-    }
-    return s
-}
 
 // evaluate an expression string
 func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
