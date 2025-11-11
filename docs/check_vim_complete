@@ -37,7 +37,7 @@ if ! diff.okay
       println "Missing functions:"
       foreach l in diff.out.tr("s","\t\ ")
         l.fields
-        if F.len>2 and F[2]=="<" 
+        if F.len>2 and F[2]=="<"
           println `syntax match auto_functions "\(^|.\|\s*\){=$st F[1]}\s*("he=e-1`
         endif
       endfor
