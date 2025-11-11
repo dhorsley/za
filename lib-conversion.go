@@ -847,29 +847,40 @@ func toTable(data any, options map[string]any) string {
     }
 
     // Apply column_order if provided
-    if co, ok := options["column_order"].([]any); ok {
-        newColumns := []string{}
-        for _, c := range co {
-            if s, ok := c.(string); ok {
-                newColumns = append(newColumns, s)
+    var co []any
+    var ok bool
+    if _,ok=options["column_order"].([]string); ok {
+        co=make([]any,len(options["column_order"].([]string)))
+        for i,v:=range options["column_order"].([]string) {
+            co[i]=v
+        } 
+    } else {
+        if co,ok=options["column_order"].([]any); !ok {
+            co=make([]any,0,0)
+        }
+    }
+
+    newColumns := []string{}
+    for _, c := range co {
+        if s, ok := c.(string); ok {
+            newColumns = append(newColumns, s)
+        }
+    }
+    if showOnlyOrdered {
+        // Only show ordered columns
+        columns = newColumns
+    } else {
+        // Add any missing columns
+        seen := make(map[string]bool)
+        for _, c := range newColumns {
+            seen[c] = true
+        }
+        for _, c := range columns {
+            if !seen[c] {
+                newColumns = append(newColumns, c)
             }
         }
-        if showOnlyOrdered {
-            // Only show ordered columns
-            columns = newColumns
-        } else {
-            // Add any missing columns
-            seen := make(map[string]bool)
-            for _, c := range newColumns {
-                seen[c] = true
-            }
-            for _, c := range columns {
-                if !seen[c] {
-                    newColumns = append(newColumns, c)
-                }
-            }
-            columns = newColumns
-        }
+        columns = newColumns
     }
 
     // Apply hide
