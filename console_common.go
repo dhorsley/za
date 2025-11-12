@@ -606,7 +606,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         }
 
                         // Clear the entire input line and show search prompt
-                        clearChars(irow, icol, inputL)
+                        clearChars(irow, icol, len(s))
                         // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
                         if remainingWidth > inputL {
@@ -641,7 +641,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 if startedContextHelp {
                     contextHelpSelected = true
-                    clearChars(irow, icol, inputL)
+                    clearChars(irow, icol, len(s))
                     for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
@@ -714,13 +714,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             case bytes.Equal(c, []byte{11}): // ctrl-k
                 s = s[:cpos]
                 wordUnderCursor, _ = getWord(s, cpos)
-                clearChars(irow, icol, inputL)
+                clearChars(irow, icol, len(s))
 
             case bytes.Equal(c, []byte{21}): // ctrl-u
                 s = removeAllBefore(s, cpos)
                 cpos = 0
                 wordUnderCursor, _ = getWord(s, cpos)
-                clearChars(irow, icol, inputL)
+                clearChars(irow, icol, len(s))
 
             case bytes.Equal(c, []byte{127}): // backspace
 
@@ -749,7 +749,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 if cpos < len(s) {
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor, _ = getWord(s, cpos)
-                    clearChars(irow, icol, displayedLenUtf8(s)+1)
+                    clearChars(irow, icol, len(s))
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
@@ -798,7 +798,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             curHist = lastHist
                             orig_s = s
                         }
-                        clearChars(irow, icol, inputL)
+                        clearChars(irow, icol, len(s))
                         if curHist > 0 {
                             curHist--
                             s = []rune(hist[curHist])
@@ -896,7 +896,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 if histEnable {
                     if navHist {
-                        clearChars(irow, icol, inputL)
+                        clearChars(irow, icol, len(s))
                         if curHist < lastHist-1 {
                             curHist++
                             s = []rune(hist[curHist])
