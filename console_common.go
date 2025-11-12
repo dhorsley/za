@@ -738,7 +738,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     s = removeBefore(s, cpos)
                     cpos--
                     wordUnderCursor, _ = getWord(s, cpos)
-                    clearChars(irow, icol, inputL)
+                    clearChars(irow, icol, len(s)) // PIG inputL)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
@@ -809,8 +809,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         if rowLen > 0 {
                             irow -= rowLen
                         }
-                        if curHist != lastHist {
-                        }
+                        //if curHist != lastHist {
+                        //}
                     }
                 }
 
@@ -906,8 +906,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         }
                         cpos = len(s)
                         wordUnderCursor, _ = getWord(s, cpos)
-                        if curHist != lastHist {
-                        }
+                        //if curHist != lastHist {
+                        //}
                     }
                 }
 
