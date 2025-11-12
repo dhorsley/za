@@ -739,7 +739,7 @@ func toTable(data any, options map[string]any) string {
     var columns []string
     var rows []map[string]any
     var defaultStructColumns []string
-    var isStruct bool
+    // var isStruct bool
 
     // Handle [][]any (parsed table data)
     if tableData, ok := data.([][]any); ok {
@@ -816,7 +816,7 @@ func toTable(data any, options map[string]any) string {
                             for fpos := 0; fpos < rt.NumField(); fpos++ {
                                 defaultStructColumns = append(defaultStructColumns, rt.Field(fpos).Name)
                             }
-                            isStruct = true
+                            // isStruct = true
                         }
                         // then convert to an unordered map
                         m = s2m(vi.Interface())
@@ -866,6 +866,7 @@ func toTable(data any, options map[string]any) string {
             newColumns = append(newColumns, s)
         }
     }
+
     if showOnlyOrdered {
         // Only show ordered columns
         columns = newColumns
@@ -896,12 +897,13 @@ func toTable(data any, options map[string]any) string {
             }
         }
         columns = filteredColumns
-    } else {
+    } /* else {
         if isStruct {
             // apply the struct field order we collated earlier
             columns = defaultStructColumns
         }
     }
+    */
 
     // Calculate widths
     widths := make([]int, len(columns))
