@@ -747,9 +747,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     defaultString = []rune{}
                 }
                 if cpos < len(s) {
+                    clearChars(irow, icol, len(s))
                     s = removeBefore(s, cpos+1)
                     wordUnderCursor, _ = getWord(s, cpos)
-                    clearChars(irow, icol, len(s))
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT

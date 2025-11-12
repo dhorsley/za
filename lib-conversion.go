@@ -206,7 +206,7 @@ func convertValue(value any, targetTypeStr string) (any, error) {
 
 // Helper function for pretty printing
 func pp(input any, maxDepth int, indent string) (string, error) {
-    // Define color codes using ZA's sparkle system
+    // Define colour codes using ZA's sparkle system
     colours := map[string]string{
         "key":         "[#5]", // map keys
         "string":      "[#4]", // string values
@@ -668,17 +668,17 @@ func applyFiltering(rows [][]any, options map[string]any) [][]any {
 
 func toTable(data any, options map[string]any) string {
     // Parse options
-    colors := map[string]string{}
-    var colorOpt map[string]any
+    colours := map[string]string{}
+    var colourOpt map[string]any
     if c, ok := options["colors"].(map[string]any); ok {
-        colorOpt = c
+        colourOpt = c
     } else if c, ok := options["colours"].(map[string]any); ok {
-        colorOpt = c
+        colourOpt = c
     }
-    if colorOpt != nil {
-        for k, v := range colorOpt {
+    if colourOpt != nil {
+        for k, v := range colourOpt {
             if s, ok := v.(string); ok {
-                colors[k] = s
+                colours[k] = s
             }
         }
     }
@@ -852,7 +852,7 @@ func toTable(data any, options map[string]any) string {
         co=make([]any,len(options["column_order"].([]string)))
         for i,v:=range options["column_order"].([]string) {
             co[i]=v
-        } 
+        }
     } else {
         if co,ok=options["column_order"].([]any); !ok {
             co=make([]any,0,0)
@@ -1004,7 +1004,7 @@ func toTable(data any, options map[string]any) string {
                 cell = cell[:widths[i]-3] + "..."
             }
             padded := padString(cell, widths[i], alignCol)
-            if c, ok := colors["header"]; ok {
+            if c, ok := colours["header"]; ok {
                 buf.WriteString(c)
                 buf.WriteString(padded)
                 buf.WriteString("[#-]")
@@ -1042,7 +1042,7 @@ func toTable(data any, options map[string]any) string {
                 c = c[:widths[i]-3] + "..."
             }
             padded := padString(c, widths[i], alignCol)
-            if col, ok := colors["data"]; ok {
+            if col, ok := colours["data"]; ok {
                 buf.WriteString(col)
                 buf.WriteString(padded)
                 buf.WriteString("[#-]")
@@ -1582,7 +1582,7 @@ func buildConversionLib() {
 
     }
 
-    slhelp["pp"] = LibHelp{in: "map|slice, [max_depth], [indent_string]", out: "string", action: "Pretty print a map or slice with optional indentation, depth limit, and color-coded section headings."}
+    slhelp["pp"] = LibHelp{in: "map|slice, [max_depth], [indent_string]", out: "string", action: "Pretty print a map or slice with optional indentation, depth limit, and colour-coded section headings."}
     stdlib["pp"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("pp", args, 3,
             "1", "any",
@@ -1870,7 +1870,7 @@ func buildConversionLib() {
         return nil, errors.New(sf("to_typed: cannot convert value of type %T to type %s", value, typeString))
     }
 
-    slhelp["md2ansi"] = LibHelp{in: "markdown_string", out: "ansi_code_string", action: "Converts simple markdown syntax to Za ANSI color codes."}
+    slhelp["md2ansi"] = LibHelp{in: "markdown_string", out: "ansi_code_string", action: "Converts simple markdown syntax to Za ANSI colour codes."}
     stdlib["md2ansi"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("md2ansi", args, 1, "1", "string"); !ok {
             return nil, err
