@@ -598,7 +598,7 @@ func applyFiltering(rows [][]any, options map[string]any) [][]any {
     if co, ok := options["column_order"].([]any); ok {
         for _, c := range co {
             if s, ok := c.(string); ok {
-                columnOrder = append(columnOrder, renameSF(s))
+                columnOrder = append(columnOrder, s)
             }
         }
     }
@@ -607,7 +607,7 @@ func applyFiltering(rows [][]any, options map[string]any) [][]any {
     if h, ok := options["hide"].([]any); ok {
         for _, item := range h {
             if s, ok := item.(string); ok {
-                hide = append(hide, renameSF(s))
+                hide = append(hide, s)
             }
         }
     }
@@ -692,7 +692,7 @@ func toTable(data any, options map[string]any) string {
     if cw, ok := options["column_widths"].(map[string]any); ok {
         for k, v := range cw {
             if i, ok := v.(int); ok {
-                columnWidths[renameSF(k)] = i
+                columnWidths[k] = i
             }
         }
     }
@@ -701,7 +701,7 @@ func toTable(data any, options map[string]any) string {
     if a, ok := options["align"].(map[string]any); ok {
         for k, v := range a {
             if s, ok := v.(string); ok {
-                align[renameSF(k)] = s
+                align[k] = s
             }
         }
     }
@@ -730,7 +730,7 @@ func toTable(data any, options map[string]any) string {
     if h, ok := options["hide"].([]any); ok {
         for _, item := range h {
             if s, ok := item.(string); ok {
-                hide = append(hide, renameSF(s))
+                hide = append(hide, s)
             }
         }
     }
@@ -816,7 +816,6 @@ func toTable(data any, options map[string]any) string {
                             for fpos := 0; fpos < rt.NumField(); fpos++ {
                                 defaultStructColumns = append(defaultStructColumns, rt.Field(fpos).Name)
                             }
-                            // isStruct = true
                         }
                         // then convert to an unordered map
                         m = s2m(vi.Interface())
@@ -824,9 +823,9 @@ func toTable(data any, options map[string]any) string {
                         m = vi.Interface().(map[string]any)
                     }
                     for k := range m {
-                        if !seen[renameSF(k)] {
-                            seen[renameSF(k)] = true
-                            columns = append(columns, renameSF(k))
+                        if !seen[k] {
+                            seen[k] = true
+                            columns = append(columns, k)
                         }
                     }
                     // populate
@@ -838,7 +837,7 @@ func toTable(data any, options map[string]any) string {
             // Single map as one row
             m := data.(map[string]any)
             for k := range m {
-                columns = append(columns, renameSF(k))
+                columns = append(columns, k)
             }
             rows = append(rows, m)
         default:
@@ -852,7 +851,7 @@ func toTable(data any, options map[string]any) string {
     if _,ok=options["column_order"].([]string); ok {
         co=make([]any,len(options["column_order"].([]string)))
         for i,v:=range options["column_order"].([]string) {
-            co[i]=renameSF(v)
+            co[i]=v
         } 
     } else {
         if co,ok=options["column_order"].([]any); !ok {
@@ -863,7 +862,7 @@ func toTable(data any, options map[string]any) string {
     newColumns := []string{}
     for _, c := range co {
         if s, ok := c.(string); ok {
-            newColumns = append(newColumns, renameSF(s))
+            newColumns = append(newColumns,s)
         }
     }
 
@@ -889,7 +888,7 @@ func toTable(data any, options map[string]any) string {
         filteredColumns := []string{}
         hideMap := make(map[string]bool)
         for _, h := range hide {
-            hideMap[renameSF(h)] = true
+            hideMap[h] = true
         }
         for _, c := range columns {
             if !hideMap[c] {
@@ -897,13 +896,7 @@ func toTable(data any, options map[string]any) string {
             }
         }
         columns = filteredColumns
-    } /* else {
-        if isStruct {
-            // apply the struct field order we collated earlier
-            columns = defaultStructColumns
-        }
     }
-    */
 
     // Calculate widths
     widths := make([]int, len(columns))
