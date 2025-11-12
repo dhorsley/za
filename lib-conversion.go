@@ -598,7 +598,7 @@ func applyFiltering(rows [][]any, options map[string]any) [][]any {
     if co, ok := options["column_order"].([]any); ok {
         for _, c := range co {
             if s, ok := c.(string); ok {
-                columnOrder = append(columnOrder, s)
+                columnOrder = append(columnOrder, renameSF(s))
             }
         }
     }
@@ -607,7 +607,7 @@ func applyFiltering(rows [][]any, options map[string]any) [][]any {
     if h, ok := options["hide"].([]any); ok {
         for _, item := range h {
             if s, ok := item.(string); ok {
-                hide = append(hide, s)
+                hide = append(hide, renameSF(s))
             }
         }
     }
@@ -692,7 +692,7 @@ func toTable(data any, options map[string]any) string {
     if cw, ok := options["column_widths"].(map[string]any); ok {
         for k, v := range cw {
             if i, ok := v.(int); ok {
-                columnWidths[k] = i
+                columnWidths[renameSF(k)] = i
             }
         }
     }
@@ -701,7 +701,7 @@ func toTable(data any, options map[string]any) string {
     if a, ok := options["align"].(map[string]any); ok {
         for k, v := range a {
             if s, ok := v.(string); ok {
-                align[k] = s
+                align[renameSF(k)] = s
             }
         }
     }
@@ -730,7 +730,7 @@ func toTable(data any, options map[string]any) string {
     if h, ok := options["hide"].([]any); ok {
         for _, item := range h {
             if s, ok := item.(string); ok {
-                hide = append(hide, s)
+                hide = append(hide, renameSF(s))
             }
         }
     }
@@ -824,9 +824,9 @@ func toTable(data any, options map[string]any) string {
                         m = vi.Interface().(map[string]any)
                     }
                     for k := range m {
-                        if !seen[k] {
-                            seen[k] = true
-                            columns = append(columns, k)
+                        if !seen[renameSF(k)] {
+                            seen[renameSF(k)] = true
+                            columns = append(columns, renameSF(k))
                         }
                     }
                     // populate
@@ -838,7 +838,7 @@ func toTable(data any, options map[string]any) string {
             // Single map as one row
             m := data.(map[string]any)
             for k := range m {
-                columns = append(columns, k)
+                columns = append(columns, renameSF(k))
             }
             rows = append(rows, m)
         default:
@@ -852,7 +852,7 @@ func toTable(data any, options map[string]any) string {
     if _,ok=options["column_order"].([]string); ok {
         co=make([]any,len(options["column_order"].([]string)))
         for i,v:=range options["column_order"].([]string) {
-            co[i]=v
+            co[i]=renameSF(v)
         } 
     } else {
         if co,ok=options["column_order"].([]any); !ok {
@@ -863,7 +863,7 @@ func toTable(data any, options map[string]any) string {
     newColumns := []string{}
     for _, c := range co {
         if s, ok := c.(string); ok {
-            newColumns = append(newColumns, s)
+            newColumns = append(newColumns, renameSF(s))
         }
     }
 
@@ -889,7 +889,7 @@ func toTable(data any, options map[string]any) string {
         filteredColumns := []string{}
         hideMap := make(map[string]bool)
         for _, h := range hide {
-            hideMap[h] = true
+            hideMap[renameSF(h)] = true
         }
         for _, c := range columns {
             if !hideMap[c] {
