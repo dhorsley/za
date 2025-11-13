@@ -583,7 +583,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         cpos = len(s)
                         showCursor()
                         // Clear the entire line and restore normal input display
-                        clearChars(irow, icol, inputL)
+                        clearChars(irow, icol, len(orig_s))
                         // Clear any remaining characters on the line to the end
                         remainingWidth := width - icol
                         if remainingWidth > inputL {
@@ -712,15 +712,15 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 wordUnderCursor, _ = getWord(s, cpos)
 
             case bytes.Equal(c, []byte{11}): // ctrl-k
+                clearChars(irow, icol, len(s))
                 s = s[:cpos]
                 wordUnderCursor, _ = getWord(s, cpos)
-                clearChars(irow, icol, len(s))
 
             case bytes.Equal(c, []byte{21}): // ctrl-u
+                clearChars(irow, icol, len(s))
                 s = removeAllBefore(s, cpos)
                 cpos = 0
                 wordUnderCursor, _ = getWord(s, cpos)
-                clearChars(irow, icol, len(s))
 
             case bytes.Equal(c, []byte{127}): // backspace
 
@@ -735,10 +735,10 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 }
 
                 if cpos > 0 {
+                    clearChars(irow, icol, len(s))
                     s = removeBefore(s, cpos)
                     cpos--
                     wordUnderCursor, _ = getWord(s, cpos)
-                    clearChars(irow, icol, len(s)) // PIG inputL)
                 }
 
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
@@ -906,8 +906,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         }
                         cpos = len(s)
                         wordUnderCursor, _ = getWord(s, cpos)
-                        //if curHist != lastHist {
-                        //}
                     }
                 }
 
