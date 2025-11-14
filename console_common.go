@@ -401,6 +401,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // get key stroke
         c, timeout, pasted, pbuf := getch(0)
 
+        if len(c)>1 {
+            at(2,2)
+            pf("[#2]c>1[#-]")
+        }
+        
         if c==nil || timeout {
             continue
         }
