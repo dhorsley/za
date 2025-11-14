@@ -82,6 +82,11 @@ func GetWinInfo(fd int) (i int) {
 // / get keypresses, filtering out undesired until a valid match found
 func wrappedGetCh(p int, disp bool) (i int) {
 
+    if runtime.GOOS != "windows" {
+        startRaw(0)
+        defer endRaw()
+    }
+
     var keychan chan int
     keychan = make(chan int, 1)
 
