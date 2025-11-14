@@ -1226,19 +1226,6 @@ func findRunesThatFit(runes []rune, maxWidth int) int {
     return len(runes)
 }
 
-/* better way, when i can be bothered. using: mattn/go-runwidth.
-func findRunesThatFit(runes []rune, maxWidth int) int {
-    width := 0
-    for i, r := range runes {
-        width += runeWidth(r) // If you have custom rune width; otherwise assume 1
-        if width > maxWidth {
-            return i
-        }
-    }
-    return len(runes)
-}
-*/
-
 func escapeControlChars(s string) string {
     s = str.ReplaceAll(s, "\\", "\\\\") // escape backslashes first
     s = str.ReplaceAll(s, "\n", "\\n")
