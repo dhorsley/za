@@ -980,6 +980,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
 
             default:
+                /*
                 // Normal input processing (only reached when not in reverse search mode)
                 if len(c) == 1 {
                     if c[0] > 32 && c[0] < 128 {
@@ -998,6 +999,28 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         cpos++
                         wordUnderCursor, _ = getWord(s, cpos)
                         selectedStar = -1
+                    }
+                }
+                */
+
+                // Normal input processing (only reached when not in reverse search mode)
+                // multi-byte, like utf8?
+                r, sz := utf8.DecodeRune(c)
+                if r!=utf8.RuneError {
+                    if sz!=0 {
+                        s = insertAt(s, cpos, r)
+                        cpos++
+                        wordUnderCursor, _ = getWord(s, cpos)
+                        selectedStar = -1
+                    } else {
+                        if len(c) == 1 {
+                            if c[0] > 32 && c[0] < 128 {
+                                s = insertAt(s, cpos, rune(c[0]))
+                                cpos++
+                                wordUnderCursor, _ = getWord(s, cpos)
+                                selectedStar = -1 // also reset the selector position for auto-complete
+                            }
+                        }
                     }
                 }
 
