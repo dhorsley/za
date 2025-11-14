@@ -225,6 +225,12 @@ func hasPrefixRunes(runes, prefix []rune) bool {
     return true
 }
 
+func removeProcessedKeycode(ka *[]byte,count int) {
+    if len(*ka)>(count-1) {
+        *ka = (*ka)[count:]
+    }
+}
+
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
@@ -438,94 +444,68 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             selectedStar = -1
 
         } else {
-            switch {
 
-            case bytes.Equal(c, []byte{3}): // ctrl-c
-                broken = true
-                break
-            case bytes.Equal(c, []byte{4}): // ctrl-d
-                eof = true
-                break
-            case bytes.Equal(c, []byte{26}): // ctrl-z
-                // Send SIGTSTP to the current process group to suspend Za
-                // Platform-specific implementation handles Unix vs Windows
-                handleCtrlZ()
-                break
+            for len(c)>0 {
 
-            case reverseSearchMode:
-                // Handle specific input during reverse search mode
-                if len(c) == 1 {
-                    if c[0] == 13 { // Enter - accept current result
-                        reverseSearchMode = false
-                        if len(searchResults) > 0 && currentSearchResult < len(searchResults) {
-                            s = []rune(hist[searchResults[currentSearchResult]])
-                            cpos = len(s)
-                        }
-                        showCursor()
-                        // Clear the entire line and restore normal input display
-                        clearChars(irow, icol, inputL)
-                        // Clear any remaining characters on the line to the end
-                        remainingWidth := width - icol
-                        if remainingWidth > inputL {
-                            clearChars(irow, icol+inputL, remainingWidth-inputL)
-                        }
-                        at(irow, icol)
-                        pf(string(s))
-                        break
-                    } else if c[0] == 18 { // Ctrl+R - cancel search
-                        reverseSearchMode = false
-                        s = orig_s
-                        cpos = len(s)
-                        showCursor()
-                        // Clear the entire line and restore normal input display
-                        clearChars(irow, icol, inputL)
-                        // Clear any remaining characters on the line to the end
-                        remainingWidth := width - icol
-                        if remainingWidth > inputL {
-                            clearChars(irow, icol+inputL, remainingWidth-inputL)
-                        }
-                        at(irow, icol)
-                        pf(string(s))
-                        break
-                    } else if c[0] >= 32 && c[0] <= 126 { // Printable character
-                        // Add character to search buffer
-                        searchBuffer = append(searchBuffer, rune(c[0]))
+                switch {
 
-                        // Search through history backwards
-                        searchResults = []int{}
-                        searchTerm := str.ToLower(string(searchBuffer))
-                        for i := len(hist) - 1; i >= 0; i-- {
-                            if str.Contains(str.ToLower(hist[i]), searchTerm) {
-                                searchResults = append(searchResults, i)
+                case bytes.Equal(c, []byte{3}): // ctrl-c
+                    broken = true
+                    break
+                case bytes.Equal(c, []byte{4}): // ctrl-d
+                    eof = true
+                    break
+                case bytes.Equal(c, []byte{26}): // ctrl-z
+                    // Send SIGTSTP to the current process group to suspend Za
+                    // Platform-specific implementation handles Unix vs Windows
+                    handleCtrlZ()
+                    break
+
+                case reverseSearchMode:
+                    // Handle specific input during reverse search mode
+                    if len(c) == 1 {
+                        if c[0] == 13 { // Enter - accept current result
+                            reverseSearchMode = false
+                            if len(searchResults) > 0 && currentSearchResult < len(searchResults) {
+                                s = []rune(hist[searchResults[currentSearchResult]])
+                                cpos = len(s)
                             }
-                        }
-                        currentSearchResult = 0
+                            showCursor()
+                            // Clear the entire line and restore normal input display
+                            clearChars(irow, icol, inputL)
+                            // Clear any remaining characters on the line to the end
+                            remainingWidth := width - icol
+                            if remainingWidth > inputL {
+                                clearChars(irow, icol+inputL, remainingWidth-inputL)
+                            }
+                            at(irow, icol)
+                            pf(string(s))
+                            break
+                        } else if c[0] == 18 { // Ctrl+R - cancel search
+                            reverseSearchMode = false
+                            s = orig_s
+                            cpos = len(s)
+                            showCursor()
+                            // Clear the entire line and restore normal input display
+                            clearChars(irow, icol, inputL)
+                            // Clear any remaining characters on the line to the end
+                            remainingWidth := width - icol
+                            if remainingWidth > inputL {
+                                clearChars(irow, icol+inputL, remainingWidth-inputL)
+                            }
+                            at(irow, icol)
+                            pf(string(s))
+                            break
+                        } else if c[0] >= 32 && c[0] <= 126 { // Printable character
+                            // Add character to search buffer
+                            searchBuffer = append(searchBuffer, rune(c[0]))
 
-                        // Update display - clear the search area and redraw
-                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear any remaining characters that might be displayed
-                        remainingWidth := width - searchDisplayCol
-                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
-                        }
-                        at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                        if len(searchResults) > 0 {
-                            pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
-                        }
-
-                    } else if c[0] == 127 { // Backspace
-                        if len(searchBuffer) > 0 {
-                            searchBuffer = searchBuffer[:len(searchBuffer)-1]
-
-                            // Re-search with updated buffer
+                            // Search through history backwards
                             searchResults = []int{}
-                            if len(searchBuffer) > 0 {
-                                searchTerm := str.ToLower(string(searchBuffer))
-                                for i := len(hist) - 1; i >= 0; i-- {
-                                    if str.Contains(str.ToLower(hist[i]), searchTerm) {
-                                        searchResults = append(searchResults, i)
-                                    }
+                            searchTerm := str.ToLower(string(searchBuffer))
+                            for i := len(hist) - 1; i >= 0; i-- {
+                                if str.Contains(str.ToLower(hist[i]), searchTerm) {
+                                    searchResults = append(searchResults, i)
                                 }
                             }
                             currentSearchResult = 0
@@ -542,488 +522,535 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             if len(searchResults) > 0 {
                                 pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                             }
-                        }
-                    } else if c[0] == 21 { // Ctrl+U - clear search buffer
-                        searchBuffer = []rune{}
-                        searchResults = []int{}
-                        currentSearchResult = 0
 
-                        // Update display - clear the search area and redraw
-                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear any remaining characters that might be displayed
-                        remainingWidth := width - searchDisplayCol
-                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                        } else if c[0] == 127 { // Backspace
+                            if len(searchBuffer) > 0 {
+                                searchBuffer = searchBuffer[:len(searchBuffer)-1]
+
+                                // Re-search with updated buffer
+                                searchResults = []int{}
+                                if len(searchBuffer) > 0 {
+                                    searchTerm := str.ToLower(string(searchBuffer))
+                                    for i := len(hist) - 1; i >= 0; i-- {
+                                        if str.Contains(str.ToLower(hist[i]), searchTerm) {
+                                            searchResults = append(searchResults, i)
+                                        }
+                                    }
+                                }
+                                currentSearchResult = 0
+
+                                // Update display - clear the search area and redraw
+                                clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                                // Clear any remaining characters that might be displayed
+                                remainingWidth := width - searchDisplayCol
+                                if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                                    clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                                }
+                                at(searchDisplayRow, searchDisplayCol)
+                                pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
+                                if len(searchResults) > 0 {
+                                    pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                                }
+                            }
+                        } else if c[0] == 21 { // Ctrl+U - clear search buffer
+                            searchBuffer = []rune{}
+                            searchResults = []int{}
+                            currentSearchResult = 0
+
+                            // Update display - clear the search area and redraw
+                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                            // Clear any remaining characters that might be displayed
+                            remainingWidth := width - searchDisplayCol
+                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                            }
+                            at(searchDisplayRow, searchDisplayCol)
+                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                         }
-                        at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                    }
-                } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
-                    if len(searchResults) > 0 {
-                        currentSearchResult = (currentSearchResult + 1) % len(searchResults)
-                        // Update display - clear the search area and redraw
-                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear any remaining characters that might be displayed
-                        remainingWidth := width - searchDisplayCol
-                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                    } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
+                        if len(searchResults) > 0 {
+                            currentSearchResult = (currentSearchResult + 1) % len(searchResults)
+                            // Update display - clear the search area and redraw
+                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                            // Clear any remaining characters that might be displayed
+                            remainingWidth := width - searchDisplayCol
+                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                            }
+                            at(searchDisplayRow, searchDisplayCol)
+                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
+                            pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
                         }
-                        at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                        pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                        break
+                    } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}) { // DOWN arrow in search
+                        if len(searchResults) > 0 {
+                            currentSearchResult = (currentSearchResult - 1 + len(searchResults)) % len(searchResults)
+                            // Update display - clear the search area and redraw
+                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+                            // Clear any remaining characters that might be displayed
+                            remainingWidth := width - searchDisplayCol
+                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+                            }
+                            at(searchDisplayRow, searchDisplayCol)
+                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
+                            pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                        }
+                        break
                     }
                     break
-                } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}) { // DOWN arrow in search
-                    if len(searchResults) > 0 {
-                        currentSearchResult = (currentSearchResult - 1 + len(searchResults)) % len(searchResults)
-                        // Update display - clear the search area and redraw
-                        clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                        // Clear any remaining characters that might be displayed
-                        remainingWidth := width - searchDisplayCol
-                        if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                            clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+
+                case bytes.Equal(c, []byte{18}): // ctrl-r - reverse search
+                    if histEnable && !histEmpty {
+                        if reverseSearchMode {
+                            // Second Ctrl+R press - cancel search
+                            reverseSearchMode = false
+                            s = orig_s
+                            cpos = len(s)
+                            showCursor()
+                            // Clear the entire line and restore normal input display
+                            clearChars(irow, icol, len(orig_s))
+                            // Clear any remaining characters on the line to the end
+                            remainingWidth := width - icol
+                            if remainingWidth > inputL {
+                                clearChars(irow, icol+inputL, remainingWidth-inputL)
+                            }
+                            at(irow, icol)
+                            pf(string(s))
+                            break
+                        } else if len(s) == 0 {
+                            // Only enter reverse search mode if there's no existing input
+                            // First Ctrl+R press - enter reverse search mode
+                            reverseSearchMode = true
+                            searchBuffer = []rune{}
+                            searchResults = []int{}
+                            currentSearchResult = 0
+
+                            // Save current input state
+                            if !navHist {
+                                orig_s = s
+                            }
+
+                            // Clear the entire input line and show search prompt
+                            clearChars(irow, icol, len(s))
+                            // Clear any remaining characters on the line to the end
+                            remainingWidth := width - icol
+                            if remainingWidth > inputL {
+                                clearChars(irow, icol+inputL, remainingWidth-inputL)
+                            }
+                            searchDisplayRow = irow
+                            searchDisplayCol = icol
+
+                            // Show initial search prompt
+                            at(searchDisplayRow, searchDisplayCol)
+                            pf("[#bold][#6]" + searchPrompt + "[#-][#4]▋[#-]")
+                            break
                         }
-                        at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                        pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+                        // If there's existing input, ignore Ctrl+R (don't enter search mode)
                     }
                     break
-                }
-                break
 
-            case bytes.Equal(c, []byte{18}): // ctrl-r - reverse search
-                if histEnable && !histEmpty {
-                    if reverseSearchMode {
-                        // Second Ctrl+R press - cancel search
-                        reverseSearchMode = false
-                        s = orig_s
+                case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor
+                    result, eof, broken := multilineEditor(string(s), -1, MH-5, "", "", "Editor")
+                    if !broken {
+                        // Replace the input buffer in getInput() with the result from the multiline editor
+                        s = []rune(result)
                         cpos = len(s)
-                        showCursor()
-                        // Clear the entire line and restore normal input display
-                        clearChars(irow, icol, len(orig_s))
-                        // Clear any remaining characters on the line to the end
-                        remainingWidth := width - icol
-                        if remainingWidth > inputL {
-                            clearChars(irow, icol+inputL, remainingWidth-inputL)
-                        }
-                        at(irow, icol)
-                        pf(string(s))
-                        break
-                    } else if len(s) == 0 {
-                        // Only enter reverse search mode if there's no existing input
-                        // First Ctrl+R press - enter reverse search mode
-                        reverseSearchMode = true
-                        searchBuffer = []rune{}
-                        searchResults = []int{}
-                        currentSearchResult = 0
+                    } else if eof {
+                        // If user pressed ctrl-d in multiline, treat as EOF in getInput
+                        return "", true, false
+                    } else {
+                        // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
+                    }
 
-                        // Save current input state
-                        if !navHist {
-                            orig_s = s
-                        }
+                case bytes.Equal(c, []byte{13}): // enter
 
-                        // Clear the entire input line and show search prompt
+                    if startedContextHelp {
+                        contextHelpSelected = true
                         clearChars(irow, icol, len(s))
-                        // Clear any remaining characters on the line to the end
-                        remainingWidth := width - icol
-                        if remainingWidth > inputL {
-                            clearChars(irow, icol+inputL, remainingWidth-inputL)
+                        for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
+                            at(i, 1)
+                            clearToEOL()
                         }
-                        searchDisplayRow = irow
-                        searchDisplayCol = icol
-
-                        // Show initial search prompt
-                        at(searchDisplayRow, searchDisplayCol)
-                        pf("[#bold][#6]" + searchPrompt + "[#-][#4]▋[#-]")
+                        helpstring = ""
                         break
                     }
-                    // If there's existing input, ignore Ctrl+R (don't enter search mode)
-                }
-                break
 
-            case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor
-                result, eof, broken := multilineEditor(string(s), -1, MH-5, "", "", "Editor")
-                if !broken {
-                    // Replace the input buffer in getInput() with the result from the multiline editor
-                    s = []rune(result)
-                    cpos = len(s)
-                } else if eof {
-                    // If user pressed ctrl-d in multiline, treat as EOF in getInput
-                    return "", true, false
-                } else {
-                    // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
-                }
+                    endLine = true
 
-            case bytes.Equal(c, []byte{13}): // enter
-
-                if startedContextHelp {
-                    contextHelpSelected = true
-                    clearChars(irow, icol, len(s))
-                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
-                        at(i, 1)
-                        clearToEOL()
+                    if len(s) != 0 {
+                        addToHistory(string(s))
                     }
-                    helpstring = ""
+
                     break
-                }
 
-                endLine = true
+                case bytes.Equal(c, []byte{32}): // space
 
-                if len(s) != 0 {
-                    addToHistory(string(s))
-                }
-
-                break
-
-            case bytes.Equal(c, []byte{32}): // space
-
-                if startedContextHelp {
-                    contextHelpSelected = false
-                    startedContextHelp = false
-                    wordUnderCursor, _ = getWord(s, cpos)
-                    cmpStr := str.ToLower(string(wordUnderCursor))
-                    parenPos := str.IndexByte(cmpStr, '(')
-                    if parenPos == -1 && len(helpList) == 1 {
-                        var newstart int
-                        s, newstart = deleteWord(s, cpos)
-                        add := ""
-                        if len(s) > 0 {
-                            add = " "
+                    if startedContextHelp {
+                        contextHelpSelected = false
+                        startedContextHelp = false
+                        wordUnderCursor, _ = getWord(s, cpos)
+                        cmpStr := str.ToLower(string(wordUnderCursor))
+                        parenPos := str.IndexByte(cmpStr, '(')
+                        if parenPos == -1 && len(helpList) == 1 {
+                            var newstart int
+                            s, newstart = deleteWord(s, cpos)
+                            add := ""
+                            if len(s) > 0 {
+                                add = " "
+                            }
+                            if newstart == -1 {
+                                newstart = 0
+                            }
+                            s = insertWord(s, newstart, add+helpList[0]+" ")
+                            cpos = len(s) - 1
+                            for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
+                                at(i, 1)
+                                clearToEOL()
+                            }
                         }
-                        if newstart == -1 {
-                            newstart = 0
-                        }
-                        s = insertWord(s, newstart, add+helpList[0]+" ")
-                        cpos = len(s) - 1
+                        helpstring = ""
                         for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                             at(i, 1)
                             clearToEOL()
                         }
                     }
-                    helpstring = ""
-                    for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
-                        at(i, 1)
-                        clearToEOL()
-                    }
-                }
 
-                // normal space input
-                s = insertAt(s, cpos, rune(c[0]))
-                cpos++
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{27, 91, 49, 126}): // home // from showkey -a
-                cpos = 0
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{27, 91, 52, 126}): // end // from showkey -a
-                cpos = len(s)
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{1}): // ctrl-a
-                cpos = 0
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{5}): // ctrl-e
-                cpos = len(s)
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{11}): // ctrl-k
-                clearChars(irow, icol, len(s))
-                s = s[:cpos]
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{21}): // ctrl-u
-                clearChars(irow, icol, len(s))
-                s = removeAllBefore(s, cpos)
-                cpos = 0
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{127}): // backspace
-
-                if startedContextHelp && len(helpstring) == 0 {
-                    startedContextHelp = false
-                    helpstring = ""
-                }
-
-                for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
-                    at(i, 1)
-                    clearToEOL()
-                }
-
-                if cpos > 0 {
-                    clearChars(irow, icol, len(s))
-                    s = removeBefore(s, cpos)
-                    cpos--
-                    wordUnderCursor, _ = getWord(s, cpos)
-                }
-
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
-                if len(s) == 0 && len(defaultString) != 0 {
-                    clearChars(irow, icol, len(defaultString))
-                    defaultString = []rune{}
-                }
-                if cpos < len(s) {
-                    clearChars(irow, icol, len(s))
-                    s = removeBefore(s, cpos+1)
-                    wordUnderCursor, _ = getWord(s, cpos)
-                }
-
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
-
-                // add check for LEFT during auto-completion:
-                if startedContextHelp {
-                    if selectedStar > 0 {
-                        selectedStar--
-                    }
-                    break
-                }
-
-                // normal LEFT:
-                if cpos > 0 {
-                    cpos--
-                }
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
-
-                // add check for RIGHT during auto-completion:
-                if startedContextHelp {
-                    if selectedStar < starMax {
-                        selectedStar++
-                    }
-                    break
-                }
-
-                // normal RIGHT:
-                if cpos < len(s) {
+                    // normal space input
+                    s = insertAt(s, cpos, rune(c[0]))
                     cpos++
-                }
-                wordUnderCursor, _ = getWord(s, cpos)
+                    removeProcessedKeycode(&c,1)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+                case bytes.Equal(c, []byte{27, 91, 49, 126}): // home // from showkey -a
+                    cpos = 0
+                    removeProcessedKeycode(&c,4)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-                if MW < displayedLenUtf8(s) && cpos > MW {
-                    cpos -= MW
-                    break
-                }
+                case bytes.Equal(c, []byte{27, 91, 52, 126}): // end // from showkey -a
+                    cpos = len(s)
+                    removeProcessedKeycode(&c,4)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-                if histEnable {
-                    if !histEmpty {
-                        if !navHist {
-                            navHist = true
-                            curHist = lastHist
-                            orig_s = s
-                        }
-                        clearChars(irow, icol, len(s))
-                        if curHist > 0 {
-                            curHist--
-                            s = []rune(hist[curHist])
-                        }
-                        cpos = len(s)
-                        wordUnderCursor, _ = getWord(s, cpos)
-                        rowLen = int(icol+cpos-1) / MW
-                        if rowLen > 0 {
-                            irow -= rowLen
-                        }
-                        //if curHist != lastHist {
-                        //}
-                    }
-                }
+                case bytes.Equal(c, []byte{1}): // ctrl-a
+                    cpos = 0
+                    removeProcessedKeycode(&c,1)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+                case bytes.Equal(c, []byte{5}): // ctrl-e
+                    cpos = len(s)
+                    removeProcessedKeycode(&c,1)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-                if ddmode {
+                case bytes.Equal(c, []byte{11}): // ctrl-k
+                    clearChars(irow, icol, len(s))
+                    s = s[:cpos]
+                    removeProcessedKeycode(&c,1)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-                    // input loop
+                case bytes.Equal(c, []byte{21}): // ctrl-u
+                    clearChars(irow, icol, len(s))
+                    s = removeAllBefore(s, cpos)
+                    cpos = 0
+                    removeProcessedKeycode(&c,1)
+                    wordUnderCursor, _ = getWord(s, cpos)
 
-                    ddpos := 0
-                    selected := false
-                    optslen := 0
-                    // noChange:=false
+                case bytes.Equal(c, []byte{127}): // backspace
 
-                    hideCursor()
-                inloopdd:
-                    for {
-                        absat(irow+1, cpos)
-                        optslen = 0
-                        for k, ddo := range ddopts {
-                            if k == ddpos {
-                                pf("[#invert]")
-                            }
-                            pf(ddo)
-                            if k == ddpos {
-                                pf("[#-]")
-                            }
-                            pf(" ")
-                            optslen += 1 + len(ddo)
-                        }
-                        c := wrappedGetCh(0, false)
-
-                        switch c {
-                        case 9:
-                            fallthrough
-                        case 10:
-                            if ddpos < len(ddopts)-1 {
-                                ddpos += 1
-                            }
-
-                        case 11:
-                            fallthrough
-                        case 8:
-                            if ddpos > 0 {
-                                ddpos -= 1
-                            }
-
-                        case 13:
-                            fallthrough
-                        case 32:
-                            selected = true
-                            break inloopdd
-
-                        // these cases may be removed later, they are reserved for later use
-                        //  it may be the case that we allow partially typed matches.
-
-                        case 27:
-                            // noChange=true
-                            break inloopdd
-                        default:
-                            // noChange=true
-                            break inloopdd
-                        }
-                    }
-                    clearChars(irow+1, cpos, optslen)
-                    // - if escaped/broken then carry on as normal
-                    if selected {
-                        // populate input buffer with selection
-                        s = insertWord(s, cpos, ddopts[ddpos])
-                        cpos += len(ddopts[ddpos])
-                        wordUnderCursor, _ = getWord(s, cpos)
-                    }
-
-                    showCursor()
-                    break
-                }
-
-                // normal down key operations resume here
-                if displayedLenUtf8(s) > MW && cpos < MW {
-                    cpos += MW
-                    break
-                }
-
-                if histEnable {
-                    if navHist {
-                        clearChars(irow, icol, len(s))
-                        if curHist < lastHist-1 {
-                            curHist++
-                            s = []rune(hist[curHist])
-                        } else {
-                            s = orig_s
-                            navHist = false
-                        }
-                        cpos = len(s)
-                        wordUnderCursor, _ = getWord(s, cpos)
-                    }
-                }
-
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
-                cpos = 0
-                wordUnderCursor, _ = getWord(s, cpos)
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
-                cpos = len(s)
-                wordUnderCursor, _ = getWord(s, cpos)
-
-            case bytes.Equal(c, []byte{9}): // TAB
-
-                // completion hinting setup
-                if hintEnable {
-                    if !startedContextHelp {
-                        completion_count+=1
-                        funcnames = nil
-
-                        if irow > MH-1 && completion_count==1 {
-                            for i := srow; i < irow+HELP_SIZE; i++ {
-                                at(MH+1, 1)
-                                fmt.Println()
-                            }
-                            srow = srow - HELP_SIZE
-                            irow = irow - HELP_SIZE
-                        }
-
-                        startedContextHelp = true
-                        for i := irow + 1; i <= irow+HELP_SIZE; i++ {
-                            at(i, 1)
-                            clearToEOL()
-                        }
-                        helpstring = ""
-                        selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
-
-                        //.. add functionnames
-                        for k, _ := range slhelp {
-                            funcnames = append(funcnames, k)
-                        }
-                        sort.Strings(funcnames)
-
-                    } else {
-                        for i := irow + 1; i <= irow+HELP_SIZE; i++ {
-                            at(i, 1)
-                            clearToEOL()
-                        }
-                        helpstring = ""
-                        selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
-                        contextHelpSelected = false
+                    if startedContextHelp && len(helpstring) == 0 {
                         startedContextHelp = false
-                    }
-                } else { // accept default
-                    if hasPrefixRunes(defaultString, s) {
-                        s = defaultString
-                        cpos = len(s)
-                        defaultAccepted = true
                         helpstring = ""
-                        selectedStar = -1
-                        contextHelpSelected = false
-                        startedContextHelp = false
                     }
-                }
 
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
-
-            case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
-            case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
-
-            // ignore list
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
-            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
-
-            default:
-
-                // Normal input processing (only reached when not in reverse search mode)
-                // multi-byte, like utf8?
-
-                r, sz := utf8.DecodeRune(c)
-                if r!=utf8.RuneError {
-                    if sz!=0 {
-                        s = insertAt(s, cpos, r)
-                        cpos++
-                        wordUnderCursor, _ = getWord(s, cpos)
-                        selectedStar = -1
-                    } else {
-                        for idx:=0; idx<len(c); idx++ {
-                            if c[idx] > 32 && c[idx] < 128 {
-                                s = insertAt(s, cpos, rune(c[idx]))
-                                cpos++
-                            }
-                        }
-                        wordUnderCursor, _ = getWord(s, cpos)
-                        selectedStar = -1 // also reset the selector position for auto-complete
-                    }
-                }
-
-                if startedContextHelp {
                     for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                         at(i, 1)
                         clearToEOL()
+                    }
+
+                    if cpos > 0 {
+                        clearChars(irow, icol, len(s))
+                        s = removeBefore(s, cpos)
+                        cpos--
+                        removeProcessedKeycode(&c,1)
+                        wordUnderCursor, _ = getWord(s, cpos)
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
+                    if len(s) == 0 && len(defaultString) != 0 {
+                        clearChars(irow, icol, len(defaultString))
+                        defaultString = []rune{}
+                    }
+                    if cpos < len(s) {
+                        clearChars(irow, icol, len(s))
+                        s = removeBefore(s, cpos+1)
+                        removeProcessedKeycode(&c,4)
+                        wordUnderCursor, _ = getWord(s, cpos)
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
+
+                    // add check for LEFT during auto-completion:
+                    if startedContextHelp {
+                        if selectedStar > 0 {
+                            selectedStar--
+                        }
+                        break
+                    }
+
+                    // normal LEFT:
+                    if cpos > 0 {
+                        cpos--
+                    }
+                    removeProcessedKeycode(&c,3)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
+
+                    // add check for RIGHT during auto-completion:
+                    if startedContextHelp {
+                        if selectedStar < starMax {
+                            selectedStar++
+                        }
+                        break
+                    }
+
+                    // normal RIGHT:
+                    if cpos < len(s) {
+                        cpos++
+                    }
+                    removeProcessedKeycode(&c,3)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
+
+                    if MW < displayedLenUtf8(s) && cpos > MW {
+                        cpos -= MW
+                        break
+                    }
+
+                    if histEnable {
+                        if !histEmpty {
+                            if !navHist {
+                                navHist = true
+                                curHist = lastHist
+                                orig_s = s
+                            }
+                            clearChars(irow, icol, len(s))
+                            if curHist > 0 {
+                                curHist--
+                                s = []rune(hist[curHist])
+                            }
+                            cpos = len(s)
+                            wordUnderCursor, _ = getWord(s, cpos)
+                            rowLen = int(icol+cpos-1) / MW
+                            if rowLen > 0 {
+                                irow -= rowLen
+                            }
+                            removeProcessedKeycode(&c,3)
+                        }
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
+
+                    if ddmode {
+
+                        // input loop
+
+                        ddpos := 0
+                        selected := false
+                        optslen := 0
+                        // noChange:=false
+
+                        hideCursor()
+                    inloopdd:
+                        for {
+                            absat(irow+1, cpos)
+                            optslen = 0
+                            for k, ddo := range ddopts {
+                                if k == ddpos {
+                                    pf("[#invert]")
+                                }
+                                pf(ddo)
+                                if k == ddpos {
+                                    pf("[#-]")
+                                }
+                                pf(" ")
+                                optslen += 1 + len(ddo)
+                            }
+                            c := wrappedGetCh(0, false)
+
+                            switch c {
+                            case 9:
+                                fallthrough
+                            case 10:
+                                if ddpos < len(ddopts)-1 {
+                                    ddpos += 1
+                                }
+
+                            case 11:
+                                fallthrough
+                            case 8:
+                                if ddpos > 0 {
+                                    ddpos -= 1
+                                }
+
+                            case 13:
+                                fallthrough
+                            case 32:
+                                selected = true
+                                break inloopdd
+
+                            // these cases may be removed later, they are reserved for later use
+                            //  it may be the case that we allow partially typed matches.
+
+                            case 27:
+                                // noChange=true
+                                break inloopdd
+                            default:
+                                // noChange=true
+                                break inloopdd
+                            }
+                        }
+                        clearChars(irow+1, cpos, optslen)
+                        // - if escaped/broken then carry on as normal
+                        if selected {
+                            // populate input buffer with selection
+                            s = insertWord(s, cpos, ddopts[ddpos])
+                            cpos += len(ddopts[ddpos])
+                            wordUnderCursor, _ = getWord(s, cpos)
+                        }
+
+                        showCursor()
+                        break
+                    }
+
+                    // normal down key operations resume here
+                    if displayedLenUtf8(s) > MW && cpos < MW {
+                        cpos += MW
+                        break
+                    }
+
+                    if histEnable {
+                        if navHist {
+                            clearChars(irow, icol, len(s))
+                            if curHist < lastHist-1 {
+                                curHist++
+                                s = []rune(hist[curHist])
+                            } else {
+                                s = orig_s
+                                navHist = false
+                            }
+                            cpos = len(s)
+                            removeProcessedKeycode(&c,3)
+                            wordUnderCursor, _ = getWord(s, cpos)
+                        }
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
+                    cpos = 0
+                    removeProcessedKeycode(&c,3)
+                    wordUnderCursor, _ = getWord(s, cpos)
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
+                    cpos = len(s)
+                    removeProcessedKeycode(&c,3)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{9}): // TAB
+
+                    // completion hinting setup
+                    if hintEnable {
+                        if !startedContextHelp {
+                            completion_count+=1
+                            funcnames = nil
+
+                            if irow > MH-1 && completion_count==1 {
+                                for i := srow; i < irow+HELP_SIZE; i++ {
+                                    at(MH+1, 1)
+                                    fmt.Println()
+                                }
+                                srow = srow - HELP_SIZE
+                                irow = irow - HELP_SIZE
+                            }
+
+                            startedContextHelp = true
+                            for i := irow + 1; i <= irow+HELP_SIZE; i++ {
+                                at(i, 1)
+                                clearToEOL()
+                            }
+                            helpstring = ""
+                            selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+
+                            //.. add functionnames
+                            for k, _ := range slhelp {
+                                funcnames = append(funcnames, k)
+                            }
+                            sort.Strings(funcnames)
+
+                        } else {
+                            for i := irow + 1; i <= irow+HELP_SIZE; i++ {
+                                at(i, 1)
+                                clearToEOL()
+                            }
+                            helpstring = ""
+                            selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                            contextHelpSelected = false
+                            startedContextHelp = false
+                        }
+                    } else { // accept default
+                        if hasPrefixRunes(defaultString, s) {
+                            s = defaultString
+                            cpos = len(s)
+                            defaultAccepted = true
+                            helpstring = ""
+                            selectedStar = -1
+                            contextHelpSelected = false
+                            startedContextHelp = false
+                        }
+                    }
+                    removeProcessedKeycode(&c,1)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
+                    removeProcessedKeycode(&c,3)
+
+                case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
+                    removeProcessedKeycode(&c,2)
+                case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
+                    removeProcessedKeycode(&c,2)
+
+                // ignore list
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
+
+                default:
+
+                    // Normal input processing (only reached when not in reverse search mode)
+                    // multi-byte, like utf8?
+
+                    r, sz := utf8.DecodeRune(c)
+                    if r!=utf8.RuneError {
+                        if sz!=0 {
+                            s = insertAt(s, cpos, r)
+                            cpos++
+                            wordUnderCursor, _ = getWord(s, cpos)
+                            selectedStar = -1
+                        } else {
+                            for idx:=0; idx<len(c); idx++ {
+                                if c[idx] > 32 && c[idx] < 128 {
+                                    s = insertAt(s, cpos, rune(c[idx]))
+                                    cpos++
+                                }
+                            }
+                            wordUnderCursor, _ = getWord(s, cpos)
+                            selectedStar = -1 // also reset the selector position for auto-complete
+                        }
+                    }
+
+                    if startedContextHelp {
+                        for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
+                            at(i, 1)
+                            clearToEOL()
+                        }
                     }
                 }
             }
