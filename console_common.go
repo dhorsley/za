@@ -411,14 +411,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             continue
         }
 
-        at(2,2)
-        if len(c)>0 {
-            pf("[#2]byte array content : %#v[#-]",c)
-        }
-
-        at(5,2)
-        pf("[#3]input array : %#v[#-]                      ",s)
-
         if pasted {
 
             // we disallow multi-line pasted input. this is only a line editor.
@@ -451,13 +443,16 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 case bytes.Equal(c, []byte{3}): // ctrl-c
                     broken = true
+                    removeProcessedKeycode(&c,1)
                     break
                 case bytes.Equal(c, []byte{4}): // ctrl-d
                     eof = true
+                    removeProcessedKeycode(&c,1)
                     break
                 case bytes.Equal(c, []byte{26}): // ctrl-z
                     // Send SIGTSTP to the current process group to suspend Za
                     // Platform-specific implementation handles Unix vs Windows
+                    removeProcessedKeycode(&c,1)
                     handleCtrlZ()
                     break
 
@@ -662,6 +657,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     } else {
                         // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
                     }
+                    removeProcessedKeycode(&c,1)
 
                 case bytes.Equal(c, []byte{13}): // enter
 
@@ -673,6 +669,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             clearToEOL()
                         }
                         helpstring = ""
+                        removeProcessedKeycode(&c,1)
                         break
                     }
 
@@ -682,6 +679,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         addToHistory(string(s))
                     }
 
+                    removeProcessedKeycode(&c,1)
                     break
 
                 case bytes.Equal(c, []byte{32}): // space
@@ -789,6 +787,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
 
+                    removeProcessedKeycode(&c,3)
                     // add check for LEFT during auto-completion:
                     if startedContextHelp {
                         if selectedStar > 0 {
@@ -801,11 +800,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     if cpos > 0 {
                         cpos--
                     }
-                    removeProcessedKeycode(&c,3)
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
 
+                    removeProcessedKeycode(&c,3)
                     // add check for RIGHT during auto-completion:
                     if startedContextHelp {
                         if selectedStar < starMax {
@@ -818,11 +817,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     if cpos < len(s) {
                         cpos++
                     }
-                    removeProcessedKeycode(&c,3)
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
 
+                    removeProcessedKeycode(&c,3)
                     if MW < displayedLenUtf8(s) && cpos > MW {
                         cpos -= MW
                         break
@@ -846,12 +845,12 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             if rowLen > 0 {
                                 irow -= rowLen
                             }
-                            removeProcessedKeycode(&c,3)
                         }
                     }
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
 
+                    removeProcessedKeycode(&c,3)
                     if ddmode {
 
                         // input loop
@@ -941,7 +940,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                                 navHist = false
                             }
                             cpos = len(s)
-                            removeProcessedKeycode(&c,3)
                             wordUnderCursor, _ = getWord(s, cpos)
                         }
                     }
@@ -956,6 +954,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{9}): // TAB
+
+                    removeProcessedKeycode(&c,1)
 
                     // completion hinting setup
                     if hintEnable {
@@ -1007,7 +1007,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             startedContextHelp = false
                         }
                     }
-                    removeProcessedKeycode(&c,1)
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
                     removeProcessedKeycode(&c,3)
@@ -1027,24 +1026,28 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     // Normal input processing (only reached when not in reverse search mode)
                     // multi-byte, like utf8?
 
-                    r, sz := utf8.DecodeRune(c)
-                    if r!=utf8.RuneError {
-                        if sz!=0 {
-                            s = insertAt(s, cpos, r)
-                            cpos++
-                            wordUnderCursor, _ = getWord(s, cpos)
-                            selectedStar = -1
-                        } else {
-                            for idx:=0; idx<len(c); idx++ {
-                                if c[idx] > 32 && c[idx] < 128 {
-                                    s = insertAt(s, cpos, rune(c[idx]))
+                    for r, sz := utf8.DecodeRune(c);len(c)>0; {
+                        if r!=utf8.RuneError {
+                            if sz!=0 {
+                                if r>31 {
+                                    s = insertAt(s, cpos, r)
                                     cpos++
                                 }
                             }
-                            wordUnderCursor, _ = getWord(s, cpos)
-                            selectedStar = -1 // also reset the selector position for auto-complete
+                            /*
+                             else {
+                                for idx:=0; idx<len(c); idx++ {
+                                    if c[idx] > 32 && c[idx] < 128 {
+                                        s = insertAt(s, cpos, rune(c[idx]))
+                                        cpos++
+                                    }
+                                }
+                            */
+                            removeProcessedKeycode(&c,sz)
                         }
                     }
+                    wordUnderCursor, _ = getWord(s, cpos)
+                    selectedStar = -1 // also reset the selector position for auto-complete
 
                     if startedContextHelp {
                         for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
