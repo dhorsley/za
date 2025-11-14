@@ -405,6 +405,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             continue
         }
 
+        at(2,2)
+        if len(c)>0 {
+            pf("[#2]byte array content : %#v[#-]",c)
+        }
+
         if pasted {
 
             // we disallow multi-line pasted input. this is only a line editor.
