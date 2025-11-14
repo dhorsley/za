@@ -177,7 +177,12 @@ func getch(timeo int) ([]byte, bool, bool, string) {
     if runtime.GOOS!="windows" {
         timeoutRaw(timeo)
     }
-    numRead, err := tt.Read(bigbytelist)
+
+    var numRead int
+    var err error
+    for ;numRead==0 && err==nil; {
+        numRead, err = tt.Read(bigbytelist)
+    }
 
     if err != nil {
         // treat as timeout.. separate later, but timeout is buried in here
