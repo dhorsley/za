@@ -197,12 +197,10 @@ func getch(timeo int) ([]byte, bool, bool, string) {
         return collectBracketedPaste()
     }
 
-    /*
     // Fall back to volume-based detection
     if numRead > 6 {
         return []byte{0}, false, true, string(data)
     }
-    */
 
     // numRead can be up to 6 chars for special input stroke.
     return data, false, false, ""
