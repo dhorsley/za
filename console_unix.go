@@ -171,47 +171,13 @@ func setupDynamicCalls() {
 // race condition, yes... but who arranges concurrent keyboard access?
 var bigbytelist = make([]byte, 6*4096)
 
-/* old version kept for posterity:
-func getch(timeo int) ([]byte, bool, bool, string) {
-
-    term.RawMode(tt)
-
-    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
-    numRead, err := tt.Read(bigbytelist)
-
-    tt.Restore()
-
-    // deal with mass input (pasting?)
-    if numRead > 6 {
-        return []byte{0}, false, true, string(bigbytelist[0:numRead])
-    }
-
-    // numRead can be up to 6 chars for special input stroke.
-
-    if err != nil {
-        // treat as timeout.. separate later, but timeout is buried in here
-        return nil, true, false, ""
-    }
-    return bigbytelist[0:numRead], false, false, ""
-}
-*/
-
-/*
-    // term.RawMode(tt)
-    // tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
-    // tt.Restore()
-*/
-
 // get a key press
 func getch(timeo int) ([]byte, bool, bool, string) {
 
-    // term.RawMode(tt)
-    // tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
-    if timeo!=0 && runtime.GOOS!="windows" {
+    if runtime.GOOS!="windows" {
         timeoutRaw(timeo)
     }
     numRead, err := tt.Read(bigbytelist)
-    // tt.Restore()
 
     if err != nil {
         // treat as timeout.. separate later, but timeout is buried in here
@@ -226,10 +192,12 @@ func getch(timeo int) ([]byte, bool, bool, string) {
         return collectBracketedPaste()
     }
 
+    /*
     // Fall back to volume-based detection
     if numRead > 6 {
         return []byte{0}, false, true, string(data)
     }
+    */
 
     // numRead can be up to 6 chars for special input stroke.
     return data, false, false, ""
