@@ -8,11 +8,24 @@ import (
     str "strings"
     "syscall"
     "time"
-
+    "runtime"
     term "github.com/pkg/term"
     "golang.org/x/sys/unix"
     // "fmt"
 )
+
+func startRaw(timeo int) {
+    term.RawMode(tt)
+    timeoutRaw(timeo)
+}
+
+func endRaw() {
+    tt.Restore()
+}
+
+func timeoutRaw(timeo int) {
+    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
+}
 
 func procKill(pid int) {
     syscall.Kill(pid, syscall.SIGINT)
@@ -183,15 +196,22 @@ func getch(timeo int) ([]byte, bool, bool, string) {
 }
 */
 
+/*
+    // term.RawMode(tt)
+    // tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
+    // tt.Restore()
+*/
+
 // get a key press
 func getch(timeo int) ([]byte, bool, bool, string) {
 
-    term.RawMode(tt)
-
-    tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
+    // term.RawMode(tt)
+    // tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
+    if timeo!=0 && runtime.GOOS!="windows" {
+        timeoutRaw(timeo)
+    }
     numRead, err := tt.Read(bigbytelist)
-
-    tt.Restore()
+    // tt.Restore()
 
     if err != nil {
         // treat as timeout.. separate later, but timeout is buried in here

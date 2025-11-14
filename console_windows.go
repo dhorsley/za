@@ -13,6 +13,17 @@ import (
     "unsafe"
 )
 
+
+func startRaw(timeo int) {
+}
+
+func endRaw() {
+}
+
+func timeoutRaw(timeo int) {
+}
+
+
 func procKill(pid int) {
     p, _ := os.FindProcess(pid)
     p.Signal(syscall.SIGTERM)
