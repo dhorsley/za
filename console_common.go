@@ -228,6 +228,11 @@ func hasPrefixRunes(runes, prefix []rune) bool {
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
+    if runtime.GOOS != "windows" {
+        startRaw(0)
+        defer endRaw()
+    }
+
     old_wrap := lineWrap
     lineWrap = false
 
