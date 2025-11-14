@@ -394,7 +394,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         showCursor()
 
         // get key stroke
-        c, _, pasted, pbuf := getch(0)
+        c, timeout, pasted, pbuf := getch(0)
+
+        if c==nil || timeout {
+            continue
+        }
 
         if pasted {
 
