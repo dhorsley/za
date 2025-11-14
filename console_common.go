@@ -475,6 +475,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             }
                             at(irow, icol)
                             pf(string(s))
+                            removeProcessedKeycode(&c,1)
                             break
                         } else if c[0] == 18 { // Ctrl+R - cancel search
                             reverseSearchMode = false
@@ -490,6 +491,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             }
                             at(irow, icol)
                             pf(string(s))
+                            removeProcessedKeycode(&c,1)
                             break
                         } else if c[0] >= 32 && c[0] <= 126 { // Printable character
                             // Add character to search buffer
@@ -504,6 +506,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                                 }
                             }
                             currentSearchResult = 0
+                            removeProcessedKeycode(&c,1)
 
                             // Update display - clear the search area and redraw
                             clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
@@ -519,6 +522,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             }
 
                         } else if c[0] == 127 { // Backspace
+                            removeProcessedKeycode(&c,1)
                             if len(searchBuffer) > 0 {
                                 searchBuffer = searchBuffer[:len(searchBuffer)-1]
 
@@ -548,6 +552,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                                 }
                             }
                         } else if c[0] == 21 { // Ctrl+U - clear search buffer
+                            removeProcessedKeycode(&c,1)
                             searchBuffer = []rune{}
                             searchResults = []int{}
                             currentSearchResult = 0
@@ -563,6 +568,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
                         }
                     } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
+                        removeProcessedKeycode(&c,3)
                         if len(searchResults) > 0 {
                             currentSearchResult = (currentSearchResult + 1) % len(searchResults)
                             // Update display - clear the search area and redraw
@@ -578,6 +584,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         }
                         break
                     } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}) { // DOWN arrow in search
+                        removeProcessedKeycode(&c,3)
                         if len(searchResults) > 0 {
                             currentSearchResult = (currentSearchResult - 1 + len(searchResults)) % len(searchResults)
                             // Update display - clear the search area and redraw
@@ -596,6 +603,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     break
 
                 case bytes.Equal(c, []byte{18}): // ctrl-r - reverse search
+                    removeProcessedKeycode(&c,1)
                     if histEnable && !histEmpty {
                         if reverseSearchMode {
                             // Second Ctrl+R press - cancel search
@@ -646,6 +654,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     break
 
                 case bytes.Equal(c, []byte{0x0F}): // Ctrl+O for multiline editor
+                    removeProcessedKeycode(&c,1)
                     result, eof, broken := multilineEditor(string(s), -1, MH-5, "", "", "Editor")
                     if !broken {
                         // Replace the input buffer in getInput() with the result from the multiline editor
@@ -657,9 +666,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     } else {
                         // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
                     }
-                    removeProcessedKeycode(&c,1)
 
                 case bytes.Equal(c, []byte{13}): // enter
+                    removeProcessedKeycode(&c,1)
 
                     if startedContextHelp {
                         contextHelpSelected = true
@@ -669,7 +678,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             clearToEOL()
                         }
                         helpstring = ""
-                        removeProcessedKeycode(&c,1)
                         break
                     }
 
@@ -679,10 +687,10 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         addToHistory(string(s))
                     }
 
-                    removeProcessedKeycode(&c,1)
                     break
 
                 case bytes.Equal(c, []byte{32}): // space
+                    removeProcessedKeycode(&c,1)
 
                     if startedContextHelp {
                         contextHelpSelected = false
@@ -715,9 +723,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     }
 
                     // normal space input
-                    s = insertAt(s, cpos, rune(c[0]))
+                    s = insertAt(s, cpos, rune(' ')) // rune(c[0]))
                     cpos++
-                    removeProcessedKeycode(&c,1)
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{27, 91, 49, 126}): // home // from showkey -a
@@ -754,6 +761,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{127}): // backspace
+                    removeProcessedKeycode(&c,1)
 
                     if startedContextHelp && len(helpstring) == 0 {
                         startedContextHelp = false
@@ -769,11 +777,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         clearChars(irow, icol, len(s))
                         s = removeBefore(s, cpos)
                         cpos--
-                        removeProcessedKeycode(&c,1)
                         wordUnderCursor, _ = getWord(s, cpos)
                     }
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x33, 0x7E}): // DEL
+                    removeProcessedKeycode(&c,4)
                     if len(s) == 0 && len(defaultString) != 0 {
                         clearChars(irow, icol, len(defaultString))
                         defaultString = []rune{}
@@ -781,12 +789,10 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     if cpos < len(s) {
                         clearChars(irow, icol, len(s))
                         s = removeBefore(s, cpos+1)
-                        removeProcessedKeycode(&c,4)
                         wordUnderCursor, _ = getWord(s, cpos)
                     }
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x44}): // LEFT
-
                     removeProcessedKeycode(&c,3)
                     // add check for LEFT during auto-completion:
                     if startedContextHelp {
@@ -803,7 +809,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x43}): // RIGHT
-
                     removeProcessedKeycode(&c,3)
                     // add check for RIGHT during auto-completion:
                     if startedContextHelp {
@@ -820,7 +825,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
-
                     removeProcessedKeycode(&c,3)
                     if MW < displayedLenUtf8(s) && cpos > MW {
                         cpos -= MW
@@ -849,7 +853,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     }
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x42}): // DOWN
-
                     removeProcessedKeycode(&c,3)
                     if ddmode {
 
@@ -1018,8 +1021,11 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 // ignore list
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
+                    removeProcessedKeycode(&c,3)
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
+                    removeProcessedKeycode(&c,3)
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
+                    removeProcessedKeycode(&c,3)
 
                 default:
 
@@ -1034,15 +1040,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                                     cpos++
                                 }
                             }
-                            /*
-                             else {
-                                for idx:=0; idx<len(c); idx++ {
-                                    if c[idx] > 32 && c[idx] < 128 {
-                                        s = insertAt(s, cpos, rune(c[idx]))
-                                        cpos++
-                                    }
-                                }
-                            */
                             removeProcessedKeycode(&c,sz)
                         }
                     }
@@ -1182,7 +1179,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         switch helpType[pos] {
                         case HELP_FUNC:
                             hla = hla[:len(hla)-1]
-                            helpstring += "\n[#bold]" + hla + "(" + slhelp[hla].in + ")[#boff] : [#4]" + slhelp[hla].action + "[#-]"
+                            helpstring += "\n[#CSI]1G[#bold]" + hla + "(" + slhelp[hla].in + ")[#boff] : [#4]" + slhelp[hla].action + "[#-]"
                         case HELP_DIRENT:
                             f := fileList[helpList[pos]]
                             helpstring += "\n" + helpList[pos]
