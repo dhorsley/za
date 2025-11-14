@@ -990,7 +990,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     }
                 } else {
                     // multi-byte, like utf8?
-                    r, _ := utf8.DecodeRune(c)
+                    r, sz := utf8.DecodeRune(c)
+                    if sz==0 { at(1,1); pf("[#2]*[#-]") }
+                    if r==utf8.RuneError { at(1,1); pf("[#2]e[#-]") }
                     s = insertAt(s, cpos, r)
                     cpos++
                     wordUnderCursor, _ = getWord(s, cpos)
