@@ -401,11 +401,6 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // get key stroke
         c, timeout, pasted, pbuf := getch(0)
 
-        if len(c)>1 {
-            at(2,2)
-            pf("[#2]c>1[#-]")
-        }
-        
         if c==nil || timeout {
             continue
         }
@@ -1006,14 +1001,14 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         wordUnderCursor, _ = getWord(s, cpos)
                         selectedStar = -1
                     } else {
-                        if len(c) == 1 {
-                            if c[0] > 32 && c[0] < 128 {
-                                s = insertAt(s, cpos, rune(c[0]))
+                        for idx:=0; idx<len(c); idx++ {
+                            if c[idx] > 32 && c[idx] < 128 {
+                                s = insertAt(s, cpos, rune(c[idx]))
                                 cpos++
-                                wordUnderCursor, _ = getWord(s, cpos)
-                                selectedStar = -1 // also reset the selector position for auto-complete
                             }
                         }
+                        wordUnderCursor, _ = getWord(s, cpos)
+                        selectedStar = -1 // also reset the selector position for auto-complete
                     }
                 }
 
