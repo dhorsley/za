@@ -344,7 +344,7 @@ func buildListLib() {
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "ssort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "esplit", "min", "max", "avg", "eqlen",
-        "empty", "list_string", "list_float", "list_int", "list_bool", "list_bigi", "list_bigf",
+        "empty", "list_string", "list_float", "list_int", "list_int64", "list_bool", "list_bigi", "list_bigf",
         "scan_left", "zip", "list_fill",
     }
 
@@ -1739,8 +1739,8 @@ func buildListLib() {
             return nil, err
         }
 
-        if args[0]==nil {
-            return nil,nil
+        if args[0] == nil {
+            return nil, nil
         }
 
         list := args[0]
@@ -2274,6 +2274,82 @@ func buildListLib() {
             }
         }
         return int_list, nil
+    }
+
+    slhelp["list_int64"] = LibHelp{in: "list", out: "[]int64_list", action: "Returns [#i1]list[#i0] as a list of 64-bit integers."}
+    stdlib["list_int64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("list_int64", args, 7,
+            "1", "[]int",
+            "1", "[]uint",
+            "1", "[]int64",
+            "1", "[]float64",
+            "1", "[]string",
+            "1", "[]bool",
+            "1", "[]interface {}"); !ok {
+            return nil, err
+        }
+
+        var int64_list []int64
+        switch args[0].(type) {
+        case []int64:
+            return args[0].([]int64), nil
+        case []int:
+            for _, q := range args[0].([]int) {
+                int64_list = append(int64_list, int64(q))
+            }
+        case []uint:
+            for _, q := range args[0].([]uint) {
+                int64_list = append(int64_list, int64(q))
+            }
+        case []float64:
+            for _, q := range args[0].([]float64) {
+                int64_list = append(int64_list, int64(q))
+            }
+        case []string:
+            for _, q := range args[0].([]string) {
+                if v, err := strconv.ParseInt(q, 10, 64); err == nil {
+                    int64_list = append(int64_list, v)
+                } else {
+                    return nil, errors.New(sf("could not treat '%s' as int64.", q))
+                }
+            }
+        case []bool:
+            for _, q := range args[0].([]bool) {
+                if q {
+                    int64_list = append(int64_list, 1)
+                } else {
+                    int64_list = append(int64_list, 0)
+                }
+            }
+        case []any:
+            for _, q := range args[0].([]any) {
+                switch v := q.(type) {
+                case int64:
+                    int64_list = append(int64_list, v)
+                case int:
+                    int64_list = append(int64_list, int64(v))
+                case uint:
+                    int64_list = append(int64_list, int64(v))
+                case float64:
+                    int64_list = append(int64_list, int64(v))
+                case string:
+                    if parsed, err := strconv.ParseInt(v, 10, 64); err == nil {
+                        int64_list = append(int64_list, parsed)
+                    } else {
+                        return nil, errors.New(sf("could not treat '%s' as int64.", v))
+                    }
+                case bool:
+                    if v {
+                        int64_list = append(int64_list, 1)
+                    } else {
+                        int64_list = append(int64_list, 0)
+                    }
+                default:
+                    return nil, errors.New(sf("could not treat %v as int64.", q))
+                }
+            }
+        }
+        return int64_list, nil
     }
 
     slhelp["list_string"] = LibHelp{in: "list", out: "[]string_list", action: "Converts [#i1]list[#i0] to a list of strings."}

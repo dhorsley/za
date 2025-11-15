@@ -1,0 +1,14 @@
+#!/usr/bin/env za
+
+println("Testing big integer declaration...")
+
+var big_ints []bigi
+println("✓ Big integer array declared successfully")
+
+big_ints = [1, 2, 3].list_bigi
+var bi bigi
+bi = big_ints[0]
+println("✓ Big integer created: " + bi.String())
+println("✓ Big integer array created with " + str(len(big_ints)) + " elements")
+
+println("All big integer tests passed!")

@@ -19,12 +19,268 @@ import (
     "unsafe"
 )
 
+// goLiteralToZaLiteral converts Go literal representations to Za literal format
+func goLiteralToZaLiteral(v any) string {
+    switch val := v.(type) {
+    case string:
+        return `"` + val + `"`
+    case int:
+        return strconv.FormatInt(int64(val), 10)
+    case uint:
+        return strconv.FormatUint(uint64(val), 10)
+    case float64:
+        return strconv.FormatFloat(val, 'g', -1, 64)
+    case bool:
+        return strconv.FormatBool(val)
+    case nil:
+        return "nil"
+    default:
+        return sf("%v", val)
+    }
+}
+
+func mapToZaLiteral(m map[string]any) string {
+    if len(m) == 0 {
+        return "map()"
+    }
+
+    var parts []string
+    for key, value := range m {
+        valueStr := goLiteralToZaLiteral(value)
+        parts = append(parts, sf(".%s %s", key, valueStr))
+    }
+    return "map(" + str.Join(parts, ", ") + ")"
+}
+
+func arrayToZaLiteral(arr []any) string {
+    if len(arr) == 0 {
+        return "[]"
+    }
+
+    var parts []string
+    for _, item := range arr {
+        itemStr := goLiteralToZaLiteral(item)
+        parts = append(parts, itemStr)
+    }
+    return "[" + str.Join(parts, ", ") + "]"
+}
+
+func bigIntArrayToZaLiteral(arr []*big.Int) string {
+    if len(arr) == 0 {
+        return "[]"
+    }
+
+    var parts []string
+    for _, item := range arr {
+        parts = append(parts, item.String())
+    }
+    return "[" + str.Join(parts, ", ") + "]"
+}
+
+func bigFloatArrayToZaLiteral(arr []*big.Float) string {
+    if len(arr) == 0 {
+        return "[]"
+    }
+
+    var parts []string
+    for _, item := range arr {
+        parts = append(parts, item.String())
+    }
+    return "[" + str.Join(parts, ", ") + "]"
+}
+
+// replaceAllArrayIndexing replaces ALL #[index] patterns in a string with actual array elements
+func replaceAllArrayIndexing(expr string, array any) (string, error) {
+    result := expr
+
+    for strings.Contains(result, "#[") {
+        hash_bracket_pos := strings.Index(result, "#[")
+        if hash_bracket_pos == -1 {
+            break
+        }
+
+        close_bracket_pos := strings.Index(result[hash_bracket_pos+2:], "]")
+        if close_bracket_pos == -1 {
+            break
+        }
+
+        index_str := result[hash_bracket_pos+2 : hash_bracket_pos+2+close_bracket_pos]
+        index, err := strconv.Atoi(index_str)
+        if err != nil || index < 0 {
+            return "", fmt.Errorf("invalid array index: %s", index_str)
+        }
+
+        var element_str string
+        var valid_index bool
+
+        // Handle different slice types
+        switch arr := array.(type) {
+        case []any:
+            if index < len(arr) {
+                element := arr[index]
+                switch elem := element.(type) {
+                case string:
+                    element_str = `"` + elem + `"`
+                case int:
+                    element_str = strconv.FormatInt(int64(elem), 10)
+                case uint:
+                    element_str = strconv.FormatUint(uint64(elem), 10)
+                case float64:
+                    element_str = strconv.FormatFloat(elem, 'g', -1, 64)
+                case bool:
+                    element_str = strconv.FormatBool(elem)
+                case nil:
+                    element_str = "nil"
+                default:
+                    element_str = goLiteralToZaLiteral(elem)
+                }
+                valid_index = true
+            }
+        case []int:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = strconv.FormatInt(int64(element), 10)
+                valid_index = true
+            }
+        case []float64:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = strconv.FormatFloat(element, 'g', -1, 64)
+                valid_index = true
+            }
+        case []string:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = `"` + element + `"`
+                valid_index = true
+            }
+        case []bool:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = strconv.FormatBool(element)
+                valid_index = true
+            }
+        case []*big.Int:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = element.String()
+                valid_index = true
+            }
+        case []*big.Float:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = element.String()
+                valid_index = true
+            }
+        case [][]int:
+            if index < len(arr) {
+                element := arr[index]
+                element_str = goLiteralToZaLiteral(element)
+                valid_index = true
+            }
+        }
+
+        if !valid_index {
+            return "", fmt.Errorf("array index %d out of bounds", index)
+        }
+
+        pattern_to_replace := result[hash_bracket_pos : hash_bracket_pos+2+close_bracket_pos+1]
+        result = str.Replace(result, pattern_to_replace, element_str, -1)
+    }
+
+    return result, nil
+}
+
+func replaceMapFieldAccess(expr string, item any) (string, error) {
+    // Parse and replace #.field patterns with actual values from the map
+    result := expr
+
+    // Check if item is a map
+    mapValue, ok := item.(map[string]any)
+    if !ok {
+        return "", fmt.Errorf("expected map[string]any for field access, got %T", item)
+    }
+
+    for {
+        // Find the next #. pattern
+        start := strings.Index(result, "#.")
+        if start == -1 {
+            break // No more field access patterns found
+        }
+
+        // Extract the field name - continue until we hit a non-identifier character
+        fieldName := ""
+        pos := start + 2 // Skip #.
+
+        for pos < len(result) {
+            ch := result[pos]
+            // Allow alphanumeric, underscore, and hyphen in field names (like map literals)
+            // Stop at whitespace, operators, dots, brackets, or backticks
+            if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' {
+                fieldName += string(ch)
+                pos++
+            } else {
+                break
+            }
+        }
+
+        if fieldName == "" {
+            return "", fmt.Errorf("empty field name in expression: %s", result)
+        }
+
+        // Capitalize field name for struct field access
+        capitalizedFieldName := renameSF(fieldName)
+
+        // Look up the field value in the map - try original first, then capitalized
+        fieldValue, exists := mapValue[fieldName]
+        if !exists {
+            fieldValue, exists = mapValue[capitalizedFieldName]
+            if !exists {
+                return "", fmt.Errorf("field '%s' not found in map", fieldName)
+            }
+        }
+
+        // Convert the field value to a Za literal
+        var valueStr string
+        switch fv := fieldValue.(type) {
+        case string:
+            valueStr = `"` + fv + `"`
+        case int:
+            valueStr = strconv.FormatInt(int64(fv), 10)
+        case uint:
+            valueStr = strconv.FormatUint(uint64(fv), 10)
+        case float64:
+            valueStr = strconv.FormatFloat(fv, 'g', -1, 64)
+        case bool:
+            valueStr = strconv.FormatBool(fv)
+        case map[string]any:
+            // Convert map to Za literal format
+            valueStr = mapToZaLiteral(fv)
+        case []any:
+            // Convert array to Za literal format
+            valueStr = arrayToZaLiteral(fv)
+        case []*big.Int:
+            // Convert big int array to Za literal format
+            valueStr = bigIntArrayToZaLiteral(fv)
+        case []*big.Float:
+            // Convert big float array to Za literal format
+            valueStr = bigFloatArrayToZaLiteral(fv)
+        default:
+            valueStr = goLiteralToZaLiteral(fv)
+        }
+
+        // Replace the #.field pattern with the actual value
+        result = result[:start] + valueStr + result[pos:]
+    }
+
+    return result, nil
+}
+
 func (p *leparser) reserved(token Token) any {
     panic(fmt.Errorf("statement names cannot be used as identifiers ([%s] %v)", tokNames[token.tokType], token.tokText))
 }
 
 func (p *leparser) Eval(fs uint32, toks []Token) (any, error) {
-    // pf("\n(eval) called with : %#v\n",toks)
 
     l := len(toks)
 
@@ -590,7 +846,6 @@ func (p *leparser) ignore(token Token) any {
 }
 
 func (p *leparser) list_filter(left any, right any) any {
-
     switch right.(type) {
     case string:
     default:
@@ -606,52 +861,44 @@ func (p *leparser) list_filter(left any, right any) any {
     switch left.(type) {
 
     case []dirent:
-
-        // find # refs
-        var fields []string
-        var fieldpos []int
-
-        cond := right.(string) + " "
-        for e := 0; e < len(cond)-1; e += 1 {
-            if cond[e] == '#' && cond[e+1] == '.' {
-                for f := e + 2; f < len(cond); f += 1 {
-                    if str.IndexByte(identifier_set, cond[f]) == -1 {
-                        fields = append(fields, renameSF(cond[e+2:f]))
-                        e = f
-                        fieldpos = append(fieldpos, f-1)
-                        break
-                    }
-                }
-            }
-        }
-
-        // filter
-        var new_list []dirent
+        var new_list []interface{}
         for e := 0; e < len(left.([]dirent)); e += 1 {
-            nm := s2m(left.([]dirent)[e])
-            var new_right str.Builder
-            fnum := 0
-            for f := 0; f < len(cond); f += 1 {
-                switch cond[f] {
-                case '#':
-                    new_right.WriteString(sf("%#v", nm[fields[fnum]]))
-                    f = fieldpos[fnum]
-                    fnum += 1
+            // Convert dirent to map and use the same field access approach as maps
+            dirent_map := s2m(left.([]dirent)[e])
+
+            if strings.Contains(right.(string), "#.") {
+                // Handle map field access like #.name, #.size, etc.
+                new_right, err := replaceMapFieldAccess(right.(string), dirent_map)
+                if err != nil {
+                    panic(err)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                switch val.(type) {
+                case bool:
+                    if val.(bool) {
+                        new_list = append(new_list, left.([]dirent)[e])
+                    }
                 default:
-                    new_right.WriteByte(cond[f])
+                    panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
                 }
-            }
-            val, err := ev(reduceparser, p.fs, new_right.String())
-            if err != nil {
-                panic(err)
-            }
-            switch val.(type) {
-            case bool:
-                if val.(bool) {
-                    new_list = append(new_list, left.([]dirent)[e])
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right := str.Replace(right.(string), "#", sf("%#v", dirent_map), -1)
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
                 }
-            default:
-                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right.String()))
+                switch val.(type) {
+                case bool:
+                    if val.(bool) {
+                        new_list = append(new_list, left.([]dirent)[e])
+                    }
+                default:
+                    panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+                }
             }
         }
         return new_list
@@ -659,7 +906,20 @@ func (p *leparser) list_filter(left any, right any) any {
     case []string:
         new_list := make([]string, 0, len(left.([]string)))
         for e := 0; e < len(left.([]string)); e += 1 {
-            new_right := str.Replace(right.(string), "#", `"`+left.([]string)[e]+`"`, -1)
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]string)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", `"`+left.([]string)[e]+`"`, -1)
+            }
+
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
@@ -678,7 +938,20 @@ func (p *leparser) list_filter(left any, right any) any {
     case []int:
         new_list := make([]int, 0, len(left.([]int)))
         for e := 0; e < len(left.([]int)); e += 1 {
-            new_right := str.Replace(right.(string), "#", strconv.FormatInt(int64(left.([]int)[e]), 10), -1)
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]int)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(left.([]int)[e]), 10), -1)
+            }
+
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
@@ -716,7 +989,20 @@ func (p *leparser) list_filter(left any, right any) any {
     case []float64:
         new_list := make([]float64, 0, len(left.([]float64)))
         for e := 0; e < len(left.([]float64)); e += 1 {
-            new_right := str.Replace(right.(string), "#", strconv.FormatFloat(left.([]float64)[e], 'g', -1, 64), -1)
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]float64)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", strconv.FormatFloat(left.([]float64)[e], 'g', -1, 64), -1)
+            }
+
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
@@ -735,7 +1021,20 @@ func (p *leparser) list_filter(left any, right any) any {
     case []bool:
         var new_list []bool
         for e := 0; e < len(left.([]bool)); e += 1 {
-            new_right := str.Replace(right.(string), "#", strconv.FormatBool(left.([]bool)[e]), -1)
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]bool)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", strconv.FormatBool(left.([]bool)[e]), -1)
+            }
+
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
@@ -744,6 +1043,101 @@ func (p *leparser) list_filter(left any, right any) any {
             case bool:
                 if val.(bool) {
                     new_list = append(new_list, left.([]bool)[e])
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+            }
+        }
+        return new_list
+
+    case []*big.Int:
+        var new_list []*big.Int
+        for e := 0; e < len(left.([]*big.Int)); e += 1 {
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]*big.Int)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", left.([]*big.Int)[e].String(), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, new_right)
+            if err != nil {
+                panic(err)
+            }
+            switch val.(type) {
+            case bool:
+                if val.(bool) {
+                    new_list = append(new_list, left.([]*big.Int)[e])
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+            }
+        }
+        return new_list
+
+    case []*big.Float:
+        var new_list []*big.Float
+        for e := 0; e < len(left.([]*big.Float)); e += 1 {
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]*big.Float)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", left.([]*big.Float)[e].String(), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, new_right)
+            if err != nil {
+                panic(err)
+            }
+            switch val.(type) {
+            case bool:
+                if val.(bool) {
+                    new_list = append(new_list, left.([]*big.Float)[e])
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+            }
+        }
+        return new_list
+
+    case [][]int:
+        var new_list [][]int
+        for e := 0; e < len(left.([][]int)); e += 1 {
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([][]int)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                panic(fmt.Errorf("multi-dimensional arrays require array indexing syntax"))
+            }
+
+            val, err := ev(reduceparser, p.fs, new_right)
+            if err != nil {
+                panic(err)
+            }
+            switch val.(type) {
+            case bool:
+                if val.(bool) {
+                    new_list = append(new_list, left.([][]int)[e])
                 }
             default:
                 panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
@@ -772,21 +1166,13 @@ func (p *leparser) list_filter(left any, right any) any {
 
     case map[string]any:
         var new_map = make(map[string]any)
-        for k, v := range left.(map[string]any) {
-            var new_right string
-            switch v := v.(type) {
-            case string:
-                new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
-            case int:
-                new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
-            case uint:
-                new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
-            case float64:
-                new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
-            case bool:
-                new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
-            default:
-                new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+        mapData := left.(map[string]any)
+
+        if strings.Contains(right.(string), "#.") {
+            // Handle field access like #.name, #.size, etc.
+            new_right, err := replaceMapFieldAccess(right.(string), mapData)
+            if err != nil {
+                panic(err)
             }
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
@@ -795,34 +1181,104 @@ func (p *leparser) list_filter(left any, right any) any {
             switch val.(type) {
             case bool:
                 if val.(bool) {
-                    new_map[k] = v
+                    // For field access filter, return the original map if condition is true
+                    return mapData
                 }
             default:
                 panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
             }
+            // Return empty map if condition is false
+            return make(map[string]any)
+        } else {
+            // Handle simple # replacement for backward compatibility
+            for k, v := range mapData {
+                var new_right string
+                switch v := v.(type) {
+                case string:
+                    new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
+                case int:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
+                case uint:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
+                case float64:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
+                case bool:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
+                default:
+                    new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                switch val.(type) {
+                case bool:
+                    if val.(bool) {
+                        new_map[k] = v
+                    }
+                default:
+                    panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+                }
+            }
+            return new_map
         }
-        return new_map
 
     case []any:
         var new_list []any
         for e := 0; e < len(left.([]any)); e += 1 {
+            // Handle array indexing syntax
             var new_right string
-            switch v := left.([]any)[e].(type) {
-            case string:
-                new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
-            case int:
-                new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
-            case uint:
-                new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
-            case float64:
-                new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
-            case bool:
-                new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
-            case nil:
-                new_right = str.Replace(right.(string), "#", "nil", -1)
-            default:
-                new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]any)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else if strings.Contains(right.(string), "#.") {
+                // Handle map field access like #.age, #.name, etc.
+                if mapVal, ok := left.([]any)[e].(map[string]any); ok {
+                    // Use the proper field access replacement function
+                    new_right, err := replaceMapFieldAccess(right.(string), mapVal)
+                    if err != nil {
+                        panic(err)
+                    }
+                    val, err := ev(reduceparser, p.fs, new_right)
+                    if err != nil {
+                        panic(err)
+                    }
+                    switch val.(type) {
+                    case bool:
+                        if val.(bool) {
+                            new_list = append(new_list, left.([]any)[e])
+                        }
+                    default:
+                        panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
+                    }
+                    continue
+                } else {
+                    panic(fmt.Errorf("expected map, got %T for field access", left.([]any)[e]))
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                switch v := left.([]any)[e].(type) {
+                case string:
+                    new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
+                case int:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
+                case uint:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
+                case float64:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
+                case bool:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
+                default:
+                    new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+                }
             }
+
+            // Evaluate the expression
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
@@ -835,13 +1291,13 @@ func (p *leparser) list_filter(left any, right any) any {
             default:
                 panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", new_right))
             }
+
         }
         return new_list
 
     default:
         panic(fmt.Errorf("invalid list (%T) in filter", left))
     }
-    // unreachable: // return nil
 }
 
 func (p *leparser) file_out(left any, right any) any {
@@ -892,45 +1348,31 @@ func (p *leparser) list_map(left any, right any) any {
     switch left.(type) {
 
     case []dirent:
-
-        // find # refs
-        var fields []string
-        var fieldpos []int
-
-        cond := right.(string) + " "
-        for e := 0; e < len(cond)-1; e += 1 {
-            if cond[e] == '#' && cond[e+1] == '.' {
-                for f := e + 2; f < len(cond); f += 1 {
-                    if str.IndexByte(identifier_set, cond[f]) == -1 {
-                        fields = append(fields, renameSF(cond[e+2:f]))
-                        e = f
-                        fieldpos = append(fieldpos, f-1)
-                        break
-                    }
-                }
-            }
-        }
-
         var new_list []interface{}
         for e := 0; e < len(left.([]dirent)); e += 1 {
-            nm := s2m(left.([]dirent)[e])
-            var new_right str.Builder
-            fnum := 0
-            for f := 0; f < len(cond); f += 1 {
-                switch cond[f] {
-                case '#':
-                    new_right.WriteString(sf("%#v", nm[fields[fnum]]))
-                    f = fieldpos[fnum]
-                    fnum += 1
-                default:
-                    new_right.WriteByte(cond[f])
+            // Convert dirent to map and use the same field access approach as maps
+            dirent_map := s2m(left.([]dirent)[e])
+
+            if strings.Contains(right.(string), "#.") {
+                // Handle map field access like #.name, #.size, etc.
+                new_right, err := replaceMapFieldAccess(right.(string), dirent_map)
+                if err != nil {
+                    panic(err)
                 }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                new_list = append(new_list, val)
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right := str.Replace(right.(string), "#", sf("%#v", dirent_map), -1)
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                new_list = append(new_list, val)
             }
-            val, err := ev(reduceparser, p.fs, new_right.String())
-            if err != nil {
-                panic(err)
-            }
-            new_list = append(new_list, val)
         }
         return new_list
 
@@ -1037,23 +1479,174 @@ func (p *leparser) list_map(left any, right any) any {
         }
         return new_list
 
+    case []*big.Int:
+        var new_list []*big.Int
+        for e := 0; e < len(left.([]*big.Int)); e += 1 {
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]*big.Int)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", left.([]*big.Int)[e].String(), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, new_right)
+            if err != nil {
+                panic(err)
+            }
+            switch result := val.(type) {
+            case *big.Int:
+                new_list = append(new_list, result)
+            case int:
+                // Convert regular int to big.Int
+                new_list = append(new_list, big.NewInt(int64(result)))
+            case float64:
+                // Convert float64 to big.Int
+                new_list = append(new_list, big.NewInt(int64(result)))
+            case string:
+                // Parse string as big.Int
+                bigInt := new(big.Int)
+                if _, ok := bigInt.SetString(result, 10); ok {
+                    new_list = append(new_list, bigInt)
+                } else {
+                    panic(fmt.Errorf("cannot convert string '%s' to big.Int in map", result))
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (%s) in map - expected *big.Int, got %T", new_right, result))
+            }
+        }
+        return new_list
+
+    case []*big.Float:
+        var new_list []*big.Float
+        for e := 0; e < len(left.([]*big.Float)); e += 1 {
+            var new_right string
+            var err error
+
+            if strings.Contains(right.(string), "#[") {
+                // Use the helper function to replace ALL #[index] patterns
+                new_right, err = replaceAllArrayIndexing(right.(string), left.([]*big.Float)[e])
+                if err != nil {
+                    panic(err)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                new_right = str.Replace(right.(string), "#", left.([]*big.Float)[e].String(), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, new_right)
+            if err != nil {
+                panic(err)
+            }
+            switch result := val.(type) {
+            case *big.Float:
+                new_list = append(new_list, result)
+            case int:
+                // Convert regular int to big.Float
+                new_list = append(new_list, big.NewFloat(float64(result)))
+            case float64:
+                // Convert float64 to big.Float
+                new_list = append(new_list, big.NewFloat(result))
+            case string:
+                // Parse string as big.Float
+                bigFloat := new(big.Float)
+                if _, ok := bigFloat.SetString(result); ok {
+                    new_list = append(new_list, bigFloat)
+                } else {
+                    panic(fmt.Errorf("cannot convert string '%s' to big.Float in map", result))
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (%s) in map - expected *big.Float, got %T", new_right, result))
+            }
+        }
+        return new_list
+
+    case [][]int:
+        var new_list []int
+        for e := 0; e < len(left.([][]int)); e += 1 {
+            v := left.([][]int)[e]
+            right_str := right.(string)
+
+            // Check if this is an array indexing operation like #[1], #[0], etc.
+            if strings.Contains(right_str, "#[") {
+                // Use helper function to replace ALL array indexing patterns
+                new_right, err := replaceAllArrayIndexing(right_str, v)
+                if err != nil {
+                    panic(err)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                switch result := val.(type) {
+                case int:
+                    new_list = append(new_list, result)
+                default:
+                    panic(fmt.Errorf("invalid expression (%s) in map - expected int", new_right))
+                }
+                continue
+            }
+
+            // Fallback to normal string replacement (not expected for multi-dim arrays)
+            panic(fmt.Errorf("multi-dimensional arrays require array indexing syntax"))
+        }
+        return new_list
+
     case []any:
         var new_list []any
         for e := 0; e < len(left.([]any)); e += 1 {
+            v := left.([]any)[e]
+            right_str := right.(string)
+
+            // Check if this is an array indexing operation like #[1], #[0], etc.
+            if strings.Contains(right_str, "#[") {
+                // Use helper function to replace ALL array indexing patterns
+                new_right, err := replaceAllArrayIndexing(right_str, v)
+                if err != nil {
+                    panic(err)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                new_list = append(new_list, val)
+                continue
+            } else if strings.Contains(right_str, "#.") {
+                // Handle map field access like #.age, #.name, etc.
+                // Use the proper field access parser
+                new_right, err := replaceMapFieldAccess(right_str, v)
+                if err != nil {
+                    panic(err)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                new_list = append(new_list, val)
+                continue
+            }
+
+            // Fallback to normal string replacement
             var new_right string
-            switch v := left.([]any)[e].(type) {
+            switch vv := v.(type) {
             case string:
-                new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
+                new_right = str.Replace(right_str, "#", `"`+vv+`"`, -1)
             case int:
-                new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
+                new_right = str.Replace(right_str, "#", strconv.FormatInt(int64(vv), 10), -1)
             case uint:
-                new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
+                new_right = str.Replace(right_str, "#", strconv.FormatUint(uint64(vv), 10), -1)
             case float64:
-                new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
+                new_right = str.Replace(right_str, "#", strconv.FormatFloat(vv, 'g', -1, 64), -1)
             case bool:
-                new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
+                new_right = str.Replace(right_str, "#", strconv.FormatBool(vv), -1)
             default:
-                new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+                new_right = str.Replace(right_str, "#", goLiteralToZaLiteral(vv), -1)
             }
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
@@ -1065,29 +1658,46 @@ func (p *leparser) list_map(left any, right any) any {
 
     case map[string]any:
         var new_map = make(map[string]any)
-        for k, v := range left.(map[string]any) {
-            var new_right string
-            switch v := v.(type) {
-            case string:
-                new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
-            case int:
-                new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
-            case uint:
-                new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
-            case float64:
-                new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
-            case bool:
-                new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
-            default:
-                new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+        mapData := left.(map[string]any)
+
+        if strings.Contains(right.(string), "#.") {
+            // Handle field access like #.name, #.size, etc.
+            new_right, err := replaceMapFieldAccess(right.(string), mapData)
+            if err != nil {
+                panic(err)
             }
             val, err := ev(reduceparser, p.fs, new_right)
             if err != nil {
                 panic(err)
             }
-            new_map[k] = val
+            // For field access on a single map, return the evaluated result
+            return val
+        } else {
+            // Handle simple # replacement for backward compatibility
+            for k, v := range mapData {
+                var new_right string
+                switch v := v.(type) {
+                case string:
+                    new_right = str.Replace(right.(string), "#", `"`+v+`"`, -1)
+                case int:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatInt(int64(v), 10), -1)
+                case uint:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatUint(uint64(v), 10), -1)
+                case float64:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatFloat(v, 'g', -1, 64), -1)
+                case bool:
+                    new_right = str.Replace(right.(string), "#", strconv.FormatBool(v), -1)
+                default:
+                    new_right = str.Replace(right.(string), "#", sf("%#v", v), -1)
+                }
+                val, err := ev(reduceparser, p.fs, new_right)
+                if err != nil {
+                    panic(err)
+                }
+                new_map[k] = val
+            }
+            return new_map
         }
-        return new_map
 
     default:
         panic(fmt.Errorf("invalid list (%T) in map", left))
@@ -1827,7 +2437,10 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
                 // pf("sym_dot pre loop, pos->%d len->%d\n",p.pos,p.len)
                 for {
                     // pf("nt->%+v pos->%d ckey->%s\n",tokNames[p.peek().tokType],p.pos,key)
-                    if p.pos >= p.len { pf("broke on len\n") ; break }
+                    if p.pos >= p.len {
+                        pf("broke on len\n")
+                        break
+                    }
                     key += p.peek().tokText
                     p.next() // consume identifier/keyword
 
@@ -1835,7 +2448,7 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
                         // pf("broke on not minus/len\n")
                         break
                     }
-                    key+="-"
+                    key += "-"
                     p.next() // consume -
                 }
                 arg_names = append(arg_names, key) // add name field
@@ -1862,7 +2475,7 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
     if p.peek().tokType == RParen {
         p.next() // consume rparen
     } else {
-        panic(fmt.Errorf("expected closing parenthesis for map literal, not [%s]",tokNames[p.peek().tokType]))
+        panic(fmt.Errorf("expected closing parenthesis for map literal, not [%s]", tokNames[p.peek().tokType]))
     }
 
     // Build the map from the parsed arguments
@@ -3028,7 +3641,6 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 
     return s
 }
-
 
 // evaluate an expression string
 func ev(parser *leparser, fs uint32, ws string) (result any, err error) {

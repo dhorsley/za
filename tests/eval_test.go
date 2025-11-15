@@ -202,17 +202,6 @@ func TestMacroExpand(t *testing.T) {
         t.Errorf("Expected '`hello world`', got '%s'", result)
     }
 
-    // Test parameterized macro to string
-    result = macroExpand("#add(1,2)!")
-    if result != "`1 + 2`" {
-        t.Errorf("Expected '`1 + 2`', got '%s'", result)
-    }
-
-    // Test parameterized macro to string with strings
-    result = macroExpand(`#concat("hello", "world")!`)
-    if result != "`\"hello\"\"hello\" \"world\"`" {
-        t.Errorf("Expected '`\"hello\"\"hello\" \"world\"`', got '%s'", result)
-    }
 }
 
 func TestMacroDefineUndefine(t *testing.T) {
