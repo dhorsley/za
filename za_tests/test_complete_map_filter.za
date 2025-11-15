@@ -1,0 +1,76 @@
+#!/usr/bin/env za
+
+println "=== Complete Map and Filter Test with All Dynamic Features ==="
+
+# Test 1: Big integers with filter and map
+println "Test 1: Big integers"
+big_ints = [1, 2, 3, 4, 5].list_bigi
+filtered_bigi = big_ints ?> "# > 3"
+mapped_bigi = big_ints -> "# * 2"
+println "BigInt filter: ", filtered_bigi
+println "BigInt map: ", mapped_bigi
+
+# Test 2: Big floats with filter and map
+println "Test 2: Big floats"
+big_floats = [1.5, 2.5, 3.5, 4.5, 5.5].list_bigf
+filtered_bigf = big_floats ?> "# > 3.0"
+mapped_bigf = big_floats -> "# / 2"
+println "BigFloat filter: ", filtered_bigf
+println "BigFloat map: ", mapped_bigf
+
+# Test 3: Multi-dimensional arrays
+println "Test 3: Multi-dimensional arrays"
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+filtered_matrix = matrix ?> "#[1] > 4"
+mapped_matrix = matrix -> "#[0] + #[2]"
+println "Multi-dim filter: ", filtered_matrix
+println "Multi-dim map: ", mapped_matrix
+
+# Test 4: Map support in RHS strings
+println "Test 4: Map support in RHS"
+data_map = map(.name `Alice`, .age 30, .score 95.5)
+test_array = [data_map, map(.name `Bob`, .age 25, .score 87.0)]
+filtered_map = test_array ?> "#.age > 28"
+mapped_map = test_array -> "#.name + ` (` + as_string(#.age) + `)`"
+println "Map filter: ", filtered_map
+println "Map map: ", mapped_map
+
+# Test 5: Dirent with field access
+println "Test 5: Dirent with field access"
+files = dir(".")
+filtered_files = files ?> "#.name != `.`"
+mapped_files = files -> "#.name"
+println "Dirent filter count: ", len(filtered_files)
+println "Dirent map (first 3): ", mapped_files[0:3]
+
+# Test 6: Regular arrays (regression test)
+println "Test 6: Regular arrays regression"
+regular = [10, 20, 30, 40, 50]
+filtered_reg = regular ?> "# > 25"
+mapped_reg = regular -> "# + 1000"
+println "Regular filter: ", filtered_reg
+println "Regular map: ", mapped_reg
+
+# Test 7: String arrays
+println "Test 7: String arrays"
+strings = [`apple`, `banana`, `cherry`, `date`]
+filtered_strings = strings ?> "# > `b`"
+mapped_strings = strings -> "# + `_fruit`"
+println "String filter: ", filtered_strings
+println "String map: ", mapped_strings
+
+# Test 8: Complex nested operations (simplified)
+println "Test 8: Complex nested operations"
+
+# Test simple nested map first
+nested_map = map(.user map(.name `Alice`, .scores [95, 87, 92]), .active true)
+println "Nested map:", nested_map
+
+# Test array of simple maps
+simple_data = [map(.name `Alice`, .active true), map(.name `Bob`, .active false)]
+filtered_simple = simple_data ?> "#.active"
+mapped_simple = simple_data -> "#.name"
+println "Simple filter:", filtered_simple.pp
+println "Simple map:", mapped_simple.pp
+
+println "=== All tests completed successfully! ==="

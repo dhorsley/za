@@ -9,7 +9,6 @@ import (
     "unsafe"
 )
 
-
 // intStrCache provides a cache for small integer to string conversions to reduce allocations.
 var intStrCache [1024]string
 
@@ -80,6 +79,7 @@ func init() {
     var tu32 uint32
     var tu64 uint64
     var ti int
+    var ti64 int64
     var tf64 float64
     var ts string
     var tbi *big.Int
@@ -91,11 +91,14 @@ func init() {
     var stu32 []uint32
     var stu64 []uint64
     var sti []int
+    var sti64 []int64
+    var stmatrix [][]int
     var stf64 []float64
     var sts []string
     var stbi []*big.Int
     var stbf []*big.Float
     var stmixed []any
+    var stdirent []dirent
 
     Typemap = make(map[string]reflect.Type)
     Typemap["bool"] = reflect.TypeOf(tb)
@@ -107,6 +110,7 @@ func init() {
     Typemap["uxlong"] = reflect.TypeOf(tu64)
     Typemap["byte"] = reflect.TypeOf(tu8)
     Typemap["int"] = reflect.TypeOf(ti)
+    Typemap["int64"] = reflect.TypeOf(ti64)
     Typemap["float"] = reflect.TypeOf(tf64)
     Typemap["bigi"] = reflect.TypeOf(tbi)
     Typemap["bigf"] = reflect.TypeOf(tbf)
@@ -120,6 +124,8 @@ func init() {
     Typemap["[]int"] = reflect.TypeOf(sti)
     Typemap["[]uint32"] = reflect.TypeOf(stu32)
     Typemap["[]uint64"] = reflect.TypeOf(stu64)
+    Typemap["[]int64"] = reflect.TypeOf(sti64)
+    Typemap["[][]int"] = reflect.TypeOf(stmatrix)
     Typemap["[]float"] = reflect.TypeOf(stf64)
     Typemap["[]string"] = reflect.TypeOf(sts)
     Typemap["[]bigi"] = reflect.TypeOf(stbi)
@@ -127,6 +133,7 @@ func init() {
     Typemap["[]mixed"] = reflect.TypeOf(stmixed)
     Typemap["[]any"] = reflect.TypeOf(stmixed)
     Typemap["[]"] = reflect.TypeOf(stmixed)
+    Typemap["[]dirent"] = reflect.TypeOf(stdirent)
     Typemap["map"] = nil
 }
 
@@ -386,7 +393,7 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     }
 
     // enforce casing
-    fieldName=renameSF(fieldName)
+    fieldName = renameSF(fieldName)
 
     // make a new temporary target struct type to work with and populate it
     tmp := reflect.New(val.Type()).Elem()
@@ -447,7 +454,7 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
     isMap := false
 
     // uppercase initial
-    fieldName=renameSF(fieldName)
+    fieldName = renameSF(fieldName)
 
     switch k := key.(type) {
     case string:
@@ -1008,7 +1015,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
     if currentVal.IsValid() && currentVal.Kind() == reflect.Interface {
         // If the interface is nil, we can't recurse. The next step (e.g., AccessMap)
         // will handle auto-vivification of a new container.
-        if ! currentVal.IsNil() {
+        if !currentVal.IsNil() {
             return p.recursiveAssign(currentVal.Elem(), accesses, valueToSet)
         }
     }
@@ -1058,14 +1065,14 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         var isMap bool
 
         if currentVal.Kind() == reflect.Map {
-            isMap=true
+            isMap = true
         }
 
         if currentVal.Kind() == reflect.Invalid {
-            newContainer=reflect.MakeMap(reflect.TypeOf(make(map[string]any)))
-            isMap=true
+            newContainer = reflect.MakeMap(reflect.TypeOf(make(map[string]any)))
+            isMap = true
         } else {
-            newContainer=currentVal
+            newContainer = currentVal
         }
 
         // copy from below
@@ -1134,16 +1141,16 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
     case AccessField:
         // enforce field casing
-        access.Field=renameSF(access.Field)
+        access.Field = renameSF(access.Field)
         if !currentVal.IsValid() {
             return reflect.Value{}, fmt.Errorf("cannot access field on nil value")
         }
 
         /*
-        // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
-        if !currentVal.CanAddr() {
-            currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
-        }
+           // If the struct is not addressable (e.g., from `[]any`), we MUST make a copy
+           if !currentVal.CanAddr() {
+               currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
+           }
         */
         currentVal = reflect.ValueOf(recCopy(currentVal.Interface()))
 
@@ -1153,7 +1160,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
         tmp := reflect.New(currentVal.Type()).Elem()
         tmp.Set(currentVal)
 
-        field=tmp.FieldByName(access.Field)
+        field = tmp.FieldByName(access.Field)
         disableRO(&field)
 
         if !field.IsValid() {
@@ -1169,7 +1176,7 @@ func (p *leparser) recursiveAssign(currentVal reflect.Value, accesses []Access, 
 
         // Set the field on our (now addressable) struct.
         field.Set(finalField)
-        currentVal=tmp
+        currentVal = tmp
 
         // pf("field is -> %#v\n",field)
         // pf("cv is    -> %#v\n",currentVal)
@@ -1272,7 +1279,6 @@ func (p *leparser) parseAccessChain(tokens []Token, lfs uint32, lident *[]Variab
 
     return chain, nil
 }
-
 
 func recCopy(original any) (copy any) {
     if original == nil {
@@ -1378,13 +1384,12 @@ func rcopyChan(original reflect.Value) reflect.Value {
     return reflect.MakeChan(original.Type(), original.Cap())
 }
 
-
 func setupRO() {
-    t:=reflect.TypeOf(reflect.Value{})
-    for i:=0;i<t.NumField();i++ {
-        f:=t.Field(i)
-        if f.Name=="flag" {
-            flagOffset=f.Offset
+    t := reflect.TypeOf(reflect.Value{})
+    for i := 0; i < t.NumField(); i++ {
+        f := t.Field(i)
+        if f.Name == "flag" {
+            flagOffset = f.Offset
             return
         }
     }
@@ -1401,10 +1406,6 @@ const (
 )
 
 func disableRO(v *reflect.Value) {
-    flags:=(*uintptr)(unsafe.Pointer(uintptr(unsafe.Pointer(v))+flagOffset))
+    flags := (*uintptr)(unsafe.Pointer(uintptr(unsafe.Pointer(v)) + flagOffset))
     *flags &^= flagRO
 }
-
-
-
-

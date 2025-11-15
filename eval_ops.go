@@ -11,9 +11,9 @@ import (
     str "strings"
     "sync/atomic"
     "time"
-    "unsafe"
     "unicode"
     "unicode/utf8"
+    "unsafe"
 )
 
 func ev_slice_get_type(arr interface{}) reflect.Type {
@@ -505,7 +505,7 @@ func ev_sub(val1 any, val2 any) any {
     case uint64:
         uintInOne = true
     case uint:
-        val1=uint64(val1.(uint))
+        val1 = uint64(val1.(uint))
         uintInOne = true
     case int64:
         i641 = true
@@ -520,7 +520,7 @@ func ev_sub(val1 any, val2 any) any {
     case uint64:
         uintInTwo = true
     case uint:
-        val2=uint64(val2.(uint))
+        val2 = uint64(val2.(uint))
         uintInTwo = true
     case int64:
         i642 = true
@@ -1573,9 +1573,9 @@ func asObjectKey(key any) string {
 
 func accessArray(ident *[]Variable, obj any, field any) any {
 
-     // pf("aa-typ : (%T)\n",obj)
-     // pf("aa-obj : (%T) %+v\n",obj,obj)
-     // pf("aa-fld : (%T) %+v\n",field,field)
+    // pf("aa-typ : (%T)\n",obj)
+    // pf("aa-obj : (%T) %+v\n",obj,obj)
+    // pf("aa-fld : (%T) %+v\n",field,field)
 
     switch obj := obj.(type) {
     case string: // string[n] access
@@ -2196,11 +2196,10 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
     }
 }
 
-
 // enforce upper case identifier char [0]
 func renameSF(f string) string {
-    r,i:=utf8.DecodeRuneInString(f)
-    return string(unicode.ToTitle(r))+f[i:]
+    r, i := utf8.DecodeRuneInString(f)
+    return string(unicode.ToTitle(r)) + f[i:]
 }
 
 func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
@@ -2242,7 +2241,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
             return nil, true
         }
     case reflect.Map:
-        if field!="kind" {
+        if field != "kind" {
             f := r.MapIndex(reflect.ValueOf(field))
             if f.IsValid() {
                 return f.Interface(), false
@@ -2273,7 +2272,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
         //     to the uncapitalised version if it falls through
         //     to the enum/func checks further below!!
 
-        field:=renameSF(field)
+        field := renameSF(field)
 
         if pre_type == Identifier {
             bin := pre_pos
@@ -2428,7 +2427,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             par_struct_fields := make(map[string]string, 4)
-                        structmapslock.RLock()
+            structmapslock.RLock()
             if structvalues, exists := structmaps[fm.parent]; exists {
                 for svpos := 0; svpos < len(structvalues); svpos += 4 {
                     pfieldtype := structvalues[svpos+1].(string)
@@ -2438,7 +2437,7 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
                     par_struct_fields[structvalues[svpos].(string)] = pfieldtype
                 }
             }
-                        structmapslock.RUnlock()
+            structmapslock.RUnlock()
 
             structs_equal := true
             for k, v := range par_struct_fields {

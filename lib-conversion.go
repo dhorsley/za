@@ -848,21 +848,21 @@ func toTable(data any, options map[string]any) string {
     // Apply column_order if provided
     var co []any
     var ok bool
-    if _,ok=options["column_order"].([]string); ok {
-        co=make([]any,len(options["column_order"].([]string)))
-        for i,v:=range options["column_order"].([]string) {
-            co[i]=v
+    if _, ok = options["column_order"].([]string); ok {
+        co = make([]any, len(options["column_order"].([]string)))
+        for i, v := range options["column_order"].([]string) {
+            co[i] = v
         }
     } else {
-        if co,ok=options["column_order"].([]any); !ok {
-            co=make([]any,0,0)
+        if co, ok = options["column_order"].([]any); !ok {
+            co = make([]any, 0, 0)
         }
     }
 
     newColumns := []string{}
     for _, c := range co {
         if s, ok := c.(string); ok {
-            newColumns = append(newColumns,s)
+            newColumns = append(newColumns, s)
         }
     }
 

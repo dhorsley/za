@@ -2088,6 +2088,9 @@ tco_reentry:
                         case "[]uint":
                             t.IKind = ksuint
                             t.IValue = make([]uint, size, size)
+                        case "[]int64":
+                            t.IKind = ksint64
+                            t.IValue = make([]int64, size, size)
                         case "[]uint64", "[]uxlong":
                             t.IKind = ksuint64
                             t.IValue = make([]uint64, size, size)
