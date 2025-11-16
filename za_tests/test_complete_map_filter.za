@@ -28,8 +28,8 @@ println "Multi-dim map: ", mapped_matrix
 
 # Test 4: Map support in RHS strings
 println "Test 4: Map support in RHS"
-data_map = map(.name `Alice`, .age 30, .score 95.5)
-test_array = [data_map, map(.name `Bob`, .age 25, .score 87.0)]
+data_map = map(.name "Alice", .age 30, .score 95.5)
+test_array = [data_map, map(.name "Bob", .age 25, .score 87.0)]
 filtered_map = test_array ?> "#.age > 28"
 mapped_map = test_array -> "#.name + ` (` + as_string(#.age) + `)`"
 println "Map filter: ", filtered_map
@@ -37,7 +37,7 @@ println "Map map: ", mapped_map
 
 # Test 5: Dirent with field access
 println "Test 5: Dirent with field access"
-files = dir(".")
+files = dir("za_tests")  # Use smaller directory
 filtered_files = files ?> "#.name != `.`"
 mapped_files = files -> "#.name"
 println "Dirent filter count: ", len(filtered_files)
@@ -53,7 +53,7 @@ println "Regular map: ", mapped_reg
 
 # Test 7: String arrays
 println "Test 7: String arrays"
-strings = [`apple`, `banana`, `cherry`, `date`]
+strings = ["apple", "banana", "cherry", "date"]
 filtered_strings = strings ?> "# > `b`"
 mapped_strings = strings -> "# + `_fruit`"
 println "String filter: ", filtered_strings
@@ -63,14 +63,48 @@ println "String map: ", mapped_strings
 println "Test 8: Complex nested operations"
 
 # Test simple nested map first
-nested_map = map(.user map(.name `Alice`, .scores [95, 87, 92]), .active true)
+nested_map = map(.user map(.name "Alice", .scores [95, 87, 92]), .active true)
 println "Nested map:", nested_map
 
 # Test array of simple maps
-simple_data = [map(.name `Alice`, .active true), map(.name `Bob`, .active false)]
+simple_data = [map(.name "Alice", .active true), map(.name "Bob", .active false)]
 filtered_simple = simple_data ?> "#.active"
 mapped_simple = simple_data -> "#.name"
 println "Simple filter:", filtered_simple.pp
 println "Simple map:", mapped_simple.pp
+
+# Test 9: $idx Index Replacement
+println "Test 9: Index replacement with $idx"
+numbers = [10, 20, 30, 40]
+indexed_map = numbers -> `"index_$idx: #"`
+indexed_filter = numbers ?> "$idx > 1"
+println "Indexed map: ", indexed_map
+println "Indexed filter: ", indexed_filter
+
+# Test 10: @ Container Literal Replacement
+println "Test 10: Container literal replacement with @"
+data = [map(.name "Alice"), map(.name "Bob")]
+field_map = data -> `User: #.name, Full data: @`
+println "Field map: ", field_map
+
+# Test 11: Result Type Detection
+println "Test 11: Result type detection"
+mixed_input = [map(.name "Alice"), map(.name "Bob")]
+string_result = mixed_input -> "#.name"
+println "Result type: ", kind(string_result)
+println "Result: ", string_result
+
+# Test 12: Edge Cases
+println "Test 12: Edge cases"
+empty_array = []
+empty_result = empty_array -> "# + 1"
+println "Empty array result: ", empty_result, " (type: ", kind(empty_result), ")"
+
+# Test 13: Complex Combined Features
+println "\nTest 13: Complex combined features"
+complex_data = [map(.items [1, 2, 3]), map(.items [4, 5, 6])]
+# println "input data : ",complex_data.pp
+complex_result = complex_data -> `map(.item_$idx @.items[0] + @.items[2])`
+println "result : ", complex_result.pp
 
 println "=== All tests completed successfully! ==="
