@@ -1,0 +1,4 @@
+regular = [10, 20, 30]
+result = regular -> "# * 2"
+println "Regular array map result type: ", kind(result)
+println "Regular array map result: ", result

@@ -1,0 +1,11 @@
+test_array = [map(.name "Alice", .age 30), map(.name "Bob", .age 25)]
+
+# Test simple map operation (should work)
+simple_result = test_array -> "#.name"
+println "Simple map result:"
+println simple_result
+
+# Test complex map operation (currently failing)
+complex_result = test_array -> "#.name + ` (` + as_string(#.age) + `)`"
+println "Complex map result:"
+println complex_result

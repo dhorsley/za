@@ -1,0 +1,5 @@
+procs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
+println "Found processes: ", len(procs)
+if len(procs) > 3
+  println "First 3 processes: ", procs[0:3]
+endif
