@@ -93,6 +93,20 @@ CHANGE LOG
         - Big number support
         - see za_tests/test_complete_map_filter.za for examples
 
+        - Note: Please be aware this is not a great system. Being string-based it
+            has inherent down-sides. This is not likely to change. It is about as
+            robust as we can make a system like this that delimits the expression
+            outside of normal tokenisation. It is only meant to be used as a
+            convenience mechanism for smaller maps/arrays. Performance is also
+            not going to be outstanding either, but should be perfectly acceptable
+            for the types of scripts this language is intended for.
+
+        - if we ever change this then we'll probably add a reduce operator at
+            the same time. you can mimic reduce with the existing operators to
+            some degree, but again, it is imperfect.
+
+        - if we ever do this we would retain the existing behaviour as a fall back.
+
 
     library changes
     ---------------

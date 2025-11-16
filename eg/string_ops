@@ -2,13 +2,13 @@
 q=split($in "/usr/share/dict/words","\n")
 
 ts1=epoch_nano_time()
-println len(q?>`#.has_start("d")`->"$uc #")
+println len(q?>`#.has_start("j")`->"$uc #")
 te1=epoch_nano_time()
-    
+
 ts2=epoch_nano_time()
 z=[]
 foreach a in q
-  on a.has_start("d") do z=append(z,$uc a)
+  on a.has_start("j") do z=append(z,$uc a)
 endfor
 println len(z)
 te2=epoch_nano_time()
@@ -16,7 +16,7 @@ te2=epoch_nano_time()
 ts3=epoch_nano_time()
 z=[]
 foreach a in q
-  on a.has_start("d") do append_to(ref z,$uc a)
+  on a.has_start("j") do append_to(ref z,$uc a)
 endfor
 println len(z)
 te3=epoch_nano_time()
@@ -24,4 +24,3 @@ te3=epoch_nano_time()
 println "td1 : ",te1-ts1
 println "td2 : ",te2-ts2
 println "td3 : ",te3-ts3
-
