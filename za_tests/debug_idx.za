@@ -1,0 +1,11 @@
+# Debug $idx replacement
+numbers = [10, 20, 30]
+println "Testing \$idx replacement..."
+
+# Test simple case first
+result1 = numbers -> "item_$idx"
+println "Simple result: ", result1
+
+# Test with colon
+result2 = numbers -> "index:$idx:#"
+println "Colon result: ", result2

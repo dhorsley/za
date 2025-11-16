@@ -1,27 +1,27 @@
 package main
 
 import (
+    "bufio"
+    "context"
+    "os"
+    "path/filepath"
+    "regexp"
     "runtime"
     "sort"
-    "context"
-    "regexp"
+    "strconv"
+    str "strings"
     "sync"
     "sync/atomic"
     "time"
-    str "strings"
-    "strconv"
-    "bufio"
-    "os"
-    "path/filepath"
 )
 
 type profilerKeyType struct{}
 
 var (
-    profileMu       sync.Mutex
-    profiles        = make(map[string]*ProfileContext)
-    enableProfiling bool // set via flag
-    profilerKey     = profilerKeyType{}
+    profileMu         sync.Mutex
+    profiles          = make(map[string]*ProfileContext)
+    enableProfiling   bool // set via flag
+    profilerKey       = profilerKeyType{}
     profileCallChains sync.Map
 )
 
@@ -35,7 +35,6 @@ func withProfilerContext(parent context.Context) context.Context {
     id := atomic.AddUint64(&nextProfileID, 1)
     return context.WithValue(parent, profilerKey, id)
 }
-
 
 // getGoroutineID returns the current goroutine's unique ID
 func getGoroutineID() uint64 {
@@ -65,7 +64,6 @@ func humanReadableSize(size int64) string {
     }
     return sf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
 }
-
 
 func getCallChain(ctx context.Context) []string {
     id, ok := ctx.Value(profilerKey).(uint64)
@@ -100,7 +98,6 @@ func popCallChain(ctx context.Context) {
     setCallChain(ctx, chain)
 }
 
-
 func isRecursive(callChain []string) bool {
     seen := make(map[string]bool)
     for _, f := range callChain {
@@ -117,7 +114,6 @@ func isRecursive(callChain []string) bool {
     }
     return false
 }
-
 
 func buildCallPathKey(callChain []string) string {
     return str.Join(callChain, " > ")
@@ -149,7 +145,6 @@ func collapseCallPath(callChain []string) string {
     collapsed = append(collapsed, last)
     return str.Join(collapsed, " > ")
 }
-
 
 // Called at start of a function or script
 func startProfile(caller string) {
@@ -198,7 +193,7 @@ func recordPhase(ctx context.Context, phase string, elapsed time.Duration) {
         return
     }
 
-    callChain:=getCallChain(ctx)
+    callChain := getCallChain(ctx)
 
     pathKey := collapseCallPath(callChain)
 
@@ -240,18 +235,18 @@ func dumpProfileSummary() {
 
     for _, path := range keys {
 
-        if len(path)==0 {
+        if len(path) == 0 {
             continue
         }
 
-        p:=profiles[path]
+        p := profiles[path]
 
-        isRecursive:= p.Times["recursive"] > 0
+        isRecursive := p.Times["recursive"] > 0
 
-        hasNonZero:=false
-        for _,t:=range p.Times {
-            if t>0 {
-                hasNonZero=true
+        hasNonZero := false
+        for _, t := range p.Times {
+            if t > 0 {
+                hasNonZero = true
                 break
             }
         }
@@ -269,11 +264,13 @@ func dumpProfileSummary() {
         }
 
         for phase, t := range p.Times {
-            if phase=="recursive" {
+            if phase == "recursive" {
                 continue
             }
-            colour:="[#1]"
-            if phase=="execution time" { colour="[#6]" }
+            colour := "[#1]"
+            if phase == "execution time" {
+                colour = "[#6]"
+            }
             pf("%s "+colour+"%s[#-]: %v\n", indent, phase, t)
         }
         pln()
@@ -294,7 +291,9 @@ func (d *Debugger) isInRepl() bool {
 }
 
 func getBaseSourceIFS(ifs uint32) uint32 {
-    if ifs == 2 { return 1 }
+    if ifs == 2 {
+        return 1
+    }
     return getBaseIFS(ifs)
 }
 
@@ -304,12 +303,11 @@ func getBaseIFS(ifs uint32) uint32 {
     return calltable[ifs].base
 }
 
-
 func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident, gident *[]Variable) {
 
     d.lock.Lock()
-    d.paused=true
-    d.activeRepl=true
+    d.paused = true
+    d.activeRepl = true
     d.lock.Unlock()
     defer d.debuggerUnlock()
 
@@ -323,31 +321,31 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
 
     // Get positional details
     calllock.RLock()
-    filename    := getFileFromIFS(ifs)
-    sourceBase  := calltable[ifs].base
+    filename := getFileFromIFS(ifs)
+    sourceBase := calltable[ifs].base
     calllock.RUnlock()
 
     // sourceBase  := getBaseSourceIFS(ifs)
-    phrases     := functionspaces[sourceBase]
-    display_fs,_:= numlookup.lmget(ifs)
-    sourceLine  := int16(-1)
-    if pc>=0 && len(phrases)>pc {
-        sourceLine  = int16(phrases[pc].SourceLine)
+    phrases := functionspaces[sourceBase]
+    display_fs, _ := numlookup.lmget(ifs)
+    sourceLine := int16(-1)
+    if pc >= 0 && len(phrases) > pc {
+        sourceLine = int16(phrases[pc].SourceLine)
     }
 
-    if key==0 {
+    if key == 0 {
         pf("\n[#fred]🛑 Pseudo breakpoint at startup or from interrupt.[#-]\n")
     } else {
         pf("\n[#fred]🛑 Breakpoint hit at %s:%d in function %s[#-]\n", filename, sourceLine, display_fs)
     }
 
-    p:=&leparser{}
-    p.ident=ident
+    p := &leparser{}
+    p.ident = ident
 
     if len(d.watchList) > 0 {
         pf("[#bold]Watched variables at debugger start:[#-]\n")
         for _, w := range d.watchList {
-            if val, ok := vget(nil,ifs,ident,w); ok {
+            if val, ok := vget(nil, ifs, ident, w); ok {
                 pf("  %s = %v\n", w, val)
             }
         }
@@ -356,11 +354,13 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
     reader := bufio.NewReader(os.Stdin)
 
     for {
-        pf("[#bold][[#3]scope %s : [#6]line %05d : [#7]idx %05d] [#5]debug> [#-]",display_fs,sourceLine,pc)
+        pf("[#bold][[#3]scope %s : [#6]line %05d : [#7]idx %05d] [#5]debug> [#-]", display_fs, sourceLine, pc)
         input, _ := reader.ReadString('\n')
         input = str.TrimSpace(input)
 
-        if input=="" { continue }
+        if input == "" {
+            continue
+        }
 
         switch {
         case input == "exit":
@@ -405,7 +405,6 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             }
             d.listContext = newCtx
             pf("[#fgreen]Updated context range to: %d[#-]\n", d.listContext)
-
 
         case "l", "list":
 
@@ -465,7 +464,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                 // Convert Tokens slice to a plain string list
                 tokens := []string{}
                 for _, t := range phrase.Tokens {
-                    tokens = append(tokens, sf("%v",t))
+                    tokens = append(tokens, sf("%v", t))
                 }
                 tokenStr := str.Join(tokens, " ")
 
@@ -515,7 +514,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             pf("Variable name: ")
             varname, _ := reader.ReadString('\n')
             varname = str.TrimSpace(varname)
-            if val, ok := vget(nil,ifs,ident,varname); ok {
+            if val, ok := vget(nil, ifs, ident, varname); ok {
                 pf("[#bold]%s[#-] = %v\n", varname, val)
             } else {
                 pf("[#fred]Variable not found.[#-]\n")
@@ -530,7 +529,6 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
         case "fs", "functionspace":
             pf("\n[#6]Debugger entered at %s:%d in function %s[#-]\n", filename, sourceLine, display_fs)
 
-
         case "d", "dis":
             pf("[#bold]Show token disassembly of current statement (PC %d):[#-]\n", pc)
             if pc >= 0 && pc < len(statements) {
@@ -541,7 +539,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                 pf("[#fred]No statement at current PC![#-]\n")
             }
 
-        case "fn","file":
+        case "fn", "file":
             currentFile := filename // getFileFromIFS(ifs)
             pf("[#fgreen]Current file: %s[#-]\n", currentFile)
 
@@ -571,8 +569,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             }
             d.lock.RUnlock()
 
-
-        case "b+","ba":
+        case "b+", "ba":
 
             pf("Enter statement index (PC) for breakpoint: ")
             idxStr, _ := reader.ReadString('\n')
@@ -603,8 +600,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             debugger.lock.Unlock()
             pf("[#fgreen]Breakpoint added at PC index: %d (0x%x)[#.]\n", idx, key)
 
-
-        case "b-","br":
+        case "b-", "br":
             pf("Enter statement index (PC) to remove breakpoint: ")
             idxStr, _ := reader.ReadString('\n')
             idxStr = str.TrimSpace(idxStr)
@@ -620,7 +616,6 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             debugger.lock.Unlock()
             pf("[#fgreen]Breakpoint removed at PC index: %d (0x%x)[#.]\n", idx, key)
 
-
         case "cls":
             cls()
             pf("[#-][#CSI]r")
@@ -630,12 +625,12 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             fnFilter, _ := reader.ReadString('\n')
             fnFilter = str.TrimSpace(fnFilter)
             // ShowDef(fnFilter)
-            if fnFilter!="" {
-                if val,found:=modlist[fnFilter]; found {
-                    if val==true {
-                        pf("[#5]Module %s : Functions[#-]\n",fnFilter)
-                        for _,fun:=range funcmap {
-                            if fun.module==fnFilter {
+            if fnFilter != "" {
+                if val, found := modlist[fnFilter]; found {
+                    if val == true {
+                        pf("[#5]Module %s : Functions[#-]\n", fnFilter)
+                        for _, fun := range funcmap {
+                            if fun.module == fnFilter {
                                 ShowDef(fun.name)
                             }
                         }
@@ -665,7 +660,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
             structFilter, _ := reader.ReadString('\n')
             structFilter = str.TrimSpace(structFilter)
 
-                        structmapslock.RLock()
+            structmapslock.RLock()
             for k, s := range structmaps {
                 if structFilter != "" {
                     if matched, _ := regexp.MatchString(structFilter, k); !matched {
@@ -678,7 +673,7 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
                 }
                 pf("\n")
             }
-                        structmapslock.RUnlock()
+            structmapslock.RUnlock()
 
         case "w", "watch":
             pf("Enter variable name to watch: ")
@@ -796,11 +791,10 @@ func (d *Debugger) enterDebugger(key uint64, statements []Phrase, ident, mident,
         if len(d.watchList) > 0 {
             pf("[#bold]Watched variables:[#-]\n")
             for _, w := range d.watchList {
-                if val, ok := vget(nil,ifs,ident,w); ok {
+                if val, ok := vget(nil, ifs, ident, w); ok {
                     pf("  %s = %v\n", w, val)
                 }
             }
         }
     }
 }
-

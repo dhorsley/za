@@ -1,0 +1,6 @@
+# Test the exact failing case from comprehensive test
+numbers = [10, 20, 30, 40]
+
+# This is the exact expression that's failing
+indexed_map = numbers -> "index_$idx: #"
+println "Indexed map: ", indexed_map
