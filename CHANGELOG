@@ -62,6 +62,38 @@ CHANGE LOG
             m.blah="new value"
 
 
+    Enhanced Map/Filter Operators
+
+        - Generic type support: Now works with all data types
+
+        - Complex data structures: Supports maps, arrays, and nested objects
+
+        - map key and struct field access:
+            - Use #.field syntax to access object properties
+
+        - Array indexing:
+            - Use #[index] to access specific elements
+
+        - Index replacement: Use $idx in expressions to access current iteration index
+            data -> "index_$idx: #"
+            # Result: ["index_0: 10", "index_1: 20", ...]
+
+        - Container literal replacement:
+            - Use @ to insert entire current element as literal
+                data -> "copy: @"
+                # Result: ["copy: map(.name "Alice")", "copy: map(.name "Bob")", ...]
+
+        - Combined Operations
+            - Mixed expressions:
+                - Combine replacements with field access and calculations
+                    complex_data -> `map(.item_$idx @.items[0] + @.items[2])`
+                    # Accesses fields, performs calculations, uses index and literal replacement
+
+        - Output type now based on result type rather than input type
+        - Big number support
+        - see za_tests/test_complete_map_filter.za for examples
+
+
     library changes
     ---------------
 

@@ -7,9 +7,10 @@ def isArmstrong(n,k)
 end
 
 foreach i in 1..5
+    first=10**(i-1)
     last=10**i-1
     println "power %d, max %5d : %v".
         format(i,last,
-            list_string( 1..last ?> `isArmstrong(#,i)` ).join(",")
+            list_string( first..last ?> `isArmstrong(#,i)` ).join(",")
         )
 endfor
