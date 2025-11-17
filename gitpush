@@ -2,8 +2,8 @@
 
 input msg param 1
 
-def msg(ctx,msg)
-    on ctx.error!="" do println "{msg} error: ",ctx.error
+def msg(ctx,typ)
+    on not ctx.okay && ctx.error!="" do println "{typ} error: ",ctx.error
 end
 
 | rm -f tools/funpages/*.html
