@@ -1,0 +1,88 @@
+#!/usr/bin/env za
+
+println "=== Auto-Exception Conversion Demo ==="
+println "This demonstrates that evaluation errors inside try blocks are automatically converted to exceptions"
+println "Design: Runtime panics → auto-exceptions, nil returns → explicit handling (like other languages)"
+print
+
+# Test 1: Array bounds error (runtime panic → auto-exception)
+println "Test 1: Array bounds error (runtime panic)"
+try
+    arr = [1, 2, 3]
+    result = arr[10]  # This will cause out-of-bounds panic
+    println "This should not print"
+catch err is "error"
+    println "✅ Caught array bounds error as exception"
+    println "State: ",err.pp
+endtry
+print
+
+# Test 2: Division by zero (runtime panic → auto-exception)
+println "Test 2: Division by zero (runtime panic)"
+try
+    result = 1 / 0  # This will cause divide by zero panic
+    println "This should not print"
+catch err is "error"
+    println "✅ Caught division by zero as exception"
+    println "State: ",err.pp
+endtry
+print
+
+# Test 3: Undefined function (runtime panic → auto-exception)
+println "Test 3: Undefined function (runtime panic)"
+try
+    result = undefined_function()  # This will cause uninitialised function panic
+    println "This should not print"
+catch err is "error"
+    println "✅ Caught undefined function as exception"
+    println "State: ",err.pp
+endtry
+print
+
+# Test 4: Custom exception category with try throws
+println "Test 4: Custom exception category"
+try throws "database"
+    result = 1 / 0  # Runtime panic converted to "database" category exception
+    println "This should not print"
+catch err is "database"
+    println "✅ Caught with custom category 'database'"
+    println "State: ",err.pp
+endtry
+print
+
+# Test 5: Nil return (NOT a panic → no auto-exception, explicit handling needed)
+println "Test 5: Function returning nil (not a panic - requires explicit handling)"
+def returns_nil()
+    return nil # Returns nil, no panic
+end
+
+try
+    result = returns_nil()  # This returns nil, doesn't panic
+    if result == nil
+        println "Function returned nil (not an exception)"
+    else
+        println "Function returned:", result
+    endif
+catch err is "error"
+    println "This won't execute - no exception was thrown"
+    println "State: ",err.pp
+endtry
+
+println "For nil checking, use ?? operator explicitly:"
+try
+    result = returns_nil() ?? "function returned nil"
+    println "Result with ?? operator:", result
+catch err is "error"
+    println "Caught explicit exception:", err
+    println "State: ",err.pp
+endtry
+print
+
+println "=== Design Philosophy ==="
+println "• Runtime panics (bounds, math errors, undefined functions) → auto-exceptions"
+println "• Logic errors (nil returns) → explicit handling with ?? operator"
+println "• This mirrors predictable behavior in languages like Java, Python, etc."
+print
+println "=== Demo completed ==="
+
+
