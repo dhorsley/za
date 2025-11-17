@@ -10,8 +10,8 @@ end
 | git add -A .
 
 res=| git commit -m "{msg}"
-if res.okay 
-    git push
+if res.okay
+    | git push
     msg(res,"push")
 else
     println "No change."
