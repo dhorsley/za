@@ -37,7 +37,7 @@ println "Map map: ", mapped_map
 
 # Test 5: Dirent with field access
 println "Test 5: Dirent with field access"
-files = dir("za_tests")  # Use smaller directory
+files = dir(".")  # Use smaller directory
 filtered_files = files ?> "#.name != `.`"
 mapped_files = files -> "#.name"
 println "Dirent filter count: ", len(filtered_files)
