@@ -3,7 +3,11 @@
 input msg param 1
 
 def msg(ctx,typ)
-    on not ctx.okay && ctx.error!="" do println "{typ} error: ",ctx.error
+    if not ctx.okay
+        println "{typ} error: ",ctx.error
+    else
+        println "{typ} okay"
+    endif
 end
 
 | rm -f tools/funpages/*.html
