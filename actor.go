@@ -1230,7 +1230,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
                 // If not in exception mode, check if we're inside a try block
                 if !shouldConvertToException {
-                    // Look for try blocks in the current execution context
+                    // Look for try blocks in current execution context
                     executionPath := make([]uint32, 0)
                     executionPath = append(executionPath, source_base)
 
