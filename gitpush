@@ -2,14 +2,19 @@
 
 input msg param 1
 
+def msg(ctx,msg)
+    on ctx.error!="" do println "{msg} error: ",ctx.error
+end
+
 | rm -f tools/funpages/*.html
 | git add -A .
 
 res=| git commit -m "{msg}"
 if res.okay 
-    | git push
+    git push
+    msg(res,"push")
 else
     println "No change."
-    on res.error!="" do println "commit error: ",res.error
+    msg(res,"commit")
 endif
 
