@@ -10,5 +10,6 @@ if res.okay
     | git push
 else
     println "No change."
+    on res.error!="" do println "commit error: ",res.error
 endif
 
