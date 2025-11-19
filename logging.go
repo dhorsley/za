@@ -777,8 +777,11 @@ func writeFileAtomic(filename string, data []byte, prefix string) error {
         }
         // If locking fails, continue anyway (best effort)
     }
-
+    // pf("debug: WFA prefix -> %+v\n",prefix)
+    // pf("debug: WFA data -> %+v\n",string(data))
+ 
     logger := log.New(f, prefix, log.LstdFlags)
+    logger.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
     logger.Print(string(data))
     return f.Sync()
 }
