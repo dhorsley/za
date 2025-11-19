@@ -246,7 +246,7 @@ macro +ask(query,ask_rv) `
             "max_tokens":{maxtokens},
             "temperature":0.2,
             "top_p":1,
-            "messages":[{"role":"system","content":"$query"}]
+            "messages":[{"role":"user","content":"$query"}]
         }#backtick
     headers=map(
             .Authorization "Bearer "+get_env("ZA_AI_TOKEN"),
