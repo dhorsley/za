@@ -779,8 +779,9 @@ func writeFileAtomic(filename string, data []byte, prefix string, isJson bool) e
     }
     // pf("debug: WFA prefix -> %+v\n",prefix)
     // pf("debug: WFA data -> %+v\n",string(data))
- 
+
     logger := log.New(f, prefix, log.LstdFlags)
+    logger.SetFlags(log.Flags() | log.Lmsgprefix)
     if isJson {
         logger.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
     }

@@ -39,7 +39,7 @@ logging status
 # Test 4: Log Subject Prefix
 println "\n[#bold][#fgreen]Test 4: Log Subject Prefix[#-]"
 println "Setting log subject prefix..."
-logging subject "TEST_PREFIX"
+logging subject "TEST_PREFIX "
 logging status
 
 println "\nClearing log subject prefix..."
@@ -106,7 +106,7 @@ log "JSON message with formatting: %v".format("formatted_data")
 
 # Test 9: Log with Subject Prefix
 println "\n[#bold][#fgreen]Test 9: Log with Subject Prefix[#-]"
-logging subject "TEST_RUN"
+logging subject "TEST_RUN "
 log "Message with subject prefix"
 
 # Test 10: Queue and Worker Status
@@ -148,4 +148,4 @@ endif
 
 println "\n[#bold][#fgreen]========================================[#-]"
 println "[#bold][#fgreen]Logging System Test Complete![#-]"
-println "[#bold][#fgreen]========================================[#-]" 
+println "[#bold][#fgreen]========================================[#-]"
