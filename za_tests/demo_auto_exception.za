@@ -1,9 +1,6 @@
 #!/usr/bin/env za
 
-println "=== Auto-Exception Conversion Demo ==="
-println "This demonstrates that evaluation errors inside try blocks are automatically converted to exceptions"
-println "Design: Runtime panics → auto-exceptions, nil returns → explicit handling (like other languages)"
-print
+println "\n[#1]Auto-Exception Checks[#-]\n"
 
 # Test 1: Array bounds error (runtime panic → auto-exception)
 println "Test 1: Array bounds error (runtime panic)"
@@ -12,8 +9,8 @@ try
     result = arr[10]  # This will cause out-of-bounds panic
     println "This should not print"
 catch err is "error"
-    println "✅ Caught array bounds error as exception"
-    println "State: ",err.pp
+    println "- Caught array bounds error as exception"
+    println err.stack_trace.format_stack_trace
 endtry
 print
 
@@ -23,8 +20,8 @@ try
     result = 1 / 0  # This will cause divide by zero panic
     println "This should not print"
 catch err is "error"
-    println "✅ Caught division by zero as exception"
-    println "State: ",err.pp
+    println "- Caught division by zero as exception"
+    println err.stack_trace.format_stack_trace
 endtry
 print
 
@@ -34,8 +31,8 @@ try
     result = undefined_function()  # This will cause uninitialised function panic
     println "This should not print"
 catch err is "error"
-    println "✅ Caught undefined function as exception"
-    println "State: ",err.pp
+    println "- Caught undefined function as exception"
+    println err.stack_trace.format_stack_trace
 endtry
 print
 
@@ -45,8 +42,8 @@ try throws "database"
     result = 1 / 0  # Runtime panic converted to "database" category exception
     println "This should not print"
 catch err is "database"
-    println "✅ Caught with custom category 'database'"
-    println "State: ",err.pp
+    println "- Caught with custom category 'database'"
+    println err.stack_trace.format_stack_trace
 endtry
 print
 
@@ -65,24 +62,17 @@ try
     endif
 catch err is "error"
     println "This won't execute - no exception was thrown"
-    println "State: ",err.pp
 endtry
 
-println "For nil checking, use ?? operator explicitly:"
+println "For nil checking, use ?? operator explicitly:\n"
 try
     result = returns_nil() ?? "function returned nil"
     println "Result with ?? operator:", result
-catch err is "error"
-    println "Caught explicit exception:", err
-    println "State: ",err.pp
+catch err
+    println "- Caught explicit exception:"
+    println err.stack_trace.format_stack_trace
+    println "Full error:"
+    println err.pp
 endtry
-print
-
-println "=== Design Philosophy ==="
-println "• Runtime panics (bounds, math errors, undefined functions) → auto-exceptions"
-println "• Logic errors (nil returns) → explicit handling with ?? operator"
-println "• This mirrors predictable behavior in languages like Java, Python, etc."
-print
-println "=== Demo completed ==="
 
 
