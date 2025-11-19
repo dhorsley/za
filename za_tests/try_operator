@@ -2,11 +2,10 @@
 
 # Simple test for ?? operator parsing
 
-# permit("error_exit", false)
 exception_strictness("warn")
 
 # Test 1: Basic ?? operator with right-hand side
-println "Test 1: nil ?? 'test 1 error'"
+println "Test 1: nil ?? 'test 1 error' (with etype, inside try/catch)"
 try
     result = nil ?? "test 1 error"
     println "This should not be reached"
@@ -15,7 +14,7 @@ catch err
 endtry
 
 # Test 2: ?? operator without right-hand side (this should work)
-println "Test 2: nil ??"
+println "\nTest 2: nil ?? (no etype, inside try/catch)"
 try
     result = nil ??
     println "This should not be reached"
@@ -23,8 +22,15 @@ catch err
     println "Test 2 Caught: " + err["message"]
 endtry
 
-# Test 3: Basic ?? operator without try
-println "Test 3: nil ??"
+# Test 3: ?? operator, no catch, this will cause an unhandled exception
+println "\nTest 3: nil ?? (no etype, inside try, no catch)"
+try
+    result = nil ??
+    println "This should not be reached"
+endtry
+
+# Test 4: Basic ?? operator without try - comment out test 3 to reach this.
+println "\nTest 4: nil ?? (no etype, outside try/catch)"
 result = nil ??
 println "This should not be reached"
 
