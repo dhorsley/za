@@ -633,7 +633,7 @@ func plog_direct(message string) {
     }
 
     // Use atomic write
-    if err := writeFileAtomic(logFile, []byte(message), subjStr); err != nil {
+    if err := writeFileAtomic(logFile, []byte(message), subjStr, false); err != nil {
         log.Println(err)
     }
 }
@@ -675,7 +675,7 @@ func plog_json_direct(message string, fields map[string]any) {
     }
 
     // Use atomic write with no prefix for JSON logs
-    if err := writeFileAtomic(logFile, jsonBytes, ""); err != nil {
+    if err := writeFileAtomic(logFile, jsonBytes, "",true); err != nil {
         log.Println(err)
     }
 }
@@ -695,7 +695,7 @@ func plog_direct_to_file(filename, message string) {
     }
 
     // Use atomic write
-    writeFileAtomic(filename, []byte(message), subjStr)
+    writeFileAtomic(filename, []byte(message), subjStr,false)
 }
 
 // plog_json_direct_to_file logs a JSON message directly to the specified file
@@ -729,7 +729,7 @@ func plog_json_direct_to_file(filename, message string, fields map[string]any) {
     }
 
     // Use atomic write with no prefix for JSON logs
-    writeFileAtomic(filename, jsonData, "")
+    writeFileAtomic(filename, jsonData, "",true)
 }
 
 // flock applies an exclusive file lock using the stdlib flock function
@@ -763,7 +763,7 @@ func funlock(file *os.File) error {
 }
 
 // writeFileAtomic performs atomic file writes with locking
-func writeFileAtomic(filename string, data []byte, prefix string) error {
+func writeFileAtomic(filename string, data []byte, prefix string, isJson bool) error {
     f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
         return err
@@ -781,7 +781,9 @@ func writeFileAtomic(filename string, data []byte, prefix string) error {
     // pf("debug: WFA data -> %+v\n",string(data))
  
     logger := log.New(f, prefix, log.LstdFlags)
-    logger.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+    if isJson {
+        logger.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+    }
     logger.Print(string(data))
     return f.Sync()
 }
