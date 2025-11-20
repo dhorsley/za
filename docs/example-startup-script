@@ -226,7 +226,14 @@ macro +nic          `net_interfaces_detailed().table(map(
                         ))`
 
 macro +disk         `
-                    println disk_usage().table(map(.colours map(.header "[#2]",.data "[#6]"),.border_style "unicode"))`
+                    data=disk_usage() ?> #backtick #.size>0 #backtick
+                    println data.table(
+                        map(
+                            .colours map(.header "[#2]",.data "[#6]"),
+                            .border_style "unicode",
+                            .column_order ["path","mounted_path","size","usage_percent","used","available"]
+                        )
+                    )`
 
 macro +cpu          `
                     unset data
