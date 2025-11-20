@@ -226,7 +226,8 @@ macro +nic          `net_interfaces_detailed().table(map(
                         ))`
 
 macro +disk         `
-                    data=disk_usage() ?> #backtick #.size>0 #backtick
+                    unset data
+                    data=disk_usage() ?> #backtick #.size>0 and #.path != "tmpfs" #backtick
                     println data.table(
                         map(
                             .colours map(.header "[#2]",.data "[#6]"),
