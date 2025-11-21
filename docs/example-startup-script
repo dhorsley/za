@@ -133,6 +133,14 @@ def nocap(cmd)
     return z
 end
 
+define humansize(i)
+    i=i.as_float
+    unit="B"
+    if i>=1e9; unit="GB"; i=as_float(i/1e9); endif
+    if i>=1e6; unit="MB"; i=as_float(i/1e6); endif
+    if i>=1e3; unit="KB"; i=as_float(i/1e3); endif
+    return format("%.1f %s",i,unit)
+end
 
 struct environment
     bg    int
@@ -228,6 +236,12 @@ macro +nic          `net_interfaces_detailed().table(map(
 macro +disk         `
                     unset data
                     data=disk_usage() ?> #backtick #.size>0 and #.path != "tmpfs" #backtick
+                    foreach d in data
+                        d.usage_percent=format("%.2f",d.usage_percent).as_float
+                        d.used=humansize(d.used)
+                        d.size=humansize(d.size)
+                        d.available=humansize(d.available)
+                    endfor
                     println data.table(
                         map(
                             .colours map(.header "[#2]",.data "[#6]"),
