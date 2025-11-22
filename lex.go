@@ -362,16 +362,6 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             (*curLine) += 1
         }
 
-        if matchBlock || matchQuote {
-            if input[currentChar] == '\\' {
-                // skip past
-                escaping = !escaping
-                continue
-            } else {
-                escaping = false
-            }
-        }
-
         if nonterm != "" && str.IndexByte(nonterm, input[currentChar]) == -1 {
             // didn't find a non-terminator, so get word and finish, but don't
             // increase word end position as we need to continue the next
@@ -434,9 +424,11 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                         case 'n':
                             nw = append(nw, '\n')
                         case '`':
-                            nw = append(nw, '\\', '`')
+                            // nw = append(nw, '\\', '`')
+                            nw = append(nw, '`')
                         case '"':
-                            nw = append(nw, '\\', '"')
+                            // nw = append(nw, '\\', '"')
+                            nw = append(nw, '"')
                         default:
                             nw = append(nw, '\\', w[i])
                         }
@@ -462,6 +454,20 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
             }
 
         }
+
+        // we do this escaping flag set last because it would
+        // invalidate the if escaping checks above (such as
+        // for double quote termination) if we did it earlier.
+        if matchBlock || matchQuote {
+            if input[currentChar] == '\\' {
+                // skip past
+                escaping = !escaping
+                continue
+            } else {
+                escaping = false
+            }
+        }
+
     }
 
     // catch any eol strays
