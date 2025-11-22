@@ -1848,7 +1848,7 @@ func macroExpand(input string) string {
                         }
                         // Apply toString if requested
                         if toString {
-                            expanded = "`" + expanded + "`"
+                            expanded = "`" + escapeQuotes(expanded) + "`"
                         }
                         result.WriteString(expanded)
                         changed = true
