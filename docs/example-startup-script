@@ -264,20 +264,18 @@ macro +cpu          `
 
 macro  +w `${w} . lines("1:") . table ( map(.has_headers true, .colours map(.header "[#2]",.data "[#6]"),.border_style "unicode" ) )`
 
-macro +backtick "`"
-
 macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
     model="llama-3.3-70b"
     maxtokens=1000
-    data=#backtick{
+    data=\`{
             "model":"{model}",
             "stream":false,
             "max_tokens":{maxtokens},
             "temperature":0.2,
             "top_p":1,
             "messages":[{"role":"system","content":"$query"}]
-        }#backtick
+        }\`
     headers=map(
             .Authorization "Bearer "+get_env("ZA_AI_TOKEN"),
             .Content-Type "application/json"
@@ -297,9 +295,4 @@ macro +ask(query,ask_rv) `
     endif
     unset data,headers
 `
-
-# println "Default Macros:"
-# macro list
-# println
-
 
