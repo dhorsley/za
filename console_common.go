@@ -1276,6 +1276,13 @@ func findRunesThatFit(runes []rune, maxWidth int) int {
     return len(runes)
 }
 
+func escapeQuotes(s string) string {
+    s = str.ReplaceAll(s, "`", "\\`")
+    s = str.ReplaceAll(s, `"`, `\"`)
+    return s
+}
+
+/*
 func escapeControlChars(s string) string {
     s = str.ReplaceAll(s, "\\", "\\\\") // escape backslashes first
     s = str.ReplaceAll(s, "\n", "\\n")
@@ -1283,6 +1290,7 @@ func escapeControlChars(s string) string {
     s = str.ReplaceAll(s, "\t", "\\t")
     return s
 }
+*/
 
 func escapeControlCharsInLiterals(s string) string {
     var out []rune
