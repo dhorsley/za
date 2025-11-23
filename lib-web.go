@@ -4,6 +4,7 @@
 package main
 
 import (
+    "compress/gzip"
     "context"
     "crypto/tls"
     "errors"
@@ -23,6 +24,8 @@ import (
     "sync"
     "sync/atomic"
     "time"
+
+    // "github.com/GRbit/go-pcre"
 )
 
 /* · web_serve_*:
@@ -57,6 +60,26 @@ type web_rule struct {
 
 var web_rules = make(map[string][]web_rule)
 
+type web_cache_entry struct {
+    content      []byte
+    timestamp    time.Time
+    is_rewritten bool
+    headers      http.Header
+}
+
+var web_cache = make(map[string]web_cache_entry)
+var web_cache_lock = &sync.RWMutex{}
+
+var web_cache_enabled = true
+var web_cache_max_size = 1000
+var web_cache_max_age = 3600
+var web_cache_cleanup_interval = 1000
+var web_cache_check_timestamps = true
+var web_cache_max_memory = 100 // MB
+
+var web_gzip_enabled = true
+var web_request_count int64
+
 // HELPER FUNCTIONS /////////////////////////////////////////////////////////////////////////////
 
 var lastWlogMsg string
@@ -80,7 +103,53 @@ func limitNumClients(f http.HandlerFunc, maxClients int, evalfs uint32, ident *[
     }
 }
 
-// web access logging
+func generateCacheKey(url string, rules []web_rule) string {
+    key := url
+    for _, r := range rules {
+        key += r.code + r.in
+    }
+    return key
+}
+
+func isCacheable(rules []web_rule) bool {
+    for _, r := range rules {
+        if r.code == "f" {
+            return false
+        }
+    }
+    return true
+}
+
+func cleanupWebCache() {
+    web_cache_lock.Lock()
+    defer web_cache_lock.Unlock()
+    now := time.Now()
+    for k, v := range web_cache {
+        if now.Sub(v.timestamp) > time.Duration(web_cache_max_age)*time.Second {
+            delete(web_cache, k)
+        }
+    }
+    // TODO: check memory usage if needed
+}
+
+func getFileModTime(fp string) time.Time {
+    if info, err := os.Stat(fp); err == nil {
+        return info.ModTime()
+    }
+    return time.Time{}
+}
+
+func writeResponse(w http.ResponseWriter, data []byte, use_gzip bool) {
+    if use_gzip {
+        w.Header().Set("Content-Encoding","gzip")
+        gz := gzip.NewWriter(w)
+        gz.Write(data)
+        gz.Close()
+    } else {
+        w.Write(data)
+    }
+}
+
 func wlog(s string, va ...any) {
     lastlock.Lock()
     if log_web {
@@ -336,6 +405,11 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     _ = method
     _ = header
 
+    var use_gzip = web_gzip_enabled && str.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+    if use_gzip {
+        w.Header().Set("Content-Encoding", "gzip")
+    }
+
     srvAddr := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
     srvStr := srvAddr.String()
 
@@ -402,6 +476,28 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     new_path = rule.in
                 }
 
+                cache_key := generateCacheKey(new_path, wr_copy)
+                if web_cache_enabled && isCacheable(wr_copy) {
+                    web_cache_lock.RLock()
+                    if entry, exists := web_cache[cache_key]; exists {
+                        if time.Since(entry.timestamp) < time.Duration(web_cache_max_age)*time.Second {
+                            // serve from cache
+                            for k, v := range entry.headers {
+                                w.Header().Set(k, str.Join(v, ","))
+                            }
+                            wlog("%s served %s from cache.\n", host, new_path)
+                            writeResponse(w, entry.content, use_gzip)
+                            serviced = true
+                            web_cache_lock.RUnlock()
+                            break
+                        }
+                    }
+                    web_cache_lock.RUnlock()
+                }
+                if serviced {
+                    break
+                }
+
                 // make a client request
                 var content []byte
                 var down_code int = -1
@@ -424,7 +520,10 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
 
                     w.Header().Add("proxied-by-za", "true")
                     for k, v := range header {
-                        w.Header().Set(k, str.Join(v, ","))
+                        if use_gzip && str.ToLower(k) == "content-length" {
+                            continue
+                        }
+                    w.Header().Set(k, str.Join(v, ","))
                     }
 
                 case "HEAD":
@@ -440,6 +539,14 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     // wlog("* HEAD Proxying this URL: %s\n",log_nq)
 
                     content, down_code = head(nq)
+
+                    w.Header().Add("proxied-by-za", "true")
+                    for k, v := range header {
+                        if use_gzip && str.ToLower(k) == "content-length" {
+                            continue
+                        }
+                    w.Header().Set(k, str.Join(v, ","))
+                    }
 
                 case "POST", "PUT":
 
@@ -487,10 +594,45 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                     }
                 } else {
                     // on success:
-                    // case "w": // @todo: rewrite response body
-                    // wlog("Proxy read the page successfully. Writing back to remote client.\n")
+                    is_rewritten := false
+                    for _, w_rule := range wr_copy {
+                        if w_rule.code == "w" {
+                            if path == w_rule.in {
+                                m:=w_rule.mutation.(map[string]string)
+                                re:=regexp.MustCompile(m["search"])
+                                // pf("previous content : %s\n",content)
+                                content=[]byte(re.ReplaceAllString(string(content),m["replacement"]))
+                                is_rewritten=true
+                            }
+                        }
+                    }
+
                     wlog("%s served %s to %s.\n", host, new_path, remoteIp)
-                    w.Write([]byte(content))
+                    writeResponse(w, content, use_gzip)
+                    // cache
+                    if web_cache_enabled && isCacheable(wr_copy) && method != "HEAD" {
+                        web_cache_lock.Lock()
+                        if len(web_cache) >= web_cache_max_size {
+                            var oldest_key string
+                            var oldest_time = time.Now()
+                            for k, v := range web_cache {
+                                if v.timestamp.Before(oldest_time) {
+                                    oldest_time = v.timestamp
+                                    oldest_key = k
+                                }
+                            }
+                            if oldest_key != "" {
+                                delete(web_cache, oldest_key)
+                            }
+                        }
+                        web_cache[cache_key] = web_cache_entry{
+                            content:      content,
+                            timestamp:    time.Now(),
+                            is_rewritten: is_rewritten,
+                            headers:      header,
+                        }
+                        web_cache_lock.Unlock()
+                    }
                 }
                 serviced = true
             }
@@ -574,17 +716,17 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 tmp := calltable[loc].retvals
                 switch rcount {
                 case 0:
-                    w.Write([]byte(""))
+                    writeResponse(w, []byte(""), use_gzip)
                 case 1:
                     switch tmp.(type) {
                     case nil:
                         // translate bad func call to error page
                         http.NotFound(w, r)
                     default:
-                        w.Write([]byte(sf("%v", tmp.([]any)[0])))
+                        writeResponse(w, []byte(sf("%v", tmp.([]any)[0])), use_gzip)
                     }
                 default:
-                    w.Write([]byte(sf("%v", tmp.([]any)[0])))
+                    writeResponse(w, []byte(sf("%v", tmp.([]any)[0])), use_gzip)
                 }
 
                 calltable[loc].gcShyness = 40
@@ -693,6 +835,11 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
     }
     http.NotFound(w, r)
 
+    atomic.AddInt64(&web_request_count, 1)
+    if web_cache_enabled && atomic.LoadInt64(&web_request_count)%int64(web_cache_cleanup_interval) == 0 {
+        cleanupWebCache()
+    }
+
 }
 
 // ZA LIBRARY FUNCTIONS //////////////////////////////////////////////////////////////////////
@@ -707,7 +854,7 @@ func buildWebLib() {
     web_client = &http.Client{Transport: web_tr}
 
     features["web"] = Feature{version: 1, category: "web"}
-    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download", "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.
@@ -904,17 +1051,24 @@ func buildWebLib() {
 
     slhelp["web_serve_path"] = LibHelp{in: "handle,action_type,request_regex,new_path", out: "string", action: "Provides a traffic routing instruction to a web server."}
     stdlib["web_serve_path"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("web_serve_path", args, 1,
+        if ok, err := expect_args("web_serve_path", args, 2,
+            "5", "string", "string", "string", "string","string",
             "4", "string", "string", "string", "string"); !ok {
             return nil, err
         }
 
         uid := args[0].(string)
-        switch str.ToLower(args[1].(string))[0] {
+        ruleType := str.ToLower(args[1].(string))[0]
+
+        switch ruleType {
         case 's': // directly serve request
         case 'r': // redirect
         case 'p': // rewrite and reverse proxy
-        case 'w': // rewrite response body @todo
+        case 'w': // rewrite response body
+            if len(args)!=5 {
+                return false, errors.New("Missing argument 5 in \"w\" case of web_serve_path()")
+                // error
+            }
         case 'f': // build func forwarder
         case 'e': // build rule for handling return failure
         default:
@@ -924,7 +1078,12 @@ func buildWebLib() {
         var rule web_rule
         rule.code = args[1].(string)
         rule.in = args[2].(string)
-        rule.mutation = args[3].(string) // name of za function to call
+
+        if ruleType=='w' {
+            rule.mutation = map[string]string{"search":args[3].(string),"replacement":args[4].(string)}
+        } else {
+            rule.mutation = args[3].(string) // name of za function to call
+        }
 
         if !regexWillCompile(rule.in) {
             return false, fmt.Errorf("invalid regex in web_serve_path() : %s", rule.in)
@@ -986,7 +1145,7 @@ func buildWebLib() {
     slhelp["web_custom"] = LibHelp{in: "method_string,loc_string[,[string]assoc_headers_strings]", out: "string", action: "Returns a [#i1]string[#i0] with content downloaded from [#i1]loc_string[#i0]."}
     stdlib["web_custom"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("web_custom", args, 2,
-            "3", "string", "string", "map[string]interface{ }",
+            "3", "string", "string", "map",
             "2", "string", "string"); !ok {
             return nil, err
         }
@@ -1014,15 +1173,33 @@ func buildWebLib() {
         resp, err := web_client.Do(request)
         if err == nil {
             defer resp.Body.Close()
+            if resp.Header.Get("Content-Encoding") == "gzip" {
+                gz,err:=gzip.NewReader(resp.Body)
+                if err==nil {
+                    resp.Body = gz
+                    defer gz.Close()
+                }
+            }
             if resp.StatusCode > 299 {
                 return []any{"", nil, resp.StatusCode}, nil
             }
             s, err := ioutil.ReadAll(resp.Body)
+            // pf("web_custom() readall s: %s, err: %+v\n",s,err)
+
+            hmap:=make(map[string]any)
+            for k,v:=range resp.Header {
+                if len(v)==1 {
+                    hmap[k]=v[0]
+                } else {
+                    hmap[k]=v
+                }
+            }
+
             if err == nil {
-                return []any{string(s), resp.Header, resp.StatusCode}, nil
+                return []any{string(s), hmap, resp.StatusCode}, nil
             }
         }
-        return []any{"404 - Not found in web_custom()", nil, 404}, nil
+        return []any{sf("404 - Not found in web_custom(): %s",loc_string), nil, 404}, nil
     }
 
     slhelp["web_post"] = LibHelp{in: "loc_string,[]key_value_list", out: "result_string", action: "Perform a HTTP POST."}
@@ -1075,6 +1252,87 @@ func buildWebLib() {
             return true, nil
         }
         return false, nil
+    }
+
+    slhelp["web_cache_enable"] = LibHelp{in: "bool", out: "bool", action: "Enable or disable web caching globally."}
+    stdlib["web_cache_enable"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_enable", args, 1, "1", "bool"); !ok {
+            return nil, err
+        }
+        web_cache_enabled = args[0].(bool)
+        return true, nil
+    }
+
+    slhelp["web_cache_max_size"] = LibHelp{in: "int", out: "bool", action: "Set the maximum number of cached entries."}
+    stdlib["web_cache_max_size"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_max_size", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        web_cache_max_size = args[0].(int)
+        return true, nil
+    }
+
+    slhelp["web_cache_max_age"] = LibHelp{in: "int", out: "bool", action: "Set the maximum age of cached entries in seconds."}
+    stdlib["web_cache_max_age"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_max_age", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        web_cache_max_age = args[0].(int)
+        return true, nil
+    }
+
+    slhelp["web_cache_cleanup_interval"] = LibHelp{in: "int", out: "bool", action: "Set the number of requests between cache cleanups."}
+    stdlib["web_cache_cleanup_interval"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_cleanup_interval", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        web_cache_cleanup_interval = args[0].(int)
+        return true, nil
+    }
+
+    slhelp["web_cache_max_memory"] = LibHelp{in: "int", out: "bool", action: "Set the maximum memory usage for cache in MB."}
+    stdlib["web_cache_max_memory"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_max_memory", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        web_cache_max_memory = args[0].(int)
+        return true, nil
+    }
+
+    slhelp["web_cache_purge"] = LibHelp{in: "", out: "bool", action: "Manually purge all cached entries."}
+    stdlib["web_cache_purge"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_purge", args, 0); !ok {
+            return nil, err
+        }
+        web_cache_lock.Lock()
+        web_cache = make(map[string]web_cache_entry)
+        web_cache_lock.Unlock()
+        return true, nil
+    }
+
+    slhelp["web_cache_stats"] = LibHelp{in: "", out: "map", action: "Return cache statistics: size, hits, misses, memory usage."}
+    stdlib["web_cache_stats"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_cache_stats", args, 0); !ok {
+            return nil, err
+        }
+        web_cache_lock.RLock()
+        size := len(web_cache)
+        stats := map[string]any{
+            "size":     size,
+            "max_size": web_cache_max_size,
+            "max_age":  web_cache_max_age,
+        }
+        web_cache_lock.RUnlock()
+        return stats, nil
+    }
+
+    slhelp["web_gzip_enable"] = LibHelp{in: "bool", out: "bool", action: "Enable or disable gzip compression for responses."}
+    stdlib["web_gzip_enable"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_gzip_enable", args, 1, "1", "bool"); !ok {
+            return nil, err
+        }
+        web_gzip_enabled = args[0].(bool)
+        return true, nil
     }
 
 }
@@ -1142,7 +1400,7 @@ func rawSend(method, url string, headers map[string]any, body string) ([]any, er
 
 func download(loc string) ([]byte, int, http.Header) {
     var s []byte
-
+    // pf("download() recv request : %s\n",loc)
     resp, err := web_client.Get(loc)
     if err == nil {
         defer resp.Body.Close()
@@ -1151,6 +1409,7 @@ func download(loc string) ([]byte, int, http.Header) {
         }
         s, err = ioutil.ReadAll(resp.Body)
         if err == nil {
+            // pf("download() response from request : %+v\n",resp)
             return s, resp.StatusCode, resp.Header
         }
     }
