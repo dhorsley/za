@@ -26,6 +26,7 @@ type LogRequest struct {
     DestFile    string         // Specific destination file (empty = use default)
     HTTPStatus  int            // For web access logs (0 = not HTTP)
     Level       int            // RFC 5424 log level (0-7)
+    Force       bool           // dictate if this request should always be permitted
 }
 
 // Global logging queue system
@@ -160,15 +161,18 @@ func queueLogRequest(request LogRequest) {
     }
 
     workerMutex.Lock()
-    if !logWorkerRunning || logQueue == nil {
+    needStart:=!logWorkerRunning || logQueue == nil
+    if needStart {
         if logWorkerRunning && logQueue == nil {
             logWorkerRunning = false
         }
-        if !logWorkerRunning {
-            startLogWorker()
-        }
+        needStart=!logWorkerRunning
     }
     workerMutex.Unlock()
+
+    if needStart {
+        startLogWorker()
+    }
 
     // Check memory reserve status for critical operations
     memoryConstrained := false
@@ -649,6 +653,10 @@ func plog_json_direct(message string, fields map[string]any) {
         return
     }
 
+    if strings.HasSuffix(message,"\n") {
+        message=message[:len(message)-1]
+    }
+
     // Build JSON log entry
     logEntry := make(map[string]any)
     logEntry["message"] = message
@@ -700,9 +708,15 @@ func plog_direct_to_file(filename, message string) {
 
 // plog_json_direct_to_file logs a JSON message directly to the specified file
 func plog_json_direct_to_file(filename, message string, fields map[string]any) {
+
     if filename == "" {
         return
     }
+
+    if strings.HasSuffix(message,"\n") {
+        message=message[:len(message)-1]
+    }
+
 
     // Create JSON log entry
     logEntry := make(map[string]any)

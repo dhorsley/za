@@ -2,6 +2,10 @@
 
 println "=== Testing Web Server Features ==="
 
+logging on
+logging web on
+logging json on
+
 # Test 1: Start a web server
 println "\nTest 1: Starting web server"
 handle = web_serve_start(execpath()+"/www", 8080, "0.0.0.0")
