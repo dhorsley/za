@@ -111,6 +111,36 @@ CHANGE LOG
     library changes
     ---------------
 
+    * In the web server and supporting rules:
+
+        - Added caching support:
+            - Implemented web cache with max size, age, and stats controls.
+            - Cache stores responses for proxy rules to reduce latency and bandwidth.
+
+        - Added gzip compression:
+            - Enabled gzip encoding for responses when clients support it
+                - automatic compression in writeResponse
+
+        - Implemented "w" rule for response body rewriting:
+            - Added path-based regex replacement for proxied content using regexp
+                - supports search/replace with back-references.
+
+        - Fixed proxy header handling:
+            - Skip Content-Length when gzipping to prevent truncated responses
+
+    * In the web_custom() client:
+        - returns headers as map[string]any instead of http.Header now
+        - skips Content-Length copying when gzipping to avoid client issues
+
+    * Added Za library functions:
+        - web_cache_enable, web_gzip_enable, web_cache_max_size,
+           web_cache_max_age, web_cache_stats
+        - these rules allow you to enable/disable caching and vary cache characteristics
+
+    * Added test script:
+        - za_tests/test_web_server.za
+        - Added tests for caching, gzip, and "w" body rewrite rule
+
     * (experimental):
         - added support for sqlite3 db format on local paths
         - see eg/dblite for example script.
