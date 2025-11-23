@@ -328,7 +328,7 @@ func webLookup(host string) string {
 }
 
 func webClose(h string) {
-    pf("* Closing server (%s).\n", h)
+    wlog("* Closing server (%s).\n", h)
     weblock.Lock()
     web_handles[h].srv.Shutdown(context.Background())
     delete(web_handles, h)
@@ -338,7 +338,7 @@ func webClose(h string) {
 func webCloseAll() {
     weblock.Lock()
     for h, s := range web_handles {
-        pf("* Closing server (%s) : %+v\n", h, s)
+        wlog("* Closing server (%s) : %+v\n", h, s)
         s.srv.Shutdown(context.Background())
         delete(web_handles, h)
     }
@@ -997,7 +997,7 @@ func buildWebLib() {
             weblock.Lock()
             web_handles[uid] = web_table_entry{srv: &srv, mux: mux, docroot: docroot, addr: addr, host: host, port: port}
             weblock.Unlock()
-            wlog("Started web service %s\n", uid)
+            wlog("* Started web service %s\n", uid)
             return uid, nil
         } else {
             return "", e
@@ -1011,7 +1011,7 @@ func buildWebLib() {
         }
         uid := args[0].(string)
         webClose(uid)
-        wlog("Stopped web service %s\n", uid)
+        wlog("* Stopped web service %s\n", uid)
         weblock.Lock()
         delete(web_handles, uid)
         weblock.Unlock()
