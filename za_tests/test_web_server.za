@@ -1,0 +1,66 @@
+# Test web server functionality including new "w" rule, caching, and gzip
+
+logging accessfile "/dev/stdout"
+# logging web enable
+logging json on
+
+
+println "=== Testing Web Server Features ==="
+
+# Test 1: Start a web server
+println "\nTest 1: Starting web server"
+handle = web_serve_start(execpath()+"/www", 8080, "0.0.0.0")
+on handle == "" do exit 1, "Failed to start web server"
+println "✓ Web server started with handle:", handle
+
+# Test 2: Enable caching and gzip
+println "\nTest 2: Enabling caching and gzip"
+web_cache_enable(true)
+web_gzip_enable(true)
+web_cache_max_size(100)
+web_cache_max_age(60)
+println "✓ Caching and gzip enabled"
+
+# Test 3: Set up static serving rule
+println "\nTest 3: Setting up static serving rule"
+web_serve_path(handle, "s", "/static/(.*)", "/static/$1")
+println "✓ Static serving rule set"
+
+# Test 4: Set up proxy rule with rewrite
+println "\nTest 4: Setting up proxy rule with rewrite"
+result = web_serve_path(handle, "w", "/proxy/get", "httpbin\.org", "localhost")
+on !result do exit 1, "Failed to set rewrite rule"
+result = web_serve_path(handle, "p", "/proxy/(.*)", "https://httpbin.org/$1")
+on !result do exit 1, "Failed to set proxy rule"
+println "✓ Proxy and rewrite rules set:\n"
+web_display()
+
+# Test 5: Check that the server is up
+println "\nTest 5: Checking server status"
+up = web_serve_up(handle)
+on !up do exit 1, "Server not up"
+println "✓ Server is running"
+
+# Test 6: Make a test request to verify proxy and rewrite with client request
+println "\nTest 6: Testing proxy and rewrite with client request"
+headers["Accept-Encoding"] = "gzip"
+response = web_custom("GET", "http://127.0.0.1:8080/proxy/get", headers)
+
+on response[2] != 200 do exit 1, "Request failed with status:", response[2]
+on response[0] ~ "httpbin" do exit 1, "Rewrite failed, got:", response[0]
+on response[1]["Content-Encoding"] != "gzip" do exit 1, "Gzip compression not applied"
+println "✓ Proxy, rewrite, and gzip working, response:", response[0]
+
+# Test 7: Check cache stats
+println "\nTest 7: Checking cache stats"
+stats = web_cache_stats()
+println "✓ Cache stats:", stats
+
+# Test 8: Stop the server
+println "\nTest 8: Stopping web server"
+web_serve_stop(handle)
+println "✓ Web server stopped"
+
+println "\n=== All web server tests passed ==="
+
+

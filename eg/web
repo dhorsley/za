@@ -32,12 +32,7 @@ end
 
 # MAIN
 
-case release_id()
-is "ubuntu"
-    inter=collapse(negreg(net_interfaces(),"^(dum|tunl|sit|bond|docker|lo).*$"))
-    HOST=routing_interface().interface_ip
-    println "Found interface : {inter}"
-endcase
+HOST=routing_interface().interface_ip
 
 HOST        =get_env("PROXY_HOST") or HOST
 PORT        =as_int(get_env("PROXY_PORT") or "8080")
@@ -70,15 +65,15 @@ println "Started server process [{uid}]"
 # web_serve_path() is for handling traffic routing rules.
 # argument 1 indicates which configured server id to target. argument 2 is the rule type.
 #
-#   "p" is the rule type for reverse proxying. When present, a proxy rule looks for URI 
-#     paths which meet the criteria of the regex in argument 3 and makes a request on 
+#   "p" is the rule type for reverse proxying. When present, a proxy rule looks for URI
+#     paths which meet the criteria of the regex in argument 3 and makes a request on
 #     behalf of the client to a backend server indicated by argument 4.
-#     parenthesised parts of the regex are treated as back references $1...$n in arg 4. 
+#     parenthesised parts of the regex are treated as back references $1...$n in arg 4.
 #     (Like apache httpd and others do this). if argument 2 is empty then all traffic is proxied.
 #
 #   "e" indicates an error rule. These apply only to "p" proxied traffic.
-#     When a proxied backend fetch on a path whose start matches argument 3 results in a 
-#     HTTP status code >=300 then the client is sent a temporary redirect to the 
+#     When a proxied backend fetch on a path whose start matches argument 3 results in a
+#     HTTP status code >=300 then the client is sent a temporary redirect to the
 #     location indicated by argument 4.
 
 # web_serve_path(uid,"p"      , `/namelookup(.*)`     , "http://{HOST}/namelookup$1"               )
@@ -91,16 +86,16 @@ println "Started server process [{uid}]"
 # web_serve_path(uid,"p"      , `/test(.*)`           , "http://{HOST}:8081/test$1"                )
 
 #   "f" invokes a za function to respond to requests that satisfy the path given by the
-#       regex in argument 3. The function name is given as argument 4.  Any POST data is 
+#       regex in argument 3. The function name is given as argument 4.  Any POST data is
 #       handed-off to the za function as part of the function invocation. You can choose
-#       to parse this using web_serve_decode(p) where p is the name of the first argument 
+#       to parse this using web_serve_decode(p) where p is the name of the first argument
 #       provided to the handler function you write.
 #       web_serve_decode() returns a struct containing:
 #            .host (host:port), .method, .path, .remote_ip (remote_ip:port) and .data (POST data).
 #       additional fields may be added later.
 
 web_serve_path(uid,"f"      , `/fun/awsip`            , "wm::fwhandle" )
- 
+
 
 # redirect
 #   "r" rules will permanently redirect requests whose URI path begins with
@@ -117,7 +112,7 @@ web_serve_path(uid,"f"      , `/fun/awsip`            , "wm::fwhandle" )
 #   Argument 3 indicates that URI paths starting with the argument string will match the rule.
 #   This changes when argument 4 is non-empty:
 #     when arg 4 has content, argument 3 is treated as a regex and argument 4 is its replacement rule.
-#   These pages are served from the docroot path set in web_serve_start(). 
+#   These pages are served from the docroot path set in web_serve_start().
 
 #
 
