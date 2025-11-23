@@ -2,9 +2,9 @@
 
 println "=== Testing Web Server Features ==="
 
-logging on
-logging web on
-logging json on
+#logging on
+#logging web on
+#logging json on
 
 # Test 1: Start a web server
 println "\nTest 1: Starting web server"
