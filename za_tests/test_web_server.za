@@ -1,10 +1,5 @@
 # Test web server functionality including new "w" rule, caching, and gzip
 
-logging accessfile "/dev/stdout"
-# logging web enable
-logging json on
-
-
 println "=== Testing Web Server Features ==="
 
 # Test 1: Start a web server
