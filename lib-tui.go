@@ -412,7 +412,7 @@ func wrapString(s string, lim uint) string {
 func wrapLine(line string, lim uint) string {
     var result str.Builder
     words := str.FieldsFunc(line, func(r rune) bool {
-        return r == ' ' || r == '\t'
+        return r == ' ' // || r == '\t'
     })
 
     currentLine := ""
