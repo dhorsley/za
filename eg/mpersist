@@ -51,7 +51,7 @@ while next<=final
         maxc=c
         maxn=next.as_bigi
     endif
-    summary[c]+=[next.as_bigi]
+    summary[c]=summary[c].append(next.as_bigi)
     next++
 endwhile
 

@@ -2,6 +2,42 @@
 CHANGE LOG
 =============================================================================================
 
+1.2.1
+=====
+
+This version will be a bug fix and stability polish patch only.
+
+Planned:
+    - examine pp() behaviour on assorted types.
+        - there have been occasional string complexities that
+          have caused problems for pp() to display correctly.
+          trying to reproduce this still.
+          will fix when we do.
+
+    - we may look at array-to-array arithmetic in a future version.
+      - this would likely be limited to 1- and 2-dimensional arrays if it happens.
+
+
+fixes
+-----
+
+    * added per element array(a) + b ;or a + array(b) to replace array concatenation using plus operator.
+        - this completes the basic +,-,*,/ operator overload for arrays
+          - more may be added later (such as % modulus operator and others)
+        - these operations only currently work with []int or []float
+
+
+library changes
+---------------
+
+    * re-enabled concat() function for array concatenation of two arrays
+        - append() or append_to() would normally be used in preference to this.
+
+
+other
+-----
+
+
 1.2.0
 =====
 
@@ -934,11 +970,8 @@ CHANGE LOG
         - array = array(a)+b | a+array(b)
         - array = array(a)-b | a-array(b)
         - div and mul already existed
-        - todo: add per element array(a) [ + | - | * | / ] array(b)
-            - need to move array concatenation away from the + operator first
 
     * added support for functions inside structs.
-        - todo: add skip of assignment back to 'self' if it was not used in a lhs context during a method call.
         - permitted func definition, setting a parent field to the struct.
         - changed UFCS in eval_ops.* to:
             - recognise parent when called as (obj).(method)

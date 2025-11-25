@@ -21,7 +21,7 @@ CORE FIREWALL DETECTION & MANAGEMENT
 
 * TODO: Active firewall detection (not just available)
     - nftables: kernel module check + active rules detection
-    - firewalld: D-Bus connection + active service detection  
+    - firewalld: D-Bus connection + active service detection
     - pf (BSD): CLI wrapper + active rules detection
     - Windows Firewall: WMI connection + active profiles detection
 
@@ -64,7 +64,7 @@ PLUGIN ARCHITECTURE FOR CUSTOM FIREWALLS
 * TODO: Plugin interface specification
     - fw_detect() - detect if firewall is active
     - fw_enable() - enable the firewall
-    - fw_disable() - disable the firewall  
+    - fw_disable() - disable the firewall
     - fw_add_rule(protocol, port, action) - add firewall rule
     - fw_remove_rule(protocol, port, action) - remove firewall rule
     - fw_list_rules() - list current rules
@@ -114,16 +114,4 @@ FIREWALL EVENT LOGGING AND AUDIT
     * Security and privilege validation is critical for all firewall operations
     * Cross-platform consistency is a key design principle
     * Performance and resource efficiency are considerations
-
-
-LATER / UNDECIDED
------------------
-
-    * add install note for windows w/wsl stating that sudoers file may need 
-        updating with : Defaults env_keep=WSL_DISTRO_NAME
-        and possibly other env vars, depending on user requirements.
-
-    * probably we require many other similar notices/warning/info about OS specific caveats.
-
-
 

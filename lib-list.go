@@ -345,7 +345,7 @@ func buildListLib() {
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
         "any", "all", "esplit", "min", "max", "avg", "eqlen",
         "empty", "list_string", "list_float", "list_int", "list_int64", "list_bool", "list_bigi", "list_bigf",
-        "scan_left", "zip", "list_fill",
+        "scan_left", "zip", "list_fill", "concat",
     }
 
     slhelp["scan_left"] = LibHelp{in: "numeric_list,op_string,start_seed", out: "list", action: "Creates a list from the intermediary values of processing [#i1]op_string[#i0] while iterating over [#i1]list[#i0]."}
@@ -2514,33 +2514,31 @@ func buildListLib() {
         }
     }
 
-    /*
-       // concat(l1,l2) returns concatenated list of l1,l2
-       slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "(deprecated) Concatenates two lists and returns the result."}
-       stdlib["concat"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
-           if ok,err:=expect_args("concat",args,1,"2","interface {}","interface {}"); !ok { return nil,err }
+    // concat(l1,l2) returns concatenated list of l1,l2
+    slhelp["concat"] = LibHelp{in: "list,list", out: "[]new_list", action: "(deprecated) Concatenates two lists and returns the result."}
+    stdlib["concat"] = func(ns string,evalfs uint32,ident *[]Variable,args ...any) (ret any, err error) {
+        if ok,err:=expect_args("concat",args,1,"2","any","any"); !ok { return nil,err }
 
-           if reflect.TypeOf(args[0]) != reflect.TypeOf(args[1]) {
-               return nil, errors.New("Cannot concatenate dissimilar type lists.")
-           }
+        if reflect.TypeOf(args[0]) != reflect.TypeOf(args[1]) {
+            return nil, errors.New("Cannot concatenate dissimilar type lists.")
+        }
 
-           switch args[0].(type) {
-           case []bool:
-               return append(args[0].([]bool), args[1].([]bool)...), nil
-           case []int:
-               return append(args[0].([]int), args[1].([]int)...), nil
-           case []uint:
-               return append(args[0].([]uint), args[1].([]uint)...), nil
-           case []string:
-               return append(args[0].([]string), args[1].([]string)...), nil
-           case []float64:
-               return append(args[0].([]float64), args[1].([]float64)...), nil
-           case []any:
-               return append(args[0].([]any), args[1].([]any)...), nil
-           }
-           return nil, errors.New(sf("Unknown list type concatenation (%T+%T)",args[0],args[1]))
-       }
-    */
+        switch args[0].(type) {
+        case []bool:
+            return append(args[0].([]bool), args[1].([]bool)...), nil
+        case []int:
+            return append(args[0].([]int), args[1].([]int)...), nil
+        case []uint:
+            return append(args[0].([]uint), args[1].([]uint)...), nil
+        case []string:
+            return append(args[0].([]string), args[1].([]string)...), nil
+        case []float64:
+            return append(args[0].([]float64), args[1].([]float64)...), nil
+        case []any:
+            return append(args[0].([]any), args[1].([]any)...), nil
+        }
+        return nil, errors.New(sf("Unknown list type concatenation (%T+%T)",args[0],args[1]))
+    }
 
     // esplit(l,"a","b",match) recreates l with a[:match] and returns success flag
     slhelp["esplit"] = LibHelp{in: `[]list,"var1","var2",pos`, out: "bool", action: "Split [#i1]list[#i0] at position [#i1]pos[#i0] (1-based). Each side is put into variables [#i1]var1[#i0] and [#i1]var2[#i0]."}
