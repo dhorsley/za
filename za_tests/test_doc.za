@@ -1,9 +1,24 @@
 doc var myvar "Hello World"
 println myvar
 
+doc gen
+These lines should be
+captured in test mode.
+Yes?
+
+doc gen delim TERMINAL
+These [#2]delimited[#-] lines should
+be captured in test mode.
+TERMINAL
+
 doc delim END var multiline
 This is a multi-line
 string with "quotes"
 END
 print multiline
+
+doc gen
+These lines should be
+captured last in test mode.
+Yes?
 
