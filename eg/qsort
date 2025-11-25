@@ -6,7 +6,7 @@ doc `
 
 define qs(a)
     on len(a) <= 1 do return a
-    return qs(a[1:] ?> `# <= a[0]`) + a[0:1] + qs(a[1:] ?> `# > a[0]`)
+    return qs(a[1:] ?> `# <= a[0]`) . concat(a[0:1]) . concat(qs(a[1:] ?> `# > a[0]`))
 end
 
 

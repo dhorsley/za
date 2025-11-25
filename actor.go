@@ -2424,7 +2424,6 @@ tco_reentry:
                 skip = 2
                 // valid type?
                 // check if it_type is a key in either Typemap or structmaps
-                // @todo: add a USE namespace lookup here
                 otype := it_type
                 if !str.Contains(it_type, "::") {
                     it_type = parser.namespace + "::" + it_type

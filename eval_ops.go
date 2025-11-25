@@ -385,46 +385,6 @@ func ev_add(val1 any, val2 any) (r any) {
         return strconv.FormatBool(bool1) + str2
     }
 
-    // array concatenation
-    // @note: may move this into a stdlib func so that we can co-opt + and other basic operators
-    //  for whole array element add/sub/etc e.g. [1,2,3]+[2,3,4] = [3,5,7] instead
-
-    arr1, arr1OK := val1.([]any)
-    arr2, arr2OK := val2.([]any)
-    if arr1OK && arr2OK {
-        return append(arr1, arr2...)
-    }
-
-    arrb1, arrb1OK := val1.([]bool)
-    arrb2, arrb2OK := val2.([]bool)
-    if arrb1OK && arrb2OK {
-        return append(arrb1, arrb2...)
-    }
-
-    arri1, arri1OK := val1.([]int)
-    arri2, arri2OK := val2.([]int)
-    if arri1OK && arri2OK {
-        return append(arri1, arri2...)
-    }
-
-    arru1, arru1OK := val1.([]uint)
-    arru2, arru2OK := val2.([]uint)
-    if arru1OK && arru2OK {
-        return append(arru1, arru2...)
-    }
-
-    arrf1, arrf1OK := val1.([]float64)
-    arrf2, arrf2OK := val2.([]float64)
-    if arrf1OK && arrf2OK {
-        return append(arrf1, arrf2...)
-    }
-
-    arrs1, arrs1OK := val1.([]string)
-    arrs2, arrs2OK := val2.([]string)
-    if arrs1OK && arrs2OK {
-        return append(arrs1, arrs2...)
-    }
-
     obj1, obj1OK := val1.(map[string]any)
     obj2, obj2OK := val2.(map[string]any)
 
