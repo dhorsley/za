@@ -1,6 +1,8 @@
 doc var myvar "Hello World"
 println myvar
 
+abc=42
+
 doc gen
 These lines should be
 captured in test mode.
@@ -20,5 +22,6 @@ print multiline
 doc gen
 These lines should be
 captured last in test mode.
+abc value is {=abc}
 Yes?
 
