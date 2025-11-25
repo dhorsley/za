@@ -363,6 +363,27 @@ CHANGE LOG
     other
     -----
 
+    * added heredoc support
+
+        - DOC keyword extended to support extra clauses:
+
+          - DELIM delimiter_string
+                sets a heredoc-like termination string for multi-line content (optional, defaults to empty line)
+                when used, the delimiter must be the only content of the terminating line.
+
+          - VAR var_name
+                sets a variable name for assigning the heredoc string to (optional capture)
+
+          - GEN
+                when in test mode (-t) the heredoc block is written to the test output file. (optional)
+                - this behaviour will likely change in the future to write separate files for document generation.
+
+        - heredoc strings are interpolated by default (can be turned off/on in the usual manner).
+          when interpolated, they can be used like templates including {=...} expression strings
+          and also support the various Za ANSI colour macros.
+
+        - see za_tests/test_doc.za for simple example.
+
     * (experimental) Added simple macro system.
       - this is mainly for use in the REPL
       - it can be used elsewhere but with certain caveats.
