@@ -4191,7 +4191,9 @@ tco_reentry:
                     vset(nil, ifs, ident, varName, content)
                 }
                 if hasGen && testMode {
-                    appendToTestReport(test_output_file, ifs, parser.pc, content)
+                    appendToTestReport(test_output_file, ifs, parser.pc,
+                        interpolate(currentModule,ifs,ident,content),
+                    )
                 }
             } else {
                 // old DOC
