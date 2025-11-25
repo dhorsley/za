@@ -14,8 +14,12 @@ Planned:
           trying to reproduce this still.
           will fix when we do.
 
-    - we may look at array-to-array arithmetic in a future version.
-      - this would likely be limited to 1- and 2-dimensional arrays if it happens.
+          - progress: we have made a change to ensure structs are addressable
+            in order to work with them in pp().
+            this is not the same issue as we sporadically see, but
+            needed fixing also.
+
+          - test script created at za_tests/test_pp.za
 
 
 fixes
@@ -25,6 +29,9 @@ fixes
         - this completes the basic +,-,*,/ operator overload for arrays
           - more may be added later (such as % modulus operator and others)
         - these operations only currently work with []int or []float
+
+        - we may look at array-to-array arithmetic in a future version.
+            - this would likely be limited to 1- and 2-dimensional arrays if it happens.
 
 
 library changes
