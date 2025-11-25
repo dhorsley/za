@@ -1,0 +1,9 @@
+doc var myvar "Hello World"
+println myvar
+
+doc delim END var multiline
+This is a multi-line
+string with "quotes"
+END
+print multiline
+
