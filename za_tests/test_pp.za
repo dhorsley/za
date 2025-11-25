@@ -1,0 +1,91 @@
+#!/usr/bin/za
+
+# Test script for pp() function with various input types
+
+println "--> Testing pp() function with various data types"
+
+# Test primitive types
+println "=== Primitive Types ==="
+println "String:", pp("hello world")
+println "Boolean true:", pp(true)
+println "Boolean false:", pp(false)
+println "Integer:", pp(42)
+println "Float:", pp(3.14159)
+println "BigInt:", pp(123456789012345678901234567890n)
+println "BigFloat:", pp(3.141592653589793238462643383279n)
+
+# Test arrays/slices
+println "\n=== Arrays/Slices ==="
+println "Empty array:", pp([])
+println "Int array:", pp([1, 2, 3, 4, 5])
+println "String array:", pp(["apple", "banana", "cherry"])
+println "Mixed array:", pp([1, "hello", true, 3.14])
+println "Nested arrays:", pp([[1, 2], [3, 4], [5, 6]])
+
+# Test maps
+println "\n=== Maps ==="
+println "Empty map:", pp(map())
+println "Simple string map:", pp(map(.name "Alice", .age "30"))
+println "Mixed type map:", pp(map(.count 42, .active true, .pi 3.14))
+println "Nested map:", pp(
+        map(.user map(.name "Bob", .email "bob@example.com"),
+            .settings map(.theme "dark")
+         )
+        )
+
+# Test structs (if supported)
+println "\n=== Structs ==="
+# Define a test struct
+struct TestStruct
+    Name string
+    Value int
+    Active bool
+endstruct
+
+test_obj = TestStruct(.Name "Test", .Value 123, .Active true)
+println "Struct:", pp(test_obj)
+
+# Test with custom depth limits
+println "\n=== Depth Limits ==="
+deep_nested = map(.level1 map(.level2 map(.level3 map(.level4 "deep value"))))
+println "Default depth:", pp(deep_nested)
+println "Depth 2:", pp(deep_nested, 2)
+println "Depth 1:", pp(deep_nested, 1)
+
+# Test with custom indentation
+println "\n=== Custom Indentation ==="
+test_data = map(.users [
+                map(.name "Alice", .role "admin"),
+                map(.name "Bob", .role "user")
+                ])
+
+println "Default indent:", pp(test_data)
+println "Tab indent:", pp(test_data, 50, "\t")
+println "4-space indent:", pp(test_data, 50, "    ")
+
+# Test complex nested structures
+println "\n=== Complex Structures ==="
+complex_data = map(
+    .metadata map(
+        .version "1.0",
+        .created epoch_time(),
+        .tags ["test", "pp", "demo"]
+    ),
+    .data [
+        map(.id 1, .values [10, 20, 30]),
+        map(.id 2, .values [40, 50, 60]),
+        map(.id 3, .values [70, 80, 90])
+    ],
+    .config map(
+        .enabled true,
+        .max_items 100,
+        .settings map(
+            .debug false,
+            .timeout 30
+        )
+    )
+)
+
+println "Complex nested structure:", pp(complex_data, 10, "  ")
+
+println "\n--> pp() testing completed"
