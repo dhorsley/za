@@ -4173,6 +4173,9 @@ tco_reentry:
 						content = tok.tokText
 					}
 				}
+				if isHeredoc && delim == "" {
+					delim = "\n\n"
+				}
 				if delim != "" {
 					// get from registry
 					docRegistryLock.RLock()

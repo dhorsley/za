@@ -478,6 +478,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
 							}
 						}
 						// store in registry
+						phrase.SourceLine = docLine
 						docRegistryLock.Lock()
 						docRegistry = append(docRegistry, docInfo{
 							content: content,
