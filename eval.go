@@ -2826,7 +2826,7 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
 
     var bin uint64
 
-    if fs < 3 {
+    if fs<3 && atomic.LoadInt32(&concurrent_funcs) > 0 {
         vlock.Lock()
         defer vlock.Unlock()
     }

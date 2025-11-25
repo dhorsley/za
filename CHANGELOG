@@ -25,6 +25,8 @@ Planned:
 fixes
 -----
 
+    * added concurrency check in vset()
+
     * added per element array(a) + b ;or a + array(b) to replace array concatenation using plus operator.
         - this completes the basic +,-,*,/ operator overload for arrays
           - more may be added later (such as % modulus operator and others)
