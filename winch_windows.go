@@ -1,12 +1,11 @@
-// +build windows
+//go:build windows
 
 package main
 
 import (
-    "os"
+	"os"
 )
 
 func setWinchSignal(sigs chan os.Signal) {
-    // do nothing
+	// do nothing
 }
-
