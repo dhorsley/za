@@ -20,7 +20,7 @@ dump()
 println "[#-]"
 
 println "[#1]Template"
-| cat "files/tmpl1.txt"
+| cat "{=execpath()}/files/tmpl1.txt"
 println "[#-]"
-$in "files/tmpl1.txt".interpolate.ccformat $out "/dev/stdout"
+$in "{=execpath()}/files/tmpl1.txt".interpolate.ccformat $out "/dev/stdout"
 
