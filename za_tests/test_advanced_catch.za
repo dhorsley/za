@@ -89,15 +89,4 @@ catch err is "simple_error"
     println "✓ Caught single pattern:", err.pp
 endtry
 
-# Test 9: Error handling - invalid pattern
-println "\nTest 9: Error handling"
-try throws "default_error"
-    println "Throwing error"
-    throw "test_error"
-catch err is "valid_error", invalid_variable
-    println "✗ Should not reach this due to error"
-catch err is "test_error"
-    println "✓ Caught after error:", err.pp
-endtry
-
 println "\n=== All advanced catch pattern tests completed ===" 

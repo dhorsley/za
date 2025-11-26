@@ -7,7 +7,7 @@ try
     throw "test_error"
 catch err is "test_error"
     println "✓ Caught exception:", err["category"]
-    println "Stack trace:", err["stack_trace"]
+    println "Stack trace:", err["stack_trace"].pp
 endtry
 
 println "=== Test completed ===" 

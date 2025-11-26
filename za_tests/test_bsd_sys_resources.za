@@ -1,45 +1,47 @@
 # Test BSD system resources after fixes
 # This test verifies that sys_resources() returns meaningful values
 
-echo "Testing BSD system resources..."
+println "Testing BSD system resources..."
 
 # Test sys_resources()
-echo "Testing sys_resources():"
+println "Testing sys_resources():"
 try
     resources = sys_resources()
-    echo "✓ sys_resources() returned:"
-    echo "  CPUCount: " + as_string(resources.CPUCount)
-    echo "  LoadAverage: " + as_string(resources.LoadAverage)
-    echo "  MemoryTotal: " + as_string(resources.MemoryTotal)
-    echo "  MemoryUsed: " + as_string(resources.MemoryUsed)
-    echo "  MemoryFree: " + as_string(resources.MemoryFree)
-    echo "  MemoryCached: " + as_string(resources.MemoryCached)
-    echo "  SwapTotal: " + as_string(resources.SwapTotal)
-    echo "  SwapUsed: " + as_string(resources.SwapUsed)
-    echo "  SwapFree: " + as_string(resources.SwapFree)
-    echo "  Uptime: " + as_string(resources.Uptime)
-    
+    println "✓ sys_resources() returned:"
+    println "  CPUCount: " + as_string(resources.CPUCount)
+    println "  LoadAverage: " + as_string(resources.LoadAverage)
+    println "  MemoryTotal: " + as_string(resources.MemoryTotal)
+    println "  MemoryUsed: " + as_string(resources.MemoryUsed)
+    println "  MemoryFree: " + as_string(resources.MemoryFree)
+    println "  MemoryCached: " + as_string(resources.MemoryCached)
+    println "  SwapTotal: " + as_string(resources.SwapTotal)
+    println "  SwapUsed: " + as_string(resources.SwapUsed)
+    println "  SwapFree: " + as_string(resources.SwapFree)
+    println "  Uptime: " + as_string(resources.Uptime)
+
     # Check if values are reasonable
-    if resources.CPUCount > 0 do
-        echo "  ✓ CPUCount is valid"
+    if resources.CPUCount > 0
+        println "  ✓ CPUCount is valid"
     else
-        echo "  ⚠ CPUCount is zero"
-    fi
-    
-    if resources.MemoryTotal > 0 do
-        echo "  ✓ MemoryTotal is valid"
+        println "  ⚠ CPUCount is zero"
+    endif
+
+    if resources.MemoryTotal.as_int > 0
+        println "  ✓ MemoryTotal is valid"
     else
-        echo "  ⚠ MemoryTotal is zero"
-    fi
-    
-    if resources.Uptime > 0 do
-        echo "  ✓ Uptime is valid"
+        println "  ⚠ MemoryTotal is zero"
+    endif
+ 
+    if resources.Uptime > 0
+        println "  ✓ Uptime is valid"
     else
-        echo "  ⚠ Uptime is zero"
-    fi
+        println "  ⚠ Uptime is zero"
+    endif
     
 catch err
-    echo "✗ sys_resources() failed: " + err
+    println "✗ sys_resources() failed: " + err
 endtry
 
-echo "System resources test completed." 
+println "System resources test completed."
+
+
