@@ -1,14 +1,13 @@
-// +build !windows freebsd linux
+//go:build !windows || freebsd || linux
 
 package main
 
 import (
-    "syscall"
-    "os"
-    "os/signal"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func setWinchSignal(sigs chan os.Signal) {
-    signal.Notify(sigs, syscall.SIGWINCH)
+	signal.Notify(sigs, syscall.SIGWINCH)
 }
-
