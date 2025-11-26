@@ -173,9 +173,9 @@ prompt=(form_prompt())
 
 # set banner
 ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
-ignore_fonts+= ["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter","ivrit"]
-ignore_fonts+= ["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"]
-ignore_fonts+= ["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"]
+ignore_fonts = ignore_fonts.concat(["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter","ivrit"])
+ignore_fonts = ignore_fonts.concat(["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"])
+ignore_fonts = ignore_fonts.concat(["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"])
 
 effects = [ "","-F rainbow","-F metal","-F border" ]
 
