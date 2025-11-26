@@ -108,10 +108,10 @@ FIREWALL EVENT LOGGING AND AUDIT
     NOTES
     -----
 
-    * All firewall operations should respect an "only one active firewall" principle
+    * All firewall operations should expect only one active firewall
     * Native libraries should be used where possible (nftables, firewalld, Windows Firewall)
     * CLI wrappers only when no native library is available (pf)
     * Security and privilege validation is critical for all firewall operations
-    * Cross-platform consistency is a key design principle
+    * Needs cross-platform consistency
     * Performance and resource efficiency are considerations
 

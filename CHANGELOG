@@ -8,24 +8,15 @@ CHANGE LOG
 This version will be a bug fix and stability polish patch only.
 
 Planned:
-    - examine pp() behaviour on assorted types.
-        - there have been occasional string complexities that
-          have caused problems for pp() to display correctly.
-          trying to reproduce this still.
-          will fix when we do.
-
-          - progress: we have made a change to ensure structs are addressable
-            in order to work with them in pp().
-            this is not the same issue as we sporadically see, but
-            needed fixing also.
-
-          - test script created at za_tests/test_pp.za
 
 
 fixes
 -----
 
     * added concurrency check in vset()
+
+    * change made to ensure structs are addressable in pp()
+        - test script created at za_tests/test_pp.za
 
     * added per element array(a) + b ;or a + array(b) to replace array concatenation using plus operator.
         - this completes the basic +,-,*,/ operator overload for arrays
