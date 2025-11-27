@@ -31,7 +31,6 @@ library changes
 ---------------
 
     * re-enabled concat() function for array concatenation of two arrays
-        - append() or append_to() would normally be used in preference to this.
 
 
 other

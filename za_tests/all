@@ -1,0 +1,10 @@
+#!/usr/bin/env za
+
+foreach f in dir(".","\.za$")
+    println f.name
+    r={za {=f.name}}
+    println r.out
+    on not r.okay do println "-- [#2]failed on {=f.name} with code {=r.code}[#-]"
+endfor
+
+
