@@ -26,6 +26,8 @@ fixes
         - we may look at array-to-array arithmetic in a future version.
             - this would likely be limited to 1- and 2-dimensional arrays if it happens.
 
+    * added error gate on startup if interactive mode set when termless.
+
 
 library changes
 ---------------
