@@ -1285,8 +1285,14 @@ func main() {
     logFields = make(map[string]any)
     logFieldsStack = make([]map[string]any, 0)
 
-    // interactive mode support
+    // interactive mode support PIG
     if (*a_program == "" && exec_file_name == "") || interactive {
+
+        if MW==-1 {
+            // bail if no term and interactive
+            pln("Interactive mode requires a terminal.")
+            os.Exit(1)
+        }
 
         // in case we arrived here by another method:
         interactive = true
