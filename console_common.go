@@ -117,6 +117,7 @@ func setupAnsiPalette() {
         fairydust["CTE"] = "\033[0K"
         fairydust["ASB"] = "\033[?1049h"
         fairydust["RSB"] = "\033[?1049l"
+        fairydust["SOL"] = "\033[1G"
         fairydust["."] = "\033[39m"
 
         ansiReplacables = []string{}
