@@ -228,7 +228,7 @@ func buildErrorLib() {
 		return filename, nil
 	}
 
-	slhelp["error_style"] = LibHelp{in: "mode_string", out: "string", action: "Set error handling style mode and return previous mode.\npanic: standard Go panic/recover (default)\nexception: convert panics to exceptions\nmixed: both panic and exception handling"}
+	slhelp["error_style"] = LibHelp{in: "mode_string", out: "string", action: "Set error handling style mode and return previous mode.\n[#SOL]panic: standard Go panic/recover (default)\n[#SOL]exception: convert panics to exceptions\n[#SOL]mixed: both panic and exception handling"}
 	stdlib["error_style"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("error_style", args, 2, "1", "string", "0"); !ok {
 			return nil, err

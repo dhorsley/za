@@ -1018,7 +1018,13 @@ func buildInternalLib() {
 		return v, nil
 	}
 
-	slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour.\nuninit: determine if execution should stop when an uninitialised variable is encountered during evaluation.\ndupmod: ignore duplicate module imports.\nexitquiet: shorter error message.\nshell: permit shell commands,  eval: permit eval() calls,  interpol: permit string interpolation.\ncmdfallback: make shell call on eval failure in interactive mode,  permit: enable/disable permit() function call.\nexception_strictness: enable/disable exception_strictness() function call.\nmacro: enable/disable macro statement."}
+	slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action:
+        "Set a run-time behaviour.\n[#SOL][#2]uninit[#-]: determine if execution should stop when an uninitialised variable is encountered during evaluation.\n" +
+        "[#SOL][#2]dupmod[#-]: ignore duplicate module imports.  /  [#2]exitquiet[#-]: shorter error message.\n" +
+        "[#SOL][#2]shell[#-]: permit shell commands  /  [#2]eval[#-]: permit eval() calls  /  [#2]interpol[#-]: permit string interpolation.\n" +
+        "[#SOL][#2]cmdfallback[#-]: make shell call on eval failure in interactive mode  /  [#2]permit[#-]: enable/disable permit() function call.\n" +
+        "[#SOL][#2]exception_strictness[#-]: enable/disable exception_strictness call.  /  [#2]macro[#-]: enable/disable macro statement.",
+    }
 	stdlib["permit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("permit", args, 4,
 			"2", "string", "bool",

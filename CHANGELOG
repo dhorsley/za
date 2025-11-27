@@ -28,6 +28,10 @@ fixes
 
     * added error gate on startup if interactive mode set when termless.
 
+    * added [#SOL] ansi sequence (in interpolation) for start of line (absolute position 1 (G code))
+        - will add this code in some multi-line help messages for systems that tend to disrespect \n.
+            - updated error_style and permit call help text
+
 
 library changes
 ---------------
