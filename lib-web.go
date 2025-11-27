@@ -959,8 +959,7 @@ func buildWebLib() {
 		mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS, evalfs, ident))
 
 		go func() {
-			// e=srv.ListenAndServe()
-			// @note: testing: manually enforce tcp4 to make docker happier.
+			// @note manually enforce tcp4 to make docker happier.
 			l, e := net.Listen("tcp4", addr)
 			if e != nil {
 				log.Fatal(err)
