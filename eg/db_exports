@@ -28,87 +28,83 @@ println "[#1]Database connection established[#-]\n"
 # Test 1: Basic query with string separator (backward compatibility)
 println "[#2]Test 1: Basic query with string separator[#-]"
 res1=h.db_query("SELECT 1 as test_col, 'hello' as test_str", "|")
-println "Result: {res1}\n"
+println "Result:\n{res1}\n"
 
 permit("error_exit", false)
 
-# Test 1.5: Simple test to debug the issue
-println "[#2]Test 1.5: Debug test[#-]"
-println "Debug: About to call db_query with 2 args"
-res_debug=h.db_query("SELECT 1 as debug")
-println "Debug result: {res_debug}\n"
-
 # Test 2: Basic query without separator (defaults to "|")
 println "[#2]Test 2: Basic query without separator[#-]"
-println "Debug: h type = ",kind(h)
-println "Debug: h value = {h}"
 res2=h.db_query("SELECT 2 as num, 'world' as str")
-println "Result: {res2}\n"
+println "Result:\n{res2}\n"
 
 # Test 3: Map options with custom separator
 println "[#2]Test 3: Map options with custom separator[#-]"
 res3=h.db_query("SELECT 3 as id, 'test' as name", map(.separator ":"))
-println "Result: {res3}\n"
+println "Result:\n{res3}\n"
 
 # Test 4: JSON output format
-println "[#2]Test 4: JSON output format[#-]"
+println "[#2]Test 4: JSON string output format[#-]"
 res4=h.db_query("SELECT 4 as id, 'json_test' as name", map(.format "json"))
-println "Result: {res4}\n"
+println "Result (formatted):\n{=res4.json_format}\n"
 
 # Test 5: CSV output format
 println "[#2]Test 5: CSV output format[#-]"
 res5=h.db_query("SELECT 5 as id, 'csv_test' as name", map(.format "csv"))
-println "Result: {res5}\n"
+println "Result:\n{res5}\n"
 
 # Test 6: TSV output format
 println "[#2]Test 6: TSV output format[#-]"
 res6=h.db_query("SELECT 6 as id, 'tsv_test' as name", map(.format "tsv"))
-println "Result: {res6}\n"
+println "Result:\n{res6}\n"
 
 # Test 7: Table output format
 println "[#2]Test 7: Table output format[#-]"
 res7=h.db_query("SELECT 7 as id, 'table_test' as name", map(.format "table"))
-println "Result: {res7}\n"
+println "Result:\n"
+foreach l in res7
+    println l
+endfor
+print
 
 # Test 8: Map output format (with type conversion)
 println "[#2]Test 8: Map output format[#-]"
 res8=h.db_query("SELECT 8 as id, 'map_test' as name, 42 as number", map(.format "map"))
-println "Result: {res8}\n"
+println "Result:\n{=res8.pp}\n"
 
 # Test 9: Array output format
 println "[#2]Test 9: Array output format[#-]"
 res9=h.db_query("SELECT 9 as id, 'array_test' as name", map(.format "array"))
-println "Result: {res9}\n"
+println "Result:\n{=res9.pp}\n"
 
 # Test 10: YAML output format
 println "[#2]Test 10: YAML output format[#-]"
 res10=h.db_query("SELECT 10 as id, 'yaml_test' as name, true as flag", map(.format "yaml"))
-println "Result: {res10}\n"
+println "Result:\n{res10}\n"
 
 # Test 11: XML output format
 println "[#2]Test 11: XML output format[#-]"
 res11=h.db_query("SELECT 11 as id, 'xml_test' as name", map(.format "xml"))
-println "Result: {res11}\n"
+println "Result:\n{res11}\n"
 
 # Test 12: JSONL output format
 println "[#2]Test 12: JSONL output format[#-]"
 res12=h.db_query("SELECT 12 as id, 'jsonl_test' as name", map(.format "jsonl"))
-println "Result: {res12}\n"
+println "Result:\n{res12}\n"
 
 # Test 13: Prepared statement with parameters
 println "[#2]Test 13: Prepared statement with parameters[#-]"
 res13=h.db_query("SELECT ? as id, ? as name", map(.params [13, "prepared_test"]))
-println "Result: {res13}\n"
+println "Result:\n{res13}\n"
 
 # Test 14: Limit functionality
 println "[#2]Test 14: Limit functionality[#-]"
 res14=h.db_query("SELECT 1 as num UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5", map(.limit 3))
-println "Result: {res14}\n"
+println "Result:\n{=res14.pp}\n"
 
 # Test 15: Multiple options combined
 println "[#2]Test 15: Multiple options combined[#-]"
 res15=h.db_query("SELECT 15 as id, 'combined_test' as name", map(.format "json", .limit 1, .separator "|"))
-println "Result: {res15}\n"
+println "Result:\n{=res15.pp}\n"
 
 # Test 16: Error handling - invalid query
 println "[#2]Test 16: Error handling - invalid query[#-]"
@@ -134,32 +130,36 @@ endtry
 # Test 18: Large result set handling
 println "[#2]Test 18: Large result set handling[#-]"
 res18=h.db_query("SELECT 1 as num UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10", map(.format "array", .limit 5))
-println "Result (limited to 5): {res18}\n"
+println "Result (limited to 5): {=res18.pp}\n"
 
 # Test 19: Special characters in data
 println "[#2]Test 19: Special characters in data[#-]"
 res19=h.db_query(`SELECT 'test"quote' as quoted, 'test,comma' as comma, 'test\nnewline' as newline`, map(.format "csv"))
-println "Result: {res19}\n"
+println "Result:\n{res19}\n"
 
 # Test 20: NULL value handling
 println "[#2]Test 20: NULL value handling[#-]"
 res20=h.db_query("SELECT NULL as null_col, 'not_null' as not_null_col", map(.format "map"))
-println "Result: {res20}\n"
+println "Result:\n{=res20.pp}\n"
 
 # Test 21: Different data types
 println "[#2]Test 21: Different data types[#-]"
-res21=h.db_query("SELECT 42 as integer, 3.14 as float, 'string' as text", map(.format "yaml"))
-println "Result: {res21}\n"
+res21=h.db_query("select 42 as number, 3.14 as fp, 'string' as text", map(.format "yaml"))
+println "Result:\n{res21}\n"
 
 # Test 22: Empty result set
 println "[#2]Test 22: Empty result set[#-]"
 res22=h.db_query("SELECT 1 WHERE 1=0", map(.format "json"))
-println "Result: {res22}\n"
+println "Result:\n{res22}\n"
 
 # Test 23: Multiple columns with different formats
 println "[#2]Test 23: Multiple columns with different formats[#-]"
 res23=h.db_query("SELECT 1 as id, 'test' as name, 42.5 as value, 1 as active", map(.format "table"))
-println "Result: {res23}\n"
+println "Result:\n"
+foreach l in res23
+    println l
+endfor
+print
 
 # Test 24: Performance test - multiple queries
 println "[#2]Test 24: Performance test - multiple queries[#-]"
@@ -183,5 +183,5 @@ endif
 # Close database connection
 h.db_close()
 println "[#1]Database connection closed[#-]"
-println "\n[#3]All database tests completed![#-]" 
+println "\n[#3]All database tests completed![#-]"
 
