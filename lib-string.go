@@ -532,7 +532,10 @@ func buildStringLib() {
 		return sanitise(args[0].(string)), nil
 	}
 
-	slhelp["wrap"] = LibHelp{in: "[bool]", out: "bool", action: "Enable (true) or disable (false) line wrap in non-global display panes.\nThe previous wrap value is returned.\nN.B. ensure that only plain text is wrapped. ANSI codes may be split!"}
+	slhelp["wrap"] = LibHelp{in: "[bool]", out: "bool", action:
+        "Enable (true) or disable (false) line wrap in non-global display panes.\n"+
+        "[#SOL]The previous wrap value is returned.\n"+
+        "[#SOL][#bold]N.B. ensure that only plain text is wrapped.[#boff] ANSI codes may be split!"}
 	stdlib["wrap"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("wrap", args, 2,
 			"1", "bool",
@@ -849,7 +852,9 @@ func buildStringLib() {
 		return pad(s, j, w, " "), err
 	}
 
-	slhelp["field"] = LibHelp{in: "input_string,position[,optional_separator]", out: "string", action: "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0].\n[#i1]optional_separator[#i0] defaults to a space character. [#i1]string[#i0] is empty on failure."}
+	slhelp["field"] = LibHelp{in: "input_string,position[,optional_separator]", out: "string", action: 
+        "Retrieves columnar field [#i1]position[#i0] from [#i1]input_string[#i0].\n"+
+        "[#SOL][#i1]optional_separator[#i0] defaults to a space character. [#i1]string[#i0] is empty on failure."}
 	stdlib["field"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("field", args, 2,
 			"2", "string", "int",
@@ -892,9 +897,11 @@ func buildStringLib() {
 
 	slhelp["fields"] = LibHelp{in: "input_string[,optional_separator]",
 		out: "int",
-		action: "Splits up [#i1]input_string[#i0] in local array [#i1]F[#i0], with fields starting at index 1.\n" +
-			"Field count is stored in [#i1]NF[#i0]. Also squeezes repeat spaces when separator is a space char (default).\n" +
-			"Returns -1 on error, or field count."}
+		action: 
+            "Splits up [#i1]input_string[#i0] in local array [#i1]F[#i0], with fields starting at index 1.\n" +
+			"[#SOL]Field count is stored in [#i1]NF[#i0]. Also squeezes repeat spaces when separator is a space char (default).\n" +
+			"[#SOL]Returns -1 on error, or field count.",
+    }
 	stdlib["fields"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("fields", args, 2,
 			"1", "string",
@@ -1017,7 +1024,7 @@ func buildStringLib() {
 	slhelp["lines"] = LibHelp{in: "string_name,string_range",
 		out: "string",
 		action: "Returns lines from [#i1]string_name[#i0]. [#i1]string_range[#i0] is specified in the form [#i1]start:end[#i0].\n" +
-			"Either optional term can be [#i1]last[#i0] to indicate the last line of the file. Numbering starts from 0."}
+			"[#SOL]Either optional term can be [#i1]last[#i0] to indicate the last line of the file. Numbering starts from 0."}
 	stdlib["lines"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("lines", args, 2,
 			"2", "string", "string",

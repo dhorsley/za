@@ -732,7 +732,7 @@ func buildInternalLib() {
 
 	slhelp["get_mem"] = LibHelp{in: "", out: "struct",
 		action: "Returns the current heap allocated memory and total system memory usage in MB.\n" +
-			"Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
+			"[#SOL]Structure fields are [#i1].alloc[#i0] and [#i1].system[#i0] for allocated space and total system space respectively."}
 	stdlib["get_mem"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("get_mem", args, 0); !ok {
 			return nil, err
@@ -989,7 +989,7 @@ func buildInternalLib() {
 	}
 
 	slhelp["echo"] = LibHelp{in: "[bool[,mask]]", out: "bool",
-		action: "Enable or disable local echo. Optionally, set the mask character to be used during input.\n" +
+		action: "Enable or disable local echo. Optionally, set the mask character to be used during input.\n[#SOL]" +
 			"Current visibility state is returned when no arguments are provided."}
 	stdlib["echo"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("echo", args, 2,
@@ -1019,11 +1019,11 @@ func buildInternalLib() {
 	}
 
 	slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action:
-        "Set a run-time behaviour.\n[#SOL][#2]uninit[#-]: determine if execution should stop when an uninitialised variable is encountered during evaluation.\n" +
-        "[#SOL][#2]dupmod[#-]: ignore duplicate module imports.  /  [#2]exitquiet[#-]: shorter error message.\n" +
-        "[#SOL][#2]shell[#-]: permit shell commands  /  [#2]eval[#-]: permit eval() calls  /  [#2]interpol[#-]: permit string interpolation.\n" +
-        "[#SOL][#2]cmdfallback[#-]: make shell call on eval failure in interactive mode  /  [#2]permit[#-]: enable/disable permit() function call.\n" +
-        "[#SOL][#2]exception_strictness[#-]: enable/disable exception_strictness call.  /  [#2]macro[#-]: enable/disable macro statement.",
+        "Set a run-time behaviour... [#2]uninit[#-]: should stop for uninitialised variables / [#2]dupmod[#-]: ignore duplicate imports\n" +
+        "[#SOL][#2]exitquiet[#-]: shorter error message / [#2]shell[#-]: permit shell commands / [#2]eval[#-]: permit eval() calls\n" +
+        "[#SOL][#2]interpol[#-]: permit string interpolation / [#2]cmdfallback[#-]: shell call on eval failure (interactive)\n" +
+        "[#SOL][#2]permit[#-]: enable/disable permit() / [#2]exception_strictness[#-]: enable/disable exception_strictness call\n" +
+        "[#SOL][#2]macro[#-]: enable/disable macro statement",
     }
 	stdlib["permit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("permit", args, 4,
@@ -1163,7 +1163,7 @@ func buildInternalLib() {
 
 	slhelp["interpol"] = LibHelp{in: "bool", out: "bool",
 		action: "Enable (default) or disable string interpolation at runtime.\n" +
-			"This is useful for ensuring that braced phrases remain unmolested. Returns the previous state."}
+			"[#SOL]This is useful for ensuring that braced phrases remain unmolested. Returns the previous state."}
 	stdlib["interpol"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("interpol", args, 1, "1", "bool"); !ok {
 			return nil, err
@@ -1531,8 +1531,8 @@ func buildInternalLib() {
 	}
 
 	slhelp["keypress"] = LibHelp{in: "[timeout_ms]", out: "int", action: "Returns an integer corresponding with a keypress.\n" +
-		"Internally, the minimum timeout value is currently 1 decisecond.\n" +
-		"See the termios(3) man page for reasoning about VMIN/VTIME."}
+		"[#SOL]Internally, the minimum timeout value is currently 1 decisecond.\n" +
+		"[#SOL]See the termios(3) man page for reasoning about VMIN/VTIME."}
 	stdlib["keypress"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("keypress", args, 3,
 			"2", "int", "bool",
@@ -1938,7 +1938,13 @@ func buildInternalLib() {
 		}, nil
 	}
 
-	slhelp["exception_strictness"] = LibHelp{in: "mode_string", out: "", action: "Set exception handling strictness mode.\nstrict: fatal termination on unhandled exceptions (default)\npermissive: converts unhandled exceptions to normal panics\nwarn: prints warning but continues execution\ndisabled: completely disable try..catch processing"}
+	slhelp["exception_strictness"] = LibHelp{in: "mode_string", out: "", action:
+        "Set exception handling strictness mode.\n" + 
+        "[#SOL]strict: fatal termination on unhandled exceptions (default)\n" +
+        "[#SOL]permissive: converts unhandled exceptions to normal panics\n" +
+        "[#SOL]warn: prints warning but continues execution\n" +
+        "[#SOL]disabled: completely disable try..catch processing",
+    }
 	stdlib["exception_strictness"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("exception_strictness", args, 1, "1", "string"); !ok {
 			return nil, err

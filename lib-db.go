@@ -22,8 +22,8 @@ func buildDbLib() {
 
 	// open a db connection
 	slhelp["db_init"] = LibHelp{in: "string", out: "handle",
-		action: "Returns a database connection [#i1]handle[#i0], with a default schema of [#i1]string[#i0] based on\n" +
-			"inbound environmental variables. (ZA_DB_HOST, ZA_DB_ENGINE, ZA_DB_PORT, ZA_DB_USER, ZA_DB_PASS.)\n" +
+		action: "Returns a database connection [#i1]handle[#i0], with a default schema of [#i1]string[#i0] based on\n[#SOL]" +
+			"inbound environmental variables. (ZA_DB_HOST, ZA_DB_ENGINE, ZA_DB_PORT, ZA_DB_USER, ZA_DB_PASS.)\n[#SOL]" +
 			"Only 'mysql' is currently supported as an engine type."}
 	stdlib["db_init"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("db_init", args, 1, "1", "string"); !ok {

@@ -1573,8 +1573,8 @@ func buildConversionLib() {
 
 	slhelp["json_query"] = LibHelp{in: "input_string,query_string[,map_bool]", out: "string",
 		action: "Returns the result of processing [#i1]input_string[#i0] using the gojq library.\n" +
-			"[#i1]query_string[#i0] is a jq-like query to operate with. If [#i1]map_bool[#i0] is false (default)\n" +
-			"then a string is returned, otherwise an iterable list is returned."}
+			"[#SOL][#i1]query_string[#i0] is a jq-like query to operate with. If [#i1]map_bool[#i0] is false (default)\n" +
+			"[#SOL]then a string is returned, otherwise an iterable list is returned."}
 	stdlib["json_query"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("json_query", args, 2,
 			"2", "string", "string",
@@ -1653,7 +1653,13 @@ func buildConversionLib() {
 		return pp(input, maxDepth, indent)
 	}
 
-	slhelp["table"] = LibHelp{in: "data, [options]", out: "string or [][]any", action: `Convert a slice of maps/structs to a text table, or parse a string to structured data. If data is string, parses it. Options: .parse_only true (return [][]any), .has_headers false, .detect_sep true, .separator ",", .hide ["field1"], .show_only_ordered true, plus table options: .colours map(.header "[#colour_code1]", .data "[#colour_code2]"), .table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true, .border_style "ascii", .truncate false, .column_order ["col1", "col2"])`}
+	slhelp["table"] = LibHelp{in: "data, [options]", out: "string or [][]any", action:
+        `Convert a slice of maps/structs to a text table, or parse a string to structured data.`+"\n"+
+        `[#SOL]Example options: .parse_only false (return [][]any), .has_headers false, .detect_sep true, .separator ",",`+"\n"+
+        `[#SOL].hide ["field1"], .show_only_ordered true, .colours map(.header "[#code1]", .data "[#code2]"),`+"\n" +
+        `[#SOL].table_width 80, .column_widths map(.name 10), .align map(.name "left"), .include_headers true,`+"`\n" +
+        `[#SOL].border_style "ascii", .truncate false, .column_order ["col1", "col2"])`,
+    }
 	stdlib["table"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("table", args, 2,
 			"1", "any",

@@ -129,10 +129,10 @@ func buildSumLib() {
 
 	slhelp["s3sum"] = LibHelp{in: "filename[,blocksize]", out: "struct",
 		action: "Returns a struct bearing a checksum (.sum) and an error code (.err) for comparison to an S3 ETag field.\n" +
-			"Blocksize specifies the size in bytes of multi-part upload chunks.\n" +
-			"When blocksize is 0 then auto-select blocksize and upload checksum type.\n" +
-			"When blocksize is -1 then treat as a single-part upload.\n" +
-			"Error codes: 0 okay, 1 single-part warning, 2 file error, 3 checksum error"}
+			"[#SOL]Blocksize specifies the size in bytes of multi-part upload chunks.\n" +
+			"[#SOL]When blocksize is 0 then auto-select blocksize and upload checksum type.\n" +
+			"[#SOL]When blocksize is -1 then treat as a single-part upload.\n" +
+			"[#SOL]Error codes: 0 okay, 1 single-part warning, 2 file error, 3 checksum error"}
 	stdlib["s3sum"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("s3sum", args, 2,
 			"2", "string", "number",

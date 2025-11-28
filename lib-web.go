@@ -905,8 +905,8 @@ func buildWebLib() {
 
 	slhelp["web_serve_decode"] = LibHelp{in: "webcallstruct", out: "call_details",
 		action: "Returns a struct representing details of an inbound web request.\n" +
-			"web_serve_decode() returns the following member fields:\n" +
-			"  .host (host:port), .method, .path, .remote (remote_ip:port) and .data (POST data).",
+			"[#SOL]web_serve_decode() returns the following member fields:\n" +
+			"[#SOL]  .host (host:port), .method, .path, .remote (remote_ip:port) and .data (POST data).",
 	}
 	stdlib["web_serve_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("web_serve_decode", args, 1, "1", "main.webstruct"); !ok {

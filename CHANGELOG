@@ -38,8 +38,11 @@ fixes
     * added error gate on startup if interactive mode set when termless.
 
     * added [#SOL] ansi sequence (in interpolation) for start of line (absolute position 1 (G code))
-        - will add this code in some multi-line help messages for systems that tend to disrespect \n.
-            - updated error_style and permit call help text
+        - added this code in some multi-line help messages for systems that tend to disrespect \n.
+            - updated help texts:
+                error_style, permit, date_human, db_init, dir, exception_strictness
+                ev_watch, field, fields, flock, fseek, get_mem, interpol, json_query,
+                lines, sort, table, vcmp, web_serve_decode, wrap
 
 
 library changes
