@@ -7,7 +7,16 @@ CHANGE LOG
 
 This version will be a bug fix and stability polish patch only.
 
-Planned:
+Now considered supported:
+
+    * break/continue if
+    * break for/foreach/while/case
+    * enhanced logging features
+    * function arguments: default arguments
+    * try..catch..then..endtry support
+    * try operator
+    * sqlite3 db support
+    * macro support
 
 
 fixes
