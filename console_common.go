@@ -271,7 +271,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
     var helpstring string        // final compounded output string including helpColoured components
     var funcnames []string       // the list of possible standard library functions
     var helpType []int
-    HELP_SIZE := 8
+    HELP_SIZE := 11
 
     // Reverse search state variables
     var reverseSearchMode bool = false
@@ -1180,10 +1180,10 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         switch helpType[pos] {
                         case HELP_FUNC:
                             hla = hla[:len(hla)-1]
-                            helpstring += "\n[#CSI]1G[#bold]" + hla + "(" + slhelp[hla].in + ")[#boff] : [#4]" + slhelp[hla].action + "[#-]"
+                            helpstring += "\n[#SOL][#bold]" + hla + "(" + slhelp[hla].in + ")[#boff] : [#4]" + slhelp[hla].action + "[#-]"
                         case HELP_DIRENT:
                             f := fileList[helpList[pos]]
-                            helpstring += "\n" + helpList[pos]
+                            helpstring += "\n[#SOL]" + helpList[pos]
                             if f.IsDir() {
                                 helpstring += " [#bold]Directory[#boff]"
                             } else {

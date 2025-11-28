@@ -56,9 +56,9 @@ func buildOsLib() {
 
 	slhelp["dir"] = LibHelp{in: "[filepath[,filter]]",
 		out: "[]structs",
-		action: "Returns an array containing file information on path [#i1]filepath[#i0].\n" +
-			"[#i1]filter[#i0] can be specified, as a regex, to narrow results.\n" +
-			"Each array element contains name,mode,size,mtime and is_dir fields.\n" +
+		action: "Returns an array containing file information on path [#i1]filepath[#i0].\n[#SOL]" +
+			"[#i1]filter[#i0] can be specified, as a regex, to narrow results.\n[#SOL]" +
+			"Each array element contains name,mode,size,mtime and is_dir fields.\n[#SOL]" +
 			"These specify filename, file mode, file size, modification time and directory status respectively."}
 	stdlib["dir"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("dir", args, 3,

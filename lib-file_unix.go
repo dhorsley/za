@@ -59,7 +59,11 @@ func buildFileLib() {
 	}
 
 	slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool",
-		action: "(experimental,linux only) Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\nReturns true if the file could not be locked."}
+		action:
+        "Attempts to place a file lock on [#i1]file_handle[#i0]."+
+        "[#SOL]Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\n"+
+        "[#SOL]Returns true if the file could not be locked.",
+    }
 	stdlib["flock"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("flock", args, 2,
 			"2", "main.pfile", "string",
@@ -108,8 +112,8 @@ func buildFileLib() {
 
 	slhelp["fseek"] = LibHelp{in: "filehandle,offset,relativity", out: "position",
 		action: "Move the current position of reads or writes to an open file.\n" +
-			"[#i1]relativity[#i0] indicates where the offset is relative to.\n" +
-			"(0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
+			"[#SOL][#i1]relativity[#i0] indicates where the offset is relative to.\n" +
+			"[#SOL](0:start of file,1:current position, 2:end of file) The newly sought position is returned."}
 	stdlib["fseek"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("fseek", args, 1, "3", "main.pfile", "int", "int"); !ok {
 			return nil, err

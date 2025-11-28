@@ -37,7 +37,7 @@ func buildDateLib() {
 	}
 
 	slhelp["date_human"] = LibHelp{in: "[integer]", out: "string",
-		action: "Returns the current date and time in a readable format (RFC822Z).\n" +
+		action: "Returns the current date and time in a readable format (RFC822Z).\n[#SOL]" +
 			"If optional [#i1]integer[#i0] present, uses that as the epoch timestamp to convert."}
 	stdlib["date_human"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
 		if ok, err := expect_args("date_human", args, 2,
