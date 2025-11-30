@@ -247,6 +247,27 @@ func ev_in(val1 any, val2 any) bool {
 
 func ev_add(val1 any, val2 any) (r any) {
 
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_add(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_add(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_add(x, y)
+        })
+    }
+
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     // short path integers
@@ -457,6 +478,27 @@ func ev_add(val1 any, val2 any) (r any) {
 
 func ev_sub(val1 any, val2 any) any {
 
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_sub(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_sub(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_sub(x, y)
+        })
+    }
+
     var intInOne, intInTwo, uintInOne, uintInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
@@ -607,6 +649,27 @@ func ev_sub(val1 any, val2 any) any {
 }
 
 func ev_mul(val1 any, val2 any) any {
+
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_mul(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_mul(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_mul(x, y)
+        })
+    }
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -767,6 +830,27 @@ func ev_mul(val1 any, val2 any) any {
 }
 
 func ev_div(val1 any, val2 any) any {
+
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_div(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_div(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_div(x, y)
+        })
+    }
 
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
@@ -934,6 +1018,27 @@ func ev_div(val1 any, val2 any) any {
 
 func ev_mod(val1 any, val2 any) any {
 
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_mod(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_mod(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_mod(x, y)
+        })
+    }
+
     var intInOne, intInTwo, i641, i642, bint1, bint2, bf1, bf2 bool
 
     switch val1.(type) {
@@ -1000,6 +1105,27 @@ func ev_mod(val1 any, val2 any) any {
 }
 
 func ev_pow(val1 any, val2 any) any {
+
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_pow(x, y)
+        })
+    }
+
+    // Handle scalar-slice broadcasting
+    if isSlice(val1) && !isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+            return ev_pow(x, y)
+        })
+    }
+
+    // Handle slice-scalar broadcasting
+    if !isSlice(val1) && isSlice(val2) {
+        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+            return ev_pow(x, y)
+        })
+    }
 
     var intInOne, intInTwo, bf1, bf2, bint1, bint2 bool
     var int1 int
@@ -1359,7 +1485,20 @@ func deepEqual(val1 any, val2 any) bool {
     return val1 == val2
 }
 
-func compare(val1 any, val2 any, operation int64) bool {
+// compareArrays handles element-wise comparison of arrays/slices and returns an array of booleans
+func compareArrays(val1 any, val2 any, operation int64) any {
+    result := ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
+        return compare(x, y, operation)
+    })
+    return result
+}
+
+func compare(val1 any, val2 any, operation int64) any {
+
+    // Handle element-wise operations on slices
+    if isSlice(val1) && isSlice(val2) {
+        return compareArrays(val1, val2, operation)
+    }
 
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)

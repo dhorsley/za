@@ -1341,67 +1341,126 @@ func (p *leparser) list_filter(left any, right any) any {
     leftValue := reflect.ValueOf(left)
     leftType := reflect.TypeOf(left)
 
-    if leftType.Kind() != reflect.Slice {
-        panic(fmt.Errorf("filter: unsupported left operand type: %T", left))
-    }
+    // Handle slice filtering
+    if leftType.Kind() == reflect.Slice {
+        sliceLen := leftValue.Len()
+        newSlice := reflect.MakeSlice(leftType, 0, sliceLen)
 
-    // Generic slice handling
-    sliceLen := leftValue.Len()
-    newSlice := reflect.MakeSlice(leftType, 0, sliceLen)
+        for i := 0; i < sliceLen; i++ {
+            element := leftValue.Index(i).Interface()
 
-    for i := 0; i < sliceLen; i++ {
-        element := leftValue.Index(i).Interface()
+            // Start with the original expression
+            newRight := right.(string)
 
-        // Start with the original expression
-        newRight := right.(string)
+            // Apply $idx replacement
+            newRight = str.Replace(newRight, "$idx", strconv.Itoa(i), -1)
 
-        // Apply $idx replacement
-        newRight = str.Replace(newRight, "$idx", strconv.Itoa(i), -1)
+            // Apply @ replacement for container types only
+            if isContainerType(element) {
+                newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(element), -1)
+            }
 
-        // Apply @ replacement for container types only
-        if isContainerType(element) {
-            newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(element), -1)
-        }
+            // Handle #[index] patterns if element is a slice
+            if strings.Contains(newRight, "#[") && isContainerType(element) {
+                var err error
+                newRight, err = replaceAllArrayIndexing(newRight, element)
+                if err != nil {
+                    panic(err)
+                }
+            }
 
-        // Handle #[index] patterns if element is a slice
-        if strings.Contains(newRight, "#[") && isContainerType(element) {
-            var err error
-            newRight, err = replaceAllArrayIndexing(newRight, element)
+            // Handle #.field access for structs and maps
+            if strings.Contains(newRight, "#.") {
+                elemValue := reflect.ValueOf(element)
+                if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
+                    newRight = replaceStructFieldAccess(newRight, element)
+                } else {
+                    // For non-structs, replace # with element literal
+                    newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, newRight)
             if err != nil {
                 panic(err)
             }
-        }
 
-        // Handle #.field access for structs and maps
-        if strings.Contains(newRight, "#.") {
-            elemValue := reflect.ValueOf(element)
-            if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
-                newRight = replaceStructFieldAccess(newRight, element)
-            } else {
-                // For non-structs, replace # with element literal
-                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+            switch val.(type) {
+            case bool:
+                if val.(bool) {
+                    newSlice = reflect.Append(newSlice, leftValue.Index(i))
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", newRight))
             }
-        } else {
-            // Handle simple # replacement for backward compatibility
-            newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
         }
 
-        val, err := ev(reduceparser, p.fs, newRight)
-        if err != nil {
-            panic(err)
-        }
-
-        switch val.(type) {
-        case bool:
-            if val.(bool) {
-                newSlice = reflect.Append(newSlice, leftValue.Index(i))
-            }
-        default:
-            panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", newRight))
-        }
+        return newSlice.Interface()
     }
 
-    return newSlice.Interface()
+    // Handle map filtering
+    if leftType.Kind() == reflect.Map {
+        newMap := reflect.MakeMap(leftType)
+        iter := leftValue.MapRange()
+
+        for iter.Next() {
+            key := iter.Key()
+            valueRef := iter.Value()
+            value := valueRef.Interface()
+
+            // Start with the original expression
+            newRight := right.(string)
+
+            // Apply @ replacement for container types only
+            if isContainerType(value) {
+                newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(value), -1)
+            }
+
+            // Handle #[index] patterns if value is a slice
+            if strings.Contains(newRight, "#[") && isContainerType(value) {
+                var err error
+                newRight, err = replaceAllArrayIndexing(newRight, value)
+                if err != nil {
+                    panic(err)
+                }
+            }
+
+            // Handle #.field access for structs and maps
+            if strings.Contains(newRight, "#.") {
+                elemValue := reflect.ValueOf(value)
+                if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
+                    newRight = replaceStructFieldAccess(newRight, value)
+                } else {
+                    // For non-structs, replace # with value literal
+                    newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(value), -1)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(value), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, newRight)
+            if err != nil {
+                panic(err)
+            }
+
+            switch val.(type) {
+            case bool:
+                if val.(bool) {
+                    newMap.SetMapIndex(key, valueRef)
+                }
+            default:
+                panic(fmt.Errorf("invalid expression (non-boolean?) (%s) in filter", newRight))
+            }
+        }
+
+        return newMap.Interface()
+    }
+
+    panic(fmt.Errorf("filter: unsupported left operand type: %T", left))
 }
 
 func (p *leparser) file_out(left any, right any) any {
@@ -1519,84 +1578,35 @@ func (p *leparser) list_map(left any, right any) any {
         left = charSlice
         leftValue = reflect.ValueOf(left)
         leftType = reflect.TypeOf(left)
-    } else if leftType.Kind() != reflect.Slice {
-        panic(fmt.Errorf("map: unsupported left operand type: %T", left))
     }
 
-    // Generic slice handling
-    sliceLen := leftValue.Len()
+    // Handle slice mapping
+    if leftType.Kind() == reflect.Slice {
+        sliceLen := leftValue.Len()
 
-    // Handle empty slice case
-    if sliceLen == 0 {
-        return []any{}
-    }
-
-    // Determine result type by evaluating first element
-    firstElement := leftValue.Index(0).Interface()
-
-    // Start with the original expression
-    newRight := right.(string)
-
-    // Apply $idx replacement
-    newRight = str.Replace(newRight, "$idx", strconv.Itoa(0), -1)
-
-    // Apply @ replacement for container types only
-    if isContainerType(firstElement) {
-        newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(firstElement), -1)
-    }
-
-    // Handle #[index] patterns if element is a slice
-    if strings.Contains(newRight, "#[") && isContainerType(firstElement) {
-        var err error
-        newRight, err = replaceAllArrayIndexing(newRight, firstElement)
-        if err != nil {
-            panic(err)
+        // Handle empty slice case
+        if sliceLen == 0 {
+            return []any{}
         }
-    }
 
-    // Handle #.field access for structs and maps
-    if strings.Contains(newRight, "#.") {
-        elemValue := reflect.ValueOf(firstElement)
-        if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
-            newRight = replaceStructFieldAccess(newRight, firstElement)
-        } else {
-            // For non-structs, replace # with element literal
-            newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(firstElement), -1)
-        }
-    } else {
-        // Handle simple # replacement for backward compatibility
-        newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(firstElement), -1)
-    }
+        // Determine result type by evaluating first element
+        firstElement := leftValue.Index(0).Interface()
 
-    firstResult, err := ev(reduceparser, p.fs, newRight)
-    if err != nil {
-        panic(err)
-    }
-
-    // Create slice of the result type
-    resultType := reflect.TypeOf(firstResult)
-    newSlice := reflect.MakeSlice(reflect.SliceOf(resultType), 0, sliceLen)
-    newSlice = reflect.Append(newSlice, reflect.ValueOf(firstResult))
-
-    // Process remaining elements
-    for i := 1; i < sliceLen; i++ {
-        element := leftValue.Index(i).Interface()
-
-        // Start with the original expression
+        // Start with original expression
         newRight := right.(string)
 
         // Apply $idx replacement
-        newRight = str.Replace(newRight, "$idx", strconv.Itoa(i), -1)
+        newRight = str.Replace(newRight, "$idx", strconv.Itoa(0), -1)
 
         // Apply @ replacement for container types only
-        if isContainerType(element) {
-            newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(element), -1)
+        if isContainerType(firstElement) {
+            newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(firstElement), -1)
         }
 
         // Handle #[index] patterns if element is a slice
-        if strings.Contains(newRight, "#[") && isContainerType(element) {
+        if strings.Contains(newRight, "#[") && isContainerType(firstElement) {
             var err error
-            newRight, err = replaceAllArrayIndexing(newRight, element)
+            newRight, err = replaceAllArrayIndexing(newRight, firstElement)
             if err != nil {
                 panic(err)
             }
@@ -1604,31 +1614,138 @@ func (p *leparser) list_map(left any, right any) any {
 
         // Handle #.field access for structs and maps
         if strings.Contains(newRight, "#.") {
-            elemValue := reflect.ValueOf(element)
+            elemValue := reflect.ValueOf(firstElement)
             if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
-                newRight = replaceStructFieldAccess(newRight, element)
+                newRight = replaceStructFieldAccess(newRight, firstElement)
             } else {
                 // For non-structs, replace # with element literal
-                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(firstElement), -1)
             }
         } else {
             // Handle simple # replacement for backward compatibility
-            newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+            newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(firstElement), -1)
         }
 
-        val, err := ev(reduceparser, p.fs, newRight)
+        firstResult, err := ev(reduceparser, p.fs, newRight)
         if err != nil {
             panic(err)
         }
 
-        // Convert val to match the result type
-        val = convertToElementType(val, resultType)
+        // Create slice of result type
+        resultType := reflect.TypeOf(firstResult)
+        newSlice := reflect.MakeSlice(reflect.SliceOf(resultType), 0, sliceLen)
+        newSlice = reflect.Append(newSlice, reflect.ValueOf(firstResult))
 
-        // For map operations, we append the result value (not boolean filtering)
-        newSlice = reflect.Append(newSlice, reflect.ValueOf(val))
+        // Process remaining elements
+        for i := 1; i < sliceLen; i++ {
+            element := leftValue.Index(i).Interface()
+
+            // Start with original expression
+            newRight := right.(string)
+
+            // Apply $idx replacement
+            newRight = str.Replace(newRight, "$idx", strconv.Itoa(i), -1)
+
+            // Apply @ replacement for container types only
+            if isContainerType(element) {
+                newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(element), -1)
+            }
+
+            // Handle #[index] patterns if element is a slice
+            if strings.Contains(newRight, "#[") && isContainerType(element) {
+                var err error
+                newRight, err = replaceAllArrayIndexing(newRight, element)
+                if err != nil {
+                    panic(err)
+                }
+            }
+
+            // Handle #.field access for structs and maps
+            if strings.Contains(newRight, "#.") {
+                elemValue := reflect.ValueOf(element)
+                if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
+                    newRight = replaceStructFieldAccess(newRight, element)
+                } else {
+                    // For non-structs, replace # with element literal
+                    newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(element), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, newRight)
+            if err != nil {
+                panic(err)
+            }
+
+            // Convert val to match the result type
+            val = convertToElementType(val, resultType)
+
+            // For map operations, we append the result value (not boolean filtering)
+            newSlice = reflect.Append(newSlice, reflect.ValueOf(val))
+        }
+
+        return newSlice.Interface()
     }
 
-    return newSlice.Interface()
+    // Handle map mapping
+    if leftType.Kind() == reflect.Map {
+        keyType := leftType.Key()
+        valueType := leftType.Elem()
+        newMap := reflect.MakeMap(reflect.MapOf(keyType, valueType))
+
+        // Convert map to slice of key-value pairs to avoid iterator issues
+        mapKeys := leftValue.MapKeys()
+        for i := 0; i < len(mapKeys); i++ {
+            key := mapKeys[i]
+            valueRef := leftValue.MapIndex(key)
+            value := valueRef.Interface()
+
+            // Start with original expression
+            newRight := right.(string)
+
+            // Apply @ replacement for container types only
+            if isContainerType(value) {
+                newRight = str.Replace(newRight, "@", goLiteralToZaLiteral(value), -1)
+            }
+
+            // Handle #[index] patterns if value is a slice
+            if strings.Contains(newRight, "#[") && isContainerType(value) {
+                var err error
+                newRight, err = replaceAllArrayIndexing(newRight, value)
+                if err != nil {
+                    panic(err)
+                }
+            }
+
+            // Handle #.field access for structs and maps
+            if strings.Contains(newRight, "#.") {
+                elemValue := reflect.ValueOf(value)
+                if elemValue.Kind() == reflect.Struct || elemValue.Kind() == reflect.Map {
+                    newRight = replaceStructFieldAccess(newRight, value)
+                } else {
+                    // For non-structs, replace # with value literal
+                    newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(value), -1)
+                }
+            } else {
+                // Handle simple # replacement for backward compatibility
+                newRight = str.Replace(newRight, "#", goLiteralToZaLiteral(value), -1)
+            }
+
+            val, err := ev(reduceparser, p.fs, newRight)
+            if err != nil {
+                panic(err)
+            }
+
+            // Set result in map
+            newMap.SetMapIndex(key, reflect.ValueOf(val))
+        }
+
+        return newMap.Interface()
+    }
+
+    panic(fmt.Errorf("map: unsupported left operand type: %T", left))
 }
 
 func (p *leparser) rcompare(left any, right any, insensitive bool, multi bool) any {
@@ -2826,7 +2943,7 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
 
     var bin uint64
 
-    if fs<3 && atomic.LoadInt32(&concurrent_funcs) > 0 {
+    if fs < 3 && atomic.LoadInt32(&concurrent_funcs) > 0 {
         vlock.Lock()
         defer vlock.Unlock()
     }

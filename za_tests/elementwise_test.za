@@ -1,0 +1,106 @@
+#!/usr/bin/za
+
+# Test element-wise addition on 2D arrays
+a = [[1, 2], [3, 4]]
+b = [[5, 6], [7, 8]]
+result = a + b
+expected = [[6, 8], [10, 12]]
+println "Addition - Expected: {=expected}, Actual: {=result}"
+
+# Test element-wise subtraction on 2D arrays
+a = [[10, 20], [30, 40]]
+b = [[1, 2], [3, 4]]
+result = a - b
+expected = [[9, 18], [27, 36]]
+println "Subtraction - Expected: {=expected}, Actual: {=result}"
+
+# Test element-wise multiplication on 2D arrays
+a = [[1, 2], [3, 4]]
+b = [[5, 6], [7, 8]]
+result = a * b
+expected = [[5, 12], [21, 32]]
+println "Multiplication - Expected: {=expected}, Actual: {=result}"
+
+# Test element-wise division on 2D arrays
+a = [[10, 20], [30, 40]]
+b = [[2, 4], [6, 8]]
+result = a / b
+expected = [[5, 5], [5, 5]]
+println "Division - Expected: {=expected}, Actual: {=result}"
+
+# Test element-wise modulo on 2D arrays
+a = [[10, 20], [30, 40]]
+b = [[3, 6], [9, 12]]
+result = a % b
+expected = [[1, 2], [3, 4]]
+println "Modulo - Expected: {=expected}, Actual: {=result}"
+
+# Test element-wise exponentiation on 2D arrays
+a = [[1, 2], [3, 4]]
+b = [[2, 3], [4, 5]]
+result = a ** b
+expected = [[1, 8], [81, 1024]]
+println "Exponentiation - Expected: {=expected}, Actual: {=result}"
+
+# Test relational operators on 2D arrays
+a = [[1, 2], [3, 4]]
+b = [[2, 3], [4, 5]]
+result = a > b
+expected = [[false, false], [false, false]]
+println "Relational (>) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with addition
+a = [[1, 2], [3, 4]]
+result = a + 5
+expected = [[6, 7], [8, 9]]
+println "Scalar broadcasting (+) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with subtraction
+a = [[1, 2], [3, 4]]
+result = a - 5
+expected = [[-4, -3], [-2, -1]]
+println "Scalar broadcasting (-) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with multiplication
+a = [[1, 2], [3, 4]]
+result = a * 5
+expected = [[5, 10], [15, 20]]
+println "Scalar broadcasting (*) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with division
+a = [[10, 20], [30, 40]]
+result = a / 5
+expected = [[2, 4], [6, 8]]
+println "Scalar broadcasting (/) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with modulo
+a = [[10, 20], [30, 40]]
+result = a % 5
+expected = [[0, 0], [0, 0]]
+println "Scalar broadcasting (%) - Expected: {=expected}, Actual: {=result}"
+
+# Test scalar broadcasting with exponentiation
+a = [[1, 2], [3, 4]]
+result = a ** 5
+expected = [[1, 32], [243, 1024]]
+println "Scalar broadcasting (**) - Expected: {=expected}, Actual: {=result}"
+
+# Test matrix multiplication
+m1 = [[1, 2], [3, 4]]
+m2 = [[5, 6, 7], [8, 9, 10]]
+result = matmul(m1, m2)
+expected = [[21, 24, 27], [47, 54, 61]]
+println "Matrix multiplication - Expected: {=expected}, Actual: {=result}"
+
+# Test dot product
+v1 = [1, 2, 3]
+v2 = [4, 5, 6]
+result = dot(v1, v2)
+expected = 32
+println "Dot product - Expected: {=expected}, Actual: {=result}"
+
+# Test transpose
+m = [[1, 2, 3], [4, 5, 6]]
+result = transpose(m)
+expected = [[1, 4], [2, 5], [3, 6]]
+println "Transpose - Expected: {=expected}, Actual: {=result}"
