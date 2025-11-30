@@ -5,7 +5,8 @@ CHANGE LOG
 1.2.1
 =====
 
-This version will be a bug fix and stability polish patch only.
+This version will mainly be a bug fix/stability patch. Some additional
+functionality will be added.
 
 Now considered supported:
 
@@ -53,6 +54,12 @@ library changes
 
 other
 -----
+
+    * additional support in the basic and relational operators for
+      array-to-array operations.
+    * new library calls: dot(), transpose() and matmul()
+        - these are for element-wise array manipulation.
+        - others will be added.
 
 
 1.2.0

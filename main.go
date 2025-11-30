@@ -1694,11 +1694,11 @@ func main() {
                     handleUnhandledException(excInfo, 0) // Use function space 0 for main
                 } else {
                     // DEBUG: Not an exception return - let normal error handling proceed
-                    pf("[#fyellow]DEBUG: Main returned non-exception values: %+v[#-]\n", retArray)
+                    pf("[#fyellow]Main returned non-exception values: %+v[#-]\n", retArray)
                 }
             } else {
                 // DEBUG: Not an array return - let normal error handling proceed
-                pf("[#fyellow]DEBUG: Main returned non-array value: %+v[#-]\n", mainRetvals)
+                pf("[#fyellow]Main returned non-array value: %+v[#-]\n", mainRetvals)
             }
         }
 
