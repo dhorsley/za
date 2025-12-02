@@ -6,7 +6,7 @@ CHANGE LOG
 =====
 
 This version will mainly be a bug fix/stability patch. Some additional
-functionality will be added.
+functionality will be added around array operations.
 
 Now considered supported:
 
@@ -30,11 +30,11 @@ fixes
 
     * added per element array(a) + b ;or a + array(b) to replace array concatenation using plus operator.
         - this completes the basic +,-,*,/ operator overload for arrays
-          - more may be added later (such as % modulus operator and others)
+          - more to be added : such as % modulus operator and others (see the TODO file)
         - these operations only currently work with []int or []float
 
-        - we may look at array-to-array arithmetic in a future version.
-            - this would likely be limited to 1- and 2-dimensional arrays if it happens.
+        - array-to-array arithmetic
+            - this would likely be limited to 1-, 2- and 3-dimensional arrays
 
     * added error gate on startup if interactive mode set when termless.
 
