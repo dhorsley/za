@@ -200,7 +200,7 @@ def deeply_nested()
     if level > 5
         throw "deep_error"
     endif
-    
+
     try
         deeply_nested()  # Remove the argument
     catch err is "deep_error"
@@ -217,4 +217,4 @@ catch err is "bubbling_up"
     println "Final catch of bubbled exception:", err.pp
 endtry
 
-println "\n=== All comprehensive tests completed ===" 
+println "\n=== All comprehensive tests completed ==="

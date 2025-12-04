@@ -825,7 +825,7 @@ func buildArrayLib() {
 
         // Check if matrix is singular
         det := calculateDeterminant(mat)
-        if math.Abs(det) < 1e-10 {
+        if math.Abs(det) < singularTolerance {
             return nil, errors.New("inverse: matrix is singular (determinant is zero)")
         }
 
@@ -1250,7 +1250,7 @@ func calculateDeterminant(mat [][]float64) float64 {
         }
 
         // If pivot is zero, determinant is zero
-        if math.Abs(temp[i][i]) < 1e-10 {
+        if math.Abs(temp[i][i]) < singularTolerance {
             return 0.0
         }
 
@@ -1299,7 +1299,7 @@ func calculateInverse(mat [][]float64) ([][]float64, error) {
         }
 
         // Check for singular matrix
-        if math.Abs(aug[i][i]) < 1e-10 {
+        if math.Abs(aug[i][i]) < singularTolerance {
             return nil, errors.New("matrix is singular")
         }
 
@@ -1363,7 +1363,7 @@ func calculateRank(mat [][]float64) int {
         }
 
         // If pivot is zero, move to next column
-        if math.Abs(temp[pivot][col]) < 1e-10 {
+        if math.Abs(temp[pivot][col]) < singularTolerance {
             col++
             continue
         }
@@ -1381,7 +1381,7 @@ func calculateRank(mat [][]float64) int {
 
         // Eliminate other rows
         for i := 0; i < m; i++ {
-            if i != row && math.Abs(temp[i][col]) > 1e-10 {
+            if i != row && math.Abs(temp[i][col]) > singularTolerance {
                 factor := temp[i][col]
                 for j := col; j < n; j++ {
                     temp[i][j] -= factor * temp[row][j]
@@ -1433,6 +1433,12 @@ func luDecompositionBigFloat(mat [][]big.Float) ([]int, [][]big.Float, [][]big.F
                 maxAbs = new(big.Float).Abs(&U[k][i])
                 pivotRow = k
             }
+        }
+
+        // Check if pivot is effectively zero (within tolerance) - indicates singular matrix
+        tolerance := big.NewFloat(singularTolerance).SetPrec(128)
+        if maxAbs.Cmp(tolerance) < 0 {
+            return nil, nil, nil, errors.New("matrix is singular (determinant is zero)")
         }
 
         // Swap rows in U and update permutation vector
