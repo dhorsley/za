@@ -3,6 +3,8 @@
 module "mod_build/defines" as defs
 use +defs
 
+# logging on "build.log"
+
 var strip_enable,upx_enable bool
 
 tgt="default"
@@ -82,8 +84,14 @@ if is_file("za")
     if not os() ~ "^freebsd"
         if upxfound
             if tgt!="win"
-                on strip_enable and not tgt ~i "^(alpine)$" do | strip -s -w za
-                on upx_enable do | upx za
+                if strip_enable and not tgt ~i "^(alpine)$"
+                    | strip -s -w za
+                    on last()!=0 do "Note: Could not strip binary.".warning
+                endif
+                if upx_enable
+                    | upx za
+                    on last()!=0 do "Note: Could not compact binary.".warning
+                endif
             endif
         else
             "Note: Please consider installing the upx package for compressing the binary.".warning
@@ -98,7 +106,9 @@ case tgt
 contains "^(default|alpine|arch|libc)$"
     "Installing {tgt} build to {ipath}".progress
     | sudo cp -f za {ipath}
+    on last()!=0 do "sudo copy failed.".warning
     | sudo chmod 755 {ipath}/za
+    on last()!=0 do "sudo chmod failed.".warning
 endcase
 
 
