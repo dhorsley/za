@@ -23,6 +23,10 @@ Now considered supported:
 fixes
 -----
 
+    * fixed a timeout issue with CLI calls.
+        - these could situationally cause panics
+        - these timeouts will now try to log (if logging enabled) a message before exiting more gracefully
+
     * added concurrency check in vset()
 
     * fixed an issue with try..catch handling of stdlib functions.
@@ -32,7 +36,6 @@ fixes
 
     * added per element array(a) + scalar(b) ;or scalar(a) + array(b) to replace array concatenation using plus operator.
         - this completes the basic +,-,*,/,%,** operator overload for arrays
-        - these operations only currently work with []int or []float
 
     * added error gate on startup if interactive mode set when termless.
 
@@ -46,6 +49,13 @@ fixes
 
 library changes
 ---------------
+
+    * added log_sanitise() call to remove some common risk exposures from strings.
+    * (not yet active) : added sanitisation_enabled() call to enable or disable automated use of log_sanitise()
+        - this is enabled by default. only disable it in protected environments
+        - N.B.: this is not enabled throughout all of the logging system yet, just in timeout logging currently.
+                however, the setting will be respected elsewhere when plog() and similar functions are updated.
+    * added permit("sanitisation",...) call for enabling/disabling the above call.
 
     * re-enabled concat() function for array concatenation of two arrays (1d)
 
