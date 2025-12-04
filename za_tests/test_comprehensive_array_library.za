@@ -1,0 +1,310 @@
+#!/usr/bin/za
+
+# Comprehensive Array Library Test Script
+# Tests all new array functions across dimensions 1D to 4D
+
+array_format(true)
+
+println "=== COMPREHENSIVE ARRAY LIBRARY TESTS ==="
+print
+
+println "--- 1D Array Tests ---"
+
+# Test argmax/argmin with 1D arrays
+arr1d = [1, 5, 3, 9, 2, 7, 4, 8, 6]
+println "argmax(1D): "
+result = argmax(arr1d)
+println "Result:\n", result, " (expected: 3)"
+assert result == 3
+
+println "argmin(1D): "
+result = argmin(arr1d)
+println "Result:\n", result, " (expected: 0)"
+assert result == 0
+
+# Test find with 1D arrays
+println "find(non-zero): "
+result = find(arr1d)
+println "Result:\n", result, " (expected: indices of non-zero elements)"
+assert len(result) == 9
+# Verify these are actually indices of non-zero elements (all elements are non-zero in this array)
+expected_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+for i = 0 to result.len-1
+    if result[i] != expected_indices[i]
+        println "❌ Index mismatch at ", i, ": got ", result[i], ", expected ", expected_indices[i]
+    endif
+endfor
+
+println "find(specific value [3]): "
+result = find(arr1d, 3)
+println "Result:\n", result, " (expected: index of 2 (for value 3)"
+assert len(result) == 1 && result[0] == 2
+
+println "find(non-existent): "
+result = find(arr1d, 10)
+println "Result:\n", result, " (expected: empty - no matches)"
+assert len(result) == 0
+
+# Test where with 1D arrays
+cond1d = [1, 0, 1, 0, 1, 0, 1, 0, 1]
+x1d = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+y1d = [100, 200, 300, 400, 500, 600, 700, 800, 900]
+println "where(1D): "
+result = where(cond1d, x1d, y1d)
+println "Result:\n", result, " (expected: 9 elements)"
+assert len(result) == 9
+
+# Test concatenate with 1D arrays
+arr1a = [1, 2, 3]
+arr1b = [4, 5, 6]
+arr1c = [7, 8, 9]
+println "concatenate(1D): "
+result = concatenate(arr1a, arr1b, arr1c)
+println "Result:\n", result, " (expected: 9 elements)"
+assert len(result) == 9 && result[0] == 1 && result[8] == 9
+
+# Test stack with 1D arrays
+println "stack(1D): "
+result = stack(arr1a, arr1b, arr1c)
+println "Result:\n", result, " (expected: 3 rows)"
+assert len(result) == 3
+
+println ""
+println "--- 2D Array Tests ---"
+
+# Test identity matrices
+println "identity(2): "
+id2 = identity(2)
+println "Result:\n", id2, " (expected: 2x2 matrix)"
+assert len(id2) == 2 && len(id2[0]) == 2
+
+println "identity(3): "
+id3 = identity(3)
+println "Result:\n", id3, " (expected: 3x3 matrix)"
+assert len(id3) == 3 && len(id3[0]) == 3
+
+# Test trace with 2D matrices
+mat2a = [[1, 2], [3, 4]]
+println "trace(2x2): "
+result = trace(mat2a)
+println "Result:\n", result, " (expected: 5)"
+assert result == 5
+
+# Test determinant with 2D matrices
+println "det(2x2): "
+result = det(mat2a)
+println "Result:\n", result, " (expected: -2)"
+assert result == -2
+
+# Test inverse with 2D matrices
+println "inverse(2x2): "
+result = inverse(mat2a)
+println "Result:\n", result, " (expected: 2x2 matrix)"
+assert len(result) == 2 && len(result[0]) == 2
+
+# Test inverse_big with 2D matrices
+println "inverse_big(2x2): "
+result_big = inverse_big(mat2a)
+println "Result:\n", result_big, " (expected: 2x2 matrix with high precision)"
+assert len(result_big) == 2 && len(result_big[0]) == 2
+
+# Test det_big with 2D matrices
+println "det_big(2x2): "
+result_det_big = det_big(mat2a)
+println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
+println "det_big(2x2): "
+result_det_big = det_big(mat2a)
+println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
+
+# Test inverse_big with 2D matrices
+println "inverse_big(2x2): "
+result_big = inverse_big(mat2a)
+println "Result:\n" + result_big.as_string, " (expected: 2x2 matrix with high precision)"
+assert len(result_big) == 2 && len(result_big[0]) == 2
+
+# Test rank with 2D matrices
+println "rank(full rank 2x2): "
+result = rank(mat2a)
+println "Result:\n" + result, " (expected: 2)"
+assert result == 2
+
+# Test argmax/argmin with 2D arrays (flattened)
+mat2c = [[1, 8, 3], [4, 5, 6], [7, 2, 9]]
+println "argmax(2D): "
+result = argmax(mat2c)
+println "Result:\n", result, " (expected: 8)"
+assert result == 8
+
+println "argmin(2D): "
+result = argmin(mat2c)
+println "Result:\n", result, " (expected: 0)"
+assert result == 0
+
+# Test squeeze with 2D arrays
+single_row = [[1, 2, 3, 4, 5]]
+println "squeeze(single row): "
+result = squeeze(single_row)
+println "Result:\n", result, " (expected: 1D array)"
+assert len(result) == 5 && result[0] == 1
+
+single_col = [[1], [2], [3], [4], [5]]
+println "squeeze(single column): "
+result = squeeze(single_col)
+println "Result:\n", result, " (expected: 1D array)"
+assert len(result) == 5 && result[0] == 1
+
+print
+println "--- 3D Array Tests ---"
+
+# Test with 3D arrays (cube)
+cube3d = [
+    [[1, 2], [3, 4]],
+    [[5, 6], [7, 8]],
+    [[9, 10], [11, 12]],
+]
+
+println "argmax(3D): "
+result = argmax(cube3d)
+println "Result:\n", result, " (expected: 11)"
+assert result == 11
+
+println "argmin(3D): "
+result = argmin(cube3d)
+println "Result:\n", result, " (expected: 0)"
+assert result == 0
+
+# Test find with 3D arrays
+cube3d_zeros = [
+    [[0, 1], [0, 2]],
+    [[3, 0], [4, 0]],
+    [[0, 5], [6, 0]]
+]
+println "find(3D non-zero): "
+result = find(cube3d_zeros)
+println "Result:\n", result, " (expected: 6 elements)"
+assert len(result) == 6
+
+print
+println "--- 4D Array Tests ---"
+
+# Test with 4D arrays (hypercube)
+hyper4d = [
+    [
+        [[1, 2], [3, 4]],
+        [[5, 6], [7, 8]],
+    ],
+    [
+        [[9, 10], [11, 12]],
+        [[13, 14], [15, 16]],
+    ],
+]
+
+println "argmax(4D): "
+result = argmax(hyper4d)
+println "Result:\n", result, " (expected: 15)"
+assert result == 15
+
+println "argmin(4D): "
+result = argmin(hyper4d)
+println "Result:\n", result, " (expected: 0)"
+assert result == 0
+
+print
+println "--- Edge Cases ---"
+
+# Test with empty arrays
+empty_arr = []
+println "argmax(empty): "
+result = argmax(empty_arr)
+println "Result:\n", result, " (expected: -1)"
+assert result == -1
+
+println "argmin(empty): "
+result = argmin(empty_arr)
+println "Result:\n", result, " (expected: -1)"
+assert result == -1
+
+# Test with single element arrays
+single_elem = [42]
+println "argmax(single): "
+result = argmax(single_elem)
+println "Result:\n", result, " (expected: 0)"
+assert result == 0
+
+# Test identity with edge cases
+println "identity(0): "
+result = identity(0)
+println "Result:\n", result, " (expected: empty matrix)"
+assert len(result) == 0
+
+println "identity(1): "
+result = identity(1)
+println "Result:\n", result, " (expected: 1x1 matrix)"
+assert len(result) == 1 && len(result[0]) == 1
+
+print
+println "--- Extended det_big() and inverse_big() Tests ---"
+
+# Test det_big() with larger matrices
+println "det_big() with 3x3 matrix:"
+mat3x3 = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
+println "Input matrix:"
+println mat3x3
+result3x3 = det_big(mat3x3)
+println "Result:\n", result3x3, " (expected: 4)"
+
+print
+println "det_big() with 4x4 matrix:"
+mat4x4 = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]
+println "Input matrix:"
+println mat4x4
+result4x4 = det_big(mat4x4)
+println "Result:\n", result4x4, " (expected: 0)"
+
+# Test inverse_big() with 3x3 matrix
+print
+println "inverse_big() with 3x3 matrix:"
+inv3x3 = inverse_big(mat3x3)
+println "Result:\n", inv3x3
+
+# Test inverse_big() with identity matrix variations
+print
+println "inverse_big() with 3x3 identity:"
+identity3x3 = identity(3)
+inv_identity3x3 = inverse_big(identity3x3)
+println "Result:\n", inv_identity3x3, " (expected: 3x3 identity)"
+
+# Test det_big() and inverse_big() with singular matrix
+print
+println "det_big() with singular matrix:"
+singular = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+println "Input matrix:"
+println singular
+det_singular = det_big(singular)
+println "Result:\n", det_singular, " (expected: 0)"
+
+print
+println "inverse_big() with singular matrix:"
+# This should return an error
+inv_singular = inverse_big(singular)
+println "inverse_big of singular matrix returned:\n", inv_singular
+
+# Test with larger values
+print
+println "det_big() with large values:"
+large_mat = [[1000, 2000], [3000, 4000]]
+println "Input matrix:"
+println large_mat
+det_large = det_big(large_mat)
+println "Result:\n", det_large, " (expected: -2000000)"
+
+print
+println "inverse_big() with large values:"
+inv_large = inverse_big(large_mat)
+println "Result:\n", inv_large, " (expected: 2x2 matrix)"
+
+print
+println "=== ARRAY LIBRARY TESTS COMPLETE ==="
+println "All new array functions tested across 1D to 4D arrays"
+
+

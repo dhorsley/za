@@ -1173,7 +1173,7 @@ func md2ansi(s string) string {
             if i == 0 && infoString != "" {
                 line = "[#fred]" + line // Enforce red on header
             } else {
-                line = "[#dim][#1]" + line // Correct color on code lines
+                line = "[#dim][#1]" + line // Correct colour on code lines
             }
             indent := "\t\t" // Default 2 tabs
             if i == 0 && infoString != "" {

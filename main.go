@@ -126,6 +126,17 @@ var lastfunc = make(map[uint32]string)
 var interactive bool
 var interactiveFeed bool
 
+// pretty array formatting
+var prettyArrays bool = false
+var depthColours []string = []string{
+    "[#6]", // Depth 0: Yellow
+    "[#3]", // Depth 1: Magenta
+    "[#5]", // Depth 2: Cyan
+    "[#4]", // Depth 3: Green
+    "[#2]", // Depth 4: Red
+    "[#1]", // Depth 5+: Blue
+}
+
 // for refactoring: find a var
 var var_refs bool
 var var_refs_name string
@@ -1288,7 +1299,7 @@ func main() {
     // interactive mode support PIG
     if (*a_program == "" && exec_file_name == "") || interactive {
 
-        if MW==-1 {
+        if MW == -1 {
             // bail if no term and interactive
             pln("Interactive mode requires a terminal.")
             os.Exit(1)

@@ -1,0 +1,12 @@
+array_format(true)
+println "Testing 1D:"
+arr1 = [1, 2, 3]
+println arr1
+
+println "Testing 2D:"
+arr2 = [[1, 2], [3, 4]]
+println arr2
+
+println "Testing 3D:"
+arr3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+println arr3

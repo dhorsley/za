@@ -1630,7 +1630,7 @@ func mapToTuiStyle(m map[string]any) tui_style {
             s.border["rm"] = "│"
             s.border["iv"] = "│"
             s.border["ih"] = "─"
-            // Use default colors if style colors are empty
+            // Use default colours if style colours are empty
             if s.bg == "" {
                 s.border["bg"] = "0"
             } else {
@@ -1661,7 +1661,7 @@ func mapToTuiStyle(m map[string]any) tui_style {
         s.border["rm"] = "│"
         s.border["iv"] = "│"
         s.border["ih"] = "─"
-        // Use default colors if style colors are empty
+        // Use default colours if style colours are empty
         if s.bg == "" {
             s.border["bg"] = "0"
         } else {

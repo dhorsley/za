@@ -1058,6 +1058,209 @@ func sum_inter(s []any) float64 {
     return sum
 }
 
+// flattenSlice recursively flattens a multi-dimensional slice into a 1D slice of any values
+func flattenSlice(v any) []any {
+    rv := reflect.ValueOf(v)
+    if rv.Kind() != reflect.Slice {
+        return []any{v}
+    }
+
+    var result []any
+    for i := 0; i < rv.Len(); i++ {
+        elem := rv.Index(i).Interface()
+        if reflect.TypeOf(elem).Kind() == reflect.Slice {
+            result = append(result, flattenSlice(elem)...)
+        } else {
+            result = append(result, elem)
+        }
+    }
+    return result
+}
+
+// sum_multi handles multi-dimensional arrays by flattening them and computing sum
+func sum_multi(v any) float64 {
+    if !isSlice(v) {
+        // Handle scalar case
+        f, hasError := GetAsFloat(v)
+        if hasError {
+            return math.NaN()
+        }
+        return f
+    }
+
+    dims := getSliceDimensions(v)
+    if len(dims) == 1 {
+        // Use existing 1D implementations
+        switch v.(type) {
+        case []int:
+            return float64(sum_int(v.([]int)))
+        case []int64:
+            return float64(sum_int64(v.([]int64)))
+        case []uint:
+            return float64(sum_uint(v.([]uint)))
+        case []float64:
+            return sum_float64(v.([]float64))
+        case []any:
+            // Check if this is actually a multi-dimensional array
+            anySlice := v.([]any)
+            if len(anySlice) > 0 && isSlice(anySlice[0]) {
+                // Multi-dimensional array - flatten and compute
+                flat := flattenSlice(v)
+                return sum_inter(flat)
+            } else {
+                // True 1D []any slice
+                return sum_inter(anySlice)
+            }
+        default:
+            // For other types, try to convert to float64
+            flat := flattenSlice(v)
+            return sum_inter(flat)
+        }
+    } else {
+        // Multi-dimensional case - flatten and compute
+        flat := flattenSlice(v)
+        return sum_inter(flat)
+    }
+}
+
+// avg_multi handles multi-dimensional arrays by flattening them and computing average
+func avg_multi(v any) float64 {
+    if !isSlice(v) {
+        // Handle scalar case
+        f, hasError := GetAsFloat(v)
+        if hasError {
+            return math.NaN()
+        }
+        return f
+    }
+
+    dims := getSliceDimensions(v)
+    if len(dims) == 1 {
+        // Use existing 1D implementations
+        switch v.(type) {
+        case []int:
+            return float64(avg_int(v.([]int)))
+        case []int64:
+            return float64(avg_int64(v.([]int64)))
+        case []uint:
+            return float64(avg_uint(v.([]uint)))
+        case []float64:
+            return avg_float64(v.([]float64))
+        case []any:
+            // Check if this is actually a multi-dimensional array
+            anySlice := v.([]any)
+            if len(anySlice) > 0 && isSlice(anySlice[0]) {
+                // Multi-dimensional array - flatten and compute
+                flat := flattenSlice(v)
+                return avg_inter(flat)
+            } else {
+                // True 1D []any slice
+                return avg_inter(anySlice)
+            }
+        default:
+            // For other types, try to convert to float64
+            flat := flattenSlice(v)
+            return avg_inter(flat)
+        }
+    } else {
+        // Multi-dimensional case - flatten and compute
+        flat := flattenSlice(v)
+        return avg_inter(flat)
+    }
+}
+
+// min_multi handles multi-dimensional arrays by flattening them and finding minimum
+func min_multi(v any) float64 {
+    if !isSlice(v) {
+        // Handle scalar case
+        f, hasError := GetAsFloat(v)
+        if hasError {
+            return math.NaN()
+        }
+        return f
+    }
+
+    dims := getSliceDimensions(v)
+    if len(dims) == 1 {
+        // Use existing 1D implementations
+        switch v.(type) {
+        case []int:
+            return float64(min_int(v.([]int)))
+        case []int64:
+            return float64(min_int64(v.([]int64)))
+        case []uint:
+            return float64(min_uint(v.([]uint)))
+        case []float64:
+            return min_float64(v.([]float64))
+        case []any:
+            // Check if this is actually a multi-dimensional array
+            anySlice := v.([]any)
+            if len(anySlice) > 0 && isSlice(anySlice[0]) {
+                // Multi-dimensional array - flatten and compute
+                flat := flattenSlice(v)
+                return min_inter(flat)
+            } else {
+                // True 1D []any slice
+                return min_inter(anySlice)
+            }
+        default:
+            // For other types, try to convert to float64
+            flat := flattenSlice(v)
+            return min_inter(flat)
+        }
+    } else {
+        // Multi-dimensional case - flatten and compute
+        flat := flattenSlice(v)
+        return min_inter(flat)
+    }
+}
+
+// max_multi handles multi-dimensional arrays by flattening them and finding maximum
+func max_multi(v any) float64 {
+    if !isSlice(v) {
+        // Handle scalar case
+        f, hasError := GetAsFloat(v)
+        if hasError {
+            return math.NaN()
+        }
+        return f
+    }
+
+    dims := getSliceDimensions(v)
+    if len(dims) == 1 {
+        // Use existing 1D implementations
+        switch v.(type) {
+        case []int:
+            return float64(max_int(v.([]int)))
+        case []int64:
+            return float64(max_int64(v.([]int64)))
+        case []uint:
+            return float64(max_uint(v.([]uint)))
+        case []float64:
+            return max_float64(v.([]float64))
+        case []any:
+            // Check if this is actually a multi-dimensional array
+            anySlice := v.([]any)
+            if len(anySlice) > 0 && isSlice(anySlice[0]) {
+                // Multi-dimensional array - flatten and compute
+                flat := flattenSlice(v)
+                return max_inter(flat)
+            } else {
+                // True 1D []any slice
+                return max_inter(anySlice)
+            }
+        default:
+            // For other types, try to convert to float64
+            flat := flattenSlice(v)
+            return max_inter(flat)
+        }
+    } else {
+        // Multi-dimensional case - flatten and compute
+        flat := flattenSlice(v)
+        return max_inter(flat)
+    }
+}
+
 func floor(x float64) float64 {
     return math.Floor(x)
 }

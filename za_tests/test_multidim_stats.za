@@ -1,0 +1,79 @@
+#!/usr/bin/za
+
+println "--> Testing Multi-dimensional Statistical Functions"
+
+# 2D array tests
+matrix2d = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+println "2D sum: " , sum(matrix2d)     # Expected: 45
+println "2D avg: " , avg(matrix2d)     # Expected: 5
+println "2D min: " , min(matrix2d)     # Expected: 1
+println "2D max: " , max(matrix2d)     # Expected: 9
+
+# 3D array tests
+cube3d = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+println "3D sum: " , sum(cube3d)       # Expected: 36
+println "3D avg: " , avg(cube3d)       # Expected: 4.5
+println "3D min: " , min(cube3d)       # Expected: 1
+println "3D max: " , max(cube3d)       # Expected: 8
+
+# Mixed type tests
+mixed = [[1, 2.5], [3.14, 4]]
+println "Mixed sum: " , sum(mixed)     # Expected: 10.64
+println "Mixed avg: " , avg(mixed)     # Expected: 2.66
+println "Mixed min: " , min(mixed)     # Expected: 1
+println "Mixed max: " , max(mixed)     # Expected: 4
+
+# Scalar tests
+println "Scalar sum: " , sum(42)       # Expected: 42
+println "Scalar avg: " , avg(3.14)     # Expected: 3.14
+println "Scalar min: " , min(-5)       # Expected: -5
+println "Scalar max: " , max(100)      # Expected: 100
+
+# 1D array tests (should work as before)
+array1d = [1, 2, 3, 4, 5]
+println "1D sum: " , sum(array1d)      # Expected: 15
+println "1D avg: " , avg(array1d)      # Expected: 3
+println "1D min: " , min(array1d)      # Expected: 1
+println "1D max: " , max(array1d)      # Expected: 5
+
+# Edge case tests
+println "--> Testing Edge Cases"
+
+# Empty arrays (skip avg/min/max for empty as they cause divide by zero)
+empty_2d = [[]]
+println "Empty 2D sum: " , sum(empty_2d)    # Expected: 0
+# println "Empty 2D avg: " , avg(empty_2d)    # Expected: divide by zero error
+# println "Empty 2D min: " , min(empty_2d)    # Expected: divide by zero error  
+# println "Empty 2D max: " , max(empty_2d)    # Expected: divide by zero error
+
+# Single element arrays
+single_2d = [[42]]
+println "Single 2D sum: " , sum(single_2d)   # Expected: 42
+println "Single 2D avg: " , avg(single_2d)   # Expected: 42
+println "Single 2D min: " , min(single_2d)   # Expected: 42
+println "Single 2D max: " , max(single_2d)   # Expected: 42
+
+# Negative numbers
+neg_matrix = [[-1, -2, -3], [-4, -5, -6]]
+println "Negative sum: " , sum(neg_matrix)   # Expected: -21
+println "Negative avg: " , avg(neg_matrix)   # Expected: -3.5
+println "Negative min: " , min(neg_matrix)   # Expected: -6
+println "Negative max: " , max(neg_matrix)   # Expected: -1
+
+println "--> Testing Array Exponentiation and Modulo Operations"
+
+# Array exponentiation and modulo verification
+base = [[2, 3], [4, 5]]
+println "Base ** 2: " , base ** 2      # Expected: [[4, 9], [16, 25]]
+println "Base % 3: " , base % 3        # Expected: [[2, 0], [1, 2]]
+
+# Test with different types
+base_float = [[2.5, 3.5], [4.5, 5.5]]
+println "Float Base ** 2: " , base_float ** 2  # Expected: [[6.25, 12.25], [20.25, 30.25]]
+
+# Test with negative numbers
+neg_base = [[-2, -3], [-4, -5]]
+println "Negative Base ** 2: " , neg_base ** 2   # Expected: [[4, 9], [16, 25]]
+println "Negative Base % 3: " , neg_base % 3     # Expected: [[-2, 0], [-1, -2]]
+
+println "--> All tests completed"

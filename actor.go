@@ -817,7 +817,7 @@ func getExceptionSeverity(ifs uint32) (int, bool) {
     return 0, false
 }
 
-// formatStackTrace formats a stack trace into a readable string with colors
+// formatStackTrace formats a stack trace into a readable string with colours
 func formatStackTrace(stackTrace []stackFrame) string {
     if len(stackTrace) == 0 {
         return sparkle("[#fred]empty stack trace[#-]")
@@ -4191,7 +4191,7 @@ tco_reentry:
                 }
                 if hasGen && testMode {
                     appendToTestReport(test_output_file, ifs, parser.pc,
-                        interpolate(currentModule,ifs,ident,content),
+                        interpolate(currentModule, ifs, ident, content),
                     )
                 }
             } else {
@@ -7904,17 +7904,31 @@ func (parser *leparser) console_output(tokens []Token, ifs uint32, ident *[]Vari
                 case string:
                     v = interpolate(parser.namespace, ifs, ident, v.(string))
                 }
-                if sparkly {
+                // Check if pretty array formatting should be applied (for both sparkly and non-sparkly)
+                if isArrayType(v) && (interactive || prettyArrays) {
+                    formatted := formatArrayPretty(v)
+                    if sparkly {
+                        formatted = sparkle(formatted)
+                    }
                     if logging {
-                        plog_out += sf(`%v`, sparkle(v))
+                        plog_out += sf(`%v`, formatted)
                     } else {
-                        pf(`%v`, sparkle(v))
+                        pf(`%v`, formatted)
                     }
                 } else {
-                    if logging {
-                        plog_out += sf(`%v`, v)
+                    // Use normal formatting
+                    if sparkly {
+                        if logging {
+                            plog_out += sf(`%v`, sparkle(v))
+                        } else {
+                            pf(`%v`, sparkle(v))
+                        }
                     } else {
-                        pf(`%v`, v)
+                        if logging {
+                            plog_out += sf(`%v`, v)
+                        } else {
+                            pf(`%v`, v)
+                        }
                     }
                 }
                 continue

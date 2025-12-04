@@ -272,6 +272,433 @@ func multiAnyArrayToZaLiteral(arr [][]any) string {
     return "[" + str.Join(parts, ", ") + "]"
 }
 
+// Array formatting functions for pretty printing
+func isArrayType(v any) bool {
+    rv := reflect.ValueOf(v)
+    return rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array
+}
+
+func getArrayDimensions(v any) []int {
+    var dimensions []int
+    current := v
+
+    for {
+        rv := reflect.ValueOf(current)
+        if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+            break
+        }
+
+        dimensions = append(dimensions, rv.Len())
+
+        if rv.Len() == 0 {
+            break
+        }
+
+        elem := rv.Index(0)
+
+        // Check if element is a slice (handle both direct slices and interface-wrapped slices)
+        var elemValue reflect.Value
+        if elem.Kind() == reflect.Interface {
+            elemValue = reflect.ValueOf(elem.Interface())
+        } else {
+            elemValue = elem
+        }
+
+        if elemValue.Kind() == reflect.Slice || elemValue.Kind() == reflect.Array {
+            current = elem.Interface()
+        } else {
+            break
+        }
+    }
+
+    return dimensions
+}
+
+func getElementType(v any) string {
+    rv := reflect.ValueOf(v)
+    if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {
+        elemType := rv.Type().Elem()
+
+        // Handle []any case specifically
+        if elemType.Kind() == reflect.Interface {
+            // Check if we have elements and determine their actual type
+            if rv.Len() > 0 {
+                firstElem := rv.Index(0)
+                switch firstElem.Kind() {
+                case reflect.Int, reflect.Int64:
+                    return "Int64"
+                case reflect.Uint, reflect.Uint32, reflect.Uint64:
+                    return "Uint64"
+                case reflect.Float32, reflect.Float64:
+                    return "Float64"
+                case reflect.String:
+                    return "String"
+                case reflect.Bool:
+                    return "Bool"
+                default:
+                    // Handle big.Int and big.Float
+                    if firstElem.Type().String() == "*big.Int" {
+                        return "BigInt"
+                    } else if firstElem.Type().String() == "*big.Float" {
+                        return "BigFloat"
+                    }
+                    return "Any"
+                }
+            }
+            return "Any"
+        }
+
+        // Handle basic types
+        switch elemType.Kind() {
+        case reflect.Int:
+            return "Int64"
+        case reflect.Int64:
+            return "Int64"
+        case reflect.Uint, reflect.Uint32, reflect.Uint64:
+            return "Uint64"
+        case reflect.Float32, reflect.Float64:
+            return "Float64"
+        case reflect.String:
+            return "String"
+        case reflect.Bool:
+            return "Bool"
+        default:
+            // Handle big.Int and big.Float
+            if elemType.String() == "*big.Int" {
+                return "BigInt"
+            } else if elemType.String() == "*big.Float" {
+                return "BigFloat"
+            }
+            return elemType.Name()
+        }
+    }
+    return "Unknown"
+}
+
+func getDepthColour(depth int) string {
+    if len(depthColours) == 0 {
+        return ""
+    }
+    return depthColours[depth%len(depthColours)]
+}
+
+func formatArrayPretty(v any) string {
+    dimensions := getArrayDimensions(v)
+    elemType := getElementType(v)
+
+    if len(dimensions) == 0 {
+        return fmt.Sprintf("%v", v) // Not an array
+    }
+
+    if len(dimensions) == 1 {
+        return formatArray1D(v, elemType, dimensions[0])
+    } else if len(dimensions) == 2 {
+        return formatArray2D(v, elemType, dimensions)
+    } else {
+        return formatArrayND(v, elemType, dimensions)
+    }
+}
+
+func formatArray1D(v any, elemType string, length int) string {
+    rv := reflect.ValueOf(v)
+    if length == 0 {
+        return fmt.Sprintf("0-element Vector{%s}: []", elemType)
+    }
+
+    var elements []string
+    for i := 0; i < length; i++ {
+        elem := rv.Index(i).Interface()
+        // Apply display precision reduction when array_format() is enabled
+        if prettyArrays {
+            if bf, ok := elem.(*big.Float); ok {
+                // Create display copy with reduced precision
+                displayCopy := new(big.Float).Copy(bf)
+                displayCopy.SetPrec(64) // Reduce to display precision
+                elem = displayCopy
+            }
+        }
+        colour := getDepthColour(0)
+        reset := ""
+        if colour != "" {
+            reset = "[#-]"
+        }
+        elements = append(elements, fmt.Sprintf("%s%v%s", colour, elem, reset))
+    }
+
+    return fmt.Sprintf("%d-element Vector{%s}: [%s]", length, elemType, str.Join(elements, ", "))
+}
+
+func formatArray2D(v any, elemType string, dimensions []int) string {
+    rows := dimensions[0]
+    cols := dimensions[1]
+    rv := reflect.ValueOf(v)
+
+    if rows == 0 || cols == 0 {
+        return fmt.Sprintf("%dx%d Matrix{%s}: []", rows, cols, elemType)
+    }
+
+    var lines []string
+    for i := 0; i < rows; i++ {
+        var rowElements []string
+        row := rv.Index(i)
+
+        // Handle case where row is an interface containing a slice
+        var rowSlice reflect.Value
+        if row.Kind() == reflect.Interface {
+            rowSlice = reflect.ValueOf(row.Interface())
+        } else {
+            rowSlice = row
+        }
+
+        for j := 0; j < cols; j++ {
+            elem := rowSlice.Index(j).Interface()
+            // Apply display precision reduction when array_format() is enabled
+            if prettyArrays {
+                if bf, ok := elem.(*big.Float); ok {
+                    // Create display copy with reduced precision
+                    displayCopy := new(big.Float).Copy(bf)
+                    displayCopy.SetPrec(64) // Reduce to display precision
+                    elem = displayCopy
+                }
+            }
+            colour := getDepthColour(1) // Elements in 2D array are at depth 1
+            reset := ""
+            if colour != "" {
+                reset = "[#-]"
+            }
+            rowElements = append(rowElements, fmt.Sprintf("%s%v%s", colour, elem, reset))
+        }
+        lines = append(lines, str.Join(rowElements, " "))
+    }
+
+    return fmt.Sprintf("%dx%d Matrix{%s}:\n%s", rows, cols, elemType, str.Join(lines, "\n"))
+}
+
+func formatArrayNDRecursive(v any, elemType string, dimensions []int, depth int, indices []int) string {
+    rv := reflect.ValueOf(v)
+
+    // Handle interface unwrapping at current level
+    var currentValue reflect.Value
+    if rv.Kind() == reflect.Interface {
+        currentValue = reflect.ValueOf(rv.Interface())
+    } else {
+        currentValue = rv
+    }
+
+    // Base case: we've reached the innermost dimension (should be elements)
+    if depth == len(dimensions)-1 {
+        var elements []string
+        for i := 0; i < dimensions[depth]; i++ {
+            elem := currentValue.Index(i).Interface()
+            // Apply display precision reduction when array_format() is enabled
+            if prettyArrays {
+                if bf, ok := elem.(*big.Float); ok {
+                    // Create display copy with reduced precision
+                    displayCopy := new(big.Float).Copy(bf)
+                    displayCopy.SetPrec(64) // Reduce to display precision
+                    elem = displayCopy
+                }
+            }
+            colour := getDepthColour(depth)
+            reset := ""
+            if colour != "" {
+                reset = "[#-]"
+            }
+            elements = append(elements, fmt.Sprintf("%s%v%s", colour, elem, reset))
+        }
+        return str.Join(elements, " ")
+    }
+
+    // Recursive case: we need to go deeper
+    var result []string
+    for i := 0; i < dimensions[depth]; i++ {
+        nextLevel := currentValue.Index(i)
+
+        // Build index string for this level
+        var indexStr string
+        if len(indices) == 0 {
+            indexStr = fmt.Sprintf("[%d]", i+1)
+        } else {
+            indexParts := append([]string{}, fmt.Sprintf("%d", i+1))
+            for _, idx := range indices {
+                indexParts = append([]string{fmt.Sprintf("%d", idx+1)}, indexParts...)
+            }
+            indexStr = fmt.Sprintf("[%s]", str.Join(indexParts, ", "))
+        }
+
+        // Get the actual interface value for recursion
+        var nextValue any
+        if nextLevel.Kind() == reflect.Interface {
+            nextValue = nextLevel.Interface()
+        } else {
+            nextValue = nextLevel
+        }
+
+        // Recursively format the next level
+        newIndices := append([]int{i}, indices...)
+        subResult := formatArrayNDRecursive(nextValue, elemType, dimensions, depth+1, newIndices)
+
+        if len(dimensions)-depth > 2 {
+            // For more than 2 levels remaining, show with index
+            result = append(result, fmt.Sprintf("%s = %s", indexStr, subResult))
+        } else {
+            // For the last 2 levels, just show the content
+            result = append(result, subResult)
+        }
+    }
+
+    return str.Join(result, "\n")
+}
+
+func formatArrayND(v any, elemType string, dimensions []int) string {
+    rv := reflect.ValueOf(v)
+
+    // Build dimension string like "2x3x4"
+    var dimStrs []string
+    for _, dim := range dimensions {
+        dimStrs = append(dimStrs, fmt.Sprintf("%d", dim))
+    }
+    dimStr := str.Join(dimStrs, "x")
+
+    if len(dimensions) == 0 {
+        return fmt.Sprintf("%s Array{%s}: []", dimStr, elemType)
+    }
+
+    // For 3D+ arrays, show slice by slice
+    var result []string
+
+    // Handle 3D case specially for better formatting
+    if len(dimensions) == 3 {
+        d1, d2, d3 := dimensions[0], dimensions[1], dimensions[2]
+
+        // Show each 2D slice
+        for k := 0; k < d1; k++ {
+            slice := rv.Index(k)
+
+            // Handle case where slice is an interface containing a slice
+            var sliceValue reflect.Value
+            if slice.Kind() == reflect.Interface {
+                sliceValue = reflect.ValueOf(slice.Interface())
+            } else {
+                sliceValue = slice
+            }
+
+            var sliceLines []string
+
+            for i := 0; i < d2; i++ {
+                var rowElements []string
+                row := sliceValue.Index(i)
+
+                // Handle case where row is an interface containing a slice
+                var rowSlice reflect.Value
+                if row.Kind() == reflect.Interface {
+                    rowSlice = reflect.ValueOf(row.Interface())
+                } else {
+                    rowSlice = row
+                }
+
+                for j := 0; j < d3; j++ {
+                    elem := rowSlice.Index(j).Interface()
+                    colour := getDepthColour(2) // Elements in 3D array are at depth 2
+                    reset := ""
+                    if colour != "" {
+                        reset = "[#-]"
+                    }
+                    rowElements = append(rowElements, fmt.Sprintf("%s%v%s", colour, elem, reset))
+                }
+                sliceLines = append(sliceLines, str.Join(rowElements, " "))
+            }
+
+            if k < d1-1 {
+                result = append(result, fmt.Sprintf("[:, :, %d] =", k+1))
+            } else {
+                result = append(result, fmt.Sprintf("[:, :, %d] =", k+1))
+            }
+            result = append(result, sliceLines...)
+            if k < d1-1 {
+                result = append(result, "")
+            }
+        }
+
+        return fmt.Sprintf("%dx%dx%d Array{%s, 3}:\n%s", d1, d2, d3, elemType, str.Join(result, "\n"))
+    }
+
+    // Handle 4D arrays specially
+    if len(dimensions) == 4 {
+        d1, d2, d3, d4 := dimensions[0], dimensions[1], dimensions[2], dimensions[3]
+
+        // Show each 3D slice
+        for l := 0; l < d1; l++ {
+            slice4d := rv.Index(l)
+
+            // Handle interface unwrapping
+            var slice4dValue reflect.Value
+            if slice4d.Kind() == reflect.Interface {
+                slice4dValue = reflect.ValueOf(slice4d.Interface())
+            } else {
+                slice4dValue = slice4d
+            }
+
+            result = append(result, fmt.Sprintf("[:, :, :, %d] =", l+1))
+
+            // Show each 2D slice within this 3D slice
+            for k := 0; k < d2; k++ {
+                slice3d := slice4dValue.Index(k)
+
+                // Handle interface unwrapping
+                var slice3dValue reflect.Value
+                if slice3d.Kind() == reflect.Interface {
+                    slice3dValue = reflect.ValueOf(slice3d.Interface())
+                } else {
+                    slice3dValue = slice3d
+                }
+
+                var sliceLines []string
+
+                for i := 0; i < d3; i++ {
+                    var rowElements []string
+                    row := slice3dValue.Index(i)
+
+                    // Handle interface unwrapping
+                    var rowSlice reflect.Value
+                    if row.Kind() == reflect.Interface {
+                        rowSlice = reflect.ValueOf(row.Interface())
+                    } else {
+                        rowSlice = row
+                    }
+
+                    for j := 0; j < d4; j++ {
+                        elem := rowSlice.Index(j).Interface()
+                        colour := getDepthColour(3) // Elements in 4D array are at depth 3
+                        reset := ""
+                        if colour != "" {
+                            reset = "[#-]"
+                        }
+                        rowElements = append(rowElements, fmt.Sprintf("%s%v%s", colour, elem, reset))
+                    }
+                    sliceLines = append(sliceLines, str.Join(rowElements, " "))
+                }
+
+                if d2 > 1 {
+                    result = append(result, fmt.Sprintf("[:, :, %d, %d] =", k+1, l+1))
+                }
+                result = append(result, sliceLines...)
+                if k < d2-1 {
+                    result = append(result, "")
+                }
+            }
+            if l < d1-1 {
+                result = append(result, "")
+            }
+        }
+
+        return fmt.Sprintf("%dx%dx%dx%d Array{%s, 4}:\n%s", d1, d2, d3, d4, elemType, str.Join(result, "\n"))
+    }
+
+    // For 5D+ arrays, use recursive display
+    return formatArrayNDRecursive(v, elemType, dimensions, 0, []int{})
+}
+
 func structToZaLiteral(v any) string {
     vVal := reflect.ValueOf(v)
     if vVal.Kind() == reflect.Ptr {
