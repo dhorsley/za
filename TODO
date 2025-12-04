@@ -2,15 +2,6 @@
 TODO
 ----
 
-* array ** scalar
-* array % scalar
-* update sum(), avg(), min() and max() to work with 2d and 3d slices.
-* fmt.(s)print* formatter for vectors/matrices when in interactive mode
-* flag for enabling/disabling said formatter in all modes
-* other missing array functions as noted in ~/linear_plan.md
-* look at possibility of a fast path using simd for some of the operators.
-
-
 
 IGNORE EVERYTHING BELOW THIS POINT.
 

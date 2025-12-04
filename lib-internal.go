@@ -382,7 +382,7 @@ func buildInternalLib() {
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
         "ast", "varbind", "sizeof", "dup", "log_queue_status",
         "set_depth",
-        "logging_stats", "exreg", "format_stack_trace", "panic",
+        "logging_stats", "exreg", "format_stack_trace", "panic", "array_format", "array_colours",
         // "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -1018,8 +1018,7 @@ func buildInternalLib() {
         return v, nil
     }
 
-    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action:
-        "Set a run-time behaviour... [#2]uninit[#-]: should stop for uninitialised variables / [#2]dupmod[#-]: ignore duplicate imports\n" +
+    slhelp["permit"] = LibHelp{in: "behaviour_string,various_types", out: "", action: "Set a run-time behaviour... [#2]uninit[#-]: should stop for uninitialised variables / [#2]dupmod[#-]: ignore duplicate imports\n" +
         "[#SOL][#2]exitquiet[#-]: shorter error message / [#2]shell[#-]: permit shell commands / [#2]eval[#-]: permit eval() calls\n" +
         "[#SOL][#2]interpol[#-]: permit string interpolation / [#2]cmdfallback[#-]: shell call on eval failure (interactive)\n" +
         "[#SOL][#2]permit[#-]: enable/disable permit() / [#2]exception_strictness[#-]: enable/disable exception_strictness call\n" +
@@ -1893,7 +1892,7 @@ func buildInternalLib() {
             return false, err
         }
         term := os.Getenv("TERM")
-        cterms := regexp.MustCompile("(?i)^xterm|^vt100|^vt220|^rxvt|^screen|color|ansi|cygwin|linux")
+        cterms := regexp.MustCompile("(?i)^xterm|^vt100|^vt220|^rxvt|^screen|colour|ansi|cygwin|linux")
         return ansiMode && cterms.MatchString(term), nil
     }
 
@@ -1938,8 +1937,7 @@ func buildInternalLib() {
         }, nil
     }
 
-    slhelp["exception_strictness"] = LibHelp{in: "mode_string", out: "", action:
-        "Set exception handling strictness mode.\n" +
+    slhelp["exception_strictness"] = LibHelp{in: "mode_string", out: "", action: "Set exception handling strictness mode.\n" +
         "[#SOL]strict: fatal termination on unhandled exceptions (default)\n" +
         "[#SOL]permissive: converts unhandled exceptions to normal panics\n" +
         "[#SOL]warn: prints warning but continues execution\n" +
@@ -2010,6 +2008,58 @@ func buildInternalLib() {
 
         // Call Go's built-in panic() with an error type for proper conversion
         panic(fmt.Errorf("%s", message))
+    }
+
+    slhelp["array_format"] = LibHelp{in: "bool", out: "", action: "Enable/disable pretty array formatting. Default: false, enabled in interactive mode."}
+    stdlib["array_format"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("array_format", args, 1, "1", "any"); !ok {
+            return nil, err
+        }
+        if enabled, ok := args[0].(bool); ok {
+            prettyArrays = enabled
+            return true, nil
+        }
+        return nil, errors.New("array_format: expected boolean argument")
+    }
+
+    slhelp["array_colours"] = LibHelp{in: "[]string", out: "[]string", action: "Set colour scheme for array depth formatting and return previous colours."}
+    stdlib["array_colours"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("array_colours", args, 1, "1", "any"); !ok {
+            return nil, err
+        }
+
+        // Save current colours to return
+        previous := make([]string, len(depthColours))
+        copy(previous, depthColours)
+
+        // Handle []string or []any (cast to strings)
+        var colours []string
+        switch args[0].(type) {
+        case []string:
+            colours = args[0].([]string)
+        case []any:
+            anySlice := args[0].([]any)
+            colours = make([]string, len(anySlice))
+            for i, item := range anySlice {
+                if str, ok := item.(string); ok {
+                    colours[i] = str
+                } else {
+                    return nil, errors.New("array_colours: all elements must be strings")
+                }
+            }
+        default:
+            return nil, errors.New("array_colours: expected []string or []any")
+        }
+
+        // Basic validation - check if colours look like Za colour codes
+        for _, colour := range colours {
+            if !str.HasPrefix(colour, "[#") || !str.HasSuffix(colour, "]") {
+                return nil, errors.New("array_colours: invalid colour format, expected [#colour_name]")
+            }
+        }
+
+        depthColours = colours
+        return previous, nil
     }
 
 }

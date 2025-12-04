@@ -28,13 +28,9 @@ fixes
     * change made to ensure structs are addressable in pp()
         - test script created at za_tests/test_pp.za
 
-    * added per element array(a) + b ;or a + array(b) to replace array concatenation using plus operator.
-        - this completes the basic +,-,*,/ operator overload for arrays
-          - more to be added : such as % modulus operator and others (see the TODO file)
+    * added per element array(a) + scalar(b) ;or scalar(a) + array(b) to replace array concatenation using plus operator.
+        - this completes the basic +,-,*,/,%,** operator overload for arrays
         - these operations only currently work with []int or []float
-
-        - array-to-array arithmetic
-            - this would likely be limited to 1-, 2- and 3-dimensional arrays
 
     * added error gate on startup if interactive mode set when termless.
 
@@ -49,7 +45,48 @@ fixes
 library changes
 ---------------
 
-    * re-enabled concat() function for array concatenation of two arrays
+    * re-enabled concat() function for array concatenation of two arrays (1d)
+
+    * Array Creation & Manipulation
+        1. reshape() - Change array dimensions (preserve total elements)
+        2. zeros() - Create array filled with zeros
+        3. ones() - Create array filled with ones
+        4. flatten() - Flatten multi-dimensional array to 1-D
+        5. concatenate() - Join arrays along existing axis
+        6. stack() - Stack arrays along new axis
+        7. squeeze() - Remove singleton dimensions
+
+    * Statistical Functions
+        8. mean() - Arithmetic mean of array values
+        9. median() - Median value in array
+        10. std() - Standard deviation of array values
+        11. variance() - Variance of array values
+
+    * Matrix Operations
+        12. identity() - Create identity matrix
+        13. trace() - Sum of diagonal elements
+        14. det() - Matrix determinant (float64 precision)
+        15. det_big() - Matrix determinant (arbitrary precision)
+        16. inverse() - Matrix inverse (float64 precision)
+        17. inverse_big() - Matrix inverse (arbitrary precision)
+        18. rank() - Matrix rank calculation
+
+    * Search & Indexing
+        19. argmax() - Find index of maximum value
+        20. argmin() - Find index of minimum value
+        21. find() - Find indices of elements matching condition
+        22. where() - Return elements where condition is true/false
+
+    * Misc
+        23. dot() - dot product
+        24. transpose() - row/col transposition
+        25. matmul() - matrix multiplication
+
+    * Formatting
+        26. array_format(bool) - enable pretty printing of arrays
+            - enabled by default when in interactive mode
+            - this also limits the precision of big floats during pp
+        27. array_colours([]string) - enables control of nesting colours in array pp
 
 
 other
@@ -57,9 +94,6 @@ other
 
     * additional support in the basic and relational operators for
       array-to-array operations.
-    * new library calls: dot(), transpose() and matmul()
-        - these are for element-wise array manipulation.
-        - others will be added.
 
 
 1.2.0

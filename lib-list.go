@@ -1727,8 +1727,7 @@ func buildListLib() {
     }
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
-    slhelp["sort"] = LibHelp{in: "list[,bool_reverse|map_options]", out: "[]new_list", action:
-        "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order, or with map options.\n"+
+    slhelp["sort"] = LibHelp{in: "list[,bool_reverse|map_options]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order, or with map options.\n" +
         "[#SOL]Map options: .reverse (bool), .numeric (bool, .alphanumeric (bool)",
     }
     stdlib["sort"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -2808,89 +2807,80 @@ func buildListLib() {
         return nil, errors.New(sf("Invalid return from fill()"))
     }
 
-    slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]."}
+    slhelp["min"] = LibHelp{in: "list", out: "number", action: "Calculate the minimum value in a [#i1]list[#i0]. Supports multi-dimensional arrays."}
     stdlib["min"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("min", args, 1, "1", "any"); !ok {
             return nil, err
         }
-        switch args[0].(type) {
-        case []int:
-            return min_int(args[0].([]int)), nil
-        case []int64:
-            return min_int64(args[0].([]int64)), nil
-        case []uint:
-            return min_uint(args[0].([]uint)), nil
-        case []float64:
-            return min_float64(args[0].([]float64)), nil
-        case []any:
-            return min_inter(args[0].([]any)), nil
-        default:
-            return nil, errors.New(sf("Unknown number type in min(), type %T\n", args[0]))
+
+        // Check if it's a slice (1D or multi-dimensional)
+        if isSlice(args[0]) {
+            return min_multi(args[0]), nil
+        } else {
+            // Handle scalar case
+            f, hasError := GetAsFloat(args[0])
+            if hasError {
+                return nil, errors.New(sf("Cannot convert scalar to number in min(): %v", args[0]))
+            }
+            return f, nil
         }
     }
 
-    slhelp["max"] = LibHelp{in: "list", out: "number", action: "Calculate the maximum value in a [#i1]list[#i0]."}
+    slhelp["max"] = LibHelp{in: "list", out: "number", action: "Calculate the maximum value in a [#i1]list[#i0]. Supports multi-dimensional arrays."}
     stdlib["max"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("max", args, 1, "1", "any"); !ok {
             return nil, err
         }
-        switch args[0].(type) {
-        case []int:
-            return max_int(args[0].([]int)), nil
-        case []uint:
-            return max_uint(args[0].([]uint)), nil
-        case []float64:
-            return max_float64(args[0].([]float64)), nil
-        case []any:
-            return max_inter(args[0].([]any)), nil
-        default:
-            return nil, errors.New(sf("Unknown number type in max(), type %T\n", args[0]))
+
+        // Check if it's a slice (1D or multi-dimensional)
+        if isSlice(args[0]) {
+            return max_multi(args[0]), nil
+        } else {
+            // Handle scalar case
+            f, hasError := GetAsFloat(args[0])
+            if hasError {
+                return nil, errors.New(sf("Cannot convert scalar to number in max(): %v", args[0]))
+            }
+            return f, nil
         }
     }
 
-    slhelp["avg"] = LibHelp{in: "list", out: "number", action: "Calculate the average value in a [#i1]list[#i0]."}
+    slhelp["avg"] = LibHelp{in: "list", out: "number", action: "Calculate the average value in a [#i1]list[#i0]. Supports multi-dimensional arrays."}
     stdlib["avg"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("avg", args, 1, "1", "any"); !ok {
             return nil, err
         }
-        var f float64
-        switch args[0].(type) {
-        case []int:
-            f = float64(avg_int(args[0].([]int)))
-        case []uint:
-            f = float64(avg_uint(args[0].([]uint)))
-        case []float64:
-            f = avg_float64(args[0].([]float64))
-        case []any:
-            f = float64(avg_inter(args[0].([]any)))
-        default:
-            return nil, errors.New(sf("Unknown number type in avg(), type %T\n", args[0]))
-        }
-        if f != -1 {
+
+        // Check if it's a slice (1D or multi-dimensional)
+        if isSlice(args[0]) {
+            return avg_multi(args[0]), nil
+        } else {
+            // Handle scalar case
+            f, hasError := GetAsFloat(args[0])
+            if hasError {
+                return nil, errors.New(sf("Cannot convert scalar to number in avg(): %v", args[0]))
+            }
             return f, nil
         }
-        return 0, errors.New("Divide by zero in avg()")
     }
 
-    slhelp["sum"] = LibHelp{in: "list", out: "number", action: "Calculate the sum of the values in [#i1]list[#i0]."}
+    slhelp["sum"] = LibHelp{in: "list", out: "number", action: "Calculate the sum of the values in [#i1]list[#i0]. Supports multi-dimensional arrays."}
     stdlib["sum"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("sum", args, 1, "1", "any"); !ok {
             return nil, err
         }
-        var f float64
-        switch args[0].(type) {
-        case []int:
-            f = float64(sum_int(args[0].([]int)))
-        case []uint:
-            f = float64(sum_uint(args[0].([]uint)))
-        case []float64:
-            f = sum_float64(args[0].([]float64))
-        case []any:
-            f = float64(sum_inter(args[0].([]any)))
-        default:
-            return nil, errors.New(sf("Unknown number type in sum(), type %T\n", args[0]))
+
+        // Check if it's a slice (1D or multi-dimensional)
+        if isSlice(args[0]) {
+            return sum_multi(args[0]), nil
+        } else {
+            // Handle scalar case
+            f, hasError := GetAsFloat(args[0])
+            if hasError {
+                return nil, errors.New(sf("Cannot convert scalar to number in sum(): %v (type: %T)", args[0], args[0]))
+            }
+            return f, nil
         }
-        return f, nil
     }
 
 }
