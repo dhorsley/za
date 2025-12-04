@@ -2281,16 +2281,196 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                         }
                     } else {
                         // Enhanced errors enabled but this isn't an enhanced error
-                        pf("%s\n", err)
-                        finish(false, ERR_EVAL)
+                        // Handle like user function errors - check try-catch and exception strictness
+                        handleStdlibError(err, p, evalfs)
+                        // Continue normally - main execution loop will detect the exception
+                        return res, false, method_result, nil
                     }
                 } else {
                     // Enhanced errors disabled - standard error reporting
-                    pf("%s\n", err)
-                    finish(false, ERR_EVAL)
+                    // Handle like user function errors - check try-catch and exception strictness
+                    handleStdlibError(err, p, evalfs)
+                    // Continue normally - main execution loop will detect the exception
+                    return res, false, method_result, nil
                 }
             }
             return res, err != nil, method_result, nil
+        }
+    }
+}
+
+// handleStdlibError handles stdlib function errors like user function errors
+// Returns true if the error was handled (exception converted or panic occurred), false if not
+func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
+    // Check if this should be handled as an exception
+    shouldConvertToException := false
+
+    // Case 1: Error style mode is set to convert panics to exceptions
+    errorStyleLock.RLock()
+    currentErrorStyle := errorStyleMode
+    errorStyleLock.RUnlock()
+
+    if currentErrorStyle == ERROR_STYLE_EXCEPTION || currentErrorStyle == ERROR_STYLE_MIXED {
+        shouldConvertToException = true
+    }
+
+    // Case 2: Auto-convert to exception if inside a try block
+    if !shouldConvertToException {
+        calllock.RLock()
+        isTryBlock := calltable[p.fs].isTryBlock
+        defaultCategory := calltable[p.fs].defaultExceptionCategory
+        calllock.RUnlock()
+
+        if isTryBlock {
+            shouldConvertToException = true
+            // Store the try block's default category for later use
+            if defaultCategory != nil {
+                calllock.Lock()
+                calltable[p.fs].defaultExceptionCategory = defaultCategory
+                calllock.Unlock()
+            }
+        }
+    }
+
+    if shouldConvertToException {
+        // Convert to exception for try/catch handling
+        var category any
+        var message string
+
+        message = err.Error()
+
+        // Use default category if available
+        calllock.RLock()
+        if calltable[p.fs].defaultExceptionCategory != nil {
+            category = calltable[p.fs].defaultExceptionCategory
+        }
+        calllock.RUnlock()
+
+        // Create exception info with corrected line number (similar to eval.go)
+        excInfo := &exceptionInfo{
+            category:   category,
+            message:    message,
+            line:       int(p.line) + 1,
+            function:   calltable[p.fs].fs,
+            fs:         p.fs,
+            stackTrace:  generateStackTrace(calltable[p.fs].fs, p.fs, int16(p.line) + 1),
+            source:     "stdlib",
+        }
+
+        // Set exception state atomically
+        atomic.StorePointer(&calltable[p.fs].activeException, unsafe.Pointer(excInfo))
+
+        // Set catch matched to false so try/catch blocks can see the exception
+        atomic.StoreInt32(&calltable[p.fs].currentCatchMatched, 0)
+
+
+
+        // Return with exception state for try/catch handling
+        return true
+    } else {
+        // Not converting to exception - check exception strictness
+        switch exceptionStrictness {
+        case "strict":
+            // Fatal termination with helpful message (default)
+            pf("%s\n", err)
+            finish(false, ERR_EVAL)
+            return true
+        case "permissive":
+            // Convert to normal panic
+            pf("%s\n", err)
+            panic(err)
+            return true
+        case "warn":
+            // Print warning but continue
+            pf("[#6]WARNING: %s (continuing execution)[#-]\n", err)
+            return false // Continue execution
+        case "disabled":
+            // Completely ignore
+            return false // Continue execution
+        default:
+            // Unknown strictness - default to strict
+            pf("%s\n", err)
+            finish(false, ERR_EVAL)
+            return true
+        }
+    }
+
+    // Case 2: Auto-convert to exception if inside a try block
+    if !shouldConvertToException {
+        calllock.RLock()
+        isTryBlock := calltable[p.fs].isTryBlock
+        defaultCategory := calltable[p.fs].defaultExceptionCategory
+        calllock.RUnlock()
+
+        if isTryBlock {
+            shouldConvertToException = true
+            // Store the try block's default category for later use
+            if defaultCategory != nil {
+                calllock.Lock()
+                calltable[p.fs].defaultExceptionCategory = defaultCategory
+                calllock.Unlock()
+            }
+        }
+    }
+
+    if shouldConvertToException {
+        // Convert to exception for try/catch handling
+        var category any
+        var message string
+
+        message = err.Error()
+
+        // Use default category if available
+        calllock.RLock()
+        if calltable[p.fs].defaultExceptionCategory != nil {
+            category = calltable[p.fs].defaultExceptionCategory
+        }
+        calllock.RUnlock()
+
+        // Create exception info with corrected line number (similar to eval.go)
+        excInfo := &exceptionInfo{
+            category:   category,
+            message:    message,
+            line:       int(p.line) + 1,
+            function:   calltable[p.fs].fs,
+            fs:         p.fs,
+            stackTrace: generateStackTrace(calltable[p.fs].fs, p.fs, int16(p.line)+1),
+            source:     "stdlib",
+        }
+
+        // Set exception state atomically
+        atomic.StorePointer(&calltable[p.fs].activeException, unsafe.Pointer(excInfo))
+
+        // Set catch matched to false so try/catch blocks can see the exception
+        atomic.StoreInt32(&calltable[p.fs].currentCatchMatched, 0)
+
+        // Return with exception state for try/catch handling
+        return true
+    } else {
+        // Not converting to exception - check exception strictness
+        switch exceptionStrictness {
+        case "strict":
+            // Fatal termination with helpful message (default)
+            pf("%s\n", err)
+            finish(false, ERR_EVAL)
+            return true
+        case "permissive":
+            // Convert to normal panic
+            pf("%s\n", err)
+            panic(err)
+            return true
+        case "warn":
+            // Print warning but continue
+            pf("[#6]WARNING: %s (continuing execution)[#-]\n", err)
+            return false // Continue execution
+        case "disabled":
+            // Completely ignore
+            return false // Continue execution
+        default:
+            // Unknown strictness - default to strict
+            pf("%s\n", err)
+            finish(false, ERR_EVAL)
+            return true
         }
     }
 }

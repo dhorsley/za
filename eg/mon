@@ -4,7 +4,7 @@
 # Test script for za.
 # If this is working, the language probably is.
 #
-# This program displays a few pieces of key system 
+# This program displays a few pieces of key system
 # resource information on a single summary view.
 #
 
@@ -211,10 +211,10 @@ define showMem()
     on !access do getslab=false
 
     # gather
-   
+
     # Get memory info using built-in function
     mem_detailed = mem_info()
-    
+
     # Extract slab info from built-in data
     slabs = ""
     if getslab && len(mem_detailed.Slab) > 0
@@ -224,7 +224,7 @@ define showMem()
             foreach info in mem_detailed.Slab
                 if info!=nil
                     size_mb = (info.ActiveObjs.as_int * info.ObjSize.as_int) / 1024f / 1024
-                    slab_list = slab_list + [key_info + " " + format("%.1f", size_mb)]
+                    append_to(ref slab_list, key_info + " " + format("%.1f", size_mb))
                 endif
             endfor
         endif
@@ -307,7 +307,7 @@ define showMem()
                 endfor
             endif
         endif
-    else 
+    else
         at 9,1,"[#1]Slab information requires root access.[#-]"
     endif
 end
@@ -345,9 +345,9 @@ define showProcs(ct,uptime)
             putime=as_float(uptime-(procstarttime/ct))
             continue if putime==0
 
-            proc_list[pid]=[ state, ppid, 100*as_float(utime/ct/putime), 100*as_float(stime/ct/putime), 
-                            100*as_float(cutime/ct/putime), 100*as_float(cstime/ct/putime), 
-                            threads, procstarttime, gsub(comm," ","_") 
+            proc_list[pid]=[ state, ppid, 100*as_float(utime/ct/putime), 100*as_float(stime/ct/putime),
+                            100*as_float(cutime/ct/putime), 100*as_float(cstime/ct/putime),
+                            threads, procstarttime, gsub(comm," ","_")
             ]
         endif
     endfor
@@ -512,14 +512,14 @@ end
 
 
 define showHdd()
-    
+
     pane select "hdd"
     print linecolour; # pane redraw
     cursoroff()
 
     # Use built-in disk usage function instead of external df commands
     disk_info = disk_usage()
-   
+
     mpwidth=pane_w()-40[:pane_w()-10]
 
     at 1,1, format("[#b2][#7][#bold]%16s %-7s %-7s %-4s %-{mpwidth}s[#-][##]","path","size","avail","use%","mpath")
@@ -539,7 +539,7 @@ define showHdd()
             on device ~ `^([a-zA-Z]:|driver|/dev/loop|/dev/sr|tmpfs|run|snapfuse)` do skip=true
         endcase
         continue if skip
-        
+
         # Add to list as anonymous struct for sorting
         sorted_disks = append(sorted_disks, anon(
             .device device,
@@ -550,29 +550,29 @@ define showHdd()
             .mountpoint disk["mounted_path"]
         ))
     endfor
-    
+
     # Sort by usage percentage (descending)
     sorted_disks = ssort(sorted_disks, "usage_pct", false)
-    
+
     # Display top disks (limit to avoid screen overflow)
     max_disks = 6
     count = 0
     foreach disk in sorted_disks
         break if count >= max_disks
-        
+
         device = disk.device
         total = disk.total
         used = disk.used
         available = disk.available
         usage_pct = disk.usage_pct
         mountpoint = disk.mountpoint
-        
+
         # Format sizes for display
         total_str = hobbitsize(total.as_int)
         used_str = hobbitsize(used.as_int)
         avail_str = hobbitsize(available.as_int)
         usage_str = format("%.0f", usage_pct)
-        
+
         at row,1, format(`%16s %-7s %-7s %-4s %-20s`,
             shorten(device,16),
             total_str, avail_str, usage_str,
@@ -595,8 +595,8 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
 
     foreach n in nio()
         continue if n.Interface!=interface
-        
-        # current counters 
+
+        # current counters
         rbytes  = n.RxBytes.as_float
         tbytes  = n.TxBytes.as_float
 
@@ -604,7 +604,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
             @ net_sample_start_in-=1
             @ prev_rbytes=rbytes
             @ prev_tbytes=tbytes
-            return 
+            return
         endif
 
         # diff from previous
@@ -620,7 +620,7 @@ define showNet(net_sc,load,ipaddr,interface,timeout)
         # display using log scale up to log64(5).
         # using key_timeout as a rough scaler for the sampling period.
         midline=7
-       
+
         # - traffic plots
         clear(2,6,1)
         clear(8,13,1)
@@ -668,7 +668,7 @@ define redef_layout(cpu_count,pfilter)
     endfor
 
     showEnv()
-            
+
     # origin line
     pane select "net"
     graph_line="-"

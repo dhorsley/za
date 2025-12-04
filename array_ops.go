@@ -13,7 +13,7 @@ func checkShape(a, b reflect.Value) error {
         return fmt.Errorf("checkShape: both arguments must be slices")
     }
 
-    if a.Len() != b.Len() {
+    if a.Len() != b.Len() { // don't break on empty arrays
         return fmt.Errorf("shape mismatch: outer dimensions differ (%d vs %d)", a.Len(), b.Len())
     }
 

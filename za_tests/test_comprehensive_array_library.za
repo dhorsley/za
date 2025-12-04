@@ -274,20 +274,48 @@ identity3x3 = identity(3)
 inv_identity3x3 = inverse_big(identity3x3)
 println "Result:\n", inv_identity3x3, " (expected: 3x3 identity)"
 
-# Test det_big() and inverse_big() with singular matrix
+# Test det_big() and inverse_big() with near-singular matrix
 print
-println "det_big() with singular matrix:"
-singular = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+println "det_big():"
+notsingular = [[1, 2, 3], [5, 5, 6], [7, 8, 9]]
 println "Input matrix:"
-println singular
-det_singular = det_big(singular)
-println "Result:\n", det_singular, " (expected: 0)"
+println notsingular
+det = det_big(notsingular)
+println "Result:\n", det, " (expected: 6 [5.9 rec])"
 
 print
-println "inverse_big() with singular matrix:"
-# This should return an error
-inv_singular = inverse_big(singular)
-println "inverse_big of singular matrix returned:\n", inv_singular
+println "inverse_big():"
+inv = inverse_big(notsingular)
+println "inverse_big of returned:\n", inv
+println "( expected: [-0.5,1.-0.5],[-0.5,-2,1.5],[0.833333,1,-0.83333] )"
+
+
+# Test inverse() and inverse_big() with singular matrix
+singular = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+print
+# These should return an error
+
+exception_strictness("warn")
+
+println "inverse() with singular:"
+try
+    inv = inverse(singular)
+    println "inverse of singular returned:\n", inv
+    println "( expected: an error )"
+catch err
+    println "inverse() returned an error:\n",err.pp
+endtry
+
+println "inverse_big() with singular:"
+try
+    inv = inverse_big(singular)
+    println "inverse_big of singular of returned:\n", inv
+    println "( expected: an error )"
+catch err
+    println "inverse_big() returned an error:\n",err.pp
+endtry
+
 
 # Test with larger values
 print

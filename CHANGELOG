@@ -25,6 +25,8 @@ fixes
 
     * added concurrency check in vset()
 
+    * fixed an issue with try..catch handling of stdlib functions.
+
     * change made to ensure structs are addressable in pp()
         - test script created at za_tests/test_pp.za
 
@@ -87,6 +89,12 @@ library changes
             - enabled by default when in interactive mode
             - this also limits the precision of big floats during pp
         27. array_colours([]string) - enables control of nesting colours in array pp
+
+    * new test script at za_tests/test_comprehensive_array_library.za for all functions above.
+
+    * N.B.: remember to use append/append_to() instead of + operator now (or concat/concatenate)
+        - use of + implies an operand shape comparison so should be reserved for operations
+          such as those above. more general appends, in 1D, should use the append/concat functions.
 
 
 other

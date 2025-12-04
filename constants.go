@@ -30,6 +30,9 @@ const recolour = "[#5][#i1]"
 
 const default_WriteMode = 0644
 
+const singularTolerance = 1e-12
+
+
 const (
     WEB_PROXY int = iota
     WEB_REWRITE
