@@ -99,6 +99,7 @@ library changes
             - enabled by default when in interactive mode
             - this also limits the precision of big floats during pp
         27. array_colours([]string) - enables control of nesting colours in array pp
+            - the input is a list of Za colour code strings for each nesting level
 
     * new test script at za_tests/test_comprehensive_array_library.za for all functions above.
 
