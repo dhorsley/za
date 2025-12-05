@@ -1,0 +1,42 @@
+#!/usr/bin/za
+
+# Test script for improved 4D+ array formatting
+
+println "=== Testing Improved 4D+ Array Formatting ==="
+
+# Enable pretty array formatting
+array_format(true)
+
+println "\n--- Testing 4D Array ---"
+# Create a simple 2x2x2x2 4D array
+arr4d = [
+    [
+        [[1, 2], [3, 4]],
+        [[5, 6], [7, 8]]
+    ],
+    [
+        [[9, 10], [11, 12]],
+        [[13, 14], [15, 16]]
+    ]
+]
+println "4D Array (2x2x2x2):"
+println arr4d
+
+println "\n--- Testing 5D Array ---"
+# Create a simple 2x2x2x2x2 5D array
+arr5d = [
+    [
+        [
+            [[1, 2], [3, 4]],
+            [[5, 6], [7, 8]]
+        ],
+        [
+            [[9, 10], [11, 12]],
+            [[13, 14], [15, 16]]
+        ]
+    ]
+]
+println "5D Array (1x2x2x2x2):"
+println arr5d
+
+println "\n=== Test Complete ==="

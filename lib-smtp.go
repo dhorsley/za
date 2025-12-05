@@ -11,13 +11,14 @@ import (
     "net/smtp"
     "net/textproto"
     "os"
+    "regexp"
     "strings"
 )
 
 func buildSmtpLib() {
 
     features["smtp"] = Feature{version: 1, category: "network"}
-    categories["smtp"] = []string{"smtp_send", "smtp_send_with_auth", "smtp_send_with_attachments", "email_parse_headers", "email_get_body", "email_get_attachments"}
+    categories["smtp"] = []string{"smtp_send", "smtp_send_with_auth", "smtp_send_with_attachments", "email_parse_headers", "email_get_body", "email_get_attachments", "email_validate", "email_extract_addresses", "email_process_template", "email_add_header", "email_remove_header", "email_base64_encode", "email_base64_decode"}
 
     slhelp["smtp_send"] = LibHelp{in: "server, from, to, subject, body", out: "bool", action: "Send email via SMTP without authentication."}
     stdlib["smtp_send"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -292,6 +293,192 @@ func buildSmtpLib() {
         }
 
         return attachments, nil
+    }
+
+    slhelp["email_validate"] = LibHelp{in: "email", out: "bool", action: "Validate email address format."}
+    stdlib["email_validate"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_validate", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        email := args[0].(string)
+
+        // Basic email validation regex
+        emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+        matched, err := regexp.MatchString(emailRegex, email)
+        if err != nil {
+            return false, nil
+        }
+
+        return matched, nil
+    }
+
+    slhelp["email_extract_addresses"] = LibHelp{in: "text", out: "[]string", action: "Extract email addresses from text using regex pattern matching."}
+    stdlib["email_extract_addresses"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_extract_addresses", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        text := args[0].(string)
+
+        // Email regex pattern to find email addresses in text
+        emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+        matches := emailRegex.FindAllString(text, -1)
+
+        // Remove duplicates while preserving order
+        seen := make(map[string]bool)
+        var uniqueAddresses []string
+        for _, addr := range matches {
+            if !seen[addr] {
+                seen[addr] = true
+                uniqueAddresses = append(uniqueAddresses, addr)
+            }
+        }
+
+        return uniqueAddresses, nil
+    }
+
+    slhelp["email_process_template"] = LibHelp{in: "template, variables", out: "string", action: "Process email template by replacing placeholders with variable values."}
+    stdlib["email_process_template"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_process_template", args, 2, "2", "string", "map"); !ok {
+            return nil, err
+        }
+
+        template := args[0].(string)
+        variables := args[1].(map[string]any)
+
+        result := template
+        for key, value := range variables {
+            placeholder := "{" + key + "}"
+            valueStr := fmt.Sprintf("%v", value)
+            // Use ReplaceAll to replace all occurrences
+            result = strings.ReplaceAll(result, placeholder, valueStr)
+        }
+
+        return result, nil
+    }
+
+    slhelp["email_add_header"] = LibHelp{in: "email_content, header_name, header_value", out: "string", action: "Add a new header to email content before the body."}
+    stdlib["email_add_header"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_add_header", args, 3, "3", "string", "string", "string"); !ok {
+            return nil, err
+        }
+
+        emailContent := args[0].(string)
+        headerName := args[1].(string)
+        headerValue := args[2].(string)
+
+        // Split by \r\n first, then \n if needed
+        lines := strings.Split(emailContent, "\r\n")
+        if len(lines) == 1 {
+            lines = strings.Split(emailContent, "\n")
+        }
+
+        var result []string
+        var headerSection []string
+        var bodySection []string
+        var inBody bool
+
+        // Find where headers end and body begins
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line == "" {
+                inBody = true
+                bodySection = append(bodySection, "")
+                continue
+            }
+
+            if !inBody {
+                headerSection = append(headerSection, line)
+            } else {
+                bodySection = append(bodySection, line)
+            }
+        }
+
+        // Add new header to header section
+        newHeader := fmt.Sprintf("%s: %s", headerName, headerValue)
+        headerSection = append(headerSection, newHeader)
+
+        // Reconstruct email
+        result = append(headerSection, bodySection...)
+
+        // Use original line endings
+        if strings.Contains(emailContent, "\r\n") {
+            return strings.Join(result, "\r\n"), nil
+        } else {
+            return strings.Join(result, "\n"), nil
+        }
+    }
+
+    slhelp["email_remove_header"] = LibHelp{in: "email_content, header_name", out: "string", action: "Remove a specific header from email content."}
+    stdlib["email_remove_header"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_remove_header", args, 2, "2", "string", "string"); !ok {
+            return nil, err
+        }
+
+        emailContent := args[0].(string)
+        headerName := args[1].(string)
+
+        // Split by \r\n first, then \n if needed
+        lines := strings.Split(emailContent, "\r\n")
+        if len(lines) == 1 {
+            lines = strings.Split(emailContent, "\n")
+        }
+
+        var result []string
+        var inBody bool
+
+        for _, line := range lines {
+            trimmedLine := strings.TrimSpace(line)
+
+            // Check if this is the header to remove
+            if !inBody && strings.Contains(trimmedLine, ":") {
+                parts := strings.SplitN(trimmedLine, ":", 2)
+                if len(parts) == 2 && strings.TrimSpace(parts[0]) == headerName {
+                    // Skip this header
+                    continue
+                }
+            }
+
+            result = append(result, line)
+
+            if trimmedLine == "" {
+                inBody = true
+            }
+        }
+
+        // Use original line endings
+        if strings.Contains(emailContent, "\r\n") {
+            return strings.Join(result, "\r\n"), nil
+        } else {
+            return strings.Join(result, "\n"), nil
+        }
+    }
+
+    slhelp["email_base64_encode"] = LibHelp{in: "text", out: "string", action: "Encode text using base64 encoding."}
+    stdlib["email_base64_encode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_base64_encode", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        text := args[0].(string)
+        encoded := base64.StdEncoding.EncodeToString([]byte(text))
+        return encoded, nil
+    }
+
+    slhelp["email_base64_decode"] = LibHelp{in: "encoded_text", out: "string", action: "Decode base64 encoded text."}
+    stdlib["email_base64_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("email_base64_decode", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        encodedText := args[0].(string)
+        decoded, err := base64.StdEncoding.DecodeString(encodedText)
+        if err != nil {
+            return "", fmt.Errorf("email_base64_decode error: %v", err)
+        }
+
+        return string(decoded), nil
     }
 
 }

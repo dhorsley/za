@@ -1,0 +1,23 @@
+#!/usr/bin/za
+
+# Test script for improved 4D+ array formatting
+
+println "=== Testing Improved 4D+ Array Formatting ==="
+
+# Enable pretty array formatting
+array_format(true)
+
+println "\n--- Creating 5D Test Array ---"
+# Create the problematic array from the user's example
+a = [1,2,3]
+a = [a,a]
+a = [a,a,a]
+a = [[a],[a]]
+a = [[a],[a]] + [[a],[a]]
+# Create a 5D array
+a = [[[a],[a]]]
+
+println "\n--- Current Output ---"
+print a
+
+println "\n=== Test Complete ==="
