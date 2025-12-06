@@ -502,7 +502,11 @@ binloop1:
 				left = ev_add(left, right)
 			}
 		case O_Minus:
-			left = ev_sub(left, right)
+			if isMap(left) && isMap(right) {
+				left = differenceMaps(left.(map[string]any), right.(map[string]any))
+			} else {
+				left = ev_sub(left, right)
+			}
 		case O_Multiply:
 			left = ev_mul(left, right)
 		case O_Divide:
@@ -541,16 +545,28 @@ binloop1:
 		case O_OutFile: // returns success/failure bool
 			left = p.file_out(left, right)
 
-		case SYM_BAND: // bitwise-and
-			left = as_integer(left) & as_integer(right)
-		case SYM_BOR: // bitwise-or
-			left = as_integer(left) | as_integer(right)
+		case SYM_BAND: // bitwise-and OR map intersection
+			if isMap(left) && isMap(right) {
+				left = intersectMaps(left.(map[string]any), right.(map[string]any))
+			} else {
+				left = as_integer(left) & as_integer(right)
+			}
+		case SYM_BOR: // bitwise-or OR map union
+			if isMap(left) && isMap(right) {
+				left = deepMergeMaps(left.(map[string]any), right.(map[string]any))
+			} else {
+				left = as_integer(left) | as_integer(right)
+			}
 		case SYM_LSHIFT:
 			left = ev_shift_left(left, right)
 		case SYM_RSHIFT:
 			left = ev_shift_right(left, right)
-		case SYM_Caret: // XOR
-			left = as_integer(left) ^ as_integer(right)
+		case SYM_Caret: // XOR OR map symmetric difference
+			if isMap(left) && isMap(right) {
+				left = symmetricDifferenceMaps(left.(map[string]any), right.(map[string]any))
+			} else {
+				left = as_integer(left) ^ as_integer(right)
+			}
 		case SYM_POW:
 			left = ev_pow(left, right)
 		case SYM_RANGE:

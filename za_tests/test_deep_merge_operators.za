@@ -1,0 +1,136 @@
+# Deep Merge Operators Test Suite
+# Test all map operators: | (union), & (intersection), - (difference), ^ (symmetric difference)
+
+println "=== Testing Deep Merge Operators ==="
+
+# Test 1: Basic Union (|)
+println "Test 1: Basic Union"
+m1 = map(.a 1, .b 2)
+m2 = map(.b 3, .c 4)
+result = m1 | m2
+println "m1: ", m1
+println "m2: ", m2  
+println "m1 | m2: ", result
+println "Expected: {a: 1, b: 3, c: 4}"
+println ""
+
+# Test 2: Basic Intersection (&)
+println "Test 2: Basic Intersection"
+m1 = map(.a 1, .b 2, .c 3)
+m2 = map(.b 2, .c 4, .d 5)
+result = m1 & m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 & m2: ", result
+println "Expected: {b: 2, c: 3}"
+println ""
+
+# Test 3: Basic Difference (-)
+println "Test 3: Basic Difference"
+m1 = map(.a 1, .b 2, .c 3)
+m2 = map(.b 2, .c 4, .d 5)
+result = m1 - m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 - m2: ", result
+println "Expected: {a: 1}"
+println ""
+
+# Test 4: Basic Symmetric Difference (^)
+println "Test 4: Basic Symmetric Difference"
+m1 = map(.a 1, .b 2, .c 3)
+m2 = map(.b 2, .c 4, .d 5)
+result = m1 ^ m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 ^ m2: ", result
+println "Expected: {a: 1, d: 5}"
+println ""
+
+# Test 5: Nested Union
+println "Test 5: Nested Union"
+m1 = map(.config map(.db "localhost", .port 5432), .debug false)
+m2 = map(.config map(.db "prod-server"), .debug true, .version "1.0")
+result = m1 | m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 | m2: ", result
+println "Expected: {config: {db: 'prod-server', port: 5432}, debug: true, version: '1.0'}"
+println ""
+
+# Test 6: Nested Intersection
+println "Test 6: Nested Intersection"
+m1 = map(.config map(.db "localhost", .port 5432), .debug false)
+m2 = map(.config map(.db "prod-server", .port 5432), .version "1.0")
+result = m1 & m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 & m2: ", result
+println "Expected: {config: {port: 5432}}"
+println ""
+
+# Test 7: Empty Maps
+println "Test 7: Empty Maps"
+empty = map()
+m1 = map(.a 1, .b 2)
+result1 = empty | m1
+result2 = empty & m1
+result3 = empty - m1
+result4 = empty ^ m1
+println "empty | m1: ", result1
+println "empty & m1: ", result2
+println "empty - m1: ", result3
+println "empty ^ m1: ", result4
+println ""
+
+# Test 8: Side Effect Verification
+println "Test 8: Side Effect Verification"
+original = map(.a 1, .b map(.c 2, .d 3))
+copy = original
+result = original | map(.b map(.c 99), .e 4)
+println "Original before: ", original
+println "Original after: ", original
+println "Result: ", result
+println "Original unchanged: ", (original == copy)
+println ""
+
+# Test 9: Type Conflicts
+println "Test 9: Type Conflicts"
+m1 = map(.a 1, .b map(.c 2))
+m2 = map(.b "string_value", .c 3)
+result = m1 | m2
+println "m1: ", m1
+println "m2: ", m2
+println "m1 | m2: ", result
+println "Expected: {a: 1, b: 'string_value', c: 3}"
+println ""
+
+# Test 10: Library Functions
+println "Test 10: Library Functions"
+m1 = map(.a 1, .b 2)
+m2 = map(.b 3, .c 4)
+result_merge = merge(m1, m2)
+result_intersect = intersect(m1, m2)
+result_diff = difference(m1, m2)
+result_sym = symmetric_difference(m1, m2)
+println "merge(m1, m2): ", result_merge
+println "intersect(m1, m2): ", result_intersect
+println "difference(m1, m2): ", result_diff
+println "symmetric_difference(m1, m2): ", result_sym
+println ""
+
+# Test 11: Backward Compatibility with Integers
+println "Test 11: Backward Compatibility with Integers"
+int1 = 5  # 101 in binary
+int2 = 3  # 011 in binary
+result_or = int1 | int2    # Should be 7 (111)
+result_and = int1 & int2   # Should be 1 (001)
+result_xor = int1 ^ int2   # Should be 6 (110)
+result_sub = int1 - int2   # Should be 2
+println "5 | 3: ", result_or
+println "5 & 3: ", result_and
+println "5 ^ 3: ", result_xor
+println "5 - 3: ", result_sub
+println ""
+
+println "=== All Tests Completed ==="
