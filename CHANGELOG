@@ -107,9 +107,34 @@ library changes
         - use of + implies an operand shape comparison so should be reserved for operations
           such as those above. more general appends, in 1D, should use the append/concat functions.
 
+    * added named versions of the setwise map operators for |, &, ^ and -
+
 
 other
 -----
+
+    * added support for set-like operations on maps, this includes:
+
+        Operators
+
+        | (Union/Deep Merge) - Deep merges two maps
+        & (Intersection) - Keeps only keys present in both maps
+        - (Difference) - Keeps keys from first map not in second
+        ^ (Symmetric Difference) - Keeps keys existing in exactly one map
+
+        Library Functions
+
+        Operation Functions
+        - merge(map1, map2) - Same as | operator
+        - intersect(map1, map2) - Same as & operator
+        - difference(map1, map2) - Same as - operator
+        - symmetric_difference(map1, map2) - Same as ^ operator
+
+        Set Predicate Functions
+        - is_subset(map1, map2) - Returns true if all keys in map1 exist in map2
+        - is_superset(map1, map2) - Returns true if all keys in map2 exist in map1
+        - is_disjoint(map1, map2) - Returns true if maps have no keys in common
+
 
     * additional support in the basic and relational operators for
       array-to-array operations.
