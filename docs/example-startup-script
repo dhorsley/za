@@ -218,8 +218,8 @@ _=permit("cmdfallback",true)
 
 # set up aliases/macros
 opt_icon="--icons=always"
-macro +ls(path)     `"eza {opt_icon} $path".nocap.out`
-macro +la(path)     `"eza -a {opt_icon} $path".nocap.out`
+macro +ls(path)     `at term_h(),1;ezapath="$path" or "."; "eza {opt_icon} {ezapath}".nocap.out`
+macro +la(path)     `at term_h(),1;ezapath="$path" or "."; "eza -a {opt_icon} {ezapath}".nocap.out`
 macro +df           `df -h`
 macro +free         `free -m`
 macro +b            `bat -f`

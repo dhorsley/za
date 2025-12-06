@@ -35,7 +35,8 @@ var completions = []string{"VAR", "SETGLOB", "PAUSE",
     "PANE", "DOC", "TEST", "ENDTEST", "ASSERT", "TO", "STEP", "AS", "ENUM", "HIST",
 }
 
-const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+// const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+const ansi = "[\u001B\u009B](?:[@-Z\\-_]|[[0-?]*[ -/]*[@-~])"
 
 var winmode bool
 var funcnames []string
@@ -134,7 +135,7 @@ func setupAnsiPalette() {
             "bgreen", "byellow", "bblue", "bmagenta", "bcyan", "bbgray", "bgray", "bbred", "bbgreen",
             "bbyellow", "bbblue", "bbmagenta", "bbcyan", "bwhite", "fd", "fdefault", "fblack", "fred", "fgreen",
             "fyellow", "fblue", "fmagenta", "fcyan", "fbgray", "fgray", "fbred", "fbgreen", "fbyellow",
-            "fbblue", "fbmagenta", "fbcyan", "fwhite", "dim", "blink", "hidden", "crossed", "framed", "CSI", "CTE", "ASB", "RSB", ".",
+            "fbblue", "fbmagenta", "fbcyan", "fwhite", "dim", "blink", "hidden", "crossed", "framed", "CSI", "CTE", "ASB", "RSB", "SOL", ".",
         }
 
         ansiReplacables = []string{}
@@ -1819,22 +1820,20 @@ func printWithWrap(s string) {
 }
 
 // generic vararg print handler. also moves cursor in interactive mode
-// @TODO: this could use some attention to reduce the differences
-//
-//  between interactive/non-interactive source
 func pf(s string, va ...any) {
 
-    s = sf(sparkle(s), va...)
-    sna := Strip(s)
+    ns := sf(sparkle(s), va...)
+    sna := Strip(ns)
 
     if interactive {
         if lineWrap {
-            printWithWrap(s)
+            printWithWrap(ns)
         } else {
-            fmt.Print(s)
+            fmt.Print(ns)
         }
         chpos := 0
         c := col
+
         for ; chpos < len(sna); c += 1 {
             if MW > 0 && c%MW == 0 {
                 row++
@@ -1852,11 +1851,11 @@ func pf(s string, va ...any) {
     }
 
     if lineWrap {
-        printWithWrap(s)
+        printWithWrap(ns)
         return
     }
 
-    fmt.Print(s)
+    fmt.Print(ns)
 
     // row update:
     atlock.Lock()
