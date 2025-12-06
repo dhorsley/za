@@ -45,14 +45,48 @@ result = find(arr1d, 10)
 println "Result:\n", result, " (expected: empty - no matches)"
 assert len(result) == 0
 
-# Test where with 1D arrays
-cond1d = [1, 0, 1, 0, 1, 0, 1, 0, 1]
-x1d = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-y1d = [100, 200, 300, 400, 500, 600, 700, 800, 900]
-println "where(1D): "
-result = where(cond1d, x1d, y1d)
-println "Result:\n", result, " (expected: 9 elements)"
-assert len(result) == 9
+# Enhanced find() tests with condition strings
+println "find(condition string #>3): "
+result = find(arr1d, "#>3")
+println "Result:\n", result, " (expected: indices of elements > 3)"
+assert result == [3, 5, 7]
+
+println "find(complex condition #>2 and #<7): "
+result = find(arr1d, "#>2 and #<7")
+println "Result:\n", result, " (expected: indices of elements 3-6)"
+assert result == [2, 3, 4, 5]
+
+println "find(index condition $idx>5): "
+result = find(arr1d, "$idx>5")
+println "Result:\n", result, " (expected: indices > 5)"
+assert result == [6, 7, 8]
+
+println "find(modulo condition #%2==0): "
+result = find(arr1d, "#%2==0")
+println "Result:\n", result, " (expected: indices of even elements)"
+assert result == [0, 3, 5, 7]
+
+
+# Enhanced where() tests with condition strings
+println "where(single-argument form #>3): "
+result = where("#>3", arr1d)
+println "Result:\n", result, " (expected: elements > 3)"
+assert result == [4, 5, 6, 7, 8, 9]
+
+println "where(condition string with arrays): "
+result = where("#>5", [1, 2, 3, 4, 5, 6, 7, 8, 9], [10, 20, 30, 40, 50, 60, 70, 80, 90])
+println "Result:\n", result, " (expected: y values where x > 5)"
+assert result == [10, 20, 30, 40, 50, 60, 70, 80, 90]
+
+println "where(condition string with scalars): "
+result = where("#>5", 99, 0)
+println "Result:\n", result, " (expected: default array with 99 where > 5)"
+assert len(result) == 6
+
+println "where(complex condition #%2==0): "
+result = where("#%2==0", [1, 2, 3, 4, 5, 6], [10, 20, 30, 40, 50, 60])
+println "Result:\n", result, " (expected: x for even, y for odd)"
+assert result == [10, 2, 30, 4, 50, 6]
 
 # Test concatenate with 1D arrays
 arr1a = [1, 2, 3]
@@ -154,6 +188,55 @@ println "Result:\n", result, " (expected: 1D array)"
 assert len(result) == 5 && result[0] == 1
 
 print
+println "--- Enhanced find() and where() with Map/Struct Data ---"
+
+# Test with map data (struct-like objects)
+people = [
+    map(.name "Alice", .age 25, .salary 50000),
+    map(.name "Bob", .age 30, .salary 60000),
+    map(.name "Charlie", .age 28, .salary 55000),
+    map(.name "Diana", .age 35, .salary 70000),
+    map(.name "Eve", .age 22, .salary 45000)
+]
+
+println "find(people, \"#.age>28\"): "
+result = find(people, "#.age>28")
+println "Result:\n", result, " (expected: indices of people older than 28)"
+assert result == [1, 3]
+
+println "find(people, \"#.salary>55000\"): "
+result = find(people, "#.salary>55000")
+println "Result:\n", result, " (expected: indices of people with salary > 55000)"
+assert result == [1, 3]
+
+println "find(people, \"#.age>25 and #.salary<60000\"): "
+result = find(people, "#.age>25 and #.salary<60000")
+println "Result:\n", result, " (expected: indices of people age>25 and salary<60000)"
+assert result == [2]
+
+println "where(\"#.age>28\", people, \"Too Young\"): "
+result = where("#.age>28", people, "Too Young")
+println "Result:\n", result, " (expected: people objects or \"Too Young\")"
+assert len(result) == 5
+
+println "where(\"#.salary>55000\", people, \"Low Salary\"): "
+result = where("#.salary>55000", people, "Low Salary")
+println "Result:\n", result, " (expected: high salary people or \"Low Salary\")"
+assert len(result) == 5
+
+# Test with nested map data
+employees = [
+    map(.name "John", .dept map(.name "Engineering", .budget 100000)),
+    map(.name "Jane", .dept map(.name "Marketing", .budget 80000)),
+    map(.name "Bob", .dept map(.name "Engineering", .budget 100000))
+]
+
+println "find(employees, \"#.dept.budget>90000\"): "
+result = find(employees, "#.dept.budget>90000")
+println "Result:\n", result, " (expected: indices of departments with budget > 90000)"
+assert result == [0, 2]
+
+print
 println "--- 3D Array Tests ---"
 
 # Test with 3D arrays (cube)
@@ -241,6 +324,74 @@ println "identity(1): "
 result = identity(1)
 println "Result:\n", result, " (expected: 1x1 matrix)"
 assert len(result) == 1 && len(result[0]) == 1
+
+print
+println "--- Enhanced find() and where() Edge Cases ---"
+
+# Test find() edge cases
+println "find(empty array, condition): "
+empty_arr = []
+result = find(empty_arr, "#>0")
+println "Result:\n", result, " (expected: empty array)"
+assert len(result) == 0
+
+println "find(single element, condition): "
+single = [5]
+result = find(single, "#>3")
+println "Result:\n", result, " (expected: [0])"
+assert result == [0]
+
+println "find(all false condition): "
+result = find(arr1d, "#>100")
+println "Result:\n", result, " (expected: empty array)"
+assert len(result) == 0
+
+println "find(all true condition): "
+result = find(arr1d, "#>0")
+println "Result:\n", result, " (expected: all indices)"
+assert len(result) == 9
+
+# Test where() edge cases
+println "where(empty array, condition): "
+result = where(empty_arr, "#>0")
+println "Result:\n", result, " (expected: empty array)"
+assert len(result) == 0
+
+println "where(single element, condition): "
+result = where(single, "#>3")
+println "Result:\n", result, " (expected: [5])"
+assert result == [5]
+
+println "where(condition string, mismatched arrays): "
+try
+    result = where("#>3", [1, 2, 3], [4, 5])
+    println "Unexpected success - should have failed"
+catch err
+    println "Expected error for mismatched arrays: ", err
+endtry
+
+println "where(invalid condition): "
+try
+    result = where(arr1d, "invalid syntax")
+    println "Unexpected success - should have failed"
+catch err
+    println "Expected error for invalid condition: ", err
+endtry
+
+# Test backward compatibility
+println "find(backward compatibility - non-zero): "
+result = find([0, 1, 0, 2, 0, 3])
+println "Result:\n", result, " (expected: [1, 3, 5])"
+assert result == [1, 3, 5]
+
+# Deprecated: where(condition_array, x, y) form no longer supported
+# println "where(backward compatibility - condition array): "
+# cond = [1, 0, 1, 0, 1]
+# x = [10, 20, 30, 40, 50]
+# y = [100, 200, 300, 400, 500]
+# result = where(cond, x, y)
+# println "Result:\n", result, " (expected: [10, 200, 30, 400, 50])"
+# assert result == [10, 200, 30, 400, 50]
 
 print
 println "--- Extended det_big() and inverse_big() Tests ---"
@@ -332,7 +483,118 @@ inv_large = inverse_big(large_mat)
 println "Result:\n", inv_large, " (expected: 2x2 matrix)"
 
 print
+println "--- Phase 1: Axis-Based Operations Tests ---"
+
+# Test axis-based operations on 2D arrays
+matrix2d = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+println "mean(matrix2d, axis=0): "
+result = mean(matrix2d, 0)
+println "Result:\n", result, " (expected: [4, 5, 6] - column means)"
+assert result == [4, 5, 6]
+
+println "mean(matrix2d, axis=1): "
+result = mean(matrix2d, 1)
+println "Result:\n", result, " (expected: [2, 5, 8] - row means)"
+assert result == [2, 5, 8]
+
+println "mean(matrix2d, axis=0, keepdims=True): "
+result = mean(matrix2d, 0, true)
+println "Result:\n", result, " (expected: [[4, 5, 6]] - keepdims)"
+assert result == [[4, 5, 6]]
+
+println "sum(matrix2d, axis=0): "
+result = sum(matrix2d, 0)
+println "Result:\n", result, " (expected: [12, 15, 18] - column sums)"
+assert result == [12, 15, 18]
+
+println "sum(matrix2d, axis=1): "
+result = sum(matrix2d, 1)
+println "Result:\n", result, " (expected: [6, 15, 24] - row sums)"
+assert result == [6, 15, 24]
+
+println "std(matrix2d, axis=0): "
+result = std(matrix2d, 0)
+println "Result:\n", result, " (expected: column standard deviations)"
+assert len(result) == 3
+
+println "variance(matrix2d, axis=1): "
+result = variance(matrix2d, 1)
+println "Result:\n", result, " (expected: row variances)"
+assert len(result) == 3
+
+println "prod(matrix2d, axis=0): "
+result = prod(matrix2d, 0)
+println "Result:\n", result, " (expected: [28, 80, 162] - column products)"
+assert result == [28, 80, 162]
+
+println "prod(matrix2d, axis=1): "
+result = prod(matrix2d, 1)
+println "Result:\n", result, " (expected: [6, 120, 504] - row products)"
+assert result == [6, 120, 504]
+
+# Test enhanced concatenate with axis
+arr1 = [1, 2, 3]
+arr2 = [4, 5, 6]
+
+println "concatenate(arr1, arr2, axis=0): "
+result = concatenate(arr1, arr2, 0)
+println "Result:\n", result, " (expected: [1, 2, 3, 4, 5, 6] - vertical)"
+assert result == [1, 2, 3, 4, 5, 6]
+
+println "concatenate(arr1, arr2, axis=1): "
+result = concatenate(arr1, arr2, 1)
+println "Result:\n", result, " (expected: [[1, 4], [2, 5], [3, 6]] - horizontal)"
+assert result == [[1, 4], [2, 5], [3, 6]]
+
+# Test enhanced stack with axis
+println "stack(arr1, arr2, axis=0): "
+result = stack(arr1, arr2, 0)
+println "Result:\n", result, " (expected: [[1, 2, 3], [4, 5, 6]] - vertical stack)"
+assert result == [[1, 2, 3], [4, 5, 6]]
+
+println "stack(arr1, arr2, axis=1): "
+result = stack(arr1, arr2, 1)
+println "Result:\n", result, " (expected: [[1, 4], [2, 5], [3, 6]] - horizontal stack)"
+assert result == [[1, 4], [2, 5], [3, 6]]
+
+# Test backward compatibility
+println "mean(backward compatibility): "
+result = mean(matrix2d)
+println "Result:\n", result, " (expected: 5 - flattened mean)"
+assert result == 5
+
+println "sum(backward compatibility): "
+result = sum(matrix2d)
+println "Result:\n", result, " (expected: 45 - flattened sum)"
+assert result == 45
+
+println "concatenate(backward compatibility): "
+result = concatenate(arr1, arr2)
+println "Result:\n", result, " (expected: [1, 2, 3, 4, 5, 6] - default flatten)"
+assert result == [1, 2, 3, 4, 5, 6]
+
+println "stack(backward compatibility): "
+result = stack(arr1, arr2)
+println "Result:\n", result, " (expected: [[1, 2, 3], [4, 5, 6]] - default vertical)"
+assert result == [[1, 2, 3], [4, 5, 6]]
+
+# Test edge cases
+println "mean(empty array, axis=0): "
+empty = []
+result = mean(empty, 0)
+println "Result:\n", result, " (expected: 0 or error)"
+assert result == 0
+
+println "prod(single element, axis=0): "
+single = [42]
+result = prod(single, 0)
+println "Result:\n", result, " (expected: 42)"
+assert result == 42
+
+print
 println "=== ARRAY LIBRARY TESTS COMPLETE ==="
 println "All new array functions tested across 1D to 4D arrays"
+println "Phase 1: Axis-based operations implemented and tested"
 
 
