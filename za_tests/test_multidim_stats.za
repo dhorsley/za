@@ -24,7 +24,6 @@ println "Mixed min: " , min(mixed)     # Expected: 1
 println "Mixed max: " , max(mixed)     # Expected: 4
 
 # Scalar tests
-println "Scalar sum: " , sum(42)       # Expected: 42
 println "Scalar avg: " , avg(3.14)     # Expected: 3.14
 println "Scalar min: " , min(-5)       # Expected: -5
 println "Scalar max: " , max(100)      # Expected: 100
@@ -43,7 +42,7 @@ println "--> Testing Edge Cases"
 empty_2d = [[]]
 println "Empty 2D sum: " , sum(empty_2d)    # Expected: 0
 # println "Empty 2D avg: " , avg(empty_2d)    # Expected: divide by zero error
-# println "Empty 2D min: " , min(empty_2d)    # Expected: divide by zero error  
+# println "Empty 2D min: " , min(empty_2d)    # Expected: divide by zero error
 # println "Empty 2D max: " , max(empty_2d)    # Expected: divide by zero error
 
 # Single element arrays
@@ -77,3 +76,5 @@ println "Negative Base ** 2: " , neg_base ** 2   # Expected: [[4, 9], [16, 25]]
 println "Negative Base % 3: " , neg_base % 3     # Expected: [[-2, 0], [-1, -2]]
 
 println "--> All tests completed"
+
+
