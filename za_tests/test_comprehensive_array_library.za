@@ -69,22 +69,17 @@ assert result == [0, 3, 5, 7]
 
 # Enhanced where() tests with condition strings
 println "where(single-argument form #>3): "
-result = where("#>3", arr1d)
+result = where(arr1d, "#>3")
 println "Result:\n", result, " (expected: elements > 3)"
 assert result == [4, 5, 6, 7, 8, 9]
 
-println "where(condition string with arrays): "
-result = where("#>5", [1, 2, 3, 4, 5, 6, 7, 8, 9], [10, 20, 30, 40, 50, 60, 70, 80, 90])
-println "Result:\n", result, " (expected: y values where x > 5)"
-assert result == [10, 20, 30, 40, 50, 60, 70, 80, 90]
-
 println "where(condition string with scalars): "
-result = where("#>5", 99, 0)
+result = where(arr1d, "#>5", 99, 0)
 println "Result:\n", result, " (expected: default array with 99 where > 5)"
-assert len(result) == 6
+assert len(result) == 9
 
-println "where(complex condition #%2==0): "
-result = where("#%2==0", [1, 2, 3, 4, 5, 6], [10, 20, 30, 40, 50, 60])
+println "where(in [1..10] complex condition #%2==0): "
+result = where(1..10,"#%2==0", [1, 2, 3, 4, 5, 6], [10, 20, 30, 40, 50, 60])
 println "Result:\n", result, " (expected: x for even, y for odd)"
 assert result == [10, 2, 30, 4, 50, 6]
 
@@ -199,28 +194,30 @@ people = [
     map(.name "Eve", .age 22, .salary 45000)
 ]
 
-println "find(people, \"#.age>28\"): "
+println "people array:\n",people.pp
+
+println "\nfind(people, \"#.age>28\"): "
 result = find(people, "#.age>28")
 println "Result:\n", result, " (expected: indices of people older than 28)"
 assert result == [1, 3]
 
-println "find(people, \"#.salary>55000\"): "
+println "\nfind(people, \"#.salary>55000\"): "
 result = find(people, "#.salary>55000")
 println "Result:\n", result, " (expected: indices of people with salary > 55000)"
 assert result == [1, 3]
 
-println "find(people, \"#.age>25 and #.salary<60000\"): "
+println "\nfind(people, \"#.age>25 and #.salary<60000\"): "
 result = find(people, "#.age>25 and #.salary<60000")
 println "Result:\n", result, " (expected: indices of people age>25 and salary<60000)"
 assert result == [2]
 
-println "where(\"#.age>28\", people, \"Too Young\"): "
-result = where("#.age>28", people, "Too Young")
+println `\nwhere(people, "#.age>28", "Too Young"): `
+result = where(people, "#.age>28", "Too Young")
 println "Result:\n", result, " (expected: people objects or \"Too Young\")"
 assert len(result) == 5
 
-println "where(\"#.salary>55000\", people, \"Low Salary\"): "
-result = where("#.salary>55000", people, "Low Salary")
+println `\npeople.where("#.salary>55000", "Low Salary"): `
+result = people.where("#.salary>55000", "Low Salary")
 println "Result:\n", result, " (expected: high salary people or \"Low Salary\")"
 assert len(result) == 5
 
@@ -235,6 +232,7 @@ println "find(employees, \"#.dept.budget>90000\"): "
 result = find(employees, "#.dept.budget>90000")
 println "Result:\n", result, " (expected: indices of departments with budget > 90000)"
 assert result == [0, 2]
+
 
 print
 println "--- 3D Array Tests ---"
@@ -362,20 +360,21 @@ result = where(single, "#>3")
 println "Result:\n", result, " (expected: [5])"
 assert result == [5]
 
-println "where(condition string, mismatched arrays): "
+println "where(empty_arr, condition string, mismatched arrays): "
 try
-    result = where("#>3", [1, 2, 3], [4, 5])
-    println "Unexpected success - should have failed"
+    result = where(empty_arr, "#>3", [1, 2, 3], [4, 5])
+    println "Unexpected success - should have failed, got: ",result
 catch err
-    println "Expected error for mismatched arrays: ", err
+    println "Expected error for mismatched arrays: ", err.pp
+    println "result was: ",result
 endtry
 
 println "where(invalid condition): "
 try
-    result = where(arr1d, "invalid syntax")
-    println "Unexpected success - should have failed"
+    result = where(arr1d, "invalid syntax") ??
+    println "Unexpected success - should have failed, got: ",result
 catch err
-    println "Expected error for invalid condition: ", err
+    println "Expected error for invalid condition: ", err.pp
 endtry
 
 # Test backward compatibility
@@ -383,15 +382,6 @@ println "find(backward compatibility - non-zero): "
 result = find([0, 1, 0, 2, 0, 3])
 println "Result:\n", result, " (expected: [1, 3, 5])"
 assert result == [1, 3, 5]
-
-# Deprecated: where(condition_array, x, y) form no longer supported
-# println "where(backward compatibility - condition array): "
-# cond = [1, 0, 1, 0, 1]
-# x = [10, 20, 30, 40, 50]
-# y = [100, 200, 300, 400, 500]
-# result = where(cond, x, y)
-# println "Result:\n", result, " (expected: [10, 200, 30, 400, 50])"
-# assert result == [10, 200, 30, 400, 50]
 
 print
 println "--- Extended det_big() and inverse_big() Tests ---"
