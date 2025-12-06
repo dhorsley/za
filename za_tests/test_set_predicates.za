@@ -1,0 +1,74 @@
+# Set Predicate Functions Test
+# Test is_subset, is_superset, is_disjoint functions
+
+println "=== Testing Set Predicate Functions ==="
+
+# Test 1: is_subset
+println "Test 1: is_subset"
+small = map(.a 1, .b 2)
+large = map(.a 1, .b 2, .c 3, .d 4)
+result1 = is_subset(small, large)    # Should be true
+result2 = is_subset(large, small)    # Should be false
+println "small ⊆ large: ", result1
+println "large ⊆ small: ", result2
+println ""
+
+# Test 2: is_superset
+println "Test 2: is_superset"
+small = map(.a 1, .b 2)
+large = map(.a 1, .b 2, .c 3, .d 4)
+result1 = is_superset(large, small)   # Should be true
+result2 = is_superset(small, large)   # Should be false
+println "large ⊇ small: ", result1
+println "small ⊇ large: ", result2
+println ""
+
+# Test 3: is_disjoint
+println "Test 3: is_disjoint"
+map1 = map(.a 1, .b 2, .c 3)
+map2 = map(.x 10, .y 20, .z 30)
+map3 = map(.b 2, .y 20)
+result1 = is_disjoint(map1, map2)   # Should be true (no common keys)
+result2 = is_disjoint(map1, map3)   # Should be false (common key 'b')
+println "map1 ∩ map2 = ∅: ", result1
+println "map1 ∩ map3 = ∅: ", result2
+println ""
+
+# Test 4: Edge Cases
+println "Test 4: Edge Cases"
+empty = map()
+nonempty = map(.a 1)
+
+result1 = is_subset(empty, empty)      # true (empty ⊆ empty)
+result2 = is_superset(empty, empty)    # true (empty ⊇ empty)
+result3 = is_disjoint(empty, empty)     # true (empty ∩ empty = ∅)
+result4 = is_subset(empty, nonempty)    # true (empty ⊆ anything)
+result5 = is_superset(nonempty, empty) # true (anything ⊇ empty)
+result6 = is_disjoint(empty, nonempty)  # true (empty ∩ anything = ∅)
+
+println "empty ⊆ empty: ", result1
+println "empty ⊇ empty: ", result2
+println "empty ∩ empty = ∅: ", result3
+println "empty ⊆ nonempty: ", result4
+println "nonempty ⊇ empty: ", result5
+println "empty ∩ nonempty = ∅: ", result6
+println ""
+
+# Test 5: Complex Real-world Example
+println "Test 5: Real-world Example"
+user_permissions = map(.read true, .write false, .execute false)
+required_permissions = map(.read true, .write true)
+allowed_permissions = map(.read true, .write true, .execute true, .admin false)
+
+result1 = is_subset(user_permissions, required_permissions)    # false (missing write)
+result2 = is_subset(user_permissions, allowed_permissions)    # true (user has subset of allowed)
+result3 = is_superset(allowed_permissions, user_permissions)  # true (allowed includes user)
+result4 = is_disjoint(user_permissions, map(.admin true))     # true (user doesn't have admin)
+
+println "user ⊆ required: ", result1
+println "user ⊆ allowed: ", result2
+println "allowed ⊇ user: ", result3
+println "user ∩ admin = ∅: ", result4
+println ""
+
+println "=== All Set Predicate Tests Completed ==="
