@@ -81,30 +81,26 @@ indexed_filter = numbers ?> "$idx > 1"
 println "Indexed map: ", indexed_map
 println "Indexed filter: ", indexed_filter
 
-# Test 10: @ Container Literal Replacement
-println "Test 10: Container literal replacement with @"
-data = [map(.name "Alice"), map(.name "Bob")]
-field_map = data -> `User: #.name, Full data: @`
-println "Field map: ", field_map
-
-# Test 11: Result Type Detection
-println "Test 11: Result type detection"
+# Test 10: Result Type Detection
+println "Test 10: Result type detection"
 mixed_input = [map(.name "Alice"), map(.name "Bob")]
 string_result = mixed_input -> "#.name"
 println "Result type: ", kind(string_result)
 println "Result: ", string_result
 
-# Test 12: Edge Cases
-println "Test 12: Edge cases"
+# Test 11: Edge Cases
+println "Test 11: Edge cases"
 empty_array = []
 empty_result = empty_array -> "# + 1"
 println "Empty array result: ", empty_result, " (type: ", kind(empty_result), ")"
 
-# Test 13: Complex Combined Features
-println "\nTest 13: Complex combined features"
+# Test 12: Complex Combined Features
+println "\nTest 12: Complex combined features"
 complex_data = [map(.items [1, 2, 3]), map(.items [4, 5, 6])]
 # println "input data : ",complex_data.pp
-complex_result = complex_data -> `map(.item_$idx @.items[0] + @.items[2])`
+complex_result = complex_data -> `map(.item_$idx #.items[0] + #.items[2])`
 println "result : ", complex_result.pp
 
 println "=== All tests completed successfully! ==="
+
+

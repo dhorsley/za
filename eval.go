@@ -652,11 +652,6 @@ func processConditionString(condition string, element any, index int) (string, e
     // Apply $idx replacement
     newCondition = str.Replace(newCondition, "$idx", strconv.Itoa(index), -1)
 
-    // Apply @ replacement for container types only
-    if isContainerType(element) {
-        newCondition = str.Replace(newCondition, "@", goLiteralToZaLiteral(element), -1)
-    }
-
     // Handle #[index] patterns if element is a slice
     if str.Contains(newCondition, "#[") && isContainerType(element) {
         var err error
