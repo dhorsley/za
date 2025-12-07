@@ -1162,6 +1162,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                     gvset("@last_err", cop.Err)
                     if !cop.Okay {
                         pf("Error: [%d] in shell command '%s'\n", cop.Code, str.TrimLeft(s, " \t"))
+                        pf(cop.Out + "\n")
                         pf(cop.Err + "\n")
                     } else {
                         if len(cop.Out) > 0 {
