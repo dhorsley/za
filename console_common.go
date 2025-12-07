@@ -731,13 +731,28 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     removeProcessedKeycode(&c, 1)
 
                     if startedContextHelp {
+
+                        if len(helpList) > 0 && selectedStar>-1 && helpType[selectedStar]==HELP_DIRENT {
+                            f := fileList[helpList[selectedStar]]
+                            if f.IsDir() {
+                                // update word under cursor but continue in help mode
+                                s = replaceWord(s, cpos, helpList[selectedStar]+"/")
+                                // cpos = cpos + len(helpList[selectedStar])+1
+                                cpos=len(s)
+                                wordUnderCursor, _ = getWord(s, cpos)
+                                selectedStar=-1
+                                break
+                            }
+                        }
+
                         contextHelpSelected = true
+                        helpstring = ""
+
                         clearChars(irow, icol, len(s))
                         for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
                             at(i, 1)
                             clearToEOL()
                         }
-                        helpstring = ""
                         break
                     }
 
@@ -1217,6 +1232,21 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             }
 
         }
+
+        /*
+        if contextHelpSelected && len(helpList) > 0 && selectedStar>-1 && helpType[selectedStar]==HELP_DIRENT {
+            f := fileList[helpList[selectedStar]]
+            if f.IsDir() {
+                // update word under cursor but continue in help mode
+                s = insertWord(s, cpos, helpList[selectedStar]+"/")
+                cpos = cpos + len(helpList[selectedStar])+1
+                contextHelpSelected=false
+                startedContextHelp=true
+                at(10,10); pf("[#6]BLAH![#-]")
+                continue
+            }
+        }
+        */
 
         if contextHelpSelected {
             if len(helpList) > 0 {
@@ -2161,6 +2191,12 @@ func insertWord(runes []rune, cpos int, word string) []rune {
     return newRunes
 }
 
+func replaceWord(runes []rune, cpos int, word string) []rune {
+    runes,cpos=deleteWord(runes,cpos)
+    runes=insertWord(runes,cpos,word)
+    return runes
+}
+
 func deleteWord(runes []rune, cpos int) ([]rune, int) {
     start := 0
     end := len(runes)
@@ -2171,11 +2207,7 @@ func deleteWord(runes []rune, cpos int) ([]rune, int) {
 
     // Scan backwards for the start of the word (or dot)
     for p := cpos - 1; p >= 0; p-- {
-        if runes[p] == '.' {
-            start = p + 1
-            break
-        }
-        if runes[p] == ' ' {
+        if runes[p] == ' ' || runes[p]=='.' || runes[p]=='/' {
             start = p + 1
             break
         }
@@ -2183,7 +2215,7 @@ func deleteWord(runes []rune, cpos int) ([]rune, int) {
 
     // Scan forward for the end of the word (or dot)
     for p := cpos; p < len(runes); p++ {
-        if runes[p] == ' ' || runes[p] == '.' {
+        if runes[p] == ' ' || runes[p] == '.' || runes[p]=='/' {
             end = p
             break
         }
