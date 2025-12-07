@@ -246,7 +246,12 @@ func buildHelpPath(wordUnderCursor []rune, helpColoured *[]string, helpList *[]s
     parent    := filepath.Dir(s)
     searchName:= filepath.Base(s)
 
-    re_n:=regexp.MustCompile(searchName)
+    var re_n *regexp.Regexp
+    if regexWillCompile(searchName) {
+        re_n=regexp.MustCompile(searchName)
+    } else {
+        re_n=regexp.MustCompile(".*")
+    }
 
     for _, paf := range dirplus(parent, max_depth) {
 
