@@ -12,6 +12,7 @@ import (
     "log"
     "os"
     "os/exec"
+    "path/filepath"
     "regexp"
     "runtime"
     "sort"
@@ -233,6 +234,57 @@ func removeProcessedKeycode(ka *[]byte, count int) {
     }
 }
 
+func buildHelpPath(wordUnderCursor []rune, helpColoured *[]string, helpList *[]string, helpType *[]int, max_depth int) (fileList map[string]os.FileInfo) {
+
+    fileList = make(map[string]os.FileInfo)
+
+    s:=string(wordUnderCursor)
+    if !str.HasPrefix(s,"/") {
+        s="./"+s
+    }
+    onSlash:=str.HasSuffix(s,"/")
+    parent    := filepath.Dir(s)
+    searchName:= filepath.Base(s)
+
+    re_n:=regexp.MustCompile(searchName)
+
+    for _, paf := range dirplus(parent, max_depth) {
+
+        name := paf.DirEntry.Name() // each file name
+
+        if !onSlash && ! re_n.MatchString(name) {
+            continue
+        }
+
+        pan := parent+"/"+name
+        if parent=="/" {
+            pan = "/"+name
+        }
+
+        if _,found:=fileList[name]; found {
+            continue            // this rejects multiple same dirents
+        }
+
+        f, err := os.Stat(pan)
+
+        if err==nil {
+            appendEntry := ""
+            if f.IsDir() {
+                appendEntry += "[#3]"
+            } else {
+                appendEntry += "[#4]"
+            }
+            appendEntry += name + "[#-]"
+            *helpColoured = append(*helpColoured, appendEntry)
+            *helpList = append(*helpList, name)
+            *helpType = append(*helpType, HELP_DIRENT)
+            fileList[name] = f
+        }
+    }
+    return fileList
+}
+
+
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
 
@@ -351,6 +403,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // shift positions if inside low-end context help
         if startedContextHelp && srow > MH-HELP_SIZE {
             srow -= HELP_SIZE
+        }
+
+        if startedContextHelp {
+            // this will need more conditions added (e.g. input crossing a slash, etc)
+            // to cause it to recalc less often
+            max_depth, _ := gvget("context_dir_depth")
+            fileList=buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
         }
 
         // print prompt
@@ -1088,47 +1147,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 }
             }
 
-            fileList = make(map[string]os.FileInfo)
-
+            //.. get file list
             max_depth, _ := gvget("context_dir_depth")
-
-            for _, paf := range dirplus(".", max_depth.(int)) {
-
-                name := paf.DirEntry.Name()
-                parent := "."
-                pan := name
-
-                if len(paf.Parent) > 2 {
-                    parent = paf.Parent[2:]
-                    pan = parent + "/" + name
-                }
-
-                if matched, _ := regexp.MatchString("^"+string(wordUnderCursor), pan); !matched {
-                    continue
-                }
-
-                f, _ := os.Stat(pan)
-
-                if parent == "." {
-                    appendEntry := ""
-                    if f.IsDir() {
-                        appendEntry += "[#3]"
-                    } else {
-                        appendEntry += "[#4]"
-                    }
-                    appendEntry += name + "[#-]"
-                    helpColoured = append(helpColoured, appendEntry)
-                    helpList = append(helpList, name)
-                    helpType = append(helpType, HELP_DIRENT)
-                    fileList[name] = f
-                } else {
-                    appendEntry := sf("[#2]%s[#-]", pan)
-                    helpColoured = append(helpColoured, appendEntry)
-                    helpList = append(helpList, pan)
-                    helpType = append(helpType, HELP_DIRENT)
-                    fileList[pan] = f
-                }
-            }
+            fileList=buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
 
             //.. build display string
 
