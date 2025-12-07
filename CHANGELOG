@@ -224,17 +224,6 @@ other
             data -> "index_$idx: #"
             # Result: ["index_0: 10", "index_1: 20", ...]
 
-        - Container literal replacement:
-            - Use @ to insert entire current element as literal
-                data -> "copy: @"
-                # Result: ["copy: map(.name "Alice")", "copy: map(.name "Bob")", ...]
-
-        - Combined Operations
-            - Mixed expressions:
-                - Combine replacements with field access and calculations
-                    complex_data -> `map(.item_$idx @.items[0] + @.items[2])`
-                    # Accesses fields, performs calculations, uses index and literal replacement
-
         - Output type now based on result type rather than input type
         - Big number support
         - see za_tests/test_complete_map_filter.za for examples
