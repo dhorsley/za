@@ -12,18 +12,18 @@ println "--- 1D Array Tests ---"
 
 # Test argmax/argmin with 1D arrays
 arr1d = [1, 5, 3, 9, 2, 7, 4, 8, 6]
-println "argmax(1D): "
+println "\nargmax(1D): "
 result = argmax(arr1d)
 println "Result:\n", result, " (expected: 3)"
 assert result == 3
 
-println "argmin(1D): "
+println "\nargmin(1D): "
 result = argmin(arr1d)
 println "Result:\n", result, " (expected: 0)"
 assert result == 0
 
 # Test find with 1D arrays
-println "find(non-zero): "
+println "\nfind(non-zero): "
 result = find(arr1d)
 println "Result:\n", result, " (expected: indices of non-zero elements)"
 assert len(result) == 9
@@ -35,50 +35,50 @@ for i = 0 to result.len-1
     endif
 endfor
 
-println "find(specific value [3]): "
+println "\nfind(specific value [3]): "
 result = find(arr1d, 3)
 println "Result:\n", result, " (expected: index of 2 (for value 3)"
 assert len(result) == 1 && result[0] == 2
 
-println "find(non-existent): "
+println "\nfind(non-existent): "
 result = find(arr1d, 10)
 println "Result:\n", result, " (expected: empty - no matches)"
 assert len(result) == 0
 
 # Enhanced find() tests with condition strings
-println "find(condition string #>3): "
+println "\nfind(condition string #>3): "
 result = find(arr1d, "#>3")
 println "Result:\n", result, " (expected: indices of elements > 3)"
 assert result == [3, 5, 7]
 
-println "find(complex condition #>2 and #<7): "
+println "\nfind(complex condition #>2 and #<7): "
 result = find(arr1d, "#>2 and #<7")
 println "Result:\n", result, " (expected: indices of elements 3-6)"
 assert result == [2, 3, 4, 5]
 
-println "find(index condition $idx>5): "
+println "\nfind(index condition $idx>5): "
 result = find(arr1d, "$idx>5")
 println "Result:\n", result, " (expected: indices > 5)"
 assert result == [6, 7, 8]
 
-println "find(modulo condition #%2==0): "
+println "\nfind(modulo condition #%2==0): "
 result = find(arr1d, "#%2==0")
 println "Result:\n", result, " (expected: indices of even elements)"
 assert result == [0, 3, 5, 7]
 
 
 # Enhanced where() tests with condition strings
-println "where(single-argument form #>3): "
+println "\nwhere(single-argument form #>3): "
 result = where(arr1d, "#>3")
 println "Result:\n", result, " (expected: elements > 3)"
 assert result == [4, 5, 6, 7, 8, 9]
 
-println "where(condition string with scalars): "
+println "\nwhere(condition string with scalars): "
 result = where(arr1d, "#>5", 99, 0)
 println "Result:\n", result, " (expected: default array with 99 where > 5)"
 assert len(result) == 9
 
-println "where(in [1..10] complex condition #%2==0): "
+println "\nwhere(in [1..10] complex condition #%2==0): "
 result = where(1..10,"#%2==0", [1, 2, 3, 4, 5, 6], [10, 20, 30, 40, 50, 60])
 println "Result:\n", result, " (expected: x for even, y for odd)"
 assert result == [10, 2, 30, 4, 50, 6]
@@ -87,97 +87,97 @@ assert result == [10, 2, 30, 4, 50, 6]
 arr1a = [1, 2, 3]
 arr1b = [4, 5, 6]
 arr1c = [7, 8, 9]
-println "concatenate(1D): "
+println "\nconcatenate(1D): "
 result = concatenate(arr1a, arr1b, arr1c)
 println "Result:\n", result, " (expected: 9 elements)"
 assert len(result) == 9 && result[0] == 1 && result[8] == 9
 
 # Test stack with 1D arrays
-println "stack(1D): "
+println "\nstack(1D): "
 result = stack(arr1a, arr1b, arr1c)
-println "Result:\n", result, " (expected: 3 rows)"
+println "\nResult:\n", result, " (expected: 3 rows)"
 assert len(result) == 3
 
-println ""
+print
 println "--- 2D Array Tests ---"
 
 # Test identity matrices
-println "identity(2): "
+println "\nidentity(2): "
 id2 = identity(2)
 println "Result:\n", id2, " (expected: 2x2 matrix)"
 assert len(id2) == 2 && len(id2[0]) == 2
 
-println "identity(3): "
+println "\nidentity(3): "
 id3 = identity(3)
 println "Result:\n", id3, " (expected: 3x3 matrix)"
 assert len(id3) == 3 && len(id3[0]) == 3
 
 # Test trace with 2D matrices
 mat2a = [[1, 2], [3, 4]]
-println "trace(2x2): "
+println "\ntrace(2x2): "
 result = trace(mat2a)
 println "Result:\n", result, " (expected: 5)"
 assert result == 5
 
 # Test determinant with 2D matrices
-println "det(2x2): "
+println "\ndet(2x2): "
 result = det(mat2a)
 println "Result:\n", result, " (expected: -2)"
 assert result == -2
 
 # Test inverse with 2D matrices
-println "inverse(2x2): "
+println "\ninverse(2x2): "
 result = inverse(mat2a)
 println "Result:\n", result, " (expected: 2x2 matrix)"
 assert len(result) == 2 && len(result[0]) == 2
 
 # Test inverse_big with 2D matrices
-println "inverse_big(2x2): "
+println "\ninverse_big(2x2): "
 result_big = inverse_big(mat2a)
 println "Result:\n", result_big, " (expected: 2x2 matrix with high precision)"
 assert len(result_big) == 2 && len(result_big[0]) == 2
 
 # Test det_big with 2D matrices
-println "det_big(2x2): "
+println "\ndet_big(2x2): "
 result_det_big = det_big(mat2a)
 println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
-println "det_big(2x2): "
+println "\ndet_big(2x2): "
 result_det_big = det_big(mat2a)
 println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
 
 # Test inverse_big with 2D matrices
-println "inverse_big(2x2): "
+println "\ninverse_big(2x2): "
 result_big = inverse_big(mat2a)
 println "Result:\n" + result_big.as_string, " (expected: 2x2 matrix with high precision)"
 assert len(result_big) == 2 && len(result_big[0]) == 2
 
 # Test rank with 2D matrices
-println "rank(full rank 2x2): "
+println "\nrank(full rank 2x2): "
 result = rank(mat2a)
 println "Result:\n" + result, " (expected: 2)"
 assert result == 2
 
 # Test argmax/argmin with 2D arrays (flattened)
 mat2c = [[1, 8, 3], [4, 5, 6], [7, 2, 9]]
-println "argmax(2D): "
+println "\nargmax(2D): "
 result = argmax(mat2c)
 println "Result:\n", result, " (expected: 8)"
 assert result == 8
 
-println "argmin(2D): "
+println "\nargmin(2D): "
 result = argmin(mat2c)
 println "Result:\n", result, " (expected: 0)"
 assert result == 0
 
 # Test squeeze with 2D arrays
 single_row = [[1, 2, 3, 4, 5]]
-println "squeeze(single row): "
+println "\nsqueeze(single row): "
 result = squeeze(single_row)
 println "Result:\n", result, " (expected: 1D array)"
 assert len(result) == 5 && result[0] == 1
 
 single_col = [[1], [2], [3], [4], [5]]
-println "squeeze(single column): "
+println "\nsqueeze(single column): "
 result = squeeze(single_col)
 println "Result:\n", result, " (expected: 1D array)"
 assert len(result) == 5 && result[0] == 1
@@ -194,7 +194,7 @@ people = [
     map(.name "Eve", .age 22, .salary 45000)
 ]
 
-println "people array:\n",people.pp
+println "\npeople array:\n",people.pp
 
 println "\nfind(people, \"#.age>28\"): "
 result = find(people, "#.age>28")
@@ -228,7 +228,7 @@ employees = [
     map(.name "Bob", .dept map(.name "Engineering", .budget 100000))
 ]
 
-println "find(employees, \"#.dept.budget>90000\"): "
+println "\nfind(employees, \"#.dept.budget>90000\"): "
 result = find(employees, "#.dept.budget>90000")
 println "Result:\n", result, " (expected: indices of departments with budget > 90000)"
 assert result == [0, 2]
@@ -244,12 +244,12 @@ cube3d = [
     [[9, 10], [11, 12]],
 ]
 
-println "argmax(3D): "
+println "\nargmax(3D): "
 result = argmax(cube3d)
 println "Result:\n", result, " (expected: 11)"
 assert result == 11
 
-println "argmin(3D): "
+println "\nargmin(3D): "
 result = argmin(cube3d)
 println "Result:\n", result, " (expected: 0)"
 assert result == 0
@@ -260,7 +260,7 @@ cube3d_zeros = [
     [[3, 0], [4, 0]],
     [[0, 5], [6, 0]]
 ]
-println "find(3D non-zero): "
+println "\nfind(3D non-zero): "
 result = find(cube3d_zeros)
 println "Result:\n", result, " (expected: 6 elements)"
 assert len(result) == 6
@@ -280,12 +280,12 @@ hyper4d = [
     ],
 ]
 
-println "argmax(4D): "
+println "\nargmax(4D): "
 result = argmax(hyper4d)
 println "Result:\n", result, " (expected: 15)"
 assert result == 15
 
-println "argmin(4D): "
+println "\nargmin(4D): "
 result = argmin(hyper4d)
 println "Result:\n", result, " (expected: 0)"
 assert result == 0
@@ -295,30 +295,30 @@ println "--- Edge Cases ---"
 
 # Test with empty arrays
 empty_arr = []
-println "argmax(empty): "
+println "\nargmax(empty): "
 result = argmax(empty_arr)
 println "Result:\n", result, " (expected: -1)"
 assert result == -1
 
-println "argmin(empty): "
+println "\nargmin(empty): "
 result = argmin(empty_arr)
 println "Result:\n", result, " (expected: -1)"
 assert result == -1
 
 # Test with single element arrays
 single_elem = [42]
-println "argmax(single): "
+println "\nargmax(single): "
 result = argmax(single_elem)
 println "Result:\n", result, " (expected: 0)"
 assert result == 0
 
 # Test identity with edge cases
-println "identity(0): "
+println "\nidentity(0): "
 result = identity(0)
 println "Result:\n", result, " (expected: empty matrix)"
 assert len(result) == 0
 
-println "identity(1): "
+println "\nidentity(1): "
 result = identity(1)
 println "Result:\n", result, " (expected: 1x1 matrix)"
 assert len(result) == 1 && len(result[0]) == 1
@@ -327,40 +327,40 @@ print
 println "--- Enhanced find() and where() Edge Cases ---"
 
 # Test find() edge cases
-println "find(empty array, condition): "
+println "\nfind(empty array, condition): "
 empty_arr = []
 result = find(empty_arr, "#>0")
 println "Result:\n", result, " (expected: empty array)"
 assert len(result) == 0
 
-println "find(single element, condition): "
+println "\nfind(single element, condition): "
 single = [5]
 result = find(single, "#>3")
 println "Result:\n", result, " (expected: [0])"
 assert result == [0]
 
-println "find(all false condition): "
+println "\nfind(all false condition): "
 result = find(arr1d, "#>100")
 println "Result:\n", result, " (expected: empty array)"
 assert len(result) == 0
 
-println "find(all true condition): "
+println "\nfind(all true condition): "
 result = find(arr1d, "#>0")
 println "Result:\n", result, " (expected: all indices)"
 assert len(result) == 9
 
 # Test where() edge cases
-println "where(empty array, condition): "
+println "\nwhere(empty array, condition): "
 result = where(empty_arr, "#>0")
 println "Result:\n", result, " (expected: empty array)"
 assert len(result) == 0
 
-println "where(single element, condition): "
+println "\nwhere(single element, condition): "
 result = where(single, "#>3")
 println "Result:\n", result, " (expected: [5])"
 assert result == [5]
 
-println "where(empty_arr, condition string, mismatched arrays): "
+println "\nwhere(empty_arr, condition string, mismatched arrays): "
 try
     result = where(empty_arr, "#>3", [1, 2, 3], [4, 5])
     println "Unexpected success - should have failed, got: ",result
@@ -369,7 +369,7 @@ catch err
     println "result was: ",result
 endtry
 
-println "where(invalid condition): "
+println "\nwhere(invalid condition): "
 try
     result = where(arr1d, "invalid syntax") ??
     println "Unexpected success - should have failed, got: ",result
@@ -378,7 +378,7 @@ catch err
 endtry
 
 # Test backward compatibility
-println "find(backward compatibility - non-zero): "
+println "\nfind(backward compatibility - non-zero): "
 result = find([0, 1, 0, 2, 0, 3])
 println "Result:\n", result, " (expected: [1, 3, 5])"
 assert result == [1, 3, 5]
@@ -387,15 +387,14 @@ print
 println "--- Extended det_big() and inverse_big() Tests ---"
 
 # Test det_big() with larger matrices
-println "det_big() with 3x3 matrix:"
+println "\ndet_big() with 3x3 matrix:"
 mat3x3 = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
 println "Input matrix:"
 println mat3x3
 result3x3 = det_big(mat3x3)
 println "Result:\n", result3x3, " (expected: 4)"
 
-print
-println "det_big() with 4x4 matrix:"
+println "\ndet_big() with 4x4 matrix:"
 mat4x4 = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]
 println "Input matrix:"
 println mat4x4
@@ -404,28 +403,25 @@ println "Result:\n", result4x4, " (expected: 0)"
 
 # Test inverse_big() with 3x3 matrix
 print
-println "inverse_big() with 3x3 matrix:"
+println "\ninverse_big() with 3x3 matrix:"
 inv3x3 = inverse_big(mat3x3)
 println "Result:\n", inv3x3
 
 # Test inverse_big() with identity matrix variations
-print
-println "inverse_big() with 3x3 identity:"
+println "\ninverse_big() with 3x3 identity:"
 identity3x3 = identity(3)
 inv_identity3x3 = inverse_big(identity3x3)
 println "Result:\n", inv_identity3x3, " (expected: 3x3 identity)"
 
 # Test det_big() and inverse_big() with near-singular matrix
-print
-println "det_big():"
+println "\ndet_big():"
 notsingular = [[1, 2, 3], [5, 5, 6], [7, 8, 9]]
 println "Input matrix:"
 println notsingular
 det = det_big(notsingular)
 println "Result:\n", det, " (expected: 6 [5.9 rec])"
 
-print
-println "inverse_big():"
+println "\ninverse_big():"
 inv = inverse_big(notsingular)
 println "inverse_big of returned:\n", inv
 println "( expected: [-0.5,1.-0.5],[-0.5,-2,1.5],[0.833333,1,-0.83333] )"
@@ -434,12 +430,10 @@ println "( expected: [-0.5,1.-0.5],[-0.5,-2,1.5],[0.833333,1,-0.83333] )"
 # Test inverse() and inverse_big() with singular matrix
 singular = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
-print
 # These should return an error
-
 exception_strictness("warn")
 
-println "inverse() with singular:"
+println "\ninverse() with singular:"
 try
     inv = inverse(singular)
     println "inverse of singular returned:\n", inv
@@ -448,7 +442,7 @@ catch err
     println "inverse() returned an error:\n",err.pp
 endtry
 
-println "inverse_big() with singular:"
+println "\ninverse_big() with singular:"
 try
     inv = inverse_big(singular)
     println "inverse_big of singular of returned:\n", inv
@@ -459,66 +453,63 @@ endtry
 
 
 # Test with larger values
-print
-println "det_big() with large values:"
+println "\ndet_big() with large values:"
 large_mat = [[1000, 2000], [3000, 4000]]
 println "Input matrix:"
 println large_mat
 det_large = det_big(large_mat)
 println "Result:\n", det_large, " (expected: -2000000)"
 
-print
-println "inverse_big() with large values:"
+println "\ninverse_big() with large values:"
 inv_large = inverse_big(large_mat)
 println "Result:\n", inv_large, " (expected: 2x2 matrix)"
 
-print
-println "--- Phase 1: Axis-Based Operations Tests ---"
+println "\n--- Axis-Based Operations Tests ---"
 
 # Test axis-based operations on 2D arrays
 matrix2d = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
-println "mean(matrix2d, axis=0): "
+println "\nmean(matrix2d, axis=0): "
 result = mean(matrix2d, 0)
 println "Result:\n", result, " (expected: [4, 5, 6] - column means)"
 assert result == [4, 5, 6]
 
-println "mean(matrix2d, axis=1): "
+println "\nmean(matrix2d, axis=1): "
 result = mean(matrix2d, 1)
 println "Result:\n", result, " (expected: [2, 5, 8] - row means)"
 assert result == [2, 5, 8]
 
-println "mean(matrix2d, axis=0, keepdims=True): "
+println "\nmean(matrix2d, axis=0, keepdims=True): "
 result = mean(matrix2d, 0, true)
 println "Result:\n", result, " (expected: [[4, 5, 6]] - keepdims)"
 assert result == [[4, 5, 6]]
 
-println "sum(matrix2d, axis=0): "
+println "\nsum(matrix2d, axis=0): "
 result = sum(matrix2d, 0)
 println "Result:\n", result, " (expected: [12, 15, 18] - column sums)"
 assert result == [12, 15, 18]
 
-println "sum(matrix2d, axis=1): "
+println "\nsum(matrix2d, axis=1): "
 result = sum(matrix2d, 1)
 println "Result:\n", result, " (expected: [6, 15, 24] - row sums)"
 assert result == [6, 15, 24]
 
-println "std(matrix2d, axis=0): "
+println "\nstd(matrix2d, axis=0): "
 result = std(matrix2d, 0)
 println "Result:\n", result, " (expected: column standard deviations)"
 assert len(result) == 3
 
-println "variance(matrix2d, axis=1): "
+println "\nvariance(matrix2d, axis=1): "
 result = variance(matrix2d, 1)
 println "Result:\n", result, " (expected: row variances)"
 assert len(result) == 3
 
-println "prod(matrix2d, axis=0): "
+println "\nprod(matrix2d, axis=0): "
 result = prod(matrix2d, 0)
 println "Result:\n", result, " (expected: [28, 80, 162] - column products)"
 assert result == [28, 80, 162]
 
-println "prod(matrix2d, axis=1): "
+println "\nprod(matrix2d, axis=1): "
 result = prod(matrix2d, 1)
 println "Result:\n", result, " (expected: [6, 120, 504] - row products)"
 assert result == [6, 120, 504]
@@ -527,64 +518,63 @@ assert result == [6, 120, 504]
 arr1 = [1, 2, 3]
 arr2 = [4, 5, 6]
 
-println "concatenate(arr1, arr2, axis=0): "
+println "\nconcatenate(arr1, arr2, axis=0): "
 result = concatenate(arr1, arr2, 0)
 println "Result:\n", result, " (expected: [1, 2, 3, 4, 5, 6] - vertical)"
 assert result == [1, 2, 3, 4, 5, 6]
 
-println "concatenate(arr1, arr2, axis=1): "
+println "\nconcatenate(arr1, arr2, axis=1): "
 result = concatenate(arr1, arr2, 1)
 println "Result:\n", result, " (expected: [[1, 4], [2, 5], [3, 6]] - horizontal)"
 assert result == [[1, 4], [2, 5], [3, 6]]
 
 # Test enhanced stack with axis
-println "stack(arr1, arr2, axis=0): "
+println "\nstack(arr1, arr2, axis=0): "
 result = stack(arr1, arr2, 0)
 println "Result:\n", result, " (expected: [[1, 2, 3], [4, 5, 6]] - vertical stack)"
 assert result == [[1, 2, 3], [4, 5, 6]]
 
-println "stack(arr1, arr2, axis=1): "
+println "\nstack(arr1, arr2, axis=1): "
 result = stack(arr1, arr2, 1)
 println "Result:\n", result, " (expected: [[1, 4], [2, 5], [3, 6]] - horizontal stack)"
 assert result == [[1, 4], [2, 5], [3, 6]]
 
 # Test backward compatibility
-println "mean(backward compatibility): "
+println "\nmean(backward compatibility): "
 result = mean(matrix2d)
 println "Result:\n", result, " (expected: 5 - flattened mean)"
 assert result == 5
 
-println "sum(backward compatibility): "
+println "\nsum of matrix2d (backward compatibility): "
+println "matrix2d:\n",matrix2d
 result = sum(matrix2d)
 println "Result:\n", result, " (expected: 45 - flattened sum)"
 assert result == 45
 
-println "concatenate(backward compatibility): "
+println "\nconcatenate(backward compatibility): "
 result = concatenate(arr1, arr2)
 println "Result:\n", result, " (expected: [1, 2, 3, 4, 5, 6] - default flatten)"
 assert result == [1, 2, 3, 4, 5, 6]
 
-println "stack(backward compatibility): "
+println "\nstack(backward compatibility): "
 result = stack(arr1, arr2)
 println "Result:\n", result, " (expected: [[1, 2, 3], [4, 5, 6]] - default vertical)"
 assert result == [[1, 2, 3], [4, 5, 6]]
 
 # Test edge cases
-println "mean(empty array, axis=0): "
+println "\nmean(empty array, axis=0): "
 empty = []
 result = mean(empty, 0)
 println "Result:\n", result, " (expected: 0 or error)"
 assert result == 0
 
-println "prod(single element, axis=0): "
+println "\nprod(single element, axis=0): "
 single = [42]
 result = prod(single, 0)
 println "Result:\n", result, " (expected: 42)"
 assert result == 42
 
-print
-println "=== ARRAY LIBRARY TESTS COMPLETE ==="
+println "\n=== ARRAY LIBRARY TESTS COMPLETE ==="
 println "All new array functions tested across 1D to 4D arrays"
-println "Phase 1: Axis-based operations implemented and tested"
 
 
