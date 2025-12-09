@@ -376,6 +376,10 @@ func GetAsFloat(unk any) (float64, bool) {
         return float64(i), false
     case float64:
         return i, false
+    case *big.Float:
+        // Convert big.Float to float64 if within limits
+        f64, accuracy := i.Float64()
+        return f64, accuracy != big.Exact || math.IsInf(f64, 0) || math.IsNaN(f64)
     case string:
         p, e := strconv.ParseFloat(i, 64)
         return p, e != nil
