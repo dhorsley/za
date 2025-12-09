@@ -693,6 +693,21 @@ func buildMathLib() {
             if dimsA[0] != dimsB[0] {
                 return nil, errors.New("dot: vectors must have same length")
             }
+
+            // Check for big.Float arrays first
+            if bigA, okA := a.([]*big.Float); okA {
+                if bigB, okB := b.([]*big.Float); okB {
+                    // Both are big.Float arrays - preserve precision
+                    result := new(big.Float)
+                    for i := 0; i < dimsA[0]; i++ {
+                        product := new(big.Float).Mul(bigA[i], bigB[i])
+                        result.Add(result, product)
+                    }
+                    return result, nil
+                }
+            }
+
+            // Fall back to float64 for other types
             sum := 0.0
             for i := 0; i < dimsA[0]; i++ {
                 aVal, _ := GetAsFloat(ra.Index(i).Interface())
@@ -1077,6 +1092,55 @@ func flattenSlice(v any) []any {
     return result
 }
 
+// sum_fast_1d handles common 1D array types with optimized paths
+func sum_fast_1d(v any) (float64, bool) {
+    switch arr := v.(type) {
+    case []int:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    case []int64:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    case []uint:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    case []float64:
+        sum := 0.0
+        for _, val := range arr {
+            sum += val // No conversion needed
+        }
+        return sum, true
+    case []uint8:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    case []uint32:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    case []uint64:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val) // Direct conversion, no intermediate steps
+        }
+        return sum, true
+    }
+    return 0.0, false // Not a fast-path type
+}
+
 // sum_multi handles multi-dimensional arrays by flattening them and computing sum
 func sum_multi(v any) float64 {
     if !isSlice(v) {
@@ -1090,7 +1154,12 @@ func sum_multi(v any) float64 {
 
     dims := getSliceDimensions(v)
     if len(dims) == 1 {
-        // Use existing 1D implementations
+        // Try fast path first
+        if result, ok := sum_fast_1d(v); ok {
+            return result
+        }
+
+        // Fall back to existing implementations for other types
         switch v.(type) {
         case []int:
             return float64(sum_int(v.([]int)))
