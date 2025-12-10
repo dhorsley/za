@@ -727,6 +727,9 @@ func help_ops(ns string) {
 [#4]a | b[#-]       bitwise OR                  [#4]a & b[#-]       bitwise AND
 [#4]a ^ b[#-]       bitwise XOR
 
+[#4]map(a) | map(b)[#-] map set union           [#4]map(a) & map(b)[#-] map set intersection
+[#4]map(a) - map(b)[#-] map set difference      [#4]map(a) ^ map(b)[#-] map set symmetric diff
+
 [#4]a ~f b[#-]      array of matches from string a using regex b[#-]
 [#4]s.f[#-]         field access                [#4]s .. e[#-]      builds an array of values in the range s to e
 [#4]s $out f[#-]    write string 's' to file 'f'
