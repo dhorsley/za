@@ -27,6 +27,7 @@ println "\nfind(non-zero): "
 result = find(arr1d)
 println "Result:\n", result, " (expected: indices of non-zero elements)"
 assert len(result) == 9
+
 # Verify these are actually indices of non-zero elements (all elements are non-zero in this array)
 expected_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 for i = 0 to result.len-1
