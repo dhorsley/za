@@ -30,9 +30,9 @@ mkdir -p "$NVIM_CONFIG/lua/za"
 
 # Copy Lua files
 echo -e "${YELLOW}Copying za module files...${NC}"
-cp "$ZADIR/lua/za/init.lua" "$NVIM_CONFIG/lua/za/"
-cp "$ZADIR/lua/za/filetype.lua" "$NVIM_CONFIG/lua/za/"
-cp "$ZADIR/lua/za/syntax.lua" "$NVIM_CONFIG/lua/za/"
+cp "$ZADIR/lua/za-nvim/init.lua" "$NVIM_CONFIG/lua/za/"
+cp "$ZADIR/lua/za-nvim/filetype.lua" "$NVIM_CONFIG/lua/za/"
+cp "$ZADIR/lua/za-nvim/syntax.lua" "$NVIM_CONFIG/lua/za/"
 
 # Add to init.lua if not already present
 INIT_FILE="$NVIM_CONFIG/init.lua"
