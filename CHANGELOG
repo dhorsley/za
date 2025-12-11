@@ -46,13 +46,8 @@ fixes
                 ev_watch, field, fields, flock, fseek, get_mem, interpol, json_query,
                 lines, sort, table, vcmp, web_serve_decode, wrap
 
-    * (experimental) REPL/Tab completion mode. Updated file/dir completion.
+    * REPL/Tab completion mode. Updated file/dir completion.
         - Can now roam through local or absolute paths for completions.
-        - this includes backwards navigation with ../
-        - it has not been in any way optimised yet
-        - you can currently navigate backwards ad nauseum, even past the root /
-          - this doesn't break anything, or behave unexpectedly and is probably valid (/ is it's own parent)
-            however, we should probably make it return an empty list when it hits that point
 
 
 library changes
