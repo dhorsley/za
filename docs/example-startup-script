@@ -152,7 +152,7 @@ endstruct
 
 
 # set prompt
-awsenv=get_env("AWS_DEFAULT_PROFILE")
+awsenv=get_env("AWS_DEFAULT_PROFILE") or get_env("AWS_PROFILE")
 
 var envlist map
 envlist["(?:os)?test"]    = environment(0x46,7,"aws:Test")
@@ -263,6 +263,11 @@ macro +cpu          `
                     println data.table(map(.colours map(.header "[#2]",.data "[#6]"),.border_style "unicode"))`
 
 macro  +w `${w} . lines("1:") . table ( map(.has_headers true, .colours map(.header "[#2]",.data "[#6]"),.border_style "unicode" ) )`
+
+macro +p(prof,cluster) `
+    | export AWS_PROFILE="$prof"
+    | kubectl config use-context $cluster
+`
 
 macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
