@@ -120,7 +120,7 @@ def has_root()
     return sudo!="" or user()=="root"
 end
 
-# run cmd in parent shell without capturing Channels
+# run cmd in parent shell without capturing channels
 # this will not capture the error code correctly.
 def nocap(cmd)
     capmem=sysvar("@commandCapture")
@@ -170,41 +170,6 @@ gtl=${git rev-parse --show-toplevel}
 # before each input prompt is presented.
 prompt=(form_prompt())
 
-
-# set banner
-ignore_fonts = ["future","emboss","emboss2","bubble","block","mono9","mono12","term","mini"]
-ignore_fonts = ignore_fonts.concat(["smbraille","script","smascii12","circle","smscript","bigascii12","bigascii9","letter","ivrit"])
-ignore_fonts = ignore_fonts.concat(["roman","lean","smascii9","ascii9","mnemonic","bigmono12","bigmono9"])
-ignore_fonts = ignore_fonts.concat(["shadow","slant","ascii12","smslant","wideterm","digital","smshadow"])
-
-effects = [ "","-F rainbow","-F metal","-F border" ]
-
-banner=` {="@language".sysvar} - version {="@version".sysvar} `
-
-if is_installed("figlet") or is_file("/usr/bin/figlet")
-
-    fontdir="/usr/share/figlet"
-    on release_id() == "arch" do fontdir+="/fonts"
-
-    variants = (
-        dir(fontdir) ?> `($pe #.name) ~i "^(flf|tlf)"`
-    ) -> "#.name"
-
-    # filter undesired out
-    variants = variants ?> `not ($pn #) in ignore_fonts`
-
-    seed(-1)
-    p=banner
-    if variants.len>0
-        fv=variants[variants.len.rand-1]
-        p=${figlet -f {fv} -S -w {=term_w()} "{=banner}"}
-    endif
-
-    unset variants, fontdir #, use_effect
-else
-    p=banner
-endif
-
 # default banner
 c=cpu_info()
 amem=format("%.3f",mem_info().available.as_float/1024/1024/1024)
@@ -224,13 +189,12 @@ _=append_to(ref banner,"[#1]··███████████░░███
 _=append_to(ref banner,"[#1]·░░░░░░░░░░░··░░░░░░░░·····│····················································")
 _=append_to(ref banner,"[#1]···························│····················································")
 
-
 # show banner
-p=p or banner.join("\n")
-println "\n\n[#5]{p}[#-]\n"
+p=banner.join("\n")
+println "\n[#5]{p}[#-]"
 help
 
-unset banner,p,ignore_fonts,effects
+unset banner,p
 
 
 # enum helpers
