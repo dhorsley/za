@@ -51,7 +51,7 @@ foreach filename in argv()
     interpol(false)
     while
         l=fh.fread("\n")
-        if l.len==0 
+        if l.len==0
             row+=1
             continue if !fh.feof
             break
@@ -130,6 +130,6 @@ foreach filename in argv()
     on ssp.sl!=0 and ssp.fl==0 do println "[#2]Unbalanced single quotes begin @ line {=ssp.sl} col {=ssp.sc}[#-]"
     on dsp.sl!=0 and dsp.fl==0 do println "[#2]Unbalanced double quotes begin @ line {=dsp.sl} col {=dsp.sc}[#-]"
 
-endfor 
+endfor
 
 

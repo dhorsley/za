@@ -1,3 +1,4 @@
+#!/usr/bin/za
 
 module "modules/moda" as moda
 module "modules/modb" as modb
