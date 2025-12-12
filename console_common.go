@@ -2585,7 +2585,7 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
     case result = <-c:
     case _, closed := <-t.C:
         if closed {
-            logTimeoutDetails(cmd, dur)
+            plog("Shell command timed out: '%s' (duration: %vms, max_tio: %dms)", cmd, dur.Milliseconds(), MAX_TIO)
             result.E = errors.New("Command '" + cmd + "' timed-out after " +
                 dur.String() + " (see logs for details)")
         }
@@ -2606,23 +2606,6 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     return result.S, result.E
 
-}
-
-// logTimeoutDetails logs timeout information using Za's logging system
-func logTimeoutDetails(cmd string, timeout time.Duration) {
-    // Check if sanitisation is enabled
-    sanitisationMutex.RLock()
-    shouldsanitise := permit_sanitisation
-    sanitisationMutex.RUnlock()
-
-    if shouldsanitise {
-        // sanitise command to remove sensitive information
-        sanitisedCmd := log_sanitise(cmd)
-        plog("Shell command timed out: '%s' (duration: %vms, max_tio: %dms)", sanitisedCmd, timeout.Milliseconds(), MAX_TIO)
-    } else {
-        // Log without sanitisation
-        plog("Shell command timed out: '%s' (duration: %vms, max_tio: %dms)", cmd, timeout.Milliseconds(), MAX_TIO)
-    }
 }
 
 // / mutex for shell calls
